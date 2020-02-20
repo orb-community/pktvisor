@@ -200,36 +200,3 @@ TEST_CASE("Top K Src Ports", "[pcap][ipv4][topk][dns][udp]")
 
 }
 
-TEST_CASE("Top K QNames", "[pcap][ipv4][topk][dns][udp]")
-{
-
-    pcpp::IFileReaderDevice *reader = pcpp::IFileReaderDevice::getReader("fixtures/production_udp.pcap");
-
-    CHECK(reader->open());
-
-    pcpp::RawPacket rawPacket;
-
-    datasketches::frequent_items_sketch<std::string> sketch(8);
-
-    while (reader->getNextPacket(rawPacket)) {
-        pcpp::Packet dnsRequest(&rawPacket);
-        if (dnsRequest.isPacketOfType(pcpp::UDP)) {
-            if (dnsRequest.isPacketOfType(pcpp::DNS)) {
-                pcpp::DnsLayer *dnsLayer = dnsRequest.getLayerOfType<pcpp::DnsLayer>();
-                if (dnsLayer->getDnsHeader()->queryOrResponse == 0) {
-                    sketch.update(dnsLayer->getFirstQuery()->getName());
-                }
-            }
-        }
-    }
-
-    reader->close();
-    delete reader;
-
-    auto items = sketch.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
-    CHECK(items.size() == 93);
-    CHECK("7796b2-Amazon-us-west-2-jfrog-s3-downloads.teridions.net" == items[0].get_item());
-    CHECK(69 == (int) items[0].get_estimate());
-
-}
-
