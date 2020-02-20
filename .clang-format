@@ -1,0 +1,40 @@
+---
+Language: Cpp
+
+# defaults (if not documented) can be found here: 
+#  https://github.com/llvm-mirror/clang/blob/master/lib/Format/Format.cpp
+BasedOnStyle: WebKit
+
+# make it look more Linuxy
+AllowShortFunctionsOnASingleLine: None
+PointerAlignment: Right
+
+# custom brace breaks, but defaults based on "Linux" style.
+BreakBeforeBraces: 'Custom'
+BraceWrapping: {
+    AfterClass: 'true'       # linux default
+    AfterFunction: 'true'    # linux default
+    AfterNamespace: 'false'  # non-linux
+    # everything else is same default as linux style.
+    AfterControlStatement: 'false'
+    AfterEnum: 'false'
+    AfterObjCDeclaration: 'false'
+    AfterStruct: 'false'
+    AfterUnion: 'false'
+    BeforeCatch: 'false'
+    BeforeElse: 'false'
+    IndentBraces: 'false'
+}
+
+AlignTrailingComments: true
+
+# had to re-set this after changing BraceWrapping. WebKit default is 0.
+ColumnLimit: 0
+
+# don't inner (nested) namespaces.
+NamespaceIndentation: None
+
+# modernize
+Standard: Cpp11
+Cpp11BracedListStyle: true
+SpaceBeforeCpp11BracedList: false
