@@ -7,6 +7,11 @@
 #include <datasketches/fi/frequent_items_sketch.hpp>
 #include <datasketches/kll/kll_sketch.hpp>
 #include <json/json.hpp>
+#include "config.h"
+
+#ifdef MMDB_ENABLE
+#include <GeoLite2PP.h>
+#endif
 
 #include <algorithm>
 #include <chrono>
@@ -239,6 +244,11 @@ class MetricsMgr
     std::shared_ptr<InstantRateMetrics> _instantRates;
 
     void _periodShift();
+
+#ifdef MMDB_ENABLE
+    std::unique_ptr<GeoLite2PP::DB> _geoCityDB;
+    std::unique_ptr<GeoLite2PP::DB> _geoASNDB;
+#endif
 
 public:
     static const uint PERIOD_SEC = 60;

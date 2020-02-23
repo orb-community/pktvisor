@@ -10,7 +10,6 @@
 
 #include "dns.h"
 #include "metrics.h"
-#include "version.h"
 
 namespace pktvisor {
 
