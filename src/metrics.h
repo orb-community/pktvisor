@@ -150,7 +150,7 @@ struct Sketches {
         , _dns_topNX(MIN_FI_MAP_SIZE, MAX_FI_MAP_SIZE)
         , _dns_topREFUSED(MIN_FI_MAP_SIZE, MAX_FI_MAP_SIZE)
         , _dns_topSRVFAIL(MIN_FI_MAP_SIZE, MAX_FI_MAP_SIZE)
-        , _dns_topUDPPort(16) // perfect hash
+        , _dns_topUDPPort(16, 16) // perfect hash
         , _net_topIPv4(MIN_FI_MAP_SIZE, MAX_FI_MAP_SIZE)
         , _net_topIPv6(MIN_FI_MAP_SIZE, MAX_FI_MAP_SIZE)
         , _dns_topQType(MIN_FI_MAP_SIZE, MAX_FI_MAP_SIZE)
