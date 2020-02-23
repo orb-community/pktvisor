@@ -11,9 +11,6 @@ set(PKTVISOR_VERSION "pktvisor ${PROJECT_VERSION}")
 set(CMAKE_CXX_STANDARD 17)
 add_compile_options(-Wall)
 
-#set (CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=address")
-#set (CMAKE_LINKER_FLAGS_DEBUG "${CMAKE_LINKER_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=address")
-
 find_package(PkgConfig)
 
 include(sanitizer)
@@ -97,6 +94,13 @@ add_executable(tests
         tests/test_sketches.cpp
         tests/test_utils.cpp
         )
+
+if (MMDB_ENABLE)
+    target_sources(tests
+            PUBLIC
+            tests/test_geolite2.cpp
+        )
+endif()
 
 target_include_directories(tests SYSTEM
         PRIVATE ${CMAKE_SOURCE_DIR}/3rd/datasketches
