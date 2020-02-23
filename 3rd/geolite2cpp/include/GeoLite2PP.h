@@ -1,14 +1,7 @@
-#ifndef GEOLITE2PP_INCLUDE_GEOLITE2PP_H_
-#define GEOLITE2PP_INCLUDE_GEOLITE2PP_H_
-
 #pragma once
 
-#include <map>
 #include <maxminddb.h>
-#include <sstream>
 #include <string>
-#include <system_error>
-#include <vector>
 
 namespace GeoLite2PP {
 
@@ -19,7 +12,9 @@ public:
     ~DB(void);
 
     void get_geoinfo(const char *ip_address, uint16_t &country,
-        uint16_t &prov, uint16_t &isp, uint16_t &city);
+                                     uint16_t &prov, uint16_t &isp, uint16_t &city);
+
+    std::string getGeoCountry(const char *ip_address);
 
 private:
     /* Internal handle to the database. */
@@ -46,4 +41,3 @@ private:
 
 }
 
-#endif // GEOLITE2PP_INCLUDE_GEOLITE2PP_H_

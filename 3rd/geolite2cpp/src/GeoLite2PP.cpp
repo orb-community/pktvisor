@@ -11,12 +11,11 @@ static std::string emptystr;
 GeoLite2PP::DB::~DB(void)
 {
     MMDB_close(&mmdb);
-    return;
 }
 
 GeoLite2PP::DB::DB(const std::string &database_filename)
 {
-    const int status = MMDB_open(database_filename.c_str(), MMDB_MODE_MMAP, &mmdb);
+    auto status = MMDB_open(database_filename.c_str(), MMDB_MODE_MMAP, &mmdb);
     if (status != MMDB_SUCCESS) {
         const ErrorCategory &cat(get_error_category());
         const std::error_code ec(status, cat);
@@ -29,7 +28,6 @@ GeoLite2PP::DB::DB(const std::string &database_filename)
         throw std::system_error(ec, msg);
     }
 
-    return;
 }
 
 MMDB_lookup_result_s GeoLite2PP::DB::lookup_raw(const char *ip_address)
@@ -121,6 +119,38 @@ void GeoLite2PP::DB::get_field(MMDB_lookup_result_s *lookup)
         if (result.has_data)
             prov_ = result.uint16;
     }
+}
+
+std::string GeoLite2PP::DB::getGeoCountry(const char *ip_address) {
+
+    MMDB_lookup_result_s lookup = lookup_raw(ip_address);
+    MMDB_entry_data_s result;
+    if (!lookup.found_entry) {
+        return emptystr;
+    }
+
+    MMDB_entry_data_list_s *entry_data_list = NULL;
+    int status = MMDB_get_entry_data_list(&lookup.entry,
+                                          &entry_data_list);
+
+    if (MMDB_SUCCESS != status) {
+        fprintf(
+            stderr,
+            "Got an error looking up the entry data - %s\n",
+            MMDB_strerror(status));
+        return emptystr;
+    }
+
+    if (NULL != entry_data_list) {
+        MMDB_dump_entry_data_list(stdout, entry_data_list, 2);
+    }
+
+//    MMDB_aget_value(&lookup.entry, &result, country);
+//    if (result.has_data) {
+//        return std::to_string(result.uint16);
+//    }
+    return emptystr;
+
 }
 
 void GeoLite2PP::DB::get_geoinfo(const char *ip_address, uint16_t &country,
