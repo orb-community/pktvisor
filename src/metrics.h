@@ -274,6 +274,7 @@ public:
         _startTime = std::chrono::system_clock::now();
     }
 
+    void setInitialShiftTS();
     void setInitialShiftTS(const pcpp::Packet &packet);
 
     void newPacket(const pcpp::Packet &packet, QueryResponsePairMgr &pairMgr, pcpp::ProtocolType l4, Direction dir, pcpp::ProtocolType l3);

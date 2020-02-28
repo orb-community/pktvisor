@@ -311,8 +311,13 @@ void MetricsMgr::_periodShift()
     }
 }
 
+void MetricsMgr::setInitialShiftTS() {
+    gettimeofday(&_lastShiftTS, nullptr);
+}
+
 void MetricsMgr::setInitialShiftTS(const pcpp::Packet &packet) {
     _lastShiftTS.tv_sec = packet.getRawPacketReadOnly()->getPacketTimeStamp().tv_sec;
+    _lastShiftTS.tv_usec = packet.getRawPacketReadOnly()->getPacketTimeStamp().tv_usec;
 }
 
 void MetricsMgr::newPacket(const pcpp::Packet &packet, QueryResponsePairMgr &pairMgr, pcpp::ProtocolType l4, Direction dir, pcpp::ProtocolType l3)
