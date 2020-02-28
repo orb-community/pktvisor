@@ -61,7 +61,9 @@ public:
   const_iterator end() const;
 private:
   static constexpr double LOAD_FACTOR = 0.75;
-  static constexpr uint16_t DRIFT_LIMIT = 1024; // used only for stress testing
+  // XXX NS1 change
+  static constexpr uint16_t DRIFT_LIMIT = 2048; // used only for stress testing
+  // XXX
   static constexpr uint32_t MAX_SAMPLE_SIZE = 1024; // number of samples to compute approximate median during purge
 
   uint8_t lg_cur_size;
