@@ -9,12 +9,10 @@ class DB final
 {
 public:
     DB(const std::string &database_filename);
-    ~DB(void);
+    ~DB();
 
-    void get_geoinfo(const char *ip_address, uint16_t &country,
-                                     uint16_t &prov, uint16_t &isp, uint16_t &city);
-
-    std::string getGeoCountry(const char *ip_address);
+    std::string getGeoLocString(const char *ip_address);
+    std::string getASNString(const char *ip_address);
 
 private:
     /* Internal handle to the database. */

@@ -1,8 +1,9 @@
 #include "GeoLite2PP.h"
 #include "GeoLite2PP_error_category.h"
-
-const char *city[] = {"city", NULL};
-const char *country[] = {"country", NULL};
+#include <vector>
+const char *city[] = {"city", "names", "en", NULL};
+const char *country[] = {"country", "names", "en", NULL};
+const char *continent[] = {"continent", "code", NULL};
 const char *prov[] = {"prov", NULL};
 const char *isp[] = {"isp", NULL};
 
@@ -27,7 +28,6 @@ GeoLite2PP::DB::DB(const std::string &database_filename)
     */
         throw std::system_error(ec, msg);
     }
-
 }
 
 MMDB_lookup_result_s GeoLite2PP::DB::lookup_raw(const char *ip_address)
@@ -121,44 +121,106 @@ void GeoLite2PP::DB::get_field(MMDB_lookup_result_s *lookup)
     }
 }
 
-std::string GeoLite2PP::DB::getGeoCountry(const char *ip_address) {
+std::string GeoLite2PP::DB::getGeoLocString(const char *ip_address)
+{
 
     MMDB_lookup_result_s lookup = lookup_raw(ip_address);
-    MMDB_entry_data_s result;
     if (!lookup.found_entry) {
         return emptystr;
     }
 
-    MMDB_entry_data_list_s *entry_data_list = NULL;
-    int status = MMDB_get_entry_data_list(&lookup.entry,
-                                          &entry_data_list);
+    std::string geoString;
 
-    if (MMDB_SUCCESS != status) {
-        fprintf(
-            stderr,
-            "Got an error looking up the entry data - %s\n",
-            MMDB_strerror(status));
+    {
+        MMDB_entry_data_s result;
+        MMDB_get_value(&lookup.entry, &result, "continent", "code", NULL);
+
+        if (result.has_data && result.type == MMDB_DATA_TYPE_UTF8_STRING) {
+            geoString.append(std::string(result.utf8_string, result.data_size));
+        }
+    }
+
+    {
+        MMDB_entry_data_s result;
+        MMDB_get_value(&lookup.entry, &result, "country", "names", "en", NULL);
+        if (!result.has_data) {
+            MMDB_get_value(&lookup.entry, &result, "country", "iso_code", NULL);
+        }
+
+        if (result.has_data && result.type == MMDB_DATA_TYPE_UTF8_STRING) {
+            geoString.push_back('/');
+            geoString.append(std::string(result.utf8_string, result.data_size));
+        }
+    }
+
+    {
+        MMDB_entry_data_s result;
+        MMDB_get_value(&lookup.entry, &result, "subdivisions", "0", "iso_code", NULL);
+
+        if (result.has_data && result.type == MMDB_DATA_TYPE_UTF8_STRING) {
+            geoString.push_back('/');
+            geoString.append(std::string(result.utf8_string, result.data_size));
+        }
+    }
+
+    {
+        MMDB_entry_data_s result;
+        MMDB_get_value(&lookup.entry, &result, "city", "names", "en", NULL);
+
+        if (result.has_data && result.type == MMDB_DATA_TYPE_UTF8_STRING) {
+            geoString.push_back('/');
+            geoString.append(std::string(result.utf8_string, result.data_size));
+        }
+    }
+
+    return geoString;
+}
+
+std::string GeoLite2PP::DB::getASNString(const char *ip_address)
+{
+
+    MMDB_lookup_result_s lookup = lookup_raw(ip_address);
+    if (!lookup.found_entry) {
         return emptystr;
     }
 
-    if (NULL != entry_data_list) {
-        MMDB_dump_entry_data_list(stdout, entry_data_list, 2);
+    std::string geoString;
+
+    {
+        MMDB_entry_data_s result;
+        MMDB_get_value(&lookup.entry, &result, "autonomous_system_number", NULL);
+
+        if (result.has_data) {
+            switch (result.type) {
+            case MMDB_DATA_TYPE_UINT16:
+                geoString.append(std::to_string(result.uint16));
+                break;
+            case MMDB_DATA_TYPE_INT32:
+                geoString.append(std::to_string(result.int32));
+                break;
+            case MMDB_DATA_TYPE_UINT32:
+                geoString.append(std::to_string(result.uint32));
+                break;
+            case MMDB_DATA_TYPE_UINT64:
+                geoString.append(std::to_string(result.uint64));
+                break;
+            case MMDB_DATA_TYPE_UTF8_STRING:
+                geoString.append(std::string(result.utf8_string, result.data_size));
+                break;
+            }
+        }
     }
 
-//    MMDB_aget_value(&lookup.entry, &result, country);
-//    if (result.has_data) {
-//        return std::to_string(result.uint16);
-//    }
-    return emptystr;
+    {
+        MMDB_entry_data_s result;
+        MMDB_get_value(&lookup.entry, &result, "autonomous_system_organization", NULL);
 
+        if (result.has_data && result.type == MMDB_DATA_TYPE_UTF8_STRING) {
+            geoString.push_back('/');
+            geoString.append(std::string(result.utf8_string, result.data_size));
+        }
+    }
+
+    return geoString;
 }
 
-void GeoLite2PP::DB::get_geoinfo(const char *ip_address, uint16_t &country,
-    uint16_t &prov, uint16_t &isp, uint16_t &city)
-{
-    get_field(ip_address);
-    country = country_;
-    prov = prov_;
-    isp = isp_;
-    city = city_;
-}
