@@ -217,6 +217,8 @@ void openIface(pcpp::PcapLiveDevice *dev, pktvisor::TcpDnsReassembly &tcpReassem
     devCookie dC = {&tcpReassembly, false};
     pcpp::ApplicationEventHandler::getInstance().onApplicationInterrupted(onApplicationInterrupted, &dC);
 
+    metricsManager->setInitialShiftTS();
+
     // start capturing packets
     bool capturing = true;
     while (capturing) {
