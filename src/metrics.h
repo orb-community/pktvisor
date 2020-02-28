@@ -118,12 +118,12 @@ struct Sketches {
     // https://datasketches.github.io/docs/Frequency/FrequentItemsErrorTable.html
     //
     // we need to size for stream length of (essentially) pps within MetricsMgr::PERIOD_SEC
-    // at ~1 mil PPS we can hit being off by < 1000 at max map size of 4096
+    // at close to ~1 mil PPS (5.6E+07 per 60s) we can hit being off by ~24000 at max map size of 8192
     // this number also affects memory usage, by limiting the number of objects tracked
     // e.g. up to MAX_FI_MAP_SIZE strings (ints, etc) may be stored per sketch
     // note that the actual storage space for the strings is on the heap and not counted here, though.
-    const uint8_t MIN_FI_MAP_SIZE = 6;  // 2^6 = 64
-    const uint8_t MAX_FI_MAP_SIZE = 12; // 2^12 = 4096
+    const uint8_t MIN_FI_MAP_SIZE = 7;  // 2^7 = 128
+    const uint8_t MAX_FI_MAP_SIZE = 13; // 2^13 = 8192
 
     datasketches::kll_sketch<double> _dnsXactFromTimeMs;
     datasketches::kll_sketch<double> _dnsXactToTimeMs;
@@ -139,7 +139,7 @@ struct Sketches {
     datasketches::frequent_items_sketch<std::string> _dns_topSRVFAIL;
     datasketches::frequent_items_sketch<uint16_t> _dns_topUDPPort;
     datasketches::frequent_items_sketch<uint32_t, IPv4Hash> _net_topIPv4;
-    datasketches::frequent_items_sketch<std::string> _net_topIPv6; // TODO not very efficient, should switch to 16 byte uint. this was easier for MVP.
+    datasketches::frequent_items_sketch<std::string> _net_topIPv6; // TODO not very efficient, should switch to 16 byte uint
     datasketches::frequent_items_sketch<uint16_t> _dns_topQType;
     datasketches::frequent_items_sketch<uint16_t> _dns_topRCode;
     datasketches::frequent_items_sketch<std::string> _dns_slowXactIn;
@@ -269,9 +269,12 @@ public:
         _numPeriods = std::min(_numPeriods, 10U);
         _numPeriods = std::max(_numPeriods, 2U);
         _metrics.emplace_back(std::make_unique<Metrics>());
-        gettimeofday(&_lastShiftTS, nullptr);
+        _lastShiftTS.tv_sec = 0;
+        _lastShiftTS.tv_usec = 0;
         _startTime = std::chrono::system_clock::now();
     }
+
+    void setInitialShiftTS(const pcpp::Packet &packet);
 
     void newPacket(const pcpp::Packet &packet, QueryResponsePairMgr &pairMgr, pcpp::ProtocolType l4, Direction dir, pcpp::ProtocolType l3);
     void newDNSPacket(pcpp::DnsLayer *dns, Direction dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4);

@@ -309,7 +309,10 @@ void MetricsMgr::_periodShift()
         // if we're at our period history length, pop the oldest
         _metrics.pop_front();
     }
-    gettimeofday(&_lastShiftTS, nullptr);
+}
+
+void MetricsMgr::setInitialShiftTS(const pcpp::Packet &packet) {
+    _lastShiftTS.tv_sec = packet.getRawPacketReadOnly()->getPacketTimeStamp().tv_sec;
 }
 
 void MetricsMgr::newPacket(const pcpp::Packet &packet, QueryResponsePairMgr &pairMgr, pcpp::ProtocolType l4, Direction dir, pcpp::ProtocolType l3)
@@ -319,6 +322,7 @@ void MetricsMgr::newPacket(const pcpp::Packet &packet, QueryResponsePairMgr &pai
         auto pkt_ts = packet.getRawPacketReadOnly()->getPacketTimeStamp();
         if (pkt_ts.tv_sec - _lastShiftTS.tv_sec > MetricsMgr::PERIOD_SEC) {
             _periodShift();
+            _lastShiftTS.tv_sec = packet.getRawPacketReadOnly()->getPacketTimeStamp().tv_sec;
             pairMgr.purgeOldTransactions();
             _openDnsTransactionCount = pairMgr.getOpenTransactionCount();
         }

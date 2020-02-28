@@ -25,7 +25,7 @@
 static const char USAGE[] =
     R"(pktvisord.
     Usage:
-      pktvisord [-b BPF] [-p PORT] [-H HOSTSPEC] [--periods P] [--geo-city FILE] [--geo-asn FILE] TARGET
+      pktvisord [-b BPF] [-p PORT] [-H HOSTSPEC] [--periods P] [--summary] [--geo-city FILE] [--geo-asn FILE] TARGET
       pktvisord (-h | --help)
       pktvisord --version
 
@@ -39,6 +39,8 @@ static const char USAGE[] =
       --geo-city FILE  GeoLite2 City database to use for IP to Geo mapping (if enabled)
       --geo-asn FILE   GeoLite2 ASN database to use for IP to ASN mapping (if enabled)
       --periods P      Hold this many 60 second time periods of history in memory [default: 5]
+      --summary        Instead of a time window with P periods, summarize all packets into one bucket for entire time period.
+                       Useful for executive summary of (and applicable only to) a pcap file. [default: false]
       -H HOSTSPEC      Specify subnets (comma separated) to consider HOST, in CIDR form. In live capture this /may/ be detected automatically
                        from capture device but /must/ be specified for pcaps. Example: "10.0.1.0/24,10.0.2.1/32,2001:db8::/64"
                        Specifying this for live capture will append to any automatic detection.
@@ -155,6 +157,11 @@ void openPcap(std::string fileName, pktvisor::TcpDnsReassembly &tcpReassembly, s
 
     // run in a loop that reads one packet from the file in each iteration and feeds it to the TCP reassembly instance
     pcpp::RawPacket rawPacket;
+    // setup initial timestamp from first packet to initiate bucketing
+    if (reader->getNextPacket(rawPacket)) {
+        metricsManager->setInitialShiftTS(&rawPacket);
+        processRawPacket(&rawPacket, &tcpReassembly);
+    }
     while (reader->getNextPacket(rawPacket)) {
         processRawPacket(&rawPacket, &tcpReassembly);
     }
@@ -366,9 +373,9 @@ int main(int argc, char *argv[])
         showHosts();
         try {
             // in pcap mode we simply output a single summary of stats
-            metricsManager = std::make_unique<pktvisor::MetricsMgr>(true);
+            metricsManager = std::make_unique<pktvisor::MetricsMgr>(args["--summary"].asBool());
             openPcap(args["TARGET"].asString(), tcpDnsReassembly, bpf);
-            std::cout << metricsManager->getMetrics() << std::endl;
+            std::cout << metricsManager->getMetricsMerged(periods) << std::endl;
         } catch (const std::exception &e) {
             std::cerr << e.what() << std::endl;
             return -1;
