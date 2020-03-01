@@ -21,16 +21,14 @@ option(MMDB_ENABLE "Enable MaxMindDB support" OFF)
 if (MMDB_ENABLE)
     pkg_check_modules(LIBMMDB REQUIRED libmaxminddb)
     message(STATUS "MaxMindDB support is enabled")
-    add_library(geolite2cpp
-            ${CMAKE_SOURCE_DIR}/3rd/geolite2cpp/src/GeoLite2PP.cpp
-            ${CMAKE_SOURCE_DIR}/3rd/geolite2cpp/src/GeoLite2PP_error_category.cpp
+    add_library(geoip
+            ${CMAKE_SOURCE_DIR}/src/geoip.cpp
             )
-    target_include_directories(geolite2cpp
+    target_include_directories(geoip
             PUBLIC
-            ${CMAKE_SOURCE_DIR}/3rd/geolite2cpp/include
             ${LIBMMDB_INCLUDE_DIRS}
             )
-    target_link_libraries(geolite2cpp
+    target_link_libraries(geoip
             PUBLIC
             ${LIBMMDB_LDFLAGS}
             ${LIBMMDB_LIBRARIES}
@@ -74,9 +72,8 @@ if (MMDB_ENABLE)
     target_include_directories(pktvisorcore
             PUBLIC
             ${LIBMMDB_INCLUDE_DIRS}
-            ${CMAKE_SOURCE_DIR}/3rd/geolite2cpp/include
             )
-    target_link_libraries(pktvisorcore PRIVATE geolite2cpp)
+    target_link_libraries(pktvisorcore PRIVATE geoip)
 endif()
 
 add_executable(pktvisord
@@ -98,7 +95,7 @@ add_executable(tests
 if (MMDB_ENABLE)
     target_sources(tests
             PUBLIC
-            tests/test_geolite2.cpp
+            tests/test_geoip.cpp
         )
 endif()
 

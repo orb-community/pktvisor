@@ -10,7 +10,7 @@
 #include "config.h"
 
 #ifdef MMDB_ENABLE
-#include <GeoLite2PP.h>
+#include "geoip.h"
 #endif
 
 #include <algorithm>
@@ -246,8 +246,8 @@ class MetricsMgr
     void _periodShift();
 
 #ifdef MMDB_ENABLE
-    std::unique_ptr<GeoLite2PP::DB> _geoCityDB;
-    std::unique_ptr<GeoLite2PP::DB> _geoASNDB;
+    std::unique_ptr<GeoDB> _geoCityDB;
+    std::unique_ptr<GeoDB> _geoASNDB;
 #endif
 
 public:
