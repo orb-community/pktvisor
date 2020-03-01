@@ -277,6 +277,14 @@ public:
     void setInitialShiftTS();
     void setInitialShiftTS(const pcpp::Packet &packet);
 
+    void setGeoCityDB(const std::string& name) {
+        _geoCityDB = std::make_unique<GeoDB>(name);
+    }
+
+    void setGeoASNDB(const std::string& name) {
+        _geoASNDB = std::make_unique<GeoDB>(name);
+    }
+
     void newPacket(const pcpp::Packet &packet, QueryResponsePairMgr &pairMgr, pcpp::ProtocolType l4, Direction dir, pcpp::ProtocolType l3);
     void newDNSPacket(pcpp::DnsLayer *dns, Direction dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4);
     void newDNSXact(pcpp::DnsLayer *dns, Direction dir, hr_clock::duration xact_dur);

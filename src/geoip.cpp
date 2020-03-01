@@ -23,7 +23,7 @@ std::string GeoDB::getGeoLocString(const char *ip_address)
 
     MMDB_lookup_result_s lookup = MMDB_lookup_string(&mmdb, ip_address, &gai_error, &mmdb_error);
     if (!lookup.found_entry) {
-        return "";
+        return "Unknown";
     }
 
     std::string geoString;
@@ -80,7 +80,7 @@ std::string GeoDB::getASNString(const char *ip_address)
 
     MMDB_lookup_result_s lookup = MMDB_lookup_string(&mmdb, ip_address, &gai_error, &mmdb_error);
     if (!lookup.found_entry) {
-        return "";
+        return "Unknown";
     }
 
     std::string geoString;

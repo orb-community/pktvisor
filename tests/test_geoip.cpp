@@ -22,5 +22,21 @@ TEST_CASE("GeoIP", "[geoip]")
 
     }
 
+    SECTION("basic unknown")
+    {
+
+        pktvisor::GeoDB db("fixtures/GeoIP2-ISP-test.mmdb");
+        CHECK(db.getASNString("6.6.6.6") == "Unknown");
+
+    }
+
+    SECTION("bad GeoDB")
+    {
+
+        CHECK_THROWS_WITH(pktvisor::GeoDB("nonexistantfile.mmdb"),
+            "Failed to open MMDB database \"nonexistantfile.mmdb\": Error opening the specified MaxMind DB file");
+
+    }
+
 }
 

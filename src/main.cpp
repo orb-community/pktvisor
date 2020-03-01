@@ -376,6 +376,12 @@ int main(int argc, char *argv[])
         try {
             // in pcap mode we simply output a single summary of stats
             metricsManager = std::make_unique<pktvisor::MetricsMgr>(args["--summary"].asBool());
+            if (args["--geo-city"]) {
+                metricsManager->setGeoCityDB(args["--geo-city"].asString());
+            }
+            if (args["--geo-asn"]) {
+                metricsManager->setGeoASNDB(args["--geo-asn"].asString());
+            }
             openPcap(args["TARGET"].asString(), tcpDnsReassembly, bpf);
             std::cout << metricsManager->getMetricsMerged(periods) << std::endl;
         } catch (const std::exception &e) {
@@ -384,6 +390,12 @@ int main(int argc, char *argv[])
         }
     } else {
         metricsManager = std::make_unique<pktvisor::MetricsMgr>(false, periods);
+        if (args["--geo-city"]) {
+            metricsManager->setGeoCityDB(args["--geo-city"].asString());
+        }
+        if (args["--geo-asn"]) {
+            metricsManager->setGeoASNDB(args["--geo-asn"].asString());
+        }
         pcpp::PcapLiveDevice *dev(nullptr);
         // extract pcap live device by interface name or IP address
         pcpp::IPv4Address interfaceIP4(args["TARGET"].asString());
