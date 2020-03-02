@@ -1,4 +1,5 @@
 #include <catch2/catch.hpp>
+#include <IpAddress.h>
 #include "geoip.h"
 
 TEST_CASE("GeoIP", "[geoip]")
@@ -22,6 +23,24 @@ TEST_CASE("GeoIP", "[geoip]")
 
     }
 
+    SECTION("basic Geo lookup: sockaddr")
+    {
+
+        pktvisor::GeoDB db("fixtures/GeoIP2-City-test.mmdb");
+        pcpp::IPv4Address ip("89.160.20.112");
+        CHECK(db.getGeoLocString(ip.toInAddr()) == "EU/Sweden/E/Linköping");
+
+    }
+
+    SECTION("basic ASN lookup: sockaddr")
+    {
+
+        pktvisor::GeoDB db("fixtures/GeoIP2-ISP-test.mmdb");
+        pcpp::IPv4Address ip("1.128.0.0");
+        CHECK(db.getASNString(ip.toInAddr()) == "1221/Telstra Pty Ltd");
+
+    }
+
     SECTION("basic unknown")
     {
 
@@ -34,7 +53,7 @@ TEST_CASE("GeoIP", "[geoip]")
     {
 
         CHECK_THROWS_WITH(pktvisor::GeoDB("nonexistantfile.mmdb"),
-            "Failed to open MMDB database \"nonexistantfile.mmdb\": Error opening the specified MaxMind DB file");
+            "nonexistantfile.mmdb: Error opening the specified MaxMind DB file");
 
     }
 

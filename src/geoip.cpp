@@ -6,7 +6,7 @@ GeoDB::GeoDB(const std::string &database_filename)
 {
     auto status = MMDB_open(database_filename.c_str(), MMDB_MODE_MMAP, &mmdb);
     if (status != MMDB_SUCCESS) {
-        std::string msg = "Failed to open MMDB database \"" + database_filename + "\": " + MMDB_strerror(status);
+        std::string msg = database_filename + ": " + MMDB_strerror(status);
         throw std::runtime_error(msg);
     }
 }
@@ -16,21 +16,41 @@ GeoDB::~GeoDB()
     MMDB_close(&mmdb);
 }
 
-std::string GeoDB::getGeoLocString(const char *ip_address)
-{
+std::string GeoDB::getGeoLocString(const in_addr* in_addr) {
+
+    int mmdb_error;
+    struct sockaddr_in sa;
+    memset(&sa, 0, sizeof(struct sockaddr_in));
+    sa.sin_addr = *in_addr;
+    MMDB_lookup_result_s lookup = MMDB_lookup_sockaddr(&mmdb, (sockaddr *const)&sa, &mmdb_error);
+    if (mmdb_error != MMDB_SUCCESS || !lookup.found_entry) {
+        return "Unknown";
+    }
+
+    return _getGeoLocString(&lookup);
+
+}
+
+std::string GeoDB::getGeoLocString(const char *ip_address) {
 
     int gai_error, mmdb_error;
 
     MMDB_lookup_result_s lookup = MMDB_lookup_string(&mmdb, ip_address, &gai_error, &mmdb_error);
-    if (!lookup.found_entry) {
+    if (0 != gai_error || MMDB_SUCCESS != mmdb_error || !lookup.found_entry) {
         return "Unknown";
     }
+
+    return _getGeoLocString(&lookup);
+
+}
+
+std::string GeoDB::_getGeoLocString(MMDB_lookup_result_s* lookup) {
 
     std::string geoString;
 
     {
         MMDB_entry_data_s result;
-        MMDB_get_value(&lookup.entry, &result, "continent", "code", NULL);
+        MMDB_get_value(&lookup->entry, &result, "continent", "code", NULL);
 
         if (result.has_data && result.type == MMDB_DATA_TYPE_UTF8_STRING) {
             geoString.append(std::string(result.utf8_string, result.data_size));
@@ -39,9 +59,9 @@ std::string GeoDB::getGeoLocString(const char *ip_address)
 
     {
         MMDB_entry_data_s result;
-        MMDB_get_value(&lookup.entry, &result, "country", "names", "en", NULL);
+        MMDB_get_value(&lookup->entry, &result, "country", "names", "en", NULL);
         if (!result.has_data) {
-            MMDB_get_value(&lookup.entry, &result, "country", "iso_code", NULL);
+            MMDB_get_value(&lookup->entry, &result, "country", "iso_code", NULL);
         }
 
         if (result.has_data && result.type == MMDB_DATA_TYPE_UTF8_STRING) {
@@ -52,7 +72,7 @@ std::string GeoDB::getGeoLocString(const char *ip_address)
 
     {
         MMDB_entry_data_s result;
-        MMDB_get_value(&lookup.entry, &result, "subdivisions", "0", "iso_code", NULL);
+        MMDB_get_value(&lookup->entry, &result, "subdivisions", "0", "iso_code", NULL);
 
         if (result.has_data && result.type == MMDB_DATA_TYPE_UTF8_STRING) {
             geoString.push_back('/');
@@ -62,7 +82,7 @@ std::string GeoDB::getGeoLocString(const char *ip_address)
 
     {
         MMDB_entry_data_s result;
-        MMDB_get_value(&lookup.entry, &result, "city", "names", "en", NULL);
+        MMDB_get_value(&lookup->entry, &result, "city", "names", "en", NULL);
 
         if (result.has_data && result.type == MMDB_DATA_TYPE_UTF8_STRING) {
             geoString.push_back('/');
@@ -73,21 +93,42 @@ std::string GeoDB::getGeoLocString(const char *ip_address)
     return geoString;
 }
 
+std::string GeoDB::getASNString(const in_addr* in_addr) {
+
+    int mmdb_error;
+    struct sockaddr_in sa;
+    memset(&sa, 0, sizeof(struct sockaddr_in));
+    sa.sin_addr = *in_addr;
+    MMDB_lookup_result_s lookup = MMDB_lookup_sockaddr(&mmdb, (sockaddr *const)&sa, &mmdb_error);
+    if (mmdb_error != MMDB_SUCCESS || !lookup.found_entry) {
+        return "Unknown";
+    }
+
+    return _getASNString(&lookup);
+
+}
+
 std::string GeoDB::getASNString(const char *ip_address)
 {
 
     int gai_error, mmdb_error;
 
     MMDB_lookup_result_s lookup = MMDB_lookup_string(&mmdb, ip_address, &gai_error, &mmdb_error);
-    if (!lookup.found_entry) {
+    if (0 != gai_error || MMDB_SUCCESS != mmdb_error || !lookup.found_entry) {
         return "Unknown";
     }
+
+    return _getASNString(&lookup);
+
+}
+
+std::string GeoDB::_getASNString(MMDB_lookup_result_s* lookup) {
 
     std::string geoString;
 
     {
         MMDB_entry_data_s result;
-        MMDB_get_value(&lookup.entry, &result, "autonomous_system_number", NULL);
+        MMDB_get_value(&lookup->entry, &result, "autonomous_system_number", NULL);
 
         if (result.has_data) {
             switch (result.type) {
@@ -112,7 +153,7 @@ std::string GeoDB::getASNString(const char *ip_address)
 
     {
         MMDB_entry_data_s result;
-        MMDB_get_value(&lookup.entry, &result, "autonomous_system_organization", NULL);
+        MMDB_get_value(&lookup->entry, &result, "autonomous_system_organization", NULL);
 
         if (result.has_data && result.type == MMDB_DATA_TYPE_UTF8_STRING) {
             geoString.push_back('/');

@@ -12,10 +12,18 @@ public:
     ~GeoDB();
 
     std::string getGeoLocString(const char *ip_address);
+    std::string getGeoLocString(const in_addr* ip_address);
+//    std::string getGeoLocString(const in_addr6* ip_address);
+
     std::string getASNString(const char *ip_address);
+    std::string getASNString(const in_addr* in_addr);
+//    std::string getASNString(const in_addr6* in_addr);
 
 private:
     MMDB_s mmdb;
+
+    std::string _getGeoLocString(MMDB_lookup_result_s* lookup);
+    std::string _getASNString(MMDB_lookup_result_s* lookup);
 
 };
 
