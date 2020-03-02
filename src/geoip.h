@@ -13,11 +13,11 @@ public:
 
     std::string getGeoLocString(const char *ip_address);
     std::string getGeoLocString(const in_addr* ip_address);
-//    std::string getGeoLocString(const in_addr6* ip_address);
+    std::string getGeoLocString(const in6_addr* ip_address);
 
     std::string getASNString(const char *ip_address);
     std::string getASNString(const in_addr* in_addr);
-//    std::string getASNString(const in_addr6* in_addr);
+    std::string getASNString(const in6_addr* in_addr);
 
 private:
     MMDB_s mmdb;
