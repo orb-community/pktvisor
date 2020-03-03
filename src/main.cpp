@@ -341,21 +341,21 @@ void showHosts() {
     }
 }
 
-void handleGeo(const std::string &city, const std::string &asn) {
-    if (city.length()) {
+void handleGeo(const docopt::value &city, const docopt::value &asn) {
+    if (city) {
         if (!metricsManager->haveGeoCity()) {
             std::cerr << "warning: --geo-city has no effect, lacking compile-time support" << std::endl;
         }
         else {
-            metricsManager->setGeoCityDB(city);
+            metricsManager->setGeoCityDB(city.asString());
         }
     }
-    if (asn.length()) {
+    if (asn) {
         if (!metricsManager->haveGeoASN()) {
             std::cerr << "warning: --geo-asn has no effect, lacking compile-time support" << std::endl;
         }
         else {
-            metricsManager->setGeoASNDB(asn);
+            metricsManager->setGeoASNDB(asn.asString());
         }
     }
 }
@@ -394,7 +394,7 @@ int main(int argc, char *argv[])
         showHosts();
         try {
             metricsManager = std::make_unique<pktvisor::MetricsMgr>(args["--summary"].asBool());
-            handleGeo(args["--geo-city"].asString(), args["--geo-asn"].asString());
+            handleGeo(args["--geo-city"], args["--geo-asn"]);
             openPcap(args["TARGET"].asString(), tcpDnsReassembly, bpf);
             if (args["--summary"].asBool()) {
                 // in summary mode we output a single summary of stats
@@ -410,7 +410,7 @@ int main(int argc, char *argv[])
         }
     } else {
         metricsManager = std::make_unique<pktvisor::MetricsMgr>(false, periods);
-        handleGeo(args["--geo-city"].asString(), args["--geo-asn"].asString());
+        handleGeo(args["--geo-city"], args["--geo-asn"]);
         pcpp::PcapLiveDevice *dev(nullptr);
         // extract pcap live device by interface name or IP address
         pcpp::IPv4Address interfaceIP4(args["TARGET"].asString());

@@ -126,8 +126,10 @@ type StatSnapshot struct {
 				P99 int64 `json:"p99"`
 			} `json:"pps_out"`
 		} `json:"rates"`
-		TopIpv4 []NameCount `json:"top_ipv4"`
-		TopIpv6 []NameCount `json:"top_ipv6"`
+		TopIpv4   []NameCount `json:"top_ipv4"`
+		TopIpv6   []NameCount `json:"top_ipv6"`
+		TopGeoLoc []NameCount `json:"top_geoLoc"`
+		TopASN    []NameCount `json:"top_asn"`
 	} `json:"packets"`
 	Period struct {
 		StartTS int64 `json:"start_ts"`
@@ -260,11 +262,12 @@ func doMainView(g *gocui.Gui) error {
 
 	//viewsWidth := 15
 	viewsHeight := 7
-	tableHeight := 10
+	tableHeight := 8
 	tableWidth := (maxX / 4) - 1
 	row1Y := viewsHeight + 1
 	row2Y := row1Y + tableHeight + 1
 	row3Y := row2Y + tableHeight + 1
+	row4Y := row3Y + tableHeight + 1
 	midCol1 := 0
 	midCol2 := midCol1 + tableWidth + 1
 	midCol3 := midCol2 + tableWidth + 1
@@ -285,6 +288,21 @@ func doMainView(g *gocui.Gui) error {
 		v.Title = "IPv6"
 	}
 
+	// row 4
+	if v, err := g.SetView("top_geo", midCol1, row4Y, midCol1+tableWidth, row4Y+tableHeight); err != nil {
+		if err != gocui.ErrUnknownView {
+			return err
+		}
+		v.Title = "Top GeoLoc"
+	}
+
+	if v, err := g.SetView("top_asn", midCol2, row4Y, midCol2+tableWidth, row4Y+tableHeight); err != nil {
+		if err != gocui.ErrUnknownView {
+			return err
+		}
+		v.Title = "Top ASN"
+	}
+
 	return nil
 
 }
@@ -295,11 +313,12 @@ func doDNSView(g *gocui.Gui) error {
 
 	//viewsWidth := 15
 	viewsHeight := 7
-	tableHeight := 10
+	tableHeight := 8
 	tableWidth := (maxX / 4) - 1
 	row1Y := viewsHeight + 1
 	row2Y := row1Y + tableHeight + 1
 	row3Y := row2Y + tableHeight + 1
+	//row4Y := row3Y + tableHeight + 1
 	midCol1 := 0
 	midCol2 := midCol1 + tableWidth + 1
 	midCol3 := midCol2 + tableWidth + 1
@@ -583,6 +602,16 @@ func updateViews(g *gocui.Gui) {
 				return err
 			}
 			updateTable(stats.Packets.TopIpv6, v)
+			v, err = g.View("top_geo")
+			if err != nil {
+				return err
+			}
+			updateTable(stats.Packets.TopGeoLoc, v)
+			v, err = g.View("top_asn")
+			if err != nil {
+				return err
+			}
+			updateTable(stats.Packets.TopASN, v)
 		}
 		currentView = "dns"
 		if currentView == "dns" {
