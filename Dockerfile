@@ -1,6 +1,6 @@
 FROM ubuntu:disco AS build
 
-ENV BUILD_DEPS "g++ cmake make git libpcap-dev pkgconf golang ca-certificates"
+ENV BUILD_DEPS "g++ cmake make git libpcap-dev pkgconf golang ca-certificates libmaxminddb-dev"
 
 RUN \
     apt-get update && \
@@ -22,7 +22,7 @@ RUN \
 RUN \
     mkdir /tmp/build && \
     cd /tmp/build && \
-    PKG_CONFIG_PATH=/local/lib/pkgconfig cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo /src && \
+    PKG_CONFIG_PATH=/local/lib/pkgconfig cmake -DMMDB_ENABLE=true -DCMAKE_BUILD_TYPE=RelWithDebInfo /src && \
     make all tests && \
     cd /src/tests && \
     /tmp/build/tests
@@ -35,7 +35,7 @@ RUN \
 
 FROM ubuntu:disco AS runtime
 
-ENV RUNTIME_DEPS "curl libpcap0.8"
+ENV RUNTIME_DEPS "curl libpcap0.8 libmaxminddb0"
 
 RUN \
     apt-get update && \

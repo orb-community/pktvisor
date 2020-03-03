@@ -8,7 +8,7 @@ TEST_CASE("GeoIP", "[geoip]")
     SECTION("basic Geo lookup")
     {
 
-        pktvisor::GeoDB db("fixtures/GeoIP2-City-test.mmdb");
+        pktvisor::GeoDB db("fixtures/GeoIP2-City-Test.mmdb");
         CHECK(db.getGeoLocString("2a02:dac0::") == "EU/Russia");
         CHECK(db.getGeoLocString("89.160.20.112") == "EU/Sweden/E/Linköping");
         CHECK(db.getGeoLocString("216.160.83.56") == "NA/United States/WA/Milton");
@@ -18,7 +18,7 @@ TEST_CASE("GeoIP", "[geoip]")
     SECTION("basic ASN lookup")
     {
 
-        pktvisor::GeoDB db("fixtures/GeoIP2-ISP-test.mmdb");
+        pktvisor::GeoDB db("fixtures/GeoIP2-ISP-Test.mmdb");
         CHECK(db.getASNString("1.128.0.0") == "1221/Telstra Pty Ltd");
 
     }
@@ -26,7 +26,7 @@ TEST_CASE("GeoIP", "[geoip]")
     SECTION("basic Geo lookup: sockaddr")
     {
 
-        pktvisor::GeoDB db("fixtures/GeoIP2-City-test.mmdb");
+        pktvisor::GeoDB db("fixtures/GeoIP2-City-Test.mmdb");
         pcpp::IPv4Address ip("89.160.20.112");
         CHECK(db.getGeoLocString(ip.toInAddr()) == "EU/Sweden/E/Linköping");
         pcpp::IPv6Address ip6("2a02:dac0::");
@@ -37,7 +37,7 @@ TEST_CASE("GeoIP", "[geoip]")
     SECTION("basic ASN lookup: sockaddr")
     {
 
-        pktvisor::GeoDB db("fixtures/GeoIP2-ISP-test.mmdb");
+        pktvisor::GeoDB db("fixtures/GeoIP2-ISP-Test.mmdb");
         pcpp::IPv4Address ip("1.128.0.0");
         CHECK(db.getASNString(ip.toInAddr()) == "1221/Telstra Pty Ltd");
         pcpp::IPv6Address ip6("2401:8080::");
@@ -48,7 +48,7 @@ TEST_CASE("GeoIP", "[geoip]")
     SECTION("basic unknown")
     {
 
-        pktvisor::GeoDB db("fixtures/GeoIP2-ISP-test.mmdb");
+        pktvisor::GeoDB db("fixtures/GeoIP2-ISP-Test.mmdb");
         CHECK(db.getASNString("6.6.6.6") == "Unknown");
 
     }
