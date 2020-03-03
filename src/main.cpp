@@ -393,11 +393,17 @@ int main(int argc, char *argv[])
     if ((args["TARGET"].asString().rfind(".pcap") != std::string::npos) || (args["TARGET"].asString().rfind(".cap") != std::string::npos)) {
         showHosts();
         try {
-            // in pcap mode we simply output a single summary of stats
             metricsManager = std::make_unique<pktvisor::MetricsMgr>(args["--summary"].asBool());
             handleGeo(args["--geo-city"].asString(), args["--geo-asn"].asString());
             openPcap(args["TARGET"].asString(), tcpDnsReassembly, bpf);
-            std::cout << metricsManager->getMetricsMerged(periods) << std::endl;
+            if (args["--summary"].asBool()) {
+                // in summary mode we output a single summary of stats
+                std::cout << metricsManager->getMetrics() << std::endl;
+            }
+            else {
+                // otherwise, merge the max time window available
+                std::cout << metricsManager->getMetricsMerged(periods) << std::endl;
+            }
         } catch (const std::exception &e) {
             std::cerr << e.what() << std::endl;
             return -1;

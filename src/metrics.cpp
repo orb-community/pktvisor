@@ -451,6 +451,24 @@ void Metrics::toJSON(nlohmann::json &j, const std::string &key)
     }
 
     {
+        j[key]["packets"]["top_geoLoc"] = nlohmann::json::array();
+        auto items = _sketches->_net_topGeoLoc.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
+        for (uint64_t i = 0; i < std::min(10UL, items.size()); i++) {
+            j[key]["packets"]["top_geoLoc"][i]["name"] = items[i].get_item();
+            j[key]["packets"]["top_geoLoc"][i]["estimate"] = items[i].get_estimate();
+        }
+    }
+
+    {
+        j[key]["packets"]["top_ASN"] = nlohmann::json::array();
+        auto items = _sketches->_net_topASN.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
+        for (uint64_t i = 0; i < std::min(10UL, items.size()); i++) {
+            j[key]["packets"]["top_ASN"][i]["name"] = items[i].get_item();
+            j[key]["packets"]["top_ASN"][i]["estimate"] = items[i].get_estimate();
+        }
+    }
+
+    {
         j[key]["dns"]["top_udp_ports"] = nlohmann::json::array();
         auto items = _sketches->_dns_topUDPPort.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
         for (uint64_t i = 0; i < std::min(10UL, items.size()); i++) {
