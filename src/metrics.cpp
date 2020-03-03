@@ -85,6 +85,8 @@ void Metrics::merge(Metrics &other)
     _sketches->_dns_topRCode.merge(other._sketches->_dns_topRCode);
     _sketches->_dns_slowXactIn.merge(other._sketches->_dns_slowXactIn);
     _sketches->_dns_slowXactOut.merge(other._sketches->_dns_slowXactOut);
+    _sketches->_net_topGeoLoc.merge(other._sketches->_net_topGeoLoc);
+    _sketches->_net_topASN.merge(other._sketches->_net_topASN);
 }
 
 void Metrics::newDNSPacket(pcpp::DnsLayer *dns, Direction dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4)
@@ -216,7 +218,7 @@ void MetricsMgr::newDNSPacket(pcpp::DnsLayer *dns, Direction dir, pcpp::Protocol
     _metrics.back()->newDNSPacket(dns, dir, l3, l4);
 }
 
-void Metrics::newPacket(const pcpp::Packet &packet, pcpp::ProtocolType l3, pcpp::ProtocolType l4, Direction dir)
+void Metrics::newPacket(MetricsMgr &mmgr, const pcpp::Packet &packet, pcpp::ProtocolType l3, pcpp::ProtocolType l4, Direction dir)
 {
 
     _numPackets++;
@@ -254,23 +256,60 @@ void Metrics::newPacket(const pcpp::Packet &packet, pcpp::ProtocolType l3, pcpp:
     // lock for write
     std::unique_lock lock(_sketchMutex);
 
+#ifdef MMDB_ENABLE
+    const GeoDB* geoCityDB = mmgr.getGeoCityDB();
+    const GeoDB* geoASNDB = mmgr.getGeoASNDB();
+#endif
+
     auto IP4layer = packet.getLayerOfType<pcpp::IPv4Layer>();
     auto IP6layer = packet.getLayerOfType<pcpp::IPv6Layer>();
     if (IP4layer) {
         if (dir == toHost) {
             _sketches->_net_srcIPCard.update(IP4layer->getSrcIpAddress().toInt());
             _sketches->_net_topIPv4.update(IP4layer->getSrcIpAddress().toInt());
+#ifdef MMDB_ENABLE
+            if (geoCityDB) {
+                _sketches->_net_topGeoLoc.update(geoCityDB->getGeoLocString(IP4layer->getSrcIpAddress().toInAddr()));
+            }
+            if (geoASNDB) {
+                _sketches->_net_topASN.update(geoASNDB->getASNString(IP4layer->getSrcIpAddress().toInAddr()));
+            }
+#endif
         } else if (dir == fromHost) {
             _sketches->_net_dstIPCard.update(IP4layer->getDstIpAddress().toInt());
             _sketches->_net_topIPv4.update(IP4layer->getDstIpAddress().toInt());
+#ifdef MMDB_ENABLE
+            if (geoCityDB) {
+                _sketches->_net_topGeoLoc.update(geoCityDB->getGeoLocString(IP4layer->getDstIpAddress().toInAddr()));
+            }
+            if (geoASNDB) {
+                _sketches->_net_topASN.update(geoASNDB->getASNString(IP4layer->getDstIpAddress().toInAddr()));
+            }
+#endif
         }
     } else if (IP6layer) {
         if (dir == toHost) {
             _sketches->_net_srcIPCard.update((void *)IP6layer->getSrcIpAddress().toIn6Addr(), 16);
             _sketches->_net_topIPv6.update(IP6layer->getSrcIpAddress().toString());
+#ifdef MMDB_ENABLE
+            if (geoCityDB) {
+                _sketches->_net_topGeoLoc.update(geoCityDB->getGeoLocString(IP6layer->getSrcIpAddress().toIn6Addr()));
+            }
+            if (geoASNDB) {
+                _sketches->_net_topASN.update(geoASNDB->getASNString(IP6layer->getSrcIpAddress().toIn6Addr()));
+            }
+#endif
         } else if (dir == fromHost) {
             _sketches->_net_dstIPCard.update((void *)IP6layer->getDstIpAddress().toIn6Addr(), 16);
             _sketches->_net_topIPv6.update(IP6layer->getDstIpAddress().toString());
+#ifdef MMDB_ENABLE
+            if (geoCityDB) {
+                _sketches->_net_topGeoLoc.update(geoCityDB->getGeoLocString(IP6layer->getDstIpAddress().toIn6Addr()));
+            }
+            if (geoASNDB) {
+                _sketches->_net_topASN.update(geoASNDB->getASNString(IP6layer->getDstIpAddress().toIn6Addr()));
+            }
+#endif
         }
     }
 
@@ -342,7 +381,7 @@ void MetricsMgr::newPacket(const pcpp::Packet &packet, QueryResponsePairMgr &pai
             break;
         }
     }
-    _metrics.back()->newPacket(packet, l3, l4, dir);
+    _metrics.back()->newPacket(*this, packet, l3, l4, dir);
 }
 
 void Metrics::toJSON(nlohmann::json &j, const std::string &key)
@@ -363,13 +402,6 @@ void Metrics::toJSON(nlohmann::json &j, const std::string &key)
     j[key]["packets"]["cardinality"]["src_ips_in"] = _sketches->_net_srcIPCard.get_estimate();
     j[key]["packets"]["cardinality"]["dst_ips_out"] = _sketches->_net_dstIPCard.get_estimate();
 
-    //    j[key]["packets"]["rates"]["total"] = _numPackets / period_length;
-    //    j[key]["packets"]["rates"]["udp"] = _numPackets_UDP / period_length;
-    //    j[key]["packets"]["rates"]["tcp"] = _numPackets_TCP / period_length;
-    //    j[key]["packets"]["rates"]["ipv4"] = (_numPackets - _numPackets_IPv6) / period_length;
-    //    j[key]["packets"]["rates"]["ipv6"] = _numPackets_IPv6 / period_length;
-    //    j[key]["packets"]["rates"]["in"] = _numPackets_in / period_length;
-    //    j[key]["packets"]["rates"]["out"] = _numPackets_out / period_length;
     const double fractions[4]{0.50, 0.90, 0.95, 0.99};
     auto quantiles = _rateSketches.net_rateIn.get_quantiles(fractions, 4);
     if (quantiles.size()) {
@@ -430,9 +462,6 @@ void Metrics::toJSON(nlohmann::json &j, const std::string &key)
     }
 
     j[key]["dns"]["xact"]["counts"]["total"] = _DNS_xacts_total.load();
-
-    //    j[key]["dns"]["xact"]["rates"]["in"] = _DNS_xacts_in / period_length;
-    //    j[key]["dns"]["xact"]["rates"]["out"] = _DNS_xacts_out / period_length;
 
     {
         j[key]["dns"]["xact"]["in"]["total"] = _DNS_xacts_in.load();

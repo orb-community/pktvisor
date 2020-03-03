@@ -16,7 +16,7 @@ GeoDB::~GeoDB()
     MMDB_close(&mmdb);
 }
 
-std::string GeoDB::getGeoLocString(const in_addr* in_addr) {
+std::string GeoDB::getGeoLocString(const in_addr* in_addr) const {
 
     int mmdb_error;
     struct sockaddr_in sa;
@@ -32,7 +32,7 @@ std::string GeoDB::getGeoLocString(const in_addr* in_addr) {
 
 }
 
-std::string GeoDB::getGeoLocString(const in6_addr* in_addr) {
+std::string GeoDB::getGeoLocString(const in6_addr* in_addr) const {
 
     int mmdb_error;
     struct sockaddr_in6 sa;
@@ -48,7 +48,7 @@ std::string GeoDB::getGeoLocString(const in6_addr* in_addr) {
 
 }
 
-std::string GeoDB::getGeoLocString(const char *ip_address) {
+std::string GeoDB::getGeoLocString(const char *ip_address) const {
 
     int gai_error, mmdb_error;
 
@@ -61,7 +61,7 @@ std::string GeoDB::getGeoLocString(const char *ip_address) {
 
 }
 
-std::string GeoDB::_getGeoLocString(MMDB_lookup_result_s* lookup) {
+std::string GeoDB::_getGeoLocString(MMDB_lookup_result_s* lookup) const {
 
     std::string geoString;
 
@@ -110,7 +110,7 @@ std::string GeoDB::_getGeoLocString(MMDB_lookup_result_s* lookup) {
     return geoString;
 }
 
-std::string GeoDB::getASNString(const in_addr* in_addr) {
+std::string GeoDB::getASNString(const in_addr* in_addr) const {
 
     int mmdb_error;
     struct sockaddr_in sa;
@@ -126,7 +126,7 @@ std::string GeoDB::getASNString(const in_addr* in_addr) {
 
 }
 
-std::string GeoDB::getASNString(const in6_addr* in_addr) {
+std::string GeoDB::getASNString(const in6_addr* in_addr) const {
 
     int mmdb_error;
     struct sockaddr_in6 sa;
@@ -142,8 +142,7 @@ std::string GeoDB::getASNString(const in6_addr* in_addr) {
 
 }
 
-std::string GeoDB::getASNString(const char *ip_address)
-{
+std::string GeoDB::getASNString(const char *ip_address) const {
 
     int gai_error, mmdb_error;
 
@@ -156,7 +155,7 @@ std::string GeoDB::getASNString(const char *ip_address)
 
 }
 
-std::string GeoDB::_getASNString(MMDB_lookup_result_s* lookup) {
+std::string GeoDB::_getASNString(MMDB_lookup_result_s* lookup) const {
 
     std::string geoString;
 

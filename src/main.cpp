@@ -341,6 +341,25 @@ void showHosts() {
     }
 }
 
+void handleGeo(const std::string &city, const std::string &asn) {
+    if (city.length()) {
+        if (!metricsManager->haveGeoCity()) {
+            std::cerr << "warning: --geo-city has no effect, lacking compile-time support" << std::endl;
+        }
+        else {
+            metricsManager->setGeoCityDB(city);
+        }
+    }
+    if (asn.length()) {
+        if (!metricsManager->haveGeoASN()) {
+            std::cerr << "warning: --geo-asn has no effect, lacking compile-time support" << std::endl;
+        }
+        else {
+            metricsManager->setGeoASNDB(asn);
+        }
+    }
+}
+
 int main(int argc, char *argv[])
 {
     std::map<std::string, docopt::value> args = docopt::docopt(USAGE,
@@ -376,12 +395,7 @@ int main(int argc, char *argv[])
         try {
             // in pcap mode we simply output a single summary of stats
             metricsManager = std::make_unique<pktvisor::MetricsMgr>(args["--summary"].asBool());
-            if (args["--geo-city"]) {
-                metricsManager->setGeoCityDB(args["--geo-city"].asString());
-            }
-            if (args["--geo-asn"]) {
-                metricsManager->setGeoASNDB(args["--geo-asn"].asString());
-            }
+            handleGeo(args["--geo-city"].asString(), args["--geo-asn"].asString());
             openPcap(args["TARGET"].asString(), tcpDnsReassembly, bpf);
             std::cout << metricsManager->getMetricsMerged(periods) << std::endl;
         } catch (const std::exception &e) {
@@ -390,12 +404,7 @@ int main(int argc, char *argv[])
         }
     } else {
         metricsManager = std::make_unique<pktvisor::MetricsMgr>(false, periods);
-        if (args["--geo-city"]) {
-            metricsManager->setGeoCityDB(args["--geo-city"].asString());
-        }
-        if (args["--geo-asn"]) {
-            metricsManager->setGeoASNDB(args["--geo-asn"].asString());
-        }
+        handleGeo(args["--geo-city"].asString(), args["--geo-asn"].asString());
         pcpp::PcapLiveDevice *dev(nullptr);
         // extract pcap live device by interface name or IP address
         pcpp::IPv4Address interfaceIP4(args["TARGET"].asString());
