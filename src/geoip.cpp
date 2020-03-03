@@ -1,3 +1,5 @@
+#include <cstring>
+#include <stdexcept>
 #include "geoip.h"
 
 namespace pktvisor {

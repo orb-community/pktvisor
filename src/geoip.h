@@ -20,7 +20,7 @@ public:
     std::string getASNString(const in6_addr* in_addr) const;
 
 private:
-    MMDB_s mmdb;
+    mutable MMDB_s mmdb;
 
     std::string _getGeoLocString(MMDB_lookup_result_s* lookup) const;
     std::string _getASNString(MMDB_lookup_result_s* lookup) const;
