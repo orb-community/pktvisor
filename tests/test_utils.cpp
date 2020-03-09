@@ -4,6 +4,52 @@
 TEST_CASE("parseHostSpec", "[utils]")
 {
 
+    SECTION("aggregateDomain")
+    {
+        pktvisor::AggDomainResult result;
+        std::string domain;
+
+        domain = "biz.foo.bar.com";
+        result = pktvisor::aggregateDomain(domain);
+        CHECK(result.first == ".bar.com");
+        CHECK(result.second == ".foo.bar.com");
+
+        domain = "foo.bar.com";
+        result = pktvisor::aggregateDomain(domain);
+        CHECK(result.first == ".bar.com");
+        CHECK(result.second == "foo.bar.com");
+
+        domain = ".";
+        result = pktvisor::aggregateDomain(domain);
+        CHECK(result.first == ".");
+        CHECK(result.second == ".");
+
+        domain = "..";
+        result = pktvisor::aggregateDomain(domain);
+        CHECK(result.first == "..");
+        CHECK(result.second == "..");
+
+        domain = "a";
+        result = pktvisor::aggregateDomain(domain);
+        CHECK(result.first == "a");
+        CHECK(result.second == "a");
+
+        domain = "a.";
+        result = pktvisor::aggregateDomain(domain);
+        CHECK(result.first == "a.");
+        CHECK(result.second == "a.");
+
+        domain = "foo.bar.com.";
+        result = pktvisor::aggregateDomain(domain);
+        CHECK(result.first == ".bar.com.");
+        CHECK(result.second == "foo.bar.com.");
+
+        domain = ".foo.bar.com";
+        result = pktvisor::aggregateDomain(domain);
+        CHECK(result.first == ".bar.com");
+        CHECK(result.second == ".foo.bar.com");
+
+    }
 
     SECTION("IPv4 /24")
     {

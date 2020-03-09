@@ -10,6 +10,7 @@
 
 #include "dns.h"
 #include "metrics.h"
+#include "utils.h"
 
 namespace pktvisor {
 
@@ -149,22 +150,9 @@ void Metrics::newDNSPacket(pcpp::DnsLayer *dns, Direction dir, pcpp::ProtocolTyp
             }
         }
 
-        // TODO breakout and unit test
-        auto first_dot = name.rfind('.');
-        if (first_dot != std::string::npos && first_dot > 0) {
-            auto second_dot = name.rfind('.', first_dot - 1);
-            if (second_dot != std::string::npos) {
-                _sketches->_dns_topQname2.update(name.substr(second_dot + 1));
-            }
-            if (second_dot > 0) {
-                auto third_dot = name.rfind('.', second_dot - 1);
-                if (third_dot != std::string::npos) {
-                    _sketches->_dns_topQname3.update(name.substr(third_dot + 1));
-                } else {
-                    _sketches->_dns_topQname3.update(name);
-                }
-            }
-        }
+        auto aggDomain = aggregateDomain(name);
+        _sketches->_dns_topQname2.update(std::string(aggDomain.first));
+        _sketches->_dns_topQname3.update(std::string(aggDomain.second));
     }
 }
 
