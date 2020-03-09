@@ -152,7 +152,9 @@ void Metrics::newDNSPacket(pcpp::DnsLayer *dns, Direction dir, pcpp::ProtocolTyp
 
         auto aggDomain = aggregateDomain(name);
         _sketches->_dns_topQname2.update(std::string(aggDomain.first));
-        _sketches->_dns_topQname3.update(std::string(aggDomain.second));
+        if (aggDomain.second.size()) {
+            _sketches->_dns_topQname3.update(std::string(aggDomain.second));
+        }
     }
 }
 

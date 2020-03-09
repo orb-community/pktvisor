@@ -14,6 +14,16 @@ TEST_CASE("parseHostSpec", "[utils]")
         CHECK(result.first == ".bar.com");
         CHECK(result.second == ".foo.bar.com");
 
+        domain = "a.com";
+        result = pktvisor::aggregateDomain(domain);
+        CHECK(result.first == "a.com");
+        CHECK(result.second == "");
+
+        domain = "abcdefg.com.";
+        result = pktvisor::aggregateDomain(domain);
+        CHECK(result.first == "abcdefg.com.");
+        CHECK(result.second == "");
+
         domain = "foo.bar.com";
         result = pktvisor::aggregateDomain(domain);
         CHECK(result.first == ".bar.com");

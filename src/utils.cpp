@@ -30,12 +30,16 @@ AggDomainResult aggregateDomain(const std::string& domain) {
         auto second_dot = domain.rfind('.', first_dot - 1);
         if (second_dot != std::string::npos) {
             qname2.remove_prefix(second_dot);
-        }
-        if (second_dot > 0) {
-            auto third_dot = domain.rfind('.', second_dot - 1);
-            if (third_dot != std::string::npos) {
-                qname3.remove_prefix(third_dot);
+            if (second_dot > 0) {
+                auto third_dot = domain.rfind('.', second_dot - 1);
+                if (third_dot != std::string::npos) {
+                    qname3.remove_prefix(third_dot);
+                }
             }
+        }
+        else {
+            // didn't find two dots, so this is empty
+            qname3.remove_prefix(domain.size());
         }
     }
     return AggDomainResult(qname2, qname3);
