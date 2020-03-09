@@ -18,7 +18,7 @@ AggDomainResult aggregateDomain(const std::string& domain) {
 
     // smallest we ever agg is a.b.c which returns a.b.c and b.c
     if (domain.size() < 5) {
-        // return full
+        qname3.remove_prefix(domain.size());
         return AggDomainResult(qname2, qname3);
     }
     std::size_t endDot = std::string::npos;
