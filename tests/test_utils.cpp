@@ -4,6 +4,72 @@
 TEST_CASE("parseHostSpec", "[utils]")
 {
 
+    SECTION("aggregateDomain")
+    {
+        pktvisor::AggDomainResult result;
+        std::string domain;
+
+        domain = "biz.foo.bar.com";
+        result = pktvisor::aggregateDomain(domain);
+        CHECK(result.first == ".bar.com");
+        CHECK(result.second == ".foo.bar.com");
+
+        domain = "a.com";
+        result = pktvisor::aggregateDomain(domain);
+        CHECK(result.first == "a.com");
+        CHECK(result.second == "");
+
+        domain = "abcdefg.com.";
+        result = pktvisor::aggregateDomain(domain);
+        CHECK(result.first == "abcdefg.com.");
+        CHECK(result.second == "");
+
+        domain = "foo.bar.com";
+        result = pktvisor::aggregateDomain(domain);
+        CHECK(result.first == ".bar.com");
+        CHECK(result.second == "foo.bar.com");
+
+        domain = ".";
+        result = pktvisor::aggregateDomain(domain);
+        CHECK(result.first == ".");
+        CHECK(result.second == "");
+
+        domain = "..";
+        result = pktvisor::aggregateDomain(domain);
+        CHECK(result.first == "..");
+        CHECK(result.second == "");
+
+        domain = "a";
+        result = pktvisor::aggregateDomain(domain);
+        CHECK(result.first == "a");
+        CHECK(result.second == "");
+
+        domain = "a.";
+        result = pktvisor::aggregateDomain(domain);
+        CHECK(result.first == "a.");
+        CHECK(result.second == "");
+
+        domain = "foo.bar.com.";
+        result = pktvisor::aggregateDomain(domain);
+        CHECK(result.first == ".bar.com.");
+        CHECK(result.second == "foo.bar.com.");
+
+        domain = ".foo.bar.com";
+        result = pktvisor::aggregateDomain(domain);
+        CHECK(result.first == ".bar.com");
+        CHECK(result.second == ".foo.bar.com");
+
+        domain = "a.b.c";
+        result = pktvisor::aggregateDomain(domain);
+        CHECK(result.first == ".b.c");
+        CHECK(result.second == "a.b.c");
+
+        domain = ".b.c";
+        result = pktvisor::aggregateDomain(domain);
+        CHECK(result.first == ".b.c");
+        CHECK(result.second == "");
+
+    }
 
     SECTION("IPv4 /24")
     {

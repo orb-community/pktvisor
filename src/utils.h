@@ -19,4 +19,7 @@ std::vector<std::string> split(const std::string &s, char delim);
 
 void parseHostSpec(const std::string &spec, IPv4subnetList &ipv4List, IPv6subnetList &ipv6List);
 
+typedef std::pair<std::string_view, std::string_view> AggDomainResult;
+AggDomainResult aggregateDomain(const std::string& domain);
+
 }
