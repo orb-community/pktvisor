@@ -7,6 +7,11 @@
 #include <datasketches/fi/frequent_items_sketch.hpp>
 #include <datasketches/kll/kll_sketch.hpp>
 #include <json/json.hpp>
+#include "config.h"
+
+#ifdef MMDB_ENABLE
+#include "geoip.h"
+#endif
 
 #include <algorithm>
 #include <chrono>
@@ -139,6 +144,8 @@ struct Sketches {
     datasketches::frequent_items_sketch<uint16_t> _dns_topRCode;
     datasketches::frequent_items_sketch<std::string> _dns_slowXactIn;
     datasketches::frequent_items_sketch<std::string> _dns_slowXactOut;
+    datasketches::frequent_items_sketch<std::string> _net_topGeoLoc;
+    datasketches::frequent_items_sketch<std::string> _net_topASN;
     Sketches()
         : _dnsXactFromTimeMs()
         , _dnsXactToTimeMs()
@@ -157,6 +164,8 @@ struct Sketches {
         , _dns_topRCode(MIN_FI_MAP_SIZE, MAX_FI_MAP_SIZE)
         , _dns_slowXactIn(MIN_FI_MAP_SIZE, MAX_FI_MAP_SIZE)
         , _dns_slowXactOut(MIN_FI_MAP_SIZE, MAX_FI_MAP_SIZE)
+        , _net_topGeoLoc(MIN_FI_MAP_SIZE, MAX_FI_MAP_SIZE)
+        , _net_topASN(MIN_FI_MAP_SIZE, MAX_FI_MAP_SIZE)
     {
     }
 };
@@ -221,7 +230,7 @@ public:
     void assignRateSketches(const std::shared_ptr<InstantRateMetrics>);
     void toJSON(nlohmann::json &j, const std::string &key);
 
-    void newPacket(const pcpp::Packet &packet, pcpp::ProtocolType l3, pcpp::ProtocolType l4, Direction dir);
+    void newPacket(MetricsMgr &mmgr, const pcpp::Packet &packet, pcpp::ProtocolType l3, pcpp::ProtocolType l4, Direction dir);
     void newDNSPacket(pcpp::DnsLayer *dns, Direction dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4);
     void newDNSXact(pcpp::DnsLayer *dns, Direction dir, hr_clock::duration xact_dur);
 };
@@ -239,6 +248,11 @@ class MetricsMgr
     std::shared_ptr<InstantRateMetrics> _instantRates;
 
     void _periodShift();
+
+#ifdef MMDB_ENABLE
+    std::unique_ptr<GeoDB> _geoCityDB;
+    std::unique_ptr<GeoDB> _geoASNDB;
+#endif
 
 public:
     static const uint PERIOD_SEC = 60;
@@ -266,6 +280,43 @@ public:
 
     void setInitialShiftTS();
     void setInitialShiftTS(const pcpp::Packet &packet);
+
+    bool haveGeoCity() {
+#ifdef MMDB_ENABLE
+        return true;
+#else
+        return false;
+#endif
+    }
+
+    void setGeoCityDB(const std::string& name) {
+#ifdef MMDB_ENABLE
+        _geoCityDB = std::make_unique<GeoDB>(name);
+#else
+        throw std::logic_error("setGeoCityDB called but is lacking compile-time support");
+#endif
+    }
+
+    bool haveGeoASN() {
+#ifdef MMDB_ENABLE
+        return true;
+#else
+        return false;
+#endif
+    }
+
+    void setGeoASNDB(const std::string& name) {
+#ifdef MMDB_ENABLE
+        _geoASNDB = std::make_unique<GeoDB>(name);
+#else
+        throw std::logic_error("setGeoASNDB called but is lacking compile-time support");
+#endif
+    }
+
+#ifdef MMDB_ENABLE
+    const GeoDB* getGeoCityDB() { return _geoCityDB.get(); }
+    const GeoDB* getGeoASNDB() { return _geoASNDB.get(); }
+#endif
 
     void newPacket(const pcpp::Packet &packet, QueryResponsePairMgr &pairMgr, pcpp::ProtocolType l4, Direction dir, pcpp::ProtocolType l3);
     void newDNSPacket(pcpp::DnsLayer *dns, Direction dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4);

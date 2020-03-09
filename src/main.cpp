@@ -20,12 +20,12 @@
 #include "querypairmgr.h"
 #include "tcpsession.h"
 #include "utils.h"
-#include "version.h"
+#include "config.h"
 
 static const char USAGE[] =
     R"(pktvisord.
     Usage:
-      pktvisord [-b BPF] [-p PORT] [-H HOSTSPEC] [--periods P] [--summary] TARGET
+      pktvisord [-b BPF] [-p PORT] [-H HOSTSPEC] [--periods P] [--summary] [--geo-city FILE] [--geo-asn FILE] TARGET
       pktvisord (-h | --help)
       pktvisord --version
 
@@ -34,14 +34,16 @@ static const char USAGE[] =
     TARGET is either a network interface, an IP address (4 or 6) or a pcap file (ending in .pcap or .cap)
 
     Options:
-      -p PORT          Run metrics webserver on the given port [default: 10853]
-      -b BPF           Filter using the given BPF string (live of pcapng only, not pcap)
+      -p PORT          Run metrics webserver on the given localhost port [default: 10853]
+      -b BPF           Filter packets using the given BPF string
+      --geo-city FILE  GeoLite2 City database to use for IP to Geo mapping (if enabled)
+      --geo-asn FILE   GeoLite2 ASN database to use for IP to ASN mapping (if enabled)
       --periods P      Hold this many 60 second time periods of history in memory [default: 5]
       --summary        Instead of a time window with P periods, summarize all packets into one bucket for entire time period.
                        Useful for executive summary of (and applicable only to) a pcap file. [default: false]
       -H HOSTSPEC      Specify subnets (comma separated) to consider HOST, in CIDR form. In live capture this /may/ be detected automatically
                        from capture device but /must/ be specified for pcaps. Example: "10.0.1.0/24,10.0.2.1/32,2001:db8::/64"
-                       Specifying this for live capture will override any automatic detection.
+                       Specifying this for live capture will append to any automatic detection.
       -h --help        Show this screen
       --version        Show version
 )";
@@ -339,6 +341,25 @@ void showHosts() {
     }
 }
 
+void handleGeo(const docopt::value &city, const docopt::value &asn) {
+    if (city) {
+        if (!metricsManager->haveGeoCity()) {
+            std::cerr << "warning: --geo-city has no effect, lacking compile-time support" << std::endl;
+        }
+        else {
+            metricsManager->setGeoCityDB(city.asString());
+        }
+    }
+    if (asn) {
+        if (!metricsManager->haveGeoASN()) {
+            std::cerr << "warning: --geo-asn has no effect, lacking compile-time support" << std::endl;
+        }
+        else {
+            metricsManager->setGeoASNDB(asn.asString());
+        }
+    }
+}
+
 int main(int argc, char *argv[])
 {
     std::map<std::string, docopt::value> args = docopt::docopt(USAGE,
@@ -372,16 +393,24 @@ int main(int argc, char *argv[])
     if ((args["TARGET"].asString().rfind(".pcap") != std::string::npos) || (args["TARGET"].asString().rfind(".cap") != std::string::npos)) {
         showHosts();
         try {
-            // in pcap mode we simply output a single summary of stats
             metricsManager = std::make_unique<pktvisor::MetricsMgr>(args["--summary"].asBool());
+            handleGeo(args["--geo-city"], args["--geo-asn"]);
             openPcap(args["TARGET"].asString(), tcpDnsReassembly, bpf);
-            std::cout << metricsManager->getMetricsMerged(periods) << std::endl;
+            if (args["--summary"].asBool()) {
+                // in summary mode we output a single summary of stats
+                std::cout << metricsManager->getMetrics() << std::endl;
+            }
+            else {
+                // otherwise, merge the max time window available
+                std::cout << metricsManager->getMetricsMerged(periods) << std::endl;
+            }
         } catch (const std::exception &e) {
             std::cerr << e.what() << std::endl;
             return -1;
         }
     } else {
         metricsManager = std::make_unique<pktvisor::MetricsMgr>(false, periods);
+        handleGeo(args["--geo-city"], args["--geo-asn"]);
         pcpp::PcapLiveDevice *dev(nullptr);
         // extract pcap live device by interface name or IP address
         pcpp::IPv4Address interfaceIP4(args["TARGET"].asString());

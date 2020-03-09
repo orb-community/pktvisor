@@ -1,15 +1,41 @@
 cmake_minimum_required(VERSION 3.13)
 project(pktvisor3)
 
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
+
+# this is the source of truth for version, which will be written to config.h include file.
+project(pktvisord VERSION 3.0.4)
+set(PKTVISOR_VERSION_NUM ${PROJECT_VERSION})
+set(PKTVISOR_VERSION "pktvisor ${PROJECT_VERSION}")
+
 set(CMAKE_CXX_STANDARD 17)
 add_compile_options(-Wall)
 
-#set (CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=address")
-#set (CMAKE_LINKER_FLAGS_DEBUG "${CMAKE_LINKER_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=address")
-
 find_package(PkgConfig)
 
+include(sanitizer)
+
 pkg_check_modules(LIBPCPP REQUIRED PcapPlusPlus)
+
+option(MMDB_ENABLE "Enable MaxMindDB support" OFF)
+if (MMDB_ENABLE)
+    pkg_check_modules(LIBMMDB REQUIRED libmaxminddb)
+    message(STATUS "MaxMindDB support is enabled")
+    add_library(geoip
+            ${CMAKE_SOURCE_DIR}/src/geoip.cpp
+            )
+    target_include_directories(geoip
+            PUBLIC
+            ${LIBMMDB_INCLUDE_DIRS}
+            )
+    target_link_libraries(geoip
+            PUBLIC
+            ${LIBMMDB_LDFLAGS}
+            ${LIBMMDB_LIBRARIES}
+            )
+else()
+    message(STATUS "MaxMindDB support is disabled")
+endif()
 
 add_library(pktvisorcore
         src/querypairmgr.cpp
@@ -42,6 +68,14 @@ else()
             )
 endif()
 
+if (MMDB_ENABLE)
+    target_include_directories(pktvisorcore
+            PUBLIC
+            ${LIBMMDB_INCLUDE_DIRS}
+            )
+    target_link_libraries(pktvisorcore PRIVATE geoip)
+endif()
+
 add_executable(pktvisord
         3rd/docopt/docopt.cpp
         src/main.cpp
@@ -58,6 +92,13 @@ add_executable(tests
         tests/test_utils.cpp
         )
 
+if (MMDB_ENABLE)
+    target_sources(tests
+            PUBLIC
+            tests/test_geoip.cpp
+        )
+endif()
+
 target_include_directories(tests SYSTEM
         PRIVATE ${CMAKE_SOURCE_DIR}/3rd/datasketches
         PRIVATE "${CMAKE_SOURCE_DIR}/3rd/catch"
@@ -71,3 +112,6 @@ target_include_directories(tests
 target_link_libraries(tests
         PRIVATE pktvisorcore
         )
+
+include_directories(${CMAKE_CURRENT_BINARY_DIR})
+configure_file(src/config.h.in config.h @ONLY)
