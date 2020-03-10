@@ -123,6 +123,11 @@ add_test(NAME pktvisor-units
         COMMAND ${CMAKE_BINARY_DIR}/tests
         )
 
+add_test(NAME pktvisor-ftest-ipv4-udp-with-output
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/tests
+        COMMAND ${CMAKE_SOURCE_DIR}/tests/integration.sh ${CMAKE_BINARY_DIR}/pktvisord output-templates/dns_ipv4_udp.json -- -H 127.0.0.1/32 fixtures/dns_ipv4_udp.pcap
+        )
+
 add_test(NAME pktvisor-ftest-ipv4-udp
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/tests
         COMMAND ${CMAKE_BINARY_DIR}/pktvisord -H 127.0.0.1/32 fixtures/dns_ipv4_udp.pcap
