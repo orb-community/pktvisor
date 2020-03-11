@@ -232,7 +232,7 @@ public:
 
     void newPacket(MetricsMgr &mmgr, const pcpp::Packet &packet, pcpp::ProtocolType l3, pcpp::ProtocolType l4, Direction dir);
     void newDNSPacket(pcpp::DnsLayer *dns, Direction dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4);
-    void newDNSXact(pcpp::DnsLayer *dns, Direction dir, hr_clock::duration xact_dur);
+    void newDNSXact(pcpp::DnsLayer *dns, Direction dir, DnsTransaction xact);
 };
 
 class MetricsMgr
@@ -320,7 +320,7 @@ public:
 
     void newPacket(const pcpp::Packet &packet, QueryResponsePairMgr &pairMgr, pcpp::ProtocolType l4, Direction dir, pcpp::ProtocolType l3);
     void newDNSPacket(pcpp::DnsLayer *dns, Direction dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4);
-    void newDNSXact(pcpp::DnsLayer *dns, Direction dir, hr_clock::duration xact_dur);
+    void newDNSXact(pcpp::DnsLayer *dns, Direction dir, DnsTransaction xact);
 
     std::string getAppMetrics();
     std::string getInstantRates();

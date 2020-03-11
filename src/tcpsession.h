@@ -75,7 +75,7 @@ struct TcpReassemblyData {
 
 struct TcpReassemblyMgr {
 
-    using process_dns_msg_cb = std::function<void(pcpp::DnsLayer *, Direction dir, pcpp::ProtocolType l3, uint32_t flowKey)>;
+    using process_dns_msg_cb = std::function<void(pcpp::DnsLayer *, Direction dir, pcpp::ProtocolType l3, uint32_t flowKey, timeval stamp)>;
 
     process_dns_msg_cb process_dns_handler;
 

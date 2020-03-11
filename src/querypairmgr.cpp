@@ -1,32 +1,32 @@
 
 #include <vector>
+#include <sys/time.h>
 #include "querypairmgr.h"
 
 namespace pktvisor {
 
-void QueryResponsePairMgr::startDnsTransaction(uint32_t flowKey, uint16_t queryID) {
-    DnsTransaction xact = {hr_clock::now()};
-    _dnsTransactions[DnsXactID(flowKey, queryID)] = xact;
+void QueryResponsePairMgr::startDnsTransaction(uint32_t flowKey, uint16_t queryID, timeval stamp) {
+    _dnsTransactions[DnsXactID(flowKey, queryID)] = {stamp};
 }
 
-std::unique_ptr<DnsTransaction> QueryResponsePairMgr::maybeEndDnsTransaction(uint32_t flowKey, uint16_t queryID) {
+std::pair<bool, DnsTransaction> QueryResponsePairMgr::maybeEndDnsTransaction(uint32_t flowKey, uint16_t queryID, timeval stamp) {
     auto key = DnsXactID(flowKey, queryID);
     if (_dnsTransactions.find(key) != _dnsTransactions.end()) {
-        auto result = std::make_unique<DnsTransaction>(_dnsTransactions[key]);
+        auto result = _dnsTransactions[key];
+        timersub(&stamp, &result.queryTS, &result.totalTS);
         _dnsTransactions.erase(key);
-        return result;
+        return std::pair<bool, DnsTransaction>(true, result);
     }
     else {
-        return nullptr;
+        return std::pair<bool, DnsTransaction>(false, DnsTransaction{timeval{0,0}});
     }
 }
 
-void QueryResponsePairMgr::purgeOldTransactions() {
+void QueryResponsePairMgr::purgeOldTransactions(timeval now) {
     // TODO this is a simple linear search, can optimize with some better data structures
     std::vector<DnsXactID> timed_out;
-    auto now = std::chrono::high_resolution_clock::now();
     for (auto i : _dnsTransactions) {
-        if (std::chrono::duration_cast<std::chrono::seconds>(now - i.second.queryStartTS).count() >= _ttl_secs) {
+        if (now.tv_sec - i.second.queryTS.tv_sec >= _ttl_secs) {
             timed_out.push_back(i.first);
         }
     }

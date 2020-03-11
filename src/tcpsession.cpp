@@ -135,12 +135,12 @@ TcpDnsReassembly::TcpDnsReassembly(TcpReassemblyMgr::process_dns_msg_cb process_
         auto malformed_data = []() {
             //            std::cerr << "malformed\n";
         };
-        auto got_dns_message = [reassemblyMgr, sideIndex, l3Type, flowKey](std::unique_ptr<const char[]> data,
+        auto got_dns_message = [reassemblyMgr, sideIndex, l3Type, flowKey, tcpData](std::unique_ptr<const char[]> data,
                                    size_t size) {
             pcpp::Packet dnsRequest;
             pcpp::DnsLayer dnsLayer((uint8_t *)data.get(), size, nullptr, &dnsRequest);
             auto dir = (sideIndex == 0) ? pktvisor::fromHost : pktvisor::toHost;
-            reassemblyMgr->process_dns_handler(&dnsLayer, dir, l3Type, flowKey);
+            reassemblyMgr->process_dns_handler(&dnsLayer, dir, l3Type, flowKey, tcpData.getConnectionData().endTime);
         };
         if (!iter->second.dnsSession[side].get()) {
             iter->second.dnsSession[side] = std::make_shared<TcpDnsSession>(malformed_data, got_dns_message);

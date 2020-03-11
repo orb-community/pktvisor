@@ -158,13 +158,13 @@ void Metrics::newDNSPacket(pcpp::DnsLayer *dns, Direction dir, pcpp::ProtocolTyp
     }
 }
 
-void Metrics::newDNSXact(pcpp::DnsLayer *dns, Direction dir, hr_clock::duration xact_dur)
+void Metrics::newDNSXact(pcpp::DnsLayer *dns, Direction dir, DnsTransaction xact)
 {
     // lock for write
     std::unique_lock lock(_sketchMutex);
 
     _DNS_xacts_total++;
-    double xactTime = (double)std::chrono::duration_cast<std::chrono::microseconds>(xact_dur).count() / 1000.0; // milliseconds
+    double xactTime = (xact.totalTS.tv_sec * 1000) + (xact.totalTS.tv_usec / 1000.0); // milliseconds
     // dir is the direction of the last packet, meaning the reply so from a transaction perspective
     // we look at it from the direction of the query, so the opposite side than we have here
     float to90th = 0.0;
@@ -198,9 +198,9 @@ void Metrics::newDNSXact(pcpp::DnsLayer *dns, Direction dir, hr_clock::duration 
     }
 }
 
-void MetricsMgr::newDNSXact(pcpp::DnsLayer *dns, Direction dir, hr_clock::duration xact_dur)
+void MetricsMgr::newDNSXact(pcpp::DnsLayer *dns, Direction dir, DnsTransaction xact)
 {
-    _metrics.back()->newDNSXact(dns, dir, xact_dur);
+    _metrics.back()->newDNSXact(dns, dir, xact);
 }
 
 void MetricsMgr::newDNSPacket(pcpp::DnsLayer *dns, Direction dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4)
@@ -356,8 +356,8 @@ void MetricsMgr::newPacket(const pcpp::Packet &packet, QueryResponsePairMgr &pai
         auto pkt_ts = packet.getRawPacketReadOnly()->getPacketTimeStamp();
         if (pkt_ts.tv_sec - _lastShiftTS.tv_sec > MetricsMgr::PERIOD_SEC) {
             _periodShift();
-            _lastShiftTS.tv_sec = packet.getRawPacketReadOnly()->getPacketTimeStamp().tv_sec;
-            pairMgr.purgeOldTransactions();
+            _lastShiftTS.tv_sec = pkt_ts.tv_sec;
+            pairMgr.purgeOldTransactions(pkt_ts);
             _openDnsTransactionCount = pairMgr.getOpenTransactionCount();
         }
         switch (dir) {
