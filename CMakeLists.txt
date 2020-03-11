@@ -85,7 +85,7 @@ target_link_libraries(pktvisord
         PRIVATE pktvisorcore
         )
 
-add_executable(tests
+add_executable(unit-tests
         tests/main.cpp
         tests/test_parse_pcap.cpp
         tests/test_sketches.cpp
@@ -93,23 +93,23 @@ add_executable(tests
         )
 
 if (MMDB_ENABLE)
-    target_sources(tests
+    target_sources(unit-tests
             PUBLIC
             tests/test_geoip.cpp
         )
 endif()
 
-target_include_directories(tests SYSTEM
+target_include_directories(unit-tests SYSTEM
         PRIVATE ${CMAKE_SOURCE_DIR}/3rd/datasketches
         PRIVATE "${CMAKE_SOURCE_DIR}/3rd/catch"
         )
 
-target_include_directories(tests
+target_include_directories(unit-tests
         PRIVATE "${CMAKE_SOURCE_DIR}/tests"
         PRIVATE "${CMAKE_SOURCE_DIR}/src"
         )
 
-target_link_libraries(tests
+target_link_libraries(unit-tests
         PRIVATE pktvisorcore
         )
 
