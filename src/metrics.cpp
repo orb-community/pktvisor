@@ -56,8 +56,8 @@ void Metrics::merge(Metrics &other)
     _rateSketches.net_rateIn.merge(other._rateSketches.net_rateIn);
     _rateSketches.net_rateOut.merge(other._rateSketches.net_rateOut);
 
-    _sketches->_dnsXactFromTimeMs.merge(other._sketches->_dnsXactFromTimeMs);
-    _sketches->_dnsXactToTimeMs.merge(other._sketches->_dnsXactToTimeMs);
+    _sketches->_dnsXactFromTimeUs.merge(other._sketches->_dnsXactFromTimeUs);
+    _sketches->_dnsXactToTimeUs.merge(other._sketches->_dnsXactToTimeUs);
 
     datasketches::cpc_union merge_srcIPCard;
     merge_srcIPCard.update(_sketches->_net_srcIPCard);
@@ -164,7 +164,7 @@ void Metrics::newDNSXact(pcpp::DnsLayer *dns, Direction dir, DnsTransaction xact
     std::unique_lock lock(_sketchMutex);
 
     _DNS_xacts_total++;
-    double xactTime = (xact.totalTS.tv_sec * 1000) + (xact.totalTS.tv_usec / 1000.0); // milliseconds
+    uint64_t xactTime = (xact.totalTS.tv_sec * 1000000) + xact.totalTS.tv_usec; // microseconds
     // dir is the direction of the last packet, meaning the reply so from a transaction perspective
     // we look at it from the direction of the query, so the opposite side than we have here
     float to90th = 0.0;
@@ -172,17 +172,17 @@ void Metrics::newDNSXact(pcpp::DnsLayer *dns, Direction dir, DnsTransaction xact
     uint64_t sample_threshold = 10;
     if (dir == toHost) {
         _DNS_xacts_out++;
-        _sketches->_dnsXactFromTimeMs.update(xactTime);
+        _sketches->_dnsXactFromTimeUs.update(xactTime);
         // wait for N samples
-        if (_sketches->_dnsXactFromTimeMs.get_n() > sample_threshold) {
-            from90th = _sketches->_dnsXactFromTimeMs.get_quantile(0.90);
+        if (_sketches->_dnsXactFromTimeUs.get_n() > sample_threshold) {
+            from90th = _sketches->_dnsXactFromTimeUs.get_quantile(0.90);
         }
     } else if (dir == fromHost) {
         _DNS_xacts_in++;
-        _sketches->_dnsXactToTimeMs.update(xactTime);
+        _sketches->_dnsXactToTimeUs.update(xactTime);
         // wait for N samples
-        if (_sketches->_dnsXactToTimeMs.get_n() > sample_threshold) {
-            to90th = _sketches->_dnsXactToTimeMs.get_quantile(0.90);
+        if (_sketches->_dnsXactToTimeUs.get_n() > sample_threshold) {
+            to90th = _sketches->_dnsXactToTimeUs.get_quantile(0.90);
         }
     }
 
@@ -481,20 +481,20 @@ void Metrics::toJSON(nlohmann::json &j, const std::string &key)
         }
     }
 
-    auto d_quantiles = _sketches->_dnsXactFromTimeMs.get_quantiles(fractions, 4);
+    auto d_quantiles = _sketches->_dnsXactFromTimeUs.get_quantiles(fractions, 4);
     if (d_quantiles.size()) {
-        j[key]["dns"]["xact"]["out"]["quantiles_ms"]["p50"] = d_quantiles[0];
-        j[key]["dns"]["xact"]["out"]["quantiles_ms"]["p90"] = d_quantiles[1];
-        j[key]["dns"]["xact"]["out"]["quantiles_ms"]["p95"] = d_quantiles[2];
-        j[key]["dns"]["xact"]["out"]["quantiles_ms"]["p99"] = d_quantiles[3];
+        j[key]["dns"]["xact"]["out"]["quantiles_us"]["p50"] = d_quantiles[0];
+        j[key]["dns"]["xact"]["out"]["quantiles_us"]["p90"] = d_quantiles[1];
+        j[key]["dns"]["xact"]["out"]["quantiles_us"]["p95"] = d_quantiles[2];
+        j[key]["dns"]["xact"]["out"]["quantiles_us"]["p99"] = d_quantiles[3];
     }
 
-    d_quantiles = _sketches->_dnsXactToTimeMs.get_quantiles(fractions, 4);
+    d_quantiles = _sketches->_dnsXactToTimeUs.get_quantiles(fractions, 4);
     if (d_quantiles.size()) {
-        j[key]["dns"]["xact"]["in"]["quantiles_ms"]["p50"] = d_quantiles[0];
-        j[key]["dns"]["xact"]["in"]["quantiles_ms"]["p90"] = d_quantiles[1];
-        j[key]["dns"]["xact"]["in"]["quantiles_ms"]["p95"] = d_quantiles[2];
-        j[key]["dns"]["xact"]["in"]["quantiles_ms"]["p99"] = d_quantiles[3];
+        j[key]["dns"]["xact"]["in"]["quantiles_us"]["p50"] = d_quantiles[0];
+        j[key]["dns"]["xact"]["in"]["quantiles_us"]["p90"] = d_quantiles[1];
+        j[key]["dns"]["xact"]["in"]["quantiles_us"]["p95"] = d_quantiles[2];
+        j[key]["dns"]["xact"]["in"]["quantiles_us"]["p99"] = d_quantiles[3];
     }
 
     {

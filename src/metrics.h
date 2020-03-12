@@ -125,8 +125,8 @@ struct Sketches {
     const uint8_t MIN_FI_MAP_SIZE = 7;  // 2^7 = 128
     const uint8_t MAX_FI_MAP_SIZE = 13; // 2^13 = 8192
 
-    datasketches::kll_sketch<double> _dnsXactFromTimeMs;
-    datasketches::kll_sketch<double> _dnsXactToTimeMs;
+    datasketches::kll_sketch<uint64_t> _dnsXactFromTimeUs;
+    datasketches::kll_sketch<uint64_t> _dnsXactToTimeUs;
 
     datasketches::cpc_sketch _net_srcIPCard;
     datasketches::cpc_sketch _net_dstIPCard;
@@ -147,8 +147,8 @@ struct Sketches {
     datasketches::frequent_items_sketch<std::string> _net_topGeoLoc;
     datasketches::frequent_items_sketch<std::string> _net_topASN;
     Sketches()
-        : _dnsXactFromTimeMs()
-        , _dnsXactToTimeMs()
+        : _dnsXactFromTimeUs()
+        , _dnsXactToTimeUs()
         , _net_srcIPCard()
         , _net_dstIPCard()
         , _dns_qnameCard()

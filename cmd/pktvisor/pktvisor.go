@@ -71,22 +71,22 @@ type StatSnapshot struct {
 				Total int64 `json:"total"`
 			} `json:"counts"`
 			In struct {
-				QuantilesMS struct {
-					P50 float64 `json:"p50"`
-					P90 float64 `json:"p90"`
-					P95 float64 `json:"p95"`
-					P99 float64 `json:"p99"`
-				} `json:"quantiles_ms"`
+				QuantilesUS struct {
+					P50 int64 `json:"p50"`
+					P90 int64 `json:"p90"`
+					P95 int64 `json:"p95"`
+					P99 int64 `json:"p99"`
+				} `json:"quantiles_us"`
 				TopSlow []NameCount `json:"top_slow"`
 				Total   int64       `json:"total"`
 			} `json:"in"`
 			Out struct {
-				QuantilesMS struct {
-					P50 float64 `json:"p50"`
-					P90 float64 `json:"p90"`
-					P95 float64 `json:"p95"`
-					P99 float64 `json:"p99"`
-				} `json:"quantiles_ms"`
+				QuantilesUS struct {
+					P50 int64 `json:"p50"`
+					P90 int64 `json:"p90"`
+					P95 int64 `json:"p95"`
+					P99 int64 `json:"p99"`
+				} `json:"quantiles_us"`
 				TopSlow []NameCount `json:"top_slow"`
 				Total   int64       `json:"total"`
 			} `json:"out"`
@@ -218,14 +218,14 @@ func updateHeader(v *gocui.View, rates *InstantRates, stats *StatSnapshot) {
 		(float64(xact.In.Total)/float64(xact.Counts.Total))*100,
 		xact.Out.Total,
 		(float64(xact.Out.Total)/float64(xact.Counts.Total))*100,
-		xact.In.QuantilesMS.P50,
-		xact.In.QuantilesMS.P90,
-		xact.In.QuantilesMS.P95,
-		xact.In.QuantilesMS.P99,
-		xact.Out.QuantilesMS.P50,
-		xact.Out.QuantilesMS.P90,
-		xact.Out.QuantilesMS.P95,
-		xact.Out.QuantilesMS.P99,
+		float64(xact.In.QuantilesUS.P50)/1000,
+		float64(xact.In.QuantilesUS.P90)/1000,
+		float64(xact.In.QuantilesUS.P95)/1000,
+		float64(xact.In.QuantilesUS.P99)/1000,
+		float64(xact.Out.QuantilesUS.P50)/1000,
+		float64(xact.Out.QuantilesUS.P90)/1000,
+		float64(xact.Out.QuantilesUS.P95)/1000,
+		float64(xact.Out.QuantilesUS.P99)/1000,
 		stats.DNS.Cardinality.Qname,
 	)
 	startTime := time.Unix(stats.Period.StartTS, 0)

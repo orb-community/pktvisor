@@ -31,9 +31,9 @@ then
   echo "template match success"
 else
   echo "template match failure"
-  echo "---"
+  echo "---want---"
   echo $want
-  echo "---"
+  echo "---actual---"
   echo $result
   exit 1
 fi
