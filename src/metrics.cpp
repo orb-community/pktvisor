@@ -6,6 +6,7 @@
 #include <datasketches/datasketches/cpc/cpc_union.hpp>
 #include <sstream>
 
+#include <math.h>
 #include <arpa/inet.h>
 
 #include "dns.h"
@@ -389,8 +390,8 @@ void Metrics::toJSON(nlohmann::json &j, const std::string &key)
     j[key]["packets"]["in"] = _numPackets_in.load();
     j[key]["packets"]["out"] = _numPackets_out.load();
 
-    j[key]["packets"]["cardinality"]["src_ips_in"] = _sketches->_net_srcIPCard.get_estimate();
-    j[key]["packets"]["cardinality"]["dst_ips_out"] = _sketches->_net_dstIPCard.get_estimate();
+    j[key]["packets"]["cardinality"]["src_ips_in"] = lround(_sketches->_net_srcIPCard.get_estimate());
+    j[key]["packets"]["cardinality"]["dst_ips_out"] = lround(_sketches->_net_dstIPCard.get_estimate());
 
     const double fractions[4]{0.50, 0.90, 0.95, 0.99};
     auto quantiles = _rateSketches.net_rateIn.get_quantiles(fractions, 4);
@@ -420,7 +421,7 @@ void Metrics::toJSON(nlohmann::json &j, const std::string &key)
     j[key]["dns"]["wire_packets"]["srvfail"] = _DNS_SRVFAIL.load();
     j[key]["dns"]["wire_packets"]["noerror"] = _DNS_NOERROR.load();
 
-    j[key]["dns"]["cardinality"]["qname"] = _sketches->_dns_qnameCard.get_estimate();
+    j[key]["dns"]["cardinality"]["qname"] = lround(_sketches->_dns_qnameCard.get_estimate());
 
     {
         j[key]["packets"]["top_ipv4"] = nlohmann::json::array();

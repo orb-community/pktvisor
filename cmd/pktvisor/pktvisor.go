@@ -64,7 +64,7 @@ type StatSnapshot struct {
 			Refused  int64 `json:"refused"`
 		} `json:"wire_packets"`
 		Cardinality struct {
-			Qname float64 `json:"qname"`
+			Qname int64 `json:"qname"`
 		} `json:"cardinality"`
 		Xact struct {
 			Counts struct {
@@ -102,8 +102,8 @@ type StatSnapshot struct {
 	} `json:"dns"`
 	Packets struct {
 		Cardinality struct {
-			DstIpsOut float64 `json:"dst_ips_out"`
-			SrcIpsIn  float64 `json:"src_ips_in"`
+			DstIpsOut int64 `json:"dst_ips_out"`
+			SrcIpsIn  int64 `json:"src_ips_in"`
 		} `json:"cardinality"`
 		Ipv4  int64 `json:"ipv4"`
 		Ipv6  int64 `json:"ipv6"`
@@ -180,7 +180,7 @@ func updateHeader(v *gocui.View, rates *InstantRates, stats *StatSnapshot) {
 		pcounts.Out,
 		(float64(pcounts.Out)/float64(pcounts.Total-inOutDiff))*100,
 	)
-	_, _ = fmt.Fprintf(v, "Pkt Rates In %d/s %d/%d/%d/%d pps | Out %d/s %d/%d/%d/%d pps | IP Card. In: %3.1f | Out: %3.1f\n\n",
+	_, _ = fmt.Fprintf(v, "Pkt Rates In %d/s %d/%d/%d/%d pps | Out %d/s %d/%d/%d/%d pps | IP Card. In: %d | Out: %d\n\n",
 		rates.Packets.In,
 		pcounts.Rates.Pps_in.P50,
 		pcounts.Rates.Pps_in.P90,
@@ -212,7 +212,7 @@ func updateHeader(v *gocui.View, rates *InstantRates, stats *StatSnapshot) {
 		(float64(dnsc.Replies)/float64(dnsc.Total))*100,
 	)
 	xact := stats.DNS.Xact
-	_, _ = fmt.Fprintf(v, "DNS Xacts %d | In %d (%3.1f%%) | Out %d (%3.1f%%) | In %3.1f/%3.1f/%3.1f/%3.1f ms | Out %3.1f/%3.1f/%3.1f/%3.1f ms | Qname Card. %3.1f\n",
+	_, _ = fmt.Fprintf(v, "DNS Xacts %d | In %d (%3.1f%%) | Out %d (%3.1f%%) | In %3.1f/%3.1f/%3.1f/%3.1f ms | Out %3.1f/%3.1f/%3.1f/%3.1f ms | Qname Card. %d\n",
 		xact.Counts.Total,
 		xact.In.Total,
 		(float64(xact.In.Total)/float64(xact.Counts.Total))*100,
