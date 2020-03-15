@@ -1,4 +1,4 @@
-#/bin/bash
+#!/bin/bash
 
 # we filter out some paths due to probabalistic results
 JSONFILTER='delpaths([["5m","dns","cardinality"]])|delpaths([["5m","period"]])|delpaths([["5m","packets","cardinality"]])'
@@ -8,15 +8,19 @@ PKTVISORD=$1
 JSONTPT=$2
 shift; shift; shift;
 
-result=`$PKTVISORD "$@" | jq $JSONFILTER`
+tmpfile=$(mktemp /tmp/pktvisor-ftest.XXXXXX)
+`$PKTVISORD "$@" > $tmpfile`
 status=$?
 if [[ $status -eq 0 ]]
 then
   echo "pktvisor success"
 else
   echo "pktvisor failure"
+  rm $tmpfile
   exit $status
 fi
+result=`jq $JSONFILTER $tmpfile`
+rm $tmpfile
 want=`cat "$JSONTPT" | jq $JSONFILTER`
 status=$?
 if [[ $status -eq 0 ]]
