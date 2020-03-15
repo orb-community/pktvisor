@@ -85,7 +85,7 @@ target_link_libraries(pktvisord
         PRIVATE pktvisorcore
         )
 
-add_executable(tests
+add_executable(unit-tests
         tests/main.cpp
         tests/test_parse_pcap.cpp
         tests/test_sketches.cpp
@@ -93,23 +93,23 @@ add_executable(tests
         )
 
 if (MMDB_ENABLE)
-    target_sources(tests
+    target_sources(unit-tests
             PUBLIC
             tests/test_geoip.cpp
         )
 endif()
 
-target_include_directories(tests SYSTEM
+target_include_directories(unit-tests SYSTEM
         PRIVATE ${CMAKE_SOURCE_DIR}/3rd/datasketches
         PRIVATE "${CMAKE_SOURCE_DIR}/3rd/catch"
         )
 
-target_include_directories(tests
+target_include_directories(unit-tests
         PRIVATE "${CMAKE_SOURCE_DIR}/tests"
         PRIVATE "${CMAKE_SOURCE_DIR}/src"
         )
 
-target_link_libraries(tests
+target_link_libraries(unit-tests
         PRIVATE pktvisorcore
         )
 
@@ -125,36 +125,42 @@ add_test(NAME pktvisor-units
 
 add_test(NAME pktvisor-ftest-ipv4-udp
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/tests
-        COMMAND ${CMAKE_BINARY_DIR}/pktvisord -H 127.0.0.1/32 fixtures/dns_ipv4_udp.pcap
+        COMMAND ${CMAKE_SOURCE_DIR}/tests/integration.sh ${CMAKE_BINARY_DIR}/pktvisord output-templates/dns_ipv4_udp.json -- -H 127.0.0.1/32 fixtures/dns_ipv4_udp.pcap
         )
 add_test(NAME pktvisor-ftest-ipv4-tcp
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/tests
-        COMMAND ${CMAKE_BINARY_DIR}/pktvisord -H 127.0.0.1/32 fixtures/dns_ipv4_tcp.pcap
+        COMMAND ${CMAKE_SOURCE_DIR}/tests/integration.sh ${CMAKE_BINARY_DIR}/pktvisord output-templates/dns_ipv4_tcp.json -- -H 127.0.0.1/32 fixtures/dns_ipv4_tcp.pcap
         )
 add_test(NAME pktvisor-ftest-ipv6-udp
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/tests
-        COMMAND ${CMAKE_BINARY_DIR}/pktvisord -H 127.0.0.1/32 fixtures/dns_ipv6_udp.pcap
+        COMMAND ${CMAKE_SOURCE_DIR}/tests/integration.sh ${CMAKE_BINARY_DIR}/pktvisord output-templates/dns_ipv6_udp.json -- -H 127.0.0.1/32 fixtures/dns_ipv6_udp.pcap
         )
 add_test(NAME pktvisor-ftest-ipv6-tcp
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/tests
-        COMMAND ${CMAKE_BINARY_DIR}/pktvisord -H 127.0.0.1/32 fixtures/dns_ipv6_tcp.pcap
+        COMMAND ${CMAKE_SOURCE_DIR}/tests/integration.sh ${CMAKE_BINARY_DIR}/pktvisord output-templates/dns_ipv6_tcp.json -- -H 127.0.0.1/32 fixtures/dns_ipv6_tcp.pcap
         )
 
 if (MMDB_ENABLE)
 add_test(NAME pktvisor-ftest-ipv4-udp-geo
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/tests
-        COMMAND ${CMAKE_BINARY_DIR}/pktvisord -H 127.0.0.1/32 --geo-city fixtures/GeoIP2-City-Test.mmdb --geo-asn fixtures/GeoIP2-ISP-Test.mmdb fixtures/dns_ipv4_udp.pcap
+        COMMAND ${CMAKE_SOURCE_DIR}/tests/integration.sh ${CMAKE_BINARY_DIR}/pktvisord output-templates/dns_ipv4_udp_geo.json -- -H 127.0.0.1/32 --geo-city fixtures/GeoIP2-City-Test.mmdb --geo-asn fixtures/GeoIP2-ISP-Test.mmdb fixtures/dns_ipv4_udp.pcap
         )
 add_test(NAME pktvisor-ftest-ipv4-tcp-geo
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/tests
-        COMMAND ${CMAKE_BINARY_DIR}/pktvisord -H 127.0.0.1/32 --geo-city fixtures/GeoIP2-City-Test.mmdb --geo-asn fixtures/GeoIP2-ISP-Test.mmdb fixtures/dns_ipv4_tcp.pcap
+        COMMAND ${CMAKE_SOURCE_DIR}/tests/integration.sh ${CMAKE_BINARY_DIR}/pktvisord output-templates/dns_ipv4_tcp_geo.json -- -H 127.0.0.1/32 --geo-city fixtures/GeoIP2-City-Test.mmdb --geo-asn fixtures/GeoIP2-ISP-Test.mmdb fixtures/dns_ipv4_udp.pcap
         )
 add_test(NAME pktvisor-ftest-ipv6-udp-geo
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/tests
-        COMMAND ${CMAKE_BINARY_DIR}/pktvisord -H 127.0.0.1/32 --geo-city fixtures/GeoIP2-City-Test.mmdb --geo-asn fixtures/GeoIP2-ISP-Test.mmdb fixtures/dns_ipv6_udp.pcap
+        COMMAND ${CMAKE_SOURCE_DIR}/tests/integration.sh ${CMAKE_BINARY_DIR}/pktvisord output-templates/dns_ipv6_udp_geo.json -- -H 127.0.0.1/32 --geo-city fixtures/GeoIP2-City-Test.mmdb --geo-asn fixtures/GeoIP2-ISP-Test.mmdb fixtures/dns_ipv6_udp.pcap
         )
 add_test(NAME pktvisor-ftest-ipv6-tcp-geo
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/tests
-        COMMAND ${CMAKE_BINARY_DIR}/pktvisord -H 127.0.0.1/32 --geo-city fixtures/GeoIP2-City-Test.mmdb --geo-asn fixtures/GeoIP2-ISP-Test.mmdb fixtures/dns_ipv6_tcp.pcap
+        COMMAND ${CMAKE_SOURCE_DIR}/tests/integration.sh ${CMAKE_BINARY_DIR}/pktvisord output-templates/dns_ipv6_tcp_geo.json -- -H 127.0.0.1/32 --geo-city fixtures/GeoIP2-City-Test.mmdb --geo-asn fixtures/GeoIP2-ISP-Test.mmdb fixtures/dns_ipv6_tcp.pcap
         )
 endif()
+
+add_test(NAME external-tests
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/tests
+        COMMAND ${CMAKE_SOURCE_DIR}/tests/external.sh ${CMAKE_BINARY_DIR}/pktvisord
+        )
+

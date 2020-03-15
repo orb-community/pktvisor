@@ -56,25 +56,24 @@ static pktvisor::IPv6subnetList hostIPv6;
 typedef std::pair<pktvisor::TcpDnsReassembly *, bool> devCookie;
 
 // got a full DNS wire message. called from all l3 and l4.
-static void onGotDnsMessage(pcpp::DnsLayer *dnsLayer, pktvisor::Direction dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowKey)
+static void onGotDnsMessage(pcpp::DnsLayer *dnsLayer, pktvisor::Direction dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowKey, timeval stamp)
 {
     assert(dnsLayer != nullptr);
     metricsManager->newDNSPacket(dnsLayer, dir, l3, l4);
     if (dnsLayer->getDnsHeader()->queryOrResponse == pktvisor::response) {
-        auto xact = dnsQueryPairManager.maybeEndDnsTransaction(flowKey, dnsLayer->getDnsHeader()->transactionID);
-        if (xact) {
-            auto now = std::chrono::high_resolution_clock::now();
-            metricsManager->newDNSXact(dnsLayer, dir, now - xact->queryStartTS);
+        auto xact = dnsQueryPairManager.maybeEndDnsTransaction(flowKey, dnsLayer->getDnsHeader()->transactionID, stamp);
+        if (xact.first) {
+            metricsManager->newDNSXact(dnsLayer, dir, xact.second);
         }
     } else {
-        dnsQueryPairManager.startDnsTransaction(flowKey, dnsLayer->getDnsHeader()->transactionID);
+        dnsQueryPairManager.startDnsTransaction(flowKey, dnsLayer->getDnsHeader()->transactionID, stamp);
     }
 };
 
 // called only for TCP, both IPv4 and 6
-static void onGotTcpDnsMessage(pcpp::DnsLayer *dnsLayer, pktvisor::Direction dir, pcpp::ProtocolType l3, uint32_t flowKey)
+static void onGotTcpDnsMessage(pcpp::DnsLayer *dnsLayer, pktvisor::Direction dir, pcpp::ProtocolType l3, uint32_t flowKey, timeval stamp)
 {
-    onGotDnsMessage(dnsLayer, dir, l3, pcpp::TCP, flowKey);
+    onGotDnsMessage(dnsLayer, dir, l3, pcpp::TCP, flowKey, stamp);
 }
 
 /**
@@ -130,7 +129,7 @@ static void processRawPacket(pcpp::RawPacket *rawPacket, pktvisor::TcpDnsReassem
             // a UDP packet which wasn't DNS
             return;
         }
-        onGotDnsMessage(dnsLayer, dir, l3, l4, pcpp::hash5Tuple(&packet));
+        onGotDnsMessage(dnsLayer, dir, l3, l4, pcpp::hash5Tuple(&packet), rawPacket->getPacketTimeStamp());
     } else if (packet.isPacketOfType(pcpp::TCP)) {
         // get a pointer to the TCP reassembly instance and feed the packet arrived to it
         // we don't know yet if it's DNS, the reassembly manager figures that out

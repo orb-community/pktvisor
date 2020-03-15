@@ -125,8 +125,8 @@ struct Sketches {
     const uint8_t MIN_FI_MAP_SIZE = 7;  // 2^7 = 128
     const uint8_t MAX_FI_MAP_SIZE = 13; // 2^13 = 8192
 
-    datasketches::kll_sketch<double> _dnsXactFromTimeMs;
-    datasketches::kll_sketch<double> _dnsXactToTimeMs;
+    datasketches::kll_sketch<uint64_t> _dnsXactFromTimeUs;
+    datasketches::kll_sketch<uint64_t> _dnsXactToTimeUs;
 
     datasketches::cpc_sketch _net_srcIPCard;
     datasketches::cpc_sketch _net_dstIPCard;
@@ -147,8 +147,8 @@ struct Sketches {
     datasketches::frequent_items_sketch<std::string> _net_topGeoLoc;
     datasketches::frequent_items_sketch<std::string> _net_topASN;
     Sketches()
-        : _dnsXactFromTimeMs()
-        , _dnsXactToTimeMs()
+        : _dnsXactFromTimeUs()
+        , _dnsXactToTimeUs()
         , _net_srcIPCard()
         , _net_dstIPCard()
         , _dns_qnameCard()
@@ -232,7 +232,7 @@ public:
 
     void newPacket(MetricsMgr &mmgr, const pcpp::Packet &packet, pcpp::ProtocolType l3, pcpp::ProtocolType l4, Direction dir);
     void newDNSPacket(pcpp::DnsLayer *dns, Direction dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4);
-    void newDNSXact(pcpp::DnsLayer *dns, Direction dir, hr_clock::duration xact_dur);
+    void newDNSXact(pcpp::DnsLayer *dns, Direction dir, DnsTransaction xact);
 };
 
 class MetricsMgr
@@ -320,7 +320,7 @@ public:
 
     void newPacket(const pcpp::Packet &packet, QueryResponsePairMgr &pairMgr, pcpp::ProtocolType l4, Direction dir, pcpp::ProtocolType l3);
     void newDNSPacket(pcpp::DnsLayer *dns, Direction dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4);
-    void newDNSXact(pcpp::DnsLayer *dns, Direction dir, hr_clock::duration xact_dur);
+    void newDNSXact(pcpp::DnsLayer *dns, Direction dir, DnsTransaction xact);
 
     std::string getAppMetrics();
     std::string getInstantRates();

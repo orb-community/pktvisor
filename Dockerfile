@@ -23,9 +23,7 @@ RUN \
     mkdir /tmp/build && \
     cd /tmp/build && \
     PKG_CONFIG_PATH=/local/lib/pkgconfig cmake -DMMDB_ENABLE=true -DCMAKE_BUILD_TYPE=RelWithDebInfo /src && \
-    make all tests && \
-    cd /src/tests && \
-    /tmp/build/tests
+    make all test
 
 RUN \
     cd /tmp/build && \

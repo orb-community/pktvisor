@@ -6,6 +6,7 @@
 #include <datasketches/datasketches/cpc/cpc_union.hpp>
 #include <sstream>
 
+#include <math.h>
 #include <arpa/inet.h>
 
 #include "dns.h"
@@ -56,8 +57,8 @@ void Metrics::merge(Metrics &other)
     _rateSketches.net_rateIn.merge(other._rateSketches.net_rateIn);
     _rateSketches.net_rateOut.merge(other._rateSketches.net_rateOut);
 
-    _sketches->_dnsXactFromTimeMs.merge(other._sketches->_dnsXactFromTimeMs);
-    _sketches->_dnsXactToTimeMs.merge(other._sketches->_dnsXactToTimeMs);
+    _sketches->_dnsXactFromTimeUs.merge(other._sketches->_dnsXactFromTimeUs);
+    _sketches->_dnsXactToTimeUs.merge(other._sketches->_dnsXactToTimeUs);
 
     datasketches::cpc_union merge_srcIPCard;
     merge_srcIPCard.update(_sketches->_net_srcIPCard);
@@ -158,13 +159,13 @@ void Metrics::newDNSPacket(pcpp::DnsLayer *dns, Direction dir, pcpp::ProtocolTyp
     }
 }
 
-void Metrics::newDNSXact(pcpp::DnsLayer *dns, Direction dir, hr_clock::duration xact_dur)
+void Metrics::newDNSXact(pcpp::DnsLayer *dns, Direction dir, DnsTransaction xact)
 {
     // lock for write
     std::unique_lock lock(_sketchMutex);
 
     _DNS_xacts_total++;
-    double xactTime = (double)std::chrono::duration_cast<std::chrono::microseconds>(xact_dur).count() / 1000.0; // milliseconds
+    uint64_t xactTime = (xact.totalTS.tv_sec * 1000000) + xact.totalTS.tv_usec; // microseconds
     // dir is the direction of the last packet, meaning the reply so from a transaction perspective
     // we look at it from the direction of the query, so the opposite side than we have here
     float to90th = 0.0;
@@ -172,17 +173,17 @@ void Metrics::newDNSXact(pcpp::DnsLayer *dns, Direction dir, hr_clock::duration 
     uint64_t sample_threshold = 10;
     if (dir == toHost) {
         _DNS_xacts_out++;
-        _sketches->_dnsXactFromTimeMs.update(xactTime);
+        _sketches->_dnsXactFromTimeUs.update(xactTime);
         // wait for N samples
-        if (_sketches->_dnsXactFromTimeMs.get_n() > sample_threshold) {
-            from90th = _sketches->_dnsXactFromTimeMs.get_quantile(0.90);
+        if (_sketches->_dnsXactFromTimeUs.get_n() > sample_threshold) {
+            from90th = _sketches->_dnsXactFromTimeUs.get_quantile(0.90);
         }
     } else if (dir == fromHost) {
         _DNS_xacts_in++;
-        _sketches->_dnsXactToTimeMs.update(xactTime);
+        _sketches->_dnsXactToTimeUs.update(xactTime);
         // wait for N samples
-        if (_sketches->_dnsXactToTimeMs.get_n() > sample_threshold) {
-            to90th = _sketches->_dnsXactToTimeMs.get_quantile(0.90);
+        if (_sketches->_dnsXactToTimeUs.get_n() > sample_threshold) {
+            to90th = _sketches->_dnsXactToTimeUs.get_quantile(0.90);
         }
     }
 
@@ -198,9 +199,9 @@ void Metrics::newDNSXact(pcpp::DnsLayer *dns, Direction dir, hr_clock::duration 
     }
 }
 
-void MetricsMgr::newDNSXact(pcpp::DnsLayer *dns, Direction dir, hr_clock::duration xact_dur)
+void MetricsMgr::newDNSXact(pcpp::DnsLayer *dns, Direction dir, DnsTransaction xact)
 {
-    _metrics.back()->newDNSXact(dns, dir, xact_dur);
+    _metrics.back()->newDNSXact(dns, dir, xact);
 }
 
 void MetricsMgr::newDNSPacket(pcpp::DnsLayer *dns, Direction dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4)
@@ -356,8 +357,8 @@ void MetricsMgr::newPacket(const pcpp::Packet &packet, QueryResponsePairMgr &pai
         auto pkt_ts = packet.getRawPacketReadOnly()->getPacketTimeStamp();
         if (pkt_ts.tv_sec - _lastShiftTS.tv_sec > MetricsMgr::PERIOD_SEC) {
             _periodShift();
-            _lastShiftTS.tv_sec = packet.getRawPacketReadOnly()->getPacketTimeStamp().tv_sec;
-            pairMgr.purgeOldTransactions();
+            _lastShiftTS.tv_sec = pkt_ts.tv_sec;
+            pairMgr.purgeOldTransactions(pkt_ts);
             _openDnsTransactionCount = pairMgr.getOpenTransactionCount();
         }
         switch (dir) {
@@ -389,8 +390,8 @@ void Metrics::toJSON(nlohmann::json &j, const std::string &key)
     j[key]["packets"]["in"] = _numPackets_in.load();
     j[key]["packets"]["out"] = _numPackets_out.load();
 
-    j[key]["packets"]["cardinality"]["src_ips_in"] = _sketches->_net_srcIPCard.get_estimate();
-    j[key]["packets"]["cardinality"]["dst_ips_out"] = _sketches->_net_dstIPCard.get_estimate();
+    j[key]["packets"]["cardinality"]["src_ips_in"] = lround(_sketches->_net_srcIPCard.get_estimate());
+    j[key]["packets"]["cardinality"]["dst_ips_out"] = lround(_sketches->_net_dstIPCard.get_estimate());
 
     const double fractions[4]{0.50, 0.90, 0.95, 0.99};
     auto quantiles = _rateSketches.net_rateIn.get_quantiles(fractions, 4);
@@ -420,7 +421,7 @@ void Metrics::toJSON(nlohmann::json &j, const std::string &key)
     j[key]["dns"]["wire_packets"]["srvfail"] = _DNS_SRVFAIL.load();
     j[key]["dns"]["wire_packets"]["noerror"] = _DNS_NOERROR.load();
 
-    j[key]["dns"]["cardinality"]["qname"] = _sketches->_dns_qnameCard.get_estimate();
+    j[key]["dns"]["cardinality"]["qname"] = lround(_sketches->_dns_qnameCard.get_estimate());
 
     {
         j[key]["packets"]["top_ipv4"] = nlohmann::json::array();
@@ -481,20 +482,20 @@ void Metrics::toJSON(nlohmann::json &j, const std::string &key)
         }
     }
 
-    auto d_quantiles = _sketches->_dnsXactFromTimeMs.get_quantiles(fractions, 4);
+    auto d_quantiles = _sketches->_dnsXactFromTimeUs.get_quantiles(fractions, 4);
     if (d_quantiles.size()) {
-        j[key]["dns"]["xact"]["out"]["quantiles_ms"]["p50"] = d_quantiles[0];
-        j[key]["dns"]["xact"]["out"]["quantiles_ms"]["p90"] = d_quantiles[1];
-        j[key]["dns"]["xact"]["out"]["quantiles_ms"]["p95"] = d_quantiles[2];
-        j[key]["dns"]["xact"]["out"]["quantiles_ms"]["p99"] = d_quantiles[3];
+        j[key]["dns"]["xact"]["out"]["quantiles_us"]["p50"] = d_quantiles[0];
+        j[key]["dns"]["xact"]["out"]["quantiles_us"]["p90"] = d_quantiles[1];
+        j[key]["dns"]["xact"]["out"]["quantiles_us"]["p95"] = d_quantiles[2];
+        j[key]["dns"]["xact"]["out"]["quantiles_us"]["p99"] = d_quantiles[3];
     }
 
-    d_quantiles = _sketches->_dnsXactToTimeMs.get_quantiles(fractions, 4);
+    d_quantiles = _sketches->_dnsXactToTimeUs.get_quantiles(fractions, 4);
     if (d_quantiles.size()) {
-        j[key]["dns"]["xact"]["in"]["quantiles_ms"]["p50"] = d_quantiles[0];
-        j[key]["dns"]["xact"]["in"]["quantiles_ms"]["p90"] = d_quantiles[1];
-        j[key]["dns"]["xact"]["in"]["quantiles_ms"]["p95"] = d_quantiles[2];
-        j[key]["dns"]["xact"]["in"]["quantiles_ms"]["p99"] = d_quantiles[3];
+        j[key]["dns"]["xact"]["in"]["quantiles_us"]["p50"] = d_quantiles[0];
+        j[key]["dns"]["xact"]["in"]["quantiles_us"]["p90"] = d_quantiles[1];
+        j[key]["dns"]["xact"]["in"]["quantiles_us"]["p95"] = d_quantiles[2];
+        j[key]["dns"]["xact"]["in"]["quantiles_us"]["p99"] = d_quantiles[3];
     }
 
     {
