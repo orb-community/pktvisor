@@ -9,13 +9,14 @@
 #include <math.h>
 #include <arpa/inet.h>
 
+#include "rng/randutils.hpp"
 #include "dns.h"
 #include "metrics.h"
 #include "utils.h"
 
 namespace pktvisor {
 
-Metrics::Metrics()
+Metrics::Metrics(MetricsMgr& mmgr) : _mmgr(mmgr)
 {
     gettimeofday(&_bucketTS, nullptr);
 
@@ -104,13 +105,9 @@ void Metrics::newDNSPacket(pcpp::DnsLayer *dns, Direction dir, pcpp::ProtocolTyp
         _DNS_TCP++;
     }
 
-    // lock for write
-    std::unique_lock lock(_sketchMutex);
-
     // only count response codes on responses (not queries)
     if (dns->getDnsHeader()->queryOrResponse == response) {
         _DNS_replies++;
-        _sketches->_dns_topRCode.update(dns->getDnsHeader()->responseCode);
         switch (dns->getDnsHeader()->responseCode) {
         case 0:
             _DNS_NOERROR++;
@@ -127,6 +124,19 @@ void Metrics::newDNSPacket(pcpp::DnsLayer *dns, Direction dir, pcpp::ProtocolTyp
         }
     } else {
         _DNS_queries++;
+    }
+
+    // sampler
+    randutils::default_rng rng;
+    if (rng.uniform(0.0, 1.0) > _mmgr.getSampleRate()) {
+        return;
+    }
+
+    // lock for write
+    std::unique_lock lock(_sketchMutex);
+
+    if (dns->getDnsHeader()->queryOrResponse == response) {
+        _sketches->_dns_topRCode.update(dns->getDnsHeader()->responseCode);
     }
 
     auto query = dns->getFirstQuery();
@@ -161,42 +171,58 @@ void Metrics::newDNSPacket(pcpp::DnsLayer *dns, Direction dir, pcpp::ProtocolTyp
 
 void Metrics::newDNSXact(pcpp::DnsLayer *dns, Direction dir, DnsTransaction xact)
 {
-    // lock for write
-    std::unique_lock lock(_sketchMutex);
+
+    // sampler
+    randutils::default_rng rng;
+    bool chosen = (rng.uniform(0.0, 1.0) > _mmgr.getSampleRate());
 
     _DNS_xacts_total++;
+
     uint64_t xactTime = (xact.totalTS.tv_sec * 1000000) + xact.totalTS.tv_usec; // microseconds
     // dir is the direction of the last packet, meaning the reply so from a transaction perspective
     // we look at it from the direction of the query, so the opposite side than we have here
     float to90th = 0.0;
     float from90th = 0.0;
     uint64_t sample_threshold = 10;
+
+    if (chosen) {
+        // lock for write
+        std::unique_lock lock(_sketchMutex);
+    }
+
     if (dir == toHost) {
         _DNS_xacts_out++;
-        _sketches->_dnsXactFromTimeUs.update(xactTime);
-        // wait for N samples
-        if (_sketches->_dnsXactFromTimeUs.get_n() > sample_threshold) {
-            from90th = _sketches->_dnsXactFromTimeUs.get_quantile(0.90);
+        if (chosen) {
+            _sketches->_dnsXactFromTimeUs.update(xactTime);
+            // wait for N samples
+            if (_sketches->_dnsXactFromTimeUs.get_n() > sample_threshold) {
+                from90th = _sketches->_dnsXactFromTimeUs.get_quantile(0.90);
+            }
         }
     } else if (dir == fromHost) {
         _DNS_xacts_in++;
-        _sketches->_dnsXactToTimeUs.update(xactTime);
-        // wait for N samples
-        if (_sketches->_dnsXactToTimeUs.get_n() > sample_threshold) {
-            to90th = _sketches->_dnsXactToTimeUs.get_quantile(0.90);
+        if (chosen) {
+            _sketches->_dnsXactToTimeUs.update(xactTime);
+            // wait for N samples
+            if (_sketches->_dnsXactToTimeUs.get_n() > sample_threshold) {
+                to90th = _sketches->_dnsXactToTimeUs.get_quantile(0.90);
+            }
         }
     }
 
-    auto query = dns->getFirstQuery();
-    if (query) {
-        auto name = query->getName();
-        // see comment in MetricsMgr::newDNSxact on direction and why "toHost" is used with "from"
-        if (dir == toHost && from90th > 0 && xactTime >= from90th) {
-            _sketches->_dns_slowXactOut.update(name);
-        } else if (dir == fromHost && to90th > 0 && xactTime >= to90th) {
-            _sketches->_dns_slowXactIn.update(name);
+    if (chosen) {
+        auto query = dns->getFirstQuery();
+        if (query) {
+            auto name = query->getName();
+            // see comment in MetricsMgr::newDNSxact on direction and why "toHost" is used with "from"
+            if (dir == toHost && from90th > 0 && xactTime >= from90th) {
+                _sketches->_dns_slowXactOut.update(name);
+            } else if (dir == fromHost && to90th > 0 && xactTime >= to90th) {
+                _sketches->_dns_slowXactIn.update(name);
+            }
         }
     }
+
 }
 
 void MetricsMgr::newDNSXact(pcpp::DnsLayer *dns, Direction dir, DnsTransaction xact)
@@ -209,7 +235,7 @@ void MetricsMgr::newDNSPacket(pcpp::DnsLayer *dns, Direction dir, pcpp::Protocol
     _metrics.back()->newDNSPacket(dns, dir, l3, l4);
 }
 
-void Metrics::newPacket(MetricsMgr &mmgr, const pcpp::Packet &packet, pcpp::ProtocolType l3, pcpp::ProtocolType l4, Direction dir)
+void Metrics::newPacket(const pcpp::Packet &packet, pcpp::ProtocolType l3, pcpp::ProtocolType l4, Direction dir)
 {
 
     _numPackets++;
@@ -244,12 +270,18 @@ void Metrics::newPacket(MetricsMgr &mmgr, const pcpp::Packet &packet, pcpp::Prot
         break;
     }
 
+    // sampler
+    randutils::default_rng rng;
+    if (rng.uniform(0.0, 1.0) > _mmgr.getSampleRate()) {
+        return;
+    }
+
     // lock for write
     std::unique_lock lock(_sketchMutex);
 
 #ifdef MMDB_ENABLE
-    const GeoDB* geoCityDB = mmgr.getGeoCityDB();
-    const GeoDB* geoASNDB = mmgr.getGeoASNDB();
+    const GeoDB* geoCityDB = _mmgr.getGeoCityDB();
+    const GeoDB* geoASNDB = _mmgr.getGeoASNDB();
 #endif
 
     auto IP4layer = packet.getLayerOfType<pcpp::IPv4Layer>();
@@ -334,7 +366,7 @@ void MetricsMgr::_periodShift()
     _instantRates->resetQuantiles();
 
     // add new bucket
-    _metrics.emplace_back(std::make_unique<Metrics>());
+    _metrics.emplace_back(std::make_unique<Metrics>(*this));
     if (_metrics.size() > _numPeriods) {
         // if we're at our period history length, pop the oldest
         _metrics.pop_front();
@@ -372,7 +404,7 @@ void MetricsMgr::newPacket(const pcpp::Packet &packet, QueryResponsePairMgr &pai
             break;
         }
     }
-    _metrics.back()->newPacket(*this, packet, l3, l4, dir);
+    _metrics.back()->newPacket(packet, l3, l4, dir);
 }
 
 void Metrics::toJSON(nlohmann::json &j, const std::string &key)
@@ -588,6 +620,7 @@ std::string MetricsMgr::getAppMetrics()
 {
     nlohmann::json j;
     j["app"]["version"] = PKTVISOR_VERSION_NUM;
+    j["app"]["sample_rate"] = _sampleRate;
     j["app"]["periods"] = _numPeriods;
     j["app"]["single_summary"] = _singleSummaryMode;
     j["app"]["up_time_min"] = float(std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now() - _startTime).count()) / 60;
@@ -660,7 +693,7 @@ std::string MetricsMgr::getMetricsMerged(uint64_t period)
     }
 
     auto period_length = 0;
-    Metrics merged;
+    Metrics merged(*this);
 
     auto p = period;
     for (auto &m : _metrics) {

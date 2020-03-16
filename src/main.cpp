@@ -25,7 +25,9 @@
 static const char USAGE[] =
     R"(pktvisord.
     Usage:
-      pktvisord [-b BPF] [-p PORT] [-H HOSTSPEC] [--periods P] [--summary] [--geo-city FILE] [--geo-asn FILE] TARGET
+      pktvisord [-b BPF] [-p PORT] [-H HOSTSPEC] [--periods P] [--summary] [--geo-city FILE] [--geo-asn FILE]
+                [--sample N]
+                TARGET
       pktvisord (-h | --help)
       pktvisord --version
 
@@ -38,6 +40,7 @@ static const char USAGE[] =
       -b BPF           Filter packets using the given BPF string
       --geo-city FILE  GeoLite2 City database to use for IP to Geo mapping (if enabled)
       --geo-asn FILE   GeoLite2 ASN database to use for IP to ASN mapping (if enabled)
+      --sample N       Set top level sample rate to N% (an int between 0 and 100) [default: 100]
       --periods P      Hold this many 60 second time periods of history in memory [default: 5]
       --summary        Instead of a time window with P periods, summarize all packets into one bucket for entire time period.
                        Useful for executive summary of (and applicable only to) a pcap file. [default: false]
@@ -388,11 +391,18 @@ int main(int argc, char *argv[])
 
     pktvisor::TcpDnsReassembly tcpDnsReassembly(onGotTcpDnsMessage);
     int result = 0;
+    float sampleRate = 1.0;
+    if (args["--sample"]) {
+        sampleRate = (float)args["--sample"].asLong()/100;
+        if (sampleRate != 1.0) {
+            std::cout << "sample rate: " << sampleRate << std::endl;
+        }
+    }
 
     if ((args["TARGET"].asString().rfind(".pcap") != std::string::npos) || (args["TARGET"].asString().rfind(".cap") != std::string::npos)) {
         showHosts();
         try {
-            metricsManager = std::make_unique<pktvisor::MetricsMgr>(args["--summary"].asBool());
+            metricsManager = std::make_unique<pktvisor::MetricsMgr>(args["--summary"].asBool(), 5, sampleRate);
             handleGeo(args["--geo-city"], args["--geo-asn"]);
             openPcap(args["TARGET"].asString(), tcpDnsReassembly, bpf);
             if (args["--summary"].asBool()) {
@@ -408,7 +418,7 @@ int main(int argc, char *argv[])
             return -1;
         }
     } else {
-        metricsManager = std::make_unique<pktvisor::MetricsMgr>(false, periods);
+        metricsManager = std::make_unique<pktvisor::MetricsMgr>(false, periods, sampleRate);
         handleGeo(args["--geo-city"], args["--geo-asn"]);
         pcpp::PcapLiveDevice *dev(nullptr);
         // extract pcap live device by interface name or IP address
