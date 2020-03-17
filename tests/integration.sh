@@ -9,7 +9,9 @@ JSONTPT=$2
 shift; shift; shift;
 
 tmpfile=$(mktemp /tmp/pktvisor-ftest.XXXXXX)
-`$PKTVISORD "$@" > $tmpfile`
+CMD="$PKTVISORD $@"
+echo "--- running: cd $PWD; $CMD; cd -"
+`$CMD > $tmpfile`
 status=$?
 if [[ $status -eq 0 ]]
 then

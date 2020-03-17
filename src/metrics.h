@@ -190,6 +190,8 @@ class Metrics
     // always the first second of the bucket, i.e. this bucket contains from this timestamp to timestamp + MetricsMgr::PERIOD_SEC
     timeval _bucketTS;
 
+    std::atomic_uint64_t _numSamples = 0;
+
     std::atomic_uint64_t _numPackets = 0;
     std::atomic_uint64_t _numPackets_UDP = 0;
     std::atomic_uint64_t _numPackets_TCP = 0;
@@ -249,7 +251,8 @@ class MetricsMgr
     // instantaneous rate metrics
     std::shared_ptr<InstantRateMetrics> _instantRates;
 
-    float _sampleRate;
+    int _sampleRate;
+    bool _shouldSample;
 
     void _periodShift();
 
@@ -261,7 +264,7 @@ class MetricsMgr
 public:
     static const uint PERIOD_SEC = 60;
 
-    MetricsMgr(bool singleSummaryMode, uint periods, float sampleRate)
+    MetricsMgr(bool singleSummaryMode, uint periods, int sampleRate)
         : _metrics()
         , _numPeriods(periods)
         , _lastShiftTS()
@@ -270,12 +273,13 @@ public:
         , _startTime()
         , _instantRates()
         , _sampleRate(sampleRate)
+        , _shouldSample(true)
     {
         if (singleSummaryMode) {
             _numPeriods = 1;
         }
-        if (sampleRate > 1) { sampleRate = 1; }
-        if (sampleRate < 0) { sampleRate = 0.01; }
+        if (_sampleRate > 100) { _sampleRate = 100; }
+        if (_sampleRate < 0) { _sampleRate = 1; }
         _instantRates = std::make_shared<InstantRateMetrics>();
         _numPeriods = std::min(_numPeriods, 10U);
         _numPeriods = std::max(_numPeriods, 2U);
@@ -285,7 +289,7 @@ public:
         _startTime = std::chrono::system_clock::now();
     }
 
-    float getSampleRate() { return _sampleRate; }
+    bool shouldSample() { return _shouldSample; }
 
     void setInitialShiftTS();
     void setInitialShiftTS(const pcpp::Packet &packet);

@@ -29,6 +29,8 @@ Metrics::Metrics(MetricsMgr& mmgr) : _mmgr(mmgr)
 void Metrics::merge(Metrics &other)
 {
 
+    _numSamples += other._numSamples;
+
     _numPackets += other._numPackets;
     _numPackets_UDP += other._numPackets_UDP;
     _numPackets_TCP += other._numPackets_TCP;
@@ -127,8 +129,7 @@ void Metrics::newDNSPacket(pcpp::DnsLayer *dns, Direction dir, pcpp::ProtocolTyp
     }
 
     // sampler
-    randutils::default_rng rng;
-    if (rng.uniform(0.0, 1.0) > _mmgr.getSampleRate()) {
+    if (!_mmgr.shouldSample()) {
         return;
     }
 
@@ -173,8 +174,7 @@ void Metrics::newDNSXact(pcpp::DnsLayer *dns, Direction dir, DnsTransaction xact
 {
 
     // sampler
-    randutils::default_rng rng;
-    bool chosen = (rng.uniform(0.0, 1.0) > _mmgr.getSampleRate());
+    bool chosen = _mmgr.shouldSample();
 
     _DNS_xacts_total++;
 
@@ -239,6 +239,9 @@ void Metrics::newPacket(const pcpp::Packet &packet, pcpp::ProtocolType l3, pcpp:
 {
 
     _numPackets++;
+    if (_mmgr.shouldSample()) {
+        _numSamples++;
+    }
 
     switch (dir) {
     case fromHost:
@@ -271,8 +274,7 @@ void Metrics::newPacket(const pcpp::Packet &packet, pcpp::ProtocolType l3, pcpp:
     }
 
     // sampler
-    randutils::default_rng rng;
-    if (rng.uniform(0.0, 1.0) > _mmgr.getSampleRate()) {
+    if (!_mmgr.shouldSample()) {
         return;
     }
 
@@ -384,6 +386,12 @@ void MetricsMgr::setInitialShiftTS(const pcpp::Packet &packet) {
 
 void MetricsMgr::newPacket(const pcpp::Packet &packet, QueryResponsePairMgr &pairMgr, pcpp::ProtocolType l4, Direction dir, pcpp::ProtocolType l3)
 {
+    // at each new packet, we determine if we are sampling, to limit collection of more detailed (expensive) statistics
+    _shouldSample = true;
+    if (_sampleRate != 100) {
+        randutils::default_rng rng;
+        _shouldSample = (rng.uniform(0, 100) >= _sampleRate);
+    }
     if (!_singleSummaryMode) {
         // use packet timestamps to track when PERIOD_SEC passes so we don't have to hit system clock
         auto pkt_ts = packet.getRawPacketReadOnly()->getPacketTimeStamp();
@@ -413,6 +421,8 @@ void Metrics::toJSON(nlohmann::json &j, const std::string &key)
     // lock for read
     std::shared_lock lock_sketch(_sketchMutex);
     std::shared_lock lock_rate(_rateSketchMutex);
+
+    j[key]["packets"]["samples"] = _numSamples.load();
 
     j[key]["packets"]["total"] = _numPackets.load();
     j[key]["packets"]["udp"] = _numPackets_UDP.load();

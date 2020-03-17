@@ -84,7 +84,7 @@ static void onGotTcpDnsMessage(pcpp::DnsLayer *dnsLayer, pktvisor::Direction dir
  */
 static void onApplicationInterrupted(void *cookie)
 {
-    std::cout << "stopping..." << std::endl;
+    std::cerr << "stopping..." << std::endl;
     devCookie *dC = (devCookie *)cookie;
     dC->second = true;
 }
@@ -212,7 +212,7 @@ void openIface(pcpp::PcapLiveDevice *dev, pktvisor::TcpDnsReassembly &tcpReassem
     if (bpfFilter != "") {
         if (!dev->setFilter(bpfFilter))
             throw std::runtime_error("Cannot set BPF filter to interface");
-        std::cout << "BPF: " << bpfFilter << std::endl;
+        std::cerr << "BPF: " << bpfFilter << std::endl;
     }
 
     printf("Starting packet capture on '%s'...\n", dev->getName());
@@ -391,11 +391,11 @@ int main(int argc, char *argv[])
 
     pktvisor::TcpDnsReassembly tcpDnsReassembly(onGotTcpDnsMessage);
     int result = 0;
-    float sampleRate = 1.0;
+    int sampleRate = 100;
     if (args["--sample"]) {
-        sampleRate = (float)args["--sample"].asLong()/100;
-        if (sampleRate != 1.0) {
-            std::cout << "sample rate: " << sampleRate << std::endl;
+        sampleRate = (int)args["--sample"].asLong();
+        if (sampleRate != 100) {
+            std::cerr << "Using sample rate: " << sampleRate << "%" << std::endl;
         }
     }
 
@@ -448,7 +448,7 @@ int main(int argc, char *argv[])
             svr.listen("localhost", port);
         });
         try {
-            std::cout << "Interface " << dev->getName() << std::endl;
+            std::cerr << "Interface " << dev->getName() << std::endl;
             getHostsFromIface(dev);
             showHosts();
             openIface(dev, tcpDnsReassembly, bpf);
