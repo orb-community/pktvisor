@@ -390,7 +390,7 @@ void MetricsMgr::newPacket(const pcpp::Packet &packet, QueryResponsePairMgr &pai
     _shouldSample = true;
     if (_sampleRate != 100) {
         randutils::default_rng rng;
-        _shouldSample = (rng.uniform(0, 100) >= _sampleRate);
+        _shouldSample = (rng.uniform(0, 100) <= _sampleRate);
     }
     if (!_singleSummaryMode) {
         // use packet timestamps to track when PERIOD_SEC passes so we don't have to hit system clock
