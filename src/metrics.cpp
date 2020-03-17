@@ -9,7 +9,6 @@
 #include <math.h>
 #include <arpa/inet.h>
 
-#include "rng/randutils.hpp"
 #include "dns.h"
 #include "metrics.h"
 #include "utils.h"
@@ -389,8 +388,7 @@ void MetricsMgr::newPacket(const pcpp::Packet &packet, QueryResponsePairMgr &pai
     // at each new packet, we determine if we are sampling, to limit collection of more detailed (expensive) statistics
     _shouldSample = true;
     if (_sampleRate != 100) {
-        randutils::default_rng rng;
-        _shouldSample = (rng.uniform(0, 100) <= _sampleRate);
+        _shouldSample = (_rng.uniform(0, 100) <= _sampleRate);
     }
     if (!_singleSummaryMode) {
         // use packet timestamps to track when PERIOD_SEC passes so we don't have to hit system clock

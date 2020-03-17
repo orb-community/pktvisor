@@ -6,6 +6,7 @@
 #include <datasketches/cpc/cpc_sketch.hpp>
 #include <datasketches/fi/frequent_items_sketch.hpp>
 #include <datasketches/kll/kll_sketch.hpp>
+#include <rng/randutils.hpp>
 #include <json/json.hpp>
 #include "config.h"
 
@@ -251,6 +252,7 @@ class MetricsMgr
     // instantaneous rate metrics
     std::shared_ptr<InstantRateMetrics> _instantRates;
 
+    randutils::default_rng _rng;
     int _sampleRate;
     bool _shouldSample;
 
