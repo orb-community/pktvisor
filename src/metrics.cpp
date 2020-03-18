@@ -128,7 +128,7 @@ void Metrics::newDNSPacket(pcpp::DnsLayer *dns, Direction dir, pcpp::ProtocolTyp
     }
 
     // sampler
-    if (!_mmgr.shouldSample()) {
+    if (!_mmgr.shouldDeepSample()) {
         return;
     }
 
@@ -173,7 +173,7 @@ void Metrics::newDNSXact(pcpp::DnsLayer *dns, Direction dir, DnsTransaction xact
 {
 
     // sampler
-    bool chosen = _mmgr.shouldSample();
+    bool chosen = _mmgr.shouldDeepSample();
 
     _DNS_xacts_total++;
 
@@ -238,7 +238,7 @@ void Metrics::newPacket(const pcpp::Packet &packet, pcpp::ProtocolType l3, pcpp:
 {
 
     _numPackets++;
-    if (_mmgr.shouldSample()) {
+    if (_mmgr.shouldDeepSample()) {
         _numSamples++;
     }
 
@@ -273,7 +273,7 @@ void Metrics::newPacket(const pcpp::Packet &packet, pcpp::ProtocolType l3, pcpp:
     }
 
     // sampler
-    if (!_mmgr.shouldSample()) {
+    if (!_mmgr.shouldDeepSample()) {
         return;
     }
 
@@ -386,9 +386,9 @@ void MetricsMgr::setInitialShiftTS(const pcpp::Packet &packet) {
 void MetricsMgr::newPacket(const pcpp::Packet &packet, QueryResponsePairMgr &pairMgr, pcpp::ProtocolType l4, Direction dir, pcpp::ProtocolType l3)
 {
     // at each new packet, we determine if we are sampling, to limit collection of more detailed (expensive) statistics
-    _shouldSample = true;
-    if (_sampleRate != 100) {
-        _shouldSample = (_rng.uniform(0, 100) <= _sampleRate);
+    _shouldDeepSample = true;
+    if (_deepSampleRate != 100) {
+        _shouldDeepSample = (_rng.uniform(0, 100) <= _deepSampleRate);
     }
     if (!_singleSummaryMode) {
         // use packet timestamps to track when PERIOD_SEC passes so we don't have to hit system clock
@@ -628,7 +628,7 @@ std::string MetricsMgr::getAppMetrics()
 {
     nlohmann::json j;
     j["app"]["version"] = PKTVISOR_VERSION_NUM;
-    j["app"]["deep_sample_rate_pct"] = _sampleRate;
+    j["app"]["deep_sample_rate_pct"] = _deepSampleRate;
     j["app"]["periods"] = _numPeriods;
     j["app"]["single_summary"] = _singleSummaryMode;
     j["app"]["up_time_min"] = float(std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now() - _startTime).count()) / 60;

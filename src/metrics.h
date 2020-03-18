@@ -253,8 +253,8 @@ class MetricsMgr
     std::shared_ptr<InstantRateMetrics> _instantRates;
 
     randutils::default_rng _rng;
-    int _sampleRate;
-    bool _shouldSample;
+    int _deepSampleRate;
+    bool _shouldDeepSample;
 
     void _periodShift();
 
@@ -274,14 +274,16 @@ public:
         , _singleSummaryMode(singleSummaryMode)
         , _startTime()
         , _instantRates()
-        , _sampleRate(sampleRate)
-        , _shouldSample(true)
+        , _deepSampleRate(sampleRate)
+        , _shouldDeepSample(true)
     {
         if (singleSummaryMode) {
             _numPeriods = 1;
         }
-        if (_sampleRate > 100) { _sampleRate = 100; }
-        if (_sampleRate < 0) { _sampleRate = 1; }
+        if (_deepSampleRate > 100) {
+            _deepSampleRate = 100; }
+        if (_deepSampleRate < 0) {
+            _deepSampleRate = 1; }
         _instantRates = std::make_shared<InstantRateMetrics>();
         _numPeriods = std::min(_numPeriods, 10U);
         _numPeriods = std::max(_numPeriods, 2U);
@@ -291,7 +293,7 @@ public:
         _startTime = std::chrono::system_clock::now();
     }
 
-    bool shouldSample() { return _shouldSample; }
+    bool shouldDeepSample() { return _shouldDeepSample; }
 
     void setInitialShiftTS();
     void setInitialShiftTS(const pcpp::Packet &packet);
