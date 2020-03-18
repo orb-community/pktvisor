@@ -26,7 +26,7 @@ static const char USAGE[] =
     R"(pktvisord.
     Usage:
       pktvisord [-b BPF] [-p PORT] [-H HOSTSPEC] [--periods P] [--summary] [--geo-city FILE] [--geo-asn FILE]
-                [--sample N]
+                [--max-sample N]
                 TARGET
       pktvisord (-h | --help)
       pktvisord --version
@@ -40,7 +40,7 @@ static const char USAGE[] =
       -b BPF           Filter packets using the given BPF string
       --geo-city FILE  GeoLite2 City database to use for IP to Geo mapping (if enabled)
       --geo-asn FILE   GeoLite2 ASN database to use for IP to ASN mapping (if enabled)
-      --sample N       Set top level sample rate to N% (an int between 0 and 100) [default: 100]
+      --max-sample N   Never deep sample more than N% of packets (an int between 0 and 100) [default: 100]
       --periods P      Hold this many 60 second time periods of history in memory [default: 5]
       --summary        Instead of a time window with P periods, summarize all packets into one bucket for entire time period.
                        Useful for executive summary of (and applicable only to) a pcap file. [default: false]
@@ -392,10 +392,10 @@ int main(int argc, char *argv[])
     pktvisor::TcpDnsReassembly tcpDnsReassembly(onGotTcpDnsMessage);
     int result = 0;
     int sampleRate = 100;
-    if (args["--sample"]) {
-        sampleRate = (int)args["--sample"].asLong();
+    if (args["--max-sample"]) {
+        sampleRate = (int)args["--max-sample"].asLong();
         if (sampleRate != 100) {
-            std::cerr << "Using sample rate: " << sampleRate << "%" << std::endl;
+            std::cerr << "Using maximum deep sample rate: " << sampleRate << "%" << std::endl;
         }
     }
 
