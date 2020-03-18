@@ -6,6 +6,7 @@
 #include <datasketches/cpc/cpc_sketch.hpp>
 #include <datasketches/fi/frequent_items_sketch.hpp>
 #include <datasketches/kll/kll_sketch.hpp>
+#include <rng/randutils.hpp>
 #include <json/json.hpp>
 #include "config.h"
 
@@ -190,6 +191,8 @@ class Metrics
     // always the first second of the bucket, i.e. this bucket contains from this timestamp to timestamp + MetricsMgr::PERIOD_SEC
     timeval _bucketTS;
 
+    std::atomic_uint64_t _numSamples = 0;
+
     std::atomic_uint64_t _numPackets = 0;
     std::atomic_uint64_t _numPackets_UDP = 0;
     std::atomic_uint64_t _numPackets_TCP = 0;
@@ -217,8 +220,10 @@ class Metrics
     RateSketches _rateSketches;
     std::shared_mutex _rateSketchMutex;
 
+    MetricsMgr& _mmgr;
+
 public:
-    Metrics();
+    Metrics(MetricsMgr& mmgr);
 
     void merge(Metrics &other);
 
@@ -230,7 +235,7 @@ public:
     void assignRateSketches(const std::shared_ptr<InstantRateMetrics>);
     void toJSON(nlohmann::json &j, const std::string &key);
 
-    void newPacket(MetricsMgr &mmgr, const pcpp::Packet &packet, pcpp::ProtocolType l3, pcpp::ProtocolType l4, Direction dir);
+    void newPacket(const pcpp::Packet &packet, pcpp::ProtocolType l3, pcpp::ProtocolType l4, Direction dir);
     void newDNSPacket(pcpp::DnsLayer *dns, Direction dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4);
     void newDNSXact(pcpp::DnsLayer *dns, Direction dir, DnsTransaction xact);
 };
@@ -247,6 +252,10 @@ class MetricsMgr
     // instantaneous rate metrics
     std::shared_ptr<InstantRateMetrics> _instantRates;
 
+    randutils::default_rng _rng;
+    int _deepSampleRate;
+    bool _shouldDeepSample;
+
     void _periodShift();
 
 #ifdef MMDB_ENABLE
@@ -257,7 +266,7 @@ class MetricsMgr
 public:
     static const uint PERIOD_SEC = 60;
 
-    MetricsMgr(bool singleSummaryMode, uint periods = 5)
+    MetricsMgr(bool singleSummaryMode, uint periods, int deepSampleRate)
         : _metrics()
         , _numPeriods(periods)
         , _lastShiftTS()
@@ -265,18 +274,26 @@ public:
         , _singleSummaryMode(singleSummaryMode)
         , _startTime()
         , _instantRates()
+        , _deepSampleRate(deepSampleRate)
+        , _shouldDeepSample(true)
     {
         if (singleSummaryMode) {
             _numPeriods = 1;
         }
+        if (_deepSampleRate > 100) {
+            _deepSampleRate = 100; }
+        if (_deepSampleRate < 0) {
+            _deepSampleRate = 1; }
         _instantRates = std::make_shared<InstantRateMetrics>();
         _numPeriods = std::min(_numPeriods, 10U);
         _numPeriods = std::max(_numPeriods, 2U);
-        _metrics.emplace_back(std::make_unique<Metrics>());
+        _metrics.emplace_back(std::make_unique<Metrics>(*this));
         _lastShiftTS.tv_sec = 0;
         _lastShiftTS.tv_usec = 0;
         _startTime = std::chrono::system_clock::now();
     }
+
+    bool shouldDeepSample() { return _shouldDeepSample; }
 
     void setInitialShiftTS();
     void setInitialShiftTS(const pcpp::Packet &packet);
