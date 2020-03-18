@@ -266,7 +266,7 @@ class MetricsMgr
 public:
     static const uint PERIOD_SEC = 60;
 
-    MetricsMgr(bool singleSummaryMode, uint periods, int sampleRate)
+    MetricsMgr(bool singleSummaryMode, uint periods, int deepSampleRate)
         : _metrics()
         , _numPeriods(periods)
         , _lastShiftTS()
@@ -274,7 +274,7 @@ public:
         , _singleSummaryMode(singleSummaryMode)
         , _startTime()
         , _instantRates()
-        , _deepSampleRate(sampleRate)
+        , _deepSampleRate(deepSampleRate)
         , _shouldDeepSample(true)
     {
         if (singleSummaryMode) {
