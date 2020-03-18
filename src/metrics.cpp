@@ -420,7 +420,7 @@ void Metrics::toJSON(nlohmann::json &j, const std::string &key)
     std::shared_lock lock_sketch(_sketchMutex);
     std::shared_lock lock_rate(_rateSketchMutex);
 
-    j[key]["packets"]["samples"] = _numSamples.load();
+    j[key]["packets"]["deep_samples"] = _numSamples.load();
 
     j[key]["packets"]["total"] = _numPackets.load();
     j[key]["packets"]["udp"] = _numPackets_UDP.load();
@@ -628,7 +628,7 @@ std::string MetricsMgr::getAppMetrics()
 {
     nlohmann::json j;
     j["app"]["version"] = PKTVISOR_VERSION_NUM;
-    j["app"]["sample_rate"] = _sampleRate;
+    j["app"]["deep_sample_rate_pct"] = _sampleRate;
     j["app"]["periods"] = _numPeriods;
     j["app"]["single_summary"] = _singleSummaryMode;
     j["app"]["up_time_min"] = float(std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now() - _startTime).count()) / 60;
