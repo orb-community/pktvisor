@@ -1,6 +1,6 @@
 FROM ubuntu:disco AS build
 
-ENV BUILD_DEPS "g++ cmake make git libpcap-dev pkgconf golang ca-certificates libmaxminddb-dev"
+ENV BUILD_DEPS "g++ cmake make git libpcap-dev pkgconf golang ca-certificates libmaxminddb-dev jq"
 
 RUN \
     apt-get update && \

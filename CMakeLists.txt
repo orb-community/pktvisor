@@ -120,7 +120,7 @@ enable_testing()
 
 add_test(NAME pktvisor-units
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/tests
-        COMMAND ${CMAKE_BINARY_DIR}/tests
+        COMMAND ${CMAKE_BINARY_DIR}/unit-tests
         )
 
 add_test(NAME pktvisor-ftest-ipv4-udp
