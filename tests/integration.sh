@@ -23,7 +23,11 @@ else
 fi
 
 # XXX fix probablistic differences causing failures between runs or OSs
-exit 0
+# for now just ensure pktvisor ran
+if [[ `uname -s` == 'Linux']]
+then
+    exit 0
+fi
 
 result=`jq $JSONFILTER $tmpfile`
 rm $tmpfile
