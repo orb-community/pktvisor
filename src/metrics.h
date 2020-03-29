@@ -19,6 +19,7 @@
 #include <cstdint>
 #include <ctime>
 #include <deque>
+#include <unordered_map>
 #include <shared_mutex>
 #include <string>
 #include <atomic>
@@ -256,6 +257,8 @@ class MetricsMgr
     int _deepSampleRate;
     bool _shouldDeepSample;
 
+    std::unordered_map<uint, std::pair<std::chrono::high_resolution_clock::time_point, std::string>> _mergeResultCache;
+
     void _periodShift();
 
 #ifdef MMDB_ENABLE
@@ -265,6 +268,7 @@ class MetricsMgr
 
 public:
     static const uint PERIOD_SEC = 60;
+    static const uint MERGE_CACHE_TTL_MS = 1000;
 
     MetricsMgr(bool singleSummaryMode, uint periods, int deepSampleRate)
         : _metrics()

@@ -19,7 +19,7 @@ var (
 	done          = make(chan struct{})
 	statHost      = "localhost"
 	statPort      = 10853
-	refreshPeriod = 2 // seconds
+	refreshPeriod = 1 // seconds
 	currentView   = "main"
 )
 

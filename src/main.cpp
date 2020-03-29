@@ -9,9 +9,6 @@
 #include <UdpLayer.h>
 #include <IpUtils.h>
 
-// we keep http server thread count low because we don't need high concurrency
-// and we want to limit lock contention on data structures
-#define CPPHTTPLIB_THREAD_POOL_COUNT 3
 #include <cpp-httplib/httplib.h>
 #include <docopt/docopt.h>
 

@@ -700,6 +700,19 @@ std::string MetricsMgr::getMetricsMerged(uint64_t period)
         return j.dump();
     }
 
+    auto cached = _mergeResultCache.find(period);
+    if (cached != _mergeResultCache.end()) {
+        // cached results, make sure still valid
+        auto t_diff = std::chrono::high_resolution_clock::now() - cached->second.first;
+        if (std::chrono::duration_cast<std::chrono::milliseconds>(t_diff).count() < MERGE_CACHE_TTL_MS) {
+            return cached->second.second;
+        }
+        else {
+            // expire
+            _mergeResultCache.erase(period);
+        }
+    }
+
     auto period_length = 0;
     Metrics merged(*this);
 
@@ -728,7 +741,9 @@ std::string MetricsMgr::getMetricsMerged(uint64_t period)
 
     merged.toJSON(j, period_str);
 
-    return j.dump(-1, ' ', true, nlohmann::json::error_handler_t::replace);
+    auto result = j.dump(-1, ' ', true, nlohmann::json::error_handler_t::replace);
+    _mergeResultCache[period] = std::pair<std::chrono::high_resolution_clock::time_point, std::string>(std::chrono::high_resolution_clock::now(), result);
+    return result;
 }
 
 const uint MetricsMgr::PERIOD_SEC;
