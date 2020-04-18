@@ -124,7 +124,7 @@ struct Sketches {
     // this number also affects memory usage, by limiting the number of objects tracked
     // e.g. up to MAX_FI_MAP_SIZE strings (ints, etc) may be stored per sketch
     // note that the actual storage space for the strings is on the heap and not counted here, though.
-    const uint8_t MIN_FI_MAP_SIZE = 7;  // 2^7 = 128
+    const uint8_t START_FI_MAP_SIZE = 7;  // 2^7 = 128
     const uint8_t MAX_FI_MAP_SIZE = 13; // 2^13 = 8192
 
     datasketches::kll_sketch<uint64_t> _dnsXactFromTimeUs;
@@ -154,20 +154,20 @@ struct Sketches {
         , _net_srcIPCard()
         , _net_dstIPCard()
         , _dns_qnameCard()
-        , _dns_topQname2(MIN_FI_MAP_SIZE, MAX_FI_MAP_SIZE)
-        , _dns_topQname3(MIN_FI_MAP_SIZE, MAX_FI_MAP_SIZE)
-        , _dns_topNX(MIN_FI_MAP_SIZE, MAX_FI_MAP_SIZE)
-        , _dns_topREFUSED(MIN_FI_MAP_SIZE, MAX_FI_MAP_SIZE)
-        , _dns_topSRVFAIL(MIN_FI_MAP_SIZE, MAX_FI_MAP_SIZE)
-        , _dns_topUDPPort(MIN_FI_MAP_SIZE, MAX_FI_MAP_SIZE)
-        , _net_topIPv4(MIN_FI_MAP_SIZE, MAX_FI_MAP_SIZE)
-        , _net_topIPv6(MIN_FI_MAP_SIZE, MAX_FI_MAP_SIZE)
-        , _dns_topQType(MIN_FI_MAP_SIZE, MAX_FI_MAP_SIZE)
-        , _dns_topRCode(MIN_FI_MAP_SIZE, MAX_FI_MAP_SIZE)
-        , _dns_slowXactIn(MIN_FI_MAP_SIZE, MAX_FI_MAP_SIZE)
-        , _dns_slowXactOut(MIN_FI_MAP_SIZE, MAX_FI_MAP_SIZE)
-        , _net_topGeoLoc(MIN_FI_MAP_SIZE, MAX_FI_MAP_SIZE)
-        , _net_topASN(MIN_FI_MAP_SIZE, MAX_FI_MAP_SIZE)
+        , _dns_topQname2(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
+        , _dns_topQname3(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
+        , _dns_topNX(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
+        , _dns_topREFUSED(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
+        , _dns_topSRVFAIL(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
+        , _dns_topUDPPort(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
+        , _net_topIPv4(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
+        , _net_topIPv6(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
+        , _dns_topQType(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
+        , _dns_topRCode(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
+        , _dns_slowXactIn(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
+        , _dns_slowXactOut(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
+        , _net_topGeoLoc(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
+        , _net_topASN(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
     {
     }
 };
