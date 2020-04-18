@@ -197,6 +197,7 @@ class Metrics
     std::atomic_uint64_t _numPackets = 0;
     std::atomic_uint64_t _numPackets_UDP = 0;
     std::atomic_uint64_t _numPackets_TCP = 0;
+    std::atomic_uint64_t _numPackets_OtherL4 = 0;
     std::atomic_uint64_t _numPackets_IPv6 = 0;
     std::atomic_uint64_t _numPackets_in = 0;
     std::atomic_uint64_t _numPackets_out = 0;

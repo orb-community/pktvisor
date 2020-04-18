@@ -92,10 +92,20 @@ static void onApplicationInterrupted(void *cookie)
 static void processRawPacket(pcpp::RawPacket *rawPacket, pktvisor::TcpDnsReassembly *tcpReassembly)
 {
 
-    pcpp::ProtocolType l3, l4;
+    pcpp::ProtocolType l3(pcpp::UnknownProtocol), l4(pcpp::UnknownProtocol);
     pcpp::Packet packet(rawPacket);
-    l3 = (packet.isPacketOfType(pcpp::IPv4)) ? pcpp::IPv4 : pcpp::IPv6;
-    l4 = (packet.isPacketOfType(pcpp::UDP)) ? pcpp::UDP : pcpp::TCP;
+    if (packet.isPacketOfType(pcpp::IPv4)) {
+        l3 = pcpp::IPv4;
+    }
+    else if (packet.isPacketOfType(pcpp::IPv6)) {
+        l3 = pcpp::IPv6;
+    }
+    if (packet.isPacketOfType(pcpp::UDP)) {
+        l4 = pcpp::UDP;
+    }
+    else if (packet.isPacketOfType(pcpp::TCP)) {
+        l4 = pcpp::TCP;
+    }
     // determine packet direction by matching source/dest ips
     // note the direction may be indeterminate!
     pktvisor::Direction dir = pktvisor::unknown;
