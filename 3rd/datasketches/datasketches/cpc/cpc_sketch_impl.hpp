@@ -26,10 +26,11 @@
 
 #include "cpc_confidence.hpp"
 #include "kxp_byte_lookup.hpp"
-#include "inv_pow_2_tab.hpp"
+#include "inv_pow2_table.hpp"
 #include "cpc_util.hpp"
 #include "icon_estimator.hpp"
 #include "serde.hpp"
+#include "count_zeros.hpp"
 
 namespace datasketches {
 
@@ -51,7 +52,7 @@ first_interesting_column(0),
 kxp(1 << lg_k),
 hip_est_accum(0)
 {
-  if (lg_k < CPC_MIN_LG_K or lg_k > CPC_MAX_LG_K) {
+  if (lg_k < CPC_MIN_LG_K || lg_k > CPC_MAX_LG_K) {
     throw std::invalid_argument("lg_k must be >= " + std::to_string(CPC_MIN_LG_K) + " and <= " + std::to_string(CPC_MAX_LG_K) + ": " + std::to_string(lg_k));
   }
 }
@@ -84,7 +85,7 @@ double cpc_sketch_alloc<A>::get_icon_estimate() const {
 
 template<typename A>
 double cpc_sketch_alloc<A>::get_lower_bound(unsigned kappa) const {
-  if (kappa < 1 or kappa > 3) {
+  if (kappa < 1 || kappa > 3) {
     throw std::invalid_argument("kappa must be 1, 2 or 3");
   }
   if (!was_merged) return get_hip_confidence_lb<A>(*this, kappa);
@@ -93,7 +94,7 @@ double cpc_sketch_alloc<A>::get_lower_bound(unsigned kappa) const {
 
 template<typename A>
 double cpc_sketch_alloc<A>::get_upper_bound(unsigned kappa) const {
-  if (kappa < 1 or kappa > 3) {
+  if (kappa < 1 || kappa > 3) {
     throw std::invalid_argument("kappa must be 1, 2 or 3");
   }
   if (!was_merged) return get_hip_confidence_ub<A>(*this, kappa);
@@ -249,7 +250,7 @@ void cpc_sketch_alloc<A>::update_windowed(uint32_t row_col) {
     const uint64_t c8post = static_cast<uint64_t>(num_coupons) << 3;
     if (c8post >= (27 + w8pre) * k) {
       move_window();
-      if (window_offset < 1 or window_offset > 56) throw std::logic_error("wrong window offset");
+      if (window_offset < 1 || window_offset > 56) throw std::logic_error("wrong window offset");
       const uint64_t w8post = static_cast<uint64_t>(window_offset) << 3;
       if (c8post >= (27 + w8post) * k) throw std::logic_error("c8pre is wrong"); // C < (K * 27/8) + (K * window_offset)
     }
@@ -271,7 +272,7 @@ template<typename A>
 void cpc_sketch_alloc<A>::promote_sparse_to_windowed() {
   const uint64_t k = 1 << lg_k;
   const uint64_t c32 = static_cast<uint64_t>(num_coupons) << 5;
-  if (!(c32 == 3 * k or (lg_k == 4 and c32 > 3 * k))) throw std::logic_error("wrong c32");
+  if (!(c32 == 3 * k || (lg_k == 4 && c32 > 3 * k))) throw std::logic_error("wrong c32");
 
   sliding_window.resize(k, 0); // zero the memory (because we will be OR'ing into it)
 
@@ -424,7 +425,7 @@ void cpc_sketch_alloc<A>::serialize(std::ostream& os) const {
   os.write((char*)&seed_hash, sizeof(seed_hash));
   if (!is_empty()) {
     os.write((char*)&num_coupons, sizeof(num_coupons));
-    if (has_table and has_window) {
+    if (has_table && has_window) {
       // if there is no window it is the same as number of coupons
       os.write((char*)&compressed.table_num_entries, sizeof(compressed.table_num_entries));
       // HIP values can be in two different places in the sequence of fields
@@ -438,7 +439,7 @@ void cpc_sketch_alloc<A>::serialize(std::ostream& os) const {
       os.write((char*)&compressed.window_data_words, sizeof(compressed.window_data_words));
     }
     // this is the second HIP decision point
-    if (has_hip and !(has_table and has_window)) write_hip(os);
+    if (has_hip && !(has_table && has_window)) write_hip(os);
     if (has_window) {
       os.write((char*)compressed.window_data.data(), compressed.window_data_words * sizeof(uint32_t));
     }
@@ -480,7 +481,7 @@ vector_u8<A> cpc_sketch_alloc<A>::serialize(unsigned header_size_bytes) const {
   ptr += copy_to_mem(&seed_hash, ptr, sizeof(seed_hash));
   if (!is_empty()) {
     ptr += copy_to_mem(&num_coupons, ptr, sizeof(num_coupons));
-    if (has_table and has_window) {
+    if (has_table && has_window) {
       // if there is no window it is the same as number of coupons
       ptr += copy_to_mem(&compressed.table_num_entries, ptr, sizeof(compressed.table_num_entries));
       // HIP values can be in two different places in the sequence of fields
@@ -494,7 +495,7 @@ vector_u8<A> cpc_sketch_alloc<A>::serialize(unsigned header_size_bytes) const {
       ptr += copy_to_mem(&compressed.window_data_words, ptr, sizeof(compressed.window_data_words));
     }
     // this is the second HIP decision point
-    if (has_hip and !(has_table and has_window)) ptr += copy_hip_to_mem(ptr);
+    if (has_hip && !(has_table && has_window)) ptr += copy_hip_to_mem(ptr);
     if (has_window) {
       ptr += copy_to_mem(compressed.window_data.data(), ptr, compressed.window_data_words * sizeof(uint32_t));
     }
@@ -532,9 +533,9 @@ cpc_sketch_alloc<A> cpc_sketch_alloc<A>::deserialize(std::istream& is, uint64_t 
   uint32_t num_coupons = 0;
   double kxp = 0;
   double hip_est_accum = 0;
-  if (has_table or has_window) {
+  if (has_table || has_window) {
     is.read((char*)&num_coupons, sizeof(num_coupons));
-    if (has_table and has_window) {
+    if (has_table && has_window) {
       is.read((char*)&compressed.table_num_entries, sizeof(compressed.table_num_entries));
       if (has_hip) {
         is.read((char*)&kxp, sizeof(kxp));
@@ -547,7 +548,7 @@ cpc_sketch_alloc<A> cpc_sketch_alloc<A>::deserialize(std::istream& is, uint64_t 
     if (has_window) {
       is.read((char*)&compressed.window_data_words, sizeof(compressed.window_data_words));
     }
-    if (has_hip and !(has_table and has_window)) {
+    if (has_hip && !(has_table && has_window)) {
       is.read((char*)&kxp, sizeof(kxp));
       is.read((char*)&hip_est_accum, sizeof(hip_est_accum));
     }
@@ -612,9 +613,9 @@ cpc_sketch_alloc<A> cpc_sketch_alloc<A>::deserialize(const void* bytes, size_t s
   uint32_t num_coupons = 0;
   double kxp = 0;
   double hip_est_accum = 0;
-  if (has_table or has_window) {
+  if (has_table || has_window) {
     ptr += copy_from_mem(ptr, &num_coupons, sizeof(num_coupons));
-    if (has_table and has_window) {
+    if (has_table && has_window) {
       ptr += copy_from_mem(ptr, &compressed.table_num_entries, sizeof(compressed.table_num_entries));
       if (has_hip) {
         ptr += copy_from_mem(ptr, &kxp, sizeof(kxp));
@@ -627,7 +628,7 @@ cpc_sketch_alloc<A> cpc_sketch_alloc<A>::deserialize(const void* bytes, size_t s
     if (has_window) {
       ptr += copy_from_mem(ptr, &compressed.window_data_words, sizeof(compressed.window_data_words));
     }
-    if (has_hip and !(has_table and has_window)) {
+    if (has_hip && !(has_table && has_window)) {
       ptr += copy_from_mem(ptr, &kxp, sizeof(kxp));
       ptr += copy_from_mem(ptr, &hip_est_accum, sizeof(hip_est_accum));
     }

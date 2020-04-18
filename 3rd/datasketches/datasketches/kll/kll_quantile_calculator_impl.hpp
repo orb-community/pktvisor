@@ -165,7 +165,7 @@ void kll_quantile_calculator<T, C, A>::tandem_merge(const T* items_src, const ui
   auto i_src_2 = from_index_2;
   auto i_dst = from_index_1;
 
-  while ((i_src_1 < to_index_1) and (i_src_2 < to_index_2)) {
+  while ((i_src_1 < to_index_1) && (i_src_2 < to_index_2)) {
     if (C()(items_src[i_src_1], items_src[i_src_2])) {
       items_dst[i_dst] = std::move(items_src[i_src_1]);
       weights_dst[i_dst] = weights_src[i_src_1];

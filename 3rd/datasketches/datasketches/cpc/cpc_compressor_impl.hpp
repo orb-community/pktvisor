@@ -25,10 +25,9 @@
 #include <memory>
 
 #include "compression_data.hpp"
-#include "counter_of_zeros.hpp"
 #include "cpc_util.hpp"
-
 #include "cpc_common.hpp"
+#include "count_zeros.hpp"
 
 namespace datasketches {
 
@@ -438,7 +437,7 @@ uint8_t cpc_compressor<A>::determine_pseudo_phase(uint8_t lg_k, uint64_t c) {
     if (lg_k < 4) throw std::logic_error("lgK < 4");
     const size_t tmp = c >> (lg_k - 4);
     const uint8_t phase = tmp & 15;
-    if (phase < 0 or phase >= 16) throw std::out_of_range("wrong phase");
+    if (phase < 0 || phase >= 16) throw std::out_of_range("wrong phase");
     return phase;
   }
 }

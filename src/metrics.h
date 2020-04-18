@@ -140,7 +140,7 @@ struct Sketches {
     datasketches::frequent_items_sketch<std::string> _dns_topREFUSED;
     datasketches::frequent_items_sketch<std::string> _dns_topSRVFAIL;
     datasketches::frequent_items_sketch<uint16_t> _dns_topUDPPort;
-    datasketches::frequent_items_sketch<uint32_t, IPv4Hash> _net_topIPv4;
+    datasketches::frequent_items_sketch<uint32_t, uint64_t, IPv4Hash> _net_topIPv4;
     datasketches::frequent_items_sketch<std::string> _net_topIPv6; // TODO not very efficient, should switch to 16 byte uint
     datasketches::frequent_items_sketch<uint16_t> _dns_topQType;
     datasketches::frequent_items_sketch<uint16_t> _dns_topRCode;
