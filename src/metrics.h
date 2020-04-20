@@ -109,8 +109,15 @@ public:
 };
 
 struct IPv4Hash {
-    size_t operator()(uint32_t k) {
-        return pcpp::fnv_hash((uint8_t*)&k, sizeof(k));
+    size_t operator()(long long key) {
+        // This hash function is taken from the internals of Austin Appleby's MurmurHash3 algorithm
+        // see https://github.com/apache/incubator-datasketches-characterization/blob/master/cpp/src/frequent_items_sketch_timing_profile.cpp
+        key ^= key >> 33;
+        key *= 0xff51afd7ed558ccdL;
+        key ^= key >> 33;
+        key *= 0xc4ceb9fe1a85ec53L;
+        key ^= key >> 33;
+        return key;
     }
 };
 
