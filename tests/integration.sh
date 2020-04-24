@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # we filter out some paths due to probabalistic results
-JSONFILTER='delpaths([["5m","dns","cardinality"]])|delpaths([["5m","period"]])|delpaths([["5m","packets","cardinality"]])'
+JSONFILTER='delpaths([["5m","dns","cardinality"]])|delpaths([["5m","period"]])|delpaths([["5m","packets","cardinality"]])|delpaths([["5m","dns","xact","out","quantiles_us"]])'
 
 # run pktvisord ($1) and expect json output to match that found in given file ($2), using pktvisord args in ($3)
 PKTVISORD=$1
@@ -24,8 +24,8 @@ fi
 
 # XXX fix probablistic differences causing failures between runs or OSs
 # for now just ensure pktvisor ran
-if [[ `uname -s` == 'Linux']]
-then
+OSTYPE=`uname -s`
+if [[ "$OSTYPE" == "Linux" ]]; then
     exit 0
 fi
 

@@ -33,6 +33,7 @@ void Metrics::merge(Metrics &other)
     _numPackets += other._numPackets;
     _numPackets_UDP += other._numPackets_UDP;
     _numPackets_TCP += other._numPackets_TCP;
+    _numPackets_OtherL4 += other._numPackets_OtherL4;
     _numPackets_IPv6 += other._numPackets_IPv6;
     _numPackets_in += other._numPackets_in;
     _numPackets_out += other._numPackets_out;
@@ -269,6 +270,7 @@ void Metrics::newPacket(const pcpp::Packet &packet, pcpp::ProtocolType l3, pcpp:
         _numPackets_TCP++;
         break;
     default:
+        _numPackets_OtherL4++;
         break;
     }
 
@@ -425,6 +427,7 @@ void Metrics::toJSON(nlohmann::json &j, const std::string &key)
     j[key]["packets"]["total"] = _numPackets.load();
     j[key]["packets"]["udp"] = _numPackets_UDP.load();
     j[key]["packets"]["tcp"] = _numPackets_TCP.load();
+    j[key]["packets"]["other_l4"] = _numPackets_OtherL4.load();
     j[key]["packets"]["ipv4"] = _numPackets - _numPackets_IPv6;
     j[key]["packets"]["ipv6"] = _numPackets_IPv6.load();
     j[key]["packets"]["in"] = _numPackets_in.load();
@@ -700,6 +703,19 @@ std::string MetricsMgr::getMetricsMerged(uint64_t period)
         return j.dump();
     }
 
+    auto cached = _mergeResultCache.find(period);
+    if (cached != _mergeResultCache.end()) {
+        // cached results, make sure still valid
+        auto t_diff = std::chrono::high_resolution_clock::now() - cached->second.first;
+        if (std::chrono::duration_cast<std::chrono::milliseconds>(t_diff).count() < MERGE_CACHE_TTL_MS) {
+            return cached->second.second;
+        }
+        else {
+            // expire
+            _mergeResultCache.erase(period);
+        }
+    }
+
     auto period_length = 0;
     Metrics merged(*this);
 
@@ -728,7 +744,9 @@ std::string MetricsMgr::getMetricsMerged(uint64_t period)
 
     merged.toJSON(j, period_str);
 
-    return j.dump(-1, ' ', true, nlohmann::json::error_handler_t::replace);
+    auto result = j.dump(-1, ' ', true, nlohmann::json::error_handler_t::replace);
+    _mergeResultCache[period] = std::pair<std::chrono::high_resolution_clock::time_point, std::string>(std::chrono::high_resolution_clock::now(), result);
+    return result;
 }
 
 const uint MetricsMgr::PERIOD_SEC;

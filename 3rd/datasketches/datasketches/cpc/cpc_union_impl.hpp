@@ -20,6 +20,8 @@
 #ifndef CPC_UNION_IMPL_HPP_
 #define CPC_UNION_IMPL_HPP_
 
+#include "count_zeros.hpp"
+
 namespace datasketches {
 
 template<typename A>
@@ -29,7 +31,7 @@ seed(seed),
 accumulator(new (AllocCpc().allocate(1)) cpc_sketch_alloc<A>(lg_k, seed)),
 bit_matrix()
 {
-  if (lg_k < CPC_MIN_LG_K or lg_k > CPC_MAX_LG_K) {
+  if (lg_k < CPC_MIN_LG_K || lg_k > CPC_MAX_LG_K) {
     throw std::invalid_argument("lg_k must be >= " + std::to_string(CPC_MIN_LG_K) + " and <= " + std::to_string(CPC_MAX_LG_K) + ": " + std::to_string(lg_k));
   }
 }
@@ -85,6 +87,17 @@ cpc_union_alloc<A>& cpc_union_alloc<A>::operator=(cpc_union_alloc<A>&& other) no
 
 template<typename A>
 void cpc_union_alloc<A>::update(const cpc_sketch_alloc<A>& sketch) {
+  internal_update(sketch);
+}
+
+template<typename A>
+void cpc_union_alloc<A>::update(cpc_sketch_alloc<A>&& sketch) {
+  internal_update(std::forward<cpc_sketch_alloc<A>>(sketch));
+}
+
+template<typename A>
+template<typename S>
+void cpc_union_alloc<A>::internal_update(S&& sketch) {
   const uint16_t seed_hash_union = compute_seed_hash(seed);
   const uint16_t seed_hash_sketch = compute_seed_hash(sketch.seed);
   if (seed_hash_union != seed_hash_sketch) {
@@ -97,50 +110,50 @@ void cpc_union_alloc<A>::update(const cpc_sketch_alloc<A>& sketch) {
   if (sketch.get_lg_k() < lg_k) reduce_k(sketch.get_lg_k());
   if (sketch.get_lg_k() < lg_k) throw std::logic_error("sketch lg_k < union lg_k");
 
-  if (accumulator == nullptr and bit_matrix.size() == 0) throw std::logic_error("both accumulator and bit matrix are absent");
+  if (accumulator == nullptr && bit_matrix.size() == 0) throw std::logic_error("both accumulator and bit matrix are absent");
 
-  if (cpc_sketch_alloc<A>::flavor::SPARSE == src_flavor and accumulator != nullptr)  { // Case A
+  if (cpc_sketch_alloc<A>::flavor::SPARSE == src_flavor && accumulator != nullptr)  { // Case A
     if (bit_matrix.size() > 0) throw std::logic_error("union bit_matrix is not expected");
     const auto initial_dest_flavor = accumulator->determine_flavor();
-    if (cpc_sketch_alloc<A>::flavor::EMPTY != initial_dest_flavor and
+    if (cpc_sketch_alloc<A>::flavor::EMPTY != initial_dest_flavor &&
         cpc_sketch_alloc<A>::flavor::SPARSE != initial_dest_flavor) throw std::logic_error("wrong flavor");
 
     // The following partially fixes the snowplow problem provided that the K's are equal.
-    // A complete fix is coming soon.
-    if (cpc_sketch_alloc<A>::flavor::EMPTY == initial_dest_flavor and lg_k == sketch.get_lg_k()) {
-      *accumulator = sketch;
+    if (cpc_sketch_alloc<A>::flavor::EMPTY == initial_dest_flavor && lg_k == sketch.get_lg_k()) {
+      *accumulator = std::forward<S>(sketch);
+      return;
     }
 
     walk_table_updating_sketch(sketch.surprising_value_table);
     const auto final_dst_flavor = accumulator->determine_flavor();
     // if the accumulator has graduated beyond sparse, switch to a bit matrix representation
-    if (final_dst_flavor != cpc_sketch_alloc<A>::flavor::EMPTY and final_dst_flavor != cpc_sketch_alloc<A>::flavor::SPARSE) {
+    if (final_dst_flavor != cpc_sketch_alloc<A>::flavor::EMPTY && final_dst_flavor != cpc_sketch_alloc<A>::flavor::SPARSE) {
       switch_to_bit_matrix();
     }
     return;
   }
 
-  if (cpc_sketch_alloc<A>::flavor::SPARSE == src_flavor and bit_matrix.size() > 0)  { // Case B
+  if (cpc_sketch_alloc<A>::flavor::SPARSE == src_flavor && bit_matrix.size() > 0)  { // Case B
     if (accumulator != nullptr) throw std::logic_error("union accumulator != null");
     or_table_into_matrix(sketch.surprising_value_table);
     return;
   }
 
-  if (cpc_sketch_alloc<A>::flavor::HYBRID != src_flavor and cpc_sketch_alloc<A>::flavor::PINNED != src_flavor
-      and cpc_sketch_alloc<A>::flavor::SLIDING != src_flavor) throw std::logic_error("wrong flavor");
+  if (cpc_sketch_alloc<A>::flavor::HYBRID != src_flavor && cpc_sketch_alloc<A>::flavor::PINNED != src_flavor
+      && cpc_sketch_alloc<A>::flavor::SLIDING != src_flavor) throw std::logic_error("wrong flavor");
 
   // source is past SPARSE mode, so make sure that dest is a bit matrix
   if (accumulator != nullptr) {
     if (bit_matrix.size() > 0) throw std::logic_error("union bit matrix is not expected");
     const auto dst_flavor = accumulator->determine_flavor();
-    if (cpc_sketch_alloc<A>::flavor::EMPTY != dst_flavor and cpc_sketch_alloc<A>::flavor::SPARSE != dst_flavor) {
+    if (cpc_sketch_alloc<A>::flavor::EMPTY != dst_flavor && cpc_sketch_alloc<A>::flavor::SPARSE != dst_flavor) {
       throw std::logic_error("wrong flavor");
     }
     switch_to_bit_matrix();
   }
   if (bit_matrix.size() == 0) throw std::logic_error("union bit_matrix is expected");
 
-  if (cpc_sketch_alloc<A>::flavor::HYBRID == src_flavor or cpc_sketch_alloc<A>::flavor::PINNED == src_flavor) { // Case C
+  if (cpc_sketch_alloc<A>::flavor::HYBRID == src_flavor || cpc_sketch_alloc<A>::flavor::PINNED == src_flavor) { // Case C
     or_window_into_matrix(sketch.sliding_window, sketch.window_offset, sketch.get_lg_k());
     or_table_into_matrix(sketch.surprising_value_table);
     return;
@@ -181,8 +194,8 @@ cpc_sketch_alloc<A> cpc_union_alloc<A>::get_result_from_bit_matrix() const {
   const uint64_t num_coupons = count_bits_set_in_matrix(bit_matrix.data(), k);
 
   const auto flavor = cpc_sketch_alloc<A>::determine_flavor(lg_k, num_coupons);
-  if (flavor != cpc_sketch_alloc<A>::flavor::HYBRID and flavor != cpc_sketch_alloc<A>::flavor::PINNED
-      and flavor != cpc_sketch_alloc<A>::flavor::SLIDING) throw std::logic_error("wrong flavor");
+  if (flavor != cpc_sketch_alloc<A>::flavor::HYBRID && flavor != cpc_sketch_alloc<A>::flavor::PINNED
+      && flavor != cpc_sketch_alloc<A>::flavor::SLIDING) throw std::logic_error("wrong flavor");
 
   const uint8_t offset = cpc_sketch_alloc<A>::determine_correct_offset(lg_k, num_coupons);
 
@@ -244,7 +257,7 @@ void cpc_union_alloc<A>::walk_table_updating_sketch(const u32_table<A>& table) {
   size_t stride = static_cast<size_t>(golden * static_cast<double>(num_slots));
   if (stride < 2) throw std::logic_error("stride < 2");
   if (stride == ((stride >> 1) << 1)) stride += 1; // force the stride to be odd
-  if (stride < 3 or stride >= num_slots) throw std::out_of_range("stride out of range");
+  if (stride < 3 || stride >= num_slots) throw std::out_of_range("stride out of range");
 
   for (size_t i = 0, j = 0; i < num_slots; i++, j += stride) {
     j &= num_slots - 1;
@@ -293,7 +306,7 @@ void cpc_union_alloc<A>::or_matrix_into_matrix(const vector_u64<A>& src_matrix, 
 template<typename A>
 void cpc_union_alloc<A>::reduce_k(uint8_t new_lg_k) {
   if (new_lg_k >= lg_k) throw std::logic_error("new LgK >= union lgK");
-  if (accumulator == nullptr and bit_matrix.size() == 0) throw std::logic_error("both accumulator and bit_matrix are absent");
+  if (accumulator == nullptr && bit_matrix.size() == 0) throw std::logic_error("both accumulator and bit_matrix are absent");
 
   if (bit_matrix.size() > 0) { // downsample the unioner's bit matrix
     if (accumulator != nullptr) throw std::logic_error("accumulator is not null");
@@ -317,7 +330,7 @@ void cpc_union_alloc<A>::reduce_k(uint8_t new_lg_k) {
 
     const auto final_new_flavor = accumulator->determine_flavor();
     // if the new sketch has graduated beyond sparse, convert to bit_matrix
-    if (final_new_flavor != cpc_sketch_alloc<A>::flavor::EMPTY and
+    if (final_new_flavor != cpc_sketch_alloc<A>::flavor::EMPTY &&
         final_new_flavor != cpc_sketch_alloc<A>::flavor::SPARSE) {
       switch_to_bit_matrix();
     }

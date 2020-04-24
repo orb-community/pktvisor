@@ -44,7 +44,7 @@ num_items(0),
 slots(1 << lg_size, UINT32_MAX)
 {
   if (lg_size < 2) throw std::invalid_argument("lg_size must be >= 2");
-  if (num_valid_bits < 1 or num_valid_bits > 32) throw std::invalid_argument("num_valid_bits must be between 1 and 32");
+  if (num_valid_bits < 1 || num_valid_bits > 32) throw std::invalid_argument("num_valid_bits must be between 1 and 32");
 }
 
 template<typename A>
@@ -102,7 +102,7 @@ bool u32_table<A>::maybe_delete(uint32_t item) {
     fetched = slots[probe];
   }
   // shrink if necessary
-  if (U32_TABLE_DOWNSIZE_DENOM * num_items < U32_TABLE_DOWNSIZE_NUMER * (1 << lg_size) and lg_size > 2) {
+  if (U32_TABLE_DOWNSIZE_DENOM * num_items < U32_TABLE_DOWNSIZE_NUMER * (1 << lg_size) && lg_size > 2) {
     rebuild(lg_size - 1);
   }
   return true;
@@ -130,7 +130,7 @@ size_t u32_table<A>::lookup(uint32_t item) const {
   const uint8_t shift = num_valid_bits - lg_size;
   size_t probe = item >> shift;
   if (probe > mask) throw std::logic_error("probe out of range");
-  while (slots[probe] != item and slots[probe] != UINT32_MAX) {
+  while (slots[probe] != item && slots[probe] != UINT32_MAX) {
     probe = (probe + 1) & mask;
   }
   return probe;
@@ -178,7 +178,7 @@ vector_u32<A> u32_table<A>::unwrapping_get_items() const {
 
   // special rules for the region before the first empty slot
   uint32_t hi_bit = 1 << (num_valid_bits - 1);
-  while (i < table_size and slots[i] != UINT32_MAX) {
+  while (i < table_size && slots[i] != UINT32_MAX) {
     const uint32_t item = slots[i++];
     if (item & hi_bit) { result[r--] = item; } // this item was probably wrapped, so move to end
     else               { result[l++] = item; }
@@ -213,7 +213,7 @@ void u32_table<A>::merge(
     else if (arr_a[a] < arr_b[b]) { arr_c[c] = arr_a[a++]; }
     else                          { arr_c[c] = arr_b[b++]; }
   }
-  if (a != lim_a or b != lim_b) throw std::logic_error("merging error");
+  if (a != lim_a || b != lim_b) throw std::logic_error("merging error");
 }
 
 // In applications where the input array is already nearly sorted,
@@ -231,7 +231,7 @@ void u32_table<A>::introspective_insertion_sort(uint32_t* a, size_t l, size_t r)
   for (size_t i = l + 1; i < r; i++) {
     size_t j = i;
     uint32_t v = a[i];
-    while (j >= l + 1 and v < a[j - 1]) {
+    while (j >= l + 1 && v < a[j - 1]) {
       a[j] = a[j - 1];
       j--;
     }
@@ -252,7 +252,7 @@ void u32_table<A>::knuth_shell_sort3(uint32_t* a, size_t l, size_t r) {
     for (size_t i = l + h; i < r; i++) {
       size_t j = i;
       const uint32_t v = a[i];
-      while (j >= l + h and v < a[j - h]) {
+      while (j >= l + h && v < a[j - h]) {
         a[j] = a[j - h];
         j -= h;
       }

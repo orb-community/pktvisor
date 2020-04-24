@@ -223,7 +223,7 @@ kll_helper::compress_result kll_helper::general_compress(uint16_t k, uint8_t m, 
     const auto raw_lim = in_levels[current_level + 1];
     const auto raw_pop = raw_lim - raw_beg;
 
-    if ((current_item_count < target_item_count) or (raw_pop < level_capacity(k, current_num_levels, current_level, m))) {
+    if ((current_item_count < target_item_count) || (raw_pop < level_capacity(k, current_num_levels, current_level, m))) {
       // move level over as is
       // make sure we are not moving data upwards
       if (raw_beg < out_levels[current_level]) throw std::logic_error("wrong move");
@@ -247,7 +247,7 @@ kll_helper::compress_result kll_helper::general_compress(uint16_t k, uint8_t m, 
       }
 
       // level zero might not be sorted, so we must sort it if we wish to compact it
-      if ((current_level == 0) and !is_level_zero_sorted) {
+      if ((current_level == 0) && !is_level_zero_sorted) {
         std::sort(&items[adj_beg], &items[adj_beg + adj_pop], C());
       }
 

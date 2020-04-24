@@ -22,11 +22,8 @@
 
 #include <string>
 
-#if defined(_MSC_VER)
-#include <iso646.h> // for and/or keywords
-#endif // _MSC_VER
-
 #include "cpc_sketch.hpp"
+#include "common_defs.hpp"
 
 namespace datasketches {
 
@@ -42,38 +39,60 @@ typedef cpc_union_alloc<std::allocator<void>> cpc_union;
 
 template<typename A>
 class cpc_union_alloc {
-  public:
+public:
+  /**
+   * Creates an instance of the union given the lg_k parameter and hash seed.
+   * @param lg_k base 2 logarithm of the number of bins in the sketch
+   * @param seed for hash function
+   */
+  explicit cpc_union_alloc(uint8_t lg_k = CPC_DEFAULT_LG_K, uint64_t seed = DEFAULT_SEED);
 
-    explicit cpc_union_alloc(uint8_t lg_k = CPC_DEFAULT_LG_K, uint64_t seed = DEFAULT_SEED);
-    cpc_union_alloc(const cpc_union_alloc<A>& other);
-    cpc_union_alloc(cpc_union_alloc<A>&& other) noexcept;
-    ~cpc_union_alloc();
+  cpc_union_alloc(const cpc_union_alloc<A>& other);
+  cpc_union_alloc(cpc_union_alloc<A>&& other) noexcept;
+  ~cpc_union_alloc();
 
-    cpc_union_alloc<A>& operator=(const cpc_union_alloc<A>& other);
-    cpc_union_alloc<A>& operator=(cpc_union_alloc<A>&& other) noexcept;
+  cpc_union_alloc<A>& operator=(const cpc_union_alloc<A>& other);
+  cpc_union_alloc<A>& operator=(cpc_union_alloc<A>&& other) noexcept;
 
-    void update(const cpc_sketch_alloc<A>& sketch);
-    cpc_sketch_alloc<A> get_result() const;
+  /**
+   * This method is to update the union with a given sketch (lvalue)
+   * @param sketch to update the union with
+   */
+  void update(const cpc_sketch_alloc<A>& sketch);
 
-  private:
-    typedef typename std::allocator_traits<A>::template rebind_alloc<uint8_t> AllocU8;
-    typedef typename std::allocator_traits<A>::template rebind_alloc<uint64_t> AllocU64;
-    typedef typename std::allocator_traits<A>::template rebind_alloc<cpc_sketch_alloc<A>> AllocCpc;
+  /**
+   * This method is to update the union with a given sketch (rvalue)
+   * @param sketch to update the union with
+   */
+  void update(cpc_sketch_alloc<A>&& sketch);
 
-    uint8_t lg_k;
-    uint64_t seed;
-    cpc_sketch_alloc<A>* accumulator;
-    vector_u64<A> bit_matrix;
+  /**
+   * This method produces a copy of the current state of the union as a sketch.
+   * @return the result of the union
+   */
+  cpc_sketch_alloc<A> get_result() const;
 
-    cpc_sketch_alloc<A> get_result_from_accumulator() const;
-    cpc_sketch_alloc<A> get_result_from_bit_matrix() const;
+private:
+  typedef typename std::allocator_traits<A>::template rebind_alloc<uint8_t> AllocU8;
+  typedef typename std::allocator_traits<A>::template rebind_alloc<uint64_t> AllocU64;
+  typedef typename std::allocator_traits<A>::template rebind_alloc<cpc_sketch_alloc<A>> AllocCpc;
 
-    void switch_to_bit_matrix();
-    void walk_table_updating_sketch(const u32_table<A>& table);
-    void or_table_into_matrix(const u32_table<A>& table);
-    void or_window_into_matrix(const vector_u8<A>& sliding_window, uint8_t offset, uint8_t src_lg_k);
-    void or_matrix_into_matrix(const vector_u64<A>& src_matrix, uint8_t src_lg_k);
-    void reduce_k(uint8_t new_lg_k);
+  uint8_t lg_k;
+  uint64_t seed;
+  cpc_sketch_alloc<A>* accumulator;
+  vector_u64<A> bit_matrix;
+
+  template<typename S> void internal_update(S&& sketch); // to support both rvalue and lvalue
+
+  cpc_sketch_alloc<A> get_result_from_accumulator() const;
+  cpc_sketch_alloc<A> get_result_from_bit_matrix() const;
+
+  void switch_to_bit_matrix();
+  void walk_table_updating_sketch(const u32_table<A>& table);
+  void or_table_into_matrix(const u32_table<A>& table);
+  void or_window_into_matrix(const vector_u8<A>& sliding_window, uint8_t offset, uint8_t src_lg_k);
+  void or_matrix_into_matrix(const vector_u64<A>& src_matrix, uint8_t src_lg_k);
+  void reduce_k(uint8_t new_lg_k);
 };
 
 } /* namespace datasketches */

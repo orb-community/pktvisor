@@ -19,6 +19,7 @@
 #include <cstdint>
 #include <ctime>
 #include <deque>
+#include <unordered_map>
 #include <shared_mutex>
 #include <string>
 #include <atomic>
@@ -108,8 +109,15 @@ public:
 };
 
 struct IPv4Hash {
-    size_t operator()(uint32_t k) {
-        return pcpp::fnv_hash((uint8_t*)&k, sizeof(k));
+    size_t operator()(long long key) {
+        // This hash function is taken from the internals of Austin Appleby's MurmurHash3 algorithm
+        // see https://github.com/apache/incubator-datasketches-characterization/blob/master/cpp/src/frequent_items_sketch_timing_profile.cpp
+        key ^= key >> 33;
+        key *= 0xff51afd7ed558ccdL;
+        key ^= key >> 33;
+        key *= 0xc4ceb9fe1a85ec53L;
+        key ^= key >> 33;
+        return key;
     }
 };
 
@@ -123,7 +131,7 @@ struct Sketches {
     // this number also affects memory usage, by limiting the number of objects tracked
     // e.g. up to MAX_FI_MAP_SIZE strings (ints, etc) may be stored per sketch
     // note that the actual storage space for the strings is on the heap and not counted here, though.
-    const uint8_t MIN_FI_MAP_SIZE = 7;  // 2^7 = 128
+    const uint8_t START_FI_MAP_SIZE = 7;  // 2^7 = 128
     const uint8_t MAX_FI_MAP_SIZE = 13; // 2^13 = 8192
 
     datasketches::kll_sketch<uint64_t> _dnsXactFromTimeUs;
@@ -139,7 +147,7 @@ struct Sketches {
     datasketches::frequent_items_sketch<std::string> _dns_topREFUSED;
     datasketches::frequent_items_sketch<std::string> _dns_topSRVFAIL;
     datasketches::frequent_items_sketch<uint16_t> _dns_topUDPPort;
-    datasketches::frequent_items_sketch<uint32_t, IPv4Hash> _net_topIPv4;
+    datasketches::frequent_items_sketch<uint32_t, uint64_t, IPv4Hash> _net_topIPv4;
     datasketches::frequent_items_sketch<std::string> _net_topIPv6; // TODO not very efficient, should switch to 16 byte uint
     datasketches::frequent_items_sketch<uint16_t> _dns_topQType;
     datasketches::frequent_items_sketch<uint16_t> _dns_topRCode;
@@ -153,20 +161,20 @@ struct Sketches {
         , _net_srcIPCard()
         , _net_dstIPCard()
         , _dns_qnameCard()
-        , _dns_topQname2(MIN_FI_MAP_SIZE, MAX_FI_MAP_SIZE)
-        , _dns_topQname3(MIN_FI_MAP_SIZE, MAX_FI_MAP_SIZE)
-        , _dns_topNX(MIN_FI_MAP_SIZE, MAX_FI_MAP_SIZE)
-        , _dns_topREFUSED(MIN_FI_MAP_SIZE, MAX_FI_MAP_SIZE)
-        , _dns_topSRVFAIL(MIN_FI_MAP_SIZE, MAX_FI_MAP_SIZE)
-        , _dns_topUDPPort(MIN_FI_MAP_SIZE, MAX_FI_MAP_SIZE)
-        , _net_topIPv4(MIN_FI_MAP_SIZE, MAX_FI_MAP_SIZE)
-        , _net_topIPv6(MIN_FI_MAP_SIZE, MAX_FI_MAP_SIZE)
-        , _dns_topQType(MIN_FI_MAP_SIZE, MAX_FI_MAP_SIZE)
-        , _dns_topRCode(MIN_FI_MAP_SIZE, MAX_FI_MAP_SIZE)
-        , _dns_slowXactIn(MIN_FI_MAP_SIZE, MAX_FI_MAP_SIZE)
-        , _dns_slowXactOut(MIN_FI_MAP_SIZE, MAX_FI_MAP_SIZE)
-        , _net_topGeoLoc(MIN_FI_MAP_SIZE, MAX_FI_MAP_SIZE)
-        , _net_topASN(MIN_FI_MAP_SIZE, MAX_FI_MAP_SIZE)
+        , _dns_topQname2(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
+        , _dns_topQname3(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
+        , _dns_topNX(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
+        , _dns_topREFUSED(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
+        , _dns_topSRVFAIL(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
+        , _dns_topUDPPort(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
+        , _net_topIPv4(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
+        , _net_topIPv6(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
+        , _dns_topQType(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
+        , _dns_topRCode(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
+        , _dns_slowXactIn(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
+        , _dns_slowXactOut(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
+        , _net_topGeoLoc(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
+        , _net_topASN(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
     {
     }
 };
@@ -196,6 +204,7 @@ class Metrics
     std::atomic_uint64_t _numPackets = 0;
     std::atomic_uint64_t _numPackets_UDP = 0;
     std::atomic_uint64_t _numPackets_TCP = 0;
+    std::atomic_uint64_t _numPackets_OtherL4 = 0;
     std::atomic_uint64_t _numPackets_IPv6 = 0;
     std::atomic_uint64_t _numPackets_in = 0;
     std::atomic_uint64_t _numPackets_out = 0;
@@ -256,6 +265,8 @@ class MetricsMgr
     int _deepSampleRate;
     bool _shouldDeepSample;
 
+    std::unordered_map<uint, std::pair<std::chrono::high_resolution_clock::time_point, std::string>> _mergeResultCache;
+
     void _periodShift();
 
 #ifdef MMDB_ENABLE
@@ -265,6 +276,7 @@ class MetricsMgr
 
 public:
     static const uint PERIOD_SEC = 60;
+    static const uint MERGE_CACHE_TTL_MS = 1000;
 
     MetricsMgr(bool singleSummaryMode, uint periods, int deepSampleRate)
         : _metrics()
