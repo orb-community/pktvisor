@@ -399,8 +399,8 @@ int main(int argc, char *argv[])
     pktvisor::TcpDnsReassembly tcpDnsReassembly(onGotTcpDnsMessage);
     int result = 0;
     int sampleRate = 100;
-    if (args["--max-sample"]) {
-        sampleRate = (int)args["--max-sample"].asLong();
+    if (args["--max-deep-sample"]) {
+        sampleRate = (int)args["--max-deep-sample"].asLong();
         if (sampleRate != 100) {
             std::cerr << "Using maximum deep sample rate: " << sampleRate << "%" << std::endl;
         }
