@@ -257,16 +257,13 @@ func updateTable(data []NameCount, v *gocui.View, baseNumber int64) {
 	top3 := 0
 	for _, stat := range data {
 		w, _ := v.Size()
-		w = w - 7
-		fmtstr := ""
+		numStr := ""
 		if baseNumber > 0 && top3 < 3 {
-			w = w - 8
-			fmtstr = "%-" + strconv.Itoa(w) + "." + strconv.Itoa(w) + "s %5d (%4.1f%%)\n"
-			fmt.Fprintf(v, fmtstr, stat.Name, stat.Estimate, float64(stat.Estimate)/float64(baseNumber)*100)
+			numStr = fmt.Sprintf("%d (%4.1f%%)", stat.Estimate, float64(stat.Estimate)/float64(baseNumber)*100)
 		} else {
-			fmtstr = "%-" + strconv.Itoa(w) + "." + strconv.Itoa(w) + "s %5d\n"
-			fmt.Fprintf(v, fmtstr, stat.Name, stat.Estimate)
+			numStr = fmt.Sprintf("%d", stat.Estimate)
 		}
+		fmt.Fprintf(v, "%-" + strconv.Itoa(w - len(numStr) - 1) + "s %s\n", stat.Name, numStr)
 		top3++
 	}
 }
