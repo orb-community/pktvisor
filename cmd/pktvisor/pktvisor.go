@@ -3,13 +3,13 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/docopt/docopt-go"
 	"github.com/pkg/errors"
 	"io/ioutil"
 	"log"
 	"strconv"
 
 	"net/http"
-	//"sort"
 	"time"
 
 	"github.com/jroimartin/gocui"
@@ -140,8 +140,20 @@ type StatSnapshot struct {
 }
 
 func main() {
-	// TODO get port from command line
-	// statPort =
+	usage := `pktvisor v3 UI
+
+   Usage:
+      pktvisor [-p PORT] [-H HOST]
+      pktvisor (-h | --help)
+
+    Options:
+      -p PORT               Query pktvisord metrics webserver on the given port [default: 10853]
+      -H HOST               Query pktvisord metrics webserver on the given host [default: localhost]
+      -h --help             Show this screen
+`
+	opts, err := docopt.ParseDoc(usage)
+	statPort, _ = opts.Int("-p")
+	statHost, _ = opts.String("-H")
 	g, err := gocui.NewGui(gocui.OutputNormal)
 	if err != nil {
 		log.Panicln(err)

@@ -29,6 +29,7 @@ RUN \
     cd /tmp/build && \
     go get github.com/pkg/errors && \
     go get github.com/jroimartin/gocui && \
+    go get github.com/docopt/docopt-go && \
     go build /src/cmd/pktvisor/pktvisor.go
 
 FROM ubuntu:disco AS runtime
