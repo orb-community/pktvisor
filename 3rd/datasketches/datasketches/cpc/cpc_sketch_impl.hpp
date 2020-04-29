@@ -588,7 +588,9 @@ cpc_sketch_alloc<A> cpc_sketch_alloc<A>::deserialize(std::istream& is, uint64_t 
 
 template<typename A>
 cpc_sketch_alloc<A> cpc_sketch_alloc<A>::deserialize(const void* bytes, size_t size, uint64_t seed) {
+  ensure_minimum_memory(size, 8);
   const char* ptr = static_cast<const char*>(bytes);
+  const char* base = static_cast<const char*>(bytes);
   uint8_t preamble_ints;
   ptr += copy_from_mem(ptr, &preamble_ints, sizeof(preamble_ints));
   uint8_t serial_version;
@@ -606,6 +608,7 @@ cpc_sketch_alloc<A> cpc_sketch_alloc<A>::deserialize(const void* bytes, size_t s
   const bool has_hip = flags_byte & (1 << flags::HAS_HIP);
   const bool has_table = flags_byte & (1 << flags::HAS_TABLE);
   const bool has_window = flags_byte & (1 << flags::HAS_WINDOW);
+  ensure_minimum_memory(size, preamble_ints << 2);
   compressed_state<A> compressed;
   compressed.table_data_words = 0;
   compressed.table_num_entries = 0;
@@ -614,30 +617,38 @@ cpc_sketch_alloc<A> cpc_sketch_alloc<A>::deserialize(const void* bytes, size_t s
   double kxp = 0;
   double hip_est_accum = 0;
   if (has_table || has_window) {
+    check_memory_size(ptr - base + sizeof(num_coupons), size);
     ptr += copy_from_mem(ptr, &num_coupons, sizeof(num_coupons));
     if (has_table && has_window) {
+      check_memory_size(ptr - base + sizeof(compressed.table_num_entries), size);
       ptr += copy_from_mem(ptr, &compressed.table_num_entries, sizeof(compressed.table_num_entries));
       if (has_hip) {
+        check_memory_size(ptr - base + sizeof(kxp) + sizeof(hip_est_accum), size);
         ptr += copy_from_mem(ptr, &kxp, sizeof(kxp));
         ptr += copy_from_mem(ptr, &hip_est_accum, sizeof(hip_est_accum));
       }
     }
     if (has_table) {
+      check_memory_size(ptr - base + sizeof(compressed.table_data_words), size);
       ptr += copy_from_mem(ptr, &compressed.table_data_words, sizeof(compressed.table_data_words));
     }
     if (has_window) {
+      check_memory_size(ptr - base + sizeof(compressed.window_data_words), size);
       ptr += copy_from_mem(ptr, &compressed.window_data_words, sizeof(compressed.window_data_words));
     }
     if (has_hip && !(has_table && has_window)) {
+      check_memory_size(ptr - base + sizeof(kxp) + sizeof(hip_est_accum), size);
       ptr += copy_from_mem(ptr, &kxp, sizeof(kxp));
       ptr += copy_from_mem(ptr, &hip_est_accum, sizeof(hip_est_accum));
     }
     if (has_window) {
       compressed.window_data.resize(compressed.window_data_words);
+      check_memory_size(ptr - base + sizeof(compressed.window_data_words) + sizeof(uint32_t), size);
       ptr += copy_from_mem(ptr, compressed.window_data.data(), compressed.window_data_words * sizeof(uint32_t));
     }
     if (has_table) {
       compressed.table_data.resize(compressed.table_data_words);
+      check_memory_size(ptr - base + sizeof(compressed.table_data_words), size);
       ptr += copy_from_mem(ptr, compressed.table_data.data(), compressed.table_data_words * sizeof(uint32_t));
     }
     if (!has_window) compressed.table_num_entries = num_coupons;

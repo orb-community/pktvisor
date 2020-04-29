@@ -25,6 +25,8 @@
 #include <memory>
 #include <string>
 
+#include "memory_operations.hpp"
+
 namespace datasketches {
 
 // serialize and deserialize
@@ -35,8 +37,8 @@ template<typename T, typename Enable = void> struct serde {
 
   // raw bytes serialization
   size_t size_of_item(const T& item);
-  size_t serialize(void* ptr, const T* items, unsigned num);
-  size_t deserialize(const void* ptr, T* items, unsigned num); // items are not initialized
+  size_t serialize(void* ptr, size_t capacity, const T* items, unsigned num);
+  size_t deserialize(const void* ptr, size_t capacity, T* items, unsigned num); // items are not initialized
 };
 
 // serde for all fixed-size arithmetic types (int and float of different sizes)
@@ -50,16 +52,20 @@ struct serde<T, typename std::enable_if<std::is_arithmetic<T>::value>::type> {
   void deserialize(std::istream& is, T* items, unsigned num) {
     is.read((char*)items, sizeof(T) * num);
   }
-  size_t size_of_item(T item) {
+  size_t size_of_item(const T&) {
     return sizeof(T);
   }
-  size_t serialize(void* ptr, const T* items, unsigned num) {
-    memcpy(ptr, items, sizeof(T) * num);
-    return sizeof(int32_t) * num;
+  size_t serialize(void* ptr, size_t capacity, const T* items, unsigned num) {
+    const size_t bytes_written = sizeof(T) * num;
+    check_memory_size(bytes_written, capacity);
+    memcpy(ptr, items, bytes_written);
+    return bytes_written;
   }
-  size_t deserialize(const void* ptr, T* items, unsigned num) {
-    memcpy(items, ptr, sizeof(T) * num);
-    return sizeof(T) * num;
+  size_t deserialize(const void* ptr, size_t capacity, T* items, unsigned num) {
+    const size_t bytes_read = sizeof(T) * num;
+    check_memory_size(bytes_read, capacity);
+    memcpy(items, ptr, bytes_read);
+    return bytes_read;
   }
 };
 
@@ -93,41 +99,37 @@ struct serde<std::string> {
   size_t size_of_item(const std::string& item) {
     return sizeof(uint32_t) + item.size();
   }
-  size_t serialize(void* ptr, const std::string* items, unsigned num) {
-    size_t size = sizeof(uint32_t) * num;
+  size_t serialize(void* ptr, size_t capacity, const std::string* items, unsigned num) {
+    size_t bytes_written = 0;
     for (unsigned i = 0; i < num; i++) {
-      uint32_t length = items[i].size();
+      const uint32_t length = items[i].size();
+      const size_t new_bytes = length + sizeof(length);
+      check_memory_size(bytes_written + new_bytes, capacity);
       memcpy(ptr, &length, sizeof(length));
       ptr = static_cast<char*>(ptr) + sizeof(uint32_t);
       memcpy(ptr, items[i].c_str(), length);
       ptr = static_cast<char*>(ptr) + length;
-      size += length;
+      bytes_written += new_bytes;
     }
-    return size;
+    return bytes_written;
   }
-  size_t deserialize(const void* ptr, std::string* items, unsigned num) {
-    size_t size = sizeof(uint32_t) * num;
+  size_t deserialize(const void* ptr, size_t capacity, std::string* items, unsigned num) {
+    size_t bytes_read = 0;
     for (unsigned i = 0; i < num; i++) {
       uint32_t length;
+      check_memory_size(bytes_read + sizeof(length), capacity);
       memcpy(&length, ptr, sizeof(length));
       ptr = static_cast<const char*>(ptr) + sizeof(uint32_t);
+      bytes_read += sizeof(length);
+
+      check_memory_size(bytes_read + length, capacity);
       new (&items[i]) std::string(static_cast<const char*>(ptr), length);
       ptr = static_cast<const char*>(ptr) + length;
-      size += length;
+      bytes_read += length;
     }
-    return size;
+    return bytes_read;
   }
 };
-
-static inline size_t copy_from_mem(const void* src, void* dst, size_t size) {
-  memcpy(dst, src, size);
-  return size;
-}
-
-static inline size_t copy_to_mem(const void* src, void* dst, size_t size) {
-  memcpy(dst, src, size);
-  return size;
-}
 
 } /* namespace datasketches */
 

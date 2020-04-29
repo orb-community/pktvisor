@@ -108,19 +108,6 @@ public:
 
 };
 
-struct IPv4Hash {
-    size_t operator()(long long key) {
-        // This hash function is taken from the internals of Austin Appleby's MurmurHash3 algorithm
-        // see https://github.com/apache/incubator-datasketches-characterization/blob/master/cpp/src/frequent_items_sketch_timing_profile.cpp
-        key ^= key >> 33;
-        key *= 0xff51afd7ed558ccdL;
-        key ^= key >> 33;
-        key *= 0xc4ceb9fe1a85ec53L;
-        key ^= key >> 33;
-        return key;
-    }
-};
-
 struct Sketches {
 
     //
@@ -147,7 +134,7 @@ struct Sketches {
     datasketches::frequent_items_sketch<std::string> _dns_topREFUSED;
     datasketches::frequent_items_sketch<std::string> _dns_topSRVFAIL;
     datasketches::frequent_items_sketch<uint16_t> _dns_topUDPPort;
-    datasketches::frequent_items_sketch<uint32_t, uint64_t, IPv4Hash> _net_topIPv4;
+    datasketches::frequent_items_sketch<uint32_t> _net_topIPv4;
     datasketches::frequent_items_sketch<std::string> _net_topIPv6; // TODO not very efficient, should switch to 16 byte uint
     datasketches::frequent_items_sketch<uint16_t> _dns_topQType;
     datasketches::frequent_items_sketch<uint16_t> _dns_topRCode;
