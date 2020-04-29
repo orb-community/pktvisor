@@ -90,6 +90,7 @@ add_executable(unit-tests
         tests/test_parse_pcap.cpp
         tests/test_sketches.cpp
         tests/test_utils.cpp
+        tests/test_metrics.cpp
         )
 
 if (MMDB_ENABLE)
