@@ -486,7 +486,7 @@ class auto_seeded : public SeedSeq {
         // The address of the time function.  It should hopefully be in
         // a system library that hopefully isn't always in the same place
         // (might not change until system is rebooted though)
-        auto time_func = hash(&std::chrono::high_resolution_clock::now);
+        //auto time_func = hash(&std::chrono::high_resolution_clock::now);
 
         // The address of the exit function.  It should hopefully be in
         // a system library that hopefully isn't always in the same place

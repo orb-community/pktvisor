@@ -63,7 +63,7 @@ class kll_helper {
         if (std::isnan(values[i])) {
           throw std::invalid_argument("Values must not be NaN");
         }
-        if ((i < (size - 1)) and !(C()(values[i], values[i + 1]))) {
+        if ((i < (size - 1)) && !(C()(values[i], values[i + 1]))) {
           throw std::invalid_argument("Values must be unique and monotonically increasing");
         }
       }
@@ -77,7 +77,7 @@ class kll_helper {
     static typename std::enable_if<!std::is_floating_point<T>::value, void>::type
     validate_values(const T* values, uint32_t size) {
       for (uint32_t i = 0; i < size ; i++) {
-        if ((i < (size - 1)) and !(C()(values[i], values[i + 1]))) {
+        if ((i < (size - 1)) && !(C()(values[i], values[i + 1]))) {
           throw std::invalid_argument("Values must be unique and monotonically increasing");
         }
       }

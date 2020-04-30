@@ -4,7 +4,7 @@ project(pktvisor3)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
 # this is the source of truth for version, which will be written to config.h include file.
-project(pktvisord VERSION 3.0.5)
+project(pktvisord VERSION 3.0.6)
 set(PKTVISOR_VERSION_NUM ${PROJECT_VERSION})
 set(PKTVISOR_VERSION "pktvisor ${PROJECT_VERSION}")
 
@@ -90,6 +90,7 @@ add_executable(unit-tests
         tests/test_parse_pcap.cpp
         tests/test_sketches.cpp
         tests/test_utils.cpp
+        tests/test_metrics.cpp
         )
 
 if (MMDB_ENABLE)

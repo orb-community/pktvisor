@@ -28,7 +28,7 @@ static const char USAGE[] =
       pktvisord (-h | --help)
       pktvisord --version
 
-    pktvisord will summarize your packet streams.
+    pktvisord summarizes your data streams.
 
     TARGET is either a network interface, an IP address (4 or 6) or a pcap file (ending in .pcap or .cap)
 

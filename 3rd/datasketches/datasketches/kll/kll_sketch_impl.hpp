@@ -23,6 +23,7 @@
 #include <iostream>
 #include <iomanip>
 
+#include "memory_operations.hpp"
 #include "kll_helper.hpp"
 
 namespace datasketches {
@@ -417,6 +418,7 @@ vector_u8<A> kll_sketch<T, C, S, A>::serialize(unsigned header_size_bytes) const
   const size_t size = header_size_bytes + get_serialized_size_bytes();
   vector_u8<A> bytes(size);
   uint8_t* ptr = bytes.data() + header_size_bytes;
+  uint8_t* end_ptr = ptr + size;
   const uint8_t preamble_ints(is_empty() || is_single_item ? PREAMBLE_INTS_SHORT : PREAMBLE_INTS_FULL);
   ptr += copy_to_mem(&preamble_ints, ptr, sizeof(preamble_ints));
   const uint8_t serial_version(is_single_item ? SERIAL_VERSION_2 : SERIAL_VERSION_1);
@@ -440,10 +442,11 @@ vector_u8<A> kll_sketch<T, C, S, A>::serialize(unsigned header_size_bytes) const
       ptr += copy_to_mem(&num_levels_, ptr, sizeof(num_levels_));
       ptr += copy_to_mem(&unused, ptr, sizeof(unused));
       ptr += copy_to_mem(levels_, ptr, sizeof(levels_[0]) * num_levels_);
-      ptr += S().serialize(ptr, min_value_, 1);
-      ptr += S().serialize(ptr, max_value_, 1);
+      ptr += S().serialize(ptr, end_ptr - ptr, min_value_, 1);
+      ptr += S().serialize(ptr, end_ptr - ptr, max_value_, 1);
     }
-    ptr += S().serialize(ptr, &items_[levels_[0]], get_num_retained());
+    const size_t bytes_remaining = end_ptr - ptr;
+    ptr += S().serialize(ptr, bytes_remaining, &items_[levels_[0]], get_num_retained());
   }
   const size_t delta = ptr - bytes.data();
   if (delta != size) throw std::logic_error("serialized size mismatch: " + std::to_string(delta) + " != " + std::to_string(size));
@@ -478,6 +481,7 @@ kll_sketch<T, C, S, A> kll_sketch<T, C, S, A>::deserialize(std::istream& is) {
 
 template<typename T, typename C, typename S, typename A>
 kll_sketch<T, C, S, A> kll_sketch<T, C, S, A>::deserialize(const void* bytes, size_t size) {
+  ensure_minimum_memory(size, 8);
   const char* ptr = static_cast<const char*>(bytes);
   uint8_t preamble_ints;
   ptr += copy_from_mem(ptr, &preamble_ints, sizeof(preamble_ints));
@@ -496,6 +500,7 @@ kll_sketch<T, C, S, A> kll_sketch<T, C, S, A>::deserialize(const void* bytes, si
   check_preamble_ints(preamble_ints, flags_byte);
   check_serial_version(serial_version);
   check_family_id(family_id);
+  ensure_minimum_memory(size, 1 << preamble_ints);
 
   const bool is_empty(flags_byte & (1 << flags::IS_EMPTY));
   return is_empty ? kll_sketch<T, C, S, A>(k) : kll_sketch<T, C, S, A>(k, flags_byte, bytes, size);
@@ -562,12 +567,14 @@ kll_sketch<T, C, S, A>::kll_sketch(uint16_t k, uint8_t flags_byte, std::istream&
 
 // for deserialization
 // the common part of the preamble was read and compatibility checks were done
+// we also assume we have already checked that the preamble information fits within the buffer
 template<typename T, typename C, typename S, typename A>
 kll_sketch<T, C, S, A>::kll_sketch(uint16_t k, uint8_t flags_byte, const void* bytes, size_t size) {
   k_ = k;
   m_ = DEFAULT_M;
   const bool is_single_item(flags_byte & (1 << flags::IS_SINGLE_ITEM)); // used in serial version 2
   const char* ptr = static_cast<const char*>(bytes) + DATA_START_SINGLE_ITEM;
+  const char* end_ptr = static_cast<const char*>(bytes) + size;
   if (is_single_item) {
     n_ = 1;
     min_k_ = k_;
@@ -591,13 +598,13 @@ kll_sketch<T, C, S, A>::kll_sketch(uint16_t k, uint8_t flags_byte, const void* b
   min_value_ = A().allocate(1);
   max_value_ = A().allocate(1);
   if (!is_single_item) {
-    ptr += S().deserialize(ptr, min_value_, 1);
-    ptr += S().deserialize(ptr, max_value_, 1);
+    ptr += S().deserialize(ptr, end_ptr - ptr, min_value_, 1);
+    ptr += S().deserialize(ptr, end_ptr - ptr, max_value_, 1);
   }
   items_ = A().allocate(capacity);
   items_size_ = capacity;
   const auto num_items(levels_[num_levels_] - levels_[0]);
-  ptr += S().deserialize(ptr, &items_[levels_[0]], num_items);
+  ptr += S().deserialize(ptr, end_ptr - ptr, &items_[levels_[0]], num_items);
   if (is_single_item) {
     new (min_value_) T(items_[levels_[0]]);
     new (max_value_) T(items_[levels_[0]]);

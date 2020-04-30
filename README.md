@@ -9,7 +9,7 @@
       pktvisord (-h | --help)
       pktvisord --version
 
-    pktvisord will summarize your packet streams.
+    pktvisord summarizes your data streams.
 
     TARGET is either a network interface, an IP address (4 or 6) or a pcap file (ending in .pcap or .cap)
 
@@ -30,11 +30,12 @@
 
 ```
 
-Running the server:
+pktvisor summarizes input data streams, and provides a clean, time-windowed HTTP interface to the results.  
 
-`docker run --rm --net=host -d nsone/pktvisor3:latest pktvisord -b 'port 53' enp3s0`
 
-Running the console UI:
+Running the server from Docker:
+`docker run --rm --net=host -d --mount type=bind,source=/opt/geo,target=/geo --entrypoint '/usr/local/sbin/pktvisord' ns1/pktvisor:latest --geo-city /geo/GeoIP2-City.mmdb --geo-asn /geo/GeoIP2-ISP.mmdb -H 192.168.0.54/32,127.0.0.1/32 any`
 
-`docker -D run --rm --net=host -ti nsone/pktvisor3:latest pktvisor`
+Running the console UI from Docker:
+`docker run -it --rm --net=host --entrypoint '/bin/bash' ns1/pktvisor:latest -c "sleep 1;pktvisor"`
 

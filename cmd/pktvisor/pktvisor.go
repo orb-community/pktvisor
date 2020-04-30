@@ -3,13 +3,13 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/docopt/docopt-go"
 	"github.com/pkg/errors"
 	"io/ioutil"
 	"log"
 	"strconv"
 
 	"net/http"
-	//"sort"
 	"time"
 
 	"github.com/jroimartin/gocui"
@@ -105,15 +105,16 @@ type StatSnapshot struct {
 			DstIpsOut int64 `json:"dst_ips_out"`
 			SrcIpsIn  int64 `json:"src_ips_in"`
 		} `json:"cardinality"`
-		Ipv4  int64 `json:"ipv4"`
-		Ipv6  int64 `json:"ipv6"`
-		Tcp   int64 `json:"tcp"`
-		Total int64 `json:"total"`
-		Udp   int64 `json:"udp"`
-		In    int64 `json:"in"`
-		Out   int64 `json:"out"`
-		Other_L4 int64 `json:"other_l4"`
-		Rates struct {
+		Ipv4        int64 `json:"ipv4"`
+		Ipv6        int64 `json:"ipv6"`
+		Tcp         int64 `json:"tcp"`
+		Total       int64 `json:"total"`
+		Udp         int64 `json:"udp"`
+		In          int64 `json:"in"`
+		Out         int64 `json:"out"`
+		OtherL4     int64 `json:"other_l4"`
+		DeepSamples int64 `json:"deep_samples"`
+		Rates       struct {
 			Pps_in struct {
 				P50 int64 `json:"p50"`
 				P90 int64 `json:"p90"`
@@ -139,8 +140,20 @@ type StatSnapshot struct {
 }
 
 func main() {
-	// TODO get port from command line
-	// statPort =
+	usage := `pktvisor v3 UI
+
+   Usage:
+      pktvisor [-p PORT] [-H HOST]
+      pktvisor (-h | --help)
+
+    Options:
+      -p PORT               Query pktvisord metrics webserver on the given port [default: 10853]
+      -H HOST               Query pktvisord metrics webserver on the given host [default: localhost]
+      -h --help             Show this screen
+`
+	opts, err := docopt.ParseDoc(usage)
+	statPort, _ = opts.Int("-p")
+	statHost, _ = opts.String("-H")
 	g, err := gocui.NewGui(gocui.OutputNormal)
 	if err != nil {
 		log.Panicln(err)
@@ -166,14 +179,14 @@ func updateHeader(v *gocui.View, rates *InstantRates, stats *StatSnapshot) {
 	pcounts := stats.Packets
 	// there may be some unknown
 	inOutDiff := pcounts.Total - (pcounts.In + pcounts.Out)
-	_, _ = fmt.Fprintf(v, "Pkts  %d | UDP %d (%3.1f%%) | TCP %d (%3.1f%%) | Other %d (%3.1f%%) | IPv4 %d (%3.1f%%) | IPv6 %d (%3.1f%%) | In %d (%3.1f%%) | Out %d (%3.1f%%)\n",
+	_, _ = fmt.Fprintf(v, "Pkts  %d | UDP %d (%3.1f%%) | TCP %d (%3.1f%%) | Other %d (%3.1f%%) | IPv4 %d (%3.1f%%) | IPv6 %d (%3.1f%%) | In %d (%3.1f%%) | Out %d (%3.1f%%) | Deep Samples %d (%3.1f%%)\n",
 		pcounts.Total,
 		pcounts.Udp,
 		(float64(pcounts.Udp)/float64(pcounts.Total))*100,
 		pcounts.Tcp,
 		(float64(pcounts.Tcp)/float64(pcounts.Total))*100,
-		pcounts.Other_L4,
-		(float64(pcounts.Other_L4)/float64(pcounts.Total))*100,
+		pcounts.OtherL4,
+		(float64(pcounts.OtherL4)/float64(pcounts.Total))*100,
 		pcounts.Ipv4,
 		(float64(pcounts.Ipv4)/float64(pcounts.Total))*100,
 		pcounts.Ipv6,
@@ -182,6 +195,8 @@ func updateHeader(v *gocui.View, rates *InstantRates, stats *StatSnapshot) {
 		(float64(pcounts.In)/float64(pcounts.Total-inOutDiff))*100,
 		pcounts.Out,
 		(float64(pcounts.Out)/float64(pcounts.Total-inOutDiff))*100,
+		pcounts.DeepSamples,
+		(float64(pcounts.DeepSamples)/float64(pcounts.Total))*100,
 	)
 	_, _ = fmt.Fprintf(v, "Pkt Rates In %d/s %d/%d/%d/%d pps | Out %d/s %d/%d/%d/%d pps | IP Card. In: %d | Out: %d\n\n",
 		rates.Packets.In,
@@ -254,16 +269,13 @@ func updateTable(data []NameCount, v *gocui.View, baseNumber int64) {
 	top3 := 0
 	for _, stat := range data {
 		w, _ := v.Size()
-		w = w - 7
-		fmtstr := ""
+		numStr := ""
 		if baseNumber > 0 && top3 < 3 {
-			w = w - 8
-			fmtstr = "%-" + strconv.Itoa(w) + "." + strconv.Itoa(w) + "s %5d (%4.1f%%)\n"
-			fmt.Fprintf(v, fmtstr, stat.Name, stat.Estimate, float64(stat.Estimate)/float64(baseNumber)*100)
+			numStr = fmt.Sprintf("%d (%4.1f%%)", stat.Estimate, float64(stat.Estimate)/float64(baseNumber)*100)
 		} else {
-			fmtstr = "%-" + strconv.Itoa(w) + "." + strconv.Itoa(w) + "s %5d\n"
-			fmt.Fprintf(v, fmtstr, stat.Name, stat.Estimate)
+			numStr = fmt.Sprintf("%d", stat.Estimate)
 		}
+		fmt.Fprintf(v, "%-" + strconv.Itoa(w - len(numStr) - 1) + "s %s\n", stat.Name, numStr)
 		top3++
 	}
 }
@@ -594,75 +606,80 @@ func updateViews(g *gocui.Gui) {
 			if err != nil {
 				return err
 			}
-			updateTable(stats.Packets.TopIpv4, v, stats.Packets.Total)
+			updateTable(stats.Packets.TopIpv4, v, stats.Packets.DeepSamples)
 			v, err = g.View("top_ipv6")
 			if err != nil {
 				return err
 			}
-			updateTable(stats.Packets.TopIpv6, v, stats.Packets.Total)
+			updateTable(stats.Packets.TopIpv6, v, stats.Packets.DeepSamples)
 			v, err = g.View("top_geo")
 			if err != nil {
 				return err
 			}
-			updateTable(stats.Packets.TopGeoLoc, v, stats.Packets.Total)
+			updateTable(stats.Packets.TopGeoLoc, v, stats.Packets.DeepSamples)
 			v, err = g.View("top_asn")
 			if err != nil {
 				return err
 			}
-			updateTable(stats.Packets.TopASN, v, stats.Packets.Total)
+			updateTable(stats.Packets.TopASN, v, stats.Packets.DeepSamples)
 		}
 		currentView = "dns"
 		if currentView == "dns" {
+			// we need to figure in the current sampling rate
+			sampleRate := float64(stats.Packets.DeepSamples) / float64(stats.Packets.Total)
+			wireSample := int64(float64(stats.DNS.WirePackets.Total) * sampleRate)
+			replySample := int64(float64(stats.DNS.WirePackets.Replies) * sampleRate)
+			xactSample := int64(float64(stats.DNS.Xact.Counts.Total) * sampleRate)
 			v, err = g.View("qname2")
 			if err != nil {
 				return err
 			}
-			updateTable(stats.DNS.TopQname2, v, stats.DNS.WirePackets.Total)
+			updateTable(stats.DNS.TopQname2, v, wireSample)
 			v, err = g.View("qname3")
 			if err != nil {
 				return err
 			}
-			updateTable(stats.DNS.TopQname3, v, stats.DNS.WirePackets.Total)
+			updateTable(stats.DNS.TopQname3, v, wireSample)
 			v, err = g.View("nx")
 			if err != nil {
 				return err
 			}
-			updateTable(stats.DNS.TopNX, v, stats.DNS.WirePackets.Replies)
+			updateTable(stats.DNS.TopNX, v, replySample)
 			v, err = g.View("rcode")
 			if err != nil {
 				return err
 			}
-			updateTable(stats.DNS.TopRcode, v, stats.DNS.WirePackets.Replies)
+			updateTable(stats.DNS.TopRcode, v, replySample)
 			v, err = g.View("srvfail")
 			if err != nil {
 				return err
 			}
-			updateTable(stats.DNS.TopSRVFAIL, v, stats.DNS.WirePackets.Replies)
+			updateTable(stats.DNS.TopSRVFAIL, v, replySample)
 			v, err = g.View("refused")
 			if err != nil {
 				return err
 			}
-			updateTable(stats.DNS.TopREFUSED, v, stats.DNS.WirePackets.Replies)
+			updateTable(stats.DNS.TopREFUSED, v, replySample)
 			v, err = g.View("qtype")
 			if err != nil {
 				return err
 			}
-			updateTable(stats.DNS.TopQtype, v, stats.DNS.WirePackets.Total)
+			updateTable(stats.DNS.TopQtype, v, wireSample)
 			v, err = g.View("top_udp_ports")
 			if err != nil {
 				return err
 			}
-			updateTable(stats.DNS.TopUDPPorts, v, stats.DNS.WirePackets.Total)
+			updateTable(stats.DNS.TopUDPPorts, v, wireSample)
 			v, err = g.View("slow_in")
 			if err != nil {
 				return err
 			}
-			updateTable(stats.DNS.Xact.In.TopSlow, v, stats.DNS.Xact.Counts.Total)
+			updateTable(stats.DNS.Xact.In.TopSlow, v, xactSample)
 			v, err = g.View("slow_out")
 			if err != nil {
 				return err
 			}
-			updateTable(stats.DNS.Xact.Out.TopSlow, v, stats.DNS.Xact.Counts.Total)
+			updateTable(stats.DNS.Xact.Out.TopSlow, v, xactSample)
 		}
 		return nil
 	})

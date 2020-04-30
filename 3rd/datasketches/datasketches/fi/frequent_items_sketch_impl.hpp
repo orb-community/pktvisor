@@ -24,6 +24,8 @@
 #include <cstring>
 #include <limits>
 
+#include "memory_operations.hpp"
+
 namespace datasketches {
 
 // clang++ seems to require this declaration for CMAKE_BUILD_TYPE='Debug"
@@ -209,6 +211,7 @@ vector_u8<A> frequent_items_sketch<T, W, H, E, S, A>::serialize(unsigned header_
   const size_t size = header_size_bytes + get_serialized_size_bytes();
   vector_u8<A> bytes(size);
   uint8_t* ptr = bytes.data() + header_size_bytes;
+  uint8_t* end_ptr = ptr + size;
 
   const uint8_t preamble_longs = is_empty() ? PREAMBLE_LONGS_EMPTY : PREAMBLE_LONGS_NONEMPTY;
   ptr += copy_to_mem(&preamble_longs, ptr, sizeof(uint8_t));
@@ -245,7 +248,8 @@ vector_u8<A> frequent_items_sketch<T, W, H, E, S, A>::serialize(unsigned header_
     }
     ptr += copy_to_mem(weights, ptr, sizeof(W) * num_items);
     AllocW().deallocate(weights, num_items);
-    ptr += S().serialize(ptr, items, num_items);
+    const size_t bytes_remaining = end_ptr - ptr;
+    ptr += S().serialize(ptr, bytes_remaining, items, num_items);
     for (unsigned i = 0; i < num_items; i++) items[i].~T();
     A().deallocate(items, num_items);
   }
@@ -276,7 +280,7 @@ frequent_items_sketch<T, W, H, E, S, A> frequent_items_sketch<T, W, H, E, S, A>:
   check_family_id(family_id);
   check_size(lg_cur_size, lg_max_size);
 
-  frequent_items_sketch<T, W, H, E, S, A> sketch(lg_cur_size, lg_max_size);
+  frequent_items_sketch<T, W, H, E, S, A> sketch(lg_max_size, lg_cur_size);
   if (!is_empty) {
     uint32_t num_items;
     is.read((char*)&num_items, sizeof(num_items));
@@ -308,7 +312,9 @@ frequent_items_sketch<T, W, H, E, S, A> frequent_items_sketch<T, W, H, E, S, A>:
 
 template<typename T, typename W, typename H, typename E, typename S, typename A>
 frequent_items_sketch<T, W, H, E, S, A> frequent_items_sketch<T, W, H, E, S, A>::deserialize(const void* bytes, size_t size) {
+  ensure_minimum_memory(size, 8);
   const char* ptr = static_cast<const char*>(bytes);
+  const char* base = static_cast<const char*>(bytes);
   uint8_t preamble_longs;
   ptr += copy_from_mem(ptr, &preamble_longs, sizeof(uint8_t));
   uint8_t serial_version;
@@ -330,8 +336,9 @@ frequent_items_sketch<T, W, H, E, S, A> frequent_items_sketch<T, W, H, E, S, A>:
   check_serial_version(serial_version);
   check_family_id(family_id);
   check_size(lg_cur_size, lg_max_size);
+  ensure_minimum_memory(size, 1 << preamble_longs);
 
-  frequent_items_sketch<T, W, H, E, S, A> sketch(lg_cur_size, lg_max_size);
+  frequent_items_sketch<T, W, H, E, S, A> sketch(lg_max_size, lg_cur_size);
   if (!is_empty) {
     uint32_t num_items;
     ptr += copy_from_mem(ptr, &num_items, sizeof(uint32_t));
@@ -345,9 +352,11 @@ frequent_items_sketch<T, W, H, E, S, A> frequent_items_sketch<T, W, H, E, S, A>:
     // batch deserialization with intermediate array of items and weights
     typedef typename std::allocator_traits<A>::template rebind_alloc<W> AllocW;
     W* weights = AllocW().allocate(num_items);
+    ensure_minimum_memory(size, ptr - base + (sizeof(W) * num_items));
     ptr += copy_from_mem(ptr, weights, sizeof(W) * num_items);
     T* items = A().allocate(num_items);
-    ptr += S().deserialize(ptr, items, num_items);
+    const size_t bytes_remaining = size - (ptr - base);
+    ptr += S().deserialize(ptr, bytes_remaining, items, num_items);
     for (uint32_t i = 0; i < num_items; i++) {
       sketch.update(std::move(items[i]), weights[i]);
       items[i].~T();
@@ -436,7 +445,7 @@ void frequent_items_sketch<T, W, H, E, S, A>::check_weight(WW weight) {
 // version for integral unsigned type - no-op
 template<typename T, typename W, typename H, typename E, typename S, typename A>
 template<typename WW, typename std::enable_if<std::is_integral<WW>::value && std::is_unsigned<WW>::value, int>::type>
-void frequent_items_sketch<T, W, H, E, S, A>::check_weight(WW weight) {}
+void frequent_items_sketch<T, W, H, E, S, A>::check_weight(WW) {}
 
 // version for floating point type
 template<typename T, typename W, typename H, typename E, typename S, typename A>

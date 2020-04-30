@@ -28,12 +28,13 @@ template<typename A>
 cpc_union_alloc<A>::cpc_union_alloc(uint8_t lg_k, uint64_t seed):
 lg_k(lg_k),
 seed(seed),
-accumulator(new (AllocCpc().allocate(1)) cpc_sketch_alloc<A>(lg_k, seed)),
+accumulator(nullptr),
 bit_matrix()
 {
   if (lg_k < CPC_MIN_LG_K || lg_k > CPC_MAX_LG_K) {
     throw std::invalid_argument("lg_k must be >= " + std::to_string(CPC_MIN_LG_K) + " and <= " + std::to_string(CPC_MAX_LG_K) + ": " + std::to_string(lg_k));
   }
+  accumulator = new (AllocCpc().allocate(1)) cpc_sketch_alloc<A>(lg_k, seed);
 }
 
 template<typename A>
