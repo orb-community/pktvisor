@@ -1,4 +1,4 @@
-FROM ubuntu:disco AS build
+FROM debian:buster-slim AS build
 
 ENV BUILD_DEPS "g++ cmake make git libpcap-dev pkgconf golang ca-certificates libmaxminddb-dev jq"
 
