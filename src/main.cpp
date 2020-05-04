@@ -429,11 +429,11 @@ int main(int argc, char *argv[])
             openPcap(args["TARGET"].asString(), tcpDnsReassembly, bpf);
             if (args["--summary"].asBool()) {
                 // in summary mode we output a single summary of stats
-                std::cout << metricsManager->getMetrics() << std::endl;
+                std::cout << std::endl << metricsManager->getMetrics() << std::endl;
             }
             else {
                 // otherwise, merge the max time window available
-                std::cout << metricsManager->getMetricsMerged(periods) << std::endl;
+                std::cout << std::endl << metricsManager->getMetricsMerged(periods) << std::endl;
             }
         } catch (const std::exception &e) {
             std::cerr << e.what() << std::endl;
