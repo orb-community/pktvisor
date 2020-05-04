@@ -12,6 +12,7 @@
 #include <cpp-httplib/httplib.h>
 #include <docopt/docopt.h>
 
+#include "timer.h"
 #include "metrics.h"
 #include "pktvisor.h"
 #include "querypairmgr.h"
@@ -81,7 +82,7 @@ static void onGotTcpDnsMessage(pcpp::DnsLayer *dnsLayer, pktvisor::Direction dir
  */
 static void onApplicationInterrupted(void *cookie)
 {
-    std::cerr << "stopping..." << std::endl;
+    std::cerr << "\nstopping..." << std::endl;
     devCookie *dC = (devCookie *)cookie;
     dC->second = true;
 }
@@ -164,6 +165,9 @@ void openPcap(std::string fileName, pktvisor::TcpDnsReassembly &tcpReassembly, s
             throw std::runtime_error("Cannot set BPF filter to pcap file");
     }
 
+    devCookie dC = {&tcpReassembly, false};
+    pcpp::ApplicationEventHandler::getInstance().onApplicationInterrupted(onApplicationInterrupted, &dC);
+
     // run in a loop that reads one packet from the file in each iteration and feeds it to the TCP reassembly instance
     pcpp::RawPacket rawPacket;
     // setup initial timestamp from first packet to initiate bucketing
@@ -171,9 +175,20 @@ void openPcap(std::string fileName, pktvisor::TcpDnsReassembly &tcpReassembly, s
         metricsManager->setInitialShiftTS(&rawPacket);
         processRawPacket(&rawPacket, &tcpReassembly);
     }
-    while (reader->getNextPacket(rawPacket)) {
+
+    int packetCount = 0, lastCount = 0;
+    pktvisor::Timer t([&packetCount, &lastCount]() {
+        std::cerr << "\rprocessed " << packetCount << " packets (" << lastCount << "/s)";
+        lastCount = 0;
+    }, pktvisor::Timer::Interval(1000), false);
+    t.start();
+    // dC.second answers question "stopping?"
+    while (reader->getNextPacket(rawPacket) && !dC.second) {
+        packetCount++;
+        lastCount++;
         processRawPacket(&rawPacket, &tcpReassembly);
     }
+    t.stop();
 
     // after all packets have been read - close the connections which are still opened
     tcpReassembly.getTcpReassembly()->closeAllConnections();
