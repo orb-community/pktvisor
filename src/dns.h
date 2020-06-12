@@ -5,6 +5,8 @@
 
 namespace pktvisor {
 
+const uint16_t EDNS0_CSUBNET = 8;
+
 static std::unordered_map<uint16_t, std::string> DNS_QTYPES({
     {1, "A"},
     {2, "NS"},

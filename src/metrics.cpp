@@ -94,6 +94,24 @@ void Metrics::merge(Metrics &other)
     _sketches->_net_topASN.merge(other._sketches->_net_topASN);
 }
 
+static int parseCSubnet(const uint8_t* ednsData, size_t ednsDataLen) {
+
+    if (ednsDataLen < 4)
+        return -1;
+
+    auto ednsCode = (uint16_t*)ednsData;
+    ednsData += 2;
+    auto optLen = (uint16_t*)ednsData;
+    ednsData += 2;
+
+    if (*ednsCode != EDNS0_CSUBNET)
+        return -1;
+
+
+
+
+}
+
 void Metrics::newDNSPacket(pcpp::DnsLayer *dns, Direction dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4)
 {
 
@@ -134,6 +152,21 @@ void Metrics::newDNSPacket(pcpp::DnsLayer *dns, Direction dir, pcpp::ProtocolTyp
     }
 
     dns->parseResources();
+
+    // look for ECS
+    auto optRR = dns->getFirstAdditionalRecord();
+    if (optRR && optRR->getDnsType() == pcpp::DNS_TYPE_OPT) {
+        auto optData = optRR->getData();
+        if (optData) {
+            auto genericRRData = optData->castAs<pcpp::GenericDnsResourceData>();
+            if (genericRRData) {
+                // decode EDNS, look for CSUBNET
+                auto ednsData = genericRRData->getData();
+                auto ednsDataLen = genericRRData->getDataLen();
+                auto scope = parseCSubnet(ednsData, ednsDataLen);
+            }
+        }
+    }
 
     // lock for write
     std::unique_lock lock(_sketchMutex);
