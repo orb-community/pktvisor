@@ -10,12 +10,12 @@
           state.top_n["dns_top_refused"] = new LinkedHashMap();
           state.top_n["dns_top_srvfail"] = new LinkedHashMap();
           state.top_n["dns_top_udp_ports"] = new LinkedHashMap();
+          state.top_n["dns_xact_in_top_slow"] = new LinkedHashMap();
+          state.top_n["dns_xact_out_top_slow"] = new LinkedHashMap();
           state.top_n["packets_top_ASN"] = new LinkedHashMap();
           state.top_n["packets_top_geoLoc"] = new LinkedHashMap();
           state.top_n["packets_top_ipv4"] = new LinkedHashMap();
           state.top_n["packets_top_ipv6"] = new LinkedHashMap();
-          state.top_n["xact_in_top_slow"] = new LinkedHashMap();
-          state.top_n["xact_out_top_slow"] = new LinkedHashMap();
         """,
         "map_script": """
         long deep = doc["http.packets_deep_samples"][0].longValue();
