@@ -23,7 +23,7 @@
 static const char USAGE[] =
     R"(pktvisord.
     Usage:
-      pktvisord [-b BPF] [-p PORT] [-H HOSTSPEC] [--periods P] [--summary] [--geo-city FILE] [--geo-asn FILE]
+      pktvisord [-b BPF] [-l HOST] [-p PORT] [-H HOSTSPEC] [--periods P] [--summary] [--geo-city FILE] [--geo-asn FILE]
                 [--max-deep-sample N]
                 TARGET
       pktvisord (-h | --help)
@@ -34,7 +34,8 @@ static const char USAGE[] =
     TARGET is either a network interface, an IP address (4 or 6) or a pcap file (ending in .pcap or .cap)
 
     Options:
-      -p PORT               Run metrics webserver on the given localhost port [default: 10853]
+      -l HOST               Run metrics webserver on the given host or IP [default: localhost]
+      -p PORT               Run metrics webserver on the given port [default: 10853]
       -b BPF                Filter packets using the given BPF string
       --geo-city FILE       GeoLite2 City database to use for IP to Geo mapping (if enabled)
       --geo-asn FILE        GeoLite2 ASN database to use for IP to ASN mapping (if enabled)
@@ -465,9 +466,13 @@ int main(int argc, char *argv[])
         }
         httplib::Server svr;
         setupRoutes(svr);
+        auto host = args["-l"].asString();
         auto port = args["-p"].asLong();
-        std::thread httpThread([&svr, port] {
-            svr.listen("localhost", port);
+        std::thread httpThread([&svr, host, port] {
+            std::cerr << "Metrics web server listening on " << host << ":" << port << std::endl;
+            if (!svr.listen(host.c_str(), port)) {
+                throw std::runtime_error("unable to listen");
+            }
         });
         try {
             std::cerr << "Interface " << dev->getName() << std::endl;
