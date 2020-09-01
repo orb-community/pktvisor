@@ -133,6 +133,8 @@ void Metrics::newDNSPacket(pcpp::DnsLayer *dns, Direction dir, pcpp::ProtocolTyp
         return;
     }
 
+    dns->parseResources();
+
     // lock for write
     std::unique_lock lock(_sketchMutex);
 

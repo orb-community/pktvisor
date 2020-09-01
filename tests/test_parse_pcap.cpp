@@ -25,6 +25,7 @@ TEST_CASE("Parse DNS UDP IPv4 tests", "[pcap][ipv4][udp][dns]")
             numUDP++;
             if (dnsRequest.isPacketOfType(pcpp::DNS)) {
                 pcpp::DnsLayer *dnsLayer = dnsRequest.getLayerOfType<pcpp::DnsLayer>();
+                dnsLayer->parseResources();
                 if (numDNS == 0) {
                     CHECK(dnsLayer->getFirstQuery()->getName() == "utadwnME.POJwOc9R.KtfO.test.com");
                     CHECK(dnsLayer->getFirstQuery()->getDnsType() == pcpp::DNS_TYPE_AAAA);
@@ -107,6 +108,7 @@ TEST_CASE("Parse DNS UDP IPv6 tests", "[pcap][ipv6][udp][dns]")
             numUDP++;
             if (dnsRequest.isPacketOfType(pcpp::DNS)) {
                 pcpp::DnsLayer *dnsLayer = dnsRequest.getLayerOfType<pcpp::DnsLayer>();
+                dnsLayer->parseResources();
                 if (numDNS == 0) {
                     CHECK(dnsLayer->getFirstQuery()->getName() == "LOJ5Pq2._EmpLuAPR.PPLIop.1F8J2R1.eMVq5.test.com");
                     CHECK(dnsLayer->getFirstQuery()->getDnsType() == pcpp::DNS_TYPE_AAAA);
