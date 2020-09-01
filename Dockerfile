@@ -32,7 +32,7 @@ RUN \
     go get github.com/docopt/docopt-go && \
     go build /src/cmd/pktvisor/pktvisor.go
 
-FROM ubuntu:disco AS runtime
+FROM debian:buster-slim AS runtime
 
 ENV RUNTIME_DEPS "curl libpcap0.8 libmaxminddb0"
 
