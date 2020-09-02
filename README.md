@@ -1,5 +1,5 @@
-pktvisor 
-============
+pktvisor
+---
 > This project is in [active development](https://github.com/ns1/community/blob/master/project_status/ACTIVE_DEVELOPMENT.md).
 
 pktvisor summarizes data streams (e.g. via packet capture) in real time and provides a clean, time-windowed HTTP interface and command line UI to the results.  
@@ -7,7 +7,7 @@ pktvisor summarizes data streams (e.g. via packet capture) in real time and prov
 2019-2020© NSONE, Inc.
 
 Overview
---------
+---
 
 pktvisor consists of:
 1. A collector agent
@@ -16,7 +16,7 @@ pktvisor consists of:
 
 
 Getting Started
----------------
+---
 
 The easiest way to get started with pktvisor is to use the public docker image. The image contains both the command line UI and the collector daemon (agent).
 ```
@@ -33,7 +33,7 @@ There are currently no prebuilt operating system packages. If you would like to 
 please see the Build section below.
 
 Agent Usage
------------
+---
 
 A collector daemon agent should be installed on each note to be monitored.
 
@@ -75,12 +75,12 @@ pktvisord --help
 ```
 
 Command Line UI Usage
-=====================
+---
 
 The command line UI connects to an agent to visualize real time stream summarization. It can connect to a local or remote agent.
 
 Usage Examples
-==============
+---
 
 Starting the collector agent from Docker with GeoDB and Host options:
 
@@ -94,6 +94,41 @@ docker run -it --rm --net=host ns1labs/pktvisor pktvisor
 ```
 
 Centralized Collection
-======================
+---
 
 pktvisor may be collected centrally to give a global view of the collected information.
+
+Build Dependencies
+---
+
+* CMake >= 3.8
+* Linux or OSX
+* C++ compiler supporting C++17
+
+Building
+---
+
+Building is based on CMake.
+
+Default build:
+```
+mkdir build; cd build
+cmake ..
+make
+```
+
+Building the docker image:
+```
+org="myorg"
+image="mypktvisor"
+tag="latest"
+docker build -t ${org}/${image}:${tag} -f Dockerfile .
+```
+
+Contributions
+---
+Pull Requests and issues are welcome. See the [NS1 Contribution Guidelines](https://github.com/ns1/community) for more information.
+
+License
+---
+This code is released under Apache License 2.0. You can find terms and conditions in the LICENSE file.
