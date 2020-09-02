@@ -1,9 +1,52 @@
-# pktvisor3
+pktvisor 
+============
+> This project is in [active development](https://github.com/ns1/community/blob/master/project_status/ACTIVE_DEVELOPMENT.md).
+
+pktvisor summarizes data streams (e.g. via packet capture) in real time and provides a clean, time-windowed HTTP interface and command line UI to the results.  
+
+2019-2020© NSONE, Inc.
+
+Overview
+--------
+
+pktvisor consists of:
+1. A collector agent
+1. A terminal based, command line UI which can visualize summarized data from the agent
+1. Tools for collecting and visualizing a globally distributed set of agents to a central location
+
+
+Getting Started
+---------------
+
+The easiest way to get started with pktvisor is to use the public docker image. The image contains both the command line UI and the collector daemon (agent).
+```
+docker pull ns1labs/pktvisor 
+# command line UI
+docker run ns1labs/pktvisor pktvisor --help
+# collector daemon/agent
+docker run ns1labs/pktvisor pktvisord --help
+```
+
+See usage examples below.
+
+There are currently no prebuilt operating system packages. If you would like to build your own executable,
+please see the Build section below.
+
+Agent Usage
+-----------
+
+A collector daemon agent should be installed on each note to be monitored.
+
+Current command line options are described with:
+
+```
+pktvisord --help
+```
 
 ```
 
     Usage:
-      pktvisord [-b BPF] [-p PORT] [-H HOSTSPEC] [--periods P] [--summary] [--geo-city FILE] [--geo-asn FILE]
+      pktvisord [-b BPF] [-l HOST] [-p PORT] [-H HOSTSPEC] [--periods P] [--summary] [--geo-city FILE] [--geo-asn FILE]
                 [--max-deep-sample N]
                 TARGET
       pktvisord (-h | --help)
@@ -14,7 +57,8 @@
     TARGET is either a network interface, an IP address (4 or 6) or a pcap file (ending in .pcap or .cap)
 
     Options:
-      -p PORT               Run metrics webserver on the given localhost port [default: 10853]
+      -l HOST               Run metrics webserver on the given host or IP [default: localhost]
+      -p PORT               Run metrics webserver on the given port [default: 10853]
       -b BPF                Filter packets using the given BPF string
       --geo-city FILE       GeoLite2 City database to use for IP to Geo mapping (if enabled)
       --geo-asn FILE        GeoLite2 ASN database to use for IP to ASN mapping (if enabled)
@@ -30,12 +74,26 @@
 
 ```
 
-pktvisor summarizes input data streams, and provides a clean, time-windowed HTTP interface to the results.  
+Command Line UI Usage
+=====================
 
+The command line UI connects to an agent to visualize real time stream summarization. It can connect to a local or remote agent.
 
-Running the server from Docker:
-`docker run --rm --net=host -d --mount type=bind,source=/opt/geo,target=/geo --entrypoint '/usr/local/sbin/pktvisord' ns1/pktvisor:latest --geo-city /geo/GeoIP2-City.mmdb --geo-asn /geo/GeoIP2-ISP.mmdb -H 192.168.0.54/32,127.0.0.1/32 any`
+Usage Examples
+==============
+
+Starting the collector agent from Docker with GeoDB and Host options:
+
+```
+docker run --rm --net=host -d --mount type=bind,source=/opt/geo,target=/geo ns1labs/pktvisor pktvisord --geo-city /geo/GeoIP2-City.mmdb --geo-asn /geo/GeoIP2-ISP.mmdb -H 192.168.0.54/32,127.0.0.1/32 any
+```
 
 Running the console UI from Docker:
-`docker run -it --rm --net=host --entrypoint '/bin/bash' ns1/pktvisor:latest -c "sleep 1;pktvisor"`
+```
+docker run -it --rm --net=host ns1labs/pktvisor pktvisor
+```
 
+Centralized Collection
+======================
+
+pktvisor may be collected centrally to give a global view of the collected information.
