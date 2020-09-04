@@ -2,7 +2,15 @@ pktvisor
 ===
 > This project is in [active development](https://github.com/ns1/community/blob/master/project_status/ACTIVE_DEVELOPMENT.md).
 
-pktvisor summarizes data streams (e.g. via packet capture) in real time and provides a clean, time-windowed HTTP interface and command line UI to the results.  
+pktvisor summarizes data streams in real time and provides a clean, time-windowed HTTP interface and command line UI to the results.
+
+Summarized information includes, for example:
+* Packet rates: 50th, 90th, 95th, 99th percentiles
+* Packet counts by protocol and IP version
+* Cardinality of set of source IPs and DNS qnames seen in window
+* Top 10 heavy hitters: IPs, ASNs, Geo, DNS qnames, DNS slow xacts...
+
+Although currently DNS and packet capture focused, it is designed to be used in broader contexts.
 
 2019-2020© NSONE, Inc.
 
@@ -10,8 +18,8 @@ Overview
 ---
 
 pktvisor consists of:
-1. A collector agent
-1. A terminal based, command line UI which can visualize summarized data from the agent
+1. An agent which efficiently summarizes streams and exposes a REST API to collect the results
+1. A terminal based, command line UI which can visualize the real-time summarized data
 1. Tools for collecting and visualizing a globally distributed set of agents to a central location
 
 
@@ -104,6 +112,10 @@ Build Dependencies
 * CMake >= 3.8
 * Linux or OSX
 * C++ compiler supporting C++17
+* PcapPlusPlus (NS1 fork: pending upstream merge) https://github.com/nsone/PcapPlusPlus
+
+Optional
+* MaxMind DB libmaxmindb
 
 Building
 ---
