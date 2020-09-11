@@ -22,6 +22,9 @@ pktvisor consists of:
 1. A terminal based, command line UI which can visualize the real-time summarized data
 1. Tools for collecting and visualizing a globally distributed set of agents to a central location
 
+The agent can also summarize pcap files.
+
+[_drafting_]
 
 Getting Started
 ---
@@ -105,6 +108,7 @@ Centralized Collection
 ---
 
 pktvisor may be collected centrally to give a global view of the collected information.
+[_drafting_]
 
 Build Dependencies
 ---
