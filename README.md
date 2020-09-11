@@ -26,6 +26,11 @@ The agent can also summarize pcap files.
 
 [_drafting_]
 
+API Documentation
+---
+The REST API documentation is available in OpenAPI format.
+
+
 Getting Started
 ---
 
@@ -108,6 +113,12 @@ Centralized Collection
 ---
 
 pktvisor may be collected centrally to give a global view of the collected information.
+[_drafting_]
+
+Host Concept
+---
+Ingress and egress (in/out) related metrics can only be calculated if the agent understands how to identify the host.
+
 [_drafting_]
 
 Build Dependencies

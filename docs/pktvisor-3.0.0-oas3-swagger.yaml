@@ -61,7 +61,10 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MetricsView'
+                type: object
+                properties:
+                  '1m':
+                    $ref: '#/components/schemas/MetricsView'
         '500':
           description: server error
   /api/v1/metrics/window/{periodCount}:
@@ -83,7 +86,10 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MetricsView'
+                type: object
+                properties:
+                  '{periodCount}m':
+                    $ref: '#/components/schemas/MetricsView'
         '500':
           description: server error
 components:
@@ -136,8 +142,67 @@ components:
             out:
               type: number
               description: 'The instantaneous egress packets per second'
+    NameEstimatePair:
+      type: object
+      properties:
+        name:
+          type: string
+          description: 'Top N item name'
+        estimate:
+          type: number
+          description: 'Top N item estimated value'
+    QuantileObject:
+      type: object
+      properties:
+        p50:
+          type: number
+          description: 'The 50th percentile'
+        p90:
+          type: number
+          description: 'The 90th percentile'
+        p95:
+          type: number
+          description: 'The 95th percentile'
+        p99:
+          type: number
+          description: 'The 99th percentile'
+    TopNArray:
+      type: array
+      items:
+        $ref: '#/components/schemas/NameEstimatePair'
     MetricsView:
       type: object
       properties:
         packets:
           type: object
+          properties:
+            cardinality:
+              type: object
+              properties:
+                src_ips_in:
+                  type: number
+                dst_ips_out:
+                  type: number
+            rates:
+              type: object
+              properties:
+                pps_in:
+                  $ref: '#/components/schemas/QuantileObject'
+                pps_out:
+                  $ref: '#/components/schemas/QuantileObject'
+            top_ipv4:
+              $ref: '#/components/schemas/TopNArray'
+        dns:
+          type: object
+          properties:
+            wire_packets:
+              type: object
+            cardinality:
+              type: object
+            xact:
+              type: object
+              properties:
+                in:
+                  type: object
+                out:
+                  type: object
