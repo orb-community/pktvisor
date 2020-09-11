@@ -28,7 +28,7 @@ The agent can also summarize pcap files.
 
 API Documentation
 ---
-The REST API documentation is available in OpenAPI format.
+The REST API documentation, including a description of the metrics that are available, is available in OpenAPI format. See the `docs/` directory.
 
 
 Getting Started
