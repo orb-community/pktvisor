@@ -1,0 +1,208 @@
+openapi: 3.0.0
+info:
+  description: pktvisor summarizes data streams in real time and provides a clean, time-windowed HTTP interface and command line UI to the results
+  version: 3.0.0-oas3
+  title: pktvisor
+  contact:
+    email: ns1labs@ns1.com
+  license:
+    name: Apache 2.0
+    url: 'http://www.apache.org/licenses/LICENSE-2.0.html'
+tags:
+  - name: metrics
+    description: the metrics subsystem
+paths:
+  /api/v1/metrics/app:
+    get:
+      tags:
+        - metrics
+      summary: Retrieve global application information
+      operationId: getGlobalAppInfo
+      responses:
+        '200':
+          description: Global application information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppInfo'
+        '500':
+          description: server error
+  /api/v1/metrics/rates:
+    get:
+      tags:
+        - metrics
+      summary: Retrieve instantaneous packet rates
+      operationId: getInstantaneousRates
+      responses:
+        '200':
+          description: Instantaneous rates
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstantRates'
+        '500':
+          description: server error
+  /api/v1/metrics/bucket/{period}:
+    get:
+      parameters:
+        - name: period
+          in: path
+          required: true
+          description: 'The specific single 60s period to retreat metrics for, numbered from 0 (which is the most recent and actively being updated) to the number of available periods - 1'
+          schema:
+            type: number
+      tags:
+        - metrics
+      summary: 'Retrieve metrics for an individual (single) 60s period'
+      operationId: getPeriodBucket
+      responses:
+        '200':
+          description: Metrics output
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  '1m':
+                    $ref: '#/components/schemas/MetricsView'
+        '500':
+          description: server error
+  /api/v1/metrics/window/{periodCount}:
+    get:
+      parameters:
+        - name: periodCount
+          in: path
+          required: true
+          description: 'The number of merged periods to retrieve, from 2 to the number of available periods'
+          schema:
+            type: number
+      tags:
+        - metrics
+      summary: 'Retrieve a merged window of metrics over several periods'
+      operationId: getMergedWindow
+      responses:
+        '200':
+          description: Metrics output
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  '{periodCount}m':
+                    $ref: '#/components/schemas/MetricsView'
+        '500':
+          description: server error
+components:
+  schemas:
+    AppInfo:
+      type: object
+      required:
+        - app
+      properties:
+        app:
+          type: object
+          required:
+            - version
+          properties:
+            version:
+              type: string
+              description: 'The current version'
+              example: '3.0.7'
+            deep_sample_rate_pct:
+              type: number
+              description: 'The current percentage of packets which are being deep sampled'
+            periods:
+              type: number
+              description: 'The number of consecutive 60 second time period buckets stored in memory'
+            single_summary:
+              type: boolean
+              description: 'Whether the program is operating in summary mode (useful only for pcaps)'
+            up_time_min:
+              type: number
+              description: 'The program up time in minutes'
+        dns:
+          type: object
+          properties:
+            xact:
+              type: object
+              properties:
+                open:
+                  type: number
+                  description: 'The number of currently open DNS transactions that are being tracked in memory' 
+                  example: 10
+    InstantRates:
+      type: object
+      properties:
+        packets:
+          type: object
+          properties:
+            in:
+              type: number
+              description: 'The instantaneous ingress packets per second'
+            out:
+              type: number
+              description: 'The instantaneous egress packets per second'
+    NameEstimatePair:
+      type: object
+      properties:
+        name:
+          type: string
+          description: 'Top N item name'
+        estimate:
+          type: number
+          description: 'Top N item estimated value'
+    QuantileObject:
+      type: object
+      properties:
+        p50:
+          type: number
+          description: 'The 50th percentile'
+        p90:
+          type: number
+          description: 'The 90th percentile'
+        p95:
+          type: number
+          description: 'The 95th percentile'
+        p99:
+          type: number
+          description: 'The 99th percentile'
+    TopNArray:
+      type: array
+      items:
+        $ref: '#/components/schemas/NameEstimatePair'
+    MetricsView:
+      type: object
+      properties:
+        packets:
+          type: object
+          properties:
+            cardinality:
+              type: object
+              properties:
+                src_ips_in:
+                  type: number
+                dst_ips_out:
+                  type: number
+            rates:
+              type: object
+              properties:
+                pps_in:
+                  $ref: '#/components/schemas/QuantileObject'
+                pps_out:
+                  $ref: '#/components/schemas/QuantileObject'
+            top_ipv4:
+              $ref: '#/components/schemas/TopNArray'
+        dns:
+          type: object
+          properties:
+            wire_packets:
+              type: object
+            cardinality:
+              type: object
+            xact:
+              type: object
+              properties:
+                in:
+                  type: object
+                out:
+                  type: object
