@@ -14,6 +14,8 @@ Although currently DNS and packet capture focused, it is designed to be used in 
 
 2019-2020© NSONE, Inc.
 
+![Image of CLI UI](docs/pktvisor3-cli-ui-screenshot.png)
+
 Overview
 ---
 
