@@ -39,11 +39,12 @@ Getting Started
 
 The easiest way to get started with pktvisor is to use the public docker image. The image contains both the command line UI and the collector daemon (agent).
 ```
+# pull the container
 docker pull ns1labs/pktvisor 
-# command line UI
-docker run ns1labs/pktvisor pktvisor --help
-# collector daemon/agent
-docker run ns1labs/pktvisor pktvisord --help
+# start the agent/collector
+docker run --rm --net=host -d ns1labs/pktvisor pktvisord any
+# run the command line UI
+docker run -it --rm --net=host ns1labs/pktvisor pktvisor
 ```
 
 See usage examples below.
