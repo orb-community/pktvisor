@@ -46,6 +46,7 @@ docker run --rm --net=host -d ns1labs/pktvisor pktvisord any
 # run the command line UI
 docker run -it --rm --net=host ns1labs/pktvisor pktvisor
 ```
+If many stats do not seem to be collecting, especially in/out stats, then you likely need to use `-H` to tell it which net prefix to use as the "host". See the help section below.
 
 See usage examples below.
 
