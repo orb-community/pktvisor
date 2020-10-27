@@ -67,6 +67,8 @@ static std::unordered_map<uint16_t, std::string> DNS_QTYPES({
     {61, "OPENPGPKEY"},
     {62, "CSYNC"},
     {63, "ZONEMD"},
+    {64, "SVCB"},
+    {65, "HTTPS"},
     {99, "SPF"},
     {100, "UINFO"},
     {101, "UID"},
