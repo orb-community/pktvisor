@@ -21,7 +21,7 @@ Overview
 ---
 
 pktvisor consists of:
-1. An agent which efficiently summarizes streams and exposes a REST API to collect the results
+1. A collector daemon which efficiently summarizes streams and exposes a REST API to collect the results
 1. A terminal based, command line UI which can visualize the real-time summarized data
 1. Tools for collecting and visualizing a globally distributed set of agents to a central location
 
@@ -37,26 +37,38 @@ The REST API documentation, including a description of the metrics that are avai
 Getting Started
 ---
 
-The easiest way to get started with pktvisor is to use the public docker image. The image contains both the command line UI and the collector daemon (agent).
+The easiest way to get started with pktvisor is to use the public docker image. The image contains both the command line UI (`pktvisor`) and the collector daemon (`pktvisord`).
+
+1. *Pull the container*
 ```
-# pull the container
-docker pull ns1labs/pktvisor 
-# start the agent/collector
+docker pull ns1labs/pktvisor
+``` 
+2. *Start the collector daemon* 
+
+This will run in the background and stay running.
+Note that the final two arguments request `pktvisord` binary (with the final 'd' for daemon), 
+and to packet capture on the `any` ethernet interface. You may substitute that for
+a known interface on your device.
+```
 docker run --rm --net=host -d ns1labs/pktvisor pktvisord any
-# run the command line UI
+```
+3. *Run the command line UI*
+
+After the collector is running, you can visualize results locally with the included UI.
+This command will run the command line UI (`pktvisor` with no 'd') in the foreground, and exit when Ctrl-C is pressed
+```
 docker run -it --rm --net=host ns1labs/pktvisor pktvisor
 ```
-If many stats do not seem to be collecting, especially in/out stats, then you likely need to use `-H` to tell it which net prefix to use as the "host" - see the help section below.
 
-See usage examples below for more complex scenarios, including Geo support.
+See usage examples below for more complex scenarios, including specification of the local host IP(s) and Geo support.
 
 There are currently no prebuilt operating system packages. If you would like to build your own executable,
 please see the Build section below.
 
-Agent Usage
+Collector Daemon Usage
 ---
 
-A collector daemon agent should be installed on each note to be monitored.
+A collector daemon should be installed on each node to be monitored.
 
 Current command line options are described with:
 
@@ -98,21 +110,17 @@ pktvisord --help
 Command Line UI Usage
 ---
 
-The command line UI connects to an agent to visualize real time stream summarization. It can connect to a local or remote agent.
+The command line UI (`pktvisor`) connects to a collector daemon to visualize the real time stream summarization. It can connect to a local or remote agent.
 
-Usage Examples
+Advanced Collector Daemon Usage Examples
 ---
 
-Starting the collector agent from Docker with GeoDB and Host options:
+Starting the collector daemon from Docker with GeoDB and Host options:
 
 ```
 docker run --rm --net=host -d --mount type=bind,source=/opt/geo,target=/geo ns1labs/pktvisor pktvisord --geo-city /geo/GeoIP2-City.mmdb --geo-asn /geo/GeoIP2-ISP.mmdb -H 192.168.0.54/32,127.0.0.1/32 any
 ```
 
-Running the console UI from Docker:
-```
-docker run -it --rm --net=host ns1labs/pktvisor pktvisor
-```
 
 Centralized Collection
 ---
