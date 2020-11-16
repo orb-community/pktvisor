@@ -17,9 +17,230 @@
   "gnetId": null,
   "graphTooltip": 1,
   "id": 419,
-  "iteration": 1603222850653,
+  "iteration": 1605564215463,
   "links": [],
   "panels": [
+    {
+      "collapsed": true,
+      "datasource": null,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 199,
+      "panels": [
+        {
+          "aliasColors": {},
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": "ES7-pktvisor3",
+          "description": "",
+          "fieldConfig": {
+            "defaults": {
+              "custom": {},
+              "links": []
+            },
+            "overrides": []
+          },
+          "fill": 1,
+          "fillGradient": 0,
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 1
+          },
+          "hiddenSeries": false,
+          "id": 200,
+          "interval": "1m",
+          "legend": {
+            "alignAsTable": true,
+            "avg": false,
+            "current": false,
+            "max": true,
+            "min": false,
+            "rightSide": true,
+            "show": true,
+            "sort": "max",
+            "sortDesc": true,
+            "total": false,
+            "values": true
+          },
+          "lines": true,
+          "linewidth": 1,
+          "maxDataPoints": 60,
+          "nullPointMode": "connected",
+          "options": {
+            "alertThreshold": true
+          },
+          "percentage": false,
+          "pluginVersion": "7.2.2",
+          "pointradius": 2,
+          "points": false,
+          "renderer": "flot",
+          "repeatDirection": "v",
+          "seriesOverrides": [
+            {
+              "alias": "/Out$/",
+              "transform": "negative-Y"
+            },
+            {
+              "alias": "p99 In",
+              "fill": 0,
+              "lines": false,
+              "pointradius": 1,
+              "points": true
+            },
+            {
+              "alias": "p99 Out",
+              "fill": 0,
+              "lines": false,
+              "pointradius": 1,
+              "points": true,
+              "transform": "negative-Y"
+            }
+          ],
+          "spaceLength": 10,
+          "stack": false,
+          "steppedLine": false,
+          "targets": [
+            {
+              "alias": "{{network.raw}} p95 In",
+              "bucketAggs": [
+                {
+                  "fake": true,
+                  "field": "network.raw",
+                  "id": "3",
+                  "settings": {
+                    "min_doc_count": "1",
+                    "order": "desc",
+                    "orderBy": "_term",
+                    "size": "0"
+                  },
+                  "type": "terms"
+                },
+                {
+                  "field": "@timestamp",
+                  "id": "2",
+                  "settings": {
+                    "interval": "$__interval",
+                    "min_doc_count": 0,
+                    "trimEdges": 0
+                  },
+                  "type": "date_histogram"
+                }
+              ],
+              "metrics": [
+                {
+                  "field": "http.packets_rates_pps_in_p95",
+                  "id": "1",
+                  "inlineScript": "_value/(($__interval_ms/1000)/60)",
+                  "meta": {},
+                  "settings": {
+                    "script": {
+                      "inline": "_value/(($__interval_ms/1000)/60)"
+                    }
+                  },
+                  "type": "sum"
+                }
+              ],
+              "query": "-network.raw:0",
+              "refId": "A",
+              "timeField": "@timestamp"
+            },
+            {
+              "alias": "{{network.raw}} p95 Out",
+              "bucketAggs": [
+                {
+                  "fake": true,
+                  "field": "network.raw",
+                  "id": "3",
+                  "settings": {
+                    "min_doc_count": "1",
+                    "order": "desc",
+                    "orderBy": "_term",
+                    "size": "0"
+                  },
+                  "type": "terms"
+                },
+                {
+                  "field": "@timestamp",
+                  "id": "2",
+                  "settings": {
+                    "interval": "$__interval",
+                    "min_doc_count": 0,
+                    "trimEdges": 0
+                  },
+                  "type": "date_histogram"
+                }
+              ],
+              "metrics": [
+                {
+                  "field": "http.packets_rates_pps_out_p95",
+                  "id": "1",
+                  "inlineScript": "_value/(($__interval_ms/1000)/60)",
+                  "meta": {},
+                  "settings": {
+                    "script": {
+                      "inline": "_value/(($__interval_ms/1000)/60)"
+                    }
+                  },
+                  "type": "sum"
+                }
+              ],
+              "query": "-network.raw:0",
+              "refId": "B",
+              "timeField": "@timestamp"
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeRegions": [],
+          "timeShift": null,
+          "title": "Global Packet Rates",
+          "tooltip": {
+            "shared": false,
+            "sort": 2,
+            "value_type": "individual"
+          },
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            },
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ],
+          "yaxis": {
+            "align": false,
+            "alignLevel": null
+          }
+        }
+      ],
+      "title": "All Networks ",
+      "type": "row"
+    },
     {
       "collapsed": false,
       "datasource": null,
@@ -27,7 +248,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 0
+        "y": 1
       },
       "id": 149,
       "panels": [],
@@ -43,7 +264,8 @@
       "description": "",
       "fieldConfig": {
         "defaults": {
-          "custom": {}
+          "custom": {},
+          "links": []
         },
         "overrides": []
       },
@@ -53,7 +275,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 1
+        "y": 2
       },
       "hiddenSeries": false,
       "id": 155,
@@ -76,9 +298,10 @@
       "maxDataPoints": 60,
       "nullPointMode": "connected",
       "options": {
-        "dataLinks": []
+        "alertThreshold": true
       },
       "percentage": false,
+      "pluginVersion": "7.2.2",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
@@ -287,7 +510,8 @@
       "description": "",
       "fieldConfig": {
         "defaults": {
-          "custom": {}
+          "custom": {},
+          "links": []
         },
         "overrides": []
       },
@@ -297,7 +521,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 1
+        "y": 2
       },
       "hiddenSeries": false,
       "id": 156,
@@ -320,9 +544,10 @@
       "maxDataPoints": 60,
       "nullPointMode": "connected",
       "options": {
-        "dataLinks": []
+        "alertThreshold": true
       },
       "percentage": false,
+      "pluginVersion": "7.2.2",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
@@ -452,7 +677,8 @@
       "description": "",
       "fieldConfig": {
         "defaults": {
-          "custom": {}
+          "custom": {},
+          "links": []
         },
         "overrides": []
       },
@@ -462,7 +688,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 9
+        "y": 10
       },
       "hiddenSeries": false,
       "id": 150,
@@ -485,9 +711,10 @@
       "maxDataPoints": 60,
       "nullPointMode": "connected",
       "options": {
-        "dataLinks": []
+        "alertThreshold": true
       },
       "percentage": false,
+      "pluginVersion": "7.2.2",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
@@ -641,7 +868,8 @@
       "description": "",
       "fieldConfig": {
         "defaults": {
-          "custom": {}
+          "custom": {},
+          "links": []
         },
         "overrides": []
       },
@@ -651,7 +879,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 9
+        "y": 10
       },
       "hiddenSeries": false,
       "id": 153,
@@ -674,9 +902,10 @@
       "maxDataPoints": 60,
       "nullPointMode": "connected",
       "options": {
-        "dataLinks": []
+        "alertThreshold": true
       },
       "percentage": false,
+      "pluginVersion": "7.2.2",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
@@ -865,7 +1094,8 @@
       "description": "",
       "fieldConfig": {
         "defaults": {
-          "custom": {}
+          "custom": {},
+          "links": []
         },
         "overrides": []
       },
@@ -875,7 +1105,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 16
+        "y": 17
       },
       "hiddenSeries": false,
       "id": 115,
@@ -898,9 +1128,10 @@
       "maxDataPoints": 60,
       "nullPointMode": "connected",
       "options": {
-        "dataLinks": []
+        "alertThreshold": true
       },
       "percentage": false,
+      "pluginVersion": "7.2.2",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
@@ -1072,7 +1303,8 @@
       "description": "",
       "fieldConfig": {
         "defaults": {
-          "custom": {}
+          "custom": {},
+          "links": []
         },
         "overrides": []
       },
@@ -1082,7 +1314,7 @@
         "h": 7,
         "w": 12,
         "x": 0,
-        "y": 17
+        "y": 18
       },
       "hiddenSeries": false,
       "id": 154,
@@ -1105,9 +1337,10 @@
       "maxDataPoints": 60,
       "nullPointMode": "connected",
       "options": {
-        "dataLinks": []
+        "alertThreshold": true
       },
       "percentage": false,
+      "pluginVersion": "7.2.2",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
@@ -1259,7 +1492,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 24
+        "y": 25
       },
       "id": 173,
       "panels": [
@@ -1273,7 +1506,8 @@
           "description": "",
           "fieldConfig": {
             "defaults": {
-              "custom": {}
+              "custom": {},
+              "links": []
             },
             "overrides": []
           },
@@ -1283,7 +1517,7 @@
             "h": 7,
             "w": 8,
             "x": 0,
-            "y": 2
+            "y": 26
           },
           "hiddenSeries": false,
           "id": 160,
@@ -1303,9 +1537,10 @@
           "maxDataPoints": 60,
           "nullPointMode": "null",
           "options": {
-            "dataLinks": []
+            "alertThreshold": true
           },
           "percentage": false,
+          "pluginVersion": "7.2.2",
           "pointradius": 2,
           "points": false,
           "renderer": "flot",
@@ -1489,6 +1724,221 @@
           }
         },
         {
+          "cacheTimeout": null,
+          "datasource": "ES7-pktvisor3",
+          "description": "",
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "align": null,
+                "filterable": false
+              },
+              "links": [],
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 7,
+            "w": 4,
+            "x": 8,
+            "y": 26
+          },
+          "id": 202,
+          "interval": "1m",
+          "links": [],
+          "maxDataPoints": 60,
+          "options": {
+            "showHeader": false,
+            "sortBy": [
+              {
+                "desc": true,
+                "displayName": "Value (sum)"
+              }
+            ]
+          },
+          "pluginVersion": "7.2.2",
+          "targets": [
+            {
+              "alias": "",
+              "bucketAggs": [
+                {
+                  "fake": true,
+                  "field": "http.dns_top_qname2_0_name.raw",
+                  "id": "3",
+                  "settings": {
+                    "min_doc_count": 1,
+                    "order": "desc",
+                    "orderBy": "1",
+                    "size": "5"
+                  },
+                  "type": "terms"
+                },
+                {
+                  "field": "@timestamp",
+                  "id": "2",
+                  "settings": {
+                    "interval": "$__interval",
+                    "min_doc_count": 1,
+                    "trimEdges": 0
+                  },
+                  "type": "date_histogram"
+                }
+              ],
+              "metrics": [
+                {
+                  "field": "http.dns_top_qname2_0_estimate",
+                  "id": "1",
+                  "inlineScript": "_value / ($__interval_ms / 1000)",
+                  "meta": {},
+                  "settings": {
+                    "script": {
+                      "inline": "_value / ($__interval_ms / 1000)"
+                    }
+                  },
+                  "type": "sum"
+                }
+              ],
+              "query": "network.raw:$network",
+              "refId": "A",
+              "timeField": "@timestamp"
+            },
+            {
+              "alias": "",
+              "bucketAggs": [
+                {
+                  "fake": true,
+                  "field": "http.dns_top_qname2_1_name.raw",
+                  "id": "3",
+                  "settings": {
+                    "min_doc_count": 1,
+                    "order": "desc",
+                    "orderBy": "1",
+                    "size": "5"
+                  },
+                  "type": "terms"
+                },
+                {
+                  "field": "@timestamp",
+                  "id": "2",
+                  "settings": {
+                    "interval": "$__interval",
+                    "min_doc_count": 1,
+                    "trimEdges": 0
+                  },
+                  "type": "date_histogram"
+                }
+              ],
+              "metrics": [
+                {
+                  "field": "http.dns_top_qname2_1_estimate",
+                  "id": "1",
+                  "inlineScript": "_value / ($__interval_ms / 1000)",
+                  "meta": {},
+                  "settings": {
+                    "script": {
+                      "inline": "_value / ($__interval_ms / 1000)"
+                    }
+                  },
+                  "type": "sum"
+                }
+              ],
+              "query": "network.raw:$network",
+              "refId": "B",
+              "timeField": "@timestamp"
+            },
+            {
+              "alias": "",
+              "bucketAggs": [
+                {
+                  "fake": true,
+                  "field": "http.dns_top_qname2_2_name.raw",
+                  "id": "3",
+                  "settings": {
+                    "min_doc_count": 1,
+                    "order": "desc",
+                    "orderBy": "1",
+                    "size": "5"
+                  },
+                  "type": "terms"
+                },
+                {
+                  "field": "@timestamp",
+                  "id": "2",
+                  "settings": {
+                    "interval": "$__interval",
+                    "min_doc_count": 1,
+                    "trimEdges": 0
+                  },
+                  "type": "date_histogram"
+                }
+              ],
+              "metrics": [
+                {
+                  "field": "http.dns_top_qname2_2_estimate",
+                  "id": "1",
+                  "inlineScript": "_value / ($__interval_ms / 1000)",
+                  "meta": {},
+                  "settings": {
+                    "script": {
+                      "inline": "_value / ($__interval_ms / 1000)"
+                    }
+                  },
+                  "type": "sum"
+                }
+              ],
+              "query": "network.raw:$network",
+              "refId": "C",
+              "timeField": "@timestamp"
+            }
+          ],
+          "timeFrom": null,
+          "timeShift": null,
+          "title": "Global Top QName2",
+          "transformations": [
+            {
+              "id": "seriesToRows",
+              "options": {}
+            },
+            {
+              "id": "groupBy",
+              "options": {
+                "fields": {
+                  "Metric": {
+                    "aggregations": [],
+                    "operation": "groupby"
+                  },
+                  "Time": {
+                    "aggregations": [],
+                    "operation": null
+                  },
+                  "Value": {
+                    "aggregations": [
+                      "sum"
+                    ],
+                    "operation": "aggregate"
+                  }
+                }
+              }
+            }
+          ],
+          "type": "table"
+        },
+        {
           "aliasColors": {},
           "bars": false,
           "cacheTimeout": null,
@@ -1498,7 +1948,8 @@
           "description": "",
           "fieldConfig": {
             "defaults": {
-              "custom": {}
+              "custom": {},
+              "links": []
             },
             "overrides": []
           },
@@ -1507,8 +1958,8 @@
           "gridPos": {
             "h": 7,
             "w": 8,
-            "x": 8,
-            "y": 2
+            "x": 12,
+            "y": 26
           },
           "hiddenSeries": false,
           "id": 174,
@@ -1528,9 +1979,10 @@
           "maxDataPoints": 60,
           "nullPointMode": "null",
           "options": {
-            "dataLinks": []
+            "alertThreshold": true
           },
           "percentage": false,
+          "pluginVersion": "7.2.2",
           "pointradius": 2,
           "points": false,
           "renderer": "flot",
@@ -1540,11 +1992,11 @@
           "steppedLine": false,
           "targets": [
             {
-              "alias": "{{http.dns_top_qname2_0_name.raw}} 1st",
+              "alias": "{{http.dns_top_qname3_0_name.raw}} 1st",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_qname2_0_name.raw",
+                  "field": "http.dns_top_qname3_0_name.raw",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -1567,7 +2019,7 @@
               ],
               "metrics": [
                 {
-                  "field": "http.dns_top_qname2_0_estimate",
+                  "field": "http.dns_top_qname3_0_estimate",
                   "id": "1",
                   "inlineScript": "_value / ($__interval_ms / 1000)",
                   "meta": {},
@@ -1584,11 +2036,11 @@
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{http.dns_top_qname2_1_name.raw}} 2nd",
+              "alias": "{{http.dns_top_qname3_1_name.raw}} 2nd",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_qname2_1_name.raw",
+                  "field": "http.dns_top_qname3_1_name.raw",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -1611,7 +2063,7 @@
               ],
               "metrics": [
                 {
-                  "field": "http.dns_top_qname2_1_estimate",
+                  "field": "http.dns_top_qname3_1_estimate",
                   "id": "1",
                   "inlineScript": "_value / ($__interval_ms / 1000)",
                   "meta": {},
@@ -1628,11 +2080,11 @@
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{http.dns_top_qname2_2_name.raw}} 3rd",
+              "alias": "{{http.dns_top_qname3_2_name.raw}} 3rd",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_qname2_2_name.raw",
+                  "field": "http.dns_top_qname3_2_name.raw",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -1655,7 +2107,7 @@
               ],
               "metrics": [
                 {
-                  "field": "http.dns_top_qname2_2_estimate",
+                  "field": "http.dns_top_qname3_2_estimate",
                   "id": "1",
                   "inlineScript": "_value / ($__interval_ms / 1000)",
                   "meta": {},
@@ -1676,7 +2128,7 @@
           "timeFrom": null,
           "timeRegions": [],
           "timeShift": null,
-          "title": "Global Top QName2 QPS",
+          "title": "Global Top QName3 QPS",
           "tooltip": {
             "shared": true,
             "sort": 2,
@@ -1714,62 +2166,61 @@
           }
         },
         {
-          "aliasColors": {},
-          "bars": false,
           "cacheTimeout": null,
-          "dashLength": 10,
-          "dashes": false,
           "datasource": "ES7-pktvisor3",
           "description": "",
           "fieldConfig": {
             "defaults": {
-              "custom": {}
+              "custom": {
+                "align": null,
+                "filterable": false
+              },
+              "links": [],
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "short"
             },
             "overrides": []
           },
-          "fill": 1,
-          "fillGradient": 0,
           "gridPos": {
             "h": 7,
-            "w": 8,
-            "x": 16,
-            "y": 2
+            "w": 4,
+            "x": 20,
+            "y": 26
           },
-          "hiddenSeries": false,
-          "id": 168,
+          "id": 203,
           "interval": "1m",
-          "legend": {
-            "avg": false,
-            "current": false,
-            "max": false,
-            "min": false,
-            "show": false,
-            "total": false,
-            "values": false
-          },
-          "lines": true,
-          "linewidth": 1,
           "links": [],
           "maxDataPoints": 60,
-          "nullPointMode": "null",
           "options": {
-            "dataLinks": []
+            "showHeader": false,
+            "sortBy": [
+              {
+                "desc": true,
+                "displayName": "Value (sum)"
+              }
+            ]
           },
-          "percentage": false,
-          "pointradius": 2,
-          "points": false,
-          "renderer": "flot",
-          "seriesOverrides": [],
-          "spaceLength": 10,
-          "stack": false,
-          "steppedLine": false,
+          "pluginVersion": "7.2.2",
           "targets": [
             {
-              "alias": "{{http.dns_top_nxdomain_0_name.raw}} 1st",
+              "alias": "",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_nxdomain_0_name.raw",
+                  "field": "http.dns_top_qname3_0_name.raw",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -1792,7 +2243,7 @@
               ],
               "metrics": [
                 {
-                  "field": "http.dns_top_nxdomain_0_estimate",
+                  "field": "http.dns_top_qname3_0_estimate",
                   "id": "1",
                   "inlineScript": "_value / ($__interval_ms / 1000)",
                   "meta": {},
@@ -1809,11 +2260,11 @@
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{http.dns_top_nxdomain_1_name.raw}} 2nd",
+              "alias": "",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_nxdomain_1_name.raw",
+                  "field": "http.dns_top_qname3_1_name.raw",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -1836,7 +2287,7 @@
               ],
               "metrics": [
                 {
-                  "field": "http.dns_top_nxdomain_1_estimate",
+                  "field": "http.dns_top_qname3_1_estimate",
                   "id": "1",
                   "inlineScript": "_value / ($__interval_ms / 1000)",
                   "meta": {},
@@ -1853,11 +2304,11 @@
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{http.dns_top_nxdomain_2_name.raw}} 3rd",
+              "alias": "",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_nxdomain_2_name.raw",
+                  "field": "http.dns_top_qname3_2_name.raw",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -1880,7 +2331,7 @@
               ],
               "metrics": [
                 {
-                  "field": "http.dns_top_nxdomain_2_estimate",
+                  "field": "http.dns_top_qname3_2_estimate",
                   "id": "1",
                   "inlineScript": "_value / ($__interval_ms / 1000)",
                   "meta": {},
@@ -1897,46 +2348,37 @@
               "timeField": "@timestamp"
             }
           ],
-          "thresholds": [],
           "timeFrom": null,
-          "timeRegions": [],
           "timeShift": null,
-          "title": "Global Top NXDomain QPS",
-          "tooltip": {
-            "shared": true,
-            "sort": 2,
-            "value_type": "individual"
-          },
-          "type": "graph",
-          "xaxis": {
-            "buckets": null,
-            "mode": "time",
-            "name": null,
-            "show": true,
-            "values": []
-          },
-          "yaxes": [
+          "title": "Global Top QName3",
+          "transformations": [
             {
-              "format": "short",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": true
+              "id": "seriesToRows",
+              "options": {}
             },
             {
-              "format": "short",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": true
+              "id": "groupBy",
+              "options": {
+                "fields": {
+                  "Metric": {
+                    "aggregations": [],
+                    "operation": "groupby"
+                  },
+                  "Time": {
+                    "aggregations": [],
+                    "operation": null
+                  },
+                  "Value": {
+                    "aggregations": [
+                      "sum"
+                    ],
+                    "operation": "aggregate"
+                  }
+                }
+              }
             }
           ],
-          "yaxis": {
-            "align": false,
-            "alignLevel": null
-          }
+          "type": "table"
         },
         {
           "aliasColors": {},
@@ -1948,7 +2390,8 @@
           "description": "",
           "fieldConfig": {
             "defaults": {
-              "custom": {}
+              "custom": {},
+              "links": []
             },
             "overrides": []
           },
@@ -1958,7 +2401,7 @@
             "h": 7,
             "w": 8,
             "x": 0,
-            "y": 9
+            "y": 33
           },
           "hiddenSeries": false,
           "id": 167,
@@ -1978,9 +2421,10 @@
           "maxDataPoints": 60,
           "nullPointMode": "null",
           "options": {
-            "dataLinks": []
+            "alertThreshold": true
           },
           "percentage": false,
+          "pluginVersion": "7.2.2",
           "pointradius": 2,
           "points": false,
           "renderer": "flot",
@@ -2173,7 +2617,8 @@
           "description": "",
           "fieldConfig": {
             "defaults": {
-              "custom": {}
+              "custom": {},
+              "links": []
             },
             "overrides": []
           },
@@ -2183,7 +2628,7 @@
             "h": 7,
             "w": 8,
             "x": 8,
-            "y": 9
+            "y": 33
           },
           "hiddenSeries": false,
           "id": 175,
@@ -2203,9 +2648,10 @@
           "maxDataPoints": 60,
           "nullPointMode": "null",
           "options": {
-            "dataLinks": []
+            "alertThreshold": true
           },
           "percentage": false,
+          "pluginVersion": "7.2.2",
           "pointradius": 2,
           "points": false,
           "renderer": "flot",
@@ -2398,7 +2844,8 @@
           "description": "",
           "fieldConfig": {
             "defaults": {
-              "custom": {}
+              "custom": {},
+              "links": []
             },
             "overrides": []
           },
@@ -2408,10 +2855,10 @@
             "h": 7,
             "w": 8,
             "x": 16,
-            "y": 9
+            "y": 33
           },
           "hiddenSeries": false,
-          "id": 176,
+          "id": 168,
           "interval": "1m",
           "legend": {
             "avg": false,
@@ -2428,9 +2875,10 @@
           "maxDataPoints": 60,
           "nullPointMode": "null",
           "options": {
-            "dataLinks": []
+            "alertThreshold": true
           },
           "percentage": false,
+          "pluginVersion": "7.2.2",
           "pointradius": 2,
           "points": false,
           "renderer": "flot",
@@ -2440,11 +2888,11 @@
           "steppedLine": false,
           "targets": [
             {
-              "alias": "{{http.dns_top_qtype_0_name.raw}} 1st",
+              "alias": "{{http.dns_top_nxdomain_0_name.raw}} 1st",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_qtype_0_name.raw",
+                  "field": "http.dns_top_nxdomain_0_name.raw",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -2467,7 +2915,7 @@
               ],
               "metrics": [
                 {
-                  "field": "http.dns_top_qtype_0_estimate",
+                  "field": "http.dns_top_nxdomain_0_estimate",
                   "id": "1",
                   "inlineScript": "_value / ($__interval_ms / 1000)",
                   "meta": {},
@@ -2484,11 +2932,11 @@
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{http.dns_top_qtype_1_name.raw}} 2nd",
+              "alias": "{{http.dns_top_nxdomain_1_name.raw}} 2nd",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_qtype_1_name.raw",
+                  "field": "http.dns_top_nxdomain_1_name.raw",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -2511,7 +2959,7 @@
               ],
               "metrics": [
                 {
-                  "field": "http.dns_top_qtype_1_estimate",
+                  "field": "http.dns_top_nxdomain_1_estimate",
                   "id": "1",
                   "inlineScript": "_value / ($__interval_ms / 1000)",
                   "meta": {},
@@ -2528,11 +2976,11 @@
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{http.dns_top_qtype_2_name.raw}} 3rd",
+              "alias": "{{http.dns_top_nxdomain_2_name.raw}} 3rd",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_qtype_2_name.raw",
+                  "field": "http.dns_top_nxdomain_2_name.raw",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -2555,7 +3003,7 @@
               ],
               "metrics": [
                 {
-                  "field": "http.dns_top_qtype_2_estimate",
+                  "field": "http.dns_top_nxdomain_2_estimate",
                   "id": "1",
                   "inlineScript": "_value / ($__interval_ms / 1000)",
                   "meta": {},
@@ -2576,7 +3024,7 @@
           "timeFrom": null,
           "timeRegions": [],
           "timeShift": null,
-          "title": "Global Top QTypes QPS",
+          "title": "Global Top NXDomain QPS",
           "tooltip": {
             "shared": true,
             "sort": 2,
@@ -2623,7 +3071,8 @@
           "description": "",
           "fieldConfig": {
             "defaults": {
-              "custom": {}
+              "custom": {},
+              "links": []
             },
             "overrides": []
           },
@@ -2633,7 +3082,7 @@
             "h": 7,
             "w": 8,
             "x": 0,
-            "y": 16
+            "y": 40
           },
           "hiddenSeries": false,
           "id": 179,
@@ -2653,9 +3102,10 @@
           "maxDataPoints": 60,
           "nullPointMode": "null",
           "options": {
-            "dataLinks": []
+            "alertThreshold": true
           },
           "percentage": false,
+          "pluginVersion": "7.2.2",
           "pointradius": 2,
           "points": false,
           "renderer": "flot",
@@ -2848,7 +3298,8 @@
           "description": "",
           "fieldConfig": {
             "defaults": {
-              "custom": {}
+              "custom": {},
+              "links": []
             },
             "overrides": []
           },
@@ -2858,7 +3309,7 @@
             "h": 7,
             "w": 8,
             "x": 8,
-            "y": 16
+            "y": 40
           },
           "hiddenSeries": false,
           "id": 178,
@@ -2878,9 +3329,10 @@
           "maxDataPoints": 60,
           "nullPointMode": "null",
           "options": {
-            "dataLinks": []
+            "alertThreshold": true
           },
           "percentage": false,
+          "pluginVersion": "7.2.2",
           "pointradius": 2,
           "points": false,
           "renderer": "flot",
@@ -3073,7 +3525,8 @@
           "description": "",
           "fieldConfig": {
             "defaults": {
-              "custom": {}
+              "custom": {},
+              "links": []
             },
             "overrides": []
           },
@@ -3083,10 +3536,10 @@
             "h": 7,
             "w": 8,
             "x": 16,
-            "y": 16
+            "y": 40
           },
           "hiddenSeries": false,
-          "id": 177,
+          "id": 176,
           "interval": "1m",
           "legend": {
             "avg": false,
@@ -3103,9 +3556,10 @@
           "maxDataPoints": 60,
           "nullPointMode": "null",
           "options": {
-            "dataLinks": []
+            "alertThreshold": true
           },
           "percentage": false,
+          "pluginVersion": "7.2.2",
           "pointradius": 2,
           "points": false,
           "renderer": "flot",
@@ -3115,11 +3569,11 @@
           "steppedLine": false,
           "targets": [
             {
-              "alias": "{{http.dns_top_rcode_0_name.raw}} 1st",
+              "alias": "{{http.dns_top_qtype_0_name.raw}} 1st",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_rcode_0_name.raw",
+                  "field": "http.dns_top_qtype_0_name.raw",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -3142,7 +3596,7 @@
               ],
               "metrics": [
                 {
-                  "field": "http.dns_top_rcode_0_estimate",
+                  "field": "http.dns_top_qtype_0_estimate",
                   "id": "1",
                   "inlineScript": "_value / ($__interval_ms / 1000)",
                   "meta": {},
@@ -3159,11 +3613,11 @@
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{http.dns_top_rcode_1_name.raw}} 2nd",
+              "alias": "{{http.dns_top_qtype_1_name.raw}} 2nd",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_rcode_1_name.raw",
+                  "field": "http.dns_top_qtype_1_name.raw",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -3186,7 +3640,7 @@
               ],
               "metrics": [
                 {
-                  "field": "http.dns_top_rcode_1_estimate",
+                  "field": "http.dns_top_qtype_1_estimate",
                   "id": "1",
                   "inlineScript": "_value / ($__interval_ms / 1000)",
                   "meta": {},
@@ -3203,11 +3657,11 @@
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{http.dns_top_rcode_2_name.raw}} 3rd",
+              "alias": "{{http.dns_top_qtype_2_name.raw}} 3rd",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_rcode_2_name.raw",
+                  "field": "http.dns_top_qtype_2_name.raw",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -3230,7 +3684,7 @@
               ],
               "metrics": [
                 {
-                  "field": "http.dns_top_rcode_2_estimate",
+                  "field": "http.dns_top_qtype_2_estimate",
                   "id": "1",
                   "inlineScript": "_value / ($__interval_ms / 1000)",
                   "meta": {},
@@ -3251,7 +3705,7 @@
           "timeFrom": null,
           "timeRegions": [],
           "timeShift": null,
-          "title": "Global Top RCodes QPS",
+          "title": "Global Top QTypes QPS",
           "tooltip": {
             "shared": true,
             "sort": 2,
@@ -3298,7 +3752,8 @@
           "description": "",
           "fieldConfig": {
             "defaults": {
-              "custom": {}
+              "custom": {},
+              "links": []
             },
             "overrides": []
           },
@@ -3308,7 +3763,7 @@
             "h": 7,
             "w": 8,
             "x": 0,
-            "y": 23
+            "y": 47
           },
           "hiddenSeries": false,
           "id": 180,
@@ -3328,9 +3783,10 @@
           "maxDataPoints": 60,
           "nullPointMode": "null",
           "options": {
-            "dataLinks": []
+            "alertThreshold": true
           },
           "percentage": false,
+          "pluginVersion": "7.2.2",
           "pointradius": 2,
           "points": false,
           "renderer": "flot",
@@ -3523,7 +3979,8 @@
           "description": "",
           "fieldConfig": {
             "defaults": {
-              "custom": {}
+              "custom": {},
+              "links": []
             },
             "overrides": []
           },
@@ -3533,7 +3990,7 @@
             "h": 7,
             "w": 8,
             "x": 8,
-            "y": 23
+            "y": 47
           },
           "hiddenSeries": false,
           "id": 183,
@@ -3553,9 +4010,10 @@
           "maxDataPoints": 60,
           "nullPointMode": "null",
           "options": {
-            "dataLinks": []
+            "alertThreshold": true
           },
           "percentage": false,
+          "pluginVersion": "7.2.2",
           "pointradius": 2,
           "points": false,
           "renderer": "flot",
@@ -3748,7 +4206,8 @@
           "description": "",
           "fieldConfig": {
             "defaults": {
-              "custom": {}
+              "custom": {},
+              "links": []
             },
             "overrides": []
           },
@@ -3758,10 +4217,10 @@
             "h": 7,
             "w": 8,
             "x": 16,
-            "y": 23
+            "y": 47
           },
           "hiddenSeries": false,
-          "id": 182,
+          "id": 177,
           "interval": "1m",
           "legend": {
             "avg": false,
@@ -3778,9 +4237,10 @@
           "maxDataPoints": 60,
           "nullPointMode": "null",
           "options": {
-            "dataLinks": []
+            "alertThreshold": true
           },
           "percentage": false,
+          "pluginVersion": "7.2.2",
           "pointradius": 2,
           "points": false,
           "renderer": "flot",
@@ -3790,11 +4250,11 @@
           "steppedLine": false,
           "targets": [
             {
-              "alias": "{{http.dns_top_udp_ports_0_name.raw}} 1st",
+              "alias": "{{http.dns_top_rcode_0_name.raw}} 1st",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_udp_ports_0_name.raw",
+                  "field": "http.dns_top_rcode_0_name.raw",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -3817,7 +4277,7 @@
               ],
               "metrics": [
                 {
-                  "field": "http.dns_top_udp_ports_0_estimate",
+                  "field": "http.dns_top_rcode_0_estimate",
                   "id": "1",
                   "inlineScript": "_value / ($__interval_ms / 1000)",
                   "meta": {},
@@ -3834,11 +4294,11 @@
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{http.dns_top_udp_ports_1_name.raw}} 2nd",
+              "alias": "{{http.dns_top_rcode_1_name.raw}} 2nd",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_udp_ports_1_name.raw",
+                  "field": "http.dns_top_rcode_1_name.raw",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -3861,7 +4321,7 @@
               ],
               "metrics": [
                 {
-                  "field": "http.dns_top_udp_ports_1_estimate",
+                  "field": "http.dns_top_rcode_1_estimate",
                   "id": "1",
                   "inlineScript": "_value / ($__interval_ms / 1000)",
                   "meta": {},
@@ -3878,11 +4338,11 @@
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{http.dns_top_udp_ports_2_name.raw}} 3rd",
+              "alias": "{{http.dns_top_rcode_2_name.raw}} 3rd",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_udp_ports_2_name.raw",
+                  "field": "http.dns_top_rcode_2_name.raw",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -3905,7 +4365,7 @@
               ],
               "metrics": [
                 {
-                  "field": "http.dns_top_udp_ports_2_estimate",
+                  "field": "http.dns_top_rcode_2_estimate",
                   "id": "1",
                   "inlineScript": "_value / ($__interval_ms / 1000)",
                   "meta": {},
@@ -3926,7 +4386,7 @@
           "timeFrom": null,
           "timeRegions": [],
           "timeShift": null,
-          "title": "Global Top DNS UDP Ports QPS",
+          "title": "Global Top RCodes QPS",
           "tooltip": {
             "shared": true,
             "sort": 2,
@@ -3973,7 +4433,8 @@
           "description": "",
           "fieldConfig": {
             "defaults": {
-              "custom": {}
+              "custom": {},
+              "links": []
             },
             "overrides": []
           },
@@ -3983,7 +4444,7 @@
             "h": 7,
             "w": 8,
             "x": 0,
-            "y": 30
+            "y": 54
           },
           "hiddenSeries": false,
           "id": 181,
@@ -4003,9 +4464,10 @@
           "maxDataPoints": 60,
           "nullPointMode": "null",
           "options": {
-            "dataLinks": []
+            "alertThreshold": true
           },
           "percentage": false,
+          "pluginVersion": "7.2.2",
           "pointradius": 2,
           "points": false,
           "renderer": "flot",
@@ -4198,7 +4660,8 @@
           "description": "",
           "fieldConfig": {
             "defaults": {
-              "custom": {}
+              "custom": {},
+              "links": []
             },
             "overrides": []
           },
@@ -4208,7 +4671,7 @@
             "h": 7,
             "w": 8,
             "x": 8,
-            "y": 30
+            "y": 54
           },
           "hiddenSeries": false,
           "id": 184,
@@ -4228,9 +4691,10 @@
           "maxDataPoints": 60,
           "nullPointMode": "null",
           "options": {
-            "dataLinks": []
+            "alertThreshold": true
           },
           "percentage": false,
+          "pluginVersion": "7.2.2",
           "pointradius": 2,
           "points": false,
           "renderer": "flot",
@@ -4412,6 +4876,233 @@
             "align": false,
             "alignLevel": null
           }
+        },
+        {
+          "aliasColors": {},
+          "bars": false,
+          "cacheTimeout": null,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": "ES7-pktvisor3",
+          "description": "",
+          "fieldConfig": {
+            "defaults": {
+              "custom": {},
+              "links": []
+            },
+            "overrides": []
+          },
+          "fill": 1,
+          "fillGradient": 0,
+          "gridPos": {
+            "h": 7,
+            "w": 8,
+            "x": 16,
+            "y": 54
+          },
+          "hiddenSeries": false,
+          "id": 182,
+          "interval": "1m",
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": false,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 1,
+          "links": [],
+          "maxDataPoints": 60,
+          "nullPointMode": "null",
+          "options": {
+            "alertThreshold": true
+          },
+          "percentage": false,
+          "pluginVersion": "7.2.2",
+          "pointradius": 2,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "stack": false,
+          "steppedLine": false,
+          "targets": [
+            {
+              "alias": "{{http.dns_top_udp_ports_0_name.raw}} 1st",
+              "bucketAggs": [
+                {
+                  "fake": true,
+                  "field": "http.dns_top_udp_ports_0_name.raw",
+                  "id": "3",
+                  "settings": {
+                    "min_doc_count": 1,
+                    "order": "desc",
+                    "orderBy": "1",
+                    "size": "5"
+                  },
+                  "type": "terms"
+                },
+                {
+                  "field": "@timestamp",
+                  "id": "2",
+                  "settings": {
+                    "interval": "$__interval",
+                    "min_doc_count": 1,
+                    "trimEdges": 0
+                  },
+                  "type": "date_histogram"
+                }
+              ],
+              "metrics": [
+                {
+                  "field": "http.dns_top_udp_ports_0_estimate",
+                  "id": "1",
+                  "inlineScript": "_value / ($__interval_ms / 1000)",
+                  "meta": {},
+                  "settings": {
+                    "script": {
+                      "inline": "_value / ($__interval_ms / 1000)"
+                    }
+                  },
+                  "type": "sum"
+                }
+              ],
+              "query": "network.raw:$network",
+              "refId": "A",
+              "timeField": "@timestamp"
+            },
+            {
+              "alias": "{{http.dns_top_udp_ports_1_name.raw}} 2nd",
+              "bucketAggs": [
+                {
+                  "fake": true,
+                  "field": "http.dns_top_udp_ports_1_name.raw",
+                  "id": "3",
+                  "settings": {
+                    "min_doc_count": 1,
+                    "order": "desc",
+                    "orderBy": "1",
+                    "size": "5"
+                  },
+                  "type": "terms"
+                },
+                {
+                  "field": "@timestamp",
+                  "id": "2",
+                  "settings": {
+                    "interval": "$__interval",
+                    "min_doc_count": 1,
+                    "trimEdges": 0
+                  },
+                  "type": "date_histogram"
+                }
+              ],
+              "metrics": [
+                {
+                  "field": "http.dns_top_udp_ports_1_estimate",
+                  "id": "1",
+                  "inlineScript": "_value / ($__interval_ms / 1000)",
+                  "meta": {},
+                  "settings": {
+                    "script": {
+                      "inline": "_value / ($__interval_ms / 1000)"
+                    }
+                  },
+                  "type": "sum"
+                }
+              ],
+              "query": "network.raw:$network",
+              "refId": "B",
+              "timeField": "@timestamp"
+            },
+            {
+              "alias": "{{http.dns_top_udp_ports_2_name.raw}} 3rd",
+              "bucketAggs": [
+                {
+                  "fake": true,
+                  "field": "http.dns_top_udp_ports_2_name.raw",
+                  "id": "3",
+                  "settings": {
+                    "min_doc_count": 1,
+                    "order": "desc",
+                    "orderBy": "1",
+                    "size": "5"
+                  },
+                  "type": "terms"
+                },
+                {
+                  "field": "@timestamp",
+                  "id": "2",
+                  "settings": {
+                    "interval": "$__interval",
+                    "min_doc_count": 1,
+                    "trimEdges": 0
+                  },
+                  "type": "date_histogram"
+                }
+              ],
+              "metrics": [
+                {
+                  "field": "http.dns_top_udp_ports_2_estimate",
+                  "id": "1",
+                  "inlineScript": "_value / ($__interval_ms / 1000)",
+                  "meta": {},
+                  "settings": {
+                    "script": {
+                      "inline": "_value / ($__interval_ms / 1000)"
+                    }
+                  },
+                  "type": "sum"
+                }
+              ],
+              "query": "network.raw:$network",
+              "refId": "C",
+              "timeField": "@timestamp"
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeRegions": [],
+          "timeShift": null,
+          "title": "Global Top DNS UDP Ports QPS",
+          "tooltip": {
+            "shared": true,
+            "sort": 2,
+            "value_type": "individual"
+          },
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            },
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ],
+          "yaxis": {
+            "align": false,
+            "alignLevel": null
+          }
         }
       ],
       "title": "Global Top N",
@@ -4424,7 +5115,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 25
+        "y": 26
       },
       "id": 82,
       "panels": [
@@ -4437,7 +5128,8 @@
           "description": "",
           "fieldConfig": {
             "defaults": {
-              "custom": {}
+              "custom": {},
+              "links": []
             },
             "overrides": []
           },
@@ -4447,7 +5139,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 3
+            "y": 27
           },
           "hiddenSeries": false,
           "id": 84,
@@ -4468,9 +5160,10 @@
           "maxDataPoints": 60,
           "nullPointMode": "connected",
           "options": {
-            "dataLinks": []
+            "alertThreshold": true
           },
           "percentage": false,
+          "pluginVersion": "7.2.2",
           "pointradius": 2,
           "points": false,
           "renderer": "flot",
@@ -4685,7 +5378,8 @@
           "description": "",
           "fieldConfig": {
             "defaults": {
-              "custom": {}
+              "custom": {},
+              "links": []
             },
             "overrides": []
           },
@@ -4695,7 +5389,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 3
+            "y": 27
           },
           "hiddenSeries": false,
           "id": 151,
@@ -4716,9 +5410,10 @@
           "maxDataPoints": 60,
           "nullPointMode": "connected",
           "options": {
-            "dataLinks": []
+            "alertThreshold": true
           },
           "percentage": false,
+          "pluginVersion": "7.2.2",
           "pointradius": 2,
           "points": false,
           "renderer": "flot",
@@ -4891,7 +5586,8 @@
           "description": "",
           "fieldConfig": {
             "defaults": {
-              "custom": {}
+              "custom": {},
+              "links": []
             },
             "overrides": []
           },
@@ -4901,7 +5597,7 @@
             "h": 7,
             "w": 12,
             "x": 0,
-            "y": 11
+            "y": 35
           },
           "hiddenSeries": false,
           "id": 110,
@@ -4922,9 +5618,10 @@
           "maxDataPoints": 60,
           "nullPointMode": "connected",
           "options": {
-            "dataLinks": []
+            "alertThreshold": true
           },
           "percentage": false,
+          "pluginVersion": "7.2.2",
           "pointradius": 2,
           "points": false,
           "renderer": "flot",
@@ -5120,7 +5817,8 @@
           "description": "",
           "fieldConfig": {
             "defaults": {
-              "custom": {}
+              "custom": {},
+              "links": []
             },
             "overrides": []
           },
@@ -5130,7 +5828,7 @@
             "h": 7,
             "w": 12,
             "x": 12,
-            "y": 11
+            "y": 35
           },
           "hiddenSeries": false,
           "id": 136,
@@ -5151,9 +5849,10 @@
           "maxDataPoints": 60,
           "nullPointMode": "connected",
           "options": {
-            "dataLinks": []
+            "alertThreshold": true
           },
           "percentage": false,
+          "pluginVersion": "7.2.2",
           "pointradius": 2,
           "points": false,
           "renderer": "flot",
@@ -5469,7 +6168,8 @@
           "description": "",
           "fieldConfig": {
             "defaults": {
-              "custom": {}
+              "custom": {},
+              "links": []
             },
             "overrides": []
           },
@@ -5479,7 +6179,7 @@
             "h": 7,
             "w": 12,
             "x": 0,
-            "y": 18
+            "y": 42
           },
           "hiddenSeries": false,
           "id": 128,
@@ -5492,6 +6192,8 @@
             "min": false,
             "rightSide": true,
             "show": true,
+            "sort": "avg",
+            "sortDesc": true,
             "total": false,
             "values": true
           },
@@ -5500,9 +6202,10 @@
           "maxDataPoints": 60,
           "nullPointMode": "connected",
           "options": {
-            "dataLinks": []
+            "alertThreshold": true
           },
           "percentage": false,
+          "pluginVersion": "7.2.2",
           "pointradius": 2,
           "points": false,
           "renderer": "flot",
@@ -5525,8 +6228,20 @@
           "steppedLine": false,
           "targets": [
             {
-              "alias": "Xact In/s",
+              "alias": "",
               "bucketAggs": [
+                {
+                  "fake": true,
+                  "field": "host.raw",
+                  "id": "3",
+                  "settings": {
+                    "min_doc_count": "1",
+                    "order": "desc",
+                    "orderBy": "_term",
+                    "size": "0"
+                  },
+                  "type": "terms"
+                },
                 {
                   "field": "@timestamp",
                   "id": "2",
@@ -5555,10 +6270,127 @@
               "query": "network.raw:$network AND pop:$pop AND host:$host",
               "refId": "A",
               "timeField": "@timestamp"
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeRegions": [],
+          "timeShift": null,
+          "title": "$pop DNS Xact per/s In (server)",
+          "tooltip": {
+            "shared": true,
+            "sort": 2,
+            "value_type": "individual"
+          },
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
             },
             {
-              "alias": "Xact Out/s",
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ],
+          "yaxis": {
+            "align": false,
+            "alignLevel": null
+          }
+        },
+        {
+          "aliasColors": {},
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": "ES7-pktvisor3",
+          "description": "",
+          "fieldConfig": {
+            "defaults": {
+              "custom": {},
+              "links": []
+            },
+            "overrides": []
+          },
+          "fill": 1,
+          "fillGradient": 0,
+          "gridPos": {
+            "h": 7,
+            "w": 12,
+            "x": 12,
+            "y": 42
+          },
+          "hiddenSeries": false,
+          "id": 201,
+          "interval": "1m",
+          "legend": {
+            "alignAsTable": true,
+            "avg": true,
+            "current": false,
+            "max": false,
+            "min": false,
+            "rightSide": true,
+            "show": true,
+            "sort": "avg",
+            "sortDesc": true,
+            "total": false,
+            "values": true
+          },
+          "lines": true,
+          "linewidth": 1,
+          "maxDataPoints": 60,
+          "nullPointMode": "connected",
+          "options": {
+            "alertThreshold": true
+          },
+          "percentage": false,
+          "pluginVersion": "7.2.2",
+          "pointradius": 2,
+          "points": false,
+          "renderer": "flot",
+          "repeatDirection": "v",
+          "scopedVars": {
+            "pop": {
+              "selected": true,
+              "text": "ams03",
+              "value": "ams03"
+            }
+          },
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "stack": false,
+          "steppedLine": false,
+          "targets": [
+            {
+              "alias": "",
               "bucketAggs": [
+                {
+                  "fake": true,
+                  "field": "host.raw",
+                  "id": "3",
+                  "settings": {
+                    "min_doc_count": "1",
+                    "order": "desc",
+                    "orderBy": "_term",
+                    "size": "0"
+                  },
+                  "type": "terms"
+                },
                 {
                   "field": "@timestamp",
                   "id": "2",
@@ -5593,7 +6425,7 @@
           "timeFrom": null,
           "timeRegions": [],
           "timeShift": null,
-          "title": "$pop DNS Xact per/s",
+          "title": "$pop DNS Xact per/s Out (OS/ALIAS)",
           "tooltip": {
             "shared": true,
             "sort": 2,
@@ -5639,204 +6471,8 @@
           "description": "",
           "fieldConfig": {
             "defaults": {
-              "custom": {}
-            },
-            "overrides": []
-          },
-          "fill": 1,
-          "fillGradient": 0,
-          "gridPos": {
-            "h": 7,
-            "w": 12,
-            "x": 12,
-            "y": 18
-          },
-          "hiddenSeries": false,
-          "id": 145,
-          "interval": "1m",
-          "legend": {
-            "alignAsTable": true,
-            "avg": true,
-            "current": false,
-            "max": false,
-            "min": false,
-            "rightSide": true,
-            "show": true,
-            "total": false,
-            "values": true
-          },
-          "lines": true,
-          "linewidth": 1,
-          "maxDataPoints": 60,
-          "nullPointMode": "connected",
-          "options": {
-            "dataLinks": []
-          },
-          "percentage": false,
-          "pointradius": 2,
-          "points": false,
-          "renderer": "flot",
-          "repeatDirection": "v",
-          "scopedVars": {
-            "pop": {
-              "selected": true,
-              "text": "ams03",
-              "value": "ams03"
-            }
-          },
-          "seriesOverrides": [],
-          "spaceLength": 10,
-          "stack": false,
-          "steppedLine": false,
-          "targets": [
-            {
-              "alias": "NXDOMAIN pps",
-              "bucketAggs": [
-                {
-                  "field": "@timestamp",
-                  "id": "2",
-                  "settings": {
-                    "interval": "$__interval",
-                    "min_doc_count": 0,
-                    "trimEdges": 0
-                  },
-                  "type": "date_histogram"
-                }
-              ],
-              "metrics": [
-                {
-                  "field": "http.dns_wire_packets_nxdomain",
-                  "id": "1",
-                  "inlineScript": "_value / ($__interval_ms / 1000)",
-                  "meta": {},
-                  "settings": {
-                    "script": {
-                      "inline": "_value / ($__interval_ms / 1000)"
-                    }
-                  },
-                  "type": "sum"
-                }
-              ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
-              "refId": "B",
-              "timeField": "@timestamp"
-            },
-            {
-              "alias": "SRVFAIL pps",
-              "bucketAggs": [
-                {
-                  "field": "@timestamp",
-                  "id": "2",
-                  "settings": {
-                    "interval": "$__interval",
-                    "min_doc_count": 0,
-                    "trimEdges": 0
-                  },
-                  "type": "date_histogram"
-                }
-              ],
-              "metrics": [
-                {
-                  "field": "http.dns_wire_packets_srvfail",
-                  "id": "1",
-                  "inlineScript": "_value / ($__interval_ms / 1000)",
-                  "meta": {},
-                  "settings": {
-                    "script": {
-                      "inline": "_value / ($__interval_ms / 1000)"
-                    }
-                  },
-                  "type": "sum"
-                }
-              ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
-              "refId": "C",
-              "timeField": "@timestamp"
-            },
-            {
-              "alias": "REFUSED pps",
-              "bucketAggs": [
-                {
-                  "field": "@timestamp",
-                  "id": "2",
-                  "settings": {
-                    "interval": "$__interval",
-                    "min_doc_count": 0,
-                    "trimEdges": 0
-                  },
-                  "type": "date_histogram"
-                }
-              ],
-              "metrics": [
-                {
-                  "field": "http.dns_wire_packets_refused",
-                  "id": "1",
-                  "inlineScript": "_value / ($__interval_ms / 1000)",
-                  "meta": {},
-                  "settings": {
-                    "script": {
-                      "inline": "_value / ($__interval_ms / 1000)"
-                    }
-                  },
-                  "type": "sum"
-                }
-              ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
-              "refId": "D",
-              "timeField": "@timestamp"
-            }
-          ],
-          "thresholds": [],
-          "timeFrom": null,
-          "timeRegions": [],
-          "timeShift": null,
-          "title": "$pop DNS Failing RCODE Breakdown (In+Out)",
-          "tooltip": {
-            "shared": true,
-            "sort": 2,
-            "value_type": "individual"
-          },
-          "type": "graph",
-          "xaxis": {
-            "buckets": null,
-            "mode": "time",
-            "name": null,
-            "show": true,
-            "values": []
-          },
-          "yaxes": [
-            {
-              "format": "short",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": true
-            },
-            {
-              "format": "short",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": true
-            }
-          ],
-          "yaxis": {
-            "align": false,
-            "alignLevel": null
-          }
-        },
-        {
-          "aliasColors": {},
-          "bars": false,
-          "dashLength": 10,
-          "dashes": false,
-          "datasource": "ES7-pktvisor3",
-          "description": "",
-          "fieldConfig": {
-            "defaults": {
-              "custom": {}
+              "custom": {},
+              "links": []
             },
             "overrides": []
           },
@@ -5846,7 +6482,7 @@
             "h": 7,
             "w": 12,
             "x": 0,
-            "y": 25
+            "y": 49
           },
           "hiddenSeries": false,
           "id": 146,
@@ -5867,9 +6503,10 @@
           "maxDataPoints": 60,
           "nullPointMode": "connected",
           "options": {
-            "dataLinks": []
+            "alertThreshold": true
           },
           "percentage": false,
+          "pluginVersion": "7.2.2",
           "pointradius": 2,
           "points": false,
           "renderer": "flot",
@@ -6065,7 +6702,8 @@
           "description": "",
           "fieldConfig": {
             "defaults": {
-              "custom": {}
+              "custom": {},
+              "links": []
             },
             "overrides": []
           },
@@ -6075,7 +6713,428 @@
             "h": 7,
             "w": 12,
             "x": 12,
-            "y": 25
+            "y": 49
+          },
+          "hiddenSeries": false,
+          "id": 145,
+          "interval": "1m",
+          "legend": {
+            "alignAsTable": true,
+            "avg": true,
+            "current": false,
+            "max": false,
+            "min": false,
+            "rightSide": true,
+            "show": true,
+            "total": false,
+            "values": true
+          },
+          "lines": true,
+          "linewidth": 1,
+          "maxDataPoints": 60,
+          "nullPointMode": "connected",
+          "options": {
+            "alertThreshold": true
+          },
+          "percentage": false,
+          "pluginVersion": "7.2.2",
+          "pointradius": 2,
+          "points": false,
+          "renderer": "flot",
+          "repeatDirection": "v",
+          "scopedVars": {
+            "pop": {
+              "selected": true,
+              "text": "ams03",
+              "value": "ams03"
+            }
+          },
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "stack": false,
+          "steppedLine": false,
+          "targets": [
+            {
+              "alias": "NXDOMAIN pps",
+              "bucketAggs": [
+                {
+                  "field": "@timestamp",
+                  "id": "2",
+                  "settings": {
+                    "interval": "$__interval",
+                    "min_doc_count": 0,
+                    "trimEdges": 0
+                  },
+                  "type": "date_histogram"
+                }
+              ],
+              "metrics": [
+                {
+                  "field": "http.dns_wire_packets_nxdomain",
+                  "id": "1",
+                  "inlineScript": "_value / ($__interval_ms / 1000)",
+                  "meta": {},
+                  "settings": {
+                    "script": {
+                      "inline": "_value / ($__interval_ms / 1000)"
+                    }
+                  },
+                  "type": "sum"
+                }
+              ],
+              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "refId": "B",
+              "timeField": "@timestamp"
+            },
+            {
+              "alias": "SRVFAIL pps",
+              "bucketAggs": [
+                {
+                  "field": "@timestamp",
+                  "id": "2",
+                  "settings": {
+                    "interval": "$__interval",
+                    "min_doc_count": 0,
+                    "trimEdges": 0
+                  },
+                  "type": "date_histogram"
+                }
+              ],
+              "metrics": [
+                {
+                  "field": "http.dns_wire_packets_srvfail",
+                  "id": "1",
+                  "inlineScript": "_value / ($__interval_ms / 1000)",
+                  "meta": {},
+                  "settings": {
+                    "script": {
+                      "inline": "_value / ($__interval_ms / 1000)"
+                    }
+                  },
+                  "type": "sum"
+                }
+              ],
+              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "refId": "C",
+              "timeField": "@timestamp"
+            },
+            {
+              "alias": "REFUSED pps",
+              "bucketAggs": [
+                {
+                  "field": "@timestamp",
+                  "id": "2",
+                  "settings": {
+                    "interval": "$__interval",
+                    "min_doc_count": 0,
+                    "trimEdges": 0
+                  },
+                  "type": "date_histogram"
+                }
+              ],
+              "metrics": [
+                {
+                  "field": "http.dns_wire_packets_refused",
+                  "id": "1",
+                  "inlineScript": "_value / ($__interval_ms / 1000)",
+                  "meta": {},
+                  "settings": {
+                    "script": {
+                      "inline": "_value / ($__interval_ms / 1000)"
+                    }
+                  },
+                  "type": "sum"
+                }
+              ],
+              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "refId": "D",
+              "timeField": "@timestamp"
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeRegions": [],
+          "timeShift": null,
+          "title": "$pop DNS Failing RCODE Breakdown (In+Out)",
+          "tooltip": {
+            "shared": true,
+            "sort": 2,
+            "value_type": "individual"
+          },
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            },
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ],
+          "yaxis": {
+            "align": false,
+            "alignLevel": null
+          }
+        },
+        {
+          "cacheTimeout": null,
+          "datasource": "ES7-pktvisor3",
+          "description": "",
+          "fieldConfig": {
+            "defaults": {
+              "custom": {},
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "percentunit"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 2,
+            "w": 2,
+            "x": 0,
+            "y": 56
+          },
+          "id": 103,
+          "interval": "",
+          "links": [],
+          "maxDataPoints": 60,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "max"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "auto"
+          },
+          "pluginVersion": "7.2.2",
+          "scopedVars": {
+            "pop": {
+              "selected": true,
+              "text": "ams03",
+              "value": "ams03"
+            }
+          },
+          "targets": [
+            {
+              "alias": "Sampled",
+              "bucketAggs": [
+                {
+                  "field": "@timestamp",
+                  "id": "2",
+                  "settings": {
+                    "interval": "$__interval",
+                    "min_doc_count": 0,
+                    "trimEdges": 0
+                  },
+                  "type": "date_histogram"
+                }
+              ],
+              "metrics": [
+                {
+                  "field": "http.packets_deep_samples",
+                  "id": "1",
+                  "inlineScript": "_value / doc[\"http.packets_total\"].value",
+                  "meta": {},
+                  "pipelineAgg": "select metric",
+                  "pipelineVariables": [
+                    {
+                      "name": "var1",
+                      "pipelineAgg": "select metric"
+                    }
+                  ],
+                  "settings": {
+                    "percents": [
+                      "99"
+                    ],
+                    "script": {
+                      "inline": "_value / doc[\"http.packets_total\"].value"
+                    }
+                  },
+                  "type": "percentiles"
+                }
+              ],
+              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "refId": "B",
+              "timeField": "@timestamp"
+            }
+          ],
+          "timeFrom": null,
+          "timeShift": null,
+          "title": "Sample Rate",
+          "transformations": [],
+          "type": "stat"
+        },
+        {
+          "aliasColors": {},
+          "breakPoint": "50%",
+          "cacheTimeout": null,
+          "combine": {
+            "label": "Others",
+            "threshold": 0
+          },
+          "datasource": "ES7-pktvisor3",
+          "description": "",
+          "fieldConfig": {
+            "defaults": {
+              "custom": {},
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "percentunit"
+            },
+            "overrides": []
+          },
+          "fontSize": "80%",
+          "format": "short",
+          "gridPos": {
+            "h": 5,
+            "w": 4,
+            "x": 2,
+            "y": 56
+          },
+          "id": 147,
+          "interval": "",
+          "legend": {
+            "show": false,
+            "values": false
+          },
+          "legendType": "Right side",
+          "links": [],
+          "maxDataPoints": 60,
+          "nullPointMode": "connected",
+          "pieType": "pie",
+          "pluginVersion": "7.0.0",
+          "scopedVars": {
+            "pop": {
+              "selected": true,
+              "text": "ams03",
+              "value": "ams03"
+            }
+          },
+          "strokeWidth": 1,
+          "targets": [
+            {
+              "alias": "",
+              "bucketAggs": [
+                {
+                  "fake": true,
+                  "field": "host.raw",
+                  "id": "3",
+                  "settings": {
+                    "min_doc_count": 1,
+                    "order": "desc",
+                    "orderBy": "_count",
+                    "size": "10"
+                  },
+                  "type": "terms"
+                },
+                {
+                  "field": "@timestamp",
+                  "id": "2",
+                  "settings": {
+                    "interval": "$__interval",
+                    "min_doc_count": 0,
+                    "trimEdges": 0
+                  },
+                  "type": "date_histogram"
+                }
+              ],
+              "metrics": [
+                {
+                  "field": "host",
+                  "id": "1",
+                  "inlineScript": "_value / doc[\"http.packets_total\"].value",
+                  "meta": {},
+                  "pipelineAgg": "select metric",
+                  "pipelineVariables": [
+                    {
+                      "name": "var1",
+                      "pipelineAgg": "select metric"
+                    }
+                  ],
+                  "settings": {},
+                  "type": "count"
+                }
+              ],
+              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "refId": "B",
+              "timeField": "@timestamp"
+            }
+          ],
+          "timeFrom": null,
+          "timeShift": null,
+          "title": "Hosts",
+          "transformations": [],
+          "type": "grafana-piechart-panel",
+          "valueName": "current"
+        },
+        {
+          "aliasColors": {},
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": "ES7-pktvisor3",
+          "description": "",
+          "fieldConfig": {
+            "defaults": {
+              "custom": {},
+              "links": []
+            },
+            "overrides": []
+          },
+          "fill": 1,
+          "fillGradient": 0,
+          "gridPos": {
+            "h": 7,
+            "w": 12,
+            "x": 12,
+            "y": 56
           },
           "hiddenSeries": false,
           "id": 121,
@@ -6096,9 +7155,10 @@
           "maxDataPoints": 60,
           "nullPointMode": "connected",
           "options": {
-            "dataLinks": []
+            "alertThreshold": true
           },
           "percentage": false,
+          "pluginVersion": "7.2.2",
           "pointradius": 2,
           "points": false,
           "renderer": "flot",
@@ -6225,226 +7285,6 @@
             "align": false,
             "alignLevel": null
           }
-        },
-        {
-          "cacheTimeout": null,
-          "datasource": "ES7-pktvisor3",
-          "description": "",
-          "fieldConfig": {
-            "defaults": {
-              "custom": {},
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              },
-              "unit": "percentunit"
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 2,
-            "w": 2,
-            "x": 0,
-            "y": 32
-          },
-          "id": 103,
-          "interval": "",
-          "links": [],
-          "maxDataPoints": 60,
-          "options": {
-            "colorMode": "value",
-            "graphMode": "none",
-            "justifyMode": "auto",
-            "orientation": "auto",
-            "reduceOptions": {
-              "calcs": [
-                "max"
-              ],
-              "values": false
-            }
-          },
-          "pluginVersion": "7.0.2",
-          "scopedVars": {
-            "pop": {
-              "selected": true,
-              "text": "ams03",
-              "value": "ams03"
-            }
-          },
-          "targets": [
-            {
-              "alias": "Sampled",
-              "bucketAggs": [
-                {
-                  "field": "@timestamp",
-                  "id": "2",
-                  "settings": {
-                    "interval": "$__interval",
-                    "min_doc_count": 0,
-                    "trimEdges": 0
-                  },
-                  "type": "date_histogram"
-                }
-              ],
-              "metrics": [
-                {
-                  "field": "http.packets_deep_samples",
-                  "id": "1",
-                  "inlineScript": "_value / doc[\"http.packets_total\"].value",
-                  "meta": {},
-                  "pipelineAgg": "select metric",
-                  "pipelineVariables": [
-                    {
-                      "name": "var1",
-                      "pipelineAgg": "select metric"
-                    }
-                  ],
-                  "settings": {
-                    "percents": [
-                      "99"
-                    ],
-                    "script": {
-                      "inline": "_value / doc[\"http.packets_total\"].value"
-                    }
-                  },
-                  "type": "percentiles"
-                }
-              ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
-              "refId": "B",
-              "timeField": "@timestamp"
-            }
-          ],
-          "timeFrom": null,
-          "timeShift": null,
-          "title": "Sample Rate",
-          "transformations": [],
-          "type": "stat"
-        },
-        {
-          "aliasColors": {},
-          "breakPoint": "50%",
-          "cacheTimeout": null,
-          "combine": {
-            "label": "Others",
-            "threshold": 0
-          },
-          "datasource": "ES7-pktvisor3",
-          "description": "",
-          "fieldConfig": {
-            "defaults": {
-              "custom": {},
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              },
-              "unit": "percentunit"
-            },
-            "overrides": []
-          },
-          "fontSize": "80%",
-          "format": "short",
-          "gridPos": {
-            "h": 5,
-            "w": 4,
-            "x": 2,
-            "y": 32
-          },
-          "id": 147,
-          "interval": "",
-          "legend": {
-            "show": false,
-            "values": false
-          },
-          "legendType": "Right side",
-          "links": [],
-          "maxDataPoints": 60,
-          "nullPointMode": "connected",
-          "pieType": "pie",
-          "pluginVersion": "7.0.0",
-          "scopedVars": {
-            "pop": {
-              "selected": true,
-              "text": "ams03",
-              "value": "ams03"
-            }
-          },
-          "strokeWidth": 1,
-          "targets": [
-            {
-              "alias": "",
-              "bucketAggs": [
-                {
-                  "fake": true,
-                  "field": "host.raw",
-                  "id": "3",
-                  "settings": {
-                    "min_doc_count": 1,
-                    "order": "desc",
-                    "orderBy": "_count",
-                    "size": "10"
-                  },
-                  "type": "terms"
-                },
-                {
-                  "field": "@timestamp",
-                  "id": "2",
-                  "settings": {
-                    "interval": "$__interval",
-                    "min_doc_count": 0,
-                    "trimEdges": 0
-                  },
-                  "type": "date_histogram"
-                }
-              ],
-              "metrics": [
-                {
-                  "field": "host",
-                  "id": "1",
-                  "inlineScript": "_value / doc[\"http.packets_total\"].value",
-                  "meta": {},
-                  "pipelineAgg": "select metric",
-                  "pipelineVariables": [
-                    {
-                      "name": "var1",
-                      "pipelineAgg": "select metric"
-                    }
-                  ],
-                  "settings": {},
-                  "type": "count"
-                }
-              ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
-              "refId": "B",
-              "timeField": "@timestamp"
-            }
-          ],
-          "timeFrom": null,
-          "timeShift": null,
-          "title": "Hosts",
-          "transformations": [],
-          "type": "grafana-piechart-panel",
-          "valueName": "current"
         }
       ],
       "repeat": "pop",
@@ -6465,7 +7305,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 26
+        "y": 27
       },
       "id": 186,
       "panels": [
@@ -6479,7 +7319,8 @@
           "description": "",
           "fieldConfig": {
             "defaults": {
-              "custom": {}
+              "custom": {},
+              "links": []
             },
             "overrides": []
           },
@@ -6489,7 +7330,7 @@
             "h": 7,
             "w": 8,
             "x": 0,
-            "y": 39
+            "y": 28
           },
           "hiddenSeries": false,
           "id": 169,
@@ -6509,9 +7350,10 @@
           "maxDataPoints": 60,
           "nullPointMode": "null",
           "options": {
-            "dataLinks": []
+            "alertThreshold": true
           },
           "percentage": false,
+          "pluginVersion": "7.2.2",
           "pointradius": 2,
           "points": false,
           "renderer": "flot",
@@ -6711,7 +7553,8 @@
           "description": "",
           "fieldConfig": {
             "defaults": {
-              "custom": {}
+              "custom": {},
+              "links": []
             },
             "overrides": []
           },
@@ -6721,7 +7564,7 @@
             "h": 7,
             "w": 8,
             "x": 8,
-            "y": 39
+            "y": 28
           },
           "hiddenSeries": false,
           "id": 170,
@@ -6741,9 +7584,10 @@
           "maxDataPoints": 60,
           "nullPointMode": "null",
           "options": {
-            "dataLinks": []
+            "alertThreshold": true
           },
           "percentage": false,
+          "pluginVersion": "7.2.2",
           "pointradius": 2,
           "points": false,
           "renderer": "flot",
@@ -6943,7 +7787,8 @@
           "description": "",
           "fieldConfig": {
             "defaults": {
-              "custom": {}
+              "custom": {},
+              "links": []
             },
             "overrides": []
           },
@@ -6953,7 +7798,7 @@
             "h": 7,
             "w": 8,
             "x": 16,
-            "y": 39
+            "y": 28
           },
           "hiddenSeries": false,
           "id": 171,
@@ -6973,9 +7818,10 @@
           "maxDataPoints": 60,
           "nullPointMode": "null",
           "options": {
-            "dataLinks": []
+            "alertThreshold": true
           },
           "percentage": false,
+          "pluginVersion": "7.2.2",
           "pointradius": 2,
           "points": false,
           "renderer": "flot",
@@ -7175,7 +8021,8 @@
           "description": "",
           "fieldConfig": {
             "defaults": {
-              "custom": {}
+              "custom": {},
+              "links": []
             },
             "overrides": []
           },
@@ -7185,7 +8032,7 @@
             "h": 7,
             "w": 8,
             "x": 0,
-            "y": 46
+            "y": 35
           },
           "hiddenSeries": false,
           "id": 187,
@@ -7205,9 +8052,10 @@
           "maxDataPoints": 60,
           "nullPointMode": "null",
           "options": {
-            "dataLinks": []
+            "alertThreshold": true
           },
           "percentage": false,
+          "pluginVersion": "7.2.2",
           "pointradius": 2,
           "points": false,
           "renderer": "flot",
@@ -7407,7 +8255,8 @@
           "description": "",
           "fieldConfig": {
             "defaults": {
-              "custom": {}
+              "custom": {},
+              "links": []
             },
             "overrides": []
           },
@@ -7417,7 +8266,7 @@
             "h": 7,
             "w": 8,
             "x": 8,
-            "y": 46
+            "y": 35
           },
           "hiddenSeries": false,
           "id": 188,
@@ -7437,9 +8286,10 @@
           "maxDataPoints": 60,
           "nullPointMode": "null",
           "options": {
-            "dataLinks": []
+            "alertThreshold": true
           },
           "percentage": false,
+          "pluginVersion": "7.2.2",
           "pointradius": 2,
           "points": false,
           "renderer": "flot",
@@ -7639,7 +8489,8 @@
           "description": "",
           "fieldConfig": {
             "defaults": {
-              "custom": {}
+              "custom": {},
+              "links": []
             },
             "overrides": []
           },
@@ -7649,7 +8500,7 @@
             "h": 7,
             "w": 8,
             "x": 16,
-            "y": 46
+            "y": 35
           },
           "hiddenSeries": false,
           "id": 189,
@@ -7669,9 +8520,10 @@
           "maxDataPoints": 60,
           "nullPointMode": "null",
           "options": {
-            "dataLinks": []
+            "alertThreshold": true
           },
           "percentage": false,
+          "pluginVersion": "7.2.2",
           "pointradius": 2,
           "points": false,
           "renderer": "flot",
@@ -7871,7 +8723,8 @@
           "description": "",
           "fieldConfig": {
             "defaults": {
-              "custom": {}
+              "custom": {},
+              "links": []
             },
             "overrides": []
           },
@@ -7881,7 +8734,7 @@
             "h": 7,
             "w": 8,
             "x": 0,
-            "y": 53
+            "y": 42
           },
           "hiddenSeries": false,
           "id": 190,
@@ -7901,9 +8754,10 @@
           "maxDataPoints": 60,
           "nullPointMode": "null",
           "options": {
-            "dataLinks": []
+            "alertThreshold": true
           },
           "percentage": false,
+          "pluginVersion": "7.2.2",
           "pointradius": 2,
           "points": false,
           "renderer": "flot",
@@ -8103,7 +8957,8 @@
           "description": "",
           "fieldConfig": {
             "defaults": {
-              "custom": {}
+              "custom": {},
+              "links": []
             },
             "overrides": []
           },
@@ -8113,7 +8968,7 @@
             "h": 7,
             "w": 8,
             "x": 8,
-            "y": 53
+            "y": 42
           },
           "hiddenSeries": false,
           "id": 191,
@@ -8133,9 +8988,10 @@
           "maxDataPoints": 60,
           "nullPointMode": "null",
           "options": {
-            "dataLinks": []
+            "alertThreshold": true
           },
           "percentage": false,
+          "pluginVersion": "7.2.2",
           "pointradius": 2,
           "points": false,
           "renderer": "flot",
@@ -8335,7 +9191,8 @@
           "description": "",
           "fieldConfig": {
             "defaults": {
-              "custom": {}
+              "custom": {},
+              "links": []
             },
             "overrides": []
           },
@@ -8345,7 +9202,7 @@
             "h": 7,
             "w": 8,
             "x": 16,
-            "y": 53
+            "y": 42
           },
           "hiddenSeries": false,
           "id": 192,
@@ -8365,9 +9222,10 @@
           "maxDataPoints": 60,
           "nullPointMode": "null",
           "options": {
-            "dataLinks": []
+            "alertThreshold": true
           },
           "percentage": false,
+          "pluginVersion": "7.2.2",
           "pointradius": 2,
           "points": false,
           "renderer": "flot",
@@ -8567,7 +9425,8 @@
           "description": "",
           "fieldConfig": {
             "defaults": {
-              "custom": {}
+              "custom": {},
+              "links": []
             },
             "overrides": []
           },
@@ -8577,7 +9436,7 @@
             "h": 7,
             "w": 8,
             "x": 0,
-            "y": 60
+            "y": 49
           },
           "hiddenSeries": false,
           "id": 193,
@@ -8597,9 +9456,10 @@
           "maxDataPoints": 60,
           "nullPointMode": "null",
           "options": {
-            "dataLinks": []
+            "alertThreshold": true
           },
           "percentage": false,
+          "pluginVersion": "7.2.2",
           "pointradius": 2,
           "points": false,
           "renderer": "flot",
@@ -8799,7 +9659,8 @@
           "description": "",
           "fieldConfig": {
             "defaults": {
-              "custom": {}
+              "custom": {},
+              "links": []
             },
             "overrides": []
           },
@@ -8809,7 +9670,7 @@
             "h": 7,
             "w": 8,
             "x": 8,
-            "y": 60
+            "y": 49
           },
           "hiddenSeries": false,
           "id": 194,
@@ -8829,9 +9690,10 @@
           "maxDataPoints": 60,
           "nullPointMode": "null",
           "options": {
-            "dataLinks": []
+            "alertThreshold": true
           },
           "percentage": false,
+          "pluginVersion": "7.2.2",
           "pointradius": 2,
           "points": false,
           "renderer": "flot",
@@ -9031,7 +9893,8 @@
           "description": "",
           "fieldConfig": {
             "defaults": {
-              "custom": {}
+              "custom": {},
+              "links": []
             },
             "overrides": []
           },
@@ -9041,7 +9904,7 @@
             "h": 7,
             "w": 8,
             "x": 16,
-            "y": 60
+            "y": 49
           },
           "hiddenSeries": false,
           "id": 195,
@@ -9061,9 +9924,10 @@
           "maxDataPoints": 60,
           "nullPointMode": "null",
           "options": {
-            "dataLinks": []
+            "alertThreshold": true
           },
           "percentage": false,
+          "pluginVersion": "7.2.2",
           "pointradius": 2,
           "points": false,
           "renderer": "flot",
@@ -9263,7 +10127,8 @@
           "description": "",
           "fieldConfig": {
             "defaults": {
-              "custom": {}
+              "custom": {},
+              "links": []
             },
             "overrides": []
           },
@@ -9273,7 +10138,7 @@
             "h": 7,
             "w": 8,
             "x": 0,
-            "y": 67
+            "y": 56
           },
           "hiddenSeries": false,
           "id": 196,
@@ -9293,9 +10158,10 @@
           "maxDataPoints": 60,
           "nullPointMode": "null",
           "options": {
-            "dataLinks": []
+            "alertThreshold": true
           },
           "percentage": false,
+          "pluginVersion": "7.2.2",
           "pointradius": 2,
           "points": false,
           "renderer": "flot",
@@ -9495,7 +10361,8 @@
           "description": "",
           "fieldConfig": {
             "defaults": {
-              "custom": {}
+              "custom": {},
+              "links": []
             },
             "overrides": []
           },
@@ -9505,7 +10372,7 @@
             "h": 7,
             "w": 8,
             "x": 8,
-            "y": 67
+            "y": 56
           },
           "hiddenSeries": false,
           "id": 197,
@@ -9525,9 +10392,10 @@
           "maxDataPoints": 60,
           "nullPointMode": "null",
           "options": {
-            "dataLinks": []
+            "alertThreshold": true
           },
           "percentage": false,
+          "pluginVersion": "7.2.2",
           "pointradius": 2,
           "points": false,
           "renderer": "flot",
@@ -9731,7 +10599,7 @@
     }
   ],
   "refresh": false,
-  "schemaVersion": 25,
+  "schemaVersion": 26,
   "style": "dark",
   "tags": [],
   "templating": {
@@ -9766,7 +10634,9 @@
         "allValue": "*",
         "current": {
           "selected": true,
-          "text": "ams03",
+          "text": [
+            "ams03"
+          ],
           "value": [
             "ams03"
           ]
@@ -9794,7 +10664,9 @@
         "allValue": "*",
         "current": {
           "selected": true,
-          "text": "All",
+          "text": [
+            "All"
+          ],
           "value": [
             "$__all"
           ]
@@ -9852,5 +10724,5 @@
   "timezone": "utc",
   "title": "Pktvisor3 - Current",
   "uid": "GdiOlKzGz",
-  "version": 150
+  "version": 158
 }
