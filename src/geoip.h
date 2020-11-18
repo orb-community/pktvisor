@@ -13,11 +13,13 @@ public:
 
     std::string getGeoLocString(const char *ip_address) const;
     std::string getGeoLocString(uint32_t ip_address) const;
+    std::string getGeoLocString(const uint8_t* ip_address) const;
     std::string getGeoLocString(const in_addr* ip_address) const;
     std::string getGeoLocString(const in6_addr* ip_address) const;
 
     std::string getASNString(const char *ip_address) const;
     std::string getASNString(uint32_t ip_address) const;
+    std::string getASNString(const uint8_t* ip_address) const;
     std::string getASNString(const in_addr* in_addr) const;
     std::string getASNString(const in6_addr* in_addr) const;
 

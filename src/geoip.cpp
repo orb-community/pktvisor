@@ -34,6 +34,21 @@ std::string GeoDB::getGeoLocString(const uint32_t ip_address) const {
 
 }
 
+std::string GeoDB::getGeoLocString(const uint8_t* ip_address) const {
+
+    int mmdb_error;
+    struct sockaddr_in6 sa;
+    memset(&sa, 0, sizeof(sa));
+    memcpy(&sa.sin6_addr, &ip_address, sizeof(sa.sin6_addr));
+    sa.sin6_family = AF_INET6;
+    MMDB_lookup_result_s lookup = MMDB_lookup_sockaddr(&mmdb, (sockaddr *const)&sa, &mmdb_error);
+    if (mmdb_error != MMDB_SUCCESS || !lookup.found_entry) {
+        return "Unknown";
+    }
+
+    return _getGeoLocString(&lookup);
+}
+
 std::string GeoDB::getGeoLocString(const in_addr* in_addr) const {
 
     int mmdb_error;
@@ -135,6 +150,22 @@ std::string GeoDB::getASNString(uint32_t ip_address) const {
     memset(&sa, 0, sizeof(struct sockaddr_in));
     memcpy(&sa.sin_addr, &ip_address, sizeof(sa.sin_addr));
     sa.sin_family = AF_INET;
+    MMDB_lookup_result_s lookup = MMDB_lookup_sockaddr(&mmdb, (sockaddr *const)&sa, &mmdb_error);
+    if (mmdb_error != MMDB_SUCCESS || !lookup.found_entry) {
+        return "Unknown";
+    }
+
+    return _getASNString(&lookup);
+
+}
+
+std::string GeoDB::getASNString(const uint8_t* ip_address) const {
+
+    int mmdb_error;
+    struct sockaddr_in6 sa;
+    memset(&sa, 0, sizeof(struct sockaddr_in));
+    memcpy(&sa.sin6_addr, &ip_address, sizeof(sa.sin6_addr));
+    sa.sin6_family = AF_INET6;
     MMDB_lookup_result_s lookup = MMDB_lookup_sockaddr(&mmdb, (sockaddr *const)&sa, &mmdb_error);
     if (mmdb_error != MMDB_SUCCESS || !lookup.found_entry) {
         return "Unknown";

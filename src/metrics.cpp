@@ -317,7 +317,7 @@ void Metrics::newPacket(const pcpp::Packet &packet, pcpp::ProtocolType l3, pcpp:
         }
     } else if (IP6layer) {
         if (dir == toHost) {
-            _sketches->_net_srcIPCard.update((void *)IP6layer->getSrcIpAddress().toIn6Addr(), 16);
+            _sketches->_net_srcIPCard.update((void *)IP6layer->getSrcIpAddress().toBytes(), 16);
             _sketches->_net_topIPv6.update(IP6layer->getSrcIpAddress().toString());
 #ifdef MMDB_ENABLE
             if (geoCityDB) {
