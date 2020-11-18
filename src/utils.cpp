@@ -2,12 +2,13 @@
 #include "utils.h"
 #include <cstring>
 #include <sstream>
-#include <IpUtils.h>
 #ifdef __linux__
 #include <in.h>
 #else
 #include <netinet/in.h>
 #endif
+#include <arpa/inet.h>
+#include <IpUtils.h>
 
 namespace pktvisor {
 
@@ -111,29 +112,41 @@ void parseHostSpec(const std::string &spec, IPv4subnetList &ipv4List, IPv6subnet
         std::vector<std::string> cidr = split(host, '/');
         if (cidr.size() != 2) {
             std::stringstream err;
-            err << "skipping invalid CIDR: " << host;
+            err << "invalid CIDR: " << host;
             throw std::runtime_error(err.str());
         }
         if (host.find(':') != host.npos) {
             pcpp::IPv6Address net(cidr[0]);
             if (!net.isValid()) {
                 std::stringstream err;
-                err << "skipping invalid IPv6 address: " << cidr[0];
+                err << "invalid IPv6 address: " << cidr[0];
                 throw std::runtime_error(err.str());
             }
             in6_addr mask_addr;
             ipv6_netmask(&mask_addr, std::stoi(cidr[1]));
-            ipv6List.emplace_back(pktvisor::IPv6subnet(net, pcpp::IPv6Address(&mask_addr)));
+            char buf[INET6_ADDRSTRLEN];
+            if (inet_ntop(AF_INET6, &mask_addr, buf, INET6_ADDRSTRLEN) == 0) {
+                std::stringstream err;
+                err << "invalid IPv6 address mask: " << cidr[1];
+                throw std::runtime_error(err.str());
+            }
+            ipv6List.emplace_back(pktvisor::IPv6subnet(net, pcpp::IPv6Address(buf)));
         } else {
             pcpp::IPv4Address net(cidr[0]);
             if (!net.isValid()) {
                 std::stringstream err;
-                err << "skipping invalid IPv4 address: " << cidr[0];
+                err << "invalid IPv4 address: " << cidr[0];
                 throw std::runtime_error(err.str());
             }
             in_addr mask_addr;
             ipv4_netmask(&mask_addr, std::stoi(cidr[1]));
-            ipv4List.emplace_back(pktvisor::IPv4subnet(net, pcpp::IPv4Address(&mask_addr)));
+            char buf[INET_ADDRSTRLEN];
+            if (inet_ntop(AF_INET, &mask_addr, buf, INET_ADDRSTRLEN) == 0) {
+                std::stringstream err;
+                err << "invalid IPv4 address mask: " << cidr[1];
+                throw std::runtime_error(err.str());
+            }
+            ipv4List.emplace_back(pktvisor::IPv4subnet(net, pcpp::IPv4Address(buf)));
         }
     }
 }

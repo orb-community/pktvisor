@@ -297,10 +297,10 @@ void Metrics::newPacket(const pcpp::Packet &packet, pcpp::ProtocolType l3, pcpp:
             _sketches->_net_topIPv4.update(IP4layer->getSrcIpAddress().toInt());
 #ifdef MMDB_ENABLE
             if (geoCityDB) {
-                _sketches->_net_topGeoLoc.update(geoCityDB->getGeoLocString(IP4layer->getSrcIpAddress().toInAddr()));
+                _sketches->_net_topGeoLoc.update(geoCityDB->getGeoLocString(IP4layer->getSrcIpAddress().toInt()));
             }
             if (geoASNDB) {
-                _sketches->_net_topASN.update(geoASNDB->getASNString(IP4layer->getSrcIpAddress().toInAddr()));
+                _sketches->_net_topASN.update(geoASNDB->getASNString(IP4layer->getSrcIpAddress().toInt()));
             }
 #endif
         } else if (dir == fromHost) {
@@ -308,10 +308,10 @@ void Metrics::newPacket(const pcpp::Packet &packet, pcpp::ProtocolType l3, pcpp:
             _sketches->_net_topIPv4.update(IP4layer->getDstIpAddress().toInt());
 #ifdef MMDB_ENABLE
             if (geoCityDB) {
-                _sketches->_net_topGeoLoc.update(geoCityDB->getGeoLocString(IP4layer->getDstIpAddress().toInAddr()));
+                _sketches->_net_topGeoLoc.update(geoCityDB->getGeoLocString(IP4layer->getDstIpAddress().toInt()));
             }
             if (geoASNDB) {
-                _sketches->_net_topASN.update(geoASNDB->getASNString(IP4layer->getDstIpAddress().toInAddr()));
+                _sketches->_net_topASN.update(geoASNDB->getASNString(IP4layer->getDstIpAddress().toInt()));
             }
 #endif
         }
@@ -384,7 +384,7 @@ void MetricsMgr::setInitialShiftTS() {
 
 void MetricsMgr::setInitialShiftTS(const pcpp::Packet &packet) {
     _lastShiftTS.tv_sec = packet.getRawPacketReadOnly()->getPacketTimeStamp().tv_sec;
-    _lastShiftTS.tv_usec = packet.getRawPacketReadOnly()->getPacketTimeStamp().tv_usec;
+    _lastShiftTS.tv_usec = packet.getRawPacketReadOnly()->getPacketTimeStamp().tv_nsec;
 }
 
 void MetricsMgr::newPacket(const pcpp::Packet &packet, QueryResponsePairMgr &pairMgr, pcpp::ProtocolType l4, Direction dir, pcpp::ProtocolType l3)
