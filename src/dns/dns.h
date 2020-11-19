@@ -2,6 +2,9 @@
 
 #include <string>
 #include <unordered_map>
+#include "DnsLayer.h"
+#include "DnsResource.h"
+#include "DnsResourceData.h"
 
 namespace pktvisor {
 

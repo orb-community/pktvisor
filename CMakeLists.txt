@@ -44,6 +44,12 @@ add_library(pktvisorcore
         src/utils.cpp
         )
 
+add_library(pktvisor-dns
+        src/dns/DnsLayer.cpp
+        src/dns/DnsResource.cpp
+        src/dns/DnsResourceData.cpp
+        )
+
 target_include_directories(pktvisorcore
         PUBLIC
         ${LIBPCPP_INCLUDE_DIRS}
@@ -82,7 +88,7 @@ add_executable(pktvisord
         )
 
 target_link_libraries(pktvisord
-        PRIVATE pktvisorcore
+        PRIVATE pktvisorcore pktvisor-dns
         )
 
 add_executable(unit-tests

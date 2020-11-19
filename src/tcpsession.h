@@ -1,11 +1,11 @@
 #pragma once
 
-#include <DnsLayer.h>
 #include <TcpReassembly.h>
 
 #include <functional>
 #include <memory>
 
+#include "dns/dns.h"
 #include "pktvisor.h"
 
 namespace pktvisor {
@@ -75,7 +75,7 @@ struct TcpReassemblyData {
 
 struct TcpReassemblyMgr {
 
-    using process_dns_msg_cb = std::function<void(pcpp::DnsLayer *, Direction dir, pcpp::ProtocolType l3, uint32_t flowKey, timeval stamp)>;
+    using process_dns_msg_cb = std::function<void(pktvisor::DnsLayer *, Direction dir, pcpp::ProtocolType l3, uint32_t flowKey, timespec stamp)>;
 
     process_dns_msg_cb process_dns_handler;
 

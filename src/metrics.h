@@ -232,8 +232,8 @@ public:
     void toJSON(nlohmann::json &j, const std::string &key);
 
     void newPacket(const pcpp::Packet &packet, pcpp::ProtocolType l3, pcpp::ProtocolType l4, Direction dir);
-    void newDNSPacket(pcpp::DnsLayer *dns, Direction dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4);
-    void newDNSXact(pcpp::DnsLayer *dns, Direction dir, DnsTransaction xact);
+    void newDNSPacket(pktvisor::DnsLayer *dns, Direction dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4);
+    void newDNSXact(pktvisor::DnsLayer *dns, Direction dir, DnsTransaction xact);
 };
 
 class MetricsMgr
@@ -335,8 +335,8 @@ public:
 #endif
 
     void newPacket(const pcpp::Packet &packet, QueryResponsePairMgr &pairMgr, pcpp::ProtocolType l4, Direction dir, pcpp::ProtocolType l3);
-    void newDNSPacket(pcpp::DnsLayer *dns, Direction dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4);
-    void newDNSXact(pcpp::DnsLayer *dns, Direction dir, DnsTransaction xact);
+    void newDNSPacket(pktvisor::DnsLayer *dns, Direction dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4);
+    void newDNSXact(pktvisor::DnsLayer *dns, Direction dir, DnsTransaction xact);
 
     std::string getAppMetrics();
     std::string getInstantRates();

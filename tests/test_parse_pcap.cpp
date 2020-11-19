@@ -24,7 +24,7 @@ TEST_CASE("Parse DNS UDP IPv4 tests", "[pcap][ipv4][udp][dns]")
         if (dnsRequest.isPacketOfType(pcpp::UDP)) {
             numUDP++;
             if (dnsRequest.isPacketOfType(pcpp::DNS)) {
-                pcpp::DnsLayer *dnsLayer = dnsRequest.getLayerOfType<pcpp::DnsLayer>();
+                pktvisor::DnsLayer *dnsLayer = dnsRequest.getLayerOfType<pktvisor::DnsLayer>();
                 dnsLayer->parseResources();
                 if (numDNS == 0) {
                     CHECK(dnsLayer->getFirstQuery()->getName() == "utadwnME.POJwOc9R.KtfO.test.com");
@@ -53,7 +53,7 @@ TEST_CASE("Parse DNS TCP IPv4 tests", "[pcap][ipv4][tcp][dns]")
     bool firstQuery(false);
     int numDNS[2] = {0,0};
 
-    auto got_dns_message = [&firstQuery, &numDNS](pcpp::DnsLayer* dnsLayer, pktvisor::Direction dir, pcpp::ProtocolType l3, uint32_t flowKey, timeval stamp) {
+    auto got_dns_message = [&firstQuery, &numDNS](pktvisor::DnsLayer* dnsLayer, pktvisor::Direction dir, pcpp::ProtocolType l3, uint32_t flowKey, timeval stamp) {
         CHECK(stamp.tv_sec != 0);
         CHECK(stamp.tv_usec != 0);
         if (firstQuery) {
@@ -107,7 +107,7 @@ TEST_CASE("Parse DNS UDP IPv6 tests", "[pcap][ipv6][udp][dns]")
         if (dnsRequest.isPacketOfType(pcpp::UDP)) {
             numUDP++;
             if (dnsRequest.isPacketOfType(pcpp::DNS)) {
-                pcpp::DnsLayer *dnsLayer = dnsRequest.getLayerOfType<pcpp::DnsLayer>();
+                pktvisor::DnsLayer *dnsLayer = dnsRequest.getLayerOfType<pktvisor::DnsLayer>();
                 dnsLayer->parseResources();
                 if (numDNS == 0) {
                     CHECK(dnsLayer->getFirstQuery()->getName() == "LOJ5Pq2._EmpLuAPR.PPLIop.1F8J2R1.eMVq5.test.com");
@@ -136,7 +136,7 @@ TEST_CASE("Parse DNS TCP IPv6 tests", "[pcap][ipv6][tcp][dns]")
     int numTCP(0);
     int numDNS[2] = {0,0};
 
-    auto got_dns_message = [&firstQuery, &numDNS](pcpp::DnsLayer* dnsLayer, pktvisor::Direction dir, pcpp::ProtocolType l3, uint32_t flowKey, timeval stamp) {
+    auto got_dns_message = [&firstQuery, &numDNS](pktvisor::DnsLayer* dnsLayer, pktvisor::Direction dir, pcpp::ProtocolType l3, uint32_t flowKey, timeval stamp) {
         CHECK(stamp.tv_sec != 0);
         CHECK(stamp.tv_usec != 0);
         if (firstQuery) {

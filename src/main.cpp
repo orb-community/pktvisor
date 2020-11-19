@@ -12,13 +12,14 @@
 #include <cpp-httplib/httplib.h>
 #include <docopt/docopt.h>
 
-#include "timer.h"
+#include "config.h"
+#include "dns/dns.h"
 #include "metrics.h"
 #include "pktvisor.h"
 #include "querypairmgr.h"
 #include "tcpsession.h"
+#include "timer.h"
 #include "utils.h"
-#include "config.h"
 
 static const char USAGE[] =
     R"(pktvisord.
@@ -58,7 +59,7 @@ static pktvisor::IPv6subnetList hostIPv6;
 typedef std::pair<pktvisor::TcpDnsReassembly *, bool> devCookie;
 
 // got a full DNS wire message. called from all l3 and l4.
-static void onGotDnsMessage(pcpp::DnsLayer *dnsLayer, pktvisor::Direction dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowKey, timeval stamp)
+static void onGotDnsMessage(pktvisor::DnsLayer *dnsLayer, pktvisor::Direction dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowKey, timespec stamp)
 {
     assert(dnsLayer != nullptr);
     metricsManager->newDNSPacket(dnsLayer, dir, l3, l4);
@@ -73,7 +74,7 @@ static void onGotDnsMessage(pcpp::DnsLayer *dnsLayer, pktvisor::Direction dir, p
 };
 
 // called only for TCP, both IPv4 and 6
-static void onGotTcpDnsMessage(pcpp::DnsLayer *dnsLayer, pktvisor::Direction dir, pcpp::ProtocolType l3, uint32_t flowKey, timeval stamp)
+static void onGotTcpDnsMessage(pktvisor::DnsLayer *dnsLayer, pktvisor::Direction dir, pcpp::ProtocolType l3, uint32_t flowKey, timespec stamp)
 {
     onGotDnsMessage(dnsLayer, dir, l3, pcpp::TCP, flowKey, stamp);
 }
@@ -95,7 +96,8 @@ static void processRawPacket(pcpp::RawPacket *rawPacket, pktvisor::TcpDnsReassem
 {
 
     pcpp::ProtocolType l3(pcpp::UnknownProtocol), l4(pcpp::UnknownProtocol);
-    pcpp::Packet packet(rawPacket);
+    // we will parse application layer ourselves
+    pcpp::Packet packet(rawPacket, pcpp::OsiModelTransportLayer);
     if (packet.isPacketOfType(pcpp::IPv4)) {
         l3 = pcpp::IPv4;
     }
@@ -136,7 +138,7 @@ static void processRawPacket(pcpp::RawPacket *rawPacket, pktvisor::TcpDnsReassem
     }
     metricsManager->newPacket(packet, dnsQueryPairManager, l4, dir, l3);
     if (packet.isPacketOfType(pcpp::UDP)) {
-        pcpp::DnsLayer *dnsLayer = packet.getLayerOfType<pcpp::DnsLayer>();
+        pktvisor::DnsLayer *dnsLayer = packet.getLayerOfType<pktvisor::DnsLayer>();
         if (dnsLayer == nullptr) {
             // a UDP packet which wasn't DNS
             return;
