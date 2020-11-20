@@ -39,7 +39,10 @@ std::string GeoDB::getGeoLocString(const uint8_t* ip_address) const {
     int mmdb_error;
     struct sockaddr_in6 sa;
     memset(&sa, 0, sizeof(sa));
-    memcpy(&sa.sin6_addr, &ip_address, sizeof(sa.sin6_addr));
+    sa.sin6_addr.s6_addr[0] = ip_address[0];
+    sa.sin6_addr.s6_addr[1] = ip_address[1];
+    sa.sin6_addr.s6_addr[2] = ip_address[2];
+    sa.sin6_addr.s6_addr[3] = ip_address[3];
     sa.sin6_family = AF_INET6;
     MMDB_lookup_result_s lookup = MMDB_lookup_sockaddr(&mmdb, (sockaddr *const)&sa, &mmdb_error);
     if (mmdb_error != MMDB_SUCCESS || !lookup.found_entry) {
@@ -164,7 +167,10 @@ std::string GeoDB::getASNString(const uint8_t* ip_address) const {
     int mmdb_error;
     struct sockaddr_in6 sa;
     memset(&sa, 0, sizeof(struct sockaddr_in));
-    memcpy(&sa.sin6_addr, &ip_address, sizeof(sa.sin6_addr));
+    sa.sin6_addr.s6_addr[0] = ip_address[0];
+    sa.sin6_addr.s6_addr[1] = ip_address[1];
+    sa.sin6_addr.s6_addr[2] = ip_address[2];
+    sa.sin6_addr.s6_addr[3] = ip_address[3];
     sa.sin6_family = AF_INET6;
     MMDB_lookup_result_s lookup = MMDB_lookup_sockaddr(&mmdb, (sockaddr *const)&sa, &mmdb_error);
     if (mmdb_error != MMDB_SUCCESS || !lookup.found_entry) {

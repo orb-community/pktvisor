@@ -23,23 +23,23 @@ TEST_CASE("GeoIP", "[geoip]")
 
     }
 
-    SECTION("basic Geo lookup: sockaddr")
+    SECTION("basic Geo lookup: bytes")
     {
 
         pktvisor::GeoDB db("fixtures/GeoIP2-City-Test.mmdb");
         pcpp::IPv4Address ip("89.160.20.112");
-        CHECK(db.getGeoLocString(ip.toBytes()) == "EU/Sweden/E/Linköping");
+        CHECK(db.getGeoLocString(ip.toInt()) == "EU/Sweden/E/Linköping");
         pcpp::IPv6Address ip6("2a02:dac0::");
         CHECK(db.getGeoLocString(ip6.toBytes()) == "EU/Russia");
 
     }
 
-    SECTION("basic ASN lookup: sockaddr")
+    SECTION("basic ASN lookup: bytes")
     {
 
         pktvisor::GeoDB db("fixtures/GeoIP2-ISP-Test.mmdb");
         pcpp::IPv4Address ip("1.128.0.0");
-        CHECK(db.getASNString(ip.toBytes()) == "1221/Telstra Pty Ltd");
+        CHECK(db.getASNString(ip.toInt()) == "1221/Telstra Pty Ltd");
         pcpp::IPv6Address ip6("2401:8080::");
         CHECK(db.getASNString(ip6.toBytes()) == "237/Merit Network Inc.");
 
