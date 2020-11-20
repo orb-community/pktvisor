@@ -55,7 +55,7 @@ IPv4DnsResourceData::IPv4DnsResourceData(const uint8_t* dataPtr, size_t dataLen)
 	}
 
 	uint32_t addrAsInt = *(uint32_t*)dataPtr;
-	m_Data = IPv4Address(addrAsInt);
+	m_Data = pcpp::IPv4Address(addrAsInt);
 }
 
 bool IPv4DnsResourceData::toByteArr(uint8_t* arr, size_t& arrLength, IDnsResource* dnsResource) const
@@ -79,7 +79,7 @@ IPv6DnsResourceData::IPv6DnsResourceData(const uint8_t* dataPtr, size_t dataLen)
 		return;
 	}
 
-	m_Data = IPv6Address((uint8_t*)dataPtr);
+	m_Data = pcpp::IPv6Address((uint8_t*)dataPtr);
 }
 
 bool IPv6DnsResourceData::toByteArr(uint8_t* arr, size_t& arrLength, IDnsResource* dnsResource) const
@@ -155,7 +155,7 @@ GenericDnsResourceData::GenericDnsResourceData(const std::string& dataAsHexStrin
 {
 	m_Data = NULL;
 	uint8_t tempDataArr[2048];
-	m_DataLen = hexStringToByteArray(dataAsHexString, tempDataArr, 2048);
+	m_DataLen = pcpp::hexStringToByteArray(dataAsHexString, tempDataArr, 2048);
 	if (m_DataLen != 0)
 	{
 		m_Data = new uint8_t[m_DataLen];
@@ -200,7 +200,7 @@ bool GenericDnsResourceData::operator==(const GenericDnsResourceData& other) con
 
 std::string GenericDnsResourceData::toString() const
 {
-	return byteArrayToHexString(m_Data, m_DataLen);
+	return pcpp::byteArrayToHexString(m_Data, m_DataLen);
 }
 
 bool GenericDnsResourceData::toByteArr(uint8_t* arr, size_t& arrLength, IDnsResource* dnsResource) const

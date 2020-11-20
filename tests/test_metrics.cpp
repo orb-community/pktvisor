@@ -19,7 +19,7 @@ TEST_CASE("metrics", "[metrics]")
                 dns.getDnsHeader()->queryOrResponse = pktvisor::query;
                 std::stringstream name;
                 name << "0000" << k << ".0000" << i << ".com";
-                dns.addQuery(name.str(), pcpp::DnsType::DNS_TYPE_A, pcpp::DnsClass::DNS_CLASS_IN);
+                dns.addQuery(name.str(), pktvisor::DnsType::DNS_TYPE_A, pktvisor::DnsClass::DNS_CLASS_IN);
                 mm.newDNSPacket(&dns, pktvisor::Direction::toHost, pcpp::IPv4, pcpp::UDP);
             }
         }

@@ -53,9 +53,9 @@ TEST_CASE("Parse DNS TCP IPv4 tests", "[pcap][ipv4][tcp][dns]")
     bool firstQuery(false);
     int numDNS[2] = {0,0};
 
-    auto got_dns_message = [&firstQuery, &numDNS](pktvisor::DnsLayer* dnsLayer, pktvisor::Direction dir, pcpp::ProtocolType l3, uint32_t flowKey, timeval stamp) {
+    auto got_dns_message = [&firstQuery, &numDNS](pktvisor::DnsLayer* dnsLayer, pktvisor::Direction dir, pcpp::ProtocolType l3, uint32_t flowKey, timespec stamp) {
         CHECK(stamp.tv_sec != 0);
-        CHECK(stamp.tv_usec != 0);
+        CHECK(stamp.tv_nsec != 0);
         if (firstQuery) {
             CHECK(dnsLayer->getFirstQuery()->getName() == "hx.3FsQRh6.ollah70Na.test.com");
             CHECK(dnsLayer->getFirstQuery()->getDnsType() == pcpp::DNS_TYPE_AAAA);
@@ -136,9 +136,9 @@ TEST_CASE("Parse DNS TCP IPv6 tests", "[pcap][ipv6][tcp][dns]")
     int numTCP(0);
     int numDNS[2] = {0,0};
 
-    auto got_dns_message = [&firstQuery, &numDNS](pktvisor::DnsLayer* dnsLayer, pktvisor::Direction dir, pcpp::ProtocolType l3, uint32_t flowKey, timeval stamp) {
+    auto got_dns_message = [&firstQuery, &numDNS](pktvisor::DnsLayer* dnsLayer, pktvisor::Direction dir, pcpp::ProtocolType l3, uint32_t flowKey, timespec stamp) {
         CHECK(stamp.tv_sec != 0);
-        CHECK(stamp.tv_usec != 0);
+        CHECK(stamp.tv_nsec != 0);
         if (firstQuery) {
             CHECK(dnsLayer->getFirstQuery()->getName() == "BCEIOL4.PfzdEtQk.lf.test.com");
             CHECK(dnsLayer->getFirstQuery()->getDnsType() == pcpp::DNS_TYPE_AAAA);

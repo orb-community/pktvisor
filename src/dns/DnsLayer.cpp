@@ -1,4 +1,4 @@
-#define LOG_MODULE PacketLogModuleDnsLayer
+#define LOG_MODULE pcpp::PacketLogModuleDnsLayer
 
 #include "DnsLayer.h"
 #include <Logger.h>
@@ -12,10 +12,10 @@
 namespace pktvisor
 {
 
-DnsLayer::DnsLayer(uint8_t* data, size_t dataLen, Layer* prevLayer, Packet* packet)
+DnsLayer::DnsLayer(uint8_t* data, size_t dataLen, Layer* prevLayer, pcpp::Packet* packet)
 	: Layer(data, dataLen, prevLayer, packet)
 {
-	m_Protocol = DNS;
+	m_Protocol = pcpp::DNS;
 	m_ResourceList = NULL;
 
 	m_FirstQuery = NULL;
@@ -31,7 +31,7 @@ DnsLayer::DnsLayer()
 	m_DataLen = headerLen;
 	m_Data = new uint8_t[headerLen];
 	memset(m_Data, 0, headerLen);
-	m_Protocol = DNS;
+	m_Protocol = pcpp::DNS;
 
 	m_ResourceList = NULL;
 
@@ -43,7 +43,7 @@ DnsLayer::DnsLayer()
 
 DnsLayer::DnsLayer(const DnsLayer& other) : Layer(other)
 {
-	m_Protocol = DNS;
+	m_Protocol = pcpp::DNS;
 
 	m_ResourceList = NULL;
 
@@ -607,7 +607,7 @@ bool DnsLayer::removeQuery(const std::string& queryNameToRemove, bool exactMatch
 	DnsQuery* queryToRemove = getQuery(queryNameToRemove, exactMatch);
 	if (queryToRemove == NULL)
 	{
-		LOG_DEBUG("Query not found");
+                LOG_DEBUG("Query not found");
 		return false;
 	}
 

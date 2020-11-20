@@ -44,12 +44,6 @@ add_library(pktvisorcore
         src/utils.cpp
         )
 
-add_library(pktvisor-dns
-        src/dns/DnsLayer.cpp
-        src/dns/DnsResource.cpp
-        src/dns/DnsResourceData.cpp
-        )
-
 target_include_directories(pktvisorcore
         PUBLIC
         ${LIBPCPP_INCLUDE_DIRS}
@@ -81,6 +75,18 @@ if (MMDB_ENABLE)
             )
     target_link_libraries(pktvisorcore PRIVATE geoip)
 endif()
+
+add_library(pktvisor-dns
+        src/dns/DnsLayer.cpp
+        src/dns/DnsResource.cpp
+        src/dns/DnsResourceData.cpp
+        )
+
+target_include_directories(pktvisor-dns
+        PUBLIC
+        ${LIBPCPP_INCLUDE_DIRS}
+        ${CMAKE_SOURCE_DIR}/3rd/EndianPortable
+        )
 
 add_executable(pktvisord
         3rd/docopt/docopt.cpp
@@ -117,7 +123,7 @@ target_include_directories(unit-tests
         )
 
 target_link_libraries(unit-tests
-        PRIVATE pktvisorcore
+        PRIVATE pktvisorcore pktvisor-dns
         )
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR})

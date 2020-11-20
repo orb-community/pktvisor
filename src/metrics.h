@@ -2,12 +2,12 @@
 
 #include <DnsLayer.h>
 #include <ProtocolType.h>
-#include <IpUtils.h>
 #include <datasketches/cpc/cpc_sketch.hpp>
 #include <datasketches/fi/frequent_items_sketch.hpp>
 #include <datasketches/kll/kll_sketch.hpp>
 #include <rng/randutils.hpp>
 #include <json/json.hpp>
+#include "dns/dns.h"
 #include "config.h"
 
 #ifdef MMDB_ENABLE
