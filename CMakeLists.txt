@@ -55,7 +55,7 @@ target_include_directories(pktvisorcore
 if (APPLE)
 target_link_libraries(pktvisorcore
         PRIVATE
-        "-L ${LIBPCPP_LIBRARY_DIRS}"
+        "-L${LIBPCPP_LIBRARY_DIRS}"
         ${LIBPCPP_LIBRARIES}
         "-framework CoreFoundation"
         "-framework SystemConfiguration"
