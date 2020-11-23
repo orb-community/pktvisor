@@ -120,7 +120,7 @@ TEST_CASE("parseHostSpec", "[utils]")
         pktvisor::parseHostSpec("2001:7f8:1::a506:2597:1/48", hostIPv4, hostIPv6);
         CHECK(hostIPv6.size() == 1);
         CHECK(hostIPv6[0].first.toString() == "2001:7f8:1::a506:2597:1");
-        CHECK(hostIPv6[0].second.toString() == "ffff:ffff:ffff::");
+        CHECK(hostIPv6[0].second == 48);
     }
 
     SECTION("mixed entries")
@@ -133,7 +133,7 @@ TEST_CASE("parseHostSpec", "[utils]")
         CHECK(hostIPv4[0].first.toString() == "192.168.1.5");
         CHECK(hostIPv4[0].second.toString() == "255.255.255.255");
         CHECK(hostIPv6[0].first.toString() == "2001:7f8:1::a506:2597:1");
-        CHECK(hostIPv6[0].second.toString() == "ffff:ffff:ffff::");
+        CHECK(hostIPv6[0].second == 48);
     }
 
 }

@@ -141,13 +141,12 @@ static void processRawPacket(pcpp::RawPacket *rawPacket, pktvisor::TcpDnsReassem
         }
     }
     metricsManager->newPacket(packet, dnsQueryPairManager, l4, dir, l3);
-    if (packet.isPacketOfType(pcpp::UDP)) {
-        pktvisor::DnsLayer *dnsLayer = packet.getLayerOfType<pktvisor::DnsLayer>();
-        if (dnsLayer == nullptr) {
-            // a UDP packet which wasn't DNS
-            return;
-        }
-        onGotDnsMessage(dnsLayer, dir, l3, l4, pcpp::hash5Tuple(&packet), rawPacket->getPacketTimeStamp());
+    pcpp::UdpLayer *udpLayer = packet.getLayerOfType<pcpp::UdpLayer>();
+    if (udpLayer &&
+        (pktvisor::DnsLayer::isDnsPort(ntohs(udpLayer->getUdpHeader()->portDst)) ||
+            pktvisor::DnsLayer::isDnsPort(ntohs(udpLayer->getUdpHeader()->portSrc)))) {
+        pktvisor::DnsLayer dnsLayer = pktvisor::DnsLayer(udpLayer, &packet);
+        onGotDnsMessage(&dnsLayer, dir, l3, l4, pcpp::hash5Tuple(&packet), rawPacket->getPacketTimeStamp());
     } else if (packet.isPacketOfType(pcpp::TCP)) {
         // get a pointer to the TCP reassembly instance and feed the packet arrived to it
         // we don't know yet if it's DNS, the reassembly manager figures that out
@@ -307,9 +306,14 @@ void getHostsFromIface(pcpp::PcapLiveDevice *dev)
                 std::cerr << "couldn't parse IPv4 netmask address on device" << std::endl;
                 continue;
             }
-            uint8_t mask = 128;
-            // FIXME TODO - mask must be set according to i.netmask
-            hostIPv6.emplace_back(pktvisor::IPv6subnet(pcpp::IPv6Address(buf1), mask));
+            uint8_t len = 0;
+            for (int i = 0; i < 16; i++) {
+                while (nmcvt->s6_addr[i]) {
+                    len++;
+                    nmcvt->s6_addr[i] >>= 1;
+                }
+            }
+            hostIPv6.emplace_back(pktvisor::IPv6subnet(pcpp::IPv6Address(buf1), len));
         }
     }
 }
@@ -367,7 +371,7 @@ void showHosts() {
         std::cerr << "Using IPv4 subnet as HOST: " << i.first.toString() << "/" << i.second.toString() << std::endl;
     }
     for (auto &i : hostIPv6) {
-        std::cerr << "Using IPv6 subnet as HOST: " << i.first.toString() << "/" << i.second << std::endl;
+        std::cerr << "Using IPv6 subnet as HOST: " << i.first.toString() << "/" << int(i.second) << std::endl;
     }
 }
 
@@ -474,11 +478,11 @@ int main(int argc, char *argv[])
         auto host = args["-l"].asString();
         auto port = args["-p"].asLong();
         std::thread httpThread([&svr, host, port] {
-            std::cerr << "Metrics web server listening on " << host << ":" << port << std::endl;
             if (!svr.listen(host.c_str(), port)) {
                 throw std::runtime_error("unable to listen");
             }
         });
+        std::cerr << "Metrics web server listening on " << host << ":" << port << std::endl;
         try {
             std::cerr << "Interface " << dev->getName() << std::endl;
             getHostsFromIface(dev);
