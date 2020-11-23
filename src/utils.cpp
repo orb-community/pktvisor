@@ -130,7 +130,7 @@ void parseHostSpec(const std::string &spec, IPv4subnetList &ipv4List, IPv6subnet
                 err << "invalid IPv6 address mask: " << cidr[1];
                 throw std::runtime_error(err.str());
             }
-            ipv6List.emplace_back(pktvisor::IPv6subnet(net, pcpp::IPv6Address(buf)));
+            ipv6List.emplace_back(pktvisor::IPv6subnet(net, std::stoi(cidr[1])));
         } else {
             pcpp::IPv4Address net(cidr[0]);
             if (!net.isValid()) {

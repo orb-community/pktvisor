@@ -7,11 +7,15 @@
 #include <PcapLiveDeviceList.h>
 #include <SystemUtils.h>
 #include <UdpLayer.h>
+
+#include <netinet/in.h>
+#include <arpa/inet.h>
 #include <IpUtils.h>
 
 #include <cpp-httplib/httplib.h>
 #include <docopt/docopt.h>
 
+#include "pcap.h"
 #include "config.h"
 #include "dns/dns.h"
 #include "metrics.h"
@@ -279,34 +283,33 @@ void openIface(pcpp::PcapLiveDevice *dev, pktvisor::TcpDnsReassembly &tcpReassem
 void getHostsFromIface(pcpp::PcapLiveDevice *dev)
 {
     auto addrs = dev->getAddresses();
-    for (auto &&i : addrs) {
+    for (auto i : addrs) {
         if (!i.addr) {
             continue;
         }
         if (i.addr->sa_family == AF_INET) {
-            auto adrcvt = pcpp::sockaddr2in_addr(i.addr);
+            auto adrcvt = pcpp::internal::sockaddr2in_addr(i.addr);
             if (!adrcvt) {
                 std::cerr << "couldn't parse IPv4 address on device" << std::endl;
                 continue;
             }
-            auto nmcvt = pcpp::sockaddr2in_addr(i.netmask);
+            auto nmcvt = pcpp::internal::sockaddr2in_addr(i.netmask);
             if (!nmcvt) {
                 std::cerr << "couldn't parse IPv4 netmask address on device" << std::endl;
                 continue;
             }
-            hostIPv4.emplace_back(pktvisor::IPv4subnet(pcpp::IPv4Address(adrcvt), pcpp::IPv4Address(nmcvt)));
+            hostIPv4.emplace_back(pktvisor::IPv4subnet(pcpp::IPv4Address(pcpp::internal::in_addr2int(*adrcvt)), pcpp::IPv4Address(pcpp::internal::in_addr2int(*nmcvt))));
         } else if (i.addr->sa_family == AF_INET6) {
-            auto adrcvt = pcpp::sockaddr2in6_addr(i.addr);
-            if (!adrcvt) {
-                std::cerr << "couldn't parse IPv6 address on device" << std::endl;
-                continue;
-            }
-            auto nmcvt = pcpp::sockaddr2in6_addr(i.netmask);
+            char buf1[INET6_ADDRSTRLEN];
+            pcpp::internal::sockaddr2string(i.addr, buf1);
+            auto nmcvt = pcpp::internal::sockaddr2in6_addr(i.netmask);
             if (!nmcvt) {
                 std::cerr << "couldn't parse IPv4 netmask address on device" << std::endl;
                 continue;
             }
-            hostIPv6.emplace_back(pktvisor::IPv6subnet(pcpp::IPv6Address(adrcvt), pcpp::IPv6Address(nmcvt)));
+            uint8_t mask = 128;
+            // FIXME TODO - mask must be set according to i.netmask
+            hostIPv6.emplace_back(pktvisor::IPv6subnet(pcpp::IPv6Address(buf1), mask));
         }
     }
 }
@@ -364,7 +367,7 @@ void showHosts() {
         std::cerr << "Using IPv4 subnet as HOST: " << i.first.toString() << "/" << i.second.toString() << std::endl;
     }
     for (auto &i : hostIPv6) {
-        std::cerr << "Using IPv6 subnet as HOST: " << i.first.toString() << "/" << i.second.toString() << std::endl;
+        std::cerr << "Using IPv6 subnet as HOST: " << i.first.toString() << "/" << i.second << std::endl;
     }
 }
 

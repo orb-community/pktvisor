@@ -8,7 +8,7 @@ namespace pktvisor {
 
 // list of subnets we count as "host" to determine direction of packets
 typedef std::pair<pcpp::IPv4Address, pcpp::IPv4Address> IPv4subnet;
-typedef std::pair<pcpp::IPv6Address, pcpp::IPv6Address> IPv6subnet;
+typedef std::pair<pcpp::IPv6Address, uint8_t> IPv6subnet;
 typedef std::vector<IPv4subnet> IPv4subnetList;
 typedef std::vector<IPv6subnet> IPv6subnetList;
 
