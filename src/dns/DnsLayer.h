@@ -4,7 +4,7 @@
 #include "DnsLayerEnums.h"
 #include "DnsResource.h"
 #include "DnsResourceData.h"
-#include <Layer.h>
+#include <UdpLayer.h>
 
 /// @file
 
@@ -100,6 +100,11 @@ namespace pktvisor
 		friend class DnsResource;
 
 	public:
+
+            DnsLayer(pcpp::UdpLayer *udpLayer, pcpp::Packet *packet)
+                : DnsLayer(udpLayer->getData()+sizeof(pcpp::udphdr), udpLayer->getDataLen()-sizeof(pcpp::udphdr), udpLayer, packet)
+            {
+            }
 
 		/**
 		 * A constructor that creates the layer from an existing packet raw data
