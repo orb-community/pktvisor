@@ -34,7 +34,7 @@ TEST_CASE("Parse DNS UDP IPv4 tests, basic pktvisor::DnsLayer functionality", "[
         if (numDNS == 0) {
             CHECK(dnsLayer.getFirstQuery() != nullptr);
             CHECK(dnsLayer.getFirstQuery()->getName() == "utadwnME.POJwOc9R.KtfO.test.com");
-            CHECK(dnsLayer.getFirstQuery()->getDnsType() == pcpp::DNS_TYPE_AAAA);
+            CHECK(dnsLayer.getFirstQuery()->getDnsType() == pktvisor::DNS_TYPE_AAAA);
         }
         numDNS++;
     }
@@ -62,7 +62,7 @@ TEST_CASE("Parse DNS TCP IPv4 tests", "[pcap][ipv4][tcp][dns]")
         CHECK(stamp.tv_nsec != 0);
         if (firstQuery) {
             CHECK(dnsLayer->getFirstQuery()->getName() == "hx.3FsQRh6.ollah70Na.test.com");
-            CHECK(dnsLayer->getFirstQuery()->getDnsType() == pcpp::DNS_TYPE_AAAA);
+            CHECK(dnsLayer->getFirstQuery()->getDnsType() == pktvisor::DNS_TYPE_AAAA);
             firstQuery = false;
         }
         numDNS[dir]++;
@@ -121,7 +121,7 @@ TEST_CASE("Parse DNS UDP IPv6 tests", "[pcap][ipv6][udp][dns]")
         if (numDNS == 0) {
             CHECK(dnsLayer.getFirstQuery() != nullptr);
             CHECK(dnsLayer.getFirstQuery()->getName() == "LOJ5Pq2._EmpLuAPR.PPLIop.1F8J2R1.eMVq5.test.com");
-            CHECK(dnsLayer.getFirstQuery()->getDnsType() == pcpp::DNS_TYPE_AAAA);
+            CHECK(dnsLayer.getFirstQuery()->getDnsType() == pktvisor::DNS_TYPE_AAAA);
         }
         numDNS++;
     }
@@ -149,7 +149,7 @@ TEST_CASE("Parse DNS TCP IPv6 tests", "[pcap][ipv6][tcp][dns]")
         CHECK(stamp.tv_nsec != 0);
         if (firstQuery) {
             CHECK(dnsLayer->getFirstQuery()->getName() == "BCEIOL4.PfzdEtQk.lf.test.com");
-            CHECK(dnsLayer->getFirstQuery()->getDnsType() == pcpp::DNS_TYPE_AAAA);
+            CHECK(dnsLayer->getFirstQuery()->getDnsType() == pktvisor::DNS_TYPE_AAAA);
             firstQuery = false;
         }
         numDNS[dir]++;

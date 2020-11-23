@@ -11,7 +11,7 @@ COPY . /src
 RUN \
     mkdir /local && \
     cd /tmp && \
-    git clone https://github.com/nsone/PcapPlusPlus.git
+    git clone https://github.com/ns1/PcapPlusPlus.git
 
 RUN \
     cd /tmp/PcapPlusPlus && \
