@@ -3,6 +3,7 @@
 #include <IpAddress.h>
 #include <string>
 #include <vector>
+#include <sys/socket.h>
 
 namespace pktvisor {
 
@@ -11,6 +12,9 @@ typedef std::pair<pcpp::IPv4Address, pcpp::IPv4Address> IPv4subnet;
 typedef std::pair<pcpp::IPv6Address, uint8_t> IPv6subnet;
 typedef std::vector<IPv4subnet> IPv4subnetList;
 typedef std::vector<IPv6subnet> IPv6subnetList;
+
+bool IPv4tosockaddr(const pcpp::IPv4Address &ip, const struct sockaddr *sa);
+bool IPv6tosockaddr(const pcpp::IPv6Address &ip, const struct sockaddr *sa);
 
 template <typename Out>
 void split(const std::string &s, char delim, Out result);

@@ -287,6 +287,7 @@ void Metrics::newPacket(const pcpp::Packet &packet, pcpp::ProtocolType l3, pcpp:
 #ifdef MMDB_ENABLE
     const GeoDB* geoCityDB = _mmgr.getGeoCityDB();
     const GeoDB* geoASNDB = _mmgr.getGeoASNDB();
+    struct sockaddr sa;
 #endif
 
     auto IP4layer = packet.getLayerOfType<pcpp::IPv4Layer>();
@@ -296,22 +297,26 @@ void Metrics::newPacket(const pcpp::Packet &packet, pcpp::ProtocolType l3, pcpp:
             _sketches->_net_srcIPCard.update(IP4layer->getSrcIpAddress().toInt());
             _sketches->_net_topIPv4.update(IP4layer->getSrcIpAddress().toInt());
 #ifdef MMDB_ENABLE
-            if (geoCityDB) {
-                _sketches->_net_topGeoLoc.update(geoCityDB->getGeoLocString(IP4layer->getSrcIpAddress().toInt()));
-            }
-            if (geoASNDB) {
-                _sketches->_net_topASN.update(geoASNDB->getASNString(IP4layer->getSrcIpAddress().toInt()));
+            if (IPv4tosockaddr(IP4layer->getSrcIpAddress(), &sa)) {
+                if (geoCityDB) {
+                    _sketches->_net_topGeoLoc.update(geoCityDB->getGeoLocString(&sa));
+                }
+                if (geoASNDB) {
+                    _sketches->_net_topASN.update(geoASNDB->getASNString(&sa));
+                }
             }
 #endif
         } else if (dir == fromHost) {
             _sketches->_net_dstIPCard.update(IP4layer->getDstIpAddress().toInt());
             _sketches->_net_topIPv4.update(IP4layer->getDstIpAddress().toInt());
 #ifdef MMDB_ENABLE
-            if (geoCityDB) {
-                _sketches->_net_topGeoLoc.update(geoCityDB->getGeoLocString(IP4layer->getDstIpAddress().toInt()));
-            }
-            if (geoASNDB) {
-                _sketches->_net_topASN.update(geoASNDB->getASNString(IP4layer->getDstIpAddress().toInt()));
+            if (IPv4tosockaddr(IP4layer->getDstIpAddress(), &sa)) {
+                if (geoCityDB) {
+                    _sketches->_net_topGeoLoc.update(geoCityDB->getGeoLocString(&sa));
+                }
+                if (geoASNDB) {
+                    _sketches->_net_topASN.update(geoASNDB->getASNString(&sa));
+                }
             }
 #endif
         }
@@ -320,22 +325,26 @@ void Metrics::newPacket(const pcpp::Packet &packet, pcpp::ProtocolType l3, pcpp:
             _sketches->_net_srcIPCard.update((void *)IP6layer->getSrcIpAddress().toBytes(), 16);
             _sketches->_net_topIPv6.update(IP6layer->getSrcIpAddress().toString());
 #ifdef MMDB_ENABLE
-            if (geoCityDB) {
-                _sketches->_net_topGeoLoc.update(geoCityDB->getGeoLocString(IP6layer->getSrcIpAddress().toBytes()));
-            }
-            if (geoASNDB) {
-                _sketches->_net_topASN.update(geoASNDB->getASNString(IP6layer->getSrcIpAddress().toBytes()));
+            if (IPv6tosockaddr(IP6layer->getSrcIpAddress(), &sa)) {
+                if (geoCityDB) {
+                    _sketches->_net_topGeoLoc.update(geoCityDB->getGeoLocString(&sa));
+                }
+                if (geoASNDB) {
+                    _sketches->_net_topASN.update(geoASNDB->getASNString(&sa));
+                }
             }
 #endif
         } else if (dir == fromHost) {
             _sketches->_net_dstIPCard.update((void *)IP6layer->getDstIpAddress().toBytes(), 16);
             _sketches->_net_topIPv6.update(IP6layer->getDstIpAddress().toString());
 #ifdef MMDB_ENABLE
-            if (geoCityDB) {
-                _sketches->_net_topGeoLoc.update(geoCityDB->getGeoLocString(IP6layer->getDstIpAddress().toBytes()));
-            }
-            if (geoASNDB) {
-                _sketches->_net_topASN.update(geoASNDB->getASNString(IP6layer->getDstIpAddress().toBytes()));
+            if (IPv6tosockaddr(IP6layer->getDstIpAddress(), &sa)) {
+                if (geoCityDB) {
+                    _sketches->_net_topGeoLoc.update(geoCityDB->getGeoLocString(&sa));
+                }
+                if (geoASNDB) {
+                    _sketches->_net_topASN.update(geoASNDB->getASNString(&sa));
+                }
             }
 #endif
         }

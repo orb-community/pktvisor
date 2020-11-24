@@ -1,5 +1,6 @@
-#include <catch2/catch.hpp>
 #include "utils.h"
+#include <catch2/catch.hpp>
+#include <netinet/in.h>
 
 TEST_CASE("parseHostSpec", "[utils]")
 {
@@ -134,6 +135,17 @@ TEST_CASE("parseHostSpec", "[utils]")
         CHECK(hostIPv4[0].second.toString() == "255.255.255.255");
         CHECK(hostIPv6[0].first.toString() == "2001:7f8:1::a506:2597:1");
         CHECK(hostIPv6[0].second == 48);
+    }
+
+    SECTION("ip format conversion")
+    {
+        pcpp::IPv4Address ip("1.128.0.0");
+        uint32_t ip_int(ip.toInt());
+        struct sockaddr_in sa;
+        CHECK(pktvisor::IPv4tosockaddr(ip, (sockaddr*)&sa));
+        CHECK(memcmp(&sa.sin_addr, &ip_int, sizeof(sa.sin_addr)) == 0);
+        CHECK(sa.sin_family == AF_INET);
+
     }
 
 }

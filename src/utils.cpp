@@ -12,7 +12,8 @@
 
 namespace pktvisor {
 
-AggDomainResult aggregateDomain(const std::string& domain) {
+AggDomainResult aggregateDomain(const std::string &domain)
+{
 
     std::string_view qname2(domain);
     std::string_view qname3(domain);
@@ -37,8 +38,7 @@ AggDomainResult aggregateDomain(const std::string& domain) {
                     qname3.remove_prefix(third_dot);
                 }
             }
-        }
-        else {
+        } else {
             // didn't find two dots, so this is empty
             qname3.remove_prefix(domain.size());
         }
@@ -149,6 +149,35 @@ void parseHostSpec(const std::string &spec, IPv4subnetList &ipv4List, IPv6subnet
             ipv4List.emplace_back(pktvisor::IPv4subnet(net, pcpp::IPv4Address(buf)));
         }
     }
+}
+
+bool IPv4tosockaddr(const pcpp::IPv4Address &ip, struct sockaddr *sa)
+{
+    /*
+    memset(&sa, 0, sizeof(struct sockaddr_in));
+    memcpy(&sa.sin_addr, &ip_address, sizeof(sa.sin_addr));
+    sa.sin_family = AF_INET;
+     */
+    return false;
+}
+
+bool IPv6tosockaddr(const pcpp::IPv6Address &ip, struct sockaddr *sa)
+{
+    /*
+    struct sockaddr_in6 sa;
+    memset(&sa, 0, sizeof(struct sockaddr_in));
+    sa.sin6_addr = *in_addr;
+    sa.sin6_family = AF_INET6;
+
+    struct sockaddr_in6 sa;
+    memset(&sa, 0, sizeof(struct sockaddr_in));
+    sa.sin6_addr.s6_addr[0] = ip_address[0];
+    sa.sin6_addr.s6_addr[1] = ip_address[1];
+    sa.sin6_addr.s6_addr[2] = ip_address[2];
+    sa.sin6_addr.s6_addr[3] = ip_address[3];
+    sa.sin6_family = AF_INET6;
+     */
+    return false;
 }
 
 }
