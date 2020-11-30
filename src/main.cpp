@@ -121,20 +121,20 @@ static void processRawPacket(pcpp::RawPacket *rawPacket, pktvisor::TcpDnsReassem
     auto IP6layer = packet.getLayerOfType<pcpp::IPv6Layer>();
     if (IP4layer) {
         for (auto &i : hostIPv4) {
-            if (IP4layer->getDstIpAddress().matchSubnet(i.first, i.second)) {
+            if (IP4layer->getDstIpAddress().matchSubnet(i.address, i.mask)) {
                 dir = pktvisor::toHost;
                 break;
-            } else if (IP4layer->getSrcIpAddress().matchSubnet(i.first, i.second)) {
+            } else if (IP4layer->getSrcIpAddress().matchSubnet(i.address, i.mask)) {
                 dir = pktvisor::fromHost;
                 break;
             }
         }
     } else if (IP6layer) {
         for (auto &i : hostIPv6) {
-            if (IP6layer->getDstIpAddress().matchSubnet(i.first, i.second)) {
+            if (IP6layer->getDstIpAddress().matchSubnet(i.address, i.mask)) {
                 dir = pktvisor::toHost;
                 break;
-            } else if (IP6layer->getSrcIpAddress().matchSubnet(i.first, i.second)) {
+            } else if (IP6layer->getSrcIpAddress().matchSubnet(i.address, i.mask)) {
                 dir = pktvisor::fromHost;
                 break;
             }
@@ -368,10 +368,10 @@ void setupRoutes(httplib::Server &svr)
 
 void showHosts() {
     for (auto &i : hostIPv4) {
-        std::cerr << "Using IPv4 subnet as HOST: " << i.first.toString() << "/" << i.second.toString() << std::endl;
+        std::cerr << "Using IPv4 subnet as HOST: " << i.address.toString() << "/" << i.mask.toString() << std::endl;
     }
     for (auto &i : hostIPv6) {
-        std::cerr << "Using IPv6 subnet as HOST: " << i.first.toString() << "/" << int(i.second) << std::endl;
+        std::cerr << "Using IPv6 subnet as HOST: " << i.address.toString() << "/" << int(i.mask) << std::endl;
     }
 }
 
