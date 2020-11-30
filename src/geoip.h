@@ -11,13 +11,14 @@ public:
     explicit GeoDB(const std::string &database_filename);
     ~GeoDB();
 
+    /*
+     * These routines accept both IPv4 and IPv6
+     */
     std::string getGeoLocString(const char *ip_address) const;
-    std::string getGeoLocString(const in_addr* ip_address) const;
-    std::string getGeoLocString(const in6_addr* ip_address) const;
+    std::string getGeoLocString(const struct sockaddr *sa) const;
 
     std::string getASNString(const char *ip_address) const;
-    std::string getASNString(const in_addr* in_addr) const;
-    std::string getASNString(const in6_addr* in_addr) const;
+    std::string getASNString(const struct sockaddr *sa) const;
 
 private:
     mutable MMDB_s mmdb;

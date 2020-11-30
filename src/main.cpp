@@ -7,18 +7,23 @@
 #include <PcapLiveDeviceList.h>
 #include <SystemUtils.h>
 #include <UdpLayer.h>
+
+#include <netinet/in.h>
+#include <arpa/inet.h>
 #include <IpUtils.h>
 
 #include <cpp-httplib/httplib.h>
 #include <docopt/docopt.h>
 
-#include "timer.h"
+#include "pcap.h"
+#include "config.h"
+#include "dns/dns.h"
 #include "metrics.h"
 #include "pktvisor.h"
 #include "querypairmgr.h"
 #include "tcpsession.h"
+#include "timer.h"
 #include "utils.h"
-#include "config.h"
 
 static const char USAGE[] =
     R"(pktvisord.
@@ -58,7 +63,7 @@ static pktvisor::IPv6subnetList hostIPv6;
 typedef std::pair<pktvisor::TcpDnsReassembly *, bool> devCookie;
 
 // got a full DNS wire message. called from all l3 and l4.
-static void onGotDnsMessage(pcpp::DnsLayer *dnsLayer, pktvisor::Direction dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowKey, timeval stamp)
+static void onGotDnsMessage(pktvisor::DnsLayer *dnsLayer, pktvisor::Direction dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowKey, timespec stamp)
 {
     assert(dnsLayer != nullptr);
     metricsManager->newDNSPacket(dnsLayer, dir, l3, l4);
@@ -73,7 +78,7 @@ static void onGotDnsMessage(pcpp::DnsLayer *dnsLayer, pktvisor::Direction dir, p
 };
 
 // called only for TCP, both IPv4 and 6
-static void onGotTcpDnsMessage(pcpp::DnsLayer *dnsLayer, pktvisor::Direction dir, pcpp::ProtocolType l3, uint32_t flowKey, timeval stamp)
+static void onGotTcpDnsMessage(pktvisor::DnsLayer *dnsLayer, pktvisor::Direction dir, pcpp::ProtocolType l3, uint32_t flowKey, timespec stamp)
 {
     onGotDnsMessage(dnsLayer, dir, l3, pcpp::TCP, flowKey, stamp);
 }
@@ -95,7 +100,8 @@ static void processRawPacket(pcpp::RawPacket *rawPacket, pktvisor::TcpDnsReassem
 {
 
     pcpp::ProtocolType l3(pcpp::UnknownProtocol), l4(pcpp::UnknownProtocol);
-    pcpp::Packet packet(rawPacket);
+    // we will parse application layer ourselves
+    pcpp::Packet packet(rawPacket, pcpp::OsiModelTransportLayer);
     if (packet.isPacketOfType(pcpp::IPv4)) {
         l3 = pcpp::IPv4;
     }
@@ -115,33 +121,32 @@ static void processRawPacket(pcpp::RawPacket *rawPacket, pktvisor::TcpDnsReassem
     auto IP6layer = packet.getLayerOfType<pcpp::IPv6Layer>();
     if (IP4layer) {
         for (auto &i : hostIPv4) {
-            if (IP4layer->getDstIpAddress().matchSubnet(i.first, i.second)) {
+            if (IP4layer->getDstIpAddress().matchSubnet(i.address, i.mask)) {
                 dir = pktvisor::toHost;
                 break;
-            } else if (IP4layer->getSrcIpAddress().matchSubnet(i.first, i.second)) {
+            } else if (IP4layer->getSrcIpAddress().matchSubnet(i.address, i.mask)) {
                 dir = pktvisor::fromHost;
                 break;
             }
         }
     } else if (IP6layer) {
         for (auto &i : hostIPv6) {
-            if (IP6layer->getDstIpAddress().matchSubnet(i.first, i.second)) {
+            if (IP6layer->getDstIpAddress().matchSubnet(i.address, i.mask)) {
                 dir = pktvisor::toHost;
                 break;
-            } else if (IP6layer->getSrcIpAddress().matchSubnet(i.first, i.second)) {
+            } else if (IP6layer->getSrcIpAddress().matchSubnet(i.address, i.mask)) {
                 dir = pktvisor::fromHost;
                 break;
             }
         }
     }
     metricsManager->newPacket(packet, dnsQueryPairManager, l4, dir, l3);
-    if (packet.isPacketOfType(pcpp::UDP)) {
-        pcpp::DnsLayer *dnsLayer = packet.getLayerOfType<pcpp::DnsLayer>();
-        if (dnsLayer == nullptr) {
-            // a UDP packet which wasn't DNS
-            return;
-        }
-        onGotDnsMessage(dnsLayer, dir, l3, l4, pcpp::hash5Tuple(&packet), rawPacket->getPacketTimeStamp());
+    pcpp::UdpLayer *udpLayer = packet.getLayerOfType<pcpp::UdpLayer>();
+    if (udpLayer &&
+        (pktvisor::DnsLayer::isDnsPort(ntohs(udpLayer->getUdpHeader()->portDst)) ||
+            pktvisor::DnsLayer::isDnsPort(ntohs(udpLayer->getUdpHeader()->portSrc)))) {
+        pktvisor::DnsLayer dnsLayer = pktvisor::DnsLayer(udpLayer, &packet);
+        onGotDnsMessage(&dnsLayer, dir, l3, l4, pcpp::hash5Tuple(&packet), rawPacket->getPacketTimeStamp());
     } else if (packet.isPacketOfType(pcpp::TCP)) {
         // get a pointer to the TCP reassembly instance and feed the packet arrived to it
         // we don't know yet if it's DNS, the reassembly manager figures that out
@@ -277,34 +282,38 @@ void openIface(pcpp::PcapLiveDevice *dev, pktvisor::TcpDnsReassembly &tcpReassem
 void getHostsFromIface(pcpp::PcapLiveDevice *dev)
 {
     auto addrs = dev->getAddresses();
-    for (auto &&i : addrs) {
+    for (auto i : addrs) {
         if (!i.addr) {
             continue;
         }
         if (i.addr->sa_family == AF_INET) {
-            auto adrcvt = pcpp::sockaddr2in_addr(i.addr);
+            auto adrcvt = pcpp::internal::sockaddr2in_addr(i.addr);
             if (!adrcvt) {
                 std::cerr << "couldn't parse IPv4 address on device" << std::endl;
                 continue;
             }
-            auto nmcvt = pcpp::sockaddr2in_addr(i.netmask);
+            auto nmcvt = pcpp::internal::sockaddr2in_addr(i.netmask);
             if (!nmcvt) {
                 std::cerr << "couldn't parse IPv4 netmask address on device" << std::endl;
                 continue;
             }
-            hostIPv4.emplace_back(pktvisor::IPv4subnet(pcpp::IPv4Address(adrcvt), pcpp::IPv4Address(nmcvt)));
+            hostIPv4.emplace_back(pktvisor::IPv4subnet(pcpp::IPv4Address(pcpp::internal::in_addr2int(*adrcvt)), pcpp::IPv4Address(pcpp::internal::in_addr2int(*nmcvt))));
         } else if (i.addr->sa_family == AF_INET6) {
-            auto adrcvt = pcpp::sockaddr2in6_addr(i.addr);
-            if (!adrcvt) {
-                std::cerr << "couldn't parse IPv6 address on device" << std::endl;
-                continue;
-            }
-            auto nmcvt = pcpp::sockaddr2in6_addr(i.netmask);
+            char buf1[INET6_ADDRSTRLEN];
+            pcpp::internal::sockaddr2string(i.addr, buf1);
+            auto nmcvt = pcpp::internal::sockaddr2in6_addr(i.netmask);
             if (!nmcvt) {
                 std::cerr << "couldn't parse IPv4 netmask address on device" << std::endl;
                 continue;
             }
-            hostIPv6.emplace_back(pktvisor::IPv6subnet(pcpp::IPv6Address(adrcvt), pcpp::IPv6Address(nmcvt)));
+            uint8_t len = 0;
+            for (int i = 0; i < 16; i++) {
+                while (nmcvt->s6_addr[i]) {
+                    len++;
+                    nmcvt->s6_addr[i] >>= 1;
+                }
+            }
+            hostIPv6.emplace_back(pktvisor::IPv6subnet(pcpp::IPv6Address(buf1), len));
         }
     }
 }
@@ -359,10 +368,10 @@ void setupRoutes(httplib::Server &svr)
 
 void showHosts() {
     for (auto &i : hostIPv4) {
-        std::cerr << "Using IPv4 subnet as HOST: " << i.first.toString() << "/" << i.second.toString() << std::endl;
+        std::cerr << "Using IPv4 subnet as HOST: " << i.address.toString() << "/" << i.mask.toString() << std::endl;
     }
     for (auto &i : hostIPv6) {
-        std::cerr << "Using IPv6 subnet as HOST: " << i.first.toString() << "/" << i.second.toString() << std::endl;
+        std::cerr << "Using IPv6 subnet as HOST: " << i.address.toString() << "/" << int(i.mask) << std::endl;
     }
 }
 
@@ -469,11 +478,11 @@ int main(int argc, char *argv[])
         auto host = args["-l"].asString();
         auto port = args["-p"].asLong();
         std::thread httpThread([&svr, host, port] {
-            std::cerr << "Metrics web server listening on " << host << ":" << port << std::endl;
             if (!svr.listen(host.c_str(), port)) {
                 throw std::runtime_error("unable to listen");
             }
         });
+        std::cerr << "Metrics web server listening on " << host << ":" << port << std::endl;
         try {
             std::cerr << "Interface " << dev->getName() << std::endl;
             getHostsFromIface(dev);
