@@ -2,11 +2,7 @@
 #include "utils.h"
 #include <cstring>
 #include <sstream>
-#ifdef __linux__
-#include <in.h>
-#else
 #include <netinet/in.h>
-#endif
 #include <arpa/inet.h>
 #include <IpUtils.h>
 
