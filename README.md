@@ -140,7 +140,7 @@ Build Dependencies
 * CMake >= 3.8
 * Linux or OSX
 * C++ compiler supporting C++17
-* PcapPlusPlus (NS1 fork: pending upstream merge) https://github.com/nsone/PcapPlusPlus
+* PcapPlusPlus https://github.com/ns1/PcapPlusPlus
 
 Optional
 * MaxMind DB libmaxmindb
