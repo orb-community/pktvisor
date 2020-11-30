@@ -180,7 +180,7 @@ void Metrics::newDNSXact(pktvisor::DnsLayer *dns, Direction dir, DnsTransaction 
 
     _DNS_xacts_total++;
 
-    uint64_t xactTime = (xact.totalTS.tv_sec * 1000000000) + xact.totalTS.tv_nsec; // nanoseconds
+    uint64_t xactTime = ((xact.totalTS.tv_sec * 1000000000L) + xact.totalTS.tv_nsec) / 1000; // nanoseconds to microseconds
     // dir is the direction of the last packet, meaning the reply so from a transaction perspective
     // we look at it from the direction of the query, so the opposite side than we have here
     float to90th = 0.0;
@@ -389,12 +389,12 @@ void MetricsMgr::_periodShift()
 }
 
 void MetricsMgr::setInitialShiftTS() {
-    gettimeofday(&_lastShiftTS, nullptr);
+    timespec_get(&_lastShiftTS, TIME_UTC);
 }
 
 void MetricsMgr::setInitialShiftTS(const pcpp::Packet &packet) {
     _lastShiftTS.tv_sec = packet.getRawPacketReadOnly()->getPacketTimeStamp().tv_sec;
-    _lastShiftTS.tv_usec = packet.getRawPacketReadOnly()->getPacketTimeStamp().tv_nsec;
+    _lastShiftTS.tv_nsec = packet.getRawPacketReadOnly()->getPacketTimeStamp().tv_nsec;
 }
 
 void MetricsMgr::newPacket(const pcpp::Packet &packet, QueryResponsePairMgr &pairMgr, pcpp::ProtocolType l4, Direction dir, pcpp::ProtocolType l3)

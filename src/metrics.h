@@ -30,8 +30,6 @@
 
 namespace pktvisor {
 
-using hr_clock = std::chrono::high_resolution_clock;
-
 class MetricsMgr;
 
 class Rate
@@ -240,7 +238,7 @@ class MetricsMgr
 {
     std::deque<std::unique_ptr<Metrics>> _metrics;
     uint _numPeriods;
-    timeval _lastShiftTS;
+    timespec _lastShiftTS;
     long _openDnsTransactionCount;
     bool _singleSummaryMode;
     std::chrono::system_clock::time_point _startTime;
@@ -288,7 +286,7 @@ public:
         _numPeriods = std::max(_numPeriods, 2U);
         _metrics.emplace_back(std::make_unique<Metrics>(*this));
         _lastShiftTS.tv_sec = 0;
-        _lastShiftTS.tv_usec = 0;
+        _lastShiftTS.tv_nsec = 0;
         _startTime = std::chrono::system_clock::now();
     }
 
