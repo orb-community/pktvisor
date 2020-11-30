@@ -142,10 +142,9 @@ TEST_CASE("parseHostSpec", "[utils]")
         pcpp::IPv4Address ip("1.128.0.0");
         uint32_t ip_int(ip.toInt());
         struct sockaddr_in sa;
-        CHECK(pktvisor::IPv4tosockaddr(ip, (sockaddr*)&sa));
+        CHECK(pktvisor::IPv4tosockaddr(ip, &sa));
         CHECK(memcmp(&sa.sin_addr, &ip_int, sizeof(sa.sin_addr)) == 0);
         CHECK(sa.sin_family == AF_INET);
-
     }
 
 }

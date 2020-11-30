@@ -151,33 +151,24 @@ void parseHostSpec(const std::string &spec, IPv4subnetList &ipv4List, IPv6subnet
     }
 }
 
-bool IPv4tosockaddr(const pcpp::IPv4Address &ip, struct sockaddr *sa)
+bool IPv4tosockaddr(const pcpp::IPv4Address &ip, struct sockaddr_in *sa)
 {
-    /*
-    memset(&sa, 0, sizeof(struct sockaddr_in));
-    memcpy(&sa.sin_addr, &ip_address, sizeof(sa.sin_addr));
-    sa.sin_family = AF_INET;
-     */
-    return false;
+    memset(sa, 0, sizeof(struct sockaddr_in));
+    uint32_t ip_int(ip.toInt());
+    memcpy(&sa->sin_addr, &ip_int, sizeof(sa->sin_addr));
+    sa->sin_family = AF_INET;
+    return true;
 }
 
-bool IPv6tosockaddr(const pcpp::IPv6Address &ip, struct sockaddr *sa)
+bool IPv6tosockaddr(const pcpp::IPv6Address &ip, struct sockaddr_in6 *sa)
 {
-    /*
-    struct sockaddr_in6 sa;
-    memset(&sa, 0, sizeof(struct sockaddr_in));
-    sa.sin6_addr = *in_addr;
-    sa.sin6_family = AF_INET6;
-
-    struct sockaddr_in6 sa;
-    memset(&sa, 0, sizeof(struct sockaddr_in));
-    sa.sin6_addr.s6_addr[0] = ip_address[0];
-    sa.sin6_addr.s6_addr[1] = ip_address[1];
-    sa.sin6_addr.s6_addr[2] = ip_address[2];
-    sa.sin6_addr.s6_addr[3] = ip_address[3];
-    sa.sin6_family = AF_INET6;
-     */
-    return false;
+    memset(sa, 0, sizeof(struct sockaddr_in6));
+    auto ip_bytes = ip.toBytes();
+    for (int i = 0; i < 16; ++i) {
+        sa->sin6_addr.s6_addr[i] = ip_bytes[i];
+    }
+    sa->sin6_family = AF_INET6;
+    return true;
 }
 
 }

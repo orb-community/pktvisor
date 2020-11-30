@@ -287,7 +287,8 @@ void Metrics::newPacket(const pcpp::Packet &packet, pcpp::ProtocolType l3, pcpp:
 #ifdef MMDB_ENABLE
     const GeoDB* geoCityDB = _mmgr.getGeoCityDB();
     const GeoDB* geoASNDB = _mmgr.getGeoASNDB();
-    struct sockaddr sa;
+    struct sockaddr_in sa4;
+    struct sockaddr_in6 sa6;
 #endif
 
     auto IP4layer = packet.getLayerOfType<pcpp::IPv4Layer>();
@@ -297,12 +298,12 @@ void Metrics::newPacket(const pcpp::Packet &packet, pcpp::ProtocolType l3, pcpp:
             _sketches->_net_srcIPCard.update(IP4layer->getSrcIpAddress().toInt());
             _sketches->_net_topIPv4.update(IP4layer->getSrcIpAddress().toInt());
 #ifdef MMDB_ENABLE
-            if (IPv4tosockaddr(IP4layer->getSrcIpAddress(), &sa)) {
+            if (IPv4tosockaddr(IP4layer->getSrcIpAddress(), &sa4)) {
                 if (geoCityDB) {
-                    _sketches->_net_topGeoLoc.update(geoCityDB->getGeoLocString(&sa));
+                    _sketches->_net_topGeoLoc.update(geoCityDB->getGeoLocString((struct sockaddr*)&sa4));
                 }
                 if (geoASNDB) {
-                    _sketches->_net_topASN.update(geoASNDB->getASNString(&sa));
+                    _sketches->_net_topASN.update(geoASNDB->getASNString((struct sockaddr*)&sa4));
                 }
             }
 #endif
@@ -310,12 +311,12 @@ void Metrics::newPacket(const pcpp::Packet &packet, pcpp::ProtocolType l3, pcpp:
             _sketches->_net_dstIPCard.update(IP4layer->getDstIpAddress().toInt());
             _sketches->_net_topIPv4.update(IP4layer->getDstIpAddress().toInt());
 #ifdef MMDB_ENABLE
-            if (IPv4tosockaddr(IP4layer->getDstIpAddress(), &sa)) {
+            if (IPv4tosockaddr(IP4layer->getDstIpAddress(), &sa4)) {
                 if (geoCityDB) {
-                    _sketches->_net_topGeoLoc.update(geoCityDB->getGeoLocString(&sa));
+                    _sketches->_net_topGeoLoc.update(geoCityDB->getGeoLocString((struct sockaddr*)&sa4));
                 }
                 if (geoASNDB) {
-                    _sketches->_net_topASN.update(geoASNDB->getASNString(&sa));
+                    _sketches->_net_topASN.update(geoASNDB->getASNString((struct sockaddr*)&sa4));
                 }
             }
 #endif
@@ -325,12 +326,12 @@ void Metrics::newPacket(const pcpp::Packet &packet, pcpp::ProtocolType l3, pcpp:
             _sketches->_net_srcIPCard.update((void *)IP6layer->getSrcIpAddress().toBytes(), 16);
             _sketches->_net_topIPv6.update(IP6layer->getSrcIpAddress().toString());
 #ifdef MMDB_ENABLE
-            if (IPv6tosockaddr(IP6layer->getSrcIpAddress(), &sa)) {
+            if (IPv6tosockaddr(IP6layer->getSrcIpAddress(), &sa6)) {
                 if (geoCityDB) {
-                    _sketches->_net_topGeoLoc.update(geoCityDB->getGeoLocString(&sa));
+                    _sketches->_net_topGeoLoc.update(geoCityDB->getGeoLocString((struct sockaddr*)&sa6));
                 }
                 if (geoASNDB) {
-                    _sketches->_net_topASN.update(geoASNDB->getASNString(&sa));
+                    _sketches->_net_topASN.update(geoASNDB->getASNString((struct sockaddr*)&sa6));
                 }
             }
 #endif
@@ -338,12 +339,12 @@ void Metrics::newPacket(const pcpp::Packet &packet, pcpp::ProtocolType l3, pcpp:
             _sketches->_net_dstIPCard.update((void *)IP6layer->getDstIpAddress().toBytes(), 16);
             _sketches->_net_topIPv6.update(IP6layer->getDstIpAddress().toString());
 #ifdef MMDB_ENABLE
-            if (IPv6tosockaddr(IP6layer->getDstIpAddress(), &sa)) {
+            if (IPv6tosockaddr(IP6layer->getDstIpAddress(), &sa6)) {
                 if (geoCityDB) {
-                    _sketches->_net_topGeoLoc.update(geoCityDB->getGeoLocString(&sa));
+                    _sketches->_net_topGeoLoc.update(geoCityDB->getGeoLocString((struct sockaddr*)&sa6));
                 }
                 if (geoASNDB) {
-                    _sketches->_net_topASN.update(geoASNDB->getASNString(&sa));
+                    _sketches->_net_topASN.update(geoASNDB->getASNString((struct sockaddr*)&sa6));
                 }
             }
 #endif
