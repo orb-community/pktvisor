@@ -29,7 +29,7 @@ TEST_CASE("Parse DNS UDP IPv4 tests, basic pktvisor::DnsLayer functionality", "[
         // custom DNS layer, life cycle maintained manually
         pktvisor::DnsLayer dnsLayer = pktvisor::DnsLayer(udpLayer, &request);
         // manually resource parse
-        dnsLayer.parseResources();
+        dnsLayer.parseResources(true);
         // only check the first packet by name
         if (numDNS == 0) {
             CHECK(dnsLayer.getFirstQuery() != nullptr);
@@ -116,7 +116,7 @@ TEST_CASE("Parse DNS UDP IPv6 tests", "[pcap][ipv6][udp][dns]")
         // custom DNS layer, life cycle maintained manually
         pktvisor::DnsLayer dnsLayer = pktvisor::DnsLayer(udpLayer, &request);
         // manually resource parse
-        dnsLayer.parseResources();
+        dnsLayer.parseResources(true);
         // only check the first packet by name
         if (numDNS == 0) {
             CHECK(dnsLayer.getFirstQuery() != nullptr);

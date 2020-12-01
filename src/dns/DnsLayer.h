@@ -427,7 +427,7 @@ namespace pktvisor
 
 		std::string toString() const;
 
-                void parseResources();
+                void parseResources(bool queryOnly);
 
                 pcpp::OsiModelLayer getOsiModelLayer() const { return pcpp::OsiModelApplicationLayer; }
 

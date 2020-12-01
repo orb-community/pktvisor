@@ -117,7 +117,7 @@ bool DnsLayer::shortenLayer(int offsetInLayer, size_t numOfBytesToShorten, IDnsR
 }
 
 
-void DnsLayer::parseResources()
+void DnsLayer::parseResources(bool queryOnly)
 {
 	size_t offsetInPacket = sizeof(dnshdr);
 	IDnsResource* curResource = m_ResourceList;
@@ -195,8 +195,11 @@ void DnsLayer::parseResources()
 			curResource = curResource->getNextResource();
 		}
 
-		if (resType == DnsQueryType && m_FirstQuery == NULL)
-			m_FirstQuery = newQuery;
+		if (resType == DnsQueryType && m_FirstQuery == NULL) {
+                    m_FirstQuery = newQuery;
+                    if (queryOnly)
+                        break;
+                }
 		else if (resType == DnsAnswerType && m_FirstAnswer == NULL)
 			m_FirstAnswer = newResource;
 		else if (resType == DnsAuthorityType && m_FirstAuthority == NULL)
