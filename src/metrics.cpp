@@ -97,35 +97,35 @@ void Metrics::merge(Metrics &other)
 void Metrics::newDNSPacket(pktvisor::DnsLayer *dns, Direction dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4)
 {
 
-    _DNS_total++;
+    _DNS_total.fetch_add(1,std::memory_order_relaxed);
 
     if (l3 == pcpp::IPv6) {
-        _DNS_IPv6++;
+        _DNS_IPv6.fetch_add(1,std::memory_order_relaxed);
     }
 
     if (l4 == pcpp::TCP) {
-        _DNS_TCP++;
+        _DNS_TCP.fetch_add(1,std::memory_order_relaxed);
     }
 
     // only count response codes on responses (not queries)
     if (dns->getDnsHeader()->queryOrResponse == response) {
-        _DNS_replies++;
+        _DNS_replies.fetch_add(1,std::memory_order_relaxed);
         switch (dns->getDnsHeader()->responseCode) {
         case 0:
-            _DNS_NOERROR++;
+            _DNS_NOERROR.fetch_add(1,std::memory_order_relaxed);
             break;
         case 2:
-            _DNS_SRVFAIL++;
+            _DNS_SRVFAIL.fetch_add(1,std::memory_order_relaxed);
             break;
         case 3:
-            _DNS_NX++;
+            _DNS_NX.fetch_add(1,std::memory_order_relaxed);
             break;
         case 5:
-            _DNS_REFUSED++;
+            _DNS_REFUSED.fetch_add(1,std::memory_order_relaxed);
             break;
         }
     } else {
-        _DNS_queries++;
+        _DNS_queries.fetch_add(1,std::memory_order_relaxed);
     }
 
     // sampler
@@ -178,7 +178,7 @@ void Metrics::newDNSXact(pktvisor::DnsLayer *dns, Direction dir, DnsTransaction 
     // sampler
     bool chosen = _mmgr.shouldDeepSample();
 
-    _DNS_xacts_total++;
+    _DNS_xacts_total.fetch_add(1,std::memory_order_relaxed);
 
     uint64_t xactTime = ((xact.totalTS.tv_sec * 1000000000L) + xact.totalTS.tv_nsec) / 1000; // nanoseconds to microseconds
     // dir is the direction of the last packet, meaning the reply so from a transaction perspective
@@ -193,7 +193,7 @@ void Metrics::newDNSXact(pktvisor::DnsLayer *dns, Direction dir, DnsTransaction 
     }
 
     if (dir == toHost) {
-        _DNS_xacts_out++;
+        _DNS_xacts_out.fetch_add(1,std::memory_order_relaxed);
         if (chosen) {
             _sketches->_dnsXactFromTimeUs.update(xactTime);
             // wait for N samples
@@ -202,7 +202,7 @@ void Metrics::newDNSXact(pktvisor::DnsLayer *dns, Direction dir, DnsTransaction 
             }
         }
     } else if (dir == fromHost) {
-        _DNS_xacts_in++;
+        _DNS_xacts_in.fetch_add(1,std::memory_order_relaxed);
         if (chosen) {
             _sketches->_dnsXactToTimeUs.update(xactTime);
             // wait for N samples
@@ -240,17 +240,17 @@ void MetricsMgr::newDNSPacket(pktvisor::DnsLayer *dns, Direction dir, pcpp::Prot
 void Metrics::newPacket(const pcpp::Packet &packet, pcpp::ProtocolType l3, pcpp::ProtocolType l4, Direction dir)
 {
 
-    _numPackets++;
+    _numPackets.fetch_add(1,std::memory_order_relaxed);
     if (_mmgr.shouldDeepSample()) {
-        _numSamples++;
+        _numSamples.fetch_add(1,std::memory_order_relaxed);
     }
 
     switch (dir) {
     case fromHost:
-        _numPackets_out++;
+        _numPackets_out.fetch_add(1,std::memory_order_relaxed);
         break;
     case toHost:
-        _numPackets_in++;
+        _numPackets_in.fetch_add(1,std::memory_order_relaxed);
         break;
     case unknown:
         break;
@@ -258,7 +258,7 @@ void Metrics::newPacket(const pcpp::Packet &packet, pcpp::ProtocolType l3, pcpp:
 
     switch (l3) {
     case pcpp::IPv6:
-        _numPackets_IPv6++;
+        _numPackets_IPv6.fetch_add(1,std::memory_order_relaxed);
         break;
     default:
         break;
@@ -266,13 +266,13 @@ void Metrics::newPacket(const pcpp::Packet &packet, pcpp::ProtocolType l3, pcpp:
 
     switch (l4) {
     case pcpp::UDP:
-        _numPackets_UDP++;
+        _numPackets_UDP.fetch_add(1,std::memory_order_relaxed);
         break;
     case pcpp::TCP:
-        _numPackets_TCP++;
+        _numPackets_TCP.fetch_add(1,std::memory_order_relaxed);
         break;
     default:
-        _numPackets_OtherL4++;
+        _numPackets_OtherL4.fetch_add(1,std::memory_order_relaxed);
         break;
     }
 
