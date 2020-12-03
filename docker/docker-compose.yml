@@ -2,6 +2,9 @@
 version: '3.8'
 services:
   pktvisor:
+    environment:
+      PKTVISORD_ARGS:
+    network_mode: "host"
     image: pktvisor:latest-withtelegraf
     build: ./with_telegraf
     volumes:
