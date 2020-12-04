@@ -1,14 +1,16 @@
 ---
-version: '3.8'
+version: '3.3'
 services:
-  pktvisor:
-    environment:
-      PKTVISORD_ARGS:
-    network_mode: "host"
+  pktvisor-pop1:
     image: pktvisor:latest-withtelegraf
     build: ./with_telegraf
     volumes:
-      - './config/telegraf.conf:/etc/telegraf/telegraf.conf:ro'
+      - './config/telegraf-pop1.conf:/etc/telegraf/telegraf.conf:ro'
+  pktvisor-pop2:
+    image: pktvisor:latest-withtelegraf
+    build: ./with_telegraf
+    volumes:
+      - './config/telegraf-pop2.conf:/etc/telegraf/telegraf.conf:ro'
   elasticsearch:
     image: elasticsearch:7.9.3
     environment:

@@ -5,7 +5,7 @@ FROM ns1labs/pktvisor:3.0.7
 COPY --from=telegraf /usr/bin/telegraf /usr/local/bin/telegraf
 
 RUN  apt-get update \
-  && apt-get install -y runit-init \
+  && apt-get install -y runit-init dnsutils \
   && rm -rf /var/lib/apt \
   && mkdir -p /etc/runit/ \
   && mkdir -p /etc/telegraf/ \
@@ -13,6 +13,7 @@ RUN  apt-get update \
 
 COPY misc/run-telegraf.sh /etc/service/telegraf/run
 COPY misc/run-pktvisord.sh /etc/service/pktvisord/run
+COPY misc/run-dig.sh /etc/service/dig/run
 COPY misc/entrypoint /usr/local/bin/entrypoint
 
 ENTRYPOINT /usr/local/bin/entrypoint
