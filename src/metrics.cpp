@@ -28,28 +28,28 @@ Metrics::Metrics(MetricsMgr& mmgr) : _mmgr(mmgr)
 void Metrics::merge(Metrics &other)
 {
 
-    _numSamples += other._numSamples;
+    _numSamples.fetch_add(other._numSamples,std::memory_order_relaxed);
 
-    _numPackets += other._numPackets;
-    _numPackets_UDP += other._numPackets_UDP;
-    _numPackets_TCP += other._numPackets_TCP;
-    _numPackets_OtherL4 += other._numPackets_OtherL4;
-    _numPackets_IPv6 += other._numPackets_IPv6;
-    _numPackets_in += other._numPackets_in;
-    _numPackets_out += other._numPackets_out;
+    _numPackets.fetch_add(other._numPackets,std::memory_order_relaxed);
+    _numPackets_UDP.fetch_add(other._numPackets_UDP,std::memory_order_relaxed);
+    _numPackets_TCP.fetch_add(other._numPackets_TCP,std::memory_order_relaxed);
+    _numPackets_OtherL4.fetch_add(other._numPackets_OtherL4,std::memory_order_relaxed);
+    _numPackets_IPv6.fetch_add(other._numPackets_IPv6,std::memory_order_relaxed);
+    _numPackets_in.fetch_add(other._numPackets_in,std::memory_order_relaxed);
+    _numPackets_out.fetch_add(other._numPackets_out,std::memory_order_relaxed);
 
-    _DNS_total += other._DNS_total;
-    _DNS_xacts_total += other._DNS_xacts_total;
-    _DNS_xacts_in += other._DNS_xacts_in;
-    _DNS_xacts_out += other._DNS_xacts_out;
-    _DNS_queries += other._DNS_queries;
-    _DNS_replies += other._DNS_replies;
-    _DNS_TCP += other._DNS_TCP;
-    _DNS_IPv6 += other._DNS_IPv6;
-    _DNS_NX += other._DNS_NX;
-    _DNS_REFUSED += other._DNS_REFUSED;
-    _DNS_SRVFAIL += other._DNS_SRVFAIL;
-    _DNS_NOERROR += other._DNS_NOERROR;
+    _DNS_total.fetch_add(other._DNS_total,std::memory_order_relaxed);
+    _DNS_xacts_total.fetch_add(other._DNS_xacts_total,std::memory_order_relaxed);
+    _DNS_xacts_in.fetch_add(other._DNS_xacts_in,std::memory_order_relaxed);
+    _DNS_xacts_out.fetch_add(other._DNS_xacts_out,std::memory_order_relaxed);
+    _DNS_queries.fetch_add(other._DNS_queries,std::memory_order_relaxed);
+    _DNS_replies.fetch_add(other._DNS_replies,std::memory_order_relaxed);
+    _DNS_TCP.fetch_add(other._DNS_TCP,std::memory_order_relaxed);
+    _DNS_IPv6.fetch_add(other._DNS_IPv6,std::memory_order_relaxed);
+    _DNS_NX.fetch_add(other._DNS_NX,std::memory_order_relaxed);
+    _DNS_REFUSED.fetch_add(other._DNS_REFUSED,std::memory_order_relaxed);
+    _DNS_SRVFAIL.fetch_add(other._DNS_SRVFAIL,std::memory_order_relaxed);
+    _DNS_NOERROR.fetch_add(other._DNS_NOERROR,std::memory_order_relaxed);
 
     // lock me for for write, other for read
     std::unique_lock w_lock(_sketchMutex);
