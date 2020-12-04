@@ -5227,7 +5227,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "A",
               "timeField": "@timestamp"
             },
@@ -5259,7 +5259,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "B",
               "timeField": "@timestamp"
             },
@@ -5291,7 +5291,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "C",
               "timeField": "@timestamp"
             },
@@ -5323,7 +5323,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "D",
               "timeField": "@timestamp"
             }
@@ -5467,7 +5467,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "A",
               "timeField": "@timestamp"
             },
@@ -5499,7 +5499,7 @@
                   "type": "percentiles"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "B",
               "timeField": "@timestamp"
             },
@@ -5531,7 +5531,7 @@
                   "type": "percentiles"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "C",
               "timeField": "@timestamp"
             }
@@ -5666,7 +5666,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "A",
               "timeField": "@timestamp"
             },
@@ -5698,7 +5698,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "B",
               "timeField": "@timestamp"
             },
@@ -5730,7 +5730,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "C",
               "timeField": "@timestamp"
             },
@@ -5762,7 +5762,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "D",
               "timeField": "@timestamp"
             }
@@ -5917,7 +5917,7 @@
                   "type": "max"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "B",
               "timeField": "@timestamp"
             },
@@ -5945,7 +5945,7 @@
                   "type": "max"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "A",
               "timeField": "@timestamp"
             },
@@ -5973,7 +5973,7 @@
                   "type": "max"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "C",
               "timeField": "@timestamp"
             },
@@ -6001,7 +6001,7 @@
                   "type": "max"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "D",
               "timeField": "@timestamp"
             },
@@ -6029,7 +6029,7 @@
                   "type": "max"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "E",
               "timeField": "@timestamp"
             },
@@ -6057,7 +6057,7 @@
                   "type": "max"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "F",
               "timeField": "@timestamp"
             },
@@ -6085,7 +6085,7 @@
                   "type": "max"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "G",
               "timeField": "@timestamp"
             },
@@ -6113,7 +6113,7 @@
                   "type": "max"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "H",
               "timeField": "@timestamp"
             }
@@ -6267,7 +6267,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "A",
               "timeField": "@timestamp"
             }
@@ -6416,7 +6416,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "B",
               "timeField": "@timestamp"
             }
@@ -6551,7 +6551,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "A",
               "timeField": "@timestamp"
             },
@@ -6583,7 +6583,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "B",
               "timeField": "@timestamp"
             },
@@ -6615,7 +6615,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "C",
               "timeField": "@timestamp"
             },
@@ -6647,7 +6647,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "D",
               "timeField": "@timestamp"
             }
@@ -6782,7 +6782,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "B",
               "timeField": "@timestamp"
             },
@@ -6814,7 +6814,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "C",
               "timeField": "@timestamp"
             },
@@ -6846,7 +6846,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "D",
               "timeField": "@timestamp"
             }
@@ -6988,7 +6988,7 @@
                   "type": "percentiles"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "B",
               "timeField": "@timestamp"
             }
@@ -6998,121 +6998,6 @@
           "title": "Sample Rate",
           "transformations": [],
           "type": "stat"
-        },
-        {
-          "aliasColors": {},
-          "breakPoint": "50%",
-          "cacheTimeout": null,
-          "combine": {
-            "label": "Others",
-            "threshold": 0
-          },
-          "datasource": "elastic-pktvisor",
-          "description": "",
-          "fieldConfig": {
-            "defaults": {
-              "custom": {},
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              },
-              "unit": "percentunit"
-            },
-            "overrides": []
-          },
-          "fontSize": "80%",
-          "format": "short",
-          "gridPos": {
-            "h": 5,
-            "w": 4,
-            "x": 2,
-            "y": 56
-          },
-          "id": 147,
-          "interval": "",
-          "legend": {
-            "show": false,
-            "values": false
-          },
-          "legendType": "Right side",
-          "links": [],
-          "maxDataPoints": 60,
-          "nullPointMode": "connected",
-          "pieType": "pie",
-          "pluginVersion": "7.0.0",
-          "scopedVars": {
-            "pop": {
-              "selected": true,
-              "text": "ams03",
-              "value": "ams03"
-            }
-          },
-          "strokeWidth": 1,
-          "targets": [
-            {
-              "alias": "",
-              "bucketAggs": [
-                {
-                  "fake": true,
-                  "field": "tag.host.keyword",
-                  "id": "3",
-                  "settings": {
-                    "min_doc_count": 1,
-                    "order": "desc",
-                    "orderBy": "_count",
-                    "size": "10"
-                  },
-                  "type": "terms"
-                },
-                {
-                  "field": "@timestamp",
-                  "id": "2",
-                  "settings": {
-                    "interval": "$__interval",
-                    "min_doc_count": 0,
-                    "trimEdges": 0
-                  },
-                  "type": "date_histogram"
-                }
-              ],
-              "metrics": [
-                {
-                  "field": "host",
-                  "id": "1",
-                  "inlineScript": "_value / doc[\"http.packets_total\"].value",
-                  "meta": {},
-                  "pipelineAgg": "select metric",
-                  "pipelineVariables": [
-                    {
-                      "name": "var1",
-                      "pipelineAgg": "select metric"
-                    }
-                  ],
-                  "settings": {},
-                  "type": "count"
-                }
-              ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
-              "refId": "B",
-              "timeField": "@timestamp"
-            }
-          ],
-          "timeFrom": null,
-          "timeShift": null,
-          "title": "Hosts",
-          "transformations": [],
-          "type": "grafana-piechart-panel",
-          "valueName": "current"
         },
         {
           "aliasColors": {},
@@ -7208,7 +7093,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "A",
               "timeField": "@timestamp"
             },
@@ -7240,7 +7125,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "B",
               "timeField": "@timestamp"
             }
@@ -7409,7 +7294,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "A",
               "timeField": "@timestamp"
             },
@@ -7453,7 +7338,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "B",
               "timeField": "@timestamp"
             },
@@ -7497,7 +7382,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "C",
               "timeField": "@timestamp"
             }
@@ -7643,7 +7528,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "A",
               "timeField": "@timestamp"
             },
@@ -7687,7 +7572,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "B",
               "timeField": "@timestamp"
             },
@@ -7731,7 +7616,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "C",
               "timeField": "@timestamp"
             }
@@ -7877,7 +7762,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "A",
               "timeField": "@timestamp"
             },
@@ -7921,7 +7806,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "B",
               "timeField": "@timestamp"
             },
@@ -7965,7 +7850,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "C",
               "timeField": "@timestamp"
             }
@@ -8111,7 +7996,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "A",
               "timeField": "@timestamp"
             },
@@ -8155,7 +8040,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "B",
               "timeField": "@timestamp"
             },
@@ -8199,7 +8084,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "C",
               "timeField": "@timestamp"
             }
@@ -8345,7 +8230,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "A",
               "timeField": "@timestamp"
             },
@@ -8389,7 +8274,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "B",
               "timeField": "@timestamp"
             },
@@ -8433,7 +8318,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "C",
               "timeField": "@timestamp"
             }
@@ -8579,7 +8464,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "A",
               "timeField": "@timestamp"
             },
@@ -8623,7 +8508,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "B",
               "timeField": "@timestamp"
             },
@@ -8667,7 +8552,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "C",
               "timeField": "@timestamp"
             }
@@ -8813,7 +8698,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "A",
               "timeField": "@timestamp"
             },
@@ -8857,7 +8742,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "B",
               "timeField": "@timestamp"
             },
@@ -8901,7 +8786,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "C",
               "timeField": "@timestamp"
             }
@@ -9047,7 +8932,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "A",
               "timeField": "@timestamp"
             },
@@ -9091,7 +8976,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "B",
               "timeField": "@timestamp"
             },
@@ -9135,7 +9020,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "C",
               "timeField": "@timestamp"
             }
@@ -9281,7 +9166,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "A",
               "timeField": "@timestamp"
             },
@@ -9325,7 +9210,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "B",
               "timeField": "@timestamp"
             },
@@ -9369,7 +9254,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "C",
               "timeField": "@timestamp"
             }
@@ -9515,7 +9400,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "A",
               "timeField": "@timestamp"
             },
@@ -9559,7 +9444,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "B",
               "timeField": "@timestamp"
             },
@@ -9603,7 +9488,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "C",
               "timeField": "@timestamp"
             }
@@ -9749,7 +9634,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "A",
               "timeField": "@timestamp"
             },
@@ -9793,7 +9678,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "B",
               "timeField": "@timestamp"
             },
@@ -9837,7 +9722,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "C",
               "timeField": "@timestamp"
             }
@@ -9983,7 +9868,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "A",
               "timeField": "@timestamp"
             },
@@ -10027,7 +9912,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "B",
               "timeField": "@timestamp"
             },
@@ -10071,7 +9956,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "C",
               "timeField": "@timestamp"
             }
@@ -10217,7 +10102,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "A",
               "timeField": "@timestamp"
             },
@@ -10261,7 +10146,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "B",
               "timeField": "@timestamp"
             },
@@ -10305,7 +10190,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "C",
               "timeField": "@timestamp"
             }
@@ -10451,7 +10336,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "A",
               "timeField": "@timestamp"
             },
@@ -10495,7 +10380,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "B",
               "timeField": "@timestamp"
             },
@@ -10539,7 +10424,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND tag.pop:$pop AND tag.host:$host",
               "refId": "C",
               "timeField": "@timestamp"
             }
@@ -10672,14 +10557,14 @@
           ]
         },
         "datasource": "elastic-pktvisor",
-        "definition": "{\"find\":\"terms\",\"field\":\"tag.host.keyword\", \"query\":\"tag.network.keyword:$network AND pop:$pop\"}",
+        "definition": "{\"find\":\"terms\",\"field\":\"tag.host.keyword\", \"query\":\"tag.network.keyword:$network AND tag.pop:$pop\"}",
         "hide": 0,
         "includeAll": true,
         "label": null,
         "multi": true,
         "name": "host",
         "options": [],
-        "query": "{\"find\":\"terms\",\"field\":\"tag.host.keyword\", \"query\":\"tag.network.keyword:$network AND pop:$pop\"}",
+        "query": "{\"find\":\"terms\",\"field\":\"tag.host.keyword\", \"query\":\"tag.network.keyword:$network AND tag.pop:$pop\"}",
         "refresh": 2,
         "regex": "",
         "skipUrlSync": false,

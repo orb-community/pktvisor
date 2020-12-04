@@ -10,4 +10,6 @@ dig @dns1.p01.nsone.net nonexistABC123.nozone
 sleep 2
 dig @8.8.8.8 ns1.com mx
 sleep 2
+dig @8.8.8.8 +tcp dns1.p01.nsone.net aaaa
+sleep 2
 
