@@ -12,7 +12,7 @@
       }
     ]
   },
-  "description": "pktvisor3-* ELK7 metrics visualizations",
+  "description": "pktvisor metrics visualizations",
   "editable": true,
   "gnetId": null,
   "graphTooltip": 1,
@@ -36,7 +36,7 @@
           "bars": false,
           "dashLength": 10,
           "dashes": false,
-          "datasource": "ES7-pktvisor3",
+          "datasource": "elastic-pktvisor",
           "description": "",
           "fieldConfig": {
             "defaults": {
@@ -108,11 +108,11 @@
           "steppedLine": false,
           "targets": [
             {
-              "alias": "{{network.raw}} p95 In",
+              "alias": "{{tag.network.keyword}} p95 In",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "network.raw",
+                  "field": "tag.network.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": "1",
@@ -147,16 +147,16 @@
                   "type": "sum"
                 }
               ],
-              "query": "-network.raw:0",
+              "query": "",
               "refId": "A",
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{network.raw}} p95 Out",
+              "alias": "{{tag.network.keyword}} p95 Out",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "network.raw",
+                  "field": "tag.network.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": "1",
@@ -191,7 +191,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "-network.raw:0",
+              "query": "",
               "refId": "B",
               "timeField": "@timestamp"
             }
@@ -260,7 +260,7 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": "ES7-pktvisor3",
+      "datasource": "elastic-pktvisor",
       "description": "",
       "fieldConfig": {
         "defaults": {
@@ -359,7 +359,7 @@
               "type": "sum"
             }
           ],
-          "query": "network.raw:$network",
+          "query": "tag.network.keyword:$network",
           "refId": "A",
           "timeField": "@timestamp"
         },
@@ -391,7 +391,7 @@
               "type": "sum"
             }
           ],
-          "query": "network.raw:$network",
+          "query": "tag.network.keyword:$network",
           "refId": "B",
           "timeField": "@timestamp"
         },
@@ -423,7 +423,7 @@
               "type": "sum"
             }
           ],
-          "query": "network.raw:$network",
+          "query": "tag.network.keyword:$network",
           "refId": "C",
           "timeField": "@timestamp"
         },
@@ -455,7 +455,7 @@
               "type": "sum"
             }
           ],
-          "query": "network.raw:$network",
+          "query": "tag.network.keyword:$network",
           "refId": "D",
           "timeField": "@timestamp"
         }
@@ -506,7 +506,7 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": "ES7-pktvisor3",
+      "datasource": "elastic-pktvisor",
       "description": "",
       "fieldConfig": {
         "defaults": {
@@ -590,7 +590,7 @@
               "type": "sum"
             }
           ],
-          "query": "network.raw:$network",
+          "query": "tag.network.keyword:$network",
           "refId": "A",
           "timeField": "@timestamp"
         },
@@ -622,7 +622,7 @@
               "type": "sum"
             }
           ],
-          "query": "network.raw:$network",
+          "query": "tag.network.keyword:$network",
           "refId": "B",
           "timeField": "@timestamp"
         }
@@ -673,7 +673,7 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": "ES7-pktvisor3",
+      "datasource": "elastic-pktvisor",
       "description": "",
       "fieldConfig": {
         "defaults": {
@@ -730,11 +730,11 @@
       "steppedLine": false,
       "targets": [
         {
-          "alias": "{{pop.raw}} In",
+          "alias": "{{tag.pop.keyword}} In",
           "bucketAggs": [
             {
               "fake": true,
-              "field": "pop.raw",
+              "field": "tag.pop.keyword",
               "id": "3",
               "settings": {
                 "min_doc_count": 1,
@@ -769,16 +769,16 @@
               "type": "sum"
             }
           ],
-          "query": "network.raw:$network",
+          "query": "tag.network.keyword:$network",
           "refId": "A",
           "timeField": "@timestamp"
         },
         {
-          "alias": "{{pop.raw}} Out",
+          "alias": "{{tag.pop.keyword}} Out",
           "bucketAggs": [
             {
               "fake": true,
-              "field": "pop.raw",
+              "field": "tag.pop.keyword",
               "id": "3",
               "settings": {
                 "min_doc_count": 1,
@@ -813,7 +813,7 @@
               "type": "sum"
             }
           ],
-          "query": "network.raw:$network",
+          "query": "tag.network.keyword:$network",
           "refId": "B",
           "timeField": "@timestamp"
         }
@@ -864,7 +864,7 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": "ES7-pktvisor3",
+      "datasource": "elastic-pktvisor",
       "description": "",
       "fieldConfig": {
         "defaults": {
@@ -943,7 +943,7 @@
               "type": "sum"
             }
           ],
-          "query": "network.raw:$network",
+          "query": "tag.network.keyword:$network",
           "refId": "A",
           "timeField": "@timestamp"
         },
@@ -975,7 +975,7 @@
               "type": "sum"
             }
           ],
-          "query": "network.raw:$network",
+          "query": "tag.network.keyword:$network",
           "refId": "B",
           "timeField": "@timestamp"
         },
@@ -1007,7 +1007,7 @@
               "type": "sum"
             }
           ],
-          "query": "network.raw:$network",
+          "query": "tag.network.keyword:$network",
           "refId": "C",
           "timeField": "@timestamp"
         },
@@ -1039,7 +1039,7 @@
               "type": "sum"
             }
           ],
-          "query": "network.raw:$network",
+          "query": "tag.network.keyword:$network",
           "refId": "D",
           "timeField": "@timestamp"
         }
@@ -1090,7 +1090,7 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": "ES7-pktvisor3",
+      "datasource": "elastic-pktvisor",
       "description": "",
       "fieldConfig": {
         "defaults": {
@@ -1153,11 +1153,11 @@
       "steppedLine": false,
       "targets": [
         {
-          "alias": "{{pop.raw}} NX Resp/s",
+          "alias": "{{tag.pop.keyword}} NX Resp/s",
           "bucketAggs": [
             {
               "fake": true,
-              "field": "pop.raw",
+              "field": "tag.pop.keyword",
               "id": "3",
               "settings": {
                 "min_doc_count": 1,
@@ -1192,7 +1192,7 @@
               "type": "sum"
             }
           ],
-          "query": "network.raw:$network",
+          "query": "tag.network.keyword:$network",
           "refId": "A",
           "timeField": "@timestamp"
         },
@@ -1220,7 +1220,7 @@
               "type": "sum"
             }
           ],
-          "query": "network.raw:$network",
+          "query": "tag.network.keyword:$network",
           "refId": "B",
           "timeField": "@timestamp"
         },
@@ -1248,7 +1248,7 @@
               "type": "sum"
             }
           ],
-          "query": "network.raw:$network",
+          "query": "tag.network.keyword:$network",
           "refId": "C",
           "timeField": "@timestamp"
         }
@@ -1299,7 +1299,7 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": "ES7-pktvisor3",
+      "datasource": "elastic-pktvisor",
       "description": "",
       "fieldConfig": {
         "defaults": {
@@ -1356,11 +1356,11 @@
       "steppedLine": false,
       "targets": [
         {
-          "alias": "{{pop.raw}} Query/s",
+          "alias": "{{tag.pop.keyword}} Query/s",
           "bucketAggs": [
             {
               "fake": true,
-              "field": "pop.raw",
+              "field": "tag.pop.keyword",
               "id": "3",
               "settings": {
                 "min_doc_count": 1,
@@ -1395,16 +1395,16 @@
               "type": "sum"
             }
           ],
-          "query": "network.raw:$network",
+          "query": "tag.network.keyword:$network",
           "refId": "A",
           "timeField": "@timestamp"
         },
         {
-          "alias": "{{pop.raw}} Response/s",
+          "alias": "{{tag.pop.keyword}} Response/s",
           "bucketAggs": [
             {
               "fake": true,
-              "field": "pop.raw",
+              "field": "tag.pop.keyword",
               "id": "3",
               "settings": {
                 "min_doc_count": 1,
@@ -1439,7 +1439,7 @@
               "type": "sum"
             }
           ],
-          "query": "network.raw:$network",
+          "query": "tag.network.keyword:$network",
           "refId": "B",
           "timeField": "@timestamp"
         }
@@ -1502,7 +1502,7 @@
           "cacheTimeout": null,
           "dashLength": 10,
           "dashes": false,
-          "datasource": "ES7-pktvisor3",
+          "datasource": "elastic-pktvisor",
           "description": "",
           "fieldConfig": {
             "defaults": {
@@ -1550,11 +1550,11 @@
           "steppedLine": false,
           "targets": [
             {
-              "alias": "{{http.dns_top_qname2_0_name.raw}} 1st",
+              "alias": "{{http.dns_top_qname2_0_name.keyword}} 1st",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_qname2_0_name.raw",
+                  "field": "http.dns_top_qname2_0_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -1589,16 +1589,16 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network",
+              "query": "tag.network.keyword:$network",
               "refId": "A",
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{http.dns_top_qname2_1_name.raw}} 2nd",
+              "alias": "{{http.dns_top_qname2_1_name.keyword}} 2nd",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_qname2_1_name.raw",
+                  "field": "http.dns_top_qname2_1_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -1633,16 +1633,16 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network",
+              "query": "tag.network.keyword:$network",
               "refId": "B",
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{http.dns_top_qname2_2_name.raw}} 3rd",
+              "alias": "{{http.dns_top_qname2_2_name.keyword}} 3rd",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_qname2_2_name.raw",
+                  "field": "http.dns_top_qname2_2_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -1677,7 +1677,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network",
+              "query": "tag.network.keyword:$network",
               "refId": "C",
               "timeField": "@timestamp"
             }
@@ -1725,7 +1725,7 @@
         },
         {
           "cacheTimeout": null,
-          "datasource": "ES7-pktvisor3",
+          "datasource": "elastic-pktvisor",
           "description": "",
           "fieldConfig": {
             "defaults": {
@@ -1778,7 +1778,7 @@
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_qname2_0_name.raw",
+                  "field": "http.dns_top_qname2_0_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -1813,7 +1813,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network",
+              "query": "tag.network.keyword:$network",
               "refId": "A",
               "timeField": "@timestamp"
             },
@@ -1822,7 +1822,7 @@
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_qname2_1_name.raw",
+                  "field": "http.dns_top_qname2_1_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -1857,7 +1857,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network",
+              "query": "tag.network.keyword:$network",
               "refId": "B",
               "timeField": "@timestamp"
             },
@@ -1866,7 +1866,7 @@
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_qname2_2_name.raw",
+                  "field": "http.dns_top_qname2_2_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -1901,7 +1901,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network",
+              "query": "tag.network.keyword:$network",
               "refId": "C",
               "timeField": "@timestamp"
             }
@@ -1944,7 +1944,7 @@
           "cacheTimeout": null,
           "dashLength": 10,
           "dashes": false,
-          "datasource": "ES7-pktvisor3",
+          "datasource": "elastic-pktvisor",
           "description": "",
           "fieldConfig": {
             "defaults": {
@@ -1992,11 +1992,11 @@
           "steppedLine": false,
           "targets": [
             {
-              "alias": "{{http.dns_top_qname3_0_name.raw}} 1st",
+              "alias": "{{http.dns_top_qname3_0_name.keyword}} 1st",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_qname3_0_name.raw",
+                  "field": "http.dns_top_qname3_0_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -2031,16 +2031,16 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network",
+              "query": "tag.network.keyword:$network",
               "refId": "A",
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{http.dns_top_qname3_1_name.raw}} 2nd",
+              "alias": "{{http.dns_top_qname3_1_name.keyword}} 2nd",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_qname3_1_name.raw",
+                  "field": "http.dns_top_qname3_1_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -2075,16 +2075,16 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network",
+              "query": "tag.network.keyword:$network",
               "refId": "B",
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{http.dns_top_qname3_2_name.raw}} 3rd",
+              "alias": "{{http.dns_top_qname3_2_name.keyword}} 3rd",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_qname3_2_name.raw",
+                  "field": "http.dns_top_qname3_2_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -2119,7 +2119,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network",
+              "query": "tag.network.keyword:$network",
               "refId": "C",
               "timeField": "@timestamp"
             }
@@ -2167,7 +2167,7 @@
         },
         {
           "cacheTimeout": null,
-          "datasource": "ES7-pktvisor3",
+          "datasource": "elastic-pktvisor",
           "description": "",
           "fieldConfig": {
             "defaults": {
@@ -2220,7 +2220,7 @@
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_qname3_0_name.raw",
+                  "field": "http.dns_top_qname3_0_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -2255,7 +2255,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network",
+              "query": "tag.network.keyword:$network",
               "refId": "A",
               "timeField": "@timestamp"
             },
@@ -2264,7 +2264,7 @@
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_qname3_1_name.raw",
+                  "field": "http.dns_top_qname3_1_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -2299,7 +2299,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network",
+              "query": "tag.network.keyword:$network",
               "refId": "B",
               "timeField": "@timestamp"
             },
@@ -2308,7 +2308,7 @@
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_qname3_2_name.raw",
+                  "field": "http.dns_top_qname3_2_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -2343,7 +2343,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network",
+              "query": "tag.network.keyword:$network",
               "refId": "C",
               "timeField": "@timestamp"
             }
@@ -2386,7 +2386,7 @@
           "cacheTimeout": null,
           "dashLength": 10,
           "dashes": false,
-          "datasource": "ES7-pktvisor3",
+          "datasource": "elastic-pktvisor",
           "description": "",
           "fieldConfig": {
             "defaults": {
@@ -2434,11 +2434,11 @@
           "steppedLine": false,
           "targets": [
             {
-              "alias": "{{http.dns_top_srvfail_0_name.raw}} 1st",
+              "alias": "{{http.dns_top_srvfail_0_name.keyword}} 1st",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_srvfail_0_name.raw",
+                  "field": "http.dns_top_srvfail_0_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -2473,16 +2473,16 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network",
+              "query": "tag.network.keyword:$network",
               "refId": "A",
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{http.dns_top_srvfail_1_name.raw}} 2nd",
+              "alias": "{{http.dns_top_srvfail_1_name.keyword}} 2nd",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_srvfail_1_name.raw",
+                  "field": "http.dns_top_srvfail_1_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -2517,16 +2517,16 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network",
+              "query": "tag.network.keyword:$network",
               "refId": "B",
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{http.dns_top_srvfail_2_name.raw}} 3rd",
+              "alias": "{{http.dns_top_srvfail_2_name.keyword}} 3rd",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_srvfail_2_name.raw",
+                  "field": "http.dns_top_srvfail_2_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -2561,7 +2561,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network",
+              "query": "tag.network.keyword:$network",
               "refId": "C",
               "timeField": "@timestamp"
             }
@@ -2613,7 +2613,7 @@
           "cacheTimeout": null,
           "dashLength": 10,
           "dashes": false,
-          "datasource": "ES7-pktvisor3",
+          "datasource": "elastic-pktvisor",
           "description": "",
           "fieldConfig": {
             "defaults": {
@@ -2661,11 +2661,11 @@
           "steppedLine": false,
           "targets": [
             {
-              "alias": "{{http.dns_top_refused_0_name.raw}} 1st",
+              "alias": "{{http.dns_top_refused_0_name.keyword}} 1st",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_refused_0_name.raw",
+                  "field": "http.dns_top_refused_0_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -2700,16 +2700,16 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network",
+              "query": "tag.network.keyword:$network",
               "refId": "A",
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{http.dns_top_refused_1_name.raw}} 2nd",
+              "alias": "{{http.dns_top_refused_1_name.keyword}} 2nd",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_refused_1_name.raw",
+                  "field": "http.dns_top_refused_1_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -2744,16 +2744,16 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network",
+              "query": "tag.network.keyword:$network",
               "refId": "B",
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{http.dns_top_refused_2_name.raw}} 3rd",
+              "alias": "{{http.dns_top_refused_2_name.keyword}} 3rd",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_refused_2_name.raw",
+                  "field": "http.dns_top_refused_2_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -2788,7 +2788,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network",
+              "query": "tag.network.keyword:$network",
               "refId": "C",
               "timeField": "@timestamp"
             }
@@ -2840,7 +2840,7 @@
           "cacheTimeout": null,
           "dashLength": 10,
           "dashes": false,
-          "datasource": "ES7-pktvisor3",
+          "datasource": "elastic-pktvisor",
           "description": "",
           "fieldConfig": {
             "defaults": {
@@ -2888,11 +2888,11 @@
           "steppedLine": false,
           "targets": [
             {
-              "alias": "{{http.dns_top_nxdomain_0_name.raw}} 1st",
+              "alias": "{{http.dns_top_nxdomain_0_name.keyword}} 1st",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_nxdomain_0_name.raw",
+                  "field": "http.dns_top_nxdomain_0_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -2927,16 +2927,16 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network",
+              "query": "tag.network.keyword:$network",
               "refId": "A",
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{http.dns_top_nxdomain_1_name.raw}} 2nd",
+              "alias": "{{http.dns_top_nxdomain_1_name.keyword}} 2nd",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_nxdomain_1_name.raw",
+                  "field": "http.dns_top_nxdomain_1_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -2971,16 +2971,16 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network",
+              "query": "tag.network.keyword:$network",
               "refId": "B",
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{http.dns_top_nxdomain_2_name.raw}} 3rd",
+              "alias": "{{http.dns_top_nxdomain_2_name.keyword}} 3rd",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_nxdomain_2_name.raw",
+                  "field": "http.dns_top_nxdomain_2_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -3015,7 +3015,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network",
+              "query": "tag.network.keyword:$network",
               "refId": "C",
               "timeField": "@timestamp"
             }
@@ -3067,7 +3067,7 @@
           "cacheTimeout": null,
           "dashLength": 10,
           "dashes": false,
-          "datasource": "ES7-pktvisor3",
+          "datasource": "elastic-pktvisor",
           "description": "",
           "fieldConfig": {
             "defaults": {
@@ -3115,11 +3115,11 @@
           "steppedLine": false,
           "targets": [
             {
-              "alias": "{{http.packets_top_ipv4_0_name.raw}} 1st",
+              "alias": "{{http.packets_top_ipv4_0_name.keyword}} 1st",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.packets_top_ipv4_0_name.raw",
+                  "field": "http.packets_top_ipv4_0_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -3154,16 +3154,16 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network",
+              "query": "tag.network.keyword:$network",
               "refId": "A",
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{http.packets_top_ipv4_1_name.raw}} 2nd",
+              "alias": "{{http.packets_top_ipv4_1_name.keyword}} 2nd",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.packets_top_ipv4_1_name.raw",
+                  "field": "http.packets_top_ipv4_1_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -3198,16 +3198,16 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network",
+              "query": "tag.network.keyword:$network",
               "refId": "B",
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{http.packets_top_ipv4_2_name.raw}} 3rd",
+              "alias": "{{http.packets_top_ipv4_2_name.keyword}} 3rd",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.packets_top_ipv4_2_name.raw",
+                  "field": "http.packets_top_ipv4_2_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -3242,7 +3242,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network",
+              "query": "tag.network.keyword:$network",
               "refId": "C",
               "timeField": "@timestamp"
             }
@@ -3294,7 +3294,7 @@
           "cacheTimeout": null,
           "dashLength": 10,
           "dashes": false,
-          "datasource": "ES7-pktvisor3",
+          "datasource": "elastic-pktvisor",
           "description": "",
           "fieldConfig": {
             "defaults": {
@@ -3342,11 +3342,11 @@
           "steppedLine": false,
           "targets": [
             {
-              "alias": "{{http.packets_top_ipv6_0_name.raw}} 1st",
+              "alias": "{{http.packets_top_ipv6_0_name.keyword}} 1st",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.packets_top_ipv6_0_name.raw",
+                  "field": "http.packets_top_ipv6_0_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -3381,16 +3381,16 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network",
+              "query": "tag.network.keyword:$network",
               "refId": "A",
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{http.packets_top_ipv6_1_name.raw}} 2nd",
+              "alias": "{{http.packets_top_ipv6_1_name.keyword}} 2nd",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.packets_top_ipv6_1_name.raw",
+                  "field": "http.packets_top_ipv6_1_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -3425,16 +3425,16 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network",
+              "query": "tag.network.keyword:$network",
               "refId": "B",
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{http.packets_top_ipv6_2_name.raw}} 3rd",
+              "alias": "{{http.packets_top_ipv6_2_name.keyword}} 3rd",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.packets_top_ipv6_2_name.raw",
+                  "field": "http.packets_top_ipv6_2_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -3469,7 +3469,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network",
+              "query": "tag.network.keyword:$network",
               "refId": "C",
               "timeField": "@timestamp"
             }
@@ -3521,7 +3521,7 @@
           "cacheTimeout": null,
           "dashLength": 10,
           "dashes": false,
-          "datasource": "ES7-pktvisor3",
+          "datasource": "elastic-pktvisor",
           "description": "",
           "fieldConfig": {
             "defaults": {
@@ -3569,11 +3569,11 @@
           "steppedLine": false,
           "targets": [
             {
-              "alias": "{{http.dns_top_qtype_0_name.raw}} 1st",
+              "alias": "{{http.dns_top_qtype_0_name.keyword}} 1st",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_qtype_0_name.raw",
+                  "field": "http.dns_top_qtype_0_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -3608,16 +3608,16 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network",
+              "query": "tag.network.keyword:$network",
               "refId": "A",
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{http.dns_top_qtype_1_name.raw}} 2nd",
+              "alias": "{{http.dns_top_qtype_1_name.keyword}} 2nd",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_qtype_1_name.raw",
+                  "field": "http.dns_top_qtype_1_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -3652,16 +3652,16 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network",
+              "query": "tag.network.keyword:$network",
               "refId": "B",
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{http.dns_top_qtype_2_name.raw}} 3rd",
+              "alias": "{{http.dns_top_qtype_2_name.keyword}} 3rd",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_qtype_2_name.raw",
+                  "field": "http.dns_top_qtype_2_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -3696,7 +3696,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network",
+              "query": "tag.network.keyword:$network",
               "refId": "C",
               "timeField": "@timestamp"
             }
@@ -3748,7 +3748,7 @@
           "cacheTimeout": null,
           "dashLength": 10,
           "dashes": false,
-          "datasource": "ES7-pktvisor3",
+          "datasource": "elastic-pktvisor",
           "description": "",
           "fieldConfig": {
             "defaults": {
@@ -3796,11 +3796,11 @@
           "steppedLine": false,
           "targets": [
             {
-              "alias": "{{http.packets_top_geoLoc_0_name.raw}} 1st",
+              "alias": "{{http.packets_top_geoLoc_0_name.keyword}} 1st",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.packets_top_geoLoc_0_name.raw",
+                  "field": "http.packets_top_geoLoc_0_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -3835,16 +3835,16 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network",
+              "query": "tag.network.keyword:$network",
               "refId": "A",
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{http.packets_top_geoLoc_1_name.raw}} 2nd",
+              "alias": "{{http.packets_top_geoLoc_1_name.keyword}} 2nd",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.packets_top_geoLoc_1_name.raw",
+                  "field": "http.packets_top_geoLoc_1_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -3879,16 +3879,16 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network",
+              "query": "tag.network.keyword:$network",
               "refId": "B",
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{http.packets_top_geoLoc_2_name.raw}} 3rd",
+              "alias": "{{http.packets_top_geoLoc_2_name.keyword}} 3rd",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.packets_top_geoLoc_2_name.raw",
+                  "field": "http.packets_top_geoLoc_2_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -3923,7 +3923,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network",
+              "query": "tag.network.keyword:$network",
               "refId": "C",
               "timeField": "@timestamp"
             }
@@ -3975,7 +3975,7 @@
           "cacheTimeout": null,
           "dashLength": 10,
           "dashes": false,
-          "datasource": "ES7-pktvisor3",
+          "datasource": "elastic-pktvisor",
           "description": "",
           "fieldConfig": {
             "defaults": {
@@ -4023,11 +4023,11 @@
           "steppedLine": false,
           "targets": [
             {
-              "alias": "{{http.packets_top_ASN_0_name.raw}} 1st",
+              "alias": "{{http.packets_top_ASN_0_name.keyword}} 1st",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.packets_top_ASN_0_name.raw",
+                  "field": "http.packets_top_ASN_0_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -4062,16 +4062,16 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network",
+              "query": "tag.network.keyword:$network",
               "refId": "A",
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{http.packets_top_ASN_1_name.raw}} 2nd",
+              "alias": "{{http.packets_top_ASN_1_name.keyword}} 2nd",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.packets_top_ASN_1_name.raw",
+                  "field": "http.packets_top_ASN_1_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -4106,16 +4106,16 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network",
+              "query": "tag.network.keyword:$network",
               "refId": "B",
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{http.packets_top_ASN_2_name.raw}} 3rd",
+              "alias": "{{http.packets_top_ASN_2_name.keyword}} 3rd",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.packets_top_ASN_2_name.raw",
+                  "field": "http.packets_top_ASN_2_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -4150,7 +4150,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network",
+              "query": "tag.network.keyword:$network",
               "refId": "C",
               "timeField": "@timestamp"
             }
@@ -4202,7 +4202,7 @@
           "cacheTimeout": null,
           "dashLength": 10,
           "dashes": false,
-          "datasource": "ES7-pktvisor3",
+          "datasource": "elastic-pktvisor",
           "description": "",
           "fieldConfig": {
             "defaults": {
@@ -4250,11 +4250,11 @@
           "steppedLine": false,
           "targets": [
             {
-              "alias": "{{http.dns_top_rcode_0_name.raw}} 1st",
+              "alias": "{{http.dns_top_rcode_0_name.keyword}} 1st",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_rcode_0_name.raw",
+                  "field": "http.dns_top_rcode_0_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -4289,16 +4289,16 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network",
+              "query": "tag.network.keyword:$network",
               "refId": "A",
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{http.dns_top_rcode_1_name.raw}} 2nd",
+              "alias": "{{http.dns_top_rcode_1_name.keyword}} 2nd",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_rcode_1_name.raw",
+                  "field": "http.dns_top_rcode_1_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -4333,16 +4333,16 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network",
+              "query": "tag.network.keyword:$network",
               "refId": "B",
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{http.dns_top_rcode_2_name.raw}} 3rd",
+              "alias": "{{http.dns_top_rcode_2_name.keyword}} 3rd",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_rcode_2_name.raw",
+                  "field": "http.dns_top_rcode_2_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -4377,7 +4377,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network",
+              "query": "tag.network.keyword:$network",
               "refId": "C",
               "timeField": "@timestamp"
             }
@@ -4429,7 +4429,7 @@
           "cacheTimeout": null,
           "dashLength": 10,
           "dashes": false,
-          "datasource": "ES7-pktvisor3",
+          "datasource": "elastic-pktvisor",
           "description": "",
           "fieldConfig": {
             "defaults": {
@@ -4477,11 +4477,11 @@
           "steppedLine": false,
           "targets": [
             {
-              "alias": "{{http.dns_xact_in_top_slow_0_name.raw}} 1st",
+              "alias": "{{http.dns_xact_in_top_slow_0_name.keyword}} 1st",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_xact_in_top_slow_0_name.raw",
+                  "field": "http.dns_xact_in_top_slow_0_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -4516,16 +4516,16 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network",
+              "query": "tag.network.keyword:$network",
               "refId": "A",
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{http.dns_xact_in_top_slow_1_name.raw}} 2nd",
+              "alias": "{{http.dns_xact_in_top_slow_1_name.keyword}} 2nd",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_xact_in_top_slow_1_name.raw",
+                  "field": "http.dns_xact_in_top_slow_1_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -4560,16 +4560,16 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network",
+              "query": "tag.network.keyword:$network",
               "refId": "B",
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{http.dns_xact_in_top_slow_2_name.raw}} 3rd",
+              "alias": "{{http.dns_xact_in_top_slow_2_name.keyword}} 3rd",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_xact_in_top_slow_2_name.raw",
+                  "field": "http.dns_xact_in_top_slow_2_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -4604,7 +4604,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network",
+              "query": "tag.network.keyword:$network",
               "refId": "C",
               "timeField": "@timestamp"
             }
@@ -4656,7 +4656,7 @@
           "cacheTimeout": null,
           "dashLength": 10,
           "dashes": false,
-          "datasource": "ES7-pktvisor3",
+          "datasource": "elastic-pktvisor",
           "description": "",
           "fieldConfig": {
             "defaults": {
@@ -4704,11 +4704,11 @@
           "steppedLine": false,
           "targets": [
             {
-              "alias": "{{http.dns_xact_out_top_slow_0_name.raw}} 1st",
+              "alias": "{{http.dns_xact_out_top_slow_0_name.keyword}} 1st",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_xact_out_top_slow_0_name.raw",
+                  "field": "http.dns_xact_out_top_slow_0_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -4743,16 +4743,16 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network",
+              "query": "tag.network.keyword:$network",
               "refId": "A",
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{http.dns_xact_out_top_slow_1_name.raw}} 2nd",
+              "alias": "{{http.dns_xact_out_top_slow_1_name.keyword}} 2nd",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_xact_out_top_slow_1_name.raw",
+                  "field": "http.dns_xact_out_top_slow_1_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -4787,16 +4787,16 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network",
+              "query": "tag.network.keyword:$network",
               "refId": "B",
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{http.dns_xact_out_top_slow_2_name.raw}} 3rd",
+              "alias": "{{http.dns_xact_out_top_slow_2_name.keyword}} 3rd",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_xact_out_top_slow_2_name.raw",
+                  "field": "http.dns_xact_out_top_slow_2_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -4831,7 +4831,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network",
+              "query": "tag.network.keyword:$network",
               "refId": "C",
               "timeField": "@timestamp"
             }
@@ -4883,7 +4883,7 @@
           "cacheTimeout": null,
           "dashLength": 10,
           "dashes": false,
-          "datasource": "ES7-pktvisor3",
+          "datasource": "elastic-pktvisor",
           "description": "",
           "fieldConfig": {
             "defaults": {
@@ -4931,11 +4931,11 @@
           "steppedLine": false,
           "targets": [
             {
-              "alias": "{{http.dns_top_udp_ports_0_name.raw}} 1st",
+              "alias": "{{http.dns_top_udp_ports_0_name.keyword}} 1st",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_udp_ports_0_name.raw",
+                  "field": "http.dns_top_udp_ports_0_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -4970,16 +4970,16 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network",
+              "query": "tag.network.keyword:$network",
               "refId": "A",
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{http.dns_top_udp_ports_1_name.raw}} 2nd",
+              "alias": "{{http.dns_top_udp_ports_1_name.keyword}} 2nd",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_udp_ports_1_name.raw",
+                  "field": "http.dns_top_udp_ports_1_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -5014,16 +5014,16 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network",
+              "query": "tag.network.keyword:$network",
               "refId": "B",
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{http.dns_top_udp_ports_2_name.raw}} 3rd",
+              "alias": "{{http.dns_top_udp_ports_2_name.keyword}} 3rd",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_udp_ports_2_name.raw",
+                  "field": "http.dns_top_udp_ports_2_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -5058,7 +5058,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network",
+              "query": "tag.network.keyword:$network",
               "refId": "C",
               "timeField": "@timestamp"
             }
@@ -5124,7 +5124,7 @@
           "bars": false,
           "dashLength": 10,
           "dashes": false,
-          "datasource": "ES7-pktvisor3",
+          "datasource": "elastic-pktvisor",
           "description": "",
           "fieldConfig": {
             "defaults": {
@@ -5227,7 +5227,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "A",
               "timeField": "@timestamp"
             },
@@ -5259,7 +5259,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "B",
               "timeField": "@timestamp"
             },
@@ -5291,7 +5291,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "C",
               "timeField": "@timestamp"
             },
@@ -5323,7 +5323,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "D",
               "timeField": "@timestamp"
             }
@@ -5374,7 +5374,7 @@
           "bars": false,
           "dashLength": 10,
           "dashes": false,
-          "datasource": "ES7-pktvisor3",
+          "datasource": "elastic-pktvisor",
           "description": "",
           "fieldConfig": {
             "defaults": {
@@ -5467,7 +5467,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "A",
               "timeField": "@timestamp"
             },
@@ -5499,7 +5499,7 @@
                   "type": "percentiles"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "B",
               "timeField": "@timestamp"
             },
@@ -5531,7 +5531,7 @@
                   "type": "percentiles"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "C",
               "timeField": "@timestamp"
             }
@@ -5582,7 +5582,7 @@
           "bars": false,
           "dashLength": 10,
           "dashes": false,
-          "datasource": "ES7-pktvisor3",
+          "datasource": "elastic-pktvisor",
           "description": "",
           "fieldConfig": {
             "defaults": {
@@ -5666,7 +5666,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "A",
               "timeField": "@timestamp"
             },
@@ -5698,7 +5698,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "B",
               "timeField": "@timestamp"
             },
@@ -5730,7 +5730,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "C",
               "timeField": "@timestamp"
             },
@@ -5762,7 +5762,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "D",
               "timeField": "@timestamp"
             }
@@ -5813,7 +5813,7 @@
           "bars": false,
           "dashLength": 10,
           "dashes": false,
-          "datasource": "ES7-pktvisor3",
+          "datasource": "elastic-pktvisor",
           "description": "",
           "fieldConfig": {
             "defaults": {
@@ -5917,7 +5917,7 @@
                   "type": "max"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "B",
               "timeField": "@timestamp"
             },
@@ -5945,7 +5945,7 @@
                   "type": "max"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "A",
               "timeField": "@timestamp"
             },
@@ -5973,7 +5973,7 @@
                   "type": "max"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "C",
               "timeField": "@timestamp"
             },
@@ -6001,7 +6001,7 @@
                   "type": "max"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "D",
               "timeField": "@timestamp"
             },
@@ -6029,7 +6029,7 @@
                   "type": "max"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "E",
               "timeField": "@timestamp"
             },
@@ -6057,7 +6057,7 @@
                   "type": "max"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "F",
               "timeField": "@timestamp"
             },
@@ -6085,7 +6085,7 @@
                   "type": "max"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "G",
               "timeField": "@timestamp"
             },
@@ -6113,7 +6113,7 @@
                   "type": "max"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "H",
               "timeField": "@timestamp"
             }
@@ -6164,7 +6164,7 @@
           "bars": false,
           "dashLength": 10,
           "dashes": false,
-          "datasource": "ES7-pktvisor3",
+          "datasource": "elastic-pktvisor",
           "description": "",
           "fieldConfig": {
             "defaults": {
@@ -6232,7 +6232,7 @@
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "host.raw",
+                  "field": "tag.host.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": "1",
@@ -6267,7 +6267,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "A",
               "timeField": "@timestamp"
             }
@@ -6318,7 +6318,7 @@
           "bars": false,
           "dashLength": 10,
           "dashes": false,
-          "datasource": "ES7-pktvisor3",
+          "datasource": "elastic-pktvisor",
           "description": "",
           "fieldConfig": {
             "defaults": {
@@ -6381,7 +6381,7 @@
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "host.raw",
+                  "field": "tag.host.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": "1",
@@ -6416,7 +6416,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "B",
               "timeField": "@timestamp"
             }
@@ -6467,7 +6467,7 @@
           "bars": false,
           "dashLength": 10,
           "dashes": false,
-          "datasource": "ES7-pktvisor3",
+          "datasource": "elastic-pktvisor",
           "description": "",
           "fieldConfig": {
             "defaults": {
@@ -6551,7 +6551,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "A",
               "timeField": "@timestamp"
             },
@@ -6583,7 +6583,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "B",
               "timeField": "@timestamp"
             },
@@ -6615,7 +6615,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "C",
               "timeField": "@timestamp"
             },
@@ -6647,7 +6647,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "D",
               "timeField": "@timestamp"
             }
@@ -6698,7 +6698,7 @@
           "bars": false,
           "dashLength": 10,
           "dashes": false,
-          "datasource": "ES7-pktvisor3",
+          "datasource": "elastic-pktvisor",
           "description": "",
           "fieldConfig": {
             "defaults": {
@@ -6782,7 +6782,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "B",
               "timeField": "@timestamp"
             },
@@ -6814,7 +6814,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "C",
               "timeField": "@timestamp"
             },
@@ -6846,7 +6846,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "D",
               "timeField": "@timestamp"
             }
@@ -6894,7 +6894,7 @@
         },
         {
           "cacheTimeout": null,
-          "datasource": "ES7-pktvisor3",
+          "datasource": "elastic-pktvisor",
           "description": "",
           "fieldConfig": {
             "defaults": {
@@ -6988,7 +6988,7 @@
                   "type": "percentiles"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "B",
               "timeField": "@timestamp"
             }
@@ -7007,7 +7007,7 @@
             "label": "Others",
             "threshold": 0
           },
-          "datasource": "ES7-pktvisor3",
+          "datasource": "elastic-pktvisor",
           "description": "",
           "fieldConfig": {
             "defaults": {
@@ -7064,7 +7064,7 @@
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "host.raw",
+                  "field": "tag.host.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -7102,7 +7102,7 @@
                   "type": "count"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "B",
               "timeField": "@timestamp"
             }
@@ -7119,7 +7119,7 @@
           "bars": false,
           "dashLength": 10,
           "dashes": false,
-          "datasource": "ES7-pktvisor3",
+          "datasource": "elastic-pktvisor",
           "description": "",
           "fieldConfig": {
             "defaults": {
@@ -7208,7 +7208,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "A",
               "timeField": "@timestamp"
             },
@@ -7240,7 +7240,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "B",
               "timeField": "@timestamp"
             }
@@ -7315,7 +7315,7 @@
           "cacheTimeout": null,
           "dashLength": 10,
           "dashes": false,
-          "datasource": "ES7-pktvisor3",
+          "datasource": "elastic-pktvisor",
           "description": "",
           "fieldConfig": {
             "defaults": {
@@ -7370,11 +7370,11 @@
           "steppedLine": false,
           "targets": [
             {
-              "alias": "{{http.dns_top_qname2_0_name.raw}} 1st",
+              "alias": "{{http.dns_top_qname2_0_name.keyword}} 1st",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_qname2_0_name.raw",
+                  "field": "http.dns_top_qname2_0_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -7409,16 +7409,16 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "A",
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{http.dns_top_qname2_1_name.raw}} 2nd",
+              "alias": "{{http.dns_top_qname2_1_name.keyword}} 2nd",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_qname2_1_name.raw",
+                  "field": "http.dns_top_qname2_1_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -7453,16 +7453,16 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "B",
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{http.dns_top_qname2_2_name.raw}} 3rd",
+              "alias": "{{http.dns_top_qname2_2_name.keyword}} 3rd",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_qname2_2_name.raw",
+                  "field": "http.dns_top_qname2_2_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -7497,7 +7497,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "C",
               "timeField": "@timestamp"
             }
@@ -7549,7 +7549,7 @@
           "cacheTimeout": null,
           "dashLength": 10,
           "dashes": false,
-          "datasource": "ES7-pktvisor3",
+          "datasource": "elastic-pktvisor",
           "description": "",
           "fieldConfig": {
             "defaults": {
@@ -7604,11 +7604,11 @@
           "steppedLine": false,
           "targets": [
             {
-              "alias": "{{http.dns_top_qname3_0_name.raw}} 1st",
+              "alias": "{{http.dns_top_qname3_0_name.keyword}} 1st",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_qname3_0_name.raw",
+                  "field": "http.dns_top_qname3_0_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -7643,16 +7643,16 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "A",
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{http.dns_top_qname3_1_name.raw}} 2nd",
+              "alias": "{{http.dns_top_qname3_1_name.keyword}} 2nd",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_qname3_1_name.raw",
+                  "field": "http.dns_top_qname3_1_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -7687,16 +7687,16 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "B",
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{http.dns_top_qname3_2_name.raw}} 3rd",
+              "alias": "{{http.dns_top_qname3_2_name.keyword}} 3rd",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_qname3_2_name.raw",
+                  "field": "http.dns_top_qname3_2_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -7731,7 +7731,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "C",
               "timeField": "@timestamp"
             }
@@ -7783,7 +7783,7 @@
           "cacheTimeout": null,
           "dashLength": 10,
           "dashes": false,
-          "datasource": "ES7-pktvisor3",
+          "datasource": "elastic-pktvisor",
           "description": "",
           "fieldConfig": {
             "defaults": {
@@ -7838,11 +7838,11 @@
           "steppedLine": false,
           "targets": [
             {
-              "alias": "{{http.dns_top_nxdomain_0_name.raw}} 1st",
+              "alias": "{{http.dns_top_nxdomain_0_name.keyword}} 1st",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_nxdomain_0_name.raw",
+                  "field": "http.dns_top_nxdomain_0_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -7877,16 +7877,16 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "A",
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{http.dns_top_nxdomain_1_name.raw}} 2nd",
+              "alias": "{{http.dns_top_nxdomain_1_name.keyword}} 2nd",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_nxdomain_1_name.raw",
+                  "field": "http.dns_top_nxdomain_1_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -7921,16 +7921,16 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "B",
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{http.dns_top_nxdomain_2_name.raw}} 3rd",
+              "alias": "{{http.dns_top_nxdomain_2_name.keyword}} 3rd",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_nxdomain_2_name.raw",
+                  "field": "http.dns_top_nxdomain_2_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -7965,7 +7965,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "C",
               "timeField": "@timestamp"
             }
@@ -8017,7 +8017,7 @@
           "cacheTimeout": null,
           "dashLength": 10,
           "dashes": false,
-          "datasource": "ES7-pktvisor3",
+          "datasource": "elastic-pktvisor",
           "description": "",
           "fieldConfig": {
             "defaults": {
@@ -8072,11 +8072,11 @@
           "steppedLine": false,
           "targets": [
             {
-              "alias": "{{http.dns_top_srvfail_0_name.raw}} 1st",
+              "alias": "{{http.dns_top_srvfail_0_name.keyword}} 1st",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_srvfail_0_name.raw",
+                  "field": "http.dns_top_srvfail_0_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -8111,16 +8111,16 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "A",
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{http.dns_top_srvfail_1_name.raw}} 2nd",
+              "alias": "{{http.dns_top_srvfail_1_name.keyword}} 2nd",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_srvfail_1_name.raw",
+                  "field": "http.dns_top_srvfail_1_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -8155,16 +8155,16 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "B",
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{http.dns_top_srvfail_2_name.raw}} 3rd",
+              "alias": "{{http.dns_top_srvfail_2_name.keyword}} 3rd",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_srvfail_2_name.raw",
+                  "field": "http.dns_top_srvfail_2_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -8199,7 +8199,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "C",
               "timeField": "@timestamp"
             }
@@ -8251,7 +8251,7 @@
           "cacheTimeout": null,
           "dashLength": 10,
           "dashes": false,
-          "datasource": "ES7-pktvisor3",
+          "datasource": "elastic-pktvisor",
           "description": "",
           "fieldConfig": {
             "defaults": {
@@ -8306,11 +8306,11 @@
           "steppedLine": false,
           "targets": [
             {
-              "alias": "{{http.dns_top_refused_0_name.raw}} 1st",
+              "alias": "{{http.dns_top_refused_0_name.keyword}} 1st",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_refused_0_name.raw",
+                  "field": "http.dns_top_refused_0_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -8345,16 +8345,16 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "A",
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{http.dns_top_refused_1_name.raw}} 2nd",
+              "alias": "{{http.dns_top_refused_1_name.keyword}} 2nd",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_refused_1_name.raw",
+                  "field": "http.dns_top_refused_1_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -8389,16 +8389,16 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "B",
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{http.dns_top_refused_2_name.raw}} 3rd",
+              "alias": "{{http.dns_top_refused_2_name.keyword}} 3rd",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_refused_2_name.raw",
+                  "field": "http.dns_top_refused_2_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -8433,7 +8433,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "C",
               "timeField": "@timestamp"
             }
@@ -8485,7 +8485,7 @@
           "cacheTimeout": null,
           "dashLength": 10,
           "dashes": false,
-          "datasource": "ES7-pktvisor3",
+          "datasource": "elastic-pktvisor",
           "description": "",
           "fieldConfig": {
             "defaults": {
@@ -8540,11 +8540,11 @@
           "steppedLine": false,
           "targets": [
             {
-              "alias": "{{http.dns_top_qtype_0_name.raw}} 1st",
+              "alias": "{{http.dns_top_qtype_0_name.keyword}} 1st",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_qtype_0_name.raw",
+                  "field": "http.dns_top_qtype_0_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -8579,16 +8579,16 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "A",
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{http.dns_top_qtype_1_name.raw}} 2nd",
+              "alias": "{{http.dns_top_qtype_1_name.keyword}} 2nd",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_qtype_1_name.raw",
+                  "field": "http.dns_top_qtype_1_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -8623,16 +8623,16 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "B",
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{http.dns_top_qtype_2_name.raw}} 3rd",
+              "alias": "{{http.dns_top_qtype_2_name.keyword}} 3rd",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_qtype_2_name.raw",
+                  "field": "http.dns_top_qtype_2_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -8667,7 +8667,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "C",
               "timeField": "@timestamp"
             }
@@ -8719,7 +8719,7 @@
           "cacheTimeout": null,
           "dashLength": 10,
           "dashes": false,
-          "datasource": "ES7-pktvisor3",
+          "datasource": "elastic-pktvisor",
           "description": "",
           "fieldConfig": {
             "defaults": {
@@ -8774,11 +8774,11 @@
           "steppedLine": false,
           "targets": [
             {
-              "alias": "{{http.packets_top_ipv4_0_name.raw}} 1st",
+              "alias": "{{http.packets_top_ipv4_0_name.keyword}} 1st",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.packets_top_ipv4_0_name.raw",
+                  "field": "http.packets_top_ipv4_0_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -8813,16 +8813,16 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "A",
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{http.packets_top_ipv4_1_name.raw}} 2nd",
+              "alias": "{{http.packets_top_ipv4_1_name.keyword}} 2nd",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.packets_top_ipv4_1_name.raw",
+                  "field": "http.packets_top_ipv4_1_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -8857,16 +8857,16 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "B",
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{http.packets_top_ipv4_2_name.raw}} 3rd",
+              "alias": "{{http.packets_top_ipv4_2_name.keyword}} 3rd",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.packets_top_ipv4_2_name.raw",
+                  "field": "http.packets_top_ipv4_2_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -8901,7 +8901,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "C",
               "timeField": "@timestamp"
             }
@@ -8953,7 +8953,7 @@
           "cacheTimeout": null,
           "dashLength": 10,
           "dashes": false,
-          "datasource": "ES7-pktvisor3",
+          "datasource": "elastic-pktvisor",
           "description": "",
           "fieldConfig": {
             "defaults": {
@@ -9008,11 +9008,11 @@
           "steppedLine": false,
           "targets": [
             {
-              "alias": "{{http.packets_top_ipv6_0_name.raw}} 1st",
+              "alias": "{{http.packets_top_ipv6_0_name.keyword}} 1st",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.packets_top_ipv6_0_name.raw",
+                  "field": "http.packets_top_ipv6_0_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -9047,16 +9047,16 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "A",
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{http.packets_top_ipv6_1_name.raw}} 2nd",
+              "alias": "{{http.packets_top_ipv6_1_name.keyword}} 2nd",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.packets_top_ipv6_1_name.raw",
+                  "field": "http.packets_top_ipv6_1_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -9091,16 +9091,16 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "B",
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{http.packets_top_ipv6_2_name.raw}} 3rd",
+              "alias": "{{http.packets_top_ipv6_2_name.keyword}} 3rd",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.packets_top_ipv6_2_name.raw",
+                  "field": "http.packets_top_ipv6_2_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -9135,7 +9135,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "C",
               "timeField": "@timestamp"
             }
@@ -9187,7 +9187,7 @@
           "cacheTimeout": null,
           "dashLength": 10,
           "dashes": false,
-          "datasource": "ES7-pktvisor3",
+          "datasource": "elastic-pktvisor",
           "description": "",
           "fieldConfig": {
             "defaults": {
@@ -9242,11 +9242,11 @@
           "steppedLine": false,
           "targets": [
             {
-              "alias": "{{http.dns_top_rcode_0_name.raw}} 1st",
+              "alias": "{{http.dns_top_rcode_0_name.keyword}} 1st",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_rcode_0_name.raw",
+                  "field": "http.dns_top_rcode_0_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -9281,16 +9281,16 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "A",
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{http.dns_top_rcode_1_name.raw}} 2nd",
+              "alias": "{{http.dns_top_rcode_1_name.keyword}} 2nd",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_rcode_1_name.raw",
+                  "field": "http.dns_top_rcode_1_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -9325,16 +9325,16 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "B",
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{http.dns_top_rcode_2_name.raw}} 3rd",
+              "alias": "{{http.dns_top_rcode_2_name.keyword}} 3rd",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_rcode_2_name.raw",
+                  "field": "http.dns_top_rcode_2_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -9369,7 +9369,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "C",
               "timeField": "@timestamp"
             }
@@ -9421,7 +9421,7 @@
           "cacheTimeout": null,
           "dashLength": 10,
           "dashes": false,
-          "datasource": "ES7-pktvisor3",
+          "datasource": "elastic-pktvisor",
           "description": "",
           "fieldConfig": {
             "defaults": {
@@ -9476,11 +9476,11 @@
           "steppedLine": false,
           "targets": [
             {
-              "alias": "{{http.packets_top_geoLoc_0_name.raw}} 1st",
+              "alias": "{{http.packets_top_geoLoc_0_name.keyword}} 1st",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.packets_top_geoLoc_0_name.raw",
+                  "field": "http.packets_top_geoLoc_0_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -9515,16 +9515,16 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "A",
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{http.packets_top_geoLoc_1_name.raw}} 2nd",
+              "alias": "{{http.packets_top_geoLoc_1_name.keyword}} 2nd",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.packets_top_geoLoc_1_name.raw",
+                  "field": "http.packets_top_geoLoc_1_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -9559,16 +9559,16 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "B",
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{http.packets_top_geoLoc_2_name.raw}} 3rd",
+              "alias": "{{http.packets_top_geoLoc_2_name.keyword}} 3rd",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.packets_top_geoLoc_2_name.raw",
+                  "field": "http.packets_top_geoLoc_2_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -9603,7 +9603,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "C",
               "timeField": "@timestamp"
             }
@@ -9655,7 +9655,7 @@
           "cacheTimeout": null,
           "dashLength": 10,
           "dashes": false,
-          "datasource": "ES7-pktvisor3",
+          "datasource": "elastic-pktvisor",
           "description": "",
           "fieldConfig": {
             "defaults": {
@@ -9710,11 +9710,11 @@
           "steppedLine": false,
           "targets": [
             {
-              "alias": "{{http.packets_top_ASN_0_name.raw}} 1st",
+              "alias": "{{http.packets_top_ASN_0_name.keyword}} 1st",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.packets_top_ASN_0_name.raw",
+                  "field": "http.packets_top_ASN_0_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -9749,16 +9749,16 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "A",
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{http.packets_top_ASN_1_name.raw}} 2nd",
+              "alias": "{{http.packets_top_ASN_1_name.keyword}} 2nd",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.packets_top_ASN_1_name.raw",
+                  "field": "http.packets_top_ASN_1_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -9793,16 +9793,16 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "B",
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{http.packets_top_ASN_2_name.raw}} 3rd",
+              "alias": "{{http.packets_top_ASN_2_name.keyword}} 3rd",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.packets_top_ASN_2_name.raw",
+                  "field": "http.packets_top_ASN_2_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -9837,7 +9837,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "C",
               "timeField": "@timestamp"
             }
@@ -9889,7 +9889,7 @@
           "cacheTimeout": null,
           "dashLength": 10,
           "dashes": false,
-          "datasource": "ES7-pktvisor3",
+          "datasource": "elastic-pktvisor",
           "description": "",
           "fieldConfig": {
             "defaults": {
@@ -9944,11 +9944,11 @@
           "steppedLine": false,
           "targets": [
             {
-              "alias": "{{http.dns_top_udp_ports_0_name.raw}} 1st",
+              "alias": "{{http.dns_top_udp_ports_0_name.keyword}} 1st",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_udp_ports_0_name.raw",
+                  "field": "http.dns_top_udp_ports_0_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -9983,16 +9983,16 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "A",
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{http.dns_top_udp_ports_1_name.raw}} 2nd",
+              "alias": "{{http.dns_top_udp_ports_1_name.keyword}} 2nd",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_udp_ports_1_name.raw",
+                  "field": "http.dns_top_udp_ports_1_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -10027,16 +10027,16 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "B",
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{http.dns_top_udp_ports_2_name.raw}} 3rd",
+              "alias": "{{http.dns_top_udp_ports_2_name.keyword}} 3rd",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_top_udp_ports_2_name.raw",
+                  "field": "http.dns_top_udp_ports_2_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -10071,7 +10071,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "C",
               "timeField": "@timestamp"
             }
@@ -10123,7 +10123,7 @@
           "cacheTimeout": null,
           "dashLength": 10,
           "dashes": false,
-          "datasource": "ES7-pktvisor3",
+          "datasource": "elastic-pktvisor",
           "description": "",
           "fieldConfig": {
             "defaults": {
@@ -10178,11 +10178,11 @@
           "steppedLine": false,
           "targets": [
             {
-              "alias": "{{http.dns_xact_in_top_slow_0_name.raw}} 1st",
+              "alias": "{{http.dns_xact_in_top_slow_0_name.keyword}} 1st",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_xact_in_top_slow_0_name.raw",
+                  "field": "http.dns_xact_in_top_slow_0_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -10217,16 +10217,16 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "A",
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{http.dns_xact_in_top_slow_1_name.raw}} 2nd",
+              "alias": "{{http.dns_xact_in_top_slow_1_name.keyword}} 2nd",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_xact_in_top_slow_1_name.raw",
+                  "field": "http.dns_xact_in_top_slow_1_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -10261,16 +10261,16 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "B",
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{http.dns_xact_in_top_slow_2_name.raw}} 3rd",
+              "alias": "{{http.dns_xact_in_top_slow_2_name.keyword}} 3rd",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_xact_in_top_slow_2_name.raw",
+                  "field": "http.dns_xact_in_top_slow_2_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -10305,7 +10305,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "C",
               "timeField": "@timestamp"
             }
@@ -10357,7 +10357,7 @@
           "cacheTimeout": null,
           "dashLength": 10,
           "dashes": false,
-          "datasource": "ES7-pktvisor3",
+          "datasource": "elastic-pktvisor",
           "description": "",
           "fieldConfig": {
             "defaults": {
@@ -10412,11 +10412,11 @@
           "steppedLine": false,
           "targets": [
             {
-              "alias": "{{http.dns_xact_out_top_slow_0_name.raw}} 1st",
+              "alias": "{{http.dns_xact_out_top_slow_0_name.keyword}} 1st",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_xact_out_top_slow_0_name.raw",
+                  "field": "http.dns_xact_out_top_slow_0_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -10451,16 +10451,16 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "A",
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{http.dns_xact_out_top_slow_1_name.raw}} 2nd",
+              "alias": "{{http.dns_xact_out_top_slow_1_name.keyword}} 2nd",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_xact_out_top_slow_1_name.raw",
+                  "field": "http.dns_xact_out_top_slow_1_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -10495,16 +10495,16 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "B",
               "timeField": "@timestamp"
             },
             {
-              "alias": "{{http.dns_xact_out_top_slow_2_name.raw}} 3rd",
+              "alias": "{{http.dns_xact_out_top_slow_2_name.keyword}} 3rd",
               "bucketAggs": [
                 {
                   "fake": true,
-                  "field": "http.dns_xact_out_top_slow_2_name.raw",
+                  "field": "http.dns_xact_out_top_slow_2_name.keyword",
                   "id": "3",
                   "settings": {
                     "min_doc_count": 1,
@@ -10539,7 +10539,7 @@
                   "type": "sum"
                 }
               ],
-              "query": "network.raw:$network AND pop:$pop AND host:$host",
+              "query": "tag.network.keyword:$network AND pop:$pop AND host:$host",
               "refId": "C",
               "timeField": "@timestamp"
             }
@@ -10611,15 +10611,15 @@
           "text": "0",
           "value": "0"
         },
-        "datasource": "ES7-pktvisor3",
-        "definition": "{\"find\":\"terms\",\"field\":\"network.raw\"}",
+        "datasource": "elastic-pktvisor",
+        "definition": "{\"find\":\"terms\",\"field\":\"tag.network.keyword\"}",
         "hide": 0,
         "includeAll": false,
         "label": null,
         "multi": false,
         "name": "network",
         "options": [],
-        "query": "{\"find\":\"terms\",\"field\":\"network.raw\"}",
+        "query": "{\"find\":\"terms\",\"field\":\"tag.network.keyword\"}",
         "refresh": 1,
         "regex": "",
         "skipUrlSync": false,
@@ -10641,15 +10641,15 @@
             "ams03"
           ]
         },
-        "datasource": "ES7-pktvisor3",
-        "definition": "{\"find\":\"terms\",\"field\":\"pop.raw\", \"query\":\"network.raw:$network\"}",
+        "datasource": "elastic-pktvisor",
+        "definition": "{\"find\":\"terms\",\"field\":\"tag.pop.keyword\", \"query\":\"tag.network.keyword:$network\"}",
         "hide": 0,
         "includeAll": false,
         "label": null,
         "multi": true,
         "name": "pop",
         "options": [],
-        "query": "{\"find\":\"terms\",\"field\":\"pop.raw\", \"query\":\"network.raw:$network\"}",
+        "query": "{\"find\":\"terms\",\"field\":\"tag.pop.keyword\", \"query\":\"tag.network.keyword:$network\"}",
         "refresh": 2,
         "regex": "",
         "skipUrlSync": false,
@@ -10671,15 +10671,15 @@
             "$__all"
           ]
         },
-        "datasource": "ES7-pktvisor3",
-        "definition": "{\"find\":\"terms\",\"field\":\"host.raw\", \"query\":\"network.raw:$network AND pop:$pop\"}",
+        "datasource": "elastic-pktvisor",
+        "definition": "{\"find\":\"terms\",\"field\":\"tag.host.keyword\", \"query\":\"tag.network.keyword:$network AND pop:$pop\"}",
         "hide": 0,
         "includeAll": true,
         "label": null,
         "multi": true,
         "name": "host",
         "options": [],
-        "query": "{\"find\":\"terms\",\"field\":\"host.raw\", \"query\":\"network.raw:$network AND pop:$pop\"}",
+        "query": "{\"find\":\"terms\",\"field\":\"tag.host.keyword\", \"query\":\"tag.network.keyword:$network AND pop:$pop\"}",
         "refresh": 2,
         "regex": "",
         "skipUrlSync": false,
@@ -10722,7 +10722,7 @@
     ]
   },
   "timezone": "utc",
-  "title": "Pktvisor3 - Current",
+  "title": "pktvisor from NS1",
   "uid": "GdiOlKzGz",
   "version": 158
 }
