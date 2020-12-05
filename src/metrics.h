@@ -69,7 +69,7 @@ public:
 
     void incCounter()
     {
-        _counter++;
+        _counter.fetch_add(1, std::memory_order_relaxed);
     }
     uint64_t getCounter()
     {
