@@ -21,8 +21,8 @@ struct hash_pair {
 };
 
 struct DnsTransaction {
-    timeval queryTS;
-    timeval totalTS;
+    timespec queryTS;
+    timespec totalTS;
 };
 
 class QueryResponsePairMgr {
@@ -35,9 +35,9 @@ class QueryResponsePairMgr {
 
 public:
     QueryResponsePairMgr(unsigned int ttl_secs = 5): _ttl_secs(ttl_secs) { }
-    void startDnsTransaction(uint32_t flowKey, uint16_t queryID, timeval stamp);
-    std::pair<bool, DnsTransaction> maybeEndDnsTransaction(uint32_t flowKey, uint16_t queryID, timeval stamp);
-    void purgeOldTransactions(timeval now);
+    void startDnsTransaction(uint32_t flowKey, uint16_t queryID, timespec stamp);
+    std::pair<bool, DnsTransaction> maybeEndDnsTransaction(uint32_t flowKey, uint16_t queryID, timespec stamp);
+    void purgeOldTransactions(timespec now);
     DnsXactMap::size_type getOpenTransactionCount() { return _dnsTransactions.size(); }
 
 };

@@ -54,8 +54,6 @@ std::ostream& docopt::operator<<(std::ostream& os, value const& val)
 	return os;
 }
 
-#pragma mark -
-#pragma mark Parsing stuff
 
 class Tokens {
 public:

@@ -57,7 +57,7 @@ static void tcpReassemblyConnectionStartCallback(const pcpp::ConnectionData& con
 {
 
     // only track DNS connections
-    if (!pcpp::DnsLayer::isDnsPort(connectionData.srcPort) && !pcpp::DnsLayer::isDnsPort(connectionData.dstPort)) {
+    if (!pktvisor::DnsLayer::isDnsPort(connectionData.srcPort) && !pktvisor::DnsLayer::isDnsPort(connectionData.dstPort)) {
         return;
     }
 
@@ -71,7 +71,7 @@ static void tcpReassemblyConnectionStartCallback(const pcpp::ConnectionData& con
     // assuming it's a new connection
     if (iter == connMgr.end()) {
         // add it to the connection manager
-        connMgr.insert(std::make_pair(connectionData.flowKey, TcpReassemblyData(connectionData.srcIP->getType() == pcpp::IPAddress::IPv4AddressType)));
+        connMgr.insert(std::make_pair(connectionData.flowKey, TcpReassemblyData(connectionData.srcIP.getType() == pcpp::IPAddress::IPv4AddressType)));
     }
 }
 
@@ -96,7 +96,7 @@ TcpDnsReassembly::TcpDnsReassembly(TcpReassemblyMgr::process_dns_msg_cb process_
     : _reassemblyMgr()
 {
 
-    auto tcpReassemblyMsgReadyCallback = [](int sideIndex, const pcpp::TcpStreamData &tcpData, void *userCookie) {
+    auto tcpReassemblyMsgReadyCallback = [](int8_t sideIndex, const pcpp::TcpStreamData &tcpData, void *userCookie) {
         // extract the connection manager from the user cookie
         TcpReassemblyMgr *reassemblyMgr = (TcpReassemblyMgr *)userCookie;
         auto connMgr = reassemblyMgr->connMgr;
@@ -106,8 +106,8 @@ TcpDnsReassembly::TcpDnsReassembly(TcpReassemblyMgr::process_dns_msg_cb process_
         auto iter = connMgr.find(flowKey);
 
         // if not tracking connection, and it's DNS, then start tracking.
-        if (iter == connMgr.end() && (pcpp::DnsLayer::isDnsPort(tcpData.getConnectionData().srcPort) || pcpp::DnsLayer::isDnsPort(tcpData.getConnectionData().dstPort))) {
-            connMgr.insert(std::make_pair(flowKey, TcpReassemblyData(tcpData.getConnectionData().srcIP->getType() == pcpp::IPAddress::IPv4AddressType)));
+        if (iter == connMgr.end() && (pktvisor::DnsLayer::isDnsPort(tcpData.getConnectionData().srcPort) || pktvisor::DnsLayer::isDnsPort(tcpData.getConnectionData().dstPort))) {
+            connMgr.insert(std::make_pair(flowKey, TcpReassemblyData(tcpData.getConnectionData().srcIP.getType() == pcpp::IPAddress::IPv4AddressType)));
             iter = connMgr.find(tcpData.getConnectionData().flowKey);
         }
         else {
@@ -138,9 +138,11 @@ TcpDnsReassembly::TcpDnsReassembly(TcpReassemblyMgr::process_dns_msg_cb process_
         auto got_dns_message = [reassemblyMgr, sideIndex, l3Type, flowKey, tcpData](std::unique_ptr<const char[]> data,
                                    size_t size) {
             pcpp::Packet dnsRequest;
-            pcpp::DnsLayer dnsLayer((uint8_t *)data.get(), size, nullptr, &dnsRequest);
+            pktvisor::DnsLayer dnsLayer((uint8_t *)data.get(), size, nullptr, &dnsRequest);
             auto dir = (sideIndex == 0) ? pktvisor::fromHost : pktvisor::toHost;
-            reassemblyMgr->process_dns_handler(&dnsLayer, dir, l3Type, flowKey, tcpData.getConnectionData().endTime);
+            timespec eT{0,0};
+            TIMEVAL_TO_TIMESPEC(&tcpData.getConnectionData().endTime, &eT)
+            reassemblyMgr->process_dns_handler(&dnsLayer, dir, l3Type, flowKey, eT);
         };
         if (!iter->second.dnsSession[side].get()) {
             iter->second.dnsSession[side] = std::make_shared<TcpDnsSession>(malformed_data, got_dns_message);

@@ -2,12 +2,12 @@
 
 #include <DnsLayer.h>
 #include <ProtocolType.h>
-#include <IpUtils.h>
 #include <datasketches/cpc/cpc_sketch.hpp>
 #include <datasketches/fi/frequent_items_sketch.hpp>
 #include <datasketches/kll/kll_sketch.hpp>
 #include <rng/randutils.hpp>
 #include <json/json.hpp>
+#include "dns/dns.h"
 #include "config.h"
 
 #ifdef MMDB_ENABLE
@@ -29,8 +29,6 @@
 #include "timer.h"
 
 namespace pktvisor {
-
-using hr_clock = std::chrono::high_resolution_clock;
 
 class MetricsMgr;
 
@@ -71,7 +69,7 @@ public:
 
     void incCounter()
     {
-        _counter++;
+        _counter.fetch_add(1, std::memory_order_relaxed);
     }
     uint64_t getCounter()
     {
@@ -232,15 +230,15 @@ public:
     void toJSON(nlohmann::json &j, const std::string &key);
 
     void newPacket(const pcpp::Packet &packet, pcpp::ProtocolType l3, pcpp::ProtocolType l4, Direction dir);
-    void newDNSPacket(pcpp::DnsLayer *dns, Direction dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4);
-    void newDNSXact(pcpp::DnsLayer *dns, Direction dir, DnsTransaction xact);
+    void newDNSPacket(pktvisor::DnsLayer *dns, Direction dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4);
+    void newDNSXact(pktvisor::DnsLayer *dns, Direction dir, DnsTransaction xact);
 };
 
 class MetricsMgr
 {
     std::deque<std::unique_ptr<Metrics>> _metrics;
     uint _numPeriods;
-    timeval _lastShiftTS;
+    timespec _lastShiftTS;
     long _openDnsTransactionCount;
     bool _singleSummaryMode;
     std::chrono::system_clock::time_point _startTime;
@@ -288,7 +286,7 @@ public:
         _numPeriods = std::max(_numPeriods, 2U);
         _metrics.emplace_back(std::make_unique<Metrics>(*this));
         _lastShiftTS.tv_sec = 0;
-        _lastShiftTS.tv_usec = 0;
+        _lastShiftTS.tv_nsec = 0;
         _startTime = std::chrono::system_clock::now();
     }
 
@@ -335,8 +333,8 @@ public:
 #endif
 
     void newPacket(const pcpp::Packet &packet, QueryResponsePairMgr &pairMgr, pcpp::ProtocolType l4, Direction dir, pcpp::ProtocolType l3);
-    void newDNSPacket(pcpp::DnsLayer *dns, Direction dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4);
-    void newDNSXact(pcpp::DnsLayer *dns, Direction dir, DnsTransaction xact);
+    void newDNSPacket(pktvisor::DnsLayer *dns, Direction dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4);
+    void newDNSXact(pktvisor::DnsLayer *dns, Direction dir, DnsTransaction xact);
 
     std::string getAppMetrics();
     std::string getInstantRates();

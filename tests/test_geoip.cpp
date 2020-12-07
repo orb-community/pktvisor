@@ -1,6 +1,7 @@
-#include <catch2/catch.hpp>
-#include <IpAddress.h>
 #include "geoip.h"
+#include <IpAddress.h>
+#include <catch2/catch.hpp>
+#include <utils.h>
 
 TEST_CASE("GeoIP", "[geoip]")
 {
@@ -23,25 +24,33 @@ TEST_CASE("GeoIP", "[geoip]")
 
     }
 
-    SECTION("basic Geo lookup: sockaddr")
+    SECTION("basic Geo lookup")
     {
 
         pktvisor::GeoDB db("fixtures/GeoIP2-City-Test.mmdb");
         pcpp::IPv4Address ip("89.160.20.112");
-        CHECK(db.getGeoLocString(ip.toInAddr()) == "EU/Sweden/E/Linköping");
+        struct sockaddr_in sa4;
+        CHECK(pktvisor::IPv4tosockaddr(ip, &sa4));
+        CHECK(db.getGeoLocString((struct sockaddr*)&sa4) == "EU/Sweden/E/Linköping");
         pcpp::IPv6Address ip6("2a02:dac0::");
-        CHECK(db.getGeoLocString(ip6.toIn6Addr()) == "EU/Russia");
+        struct sockaddr_in6 sa6;
+        CHECK(pktvisor::IPv6tosockaddr(ip6, &sa6));
+        CHECK(db.getGeoLocString((struct sockaddr*)&sa6) == "EU/Russia");
 
     }
 
-    SECTION("basic ASN lookup: sockaddr")
+    SECTION("basic ASN lookup")
     {
 
         pktvisor::GeoDB db("fixtures/GeoIP2-ISP-Test.mmdb");
         pcpp::IPv4Address ip("1.128.0.0");
-        CHECK(db.getASNString(ip.toInAddr()) == "1221/Telstra Pty Ltd");
+        struct sockaddr_in sa4;
+        CHECK(pktvisor::IPv4tosockaddr(ip, &sa4));
+        CHECK(db.getASNString((struct sockaddr*)&sa4) == "1221/Telstra Pty Ltd");
         pcpp::IPv6Address ip6("2401:8080::");
-        CHECK(db.getASNString(ip6.toIn6Addr()) == "237/Merit Network Inc.");
+        struct sockaddr_in6 sa6;
+        CHECK(pktvisor::IPv6tosockaddr(ip6, &sa6));
+        CHECK(db.getASNString((struct sockaddr*)&sa6) == "237/Merit Network Inc.");
 
     }
 

@@ -18,30 +18,11 @@ GeoDB::~GeoDB()
     MMDB_close(&mmdb);
 }
 
-std::string GeoDB::getGeoLocString(const in_addr* in_addr) const {
+std::string GeoDB::getGeoLocString(const struct sockaddr *sa) const {
 
     int mmdb_error;
-    struct sockaddr_in sa;
-    memset(&sa, 0, sizeof(sa));
-    sa.sin_addr = *in_addr;
-    sa.sin_family = AF_INET;
-    MMDB_lookup_result_s lookup = MMDB_lookup_sockaddr(&mmdb, (sockaddr *const)&sa, &mmdb_error);
-    if (mmdb_error != MMDB_SUCCESS || !lookup.found_entry) {
-        return "Unknown";
-    }
 
-    return _getGeoLocString(&lookup);
-
-}
-
-std::string GeoDB::getGeoLocString(const in6_addr* in_addr) const {
-
-    int mmdb_error;
-    struct sockaddr_in6 sa;
-    memset(&sa, 0, sizeof(sa));
-    sa.sin6_addr = *in_addr;
-    sa.sin6_family = AF_INET6;
-    MMDB_lookup_result_s lookup = MMDB_lookup_sockaddr(&mmdb, (sockaddr *const)&sa, &mmdb_error);
+    MMDB_lookup_result_s lookup = MMDB_lookup_sockaddr(&mmdb, sa, &mmdb_error);
     if (mmdb_error != MMDB_SUCCESS || !lookup.found_entry) {
         return "Unknown";
     }
@@ -112,30 +93,11 @@ std::string GeoDB::_getGeoLocString(MMDB_lookup_result_s* lookup) const {
     return geoString;
 }
 
-std::string GeoDB::getASNString(const in_addr* in_addr) const {
+std::string GeoDB::getASNString(const struct sockaddr *sa) const {
 
     int mmdb_error;
-    struct sockaddr_in sa;
-    memset(&sa, 0, sizeof(struct sockaddr_in));
-    sa.sin_addr = *in_addr;
-    sa.sin_family = AF_INET;
-    MMDB_lookup_result_s lookup = MMDB_lookup_sockaddr(&mmdb, (sockaddr *const)&sa, &mmdb_error);
-    if (mmdb_error != MMDB_SUCCESS || !lookup.found_entry) {
-        return "Unknown";
-    }
 
-    return _getASNString(&lookup);
-
-}
-
-std::string GeoDB::getASNString(const in6_addr* in_addr) const {
-
-    int mmdb_error;
-    struct sockaddr_in6 sa;
-    memset(&sa, 0, sizeof(struct sockaddr_in));
-    sa.sin6_addr = *in_addr;
-    sa.sin6_family = AF_INET6;
-    MMDB_lookup_result_s lookup = MMDB_lookup_sockaddr(&mmdb, (sockaddr *const)&sa, &mmdb_error);
+    MMDB_lookup_result_s lookup = MMDB_lookup_sockaddr(&mmdb, sa, &mmdb_error);
     if (mmdb_error != MMDB_SUCCESS || !lookup.found_entry) {
         return "Unknown";
     }

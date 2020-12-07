@@ -9,7 +9,7 @@
 
 #include "tcpsession.h"
 
-TEST_CASE("Parse DNS UDP IPv4 tests", "[pcap][ipv4][udp][dns]")
+TEST_CASE("Parse DNS UDP IPv4 tests, basic pktvisor::DnsLayer functionality", "[pcap][ipv4][udp][dns]")
 {
 
     pcpp::IFileReaderDevice *reader = pcpp::IFileReaderDevice::getReader("fixtures/dns_ipv4_udp.pcap");
@@ -20,19 +20,23 @@ TEST_CASE("Parse DNS UDP IPv4 tests", "[pcap][ipv4][udp][dns]")
     int numUDP(0);
     int numDNS(0);
     while (reader->getNextPacket(rawPacket)) {
-        pcpp::Packet dnsRequest(&rawPacket);
-        if (dnsRequest.isPacketOfType(pcpp::UDP)) {
-            numUDP++;
-            if (dnsRequest.isPacketOfType(pcpp::DNS)) {
-                pcpp::DnsLayer *dnsLayer = dnsRequest.getLayerOfType<pcpp::DnsLayer>();
-                dnsLayer->parseResources();
-                if (numDNS == 0) {
-                    CHECK(dnsLayer->getFirstQuery()->getName() == "utadwnME.POJwOc9R.KtfO.test.com");
-                    CHECK(dnsLayer->getFirstQuery()->getDnsType() == pcpp::DNS_TYPE_AAAA);
-                }
-                numDNS++;
-            }
+        // only parse to transport layer (in this case udp) so we can do our own dns
+        pcpp::Packet request(&rawPacket, pcpp::OsiModelTransportLayer);
+        // udp layer life cycle is managed by packet
+        pcpp::UdpLayer *udpLayer = request.getLayerOfType<pcpp::UdpLayer>();
+        CHECK(udpLayer != nullptr);
+        numUDP++;
+        // custom DNS layer, life cycle maintained manually
+        pktvisor::DnsLayer dnsLayer = pktvisor::DnsLayer(udpLayer, &request);
+        // manually resource parse
+        dnsLayer.parseResources(true);
+        // only check the first packet by name
+        if (numDNS == 0) {
+            CHECK(dnsLayer.getFirstQuery() != nullptr);
+            CHECK(dnsLayer.getFirstQuery()->getName() == "utadwnME.POJwOc9R.KtfO.test.com");
+            CHECK(dnsLayer.getFirstQuery()->getDnsType() == pktvisor::DNS_TYPE_AAAA);
         }
+        numDNS++;
     }
 
     reader->close();
@@ -53,12 +57,12 @@ TEST_CASE("Parse DNS TCP IPv4 tests", "[pcap][ipv4][tcp][dns]")
     bool firstQuery(false);
     int numDNS[2] = {0,0};
 
-    auto got_dns_message = [&firstQuery, &numDNS](pcpp::DnsLayer* dnsLayer, pktvisor::Direction dir, pcpp::ProtocolType l3, uint32_t flowKey, timeval stamp) {
+    auto got_dns_message = [&firstQuery, &numDNS](pktvisor::DnsLayer* dnsLayer, pktvisor::Direction dir, pcpp::ProtocolType l3, uint32_t flowKey, timespec stamp) {
         CHECK(stamp.tv_sec != 0);
-        CHECK(stamp.tv_usec != 0);
+        CHECK(stamp.tv_nsec != 0);
         if (firstQuery) {
             CHECK(dnsLayer->getFirstQuery()->getName() == "hx.3FsQRh6.ollah70Na.test.com");
-            CHECK(dnsLayer->getFirstQuery()->getDnsType() == pcpp::DNS_TYPE_AAAA);
+            CHECK(dnsLayer->getFirstQuery()->getDnsType() == pktvisor::DNS_TYPE_AAAA);
             firstQuery = false;
         }
         numDNS[dir]++;
@@ -103,19 +107,23 @@ TEST_CASE("Parse DNS UDP IPv6 tests", "[pcap][ipv6][udp][dns]")
     int numUDP(0);
     int numDNS(0);
     while (reader->getNextPacket(rawPacket)) {
-        pcpp::Packet dnsRequest(&rawPacket);
-        if (dnsRequest.isPacketOfType(pcpp::UDP)) {
-            numUDP++;
-            if (dnsRequest.isPacketOfType(pcpp::DNS)) {
-                pcpp::DnsLayer *dnsLayer = dnsRequest.getLayerOfType<pcpp::DnsLayer>();
-                dnsLayer->parseResources();
-                if (numDNS == 0) {
-                    CHECK(dnsLayer->getFirstQuery()->getName() == "LOJ5Pq2._EmpLuAPR.PPLIop.1F8J2R1.eMVq5.test.com");
-                    CHECK(dnsLayer->getFirstQuery()->getDnsType() == pcpp::DNS_TYPE_AAAA);
-                }
-                numDNS++;
-            }
+        // only parse to transport layer (in this case udp) so we can do our own dns
+        pcpp::Packet request(&rawPacket, pcpp::OsiModelTransportLayer);
+        // udp layer life cycle is managed by packet
+        pcpp::UdpLayer *udpLayer = request.getLayerOfType<pcpp::UdpLayer>();
+        CHECK(udpLayer != nullptr);
+        numUDP++;
+        // custom DNS layer, life cycle maintained manually
+        pktvisor::DnsLayer dnsLayer = pktvisor::DnsLayer(udpLayer, &request);
+        // manually resource parse
+        dnsLayer.parseResources(true);
+        // only check the first packet by name
+        if (numDNS == 0) {
+            CHECK(dnsLayer.getFirstQuery() != nullptr);
+            CHECK(dnsLayer.getFirstQuery()->getName() == "LOJ5Pq2._EmpLuAPR.PPLIop.1F8J2R1.eMVq5.test.com");
+            CHECK(dnsLayer.getFirstQuery()->getDnsType() == pktvisor::DNS_TYPE_AAAA);
         }
+        numDNS++;
     }
 
     reader->close();
@@ -136,12 +144,12 @@ TEST_CASE("Parse DNS TCP IPv6 tests", "[pcap][ipv6][tcp][dns]")
     int numTCP(0);
     int numDNS[2] = {0,0};
 
-    auto got_dns_message = [&firstQuery, &numDNS](pcpp::DnsLayer* dnsLayer, pktvisor::Direction dir, pcpp::ProtocolType l3, uint32_t flowKey, timeval stamp) {
+    auto got_dns_message = [&firstQuery, &numDNS](pktvisor::DnsLayer* dnsLayer, pktvisor::Direction dir, pcpp::ProtocolType l3, uint32_t flowKey, timespec stamp) {
         CHECK(stamp.tv_sec != 0);
-        CHECK(stamp.tv_usec != 0);
+        CHECK(stamp.tv_nsec != 0);
         if (firstQuery) {
             CHECK(dnsLayer->getFirstQuery()->getName() == "BCEIOL4.PfzdEtQk.lf.test.com");
-            CHECK(dnsLayer->getFirstQuery()->getDnsType() == pcpp::DNS_TYPE_AAAA);
+            CHECK(dnsLayer->getFirstQuery()->getDnsType() == pktvisor::DNS_TYPE_AAAA);
             firstQuery = false;
         }
         numDNS[dir]++;

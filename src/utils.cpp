@@ -2,16 +2,14 @@
 #include "utils.h"
 #include <cstring>
 #include <sstream>
-#include <IpUtils.h>
-#ifdef __linux__
-#include <in.h>
-#else
 #include <netinet/in.h>
-#endif
+#include <arpa/inet.h>
+#include <IpUtils.h>
 
 namespace pktvisor {
 
-AggDomainResult aggregateDomain(const std::string& domain) {
+AggDomainResult aggregateDomain(const std::string &domain)
+{
 
     std::string_view qname2(domain);
     std::string_view qname3(domain);
@@ -36,8 +34,7 @@ AggDomainResult aggregateDomain(const std::string& domain) {
                     qname3.remove_prefix(third_dot);
                 }
             }
-        }
-        else {
+        } else {
             // didn't find two dots, so this is empty
             qname3.remove_prefix(domain.size());
         }
@@ -111,31 +108,63 @@ void parseHostSpec(const std::string &spec, IPv4subnetList &ipv4List, IPv6subnet
         std::vector<std::string> cidr = split(host, '/');
         if (cidr.size() != 2) {
             std::stringstream err;
-            err << "skipping invalid CIDR: " << host;
+            err << "invalid CIDR: " << host;
             throw std::runtime_error(err.str());
         }
         if (host.find(':') != host.npos) {
             pcpp::IPv6Address net(cidr[0]);
             if (!net.isValid()) {
                 std::stringstream err;
-                err << "skipping invalid IPv6 address: " << cidr[0];
+                err << "invalid IPv6 address: " << cidr[0];
                 throw std::runtime_error(err.str());
             }
             in6_addr mask_addr;
             ipv6_netmask(&mask_addr, std::stoi(cidr[1]));
-            ipv6List.emplace_back(pktvisor::IPv6subnet(net, pcpp::IPv6Address(&mask_addr)));
+            char buf[INET6_ADDRSTRLEN];
+            if (inet_ntop(AF_INET6, &mask_addr, buf, INET6_ADDRSTRLEN) == 0) {
+                std::stringstream err;
+                err << "invalid IPv6 address mask: " << cidr[1];
+                throw std::runtime_error(err.str());
+            }
+            ipv6List.emplace_back(IPv6subnet(net, std::stoi(cidr[1])));
         } else {
             pcpp::IPv4Address net(cidr[0]);
             if (!net.isValid()) {
                 std::stringstream err;
-                err << "skipping invalid IPv4 address: " << cidr[0];
+                err << "invalid IPv4 address: " << cidr[0];
                 throw std::runtime_error(err.str());
             }
             in_addr mask_addr;
             ipv4_netmask(&mask_addr, std::stoi(cidr[1]));
-            ipv4List.emplace_back(pktvisor::IPv4subnet(net, pcpp::IPv4Address(&mask_addr)));
+            char buf[INET_ADDRSTRLEN];
+            if (inet_ntop(AF_INET, &mask_addr, buf, INET_ADDRSTRLEN) == 0) {
+                std::stringstream err;
+                err << "invalid IPv4 address mask: " << cidr[1];
+                throw std::runtime_error(err.str());
+            }
+            ipv4List.emplace_back(IPv4subnet(net, pcpp::IPv4Address(buf)));
         }
     }
+}
+
+bool IPv4tosockaddr(const pcpp::IPv4Address &ip, struct sockaddr_in *sa)
+{
+    memset(sa, 0, sizeof(struct sockaddr_in));
+    uint32_t ip_int(ip.toInt());
+    memcpy(&sa->sin_addr, &ip_int, sizeof(sa->sin_addr));
+    sa->sin_family = AF_INET;
+    return true;
+}
+
+bool IPv6tosockaddr(const pcpp::IPv6Address &ip, struct sockaddr_in6 *sa)
+{
+    memset(sa, 0, sizeof(struct sockaddr_in6));
+    auto ip_bytes = ip.toBytes();
+    for (int i = 0; i < 16; ++i) {
+        sa->sin6_addr.s6_addr[i] = ip_bytes[i];
+    }
+    sa->sin6_family = AF_INET6;
+    return true;
 }
 
 }

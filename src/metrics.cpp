@@ -9,7 +9,7 @@
 #include <math.h>
 #include <arpa/inet.h>
 
-#include "dns.h"
+#include "dns/dns.h"
 #include "metrics.h"
 #include "utils.h"
 
@@ -28,28 +28,28 @@ Metrics::Metrics(MetricsMgr& mmgr) : _mmgr(mmgr)
 void Metrics::merge(Metrics &other)
 {
 
-    _numSamples += other._numSamples;
+    _numSamples.fetch_add(other._numSamples,std::memory_order_relaxed);
 
-    _numPackets += other._numPackets;
-    _numPackets_UDP += other._numPackets_UDP;
-    _numPackets_TCP += other._numPackets_TCP;
-    _numPackets_OtherL4 += other._numPackets_OtherL4;
-    _numPackets_IPv6 += other._numPackets_IPv6;
-    _numPackets_in += other._numPackets_in;
-    _numPackets_out += other._numPackets_out;
+    _numPackets.fetch_add(other._numPackets,std::memory_order_relaxed);
+    _numPackets_UDP.fetch_add(other._numPackets_UDP,std::memory_order_relaxed);
+    _numPackets_TCP.fetch_add(other._numPackets_TCP,std::memory_order_relaxed);
+    _numPackets_OtherL4.fetch_add(other._numPackets_OtherL4,std::memory_order_relaxed);
+    _numPackets_IPv6.fetch_add(other._numPackets_IPv6,std::memory_order_relaxed);
+    _numPackets_in.fetch_add(other._numPackets_in,std::memory_order_relaxed);
+    _numPackets_out.fetch_add(other._numPackets_out,std::memory_order_relaxed);
 
-    _DNS_total += other._DNS_total;
-    _DNS_xacts_total += other._DNS_xacts_total;
-    _DNS_xacts_in += other._DNS_xacts_in;
-    _DNS_xacts_out += other._DNS_xacts_out;
-    _DNS_queries += other._DNS_queries;
-    _DNS_replies += other._DNS_replies;
-    _DNS_TCP += other._DNS_TCP;
-    _DNS_IPv6 += other._DNS_IPv6;
-    _DNS_NX += other._DNS_NX;
-    _DNS_REFUSED += other._DNS_REFUSED;
-    _DNS_SRVFAIL += other._DNS_SRVFAIL;
-    _DNS_NOERROR += other._DNS_NOERROR;
+    _DNS_total.fetch_add(other._DNS_total,std::memory_order_relaxed);
+    _DNS_xacts_total.fetch_add(other._DNS_xacts_total,std::memory_order_relaxed);
+    _DNS_xacts_in.fetch_add(other._DNS_xacts_in,std::memory_order_relaxed);
+    _DNS_xacts_out.fetch_add(other._DNS_xacts_out,std::memory_order_relaxed);
+    _DNS_queries.fetch_add(other._DNS_queries,std::memory_order_relaxed);
+    _DNS_replies.fetch_add(other._DNS_replies,std::memory_order_relaxed);
+    _DNS_TCP.fetch_add(other._DNS_TCP,std::memory_order_relaxed);
+    _DNS_IPv6.fetch_add(other._DNS_IPv6,std::memory_order_relaxed);
+    _DNS_NX.fetch_add(other._DNS_NX,std::memory_order_relaxed);
+    _DNS_REFUSED.fetch_add(other._DNS_REFUSED,std::memory_order_relaxed);
+    _DNS_SRVFAIL.fetch_add(other._DNS_SRVFAIL,std::memory_order_relaxed);
+    _DNS_NOERROR.fetch_add(other._DNS_NOERROR,std::memory_order_relaxed);
 
     // lock me for for write, other for read
     std::unique_lock w_lock(_sketchMutex);
@@ -94,38 +94,38 @@ void Metrics::merge(Metrics &other)
     _sketches->_net_topASN.merge(other._sketches->_net_topASN);
 }
 
-void Metrics::newDNSPacket(pcpp::DnsLayer *dns, Direction dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4)
+void Metrics::newDNSPacket(pktvisor::DnsLayer *dns, Direction dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4)
 {
 
-    _DNS_total++;
+    _DNS_total.fetch_add(1,std::memory_order_relaxed);
 
     if (l3 == pcpp::IPv6) {
-        _DNS_IPv6++;
+        _DNS_IPv6.fetch_add(1,std::memory_order_relaxed);
     }
 
     if (l4 == pcpp::TCP) {
-        _DNS_TCP++;
+        _DNS_TCP.fetch_add(1,std::memory_order_relaxed);
     }
 
     // only count response codes on responses (not queries)
     if (dns->getDnsHeader()->queryOrResponse == response) {
-        _DNS_replies++;
+        _DNS_replies.fetch_add(1,std::memory_order_relaxed);
         switch (dns->getDnsHeader()->responseCode) {
         case 0:
-            _DNS_NOERROR++;
+            _DNS_NOERROR.fetch_add(1,std::memory_order_relaxed);
             break;
         case 2:
-            _DNS_SRVFAIL++;
+            _DNS_SRVFAIL.fetch_add(1,std::memory_order_relaxed);
             break;
         case 3:
-            _DNS_NX++;
+            _DNS_NX.fetch_add(1,std::memory_order_relaxed);
             break;
         case 5:
-            _DNS_REFUSED++;
+            _DNS_REFUSED.fetch_add(1,std::memory_order_relaxed);
             break;
         }
     } else {
-        _DNS_queries++;
+        _DNS_queries.fetch_add(1,std::memory_order_relaxed);
     }
 
     // sampler
@@ -133,7 +133,7 @@ void Metrics::newDNSPacket(pcpp::DnsLayer *dns, Direction dir, pcpp::ProtocolTyp
         return;
     }
 
-    dns->parseResources();
+    dns->parseResources(true);
 
     // lock for write
     std::unique_lock lock(_sketchMutex);
@@ -172,15 +172,15 @@ void Metrics::newDNSPacket(pcpp::DnsLayer *dns, Direction dir, pcpp::ProtocolTyp
     }
 }
 
-void Metrics::newDNSXact(pcpp::DnsLayer *dns, Direction dir, DnsTransaction xact)
+void Metrics::newDNSXact(pktvisor::DnsLayer *dns, Direction dir, DnsTransaction xact)
 {
 
     // sampler
     bool chosen = _mmgr.shouldDeepSample();
 
-    _DNS_xacts_total++;
+    _DNS_xacts_total.fetch_add(1,std::memory_order_relaxed);
 
-    uint64_t xactTime = (xact.totalTS.tv_sec * 1000000) + xact.totalTS.tv_usec; // microseconds
+    uint64_t xactTime = ((xact.totalTS.tv_sec * 1000000000L) + xact.totalTS.tv_nsec) / 1000; // nanoseconds to microseconds
     // dir is the direction of the last packet, meaning the reply so from a transaction perspective
     // we look at it from the direction of the query, so the opposite side than we have here
     float to90th = 0.0;
@@ -193,7 +193,7 @@ void Metrics::newDNSXact(pcpp::DnsLayer *dns, Direction dir, DnsTransaction xact
     }
 
     if (dir == toHost) {
-        _DNS_xacts_out++;
+        _DNS_xacts_out.fetch_add(1,std::memory_order_relaxed);
         if (chosen) {
             _sketches->_dnsXactFromTimeUs.update(xactTime);
             // wait for N samples
@@ -202,7 +202,7 @@ void Metrics::newDNSXact(pcpp::DnsLayer *dns, Direction dir, DnsTransaction xact
             }
         }
     } else if (dir == fromHost) {
-        _DNS_xacts_in++;
+        _DNS_xacts_in.fetch_add(1,std::memory_order_relaxed);
         if (chosen) {
             _sketches->_dnsXactToTimeUs.update(xactTime);
             // wait for N samples
@@ -227,12 +227,12 @@ void Metrics::newDNSXact(pcpp::DnsLayer *dns, Direction dir, DnsTransaction xact
 
 }
 
-void MetricsMgr::newDNSXact(pcpp::DnsLayer *dns, Direction dir, DnsTransaction xact)
+void MetricsMgr::newDNSXact(pktvisor::DnsLayer *dns, Direction dir, DnsTransaction xact)
 {
     _metrics.back()->newDNSXact(dns, dir, xact);
 }
 
-void MetricsMgr::newDNSPacket(pcpp::DnsLayer *dns, Direction dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4)
+void MetricsMgr::newDNSPacket(pktvisor::DnsLayer *dns, Direction dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4)
 {
     _metrics.back()->newDNSPacket(dns, dir, l3, l4);
 }
@@ -240,17 +240,17 @@ void MetricsMgr::newDNSPacket(pcpp::DnsLayer *dns, Direction dir, pcpp::Protocol
 void Metrics::newPacket(const pcpp::Packet &packet, pcpp::ProtocolType l3, pcpp::ProtocolType l4, Direction dir)
 {
 
-    _numPackets++;
+    _numPackets.fetch_add(1,std::memory_order_relaxed);
     if (_mmgr.shouldDeepSample()) {
-        _numSamples++;
+        _numSamples.fetch_add(1,std::memory_order_relaxed);
     }
 
     switch (dir) {
     case fromHost:
-        _numPackets_out++;
+        _numPackets_out.fetch_add(1,std::memory_order_relaxed);
         break;
     case toHost:
-        _numPackets_in++;
+        _numPackets_in.fetch_add(1,std::memory_order_relaxed);
         break;
     case unknown:
         break;
@@ -258,7 +258,7 @@ void Metrics::newPacket(const pcpp::Packet &packet, pcpp::ProtocolType l3, pcpp:
 
     switch (l3) {
     case pcpp::IPv6:
-        _numPackets_IPv6++;
+        _numPackets_IPv6.fetch_add(1,std::memory_order_relaxed);
         break;
     default:
         break;
@@ -266,13 +266,13 @@ void Metrics::newPacket(const pcpp::Packet &packet, pcpp::ProtocolType l3, pcpp:
 
     switch (l4) {
     case pcpp::UDP:
-        _numPackets_UDP++;
+        _numPackets_UDP.fetch_add(1,std::memory_order_relaxed);
         break;
     case pcpp::TCP:
-        _numPackets_TCP++;
+        _numPackets_TCP.fetch_add(1,std::memory_order_relaxed);
         break;
     default:
-        _numPackets_OtherL4++;
+        _numPackets_OtherL4.fetch_add(1,std::memory_order_relaxed);
         break;
     }
 
@@ -287,6 +287,8 @@ void Metrics::newPacket(const pcpp::Packet &packet, pcpp::ProtocolType l3, pcpp:
 #ifdef MMDB_ENABLE
     const GeoDB* geoCityDB = _mmgr.getGeoCityDB();
     const GeoDB* geoASNDB = _mmgr.getGeoASNDB();
+    struct sockaddr_in sa4;
+    struct sockaddr_in6 sa6;
 #endif
 
     auto IP4layer = packet.getLayerOfType<pcpp::IPv4Layer>();
@@ -296,46 +298,54 @@ void Metrics::newPacket(const pcpp::Packet &packet, pcpp::ProtocolType l3, pcpp:
             _sketches->_net_srcIPCard.update(IP4layer->getSrcIpAddress().toInt());
             _sketches->_net_topIPv4.update(IP4layer->getSrcIpAddress().toInt());
 #ifdef MMDB_ENABLE
-            if (geoCityDB) {
-                _sketches->_net_topGeoLoc.update(geoCityDB->getGeoLocString(IP4layer->getSrcIpAddress().toInAddr()));
-            }
-            if (geoASNDB) {
-                _sketches->_net_topASN.update(geoASNDB->getASNString(IP4layer->getSrcIpAddress().toInAddr()));
+            if (IPv4tosockaddr(IP4layer->getSrcIpAddress(), &sa4)) {
+                if (geoCityDB) {
+                    _sketches->_net_topGeoLoc.update(geoCityDB->getGeoLocString((struct sockaddr*)&sa4));
+                }
+                if (geoASNDB) {
+                    _sketches->_net_topASN.update(geoASNDB->getASNString((struct sockaddr*)&sa4));
+                }
             }
 #endif
         } else if (dir == fromHost) {
             _sketches->_net_dstIPCard.update(IP4layer->getDstIpAddress().toInt());
             _sketches->_net_topIPv4.update(IP4layer->getDstIpAddress().toInt());
 #ifdef MMDB_ENABLE
-            if (geoCityDB) {
-                _sketches->_net_topGeoLoc.update(geoCityDB->getGeoLocString(IP4layer->getDstIpAddress().toInAddr()));
-            }
-            if (geoASNDB) {
-                _sketches->_net_topASN.update(geoASNDB->getASNString(IP4layer->getDstIpAddress().toInAddr()));
+            if (IPv4tosockaddr(IP4layer->getDstIpAddress(), &sa4)) {
+                if (geoCityDB) {
+                    _sketches->_net_topGeoLoc.update(geoCityDB->getGeoLocString((struct sockaddr*)&sa4));
+                }
+                if (geoASNDB) {
+                    _sketches->_net_topASN.update(geoASNDB->getASNString((struct sockaddr*)&sa4));
+                }
             }
 #endif
         }
     } else if (IP6layer) {
         if (dir == toHost) {
-            _sketches->_net_srcIPCard.update((void *)IP6layer->getSrcIpAddress().toIn6Addr(), 16);
+            _sketches->_net_srcIPCard.update((void *)IP6layer->getSrcIpAddress().toBytes(), 16);
             _sketches->_net_topIPv6.update(IP6layer->getSrcIpAddress().toString());
 #ifdef MMDB_ENABLE
-            if (geoCityDB) {
-                _sketches->_net_topGeoLoc.update(geoCityDB->getGeoLocString(IP6layer->getSrcIpAddress().toIn6Addr()));
-            }
-            if (geoASNDB) {
-                _sketches->_net_topASN.update(geoASNDB->getASNString(IP6layer->getSrcIpAddress().toIn6Addr()));
+            if (IPv6tosockaddr(IP6layer->getSrcIpAddress(), &sa6)) {
+                if (geoCityDB) {
+                    _sketches->_net_topGeoLoc.update(geoCityDB->getGeoLocString((struct sockaddr*)&sa6));
+                }
+                if (geoASNDB) {
+                    _sketches->_net_topASN.update(geoASNDB->getASNString((struct sockaddr*)&sa6));
+                }
             }
 #endif
         } else if (dir == fromHost) {
-            _sketches->_net_dstIPCard.update((void *)IP6layer->getDstIpAddress().toIn6Addr(), 16);
+            _sketches->_net_dstIPCard.update((void *)IP6layer->getDstIpAddress().toBytes(), 16);
             _sketches->_net_topIPv6.update(IP6layer->getDstIpAddress().toString());
 #ifdef MMDB_ENABLE
-            if (geoCityDB) {
-                _sketches->_net_topGeoLoc.update(geoCityDB->getGeoLocString(IP6layer->getDstIpAddress().toIn6Addr()));
-            }
-            if (geoASNDB) {
-                _sketches->_net_topASN.update(geoASNDB->getASNString(IP6layer->getDstIpAddress().toIn6Addr()));
+            if (IPv6tosockaddr(IP6layer->getDstIpAddress(), &sa6)) {
+                if (geoCityDB) {
+                    _sketches->_net_topGeoLoc.update(geoCityDB->getGeoLocString((struct sockaddr*)&sa6));
+                }
+                if (geoASNDB) {
+                    _sketches->_net_topASN.update(geoASNDB->getASNString((struct sockaddr*)&sa6));
+                }
             }
 #endif
         }
@@ -346,9 +356,9 @@ void Metrics::newPacket(const pcpp::Packet &packet, pcpp::ProtocolType l3, pcpp:
         auto srcPort = ntohs(UDPLayer->getUdpHeader()->portSrc);
         auto dstPort = ntohs(UDPLayer->getUdpHeader()->portDst);
         // track whichever port wasn't a DNS port (in and out)
-        if (pcpp::DnsLayer::isDnsPort(dstPort)) {
+        if (pktvisor::DnsLayer::isDnsPort(dstPort)) {
             _sketches->_dns_topUDPPort.update(srcPort);
-        } else if (pcpp::DnsLayer::isDnsPort(srcPort)) {
+        } else if (pktvisor::DnsLayer::isDnsPort(srcPort)) {
             _sketches->_dns_topUDPPort.update(dstPort);
         }
     }
@@ -379,12 +389,12 @@ void MetricsMgr::_periodShift()
 }
 
 void MetricsMgr::setInitialShiftTS() {
-    gettimeofday(&_lastShiftTS, nullptr);
+    timespec_get(&_lastShiftTS, TIME_UTC);
 }
 
 void MetricsMgr::setInitialShiftTS(const pcpp::Packet &packet) {
     _lastShiftTS.tv_sec = packet.getRawPacketReadOnly()->getPacketTimeStamp().tv_sec;
-    _lastShiftTS.tv_usec = packet.getRawPacketReadOnly()->getPacketTimeStamp().tv_usec;
+    _lastShiftTS.tv_nsec = packet.getRawPacketReadOnly()->getPacketTimeStamp().tv_nsec;
 }
 
 void MetricsMgr::newPacket(const pcpp::Packet &packet, QueryResponsePairMgr &pairMgr, pcpp::ProtocolType l4, Direction dir, pcpp::ProtocolType l3)
