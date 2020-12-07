@@ -28,28 +28,28 @@ Metrics::Metrics(MetricsMgr& mmgr) : _mmgr(mmgr)
 void Metrics::merge(Metrics &other)
 {
 
-    _numSamples += other._numSamples;
+    _numSamples.fetch_add(other._numSamples,std::memory_order_relaxed);
 
-    _numPackets += other._numPackets;
-    _numPackets_UDP += other._numPackets_UDP;
-    _numPackets_TCP += other._numPackets_TCP;
-    _numPackets_OtherL4 += other._numPackets_OtherL4;
-    _numPackets_IPv6 += other._numPackets_IPv6;
-    _numPackets_in += other._numPackets_in;
-    _numPackets_out += other._numPackets_out;
+    _numPackets.fetch_add(other._numPackets,std::memory_order_relaxed);
+    _numPackets_UDP.fetch_add(other._numPackets_UDP,std::memory_order_relaxed);
+    _numPackets_TCP.fetch_add(other._numPackets_TCP,std::memory_order_relaxed);
+    _numPackets_OtherL4.fetch_add(other._numPackets_OtherL4,std::memory_order_relaxed);
+    _numPackets_IPv6.fetch_add(other._numPackets_IPv6,std::memory_order_relaxed);
+    _numPackets_in.fetch_add(other._numPackets_in,std::memory_order_relaxed);
+    _numPackets_out.fetch_add(other._numPackets_out,std::memory_order_relaxed);
 
-    _DNS_total += other._DNS_total;
-    _DNS_xacts_total += other._DNS_xacts_total;
-    _DNS_xacts_in += other._DNS_xacts_in;
-    _DNS_xacts_out += other._DNS_xacts_out;
-    _DNS_queries += other._DNS_queries;
-    _DNS_replies += other._DNS_replies;
-    _DNS_TCP += other._DNS_TCP;
-    _DNS_IPv6 += other._DNS_IPv6;
-    _DNS_NX += other._DNS_NX;
-    _DNS_REFUSED += other._DNS_REFUSED;
-    _DNS_SRVFAIL += other._DNS_SRVFAIL;
-    _DNS_NOERROR += other._DNS_NOERROR;
+    _DNS_total.fetch_add(other._DNS_total,std::memory_order_relaxed);
+    _DNS_xacts_total.fetch_add(other._DNS_xacts_total,std::memory_order_relaxed);
+    _DNS_xacts_in.fetch_add(other._DNS_xacts_in,std::memory_order_relaxed);
+    _DNS_xacts_out.fetch_add(other._DNS_xacts_out,std::memory_order_relaxed);
+    _DNS_queries.fetch_add(other._DNS_queries,std::memory_order_relaxed);
+    _DNS_replies.fetch_add(other._DNS_replies,std::memory_order_relaxed);
+    _DNS_TCP.fetch_add(other._DNS_TCP,std::memory_order_relaxed);
+    _DNS_IPv6.fetch_add(other._DNS_IPv6,std::memory_order_relaxed);
+    _DNS_NX.fetch_add(other._DNS_NX,std::memory_order_relaxed);
+    _DNS_REFUSED.fetch_add(other._DNS_REFUSED,std::memory_order_relaxed);
+    _DNS_SRVFAIL.fetch_add(other._DNS_SRVFAIL,std::memory_order_relaxed);
+    _DNS_NOERROR.fetch_add(other._DNS_NOERROR,std::memory_order_relaxed);
 
     // lock me for for write, other for read
     std::unique_lock w_lock(_sketchMutex);
@@ -97,35 +97,35 @@ void Metrics::merge(Metrics &other)
 void Metrics::newDNSPacket(pktvisor::DnsLayer *dns, Direction dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4)
 {
 
-    _DNS_total++;
+    _DNS_total.fetch_add(1,std::memory_order_relaxed);
 
     if (l3 == pcpp::IPv6) {
-        _DNS_IPv6++;
+        _DNS_IPv6.fetch_add(1,std::memory_order_relaxed);
     }
 
     if (l4 == pcpp::TCP) {
-        _DNS_TCP++;
+        _DNS_TCP.fetch_add(1,std::memory_order_relaxed);
     }
 
     // only count response codes on responses (not queries)
     if (dns->getDnsHeader()->queryOrResponse == response) {
-        _DNS_replies++;
+        _DNS_replies.fetch_add(1,std::memory_order_relaxed);
         switch (dns->getDnsHeader()->responseCode) {
         case 0:
-            _DNS_NOERROR++;
+            _DNS_NOERROR.fetch_add(1,std::memory_order_relaxed);
             break;
         case 2:
-            _DNS_SRVFAIL++;
+            _DNS_SRVFAIL.fetch_add(1,std::memory_order_relaxed);
             break;
         case 3:
-            _DNS_NX++;
+            _DNS_NX.fetch_add(1,std::memory_order_relaxed);
             break;
         case 5:
-            _DNS_REFUSED++;
+            _DNS_REFUSED.fetch_add(1,std::memory_order_relaxed);
             break;
         }
     } else {
-        _DNS_queries++;
+        _DNS_queries.fetch_add(1,std::memory_order_relaxed);
     }
 
     // sampler
@@ -133,7 +133,7 @@ void Metrics::newDNSPacket(pktvisor::DnsLayer *dns, Direction dir, pcpp::Protoco
         return;
     }
 
-    dns->parseResources();
+    dns->parseResources(true);
 
     // lock for write
     std::unique_lock lock(_sketchMutex);
@@ -178,7 +178,7 @@ void Metrics::newDNSXact(pktvisor::DnsLayer *dns, Direction dir, DnsTransaction 
     // sampler
     bool chosen = _mmgr.shouldDeepSample();
 
-    _DNS_xacts_total++;
+    _DNS_xacts_total.fetch_add(1,std::memory_order_relaxed);
 
     uint64_t xactTime = ((xact.totalTS.tv_sec * 1000000000L) + xact.totalTS.tv_nsec) / 1000; // nanoseconds to microseconds
     // dir is the direction of the last packet, meaning the reply so from a transaction perspective
@@ -193,7 +193,7 @@ void Metrics::newDNSXact(pktvisor::DnsLayer *dns, Direction dir, DnsTransaction 
     }
 
     if (dir == toHost) {
-        _DNS_xacts_out++;
+        _DNS_xacts_out.fetch_add(1,std::memory_order_relaxed);
         if (chosen) {
             _sketches->_dnsXactFromTimeUs.update(xactTime);
             // wait for N samples
@@ -202,7 +202,7 @@ void Metrics::newDNSXact(pktvisor::DnsLayer *dns, Direction dir, DnsTransaction 
             }
         }
     } else if (dir == fromHost) {
-        _DNS_xacts_in++;
+        _DNS_xacts_in.fetch_add(1,std::memory_order_relaxed);
         if (chosen) {
             _sketches->_dnsXactToTimeUs.update(xactTime);
             // wait for N samples
@@ -240,17 +240,17 @@ void MetricsMgr::newDNSPacket(pktvisor::DnsLayer *dns, Direction dir, pcpp::Prot
 void Metrics::newPacket(const pcpp::Packet &packet, pcpp::ProtocolType l3, pcpp::ProtocolType l4, Direction dir)
 {
 
-    _numPackets++;
+    _numPackets.fetch_add(1,std::memory_order_relaxed);
     if (_mmgr.shouldDeepSample()) {
-        _numSamples++;
+        _numSamples.fetch_add(1,std::memory_order_relaxed);
     }
 
     switch (dir) {
     case fromHost:
-        _numPackets_out++;
+        _numPackets_out.fetch_add(1,std::memory_order_relaxed);
         break;
     case toHost:
-        _numPackets_in++;
+        _numPackets_in.fetch_add(1,std::memory_order_relaxed);
         break;
     case unknown:
         break;
@@ -258,7 +258,7 @@ void Metrics::newPacket(const pcpp::Packet &packet, pcpp::ProtocolType l3, pcpp:
 
     switch (l3) {
     case pcpp::IPv6:
-        _numPackets_IPv6++;
+        _numPackets_IPv6.fetch_add(1,std::memory_order_relaxed);
         break;
     default:
         break;
@@ -266,13 +266,13 @@ void Metrics::newPacket(const pcpp::Packet &packet, pcpp::ProtocolType l3, pcpp:
 
     switch (l4) {
     case pcpp::UDP:
-        _numPackets_UDP++;
+        _numPackets_UDP.fetch_add(1,std::memory_order_relaxed);
         break;
     case pcpp::TCP:
-        _numPackets_TCP++;
+        _numPackets_TCP.fetch_add(1,std::memory_order_relaxed);
         break;
     default:
-        _numPackets_OtherL4++;
+        _numPackets_OtherL4.fetch_add(1,std::memory_order_relaxed);
         break;
     }
 
