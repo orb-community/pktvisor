@@ -1,5 +1,5 @@
 # docker
-Here we provide an example of how to collector `pktvisord` metrics with `telegraf`
+Here we provide an example of how to collect `pktvisord` metrics with `telegraf`
 
 This directory contains:
 - [docker compose](./docker-compose.yml)
