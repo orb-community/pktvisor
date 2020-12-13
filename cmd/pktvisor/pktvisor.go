@@ -1,13 +1,14 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/docopt/docopt-go"
-	"github.com/pkg/errors"
-	"io/ioutil"
 	"log"
 	"strconv"
+
+	"github.com/docopt/docopt-go"
+	"github.com/pkg/errors"
 
 	"net/http"
 	"time"
@@ -16,128 +17,11 @@ import (
 )
 
 var (
-	done          = make(chan struct{})
 	statHost      = "localhost"
 	statPort      = 10853
 	refreshPeriod = 1 // seconds
 	currentView   = "main"
 )
-
-// These two types generalize the one above
-
-type NameCount struct {
-	Name     string `json:"name"`
-	Estimate int64  `json:"estimate"`
-}
-
-type InstantRates struct {
-	Packets struct {
-		//Ipv4  int64 `json:"ipv4"`
-		//Ipv6  int64 `json:"ipv6"`
-		//Tcp   int64 `json:"tcp"`
-		//Total int64 `json:"total"`
-		//Udp   int64 `json:"udp"`
-		In  int64 `json:"in"`
-		Out int64 `json:"out"`
-	} `json:"packets"`
-	//DNS struct {
-	//InstantRates struct {
-	//	In  int64 `json:"in"`
-	//	Out int64 `json:"out"`
-	//} `json:"rates"`
-	//}
-}
-
-type StatSnapshot struct {
-	DNS struct {
-		WirePackets struct {
-			Ipv4     int64 `json:"ipv4"`
-			Ipv6     int64 `json:"ipv6"`
-			Queries  int64 `json:"queries"`
-			Replies  int64 `json:"replies"`
-			Tcp      int64 `json:"tcp"`
-			Total    int64 `json:"total"`
-			Udp      int64 `json:"udp"`
-			NoError  int64 `json:"noerror"`
-			NxDomain int64 `json:"nxdomain"`
-			SrvFail  int64 `json:"srvfail"`
-			Refused  int64 `json:"refused"`
-		} `json:"wire_packets"`
-		Cardinality struct {
-			Qname int64 `json:"qname"`
-		} `json:"cardinality"`
-		Xact struct {
-			Counts struct {
-				Total int64 `json:"total"`
-			} `json:"counts"`
-			In struct {
-				QuantilesUS struct {
-					P50 int64 `json:"p50"`
-					P90 int64 `json:"p90"`
-					P95 int64 `json:"p95"`
-					P99 int64 `json:"p99"`
-				} `json:"quantiles_us"`
-				TopSlow []NameCount `json:"top_slow"`
-				Total   int64       `json:"total"`
-			} `json:"in"`
-			Out struct {
-				QuantilesUS struct {
-					P50 int64 `json:"p50"`
-					P90 int64 `json:"p90"`
-					P95 int64 `json:"p95"`
-					P99 int64 `json:"p99"`
-				} `json:"quantiles_us"`
-				TopSlow []NameCount `json:"top_slow"`
-				Total   int64       `json:"total"`
-			} `json:"out"`
-		} `json:"xact"`
-		TopQname2   []NameCount `json:"top_qname2"`
-		TopQname3   []NameCount `json:"top_qname3"`
-		TopNX       []NameCount `json:"top_nxdomain"`
-		TopQtype    []NameCount `json:"top_qtype"`
-		TopRcode    []NameCount `json:"top_rcode"`
-		TopREFUSED  []NameCount `json:"top_refused"`
-		TopSRVFAIL  []NameCount `json:"top_srvfail"`
-		TopUDPPorts []NameCount `json:"top_udp_ports"`
-	} `json:"dns"`
-	Packets struct {
-		Cardinality struct {
-			DstIpsOut int64 `json:"dst_ips_out"`
-			SrcIpsIn  int64 `json:"src_ips_in"`
-		} `json:"cardinality"`
-		Ipv4        int64 `json:"ipv4"`
-		Ipv6        int64 `json:"ipv6"`
-		Tcp         int64 `json:"tcp"`
-		Total       int64 `json:"total"`
-		Udp         int64 `json:"udp"`
-		In          int64 `json:"in"`
-		Out         int64 `json:"out"`
-		OtherL4     int64 `json:"other_l4"`
-		DeepSamples int64 `json:"deep_samples"`
-		Rates       struct {
-			Pps_in struct {
-				P50 int64 `json:"p50"`
-				P90 int64 `json:"p90"`
-				P95 int64 `json:"p95"`
-				P99 int64 `json:"p99"`
-			} `json:"pps_in"`
-			Pps_out struct {
-				P50 int64 `json:"p50"`
-				P90 int64 `json:"p90"`
-				P95 int64 `json:"p95"`
-				P99 int64 `json:"p99"`
-			} `json:"pps_out"`
-		} `json:"rates"`
-		TopIpv4   []NameCount `json:"top_ipv4"`
-		TopIpv6   []NameCount `json:"top_ipv6"`
-		TopGeoLoc []NameCount `json:"top_geoLoc"`
-		TopASN    []NameCount `json:"top_asn"`
-	} `json:"packets"`
-	Period struct {
-		StartTS int64 `json:"start_ts"`
-		Length  int64 `json:"length"`
-	} `json:"period"`
-}
 
 func main() {
 	usage := `pktvisor v3 UI
@@ -166,7 +50,10 @@ func main() {
 		log.Panicln(err)
 	}
 
-	go counter(g)
+	ctx, cncl := context.WithCancel(context.Background())
+	defer cncl()
+
+	go counter(ctx, g)
 
 	if err := g.MainLoop(); err != nil && err != gocui.ErrQuit {
 		maxX, maxY := g.Size()
@@ -181,10 +68,10 @@ func updateHeader(v *gocui.View, rates *InstantRates, stats *StatSnapshot) {
 	inOutDiff := pcounts.Total - (pcounts.In + pcounts.Out)
 	_, _ = fmt.Fprintf(v, "Pkts  %d | UDP %d (%3.1f%%) | TCP %d (%3.1f%%) | Other %d (%3.1f%%) | IPv4 %d (%3.1f%%) | IPv6 %d (%3.1f%%) | In %d (%3.1f%%) | Out %d (%3.1f%%) | Deep Samples %d (%3.1f%%)\n",
 		pcounts.Total,
-		pcounts.Udp,
-		(float64(pcounts.Udp)/float64(pcounts.Total))*100,
-		pcounts.Tcp,
-		(float64(pcounts.Tcp)/float64(pcounts.Total))*100,
+		pcounts.UDP,
+		(float64(pcounts.UDP)/float64(pcounts.Total))*100,
+		pcounts.TCP,
+		(float64(pcounts.TCP)/float64(pcounts.Total))*100,
 		pcounts.OtherL4,
 		(float64(pcounts.OtherL4)/float64(pcounts.Total))*100,
 		pcounts.Ipv4,
@@ -216,10 +103,10 @@ func updateHeader(v *gocui.View, rates *InstantRates, stats *StatSnapshot) {
 	_, _ = fmt.Fprintf(v, "DNS Wire Pkts %d (%3.1f%%) | UDP %d (%3.1f%%) | TCP %d (%3.1f%%) | IPv4 %d (%3.1f%%) | IPv6 %d (%3.1f%%) | Query %d (%3.1f%%) | Response %d (%3.1f%%)\n",
 		dnsc.Total,
 		(float64(dnsc.Total)/float64(pcounts.Total))*100,
-		dnsc.Udp,
-		(float64(dnsc.Udp)/float64(dnsc.Total))*100,
-		dnsc.Tcp,
-		(float64(dnsc.Tcp)/float64(dnsc.Total))*100,
+		dnsc.UDP,
+		(float64(dnsc.UDP)/float64(dnsc.Total))*100,
+		dnsc.TCP,
+		(float64(dnsc.TCP)/float64(dnsc.Total))*100,
 		dnsc.Ipv4,
 		(float64(dnsc.Ipv4)/float64(dnsc.Total))*100,
 		dnsc.Ipv6,
@@ -275,13 +162,12 @@ func updateTable(data []NameCount, v *gocui.View, baseNumber int64) {
 		} else {
 			numStr = fmt.Sprintf("%d", stat.Estimate)
 		}
-		fmt.Fprintf(v, "%-" + strconv.Itoa(w - len(numStr) - 1) + "s %s\n", stat.Name, numStr)
+		fmt.Fprintf(v, "%-"+strconv.Itoa(w-len(numStr)-1)+"s %s\n", stat.Name, numStr)
 		top3++
 	}
 }
 
 func doMainView(g *gocui.Gui) error {
-
 	maxX, _ := g.Size()
 
 	//viewsWidth := 15
@@ -521,71 +407,49 @@ func keybindings(g *gocui.Gui) error {
 }
 
 func quit(g *gocui.Gui, v *gocui.View) error {
-	close(done)
 	return gocui.ErrQuit
 }
 
-func getStats() (StatSnapshot, InstantRates, error) {
-
-	url := fmt.Sprintf("http://%s:%d/api/v1/metrics/window/5", statHost, statPort)
-
+func getMetrics(url string, payload interface{}) error {
 	spaceClient := http.Client{
 		Timeout: time.Second * 2, // Maximum of 2 secs
 	}
 
-	var rawStats map[string]StatSnapshot
-	var rawRates InstantRates
-	var emptyStats StatSnapshot
-
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
-		return emptyStats, rawRates, err
+		return err
 	}
 
 	res, getErr := spaceClient.Do(req)
 	if getErr != nil {
-		return emptyStats, rawRates, getErr
+		return getErr
 	}
 	if res.StatusCode != 200 {
-		return emptyStats, rawRates, errors.New("500 error from pktvisord getting stats")
+		return errors.New("500 error from pktvisord getting stats")
 	}
 
-	data, readErr := ioutil.ReadAll(res.Body)
-	if readErr != nil {
-		return emptyStats, rawRates, readErr
-	}
-
-	err = json.Unmarshal(data, &rawStats)
+	err = json.NewDecoder(res.Body).Decode(&payload)
 	if err != nil {
-		return emptyStats, rawRates, err
+		return err
 	}
+	return nil
+}
 
-	url = fmt.Sprintf("http://%s:%d/api/v1/metrics/rates", statHost, statPort)
-
-	req, err = http.NewRequest(http.MethodGet, url, nil)
+func getStats() (*StatSnapshot, *InstantRates, error) {
+	var rawStats map[string]StatSnapshot
+	err := getMetrics(fmt.Sprintf("http://%s:%d/api/v1/metrics/window/5", statHost, statPort), &rawStats)
 	if err != nil {
-		return emptyStats, rawRates, err
+		return nil, nil, err
 	}
+	raw5m := rawStats["5m"]
 
-	res, getErr = spaceClient.Do(req)
-	if getErr != nil {
-		return emptyStats, rawRates, getErr
-	}
-	if res.StatusCode != 200 {
-		return emptyStats, rawRates, errors.New("500 error from pktvisord getting stats")
-	}
-
-	data, readErr = ioutil.ReadAll(res.Body)
-	if readErr != nil {
-		return emptyStats, rawRates, readErr
-	}
-
-	err = json.Unmarshal(data, &rawRates)
+	var rawRates InstantRates
+	err = getMetrics(fmt.Sprintf("http://%s:%d/api/v1/metrics/rates", statHost, statPort), &rawRates)
 	if err != nil {
-		return emptyStats, rawRates, err
+		return nil, nil, err
 	}
 
-	return rawStats["5m"], rawRates, nil
+	return &raw5m, &rawRates, nil
 }
 
 func updateViews(g *gocui.Gui) {
@@ -599,7 +463,7 @@ func updateViews(g *gocui.Gui) {
 		if err != nil {
 			return err
 		}
-		updateHeader(v, &rates, &stats)
+		updateHeader(v, rates, stats)
 		currentView = "main"
 		if currentView == "main" {
 			v, err = g.View("top_ipv4")
@@ -686,11 +550,11 @@ func updateViews(g *gocui.Gui) {
 
 }
 
-func counter(g *gocui.Gui) {
+func counter(ctx context.Context, g *gocui.Gui) {
 	updateViews(g)
 	for {
 		select {
-		case <-done:
+		case <-ctx.Done():
 			return
 		case <-time.After(time.Second * time.Duration(refreshPeriod)):
 			updateViews(g)
