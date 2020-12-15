@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -x
 
 # if a file called external/run.sh exists, run it.
 FILE=external/run.sh

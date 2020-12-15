@@ -1,3 +1,5 @@
-.idea/
+.idea*
 cmake-build-*/
-cmd/.idea/
+.DS_Store*
+docs/html-documentation-generated*
+tests/external
