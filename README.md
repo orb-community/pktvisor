@@ -157,12 +157,12 @@ cmake ..
 make
 ```
 
-Building the docker image:
+Building the docker image (from the root project directory):
 ```
 org="myorg"
 image="mypktvisor"
 tag="latest"
-docker build -t ${org}/${image}:${tag} -f Dockerfile .
+docker build -t ${org}/${image}:${tag} -f docker/Dockerfile .
 ```
 
 Contributions
