@@ -1,10 +1,10 @@
 cmake_minimum_required(VERSION 3.13)
-project(pktvisor3)
+project(pktvisor)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
 # this is the source of truth for version, which will be written to config.h include file.
-project(pktvisord VERSION 3.0.8)
+project(pktvisord VERSION 3.1.0)
 set(PKTVISOR_VERSION_NUM ${PROJECT_VERSION})
 set(PKTVISOR_VERSION "pktvisor ${PROJECT_VERSION}")
 
@@ -68,6 +68,27 @@ else()
             )
 endif()
 
+add_library(pktvisorcore-m
+        src-m/InputManager.cpp
+        )
+
+target_include_directories(pktvisorcore-m
+        PUBLIC
+        ${CMAKE_SOURCE_DIR}/3rd
+        )
+
+if (APPLE)
+    target_link_libraries(pktvisorcore-m
+            PRIVATE
+            "-framework CoreFoundation"
+            "-framework SystemConfiguration"
+            )
+else()
+    target_link_libraries(pktvisorcore-m
+            PRIVATE
+            )
+endif()
+
 if (MMDB_ENABLE)
     target_include_directories(pktvisorcore
             PUBLIC
@@ -93,8 +114,17 @@ add_executable(pktvisord
         src/main.cpp
         )
 
+add_executable(pktvisord-m
+        3rd/docopt/docopt.cpp
+        cmd/pktvisord/main.cpp
+        )
+
 target_link_libraries(pktvisord
         PRIVATE pktvisorcore pktvisor-dns
+        )
+
+target_link_libraries(pktvisord-m
+        PRIVATE pktvisorcore-m
         )
 
 add_executable(unit-tests
@@ -128,6 +158,7 @@ target_link_libraries(unit-tests
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 configure_file(src/config.h.in config.h @ONLY)
+configure_file(src-m/config.h.in config.h @ONLY)
 
 enable_testing()
 

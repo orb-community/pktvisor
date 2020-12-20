@@ -1,0 +1,5 @@
+#pragma once
+
+#cmakedefine MMDB_ENABLE
+#cmakedefine PKTVISOR_VERSION_NUM "@PKTVISOR_VERSION_NUM@"
+#cmakedefine PKTVISOR_VERSION "@PKTVISOR_VERSION@"
