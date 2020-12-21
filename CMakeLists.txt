@@ -70,11 +70,15 @@ endif()
 
 add_library(pktvisorcore-m
         src-m/InputManager.cpp
+        src-m/HandlerManager.cpp
+        src-m/StreamHandler.cpp
+        src-m/StreamInput.cpp
         )
 
 target_include_directories(pktvisorcore-m
         PUBLIC
         ${CMAKE_SOURCE_DIR}/3rd
+        ${CMAKE_SOURCE_DIR}/src-m
         )
 
 if (APPLE)

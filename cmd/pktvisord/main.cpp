@@ -4,6 +4,9 @@
 #include <cpp-httplib/httplib.h>
 #include <docopt/docopt.h>
 
+#include "HandlerManager.h"
+#include "InputManager.h"
+
 #include "config.h"
 
 static const char USAGE[] =
@@ -38,112 +41,41 @@ static const char USAGE[] =
 
 void setupRoutes(httplib::Server &svr)
 {
-
 }
-
 
 int main(int argc, char *argv[])
 {
+    int result{0};
+
     std::map<std::string, docopt::value> args = docopt::docopt(USAGE,
         {argv + 1, argv + argc},
         true,              // show help if requested
         PKTVISOR_VERSION); // version string
 
-//    std::string bpf;
-//    if (args["-b"]) {
-//        bpf = args["-b"].asString();
-//    }
-//
-//    if (args["-H"]) {
-//        auto spec = args["-H"].asString();
-//        try {
-//            pktvisor::parseHostSpec(spec, hostIPv4, hostIPv6);
-//        } catch (const std::exception &e) {
-//            std::cerr << e.what() << std::endl;
-//            return -1;
-//        }
-//    }
-//
-//    long periods{0};
-//    if (args["--periods"]) {
-//        periods = args["--periods"].asLong();
-//    }
-//
-//    pktvisor::TcpDnsReassembly tcpDnsReassembly(onGotTcpDnsMessage);
-//    int result = 0;
-//    int sampleRate = 100;
-//    if (args["--max-deep-sample"]) {
-//        sampleRate = (int)args["--max-deep-sample"].asLong();
-//        if (sampleRate != 100) {
-//            std::cerr << "Using maximum deep sample rate: " << sampleRate << "%" << std::endl;
-//        }
-//    }
-//
-//    if ((args["TARGET"].asString().rfind(".pcap") != std::string::npos) || (args["TARGET"].asString().rfind(".cap") != std::string::npos)) {
-//        showHosts();
-//        try {
-//            metricsManager = std::make_unique<pktvisor::MetricsMgr>(args["--summary"].asBool(), 5, sampleRate);
-//            handleGeo(args["--geo-city"], args["--geo-asn"]);
-//            openPcap(args["TARGET"].asString(), tcpDnsReassembly, bpf);
-//            if (args["--summary"].asBool()) {
-//                // in summary mode we output a single summary of stats
-//                std::cout << std::endl << metricsManager->getMetrics() << std::endl;
-//            }
-//            else {
-//                // otherwise, merge the max time window available
-//                std::cout << std::endl << metricsManager->getMetricsMerged(periods) << std::endl;
-//            }
-//        } catch (const std::exception &e) {
-//            std::cerr << e.what() << std::endl;
-//            return -1;
-//        }
-//    } else {
-//        metricsManager = std::make_unique<pktvisor::MetricsMgr>(false, periods, sampleRate);
-//        handleGeo(args["--geo-city"], args["--geo-asn"]);
-//        pcpp::PcapLiveDevice *dev(nullptr);
-//        // extract pcap live device by interface name or IP address
-//        pcpp::IPv4Address interfaceIP4(args["TARGET"].asString());
-//        pcpp::IPv6Address interfaceIP6(args["TARGET"].asString());
-//        if (interfaceIP4.isValid() || interfaceIP6.isValid()) {
-//            if (interfaceIP4.isValid()) {
-//                dev = pcpp::PcapLiveDeviceList::getInstance().getPcapLiveDeviceByIp(interfaceIP4);
-//            } else {
-//                dev = pcpp::PcapLiveDeviceList::getInstance().getPcapLiveDeviceByIp(interfaceIP6);
-//            }
-//            if (dev == NULL) {
-//                std::cerr << "Couldn't find interface by provided IP: " << args["TARGET"].asString() << std::endl;
-//                return -1;
-//            }
-//        } else {
-//            dev = pcpp::PcapLiveDeviceList::getInstance().getPcapLiveDeviceByName(args["TARGET"].asString());
-//            if (dev == NULL) {
-//                std::cerr << "Couldn't find interface by provided name: " << args["TARGET"].asString() << std::endl;
-//                return -1;
-//            }
-//        }
-//        httplib::Server svr;
-//        setupRoutes(svr);
-//        auto host = args["-l"].asString();
-//        auto port = args["-p"].asLong();
-//        std::thread httpThread([&svr, host, port] {
-//            if (!svr.listen(host.c_str(), port)) {
-//                throw std::runtime_error("unable to listen");
-//            }
-//        });
-//        std::cerr << "Metrics web server listening on " << host << ":" << port << std::endl;
-//        try {
-//            std::cerr << "Interface " << dev->getName() << std::endl;
-//            getHostsFromIface(dev);
-//            showHosts();
-//            openIface(dev, tcpDnsReassembly, bpf);
-//        } catch (const std::exception &e) {
-//            std::cerr << e.what() << std::endl;
-//            result = -1;
-//        }
-//        svr.stop();
-//        httpThread.join();
-//    }
+    httplib::Server svr;
 
-//    return result;
-    return 0;
+    pktvisor::InputManager input_manager(svr);
+    pktvisor::HandlerManager handler_manager(svr);
+
+    auto host = args["-l"].asString();
+    auto port = args["-p"].asLong();
+
+    std::thread httpThread([&svr, host, port] {
+        if (!svr.listen(host.c_str(), port)) {
+            throw std::runtime_error("unable to listen");
+        }
+    });
+
+    std::cerr << "Metrics web server listening on " << host << ":" << port << std::endl;
+
+    try {
+
+    } catch (const std::exception &e) {
+        std::cerr << e.what() << std::endl;
+        result = -1;
+    }
+    svr.stop();
+    httpThread.join();
+
+    return result;
 }
