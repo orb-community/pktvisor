@@ -5,7 +5,9 @@
 #include <docopt/docopt.h>
 
 #include "HandlerManager.h"
+#include "HandlerRegistry.h"
 #include "InputManager.h"
+#include "InputRegistry.h"
 
 #include "config.h"
 
@@ -39,13 +41,14 @@ static const char USAGE[] =
       --version             Show version
 )";
 
-void setupRoutes(httplib::Server &svr)
-{
-}
-
 int main(int argc, char *argv[])
 {
     int result{0};
+    std::cout << "start main\n";
+
+    // no-op, just forces static singleton initialization
+    InputRegistry.get_mutable_instance().init_registry();
+    HandlerRegistry.get_mutable_instance().init_registry();
 
     std::map<std::string, docopt::value> args = docopt::docopt(USAGE,
         {argv + 1, argv + argc},
@@ -60,22 +63,22 @@ int main(int argc, char *argv[])
     auto host = args["-l"].asString();
     auto port = args["-p"].asLong();
 
-    std::thread httpThread([&svr, host, port] {
-        if (!svr.listen(host.c_str(), port)) {
-            throw std::runtime_error("unable to listen");
-        }
-    });
-
-    std::cerr << "Metrics web server listening on " << host << ":" << port << std::endl;
-
-    try {
-
-    } catch (const std::exception &e) {
-        std::cerr << e.what() << std::endl;
-        result = -1;
-    }
-    svr.stop();
-    httpThread.join();
+    //    std::thread httpThread([&svr, host, port] {
+    //        if (!svr.listen(host.c_str(), port)) {
+    //            throw std::runtime_error("unable to listen");
+    //        }
+    //    });
+    //
+    //    std::cerr << "Metrics web server listening on " << host << ":" << port << std::endl;
+    //
+    //    try {
+    //
+    //    } catch (const std::exception &e) {
+    //        std::cerr << e.what() << std::endl;
+    //        result = -1;
+    //    }
+    //    svr.stop();
+    //    httpThread.join();
 
     return result;
 }

@@ -68,30 +68,7 @@ else()
             )
 endif()
 
-add_library(pktvisorcore-m
-        src-m/InputManager.cpp
-        src-m/HandlerManager.cpp
-        src-m/StreamHandler.cpp
-        src-m/StreamInput.cpp
-        )
 
-target_include_directories(pktvisorcore-m
-        PUBLIC
-        ${CMAKE_SOURCE_DIR}/3rd
-        ${CMAKE_SOURCE_DIR}/src-m
-        )
-
-if (APPLE)
-    target_link_libraries(pktvisorcore-m
-            PRIVATE
-            "-framework CoreFoundation"
-            "-framework SystemConfiguration"
-            )
-else()
-    target_link_libraries(pktvisorcore-m
-            PRIVATE
-            )
-endif()
 
 if (MMDB_ENABLE)
     target_include_directories(pktvisorcore
@@ -118,17 +95,9 @@ add_executable(pktvisord
         src/main.cpp
         )
 
-add_executable(pktvisord-m
-        3rd/docopt/docopt.cpp
-        cmd/pktvisord/main.cpp
-        )
 
 target_link_libraries(pktvisord
         PRIVATE pktvisorcore pktvisor-dns
-        )
-
-target_link_libraries(pktvisord-m
-        PRIVATE pktvisorcore-m
         )
 
 add_executable(unit-tests
@@ -205,10 +174,56 @@ add_test(NAME pktvisor-ftest-ipv6-tcp-geo
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/tests
         COMMAND ${CMAKE_SOURCE_DIR}/tests/integration.sh ${CMAKE_BINARY_DIR}/pktvisord output-templates/dns_ipv6_tcp_geo.json -- -H 127.0.0.1/32 --geo-city fixtures/GeoIP2-City-Test.mmdb --geo-asn fixtures/GeoIP2-ISP-Test.mmdb fixtures/dns_ipv6_tcp.pcap
         )
-endif()
+endif ()
 
 add_test(NAME external-tests
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/tests
         COMMAND ${CMAKE_SOURCE_DIR}/tests/external.sh ${CMAKE_BINARY_DIR}/pktvisord
         )
 
+############ Modular Support Below
+
+message(STATUS "Modular support will build")
+
+add_library(pktvisorcore-m
+        src-m/InputManager.cpp
+        src-m/HandlerManager.cpp
+        src-m/StreamHandler.cpp
+        src-m/StreamInput.cpp
+        src-m/InputRegistry.cpp
+        src-m/InputModuleDesc.cpp
+        src-m/HandlerModuleDesc.cpp
+        src-m/HandlerRegistry.cpp
+        )
+
+target_include_directories(pktvisorcore-m
+        PUBLIC
+        ${CMAKE_SOURCE_DIR}/3rd
+        ${CMAKE_SOURCE_DIR}/src-m
+        )
+
+if (APPLE)
+    target_link_libraries(pktvisorcore-m
+            PRIVATE
+            "-framework CoreFoundation"
+            "-framework SystemConfiguration"
+            )
+else ()
+    target_link_libraries(pktvisorcore-m
+            PRIVATE
+            )
+endif ()
+
+add_executable(pktvisord-m
+        3rd/docopt/docopt.cpp
+        cmd/pktvisord/main.cpp
+        )
+
+target_link_libraries(pktvisord-m
+        PRIVATE pktvisorcore-m
+        )
+
+add_subdirectory(src-m/inputs/pcap)
+
+add_subdirectory(src-m/handlers/net)
+add_subdirectory(src-m/handlers/dns)
