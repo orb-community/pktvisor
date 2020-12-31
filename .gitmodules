@@ -1,0 +1,3 @@
+[submodule "3rd/corrade"]
+	path = 3rd/corrade
+	url = git@github.com:ns1/corrade.git

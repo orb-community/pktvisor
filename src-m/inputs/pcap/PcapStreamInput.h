@@ -1,8 +1,18 @@
 #ifndef PKTVISORD_PCAPSTREAMINPUT_H
 #define PKTVISORD_PCAPSTREAMINPUT_H
 
-class PcapStreamInput
+#include "InputModuleDesc.h"
+
+namespace pktvisor {
+namespace input {
+namespace pcap {
+
+class PcapStreamInput : public pktvisor::InputModuleDesc
 {
 };
+
+}
+}
+}
 
 #endif //PKTVISORD_PCAPSTREAMINPUT_H

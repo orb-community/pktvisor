@@ -13,9 +13,9 @@ void pktvisor::InputRegistryClass::get_registry() const
 {
     std::cout << "getting input registry\n";
 }
-void pktvisor::InputRegistryClass::register_module(const std::string &mod)
+void pktvisor::InputRegistryClass::register_module(InputModuleDesc *mod)
 {
-    std::cout << "registering input module: " << mod << "\n";
+    std::cout << "registering input module: " << mod->get_module_name() << "\n";
     _modules.emplace_back(mod);
 }
 void pktvisor::InputRegistryClass::init_registry()
@@ -23,7 +23,7 @@ void pktvisor::InputRegistryClass::init_registry()
     std::cout << "initing input registry (no-op)\n";
     // TODO move to generated include file
     // no-op, forces initialization
-    PcapInputModule.get_const_instance();
+    GetPcapInputModule()->get_module_name();
     // TODO --
 }
 

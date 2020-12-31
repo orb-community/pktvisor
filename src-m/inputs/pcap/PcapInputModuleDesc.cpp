@@ -6,10 +6,16 @@
 
 extern lib::Singleton<pktvisor::InputRegistryClass> InputRegistry;
 
-pktvisor::PcapInputModuleDesc::PcapInputModuleDesc()
+static pktvisor::PcapInputModuleDesc *PcapInputModule;
+pktvisor::PcapInputModuleDesc *GetPcapInputModule(void)
 {
-    std::cout << "construct pcap input module\n";
-    InputRegistry.get_mutable_instance().register_module("pcap");
+    PcapInputModule = new pktvisor::PcapInputModuleDesc();
+    return PcapInputModule;
 }
 
-lib::Singleton<pktvisor::PcapInputModuleDesc> PcapInputModule;
+pktvisor::PcapInputModuleDesc::PcapInputModuleDesc()
+    : InputModuleDesc("pcap")
+{
+    std::cout << "construct pcap input module\n";
+    InputRegistry.get_mutable_instance().register_module(PcapInputModule);
+}

@@ -5,11 +5,17 @@
 #include <docopt/docopt.h>
 
 #include "HandlerManager.h"
-#include "HandlerRegistry.h"
 #include "InputManager.h"
-#include "InputRegistry.h"
+#include "InputModuleDesc.h"
 
-#include "config.h"
+#include <Corrade/PluginManager/Manager.h>
+#include <Corrade/PluginManager/PluginMetadata.h>
+#include <Corrade/Utility/Arguments.h>
+#include <Corrade/Utility/ConfigurationGroup.h>
+#include <Corrade/Utility/Debug.h>
+#include <Corrade/Utility/DebugStl.h>
+
+#include "config.h" // FIXME
 
 static const char USAGE[] =
     R"(pktvisord.
@@ -44,16 +50,32 @@ static const char USAGE[] =
 int main(int argc, char *argv[])
 {
     int result{0};
-    std::cout << "start main\n";
 
-    // no-op, just forces static singleton initialization
-    InputRegistry.get_mutable_instance().init_registry();
-    HandlerRegistry.get_mutable_instance().init_registry();
+    CORRADE_PLUGIN_IMPORT(PcapInput)
+
+    std::cout << "start main\n";
 
     std::map<std::string, docopt::value> args = docopt::docopt(USAGE,
         {argv + 1, argv + argc},
         true,              // show help if requested
         PKTVISOR_VERSION); // version string
+
+    Corrade::PluginManager::Manager<pktvisor::InputModuleDesc> manager;
+
+    if (!(manager.load("PcapInput") & Corrade::PluginManager::LoadState::Loaded)) {
+
+        Corrade::Utility::Error{} << "The requested plugin "
+                                  << "PcapInput"
+                                  << " cannot be loaded.";
+        return 2;
+    }
+
+    Corrade::Containers::Pointer<pktvisor::InputModuleDesc> pcap = manager.instantiate("PcapInput");
+
+    Corrade::Utility::Debug{} << "Using plugin" << '\'' + pcap->metadata()->data().value("name") + '\''
+                              << "...\n";
+
+    Corrade::Utility::Debug{} << "Name:     " << pcap->name();
 
     httplib::Server svr;
 
