@@ -9,6 +9,16 @@ namespace pcap {
 
 class PcapStreamInput : public pktvisor::InputModuleDesc
 {
+public:
+    explicit PcapStreamInput(Corrade::PluginManager::AbstractManager &manager, const std::string &plugin)
+        : pktvisor::InputModuleDesc{manager, plugin}
+    {
+    }
+
+    std::string name() const override
+    {
+        return "Pcap Input";
+    }
 };
 
 }
