@@ -72,7 +72,7 @@ int main(int argc, char *argv[])
 
     Corrade::Containers::Pointer<pktvisor::InputModuleDesc> pcap = manager.instantiate("PcapInput");
 
-    Corrade::Utility::Debug{} << "Using plugin" << '\'' + pcap->metadata()->data().value("name") + '\''
+    Corrade::Utility::Debug{} << "Using plugin" << '\'' + pcap->metadata()->data().value("desc") + '\''
                               << "...\n";
 
     Corrade::Utility::Debug{} << "Name:     " << pcap->name();

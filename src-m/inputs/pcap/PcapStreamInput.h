@@ -17,7 +17,7 @@ public:
 
     std::string name() const override
     {
-        return "Pcap Input";
+        return "PcapStreamInput";
     }
 };
 
