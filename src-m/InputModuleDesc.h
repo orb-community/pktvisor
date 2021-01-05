@@ -2,6 +2,7 @@
 #define PKTVISORD_INPUTMODULEDESC_H
 
 #include <Corrade/PluginManager/AbstractPlugin.h>
+#include <cpp-httplib/httplib.h>
 #include <string>
 #include <vector>
 
@@ -27,6 +28,8 @@ public:
     }
 
     virtual std::string name() const = 0;
+
+    virtual void setup_routes(httplib::Server &svr) = 0;
 };
 
 }

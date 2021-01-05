@@ -16,6 +16,7 @@
 #include <Corrade/Utility/DebugStl.h>
 
 #include "config.h" // FIXME
+#include "inputs/static_plugins.h"
 
 static const char USAGE[] =
     R"(pktvisord.
@@ -51,56 +52,59 @@ int main(int argc, char *argv[])
 {
     int result{0};
 
-    CORRADE_PLUGIN_IMPORT(PcapInput)
-
-    std::cout << "start main\n";
-
     std::map<std::string, docopt::value> args = docopt::docopt(USAGE,
         {argv + 1, argv + argc},
         true,              // show help if requested
         PKTVISOR_VERSION); // version string
 
-    Corrade::PluginManager::Manager<pktvisor::InputModuleDesc> manager;
+    Corrade::PluginManager::Manager<pktvisor::InputModuleDesc> inputRegistry;
 
-    if (!(manager.load("PcapInput") & Corrade::PluginManager::LoadState::Loaded)) {
-
-        Corrade::Utility::Error{} << "The requested plugin "
-                                  << "PcapInput"
-                                  << " cannot be loaded.";
-        return 2;
-    }
-
-    Corrade::Containers::Pointer<pktvisor::InputModuleDesc> pcap = manager.instantiate("PcapInput");
-
-    Corrade::Utility::Debug{} << "Using plugin" << '\'' + pcap->metadata()->data().value("desc") + '\''
-                              << "...\n";
-
-    Corrade::Utility::Debug{} << "Name:     " << pcap->name();
+    //    if (!(inputRegistry.load("PcapInput") & Corrade::PluginManager::LoadState::Loaded)) {
+    //
+    //        Corrade::Utility::Error{} << "The requested plugin "
+    //                                  << "PcapInput"
+    //                                  << " cannot be loaded.";
+    //        return 2;
+    //    }
+    //
+    //    Corrade::Containers::Pointer<pktvisor::InputModuleDesc> pcap = inputRegistry.instantiate("PcapInput");
+    //
+    //    Corrade::Utility::Debug{} << "Using plugin" << '\'' + pcap->metadata()->data().value("desc") + '\''
+    //                              << "...\n";
+    //
+    //    Corrade::Utility::Debug{} << "Name:     " << pcap->name();
 
     httplib::Server svr;
 
     pktvisor::InputManager input_manager(svr);
     pktvisor::HandlerManager handler_manager(svr);
 
+    // set up input modules
+    for (auto &s : inputRegistry.pluginList()) {
+        Corrade::Utility::Debug{} << "Input Name:     " << s;
+        Corrade::Containers::Pointer<pktvisor::InputModuleDesc> mod = inputRegistry.instantiate(s);
+        mod->setup_routes(svr);
+    }
+
     auto host = args["-l"].asString();
     auto port = args["-p"].asLong();
 
-    //    std::thread httpThread([&svr, host, port] {
-    //        if (!svr.listen(host.c_str(), port)) {
-    //            throw std::runtime_error("unable to listen");
-    //        }
-    //    });
-    //
-    //    std::cerr << "Metrics web server listening on " << host << ":" << port << std::endl;
-    //
-    //    try {
-    //
-    //    } catch (const std::exception &e) {
-    //        std::cerr << e.what() << std::endl;
-    //        result = -1;
-    //    }
-    //    svr.stop();
-    //    httpThread.join();
+    std::thread httpThread([&svr, host, port] {
+        if (!svr.listen(host.c_str(), port)) {
+            throw std::runtime_error("unable to listen");
+        }
+    });
+
+    std::cerr << "web server listening on " << host << ":" << port << std::endl;
+
+    try {
+
+    } catch (const std::exception &e) {
+        std::cerr << e.what() << std::endl;
+        result = -1;
+    }
+    svr.stop();
+    httpThread.join();
 
     return result;
 }

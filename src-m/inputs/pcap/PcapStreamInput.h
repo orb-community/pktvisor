@@ -19,6 +19,8 @@ public:
     {
         return "PcapStreamInput";
     }
+
+    void setup_routes(httplib::Server &svr) override;
 };
 
 }

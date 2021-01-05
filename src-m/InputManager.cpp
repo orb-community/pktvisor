@@ -1,5 +1,4 @@
 #include "InputManager.h"
-#include "InputRegistry.h"
 
 void pktvisor::InputManager::_setup_routes(httplib::Server &svr)
 {
