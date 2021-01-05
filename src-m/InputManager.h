@@ -10,12 +10,17 @@ namespace pktvisor {
 
 class InputManager
 {
-    std::vector<StreamInput> _inputs;
+    std::vector<std::unique_ptr<StreamInput>> _inputs;
 
 public:
     InputManager()
         : _inputs()
     {
+    }
+
+    void add_module(std::unique_ptr<StreamInput> &&m)
+    {
+        _inputs.emplace_back(std::move(m));
     }
 };
 

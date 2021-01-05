@@ -11,9 +11,10 @@ namespace pktvisor {
 
 class InputModuleDesc : public Corrade::PluginManager::AbstractPlugin
 {
-    std::shared_ptr<pktvisor::InputManager> _input_manager;
 
 protected:
+    std::shared_ptr<pktvisor::InputManager> _input_manager;
+
     virtual void _setup_routes(httplib::Server &svr) = 0;
 
 public:

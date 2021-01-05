@@ -1,30 +1,20 @@
 #ifndef PKTVISORD_PCAPSTREAMINPUT_H
 #define PKTVISORD_PCAPSTREAMINPUT_H
 
-#include "InputModuleDesc.h"
+#include "StreamInput.h"
 
 namespace pktvisor {
 namespace input {
-namespace pcap {
 
-class PcapStreamInput : public pktvisor::InputModuleDesc
+class PcapStreamInput : public pktvisor::StreamInput
 {
-protected:
-    void _setup_routes(httplib::Server &svr) override;
-
 public:
-    explicit PcapStreamInput(Corrade::PluginManager::AbstractManager &manager, const std::string &plugin)
-        : pktvisor::InputModuleDesc{manager, plugin}
+    PcapStreamInput()
+        : pktvisor::StreamInput()
     {
-    }
-
-    std::string name() const override
-    {
-        return "PcapStreamInput";
     }
 };
 
-}
 }
 }
 

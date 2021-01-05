@@ -2,7 +2,7 @@ message(STATUS "Input Module: Pcap")
 
 set_directory_properties(PROPERTIES CORRADE_USE_PEDANTIC_FLAGS ON)
 
-corrade_add_static_plugin(PcapInput ${CMAKE_CURRENT_BINARY_DIR} PcapInput.conf PcapStreamInput.cpp)
+corrade_add_static_plugin(PcapInput ${CMAKE_CURRENT_BINARY_DIR} PcapInput.conf PcapStreamInputDesc.cpp PcapStreamInput.cpp)
 
 target_include_directories(PcapInput
         PRIVATE

@@ -59,52 +59,33 @@ int main(int argc, char *argv[])
 
     Corrade::PluginManager::Manager<pktvisor::InputModuleDesc> inputRegistry;
 
-    //    if (!(inputRegistry.load("PcapInput") & Corrade::PluginManager::LoadState::Loaded)) {
-    //
-    //        Corrade::Utility::Error{} << "The requested plugin "
-    //                                  << "PcapInput"
-    //                                  << " cannot be loaded.";
-    //        return 2;
-    //    }
-    //
-    //    Corrade::Containers::Pointer<pktvisor::InputModuleDesc> pcap = inputRegistry.instantiate("PcapInput");
-    //
-    //    Corrade::Utility::Debug{} << "Using plugin" << '\'' + pcap->metadata()->data().value("desc") + '\''
-    //                              << "...\n";
-    //
-    //    Corrade::Utility::Debug{} << "Name:     " << pcap->name();
-
     httplib::Server svr;
 
     std::shared_ptr<pktvisor::InputManager> input_manager = std::make_shared<pktvisor::InputManager>();
     pktvisor::HandlerManager handler_manager(svr);
 
     // set up input modules
+    // FIXME - need to store in vector to keep alive
+    Corrade::Containers::Pointer<pktvisor::InputModuleDesc> mod;
     for (auto &s : inputRegistry.pluginList()) {
         Corrade::Utility::Debug{} << "Input Name:     " << s;
-        Corrade::Containers::Pointer<pktvisor::InputModuleDesc> mod = inputRegistry.instantiate(s);
+        mod = inputRegistry.instantiate(s);
         mod->init_module(input_manager, svr);
     }
 
     auto host = args["-l"].asString();
     auto port = args["-p"].asLong();
 
-    std::thread httpThread([&svr, host, port] {
+    try {
         if (!svr.listen(host.c_str(), port)) {
             throw std::runtime_error("unable to listen");
         }
-    });
-
-    std::cerr << "web server listening on " << host << ":" << port << std::endl;
-
-    try {
-
+        std::cerr << "web server listening on " << host << ":" << port << std::endl;
     } catch (const std::exception &e) {
         std::cerr << e.what() << std::endl;
         result = -1;
     }
     svr.stop();
-    httpThread.join();
 
     return result;
 }
