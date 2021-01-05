@@ -11,7 +11,7 @@ namespace pktvisor {
 namespace input {
 namespace pcap {
 
-void PcapStreamInput::setup_routes(httplib::Server &svr)
+void PcapStreamInput::_setup_routes(httplib::Server &svr)
 {
 
     // CREATE

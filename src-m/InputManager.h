@@ -12,12 +12,10 @@ class InputManager
 {
     std::vector<StreamInput> _inputs;
 
-    void _setup_routes(httplib::Server &svr);
-
 public:
-    InputManager(httplib::Server &svr)
+    InputManager()
+        : _inputs()
     {
-        _setup_routes(svr);
     }
 };
 

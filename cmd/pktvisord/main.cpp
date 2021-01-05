@@ -76,14 +76,14 @@ int main(int argc, char *argv[])
 
     httplib::Server svr;
 
-    pktvisor::InputManager input_manager(svr);
+    std::shared_ptr<pktvisor::InputManager> input_manager = std::make_shared<pktvisor::InputManager>();
     pktvisor::HandlerManager handler_manager(svr);
 
     // set up input modules
     for (auto &s : inputRegistry.pluginList()) {
         Corrade::Utility::Debug{} << "Input Name:     " << s;
         Corrade::Containers::Pointer<pktvisor::InputModuleDesc> mod = inputRegistry.instantiate(s);
-        mod->setup_routes(svr);
+        mod->init_module(input_manager, svr);
     }
 
     auto host = args["-l"].asString();
