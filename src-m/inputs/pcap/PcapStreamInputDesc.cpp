@@ -37,10 +37,7 @@ void PcapStreamInputDesc::_setup_routes(httplib::Server &svr)
             }
             auto input_module = std::make_unique<PcapStreamInput>();
             // TODO configure the module with data from post body
-            auto [err, errString] = input_module->start();
-            if (err) {
-                throw std::runtime_error(errString);
-            }
+            input_module->start();
             _input_manager->add_module(std::move(input_module));
             success["name"] = body["name"];
             res.set_content(success.dump(), "text/json");

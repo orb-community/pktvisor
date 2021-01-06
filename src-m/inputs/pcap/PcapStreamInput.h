@@ -136,22 +136,22 @@ class PcapStreamInput : public pktvisor::StreamInput
     IPv4subnetList hostIPv4;
     IPv6subnetList hostIPv6;
     std::unique_ptr<TcpDnsReassembly> _tcpReassembly;
-//    typedef std::pair<TcpDnsReassembly *, bool> pcapContext;
+    pcpp::PcapLiveDevice *_pcapDevice;
 
 protected:
     void onGotDnsMessage(pktvisor::DnsLayer *dnsLayer, Direction dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowKey, timespec stamp);
-//    void onGotTcpDnsMessage(pktvisor::DnsLayer *dnsLayer, Direction dir, pcpp::ProtocolType l3, uint32_t flowKey, timespec stamp);
 
-//    void onApplicationInterrupted(void *cookie);
     void openPcap(std::string fileName, std::string bpfFilter = "");
-    void openIface(pcpp::PcapLiveDevice *dev, std::string bpfFilter = "");
-    void getHostsFromIface(pcpp::PcapLiveDevice *dev);
+    void openIface(std::string bpfFilter = "");
+    void getHostsFromIface();
 
 public:
     PcapStreamInput();
-    maybeError start() override;
+    ~PcapStreamInput();
+    void start() override;
     void stop() override;
 
+    // public so it can be called from a static callback method
     void processRawPacket(pcpp::RawPacket *rawPacket);
 
 };

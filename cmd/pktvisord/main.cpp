@@ -60,6 +60,9 @@ int main(int argc, char *argv[])
     Corrade::PluginManager::Manager<pktvisor::InputModuleDesc> inputRegistry;
 
     httplib::Server svr;
+    svr.set_logger([](const auto& req, const auto& res) {
+        Corrade::Utility::Debug{} << req.path << " " << res.status;
+    });
 
     std::shared_ptr<pktvisor::InputManager> input_manager = std::make_shared<pktvisor::InputManager>();
     pktvisor::HandlerManager handler_manager(svr);
@@ -68,7 +71,6 @@ int main(int argc, char *argv[])
     // TODO store instances in vector to keep alive
     Corrade::Containers::Pointer<pktvisor::InputModuleDesc> mod;
     for (auto &s : inputRegistry.pluginList()) {
-        Corrade::Utility::Debug{} << "Input Name:     " << s;
         mod = inputRegistry.instantiate(s);
         mod->init_module(input_manager, svr);
     }

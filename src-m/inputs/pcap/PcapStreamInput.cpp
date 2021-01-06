@@ -13,13 +13,15 @@
 #include <cstdint>
 #include <cstring>
 #include <assert.h>
+#include <Corrade/Utility/Debug.h>
 
 namespace pktvisor {
 namespace input {
 
 PcapStreamInput::PcapStreamInput()
-    : pktvisor::StreamInput()
+    : pktvisor::StreamInput(), _pcapDevice(nullptr)
 {
+    Corrade::Utility::Debug{} << "PcapStreamInput Create";
 
     _tcpReassembly = std::make_unique<TcpDnsReassembly>([this](pktvisor::DnsLayer *l, Direction dir, pcpp::ProtocolType l3, uint32_t flowKey, timespec stamp) {
         onGotDnsMessage(l, dir, l3, pcpp::TCP, flowKey, stamp);
@@ -27,46 +29,49 @@ PcapStreamInput::PcapStreamInput()
 
 }
 
-PcapStreamInput::maybeError PcapStreamInput::start()
+PcapStreamInput::~PcapStreamInput() {
+    Corrade::Utility::Debug{} << "PcapStreamInput Destroy";
+}
+
+void PcapStreamInput::start()
 {
-    pcpp::PcapLiveDevice *dev(nullptr);
 
     // extract pcap live device by interface name or IP address
     // TODO
-    std::string TARGET;
+    std::string TARGET("en0");
     pcpp::IPv4Address interfaceIP4(TARGET);
     pcpp::IPv6Address interfaceIP6(TARGET);
     if (interfaceIP4.isValid() || interfaceIP6.isValid()) {
         if (interfaceIP4.isValid()) {
-            dev = pcpp::PcapLiveDeviceList::getInstance().getPcapLiveDeviceByIp(interfaceIP4);
+            _pcapDevice = pcpp::PcapLiveDeviceList::getInstance().getPcapLiveDeviceByIp(interfaceIP4);
         } else {
-            dev = pcpp::PcapLiveDeviceList::getInstance().getPcapLiveDeviceByIp(interfaceIP6);
+            _pcapDevice = pcpp::PcapLiveDeviceList::getInstance().getPcapLiveDeviceByIp(interfaceIP6);
         }
-        if (dev == NULL) {
-            std::string err("Couldn't find interface by provided IP: " + TARGET);
-            return {false, err};
+        if (_pcapDevice == nullptr) {
+            throw std::runtime_error("Couldn't find interface by provided IP: " + TARGET);
         }
     } else {
-        dev = pcpp::PcapLiveDeviceList::getInstance().getPcapLiveDeviceByName(TARGET);
-        if (dev == NULL) {
-            std::string err("Couldn't find interface by provided name: " + TARGET);
-            return {false, err};
+        _pcapDevice = pcpp::PcapLiveDeviceList::getInstance().getPcapLiveDeviceByName(TARGET);
+        if (_pcapDevice == nullptr) {
+            throw std::runtime_error("Couldn't find interface by provided name: " + TARGET);
         }
     }
-    try {
 //        std::cerr << "Interface " << dev->getName() << std::endl;
-        getHostsFromIface(dev);
+        getHostsFromIface();
 //        showHosts();
         std::string bpf;
-        openIface(dev, bpf);
-    } catch (const std::exception &e) {
-        return {false, e.what()};
-    }
-    return {true, ""};
+        openIface(bpf);
+
 }
 
 void PcapStreamInput::stop()
 {
+    // stop capturing and close the live device
+    _pcapDevice->stopCapture();
+    _pcapDevice->close();
+
+    // close all connections which are still opened
+    _tcpReassembly->getTcpReassembly()->closeAllConnections();
 }
 
 // got a full DNS wire message. called from all l3 and l4.
@@ -214,18 +219,14 @@ void PcapStreamInput::openPcap(std::string fileName, std::string bpfFilter)
 /**
  * packet capture callback - called whenever a packet arrives on the live device (in live device capturing mode)
  */
-static bool onLivePacketArrives(pcpp::RawPacket *rawPacket, pcpp::PcapLiveDevice *dev, void *cookie)
+static void onLivePacketArrives(pcpp::RawPacket *rawPacket, pcpp::PcapLiveDevice *dev, void *cookie)
 {
+    Corrade::Utility::Debug{} << "packet arrives";
     PcapStreamInput *dC = (PcapStreamInput *)cookie;
     dC->processRawPacket(rawPacket);
-    // false means don't stop capturing after this callback runs
-    // this is controlled by onApplicationInterrupted
-//    return dC->second;
-    // TODO
-    return false;
 }
 
-void PcapStreamInput::openIface(pcpp::PcapLiveDevice *dev, std::string bpfFilter)
+void PcapStreamInput::openIface(std::string bpfFilter)
 {
 
     pcpp::PcapLiveDevice::DeviceConfiguration config;
@@ -242,17 +243,17 @@ void PcapStreamInput::openIface(pcpp::PcapLiveDevice *dev, std::string bpfFilter
     config.packetBufferTimeoutMs = 100;
 
     // try to open device
-    if (!dev->open(config))
+    if (!_pcapDevice->open(config))
         throw std::runtime_error("Cannot open interface");
 
     // set BPF filter if set by the user
     if (bpfFilter != "") {
-        if (!dev->setFilter(bpfFilter))
+        if (!_pcapDevice->setFilter(bpfFilter))
             throw std::runtime_error("Cannot set BPF filter to interface");
         //        std::cerr << "BPF: " << bpfFilter << std::endl;
     }
 
-    printf("Starting packet capture on '%s'...\n", dev->getName());
+    //printf("Starting packet capture on '%s'...\n", dev->getName());
 
     // register the on app close event to print summary stats on app termination
     //pcapContext dC = {&tcpReassembly, false};
@@ -265,7 +266,7 @@ void PcapStreamInput::openIface(pcpp::PcapLiveDevice *dev, std::string bpfFilter
     // start capturing packets
     bool capturing = true;
     while (capturing) {
-        auto result = dev->startCaptureBlockingMode(onLivePacketArrives, this, 2);
+        auto result = _pcapDevice->startCapture(onLivePacketArrives, this);
         switch (result) {
         case 0:
             // error
@@ -283,17 +284,11 @@ void PcapStreamInput::openIface(pcpp::PcapLiveDevice *dev, std::string bpfFilter
         }
     }
 
-    // stop capturing and close the live device
-    dev->stopCapture();
-    dev->close();
-
-    // close all connections which are still opened
-    _tcpReassembly->getTcpReassembly()->closeAllConnections();
 }
 
-void PcapStreamInput::getHostsFromIface(pcpp::PcapLiveDevice *dev)
+void PcapStreamInput::getHostsFromIface()
 {
-    auto addrs = dev->getAddresses();
+    auto addrs = _pcapDevice->getAddresses();
     for (auto i : addrs) {
         if (!i.addr) {
             continue;
