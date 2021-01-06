@@ -15,11 +15,21 @@ target_include_directories(PcapInput
         ${Corrade_BINARY_DIR}/src # FIXME configure.h, probably not right
         )
 
-target_link_libraries(PcapInput
-        PRIVATE
-        ${LIBPCPP_LDFLAGS}
-        ${LIBPCPP_LIBRARIES}
-        )
+if (APPLE)
+    target_link_libraries(PcapInput
+            PRIVATE
+            "-L${LIBPCPP_LIBRARY_DIRS}"
+            ${LIBPCPP_LIBRARIES}
+            "-framework CoreFoundation"
+            "-framework SystemConfiguration"
+            )
+else ()
+    target_link_libraries(PcapInput
+            PRIVATE
+            ${LIBPCPP_LDFLAGS}
+            ${LIBPCPP_LIBRARIES}
+            )
+endif ()
 
 target_link_libraries(pktvisorcore-m
         PRIVATE
