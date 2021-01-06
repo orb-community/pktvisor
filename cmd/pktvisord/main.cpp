@@ -65,7 +65,7 @@ int main(int argc, char *argv[])
     pktvisor::HandlerManager handler_manager(svr);
 
     // set up input modules
-    // FIXME - need to store in vector to keep alive
+    // TODO store instances in vector to keep alive
     Corrade::Containers::Pointer<pktvisor::InputModuleDesc> mod;
     for (auto &s : inputRegistry.pluginList()) {
         Corrade::Utility::Debug{} << "Input Name:     " << s;
