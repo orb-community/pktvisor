@@ -53,7 +53,7 @@ void TcpDnsSession::receive_data(const char data[], size_t len)
     }
 }
 
-static void tcpReassemblyConnectionStartCallback(const pcpp::ConnectionData& connectionData, void *userCookie)
+static void   tcpReassemblyConnectionStartCallback(const pcpp::ConnectionData& connectionData, void *userCookie)
 {
 
     // only track DNS connections

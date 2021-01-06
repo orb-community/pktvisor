@@ -4,7 +4,7 @@
 #include "StreamInput.h"
 #include <IpAddress.h>
 #include <PcapLiveDeviceList.h>
-#include <TcpReassembly.h>1
+#include <TcpReassembly.h>
 #include <functional>
 #include <memory>
 #include <vector>
@@ -135,25 +135,25 @@ class PcapStreamInput : public pktvisor::StreamInput
 {
     IPv4subnetList hostIPv4;
     IPv6subnetList hostIPv6;
-    typedef std::pair<TcpDnsReassembly *, bool> devCookie;
+    std::unique_ptr<TcpDnsReassembly> _tcpReassembly;
+//    typedef std::pair<TcpDnsReassembly *, bool> pcapContext;
 
 protected:
     void onGotDnsMessage(pktvisor::DnsLayer *dnsLayer, Direction dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowKey, timespec stamp);
-    void onGotTcpDnsMessage(pktvisor::DnsLayer *dnsLayer, Direction dir, pcpp::ProtocolType l3, uint32_t flowKey, timespec stamp);
-    void onApplicationInterrupted(void *cookie);
-    void processRawPacket(pcpp::RawPacket *rawPacket, TcpDnsReassembly *tcpReassembly);
-    void openPcap(std::string fileName, TcpDnsReassembly &tcpReassembly, std::string bpfFilter = "");
-    bool onLivePacketArrives(pcpp::RawPacket *rawPacket, pcpp::PcapLiveDevice *dev, void *cookie);
-    void openIface(pcpp::PcapLiveDevice *dev, TcpDnsReassembly &tcpReassembly, std::string bpfFilter = "");
+//    void onGotTcpDnsMessage(pktvisor::DnsLayer *dnsLayer, Direction dir, pcpp::ProtocolType l3, uint32_t flowKey, timespec stamp);
+
+//    void onApplicationInterrupted(void *cookie);
+    void openPcap(std::string fileName, std::string bpfFilter = "");
+    void openIface(pcpp::PcapLiveDevice *dev, std::string bpfFilter = "");
     void getHostsFromIface(pcpp::PcapLiveDevice *dev);
 
 public:
-    PcapStreamInput()
-        : pktvisor::StreamInput()
-    {
-    }
+    PcapStreamInput();
     maybeError start() override;
     void stop() override;
+
+    void processRawPacket(pcpp::RawPacket *rawPacket);
+
 };
 
 }

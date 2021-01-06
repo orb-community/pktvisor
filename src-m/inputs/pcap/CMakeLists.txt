@@ -15,10 +15,13 @@ target_include_directories(PcapInput
         ${Corrade_BINARY_DIR}/src # FIXME configure.h, probably not right
         )
 
-# FIXME should this happen here?
-target_link_libraries(pktvisorcore-m
+target_link_libraries(PcapInput
         PRIVATE
         ${LIBPCPP_LDFLAGS}
-        ${LIBPCPP_LIBRARIES}}
+        ${LIBPCPP_LIBRARIES}
+        )
+
+target_link_libraries(pktvisorcore-m
+        PRIVATE
         PcapInput
-        Corrade::PluginManager)
+        )

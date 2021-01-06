@@ -24,22 +24,12 @@ target_include_directories(pktvisorcore-m
         ${Corrade_BINARY_DIR}/src # FIXME configure.h, probably not right
         )
 
-if (APPLE)
-    target_link_libraries(pktvisorcore-m
-            PRIVATE
-            "-framework CoreFoundation"
-            "-framework SystemConfiguration"
-            Corrade::PluginManager
-            )
-else ()
-    target_link_libraries(pktvisorcore-m
-            PRIVATE
-            Corrade::PluginManager
-            )
-endif ()
+target_link_libraries(pktvisorcore-m
+        PRIVATE
+        Corrade::PluginManager
+        )
 
 configure_file(config.h.in config.h @ONLY)
-
 
 add_subdirectory(inputs/pcap)
 

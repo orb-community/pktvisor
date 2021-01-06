@@ -10,9 +10,22 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <IpUtils.h>
+#include <cstdint>
+#include <cstring>
+#include <assert.h>
 
 namespace pktvisor {
 namespace input {
+
+PcapStreamInput::PcapStreamInput()
+    : pktvisor::StreamInput()
+{
+
+    _tcpReassembly = std::make_unique<TcpDnsReassembly>([this](pktvisor::DnsLayer *l, Direction dir, pcpp::ProtocolType l3, uint32_t flowKey, timespec stamp) {
+        onGotDnsMessage(l, dir, l3, pcpp::TCP, flowKey, stamp);
+    });
+
+}
 
 PcapStreamInput::maybeError PcapStreamInput::start()
 {
@@ -40,6 +53,15 @@ PcapStreamInput::maybeError PcapStreamInput::start()
             return {false, err};
         }
     }
+    try {
+//        std::cerr << "Interface " << dev->getName() << std::endl;
+        getHostsFromIface(dev);
+//        showHosts();
+        std::string bpf;
+        openIface(dev, bpf);
+    } catch (const std::exception &e) {
+        return {false, e.what()};
+    }
     return {true, ""};
 }
 
@@ -64,26 +86,21 @@ void PcapStreamInput::onGotDnsMessage(pktvisor::DnsLayer *dnsLayer, Direction di
     }*/
 };
 
-// called only for TCP, both IPv4 and 6
-void PcapStreamInput::onGotTcpDnsMessage(pktvisor::DnsLayer *dnsLayer, Direction dir, pcpp::ProtocolType l3, uint32_t flowKey, timespec stamp)
-{
-    onGotDnsMessage(dnsLayer, dir, l3, pcpp::TCP, flowKey, stamp);
-}
 
 /**
  * The callback to be called when application is terminated by ctrl-c. Stops the endless while loop
  */
-void PcapStreamInput::onApplicationInterrupted(void *cookie)
+/*void PcapStreamInput::onApplicationInterrupted(void *cookie)
 {
     //    std::cerr << "\nstopping..." << std::endl;
-    devCookie *dC = (devCookie *)cookie;
+    pcapContext *dC = (pcapContext *)cookie;
     dC->second = true;
-}
+}*/
 
 /**
  * Called for live and pcap
  */
-void PcapStreamInput::processRawPacket(pcpp::RawPacket *rawPacket, TcpDnsReassembly *tcpReassembly)
+void PcapStreamInput::processRawPacket(pcpp::RawPacket *rawPacket)
 {
 
     pcpp::ProtocolType l3(pcpp::UnknownProtocol), l4(pcpp::UnknownProtocol);
@@ -142,7 +159,7 @@ void PcapStreamInput::processRawPacket(pcpp::RawPacket *rawPacket, TcpDnsReassem
     }*/
 }
 
-void PcapStreamInput::openPcap(std::string fileName, TcpDnsReassembly &tcpReassembly, std::string bpfFilter)
+void PcapStreamInput::openPcap(std::string fileName, std::string bpfFilter)
 {
     // open input file (pcap or pcapng file)
     pcpp::IFileReaderDevice *reader = pcpp::IFileReaderDevice::getReader(fileName.c_str());
@@ -157,8 +174,8 @@ void PcapStreamInput::openPcap(std::string fileName, TcpDnsReassembly &tcpReasse
             throw std::runtime_error("Cannot set BPF filter to pcap file");
     }
 
-    devCookie dC = {&tcpReassembly, false};
-    pcpp::ApplicationEventHandler::getInstance().onApplicationInterrupted(onApplicationInterrupted, &dC);
+    // TODO
+//    pcpp::ApplicationEventHandler::getInstance().onApplicationInterrupted(onApplicationInterrupted, &dC);
 
     // run in a loop that reads one packet from the file in each iteration and feeds it to the TCP reassembly instance
     pcpp::RawPacket rawPacket;
@@ -166,7 +183,7 @@ void PcapStreamInput::openPcap(std::string fileName, TcpDnsReassembly &tcpReasse
     if (reader->getNextPacket(rawPacket)) {
         // TODO interface to handler
         //        metricsManager->setInitialShiftTS(&rawPacket);
-        processRawPacket(&rawPacket, &tcpReassembly);
+        processRawPacket(&rawPacket);
     }
 
     int packetCount = 0, lastCount = 0;
@@ -178,15 +195,16 @@ void PcapStreamInput::openPcap(std::string fileName, TcpDnsReassembly &tcpReasse
         pktvisor::Timer::Interval(1000), false);
     t.start();
     // dC.second answers question "stopping?"
-    while (reader->getNextPacket(rawPacket) && !dC.second) {
+//    while (reader->getNextPacket(rawPacket) && !dC.second) {
+    while (reader->getNextPacket(rawPacket)) {
         packetCount++;
         lastCount++;
-        processRawPacket(&rawPacket, &tcpReassembly);
+        processRawPacket(&rawPacket);
     }
     t.stop();
 
     // after all packets have been read - close the connections which are still opened
-    tcpReassembly.getTcpReassembly()->closeAllConnections();
+    _tcpReassembly->getTcpReassembly()->closeAllConnections();
 
     // close the reader and free its memory
     reader->close();
@@ -196,16 +214,18 @@ void PcapStreamInput::openPcap(std::string fileName, TcpDnsReassembly &tcpReasse
 /**
  * packet capture callback - called whenever a packet arrives on the live device (in live device capturing mode)
  */
-bool PcapStreamInput::onLivePacketArrives(pcpp::RawPacket *rawPacket, pcpp::PcapLiveDevice *dev, void *cookie)
+static bool onLivePacketArrives(pcpp::RawPacket *rawPacket, pcpp::PcapLiveDevice *dev, void *cookie)
 {
-    devCookie *dC = (devCookie *)cookie;
-    processRawPacket(rawPacket, dC->first);
+    PcapStreamInput *dC = (PcapStreamInput *)cookie;
+    dC->processRawPacket(rawPacket);
     // false means don't stop capturing after this callback runs
     // this is controlled by onApplicationInterrupted
-    return dC->second;
+//    return dC->second;
+    // TODO
+    return false;
 }
 
-void PcapStreamInput::openIface(pcpp::PcapLiveDevice *dev, TcpDnsReassembly &tcpReassembly, std::string bpfFilter)
+void PcapStreamInput::openIface(pcpp::PcapLiveDevice *dev, std::string bpfFilter)
 {
 
     pcpp::PcapLiveDevice::DeviceConfiguration config;
@@ -235,8 +255,9 @@ void PcapStreamInput::openIface(pcpp::PcapLiveDevice *dev, TcpDnsReassembly &tcp
     printf("Starting packet capture on '%s'...\n", dev->getName());
 
     // register the on app close event to print summary stats on app termination
-    devCookie dC = {&tcpReassembly, false};
-    pcpp::ApplicationEventHandler::getInstance().onApplicationInterrupted(onApplicationInterrupted, &dC);
+    //pcapContext dC = {&tcpReassembly, false};
+    // TODO
+//    pcpp::ApplicationEventHandler::getInstance().onApplicationInterrupted(onApplicationInterrupted, &dC);
 
     // TODO
     //    metricsManager->setInitialShiftTS();
@@ -244,7 +265,7 @@ void PcapStreamInput::openIface(pcpp::PcapLiveDevice *dev, TcpDnsReassembly &tcp
     // start capturing packets
     bool capturing = true;
     while (capturing) {
-        auto result = dev->startCaptureBlockingMode(onLivePacketArrives, &dC, 2);
+        auto result = dev->startCaptureBlockingMode(onLivePacketArrives, this, 2);
         switch (result) {
         case 0:
             // error
@@ -252,7 +273,8 @@ void PcapStreamInput::openIface(pcpp::PcapLiveDevice *dev, TcpDnsReassembly &tcp
             break;
         case -1:
             // timeout expired, see if we should still capture. dC.second answers question "stopping?"
-            capturing = !dC.second;
+            // TODO reference our stopping member variable
+//            capturing = !dC.second;
             break;
         case 1:
             // onpacketarrived told us to stop
@@ -266,7 +288,7 @@ void PcapStreamInput::openIface(pcpp::PcapLiveDevice *dev, TcpDnsReassembly &tcp
     dev->close();
 
     // close all connections which are still opened
-    tcpReassembly.getTcpReassembly()->closeAllConnections();
+    _tcpReassembly->getTcpReassembly()->closeAllConnections();
 }
 
 void PcapStreamInput::getHostsFromIface(pcpp::PcapLiveDevice *dev)
@@ -309,6 +331,157 @@ void PcapStreamInput::getHostsFromIface(pcpp::PcapLiveDevice *dev)
             hostIPv6.emplace_back(IPv6subnet(pcpp::IPv6Address(buf1), len));
         }
     }
+}
+
+TcpDnsSession::TcpDnsSession(
+    malformed_data_cb malformed_data_handler,
+    got_dns_msg_cb got_dns_msg_handler)
+    : _malformed_data{std::move(malformed_data_handler)}
+    , _got_dns_msg{std::move(got_dns_msg_handler)}
+{
+}
+
+// accumulate data and try to extract DNS messages
+void TcpDnsSession::receive_data(const char data[], size_t len)
+{
+    const size_t MIN_DNS_QUERY_SIZE = 17;
+    const size_t MAX_DNS_QUERY_SIZE = 512;
+
+    _buffer.append(data, len);
+
+    for (;;) {
+        std::uint16_t size;
+
+        if (_buffer.size() < sizeof(size))
+            break;
+
+        // size is in network byte order.
+        size = static_cast<unsigned char>(_buffer[1]) | static_cast<unsigned char>(_buffer[0]) << 8;
+
+        if (size < MIN_DNS_QUERY_SIZE || size > MAX_DNS_QUERY_SIZE) {
+            _malformed_data();
+            break;
+        }
+
+        if (_buffer.size() >= sizeof(size) + size) {
+            auto data = std::make_unique<char[]>(size);
+            std::memcpy(data.get(), _buffer.data() + sizeof(size), size);
+            _buffer.erase(0, sizeof(size) + size);
+            _got_dns_msg(std::move(data), size);
+        } else {
+            // Nope, we need more data.
+            break;
+        }
+    }
+}
+
+
+static void tcpReassemblyConnectionStartCallback(const pcpp::ConnectionData& connectionData, void *userCookie)
+{
+
+    // only track DNS connections
+    /*
+    if (!pktvisor::DnsLayer::isDnsPort(connectionData.srcPort) && !pktvisor::DnsLayer::isDnsPort(connectionData.dstPort)) {
+        return;
+    }
+     */
+
+    TcpReassemblyMgr *reassemblyMgr = (TcpReassemblyMgr *)userCookie;
+    auto connMgr = reassemblyMgr->connMgr;
+    // get a pointer to the connection manager
+
+    // look for the connection in the connection manager
+    auto iter = connMgr.find(connectionData.flowKey);
+
+    // assuming it's a new connection
+    if (iter == connMgr.end()) {
+        // add it to the connection manager
+        connMgr.insert(std::make_pair(connectionData.flowKey, TcpReassemblyData(connectionData.srcIP.getType() == pcpp::IPAddress::IPv4AddressType)));
+    }
+}
+
+static void tcpReassemblyConnectionEndCallback(const pcpp::ConnectionData& connectionData, pcpp::TcpReassembly::ConnectionEndReason reason, void *userCookie)
+{
+    TcpReassemblyMgr *reassemblyMgr = (TcpReassemblyMgr *)userCookie;
+    auto connMgr = reassemblyMgr->connMgr;
+    // get a pointer to the connection manager
+
+    // find the connection in the connection manager by the flow key
+    auto iter = connMgr.find(connectionData.flowKey);
+
+    // connection wasn't found, we didn't track
+    if (iter == connMgr.end())
+        return;
+
+    // remove the connection from the connection manager
+    connMgr.erase(iter);
+}
+
+TcpDnsReassembly::TcpDnsReassembly(TcpReassemblyMgr::process_dns_msg_cb process_dns_handler)
+    : _reassemblyMgr()
+{
+
+    auto tcpReassemblyMsgReadyCallback = [](int8_t sideIndex, const pcpp::TcpStreamData &tcpData, void *userCookie) {
+        // extract the connection manager from the user cookie
+        TcpReassemblyMgr *reassemblyMgr = (TcpReassemblyMgr *)userCookie;
+        auto connMgr = reassemblyMgr->connMgr;
+        auto flowKey = tcpData.getConnectionData().flowKey;
+
+        // check if this flow already appears in the connection manager. If not add it
+        auto iter = connMgr.find(flowKey);
+
+        // if not tracking connection, and it's DNS, then start tracking.
+        if (iter == connMgr.end() /*&& (pktvisor::DnsLayer::isDnsPort(tcpData.getConnectionData().srcPort) || pktvisor::DnsLayer::isDnsPort(tcpData.getConnectionData().dstPort))*/) {
+            connMgr.insert(std::make_pair(flowKey, TcpReassemblyData(tcpData.getConnectionData().srcIP.getType() == pcpp::IPAddress::IPv4AddressType)));
+            iter = connMgr.find(tcpData.getConnectionData().flowKey);
+        }
+        else {
+            // not tracking
+            return;
+        }
+
+        int side(0);
+
+        // if this messages comes on a different side than previous message seen on this connection
+        if (sideIndex != iter->second.curSide) {
+            // count number of message in each side
+//            iter->second.numOfMessagesFromSide[sideIndex]++;
+
+            // set side index as the current active side
+            iter->second.curSide = sideIndex;
+        }
+
+        // count number of packets and bytes in each side of the connection
+//        iter->second.numOfDataPackets[sideIndex]++;
+//        iter->second.bytesFromSide[sideIndex] += (int)tcpData.getDataLength();
+
+        pcpp::ProtocolType l3Type(iter->second.l3Type);
+
+        auto malformed_data = []() {
+            //            std::cerr << "malformed\n";
+        };
+        auto got_dns_message = [reassemblyMgr, sideIndex, l3Type, flowKey, tcpData](std::unique_ptr<const char[]> data,
+                                                                                    size_t size) {
+            pcpp::Packet dnsRequest;
+            // TODO fixme
+            //pktvisor::DnsLayer dnsLayer((uint8_t *)data.get(), size, nullptr, &dnsRequest);
+            auto dir = (sideIndex == 0) ? fromHost : toHost;
+            timespec eT{0,0};
+            TIMEVAL_TO_TIMESPEC(&tcpData.getConnectionData().endTime, &eT)
+            reassemblyMgr->process_dns_handler(nullptr, dir, l3Type, flowKey, eT);
+        };
+        if (!iter->second.dnsSession[side].get()) {
+            iter->second.dnsSession[side] = std::make_shared<TcpDnsSession>(malformed_data, got_dns_message);
+        }
+        iter->second.dnsSession[side]->receive_data((char *)tcpData.getData(), tcpData.getDataLength());
+    };
+
+    _reassemblyMgr.process_dns_handler = process_dns_handler;
+    _tcpReassembly = std::make_shared<pcpp::TcpReassembly>(
+        tcpReassemblyMsgReadyCallback,
+        &_reassemblyMgr,
+        tcpReassemblyConnectionStartCallback,
+        tcpReassemblyConnectionEndCallback);
 }
 
 }

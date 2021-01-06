@@ -206,4 +206,3 @@ target_include_directories(pktvisord-m
         )
 
 target_link_libraries(pktvisord-m PRIVATE pktvisorcore-m)
-target_link_libraries(pktvisord-m PRIVATE PcapInput Corrade::PluginManager) # FIXME not here
