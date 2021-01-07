@@ -4,7 +4,7 @@ pkg_check_modules(LIBPCPP REQUIRED PcapPlusPlus)
 
 set_directory_properties(PROPERTIES CORRADE_USE_PEDANTIC_FLAGS ON)
 
-corrade_add_static_plugin(PcapInput ${CMAKE_CURRENT_BINARY_DIR} PcapInput.conf PcapStreamInputDesc.cpp PcapStreamInput.cpp)
+corrade_add_static_plugin(PcapInput ${CMAKE_CURRENT_BINARY_DIR} PcapInput.conf PcapInputModulePlugin.cpp PcapInputStream.cpp)
 
 target_include_directories(PcapInput
         PRIVATE

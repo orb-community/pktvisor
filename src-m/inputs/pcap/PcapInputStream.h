@@ -1,7 +1,7 @@
-#ifndef PKTVISORD_PCAPSTREAMINPUT_H
-#define PKTVISORD_PCAPSTREAMINPUT_H
+#ifndef PKTVISORD_PCAPINPUTSTREAM_H
+#define PKTVISORD_PCAPINPUTSTREAM_H
 
-#include "StreamInput.h"
+#include "InputStream.h"
 #include <IpAddress.h>
 #include <PcapLiveDeviceList.h>
 #include <TcpReassembly.h>
@@ -131,7 +131,7 @@ private:
     std::shared_ptr<pcpp::TcpReassembly> _tcpReassembly;
 };
 
-class PcapStreamInput : public pktvisor::StreamInput
+class PcapInputStream : public pktvisor::InputStream
 {
     IPv4subnetList hostIPv4;
     IPv6subnetList hostIPv6;
@@ -146,17 +146,16 @@ protected:
     void getHostsFromIface();
 
 public:
-    PcapStreamInput();
-    ~PcapStreamInput();
+    PcapInputStream();
+    ~PcapInputStream();
     void start() override;
     void stop() override;
 
     // public so it can be called from a static callback method
     void processRawPacket(pcpp::RawPacket *rawPacket);
-
 };
 
 }
 }
 
-#endif //PKTVISORD_PCAPSTREAMINPUT_H
+#endif //PKTVISORD_PCAPINPUTSTREAM_H

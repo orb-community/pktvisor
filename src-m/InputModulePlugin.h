@@ -1,7 +1,7 @@
-#ifndef PKTVISORD_INPUTMODULEDESC_H
-#define PKTVISORD_INPUTMODULEDESC_H
+#ifndef PKTVISORD_INPUTMODULEPLUGIN_H
+#define PKTVISORD_INPUTMODULEPLUGIN_H
 
-#include "InputManager.h"
+#include "InputStreamManager.h"
 #include <Corrade/PluginManager/AbstractPlugin.h>
 #include <cpp-httplib/httplib.h>
 #include <string>
@@ -9,11 +9,11 @@
 
 namespace pktvisor {
 
-class InputModuleDesc : public Corrade::PluginManager::AbstractPlugin
+class InputModulePlugin : public Corrade::PluginManager::AbstractPlugin
 {
 
 protected:
-    std::shared_ptr<pktvisor::InputManager> _input_manager;
+    std::shared_ptr<pktvisor::InputStreamManager> _input_manager;
 
     virtual void _setup_routes(httplib::Server &svr) = 0;
 
@@ -28,16 +28,16 @@ public:
         return {""};
     }
 
-    explicit InputModuleDesc(Corrade::PluginManager::AbstractManager &manager, const std::string &plugin)
+    explicit InputModulePlugin(Corrade::PluginManager::AbstractManager &manager, const std::string &plugin)
         : AbstractPlugin{manager, plugin}
     {
     }
 
     virtual std::string name() const = 0;
 
-    void init_module(std::shared_ptr<pktvisor::InputManager> im, httplib::Server &svr);
+    void init_module(std::shared_ptr<pktvisor::InputStreamManager> im, httplib::Server &svr);
 };
 
 }
 
-#endif //PKTVISORD_INPUTMODULEDESC_H
+#endif //PKTVISORD_INPUTMODULEPLUGIN_H

@@ -1,3 +1,5 @@
+#include <csignal>
+#include <functional>
 #include <iostream>
 #include <map>
 
@@ -5,8 +7,8 @@
 #include <docopt/docopt.h>
 
 #include "HandlerManager.h"
-#include "InputManager.h"
-#include "InputModuleDesc.h"
+#include "InputModulePlugin.h"
+#include "InputStreamManager.h"
 
 #include <Corrade/PluginManager/Manager.h>
 #include <Corrade/PluginManager/PluginMetadata.h>
@@ -48,6 +50,14 @@ static const char USAGE[] =
       --version             Show version
 )";
 
+namespace {
+std::function<void(int)> shutdown_handler;
+void signal_handler(int signal)
+{
+    shutdown_handler(signal);
+}
+}
+
 int main(int argc, char *argv[])
 {
     int result{0};
@@ -57,19 +67,29 @@ int main(int argc, char *argv[])
         true,              // show help if requested
         PKTVISOR_VERSION); // version string
 
-    Corrade::PluginManager::Manager<pktvisor::InputModuleDesc> inputRegistry;
+    Corrade::PluginManager::Manager<pktvisor::InputModulePlugin> inputRegistry;
 
     httplib::Server svr;
-    svr.set_logger([](const auto& req, const auto& res) {
+    svr.set_logger([](const auto &req, const auto &res) {
         Corrade::Utility::Debug{} << req.path << " " << res.status;
     });
+    shutdown_handler = [&](int signal) {
+        Corrade::Utility::Debug{} << "closing down";
+        svr.stop();
+        // TODO gracefully close all inputs and handlers
+    };
+    svr.Get("/api/v1/server/stop", [&](const httplib::Request &req, httplib::Response &res) {
+        shutdown_handler(0);
+    });
+    std::signal(SIGINT, signal_handler);
+    std::signal(SIGTERM, signal_handler);
 
-    std::shared_ptr<pktvisor::InputManager> input_manager = std::make_shared<pktvisor::InputManager>();
+    std::shared_ptr<pktvisor::InputStreamManager> input_manager = std::make_shared<pktvisor::InputStreamManager>();
     pktvisor::HandlerManager handler_manager(svr);
 
     // set up input modules
     // TODO store instances in vector to keep alive
-    Corrade::Containers::Pointer<pktvisor::InputModuleDesc> mod;
+    Corrade::Containers::Pointer<pktvisor::InputModulePlugin> mod;
     for (auto &s : inputRegistry.pluginList()) {
         mod = inputRegistry.instantiate(s);
         mod->init_module(input_manager, svr);
@@ -79,15 +99,17 @@ int main(int argc, char *argv[])
     auto port = args["-p"].asLong();
 
     try {
-        if (!svr.listen(host.c_str(), port)) {
-            throw std::runtime_error("unable to listen");
+        if (!svr.bind_to_port(host.c_str(), port)) {
+            throw std::runtime_error("unable to bind host/port");
         }
         std::cerr << "web server listening on " << host << ":" << port << std::endl;
+        if (!svr.listen_after_bind()) {
+            throw std::runtime_error("unable to listen");
+        }
     } catch (const std::exception &e) {
         std::cerr << e.what() << std::endl;
         result = -1;
     }
-    svr.stop();
 
     return result;
 }

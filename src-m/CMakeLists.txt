@@ -9,11 +9,11 @@ find_package(Corrade REQUIRED PluginManager)
 set_directory_properties(PROPERTIES CORRADE_USE_PEDANTIC_FLAGS ON)
 
 add_library(pktvisorcore-m
-        InputManager.cpp
+        InputStreamManager.cpp
         HandlerManager.cpp
         StreamHandler.cpp
-        StreamInput.cpp
-        InputModuleDesc.cpp
+        InputStream.cpp
+        InputModulePlugin.cpp
         HandlerModuleDesc.cpp
         )
 
