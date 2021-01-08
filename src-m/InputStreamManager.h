@@ -20,6 +20,11 @@ public:
     {
     }
 
+    std::unordered_map<std::string, std::shared_ptr<InputStream>> &all_modules()
+    {
+        return _inputs;
+    }
+
     void add_module(const std::string &name, std::unique_ptr<InputStream> &&m)
     {
         assert(!exists(name));
@@ -30,6 +35,12 @@ public:
     {
         assert(exists(name));
         return _inputs[name];
+    }
+
+    void remove_module(const std::string &name)
+    {
+        assert(exists(name));
+        _inputs.erase(name);
     }
 
     bool exists(const std::string &name) const

@@ -21,7 +21,7 @@ namespace input {
 PcapInputStream::PcapInputStream()
     : pktvisor::InputStream(), _pcapDevice(nullptr)
 {
-    Corrade::Utility::Debug{} << "PcapInputStream Create";
+    !Corrade::Utility::Debug{} << "create";
 
     _tcpReassembly = std::make_unique<TcpDnsReassembly>([this](pktvisor::DnsLayer *l, Direction dir, pcpp::ProtocolType l3, uint32_t flowKey, timespec stamp) {
         onGotDnsMessage(l, dir, l3, pcpp::TCP, flowKey, stamp);
@@ -30,7 +30,7 @@ PcapInputStream::PcapInputStream()
 }
 
 PcapInputStream::~PcapInputStream() {
-    Corrade::Utility::Debug{} << "PcapInputStream Destroy";
+    !Corrade::Utility::Debug{} << "destroy";
 }
 
 void PcapInputStream::start()
@@ -39,8 +39,10 @@ void PcapInputStream::start()
     if (_running) {
         return;
     }
+
+    !Corrade::Utility::Debug{}  << "start";
+
     // extract pcap live device by interface name or IP address
-    // TODO
     std::string TARGET(std::get<std::string>(_config["iface"]));
     pcpp::IPv4Address interfaceIP4(TARGET);
     pcpp::IPv6Address interfaceIP6(TARGET);
@@ -72,6 +74,8 @@ void PcapInputStream::stop()
     if (!_running) {
         return;
     }
+
+    !Corrade::Utility::Debug{}  << "stop";
 
     // stop capturing and close the live device
     _pcapDevice->stopCapture();

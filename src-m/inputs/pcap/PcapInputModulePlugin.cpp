@@ -15,7 +15,7 @@ void PcapInputModulePlugin::_setup_routes(httplib::Server &svr)
 {
 
     // CREATE
-    svr.Post("/api/v1/inputs/pcap", [this](const httplib::Request &req, httplib::Response &res) {
+    svr.Post("^/api/v1/inputs/pcap", [this](const httplib::Request &req, httplib::Response &res) {
         json error, result;
         try {
             auto body = json::parse(req.body);
@@ -23,21 +23,23 @@ void PcapInputModulePlugin::_setup_routes(httplib::Server &svr)
                 res.status = 400;
                 error["error"] = "name is required";
                 res.set_content(error.dump(), "text/json");
+                return;
             }
             if (!body.contains("iface")) {
                 res.status = 400;
                 error["error"] = "iface is required";
                 res.set_content(error.dump(), "text/json");
+                return;
             }
             if (_input_manager->exists(body["name"])) {
                 res.status = 400;
                 error["error"] = "name already exists";
                 res.set_content(error.dump(), "text/json");
+                return;
             }
-            // TODO configure the module with data from post body
             auto input_module = op_create(body["name"], body["iface"]);
-
             result["name"] = body["name"];
+            result["iface"] = body["iface"];
             res.set_content(result.dump(), "text/json");
         } catch (const std::exception &e) {
             res.status = 500;
@@ -47,13 +49,14 @@ void PcapInputModulePlugin::_setup_routes(httplib::Server &svr)
     });
 
     // DELETE
-    svr.Post(R"(^/api/v1/inputs/pcap/(\w+))", [this](const httplib::Request &req, httplib::Response &res) {
+    svr.Delete(R"(^/api/v1/inputs/pcap/(\w+))", [this](const httplib::Request &req, httplib::Response &res) {
         json error, result;
         try {
             if (!_input_manager->exists(req.matches[1])) {
                 res.status = 404;
                 error["error"] = "name does not exist";
                 res.set_content(error.dump(), "text/json");
+                return;
             }
             op_delete(req.matches[1]);
             res.set_content(result.dump(), "text/json");
@@ -77,6 +80,7 @@ void PcapInputModulePlugin::op_delete(const std::string &name)
 {
     auto input_module = _input_manager->get_module(name);
     input_module->stop();
+    _input_manager->remove_module(name);
 }
 
 }
