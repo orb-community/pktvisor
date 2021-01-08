@@ -1,9 +1,6 @@
 #include "PcapInputModulePlugin.h"
 #include "PcapInputStream.h"
 #include <Corrade/PluginManager/AbstractManager.h>
-#include <json/json.hpp>
-
-using json = nlohmann::json;
 
 CORRADE_PLUGIN_REGISTER(PcapInput, pktvisor::input::PcapInputModulePlugin,
     "com.ns1.module.input/1.0")
@@ -16,25 +13,24 @@ void PcapInputModulePlugin::_setup_routes(HttpServer &svr)
 
     // CREATE
     svr.Post("/api/v1/inputs/pcap", [this](const httplib::Request &req, httplib::Response &res) {
-        json error, result;
+        json result;
         try {
             auto body = json::parse(req.body);
-            if (!body.contains("name")) {
+            std::unordered_map<std::string, std::string> schema = {
+                {"name", "\\w+"},
+                {"iface", "\\w+"}};
+            try {
+                _check_schema(body, schema);
+            } catch (const SchemaException &e) {
                 res.status = 400;
-                error["error"] = "name is required";
-                res.set_content(error.dump(), "text/json");
-                return;
-            }
-            if (!body.contains("iface")) {
-                res.status = 400;
-                error["error"] = "iface is required";
-                res.set_content(error.dump(), "text/json");
+                result["error"] = e.what();
+                res.set_content(result.dump(), "text/json");
                 return;
             }
             if (_input_manager->exists(body["name"])) {
                 res.status = 400;
-                error["error"] = "name already exists";
-                res.set_content(error.dump(), "text/json");
+                result["error"] = "name already exists";
+                res.set_content(result.dump(), "text/json");
                 return;
             }
             auto input_module = op_create(body["name"], body["iface"]);
@@ -43,8 +39,8 @@ void PcapInputModulePlugin::_setup_routes(HttpServer &svr)
             res.set_content(result.dump(), "text/json");
         } catch (const std::exception &e) {
             res.status = 500;
-            error["error"] = e.what();
-            res.set_content(error.dump(), "text/json");
+            result["error"] = e.what();
+            res.set_content(result.dump(), "text/json");
         }
     });
 

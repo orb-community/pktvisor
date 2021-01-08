@@ -1,6 +1,5 @@
 #include <csignal>
 #include <functional>
-#include <iostream>
 #include <map>
 #include <vector>
 
@@ -19,7 +18,6 @@
 #include <Corrade/Utility/Debug.h>
 #include <Corrade/Utility/DebugStl.h>
 #include <Corrade/Utility/Format.h>
-#include <Corrade/Utility/FormatStl.h>
 
 #include "config.h" // FIXME
 #include "handlers/static_plugins.h"

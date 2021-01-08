@@ -1,17 +1,16 @@
 #ifndef PKTVISORD_HANDLERMODULEPLUGIN_H
 #define PKTVISORD_HANDLERMODULEPLUGIN_H
 
+#include "AbstractPlugin.h"
 #include "HandlerManager.h"
-#include "HttpServer.h"
-#include <Corrade/PluginManager/AbstractPlugin.h>
 #include <string>
 
 namespace pktvisor {
 
-class HandlerModulePlugin : public Corrade::PluginManager::AbstractPlugin
+class HandlerModulePlugin : public AbstractPlugin
 {
 protected:
-    std::shared_ptr<pktvisor::HandlerManager> _input_manager;
+    std::shared_ptr<pktvisor::HandlerManager> _handler_manager;
 
     virtual void _setup_routes(HttpServer &svr) = 0;
 

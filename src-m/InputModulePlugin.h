@@ -1,14 +1,13 @@
 #ifndef PKTVISORD_INPUTMODULEPLUGIN_H
 #define PKTVISORD_INPUTMODULEPLUGIN_H
 
-#include "HttpServer.h"
+#include "AbstractPlugin.h"
 #include "InputStreamManager.h"
-#include <Corrade/PluginManager/AbstractPlugin.h>
 #include <string>
 
 namespace pktvisor {
 
-class InputModulePlugin : public Corrade::PluginManager::AbstractPlugin
+class InputModulePlugin : public AbstractPlugin
 {
 
 protected:

@@ -8,7 +8,7 @@ void HandlerModulePlugin::init_module(std::shared_ptr<pktvisor::HandlerManager> 
 {
     Corrade::Utility::print("Init input plugin: {}\n", name());
     assert(im.get());
-    _input_manager = im;
+    _handler_manager = im;
     _setup_routes(svr);
 }
 
