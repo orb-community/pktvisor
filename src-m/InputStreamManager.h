@@ -2,7 +2,6 @@
 #define PKTVISORD_INPUTSTREAMMANAGER_H
 
 #include "InputStream.h"
-#include <cpp-httplib/httplib.h>
 
 #include <assert.h>
 #include <string>

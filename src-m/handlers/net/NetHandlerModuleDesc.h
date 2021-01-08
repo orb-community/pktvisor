@@ -2,7 +2,7 @@
 #ifndef PKTVISORD_NETHANDLERMODULEDESC_H
 #define PKTVISORD_NETHANDLERMODULEDESC_H
 
-#include "HandlerModuleDesc.h"
+#include "HandlerModulePlugin.h"
 #include "singleton/Singleton.hpp"
 
 namespace pktvisor {

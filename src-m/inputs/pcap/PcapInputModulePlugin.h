@@ -9,7 +9,7 @@ namespace input {
 class PcapInputModulePlugin : public pktvisor::InputModulePlugin
 {
 protected:
-    void _setup_routes(httplib::Server &svr) override;
+    void _setup_routes(HttpServer &svr) override;
 
 public:
     explicit PcapInputModulePlugin(Corrade::PluginManager::AbstractManager &manager, const std::string &plugin)

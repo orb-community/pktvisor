@@ -1,11 +1,10 @@
 #ifndef PKTVISORD_INPUTMODULEPLUGIN_H
 #define PKTVISORD_INPUTMODULEPLUGIN_H
 
+#include "HttpServer.h"
 #include "InputStreamManager.h"
 #include <Corrade/PluginManager/AbstractPlugin.h>
-#include <cpp-httplib/httplib.h>
 #include <string>
-#include <vector>
 
 namespace pktvisor {
 
@@ -15,7 +14,7 @@ class InputModulePlugin : public Corrade::PluginManager::AbstractPlugin
 protected:
     std::shared_ptr<pktvisor::InputStreamManager> _input_manager;
 
-    virtual void _setup_routes(httplib::Server &svr) = 0;
+    virtual void _setup_routes(HttpServer &svr) = 0;
 
 public:
     static std::string pluginInterface()
@@ -35,7 +34,7 @@ public:
 
     virtual std::string name() const = 0;
 
-    void init_module(std::shared_ptr<pktvisor::InputStreamManager> im, httplib::Server &svr);
+    void init_module(std::shared_ptr<pktvisor::InputStreamManager> im, HttpServer &svr);
 };
 
 }

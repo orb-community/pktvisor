@@ -1,10 +1,10 @@
-#include "InputModulePlugin.h"
+#include "HandlerModulePlugin.h"
 #include <Corrade/Utility/Format.h>
 #include <Corrade/Utility/FormatStl.h>
 
 namespace pktvisor {
 
-void InputModulePlugin::init_module(std::shared_ptr<pktvisor::InputStreamManager> im, HttpServer &svr)
+void HandlerModulePlugin::init_module(std::shared_ptr<pktvisor::HandlerManager> im, HttpServer &svr)
 {
     Corrade::Utility::print("Init input plugin: {}\n", name());
     assert(im.get());

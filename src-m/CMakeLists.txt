@@ -14,7 +14,7 @@ add_library(pktvisorcore-m
         StreamHandler.cpp
         InputStream.cpp
         InputModulePlugin.cpp
-        HandlerModuleDesc.cpp
+        HandlerModulePlugin.cpp
         )
 
 target_include_directories(pktvisorcore-m

@@ -4,10 +4,11 @@
 #include <map>
 #include <vector>
 
-#include <cpp-httplib/httplib.h>
+#include "HttpServer.h"
 #include <docopt/docopt.h>
 
 #include "HandlerManager.h"
+#include "HandlerModulePlugin.h"
 #include "InputModulePlugin.h"
 #include "InputStreamManager.h"
 
@@ -17,6 +18,8 @@
 #include <Corrade/Utility/ConfigurationGroup.h>
 #include <Corrade/Utility/Debug.h>
 #include <Corrade/Utility/DebugStl.h>
+#include <Corrade/Utility/Format.h>
+#include <Corrade/Utility/FormatStl.h>
 
 #include "config.h" // FIXME
 #include "inputs/static_plugins.h"
@@ -65,6 +68,11 @@ void signal_handler(int signal)
 }
 }
 
+typedef Corrade::PluginManager::Manager<pktvisor::InputModulePlugin> InputPluginRegistry;
+typedef Corrade::PluginManager::Manager<pktvisor::HandlerModulePlugin> HandlerPluginRegistry;
+typedef Corrade::Containers::Pointer<pktvisor::InputModulePlugin> InputPluginPtr;
+typedef Corrade::Containers::Pointer<pktvisor::HandlerModulePlugin> HandlerPluginPtr;
+
 int main(int argc, char *argv[])
 {
     int result{0};
@@ -74,34 +82,50 @@ int main(int argc, char *argv[])
         true,              // show help if requested
         PKTVISOR_VERSION); // version string
 
-    httplib::Server svr;
+    pktvisor::HttpServer svr;
     svr.set_logger([](const auto &req, const auto &res) {
         Corrade::Utility::Debug{} << req.path << " " << res.status;
     });
 
-    Corrade::PluginManager::Manager<pktvisor::InputModulePlugin> inputRegistry;
-    std::shared_ptr<pktvisor::InputStreamManager> inputManager = std::make_shared<pktvisor::InputStreamManager>();
-    pktvisor::HandlerManager handlerManager(svr);
-    std::vector<Corrade::Containers::Pointer<pktvisor::InputModulePlugin>> inputPlugins;
+    // inputs
+    InputPluginRegistry inputRegistry;
+    auto inputManager = std::make_shared<pktvisor::InputStreamManager>();
+    std::vector<InputPluginPtr> inputPlugins;
 
-    // set up input modules
+    // initialize input plugins
     for (auto &s : inputRegistry.pluginList()) {
-        Corrade::Containers::Pointer<pktvisor::InputModulePlugin> mod;
-        mod = inputRegistry.instantiate(s);
+        InputPluginPtr mod = inputRegistry.instantiate(s);
+        Corrade::Utility::print("Load input plugin: {}\n", mod->name());
         mod->init_module(inputManager, svr);
         inputPlugins.emplace_back(std::move(mod));
     }
 
+    // handlers
+    HandlerPluginRegistry handlerRegistry;
+    auto handlerManager = std::make_shared<pktvisor::HandlerManager>();
+    std::vector<HandlerPluginPtr> handlerPlugins;
+
+    // initialize handler plugins
+    for (auto &s : handlerRegistry.pluginList()) {
+        HandlerPluginPtr mod = handlerRegistry.instantiate(s);
+        Corrade::Utility::print("Load handler plugin: {}\n", mod->name());
+        mod->init_module(handlerManager, svr);
+        handlerPlugins.emplace_back(std::move(mod));
+    }
+
     shutdown_handler = [&](int signal) {
-        Corrade::Utility::Debug{} << "closing down";
+        Corrade::Utility::print("Shutting down\n");
         svr.stop();
         // gracefully close all inputs and TODO handlers
         for (auto &[name, mod] : inputManager->all_modules()) {
             mod->stop();
         }
     };
+
+    // TODO remove verb from url
+    Corrade::Utility::print("Initialize server control plane\n");
     svr.Get("/api/v1/server/stop", [&](const httplib::Request &req, httplib::Response &res) {
-        shutdown_handler(0);
+        shutdown_handler(SIGUSR1);
     });
     std::signal(SIGINT, signal_handler);
     std::signal(SIGTERM, signal_handler);
@@ -113,12 +137,12 @@ int main(int argc, char *argv[])
         if (!svr.bind_to_port(host.c_str(), port)) {
             throw std::runtime_error("unable to bind host/port");
         }
-        std::cerr << "web server listening on " << host << ":" << port << std::endl;
+        Corrade::Utility::print("web server listening on {}:{}\n", host, port);
         if (!svr.listen_after_bind()) {
             throw std::runtime_error("unable to listen");
         }
     } catch (const std::exception &e) {
-        std::cerr << e.what() << std::endl;
+        Corrade::Utility::printError("Fatal error: {}\n", e.what());
         result = -1;
     }
 

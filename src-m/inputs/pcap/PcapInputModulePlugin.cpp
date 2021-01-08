@@ -11,11 +11,11 @@ CORRADE_PLUGIN_REGISTER(PcapInput, pktvisor::input::PcapInputModulePlugin,
 namespace pktvisor {
 namespace input {
 
-void PcapInputModulePlugin::_setup_routes(httplib::Server &svr)
+void PcapInputModulePlugin::_setup_routes(HttpServer &svr)
 {
 
     // CREATE
-    svr.Post("^/api/v1/inputs/pcap", [this](const httplib::Request &req, httplib::Response &res) {
+    svr.Post("/api/v1/inputs/pcap", [this](const httplib::Request &req, httplib::Response &res) {
         json error, result;
         try {
             auto body = json::parse(req.body);
@@ -49,7 +49,7 @@ void PcapInputModulePlugin::_setup_routes(httplib::Server &svr)
     });
 
     // DELETE
-    svr.Delete(R"(^/api/v1/inputs/pcap/(\w+))", [this](const httplib::Request &req, httplib::Response &res) {
+    svr.Delete(R"(/api/v1/inputs/pcap/(\w+))", [this](const httplib::Request &req, httplib::Response &res) {
         json error, result;
         try {
             if (!_input_manager->exists(req.matches[1])) {
