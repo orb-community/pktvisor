@@ -22,6 +22,7 @@
 #include <Corrade/Utility/FormatStl.h>
 
 #include "config.h" // FIXME
+#include "handlers/static_plugins.h"
 #include "inputs/static_plugins.h"
 
 static const char USAGE[] =

@@ -13,7 +13,7 @@ class HandlerModulePlugin : public Corrade::PluginManager::AbstractPlugin
 protected:
     std::shared_ptr<pktvisor::HandlerManager> _input_manager;
 
-    virtual void _setup_routes(httplib::Server &svr) = 0;
+    virtual void _setup_routes(HttpServer &svr) = 0;
 
 public:
     static std::string pluginInterface()

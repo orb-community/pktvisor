@@ -33,5 +33,5 @@ configure_file(config.h.in config.h @ONLY)
 
 add_subdirectory(inputs/pcap)
 
-#add_subdirectory(handlers/net)
+add_subdirectory(handlers/net)
 #add_subdirectory(handlers/dns)
