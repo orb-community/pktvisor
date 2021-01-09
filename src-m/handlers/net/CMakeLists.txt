@@ -11,6 +11,7 @@ target_include_directories(NetHandler
         ${PKTVISOR_VENDOR_DIR}
         ${LIBPCPP_INCLUDE_DIRS}
         ${CMAKE_SOURCE_DIR}/src-m # FIXME ?
+        ${CMAKE_SOURCE_DIR}/src-m/inputs/pcap # FIXME - dependency on pcap
         ${CORRADE_INCLUDE_DIR}
         ${Corrade_BINARY_DIR}/src # FIXME configure.h, probably not right
         )

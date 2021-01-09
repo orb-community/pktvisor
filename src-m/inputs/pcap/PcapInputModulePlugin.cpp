@@ -29,7 +29,7 @@ void PcapInputModulePlugin::_setup_routes(HttpServer &svr)
             }
             if (_input_manager->exists(body["name"])) {
                 res.status = 400;
-                result["error"] = "name already exists";
+                result["error"] = "input name already exists";
                 res.set_content(result.dump(), "text/json");
                 return;
             }
@@ -46,20 +46,21 @@ void PcapInputModulePlugin::_setup_routes(HttpServer &svr)
 
     // DELETE
     svr.Delete(R"(/api/v1/inputs/pcap/(\w+))", [this](const httplib::Request &req, httplib::Response &res) {
-        json error, result;
+        json result;
         try {
-            if (!_input_manager->exists(req.matches[1])) {
+            auto name = req.matches[1];
+            if (!_input_manager->exists(name)) {
                 res.status = 404;
-                error["error"] = "name does not exist";
-                res.set_content(error.dump(), "text/json");
+                result["result"] = "input name does not exist";
+                res.set_content(result.dump(), "text/json");
                 return;
             }
-            op_delete(req.matches[1]);
+            op_delete(name);
             res.set_content(result.dump(), "text/json");
         } catch (const std::exception &e) {
             res.status = 500;
-            error["error"] = e.what();
-            res.set_content(error.dump(), "text/json");
+            result["result"] = e.what();
+            res.set_content(result.dump(), "text/json");
         }
     });
 }

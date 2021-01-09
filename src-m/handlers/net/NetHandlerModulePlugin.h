@@ -21,6 +21,8 @@ public:
     {
         return "NetHandlerModulePlugin";
     }
+
+    const pktvisor::StreamHandler *op_create(std::shared_ptr<InputStream> stream, const std::string &name);
 };
 }
 }

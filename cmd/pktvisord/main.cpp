@@ -108,7 +108,7 @@ int main(int argc, char *argv[])
     for (auto &s : handlerRegistry.pluginList()) {
         HandlerPluginPtr mod = handlerRegistry.instantiate(s);
         Corrade::Utility::print("Load handler plugin: {}\n", mod->name());
-        mod->init_module(handlerManager, svr);
+        mod->init_module(inputManager, handlerManager, svr);
         handlerPlugins.emplace_back(std::move(mod));
     }
 
