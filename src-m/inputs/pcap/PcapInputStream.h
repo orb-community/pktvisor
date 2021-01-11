@@ -136,7 +136,7 @@ private:
 class PcapInputStream : public pktvisor::InputStream
 {
 public:
-    typedef moodycamel::BlockingConcurrentQueue<std::shared_ptr<pcpp::Packet>> ConcurrentQueue;
+    typedef moodycamel::BlockingConcurrentQueue<std::shared_ptr<const pcpp::Packet>> ConcurrentQueue;
     //    typedef moodycamel::ProducerToken QueueToken;
     //    typedef std::pair<std::unique_ptr<ConcurrentQueue>, QueueToken> ConcurrentQueuePair;
     //    typedef std::pair<ConcurrentQueue *, QueueToken> ConcurrentQueueConsumerPair;

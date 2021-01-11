@@ -20,10 +20,9 @@ void NetStreamHandler::start()
     _running = true;
     !Corrade::Utility::Debug{} << "start";
     _thread = std::make_unique<std::thread>([this]() {
+        std::shared_ptr<const pcpp::Packet> item;
         while (_running) {
-            std::shared_ptr<pcpp::Packet> item;
-            _packetQueue->wait_dequeue_timed(item, std::chrono::milliseconds(5));
-            if (item) {
+            if (_packetQueue->wait_dequeue_timed(item, std::chrono::milliseconds(5))) {
                 std::vector<std::string> result;
                 item->toStringList(result);
                 Corrade::Utility::Debug{} << result;
