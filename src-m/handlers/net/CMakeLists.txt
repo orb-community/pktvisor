@@ -32,7 +32,7 @@ else ()
             )
 endif ()
 
-target_link_libraries(PcapInput
+target_link_libraries(NetHandler
         PRIVATE
         pktvisorcore-m
         )

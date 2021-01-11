@@ -12,14 +12,25 @@ class InputStream
 {
 protected:
     std::atomic_bool _running = false;
+    std::string _name;
     std::unordered_map<std::string, std::variant<std::string, uint64_t>> _config;
 
 public:
+    InputStream(const std::string &name)
+        : _name(name)
+    {
+    }
     virtual void start() = 0;
     virtual void stop() = 0;
     virtual ~InputStream(){};
 
-    bool running() const
+    const std::string &name() const
+    {
+        return _name;
+    }
+
+    bool
+    running() const
     {
         return _running;
     }

@@ -18,8 +18,8 @@
 namespace pktvisor {
 namespace input {
 
-PcapInputStream::PcapInputStream()
-    : pktvisor::InputStream(), _pcapDevice(nullptr)
+PcapInputStream::PcapInputStream(const std::string &name)
+    : pktvisor::InputStream(name), _pcapDevice(nullptr)
 {
     !Corrade::Utility::Debug{} << "create";
 
@@ -123,22 +123,22 @@ void PcapInputStream::processRawPacket(pcpp::RawPacket *rawPacket)
 
     pcpp::ProtocolType l3(pcpp::UnknownProtocol), l4(pcpp::UnknownProtocol);
     // we will parse application layer ourselves
-    pcpp::Packet packet(rawPacket, pcpp::OsiModelTransportLayer);
-    if (packet.isPacketOfType(pcpp::IPv4)) {
+    auto packet = std::make_shared<pcpp::Packet>(rawPacket, pcpp::OsiModelTransportLayer);
+    if (packet->isPacketOfType(pcpp::IPv4)) {
         l3 = pcpp::IPv4;
-    } else if (packet.isPacketOfType(pcpp::IPv6)) {
+    } else if (packet->isPacketOfType(pcpp::IPv6)) {
         l3 = pcpp::IPv6;
     }
-    if (packet.isPacketOfType(pcpp::UDP)) {
+    if (packet->isPacketOfType(pcpp::UDP)) {
         l4 = pcpp::UDP;
-    } else if (packet.isPacketOfType(pcpp::TCP)) {
+    } else if (packet->isPacketOfType(pcpp::TCP)) {
         l4 = pcpp::TCP;
     }
     // determine packet direction by matching source/dest ips
     // note the direction may be indeterminate!
     Direction dir = unknown;
-    auto IP4layer = packet.getLayerOfType<pcpp::IPv4Layer>();
-    auto IP6layer = packet.getLayerOfType<pcpp::IPv6Layer>();
+    auto IP4layer = packet->getLayerOfType<pcpp::IPv4Layer>();
+    auto IP6layer = packet->getLayerOfType<pcpp::IPv6Layer>();
     if (IP4layer) {
         for (auto &i : hostIPv4) {
             if (IP4layer->getDstIpAddress().matchSubnet(i.address, i.mask)) {
@@ -162,6 +162,9 @@ void PcapInputStream::processRawPacket(pcpp::RawPacket *rawPacket)
     }
 
     // TODO interface to handler
+    for (auto&& i : _queues) {
+        i.second->enqueue(std::move(packet));
+    }
 
     /*    metricsManager->newPacket(packet, dnsQueryPairManager, l4, dir, l3);
     pcpp::UdpLayer *udpLayer = packet.getLayerOfType<pcpp::UdpLayer>();
@@ -317,6 +320,12 @@ void PcapInputStream::getHostsFromIface()
             hostIPv6.emplace_back(IPv6subnet(pcpp::IPv6Address(buf1), len));
         }
     }
+}
+PcapInputStream::ConcurrentQueue* PcapInputStream::register_consumer(const std::string &name)
+{
+    // FIXME TODO !!! LEAK, NOT DESTRUCTED THIS WAY
+    _queues.emplace(std::make_pair(name, new ConcurrentQueue()));
+    return _queues[name];
 }
 
 TcpDnsSession::TcpDnsSession(

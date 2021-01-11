@@ -115,8 +115,13 @@ int main(int argc, char *argv[])
     shutdown_handler = [&](int signal) {
         Corrade::Utility::print("Shutting down\n");
         svr.stop();
-        // gracefully close all inputs and TODO handlers
+        // gracefully close all inputs and handlers
         for (auto &[name, mod] : inputManager->all_modules()) {
+            Corrade::Utility::print("Stopping input instance: {}\n", mod->name());
+            mod->stop();
+        }
+        for (auto &[name, mod] : handlerManager->all_modules()) {
+            Corrade::Utility::print("Stopping handler instance: {}\n", mod->name());
             mod->stop();
         }
     };

@@ -208,6 +208,4 @@ target_include_directories(pktvisord-m
         ${CMAKE_BINARY_DIR}/src-m # FIXME config.h
         )
 
-target_link_libraries(pktvisord-m PRIVATE pktvisorcore-m)
-message(STATUS "collected static plugins: " ${PKTVISOR_STATIC_PLUGINS})
 target_link_libraries(pktvisord-m PRIVATE pktvisorcore-m ${PKTVISOR_STATIC_PLUGINS})

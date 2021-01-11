@@ -2,6 +2,7 @@
 #define PKTVISORD_PCAPINPUTMODULEPLUGIN_H
 
 #include "InputModulePlugin.h"
+#include "PcapInputStream.h"
 
 namespace pktvisor {
 namespace input {
@@ -23,8 +24,7 @@ public:
     }
 
     // CRUD interface
-    // TODO move to base class, virtual?
-    const pktvisor::InputStream *op_create(const std::string &name, const std::string &iface);
+    const PcapInputStream *op_create(const std::string &name, const std::string &iface);
     void op_delete(const std::string &name);
 };
 

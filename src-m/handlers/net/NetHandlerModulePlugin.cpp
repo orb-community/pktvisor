@@ -1,6 +1,4 @@
 #include "NetHandlerModulePlugin.h"
-#include "NetStreamHandler.h"
-#include "PcapInputStream.h"
 #include <Corrade/PluginManager/AbstractManager.h>
 #include <json/json.hpp>
 
@@ -43,8 +41,20 @@ void NetHandlerModulePlugin::_setup_routes(HttpServer &svr)
                 return;
             }
             auto input_module = _input_manager->get_module(input_name);
-            assert(input_module->running());
-            auto handler_module = op_create(input_module, body["name"]);
+            auto pcap_stream = std::dynamic_pointer_cast<pktvisor::input::PcapInputStream>(input_module);
+            if (!pcap_stream) {
+                res.status = 400;
+                result["error"] = "input stream is not pcap";
+                res.set_content(result.dump(), "text/json");
+                return;
+            }
+            if (!input_module->running()) {
+                res.status = 400;
+                result["error"] = "input stream is not running";
+                res.set_content(result.dump(), "text/json");
+                return;
+            }
+            op_create(pcap_stream, body["name"]);
             result["name"] = body["name"];
             res.set_content(result.dump(), "text/json");
         } catch (const std::exception &e) {
@@ -55,11 +65,9 @@ void NetHandlerModulePlugin::_setup_routes(HttpServer &svr)
     });
 }
 
-const pktvisor::StreamHandler *NetHandlerModulePlugin::op_create(std::shared_ptr<InputStream> stream, const std::string &name)
+const NetStreamHandler *NetHandlerModulePlugin::op_create(std::shared_ptr<pktvisor::input::PcapInputStream> stream, const std::string &name)
 {
-    auto pcap_stream = std::dynamic_pointer_cast<pktvisor::input::PcapInputStream>(stream);
-    assert(pcap_stream);
-    auto handler_module = std::make_unique<NetStreamHandler>(pcap_stream);
+    auto handler_module = std::make_unique<NetStreamHandler>(name, stream);
     //    handler_module->set_config("iface", iface);
     handler_module->start();
     _handler_manager->add_module(name, std::move(handler_module));

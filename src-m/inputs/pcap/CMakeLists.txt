@@ -35,4 +35,5 @@ target_link_libraries(PcapInput
         PRIVATE
         pktvisorcore-m
         )
+
 set(PKTVISOR_STATIC_PLUGINS ${PKTVISOR_STATIC_PLUGINS} PcapInput PARENT_SCOPE)

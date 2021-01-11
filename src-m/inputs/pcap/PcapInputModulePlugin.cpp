@@ -1,5 +1,4 @@
 #include "PcapInputModulePlugin.h"
-#include "PcapInputStream.h"
 #include <Corrade/PluginManager/AbstractManager.h>
 
 CORRADE_PLUGIN_REGISTER(PcapInput, pktvisor::input::PcapInputModulePlugin,
@@ -64,9 +63,9 @@ void PcapInputModulePlugin::_setup_routes(HttpServer &svr)
         }
     });
 }
-const pktvisor::InputStream *PcapInputModulePlugin::op_create(const std::string &name, const std::string &iface)
+const PcapInputStream *PcapInputModulePlugin::op_create(const std::string &name, const std::string &iface)
 {
-    auto input_module = std::make_unique<PcapInputStream>();
+    auto input_module = std::make_unique<PcapInputStream>(name);
     input_module->set_config("iface", iface);
     input_module->start();
     _input_manager->add_module(name, std::move(input_module));

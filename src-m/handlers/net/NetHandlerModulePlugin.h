@@ -1,8 +1,9 @@
-
 #ifndef PKTVISORD_NETHANDLERMODULEPLUGIN_H
 #define PKTVISORD_NETHANDLERMODULEPLUGIN_H
 
 #include "HandlerModulePlugin.h"
+#include "NetStreamHandler.h"
+#include "PcapInputStream.h"
 
 namespace pktvisor {
 namespace handler {
@@ -22,7 +23,7 @@ public:
         return "NetHandlerModulePlugin";
     }
 
-    const pktvisor::StreamHandler *op_create(std::shared_ptr<InputStream> stream, const std::string &name);
+    const NetStreamHandler *op_create(std::shared_ptr<pktvisor::input::PcapInputStream> stream, const std::string &name);
 };
 }
 }

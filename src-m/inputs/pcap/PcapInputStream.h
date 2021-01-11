@@ -5,8 +5,10 @@
 #include <IpAddress.h>
 #include <PcapLiveDeviceList.h>
 #include <TcpReassembly.h>
+#include <concurrentqueue/blockingconcurrentqueue.h>
 #include <functional>
 #include <memory>
+#include <unordered_map>
 #include <vector>
 
 namespace pktvisor {
@@ -133,10 +135,19 @@ private:
 
 class PcapInputStream : public pktvisor::InputStream
 {
+public:
+    typedef moodycamel::BlockingConcurrentQueue<std::shared_ptr<pcpp::Packet>> ConcurrentQueue;
+    //    typedef moodycamel::ProducerToken QueueToken;
+    //    typedef std::pair<std::unique_ptr<ConcurrentQueue>, QueueToken> ConcurrentQueuePair;
+    //    typedef std::pair<ConcurrentQueue *, QueueToken> ConcurrentQueueConsumerPair;
+
+private:
     IPv4subnetList hostIPv4;
     IPv6subnetList hostIPv6;
     std::unique_ptr<TcpDnsReassembly> _tcpReassembly;
     pcpp::PcapLiveDevice *_pcapDevice;
+
+    std::unordered_map<std::string, ConcurrentQueue *> _queues;
 
 protected:
     void onGotDnsMessage(pktvisor::DnsLayer *dnsLayer, Direction dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowKey, timespec stamp);
@@ -146,10 +157,13 @@ protected:
     void getHostsFromIface();
 
 public:
-    PcapInputStream();
+    PcapInputStream(const std::string &name);
     ~PcapInputStream();
+
     void start() override;
     void stop() override;
+
+    ConcurrentQueue *register_consumer(const std::string &name);
 
     // public so it can be called from a static callback method
     void processRawPacket(pcpp::RawPacket *rawPacket);
