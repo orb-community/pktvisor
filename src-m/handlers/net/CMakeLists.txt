@@ -32,7 +32,9 @@ else ()
             )
 endif ()
 
-target_link_libraries(pktvisorcore-m
+target_link_libraries(PcapInput
         PRIVATE
-        NetHandler
+        pktvisorcore-m
         )
+
+set(PKTVISOR_STATIC_PLUGINS ${PKTVISOR_STATIC_PLUGINS} NetHandler PARENT_SCOPE)

@@ -191,6 +191,7 @@ if (NONMODULAR_ENABLE)
 endif ()
 
 ## Modular
+set(PKTVISOR_STATIC_PLUGINS)
 add_subdirectory(src-m)
 
 add_executable(pktvisord-m
@@ -208,3 +209,5 @@ target_include_directories(pktvisord-m
         )
 
 target_link_libraries(pktvisord-m PRIVATE pktvisorcore-m)
+message(STATUS "collected static plugins: " ${PKTVISOR_STATIC_PLUGINS})
+target_link_libraries(pktvisord-m PRIVATE pktvisorcore-m ${PKTVISOR_STATIC_PLUGINS})
