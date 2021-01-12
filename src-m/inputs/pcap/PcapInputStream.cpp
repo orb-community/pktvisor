@@ -22,8 +22,8 @@ PcapInputStream::PcapInputStream(const std::string &name)
 {
     !Corrade::Utility::Debug{} << "create";
 
-    _tcpReassembly = std::make_unique<TcpDnsReassembly>([this](pktvisor::DnsLayer *l, Direction dir, pcpp::ProtocolType l3, uint32_t flowKey, timespec stamp) {
-        onGotDnsMessage(l, dir, l3, pcpp::TCP, flowKey, stamp);
+    _tcpReassembly = std::make_unique<TcpMsgReassembly>([this](Direction dir, pcpp::ProtocolType l3, uint32_t flowKey, timespec stamp) {
+        onGotMessage(dir, l3, pcpp::TCP, flowKey, stamp);
     });
 
 }
@@ -86,9 +86,8 @@ void PcapInputStream::stop()
 }
 
 // got a full DNS wire message. called from all l3 and l4.
-void PcapInputStream::onGotDnsMessage(pktvisor::DnsLayer *dnsLayer, Direction dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowKey, timespec stamp)
+void PcapInputStream::onGotMessage(Direction dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowKey, timespec stamp)
 {
-    assert(dnsLayer != nullptr);
     // TODO interface to handler
 
     /*    metricsManager->newDNSPacket(dnsLayer, dir, l3, l4);
@@ -102,16 +101,6 @@ void PcapInputStream::onGotDnsMessage(pktvisor::DnsLayer *dnsLayer, Direction di
     }*/
 };
 
-
-/**
- * The callback to be called when application is terminated by ctrl-c. Stops the endless while loop
- */
-/*void PcapInputStream::onApplicationInterrupted(void *cookie)
-{
-    //    std::cerr << "\nstopping..." << std::endl;
-    pcapContext *dC = (pcapContext *)cookie;
-    dC->second = true;
-}*/
 
 /**
  * Called for live and pcap
@@ -352,16 +341,16 @@ void PcapInputStream::getHostsFromIface()
     }
 }
 
-TcpDnsSession::TcpDnsSession(
+TcpSessionData::TcpSessionData(
     malformed_data_cb malformed_data_handler,
-    got_dns_msg_cb got_dns_msg_handler)
+    got_data_cb got_data_handler)
     : _malformed_data{std::move(malformed_data_handler)}
-    , _got_dns_msg{std::move(got_dns_msg_handler)}
+    , _got_msg{std::move(got_data_handler)}
 {
 }
 
 // accumulate data and try to extract DNS messages
-void TcpDnsSession::receive_data(const char data[], size_t len)
+void TcpSessionData::receive_data(const char data[], size_t len)
 {
     const size_t MIN_DNS_QUERY_SIZE = 17;
     const size_t MAX_DNS_QUERY_SIZE = 512;
@@ -386,7 +375,7 @@ void TcpDnsSession::receive_data(const char data[], size_t len)
             auto data = std::make_unique<char[]>(size);
             std::memcpy(data.get(), _buffer.data() + sizeof(size), size);
             _buffer.erase(0, sizeof(size) + size);
-            _got_dns_msg(std::move(data), size);
+            _got_msg(std::move(data), size);
         } else {
             // Nope, we need more data.
             break;
@@ -436,7 +425,7 @@ static void tcpReassemblyConnectionEndCallback(const pcpp::ConnectionData& conne
     connMgr.erase(iter);
 }
 
-TcpDnsReassembly::TcpDnsReassembly(TcpReassemblyMgr::process_dns_msg_cb process_dns_handler)
+TcpMsgReassembly::TcpMsgReassembly(TcpReassemblyMgr::process_msg_cb process_msg_handler)
     : _reassemblyMgr()
 {
 
@@ -487,15 +476,15 @@ TcpDnsReassembly::TcpDnsReassembly(TcpReassemblyMgr::process_dns_msg_cb process_
             auto dir = (sideIndex == 0) ? fromHost : toHost;
             timespec eT{0,0};
             TIMEVAL_TO_TIMESPEC(&tcpData.getConnectionData().endTime, &eT)
-            reassemblyMgr->process_dns_handler(nullptr, dir, l3Type, flowKey, eT);
+            reassemblyMgr->process_msg_handler(dir, l3Type, flowKey, eT);
         };
-        if (!iter->second.dnsSession[side].get()) {
-            iter->second.dnsSession[side] = std::make_shared<TcpDnsSession>(malformed_data, got_dns_message);
+        if (!iter->second._sessionData[side].get()) {
+            iter->second._sessionData[side] = std::make_shared<TcpSessionData>(malformed_data, got_dns_message);
         }
-        iter->second.dnsSession[side]->receive_data((char *)tcpData.getData(), tcpData.getDataLength());
+        iter->second._sessionData[side]->receive_data((char *)tcpData.getData(), tcpData.getDataLength());
     };
 
-    _reassemblyMgr.process_dns_handler = process_dns_handler;
+    _reassemblyMgr.process_msg_handler = process_msg_handler;
     _tcpReassembly = std::make_shared<pcpp::TcpReassembly>(
         tcpReassemblyMsgReadyCallback,
         &_reassemblyMgr,

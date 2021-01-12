@@ -14,9 +14,6 @@
 
 namespace pktvisor {
 
-// FIXME
-class DnsLayer;
-
 namespace input {
 
 // list of subnets we count as "host" to determine direction of packets
@@ -45,36 +42,31 @@ enum Direction { toHost,
     fromHost,
     unknown };
 
-class TcpDnsSession final
+class TcpSessionData final
 {
 public:
     using malformed_data_cb = std::function<void()>;
-    using got_dns_msg_cb = std::function<void(std::unique_ptr<char[]> data, size_t size)>;
+    using got_data_cb = std::function<void(std::unique_ptr<char[]> data, size_t size)>;
 
-    TcpDnsSession(
+    TcpSessionData(
         malformed_data_cb malformed_data_handler,
-        got_dns_msg_cb got_dns_msg_handler);
+        got_data_cb got_data_handler);
 
     virtual void receive_data(const char data[], size_t len);
 
 private:
     std::string _buffer;
     malformed_data_cb _malformed_data;
-    got_dns_msg_cb _got_dns_msg;
+    got_data_cb _got_msg;
 };
 
 struct TcpReassemblyData {
 
-    std::shared_ptr<TcpDnsSession> dnsSession[2];
+    std::shared_ptr<TcpSessionData> _sessionData[2];
 
     // a flag indicating on which side was the latest message on this connection
     int curSide;
     pcpp::ProtocolType l3Type;
-
-    // stats data: num of data packets on each side, bytes seen on each side and messages seen on each side
-    //    int numOfDataPackets[2];
-    //    int numOfMessagesFromSide[2];
-    //    int bytesFromSide[2];
 
     /**
 	 * the default c'tor
@@ -97,12 +89,6 @@ struct TcpReassemblyData {
 	 */
     void clear()
     {
-        //        numOfDataPackets[0] = 0;
-        //        numOfDataPackets[1] = 0;
-        //        numOfMessagesFromSide[0] = 0;
-        //        numOfMessagesFromSide[1] = 0;
-        //        bytesFromSide[0] = 0;
-        //        bytesFromSide[1] = 0;
         curSide = -1;
         l3Type = pcpp::UnknownProtocol;
     }
@@ -110,19 +96,19 @@ struct TcpReassemblyData {
 
 struct TcpReassemblyMgr {
 
-    using process_dns_msg_cb = std::function<void(pktvisor::DnsLayer *, Direction dir, pcpp::ProtocolType l3, uint32_t flowKey, timespec stamp)>;
+    using process_msg_cb = std::function<void(Direction dir, pcpp::ProtocolType l3, uint32_t flowKey, timespec stamp)>;
 
-    process_dns_msg_cb process_dns_handler;
+    process_msg_cb process_msg_handler;
 
     typedef std::map<uint32_t, TcpReassemblyData> TcpReassemblyConnMgr;
 
     TcpReassemblyConnMgr connMgr;
 };
 
-class TcpDnsReassembly
+class TcpMsgReassembly
 {
 public:
-    TcpDnsReassembly(TcpReassemblyMgr::process_dns_msg_cb process_dns_handler);
+    TcpMsgReassembly(TcpReassemblyMgr::process_msg_cb process_msg_handler);
 
     std::shared_ptr<pcpp::TcpReassembly> getTcpReassembly()
     {
@@ -163,14 +149,14 @@ public:
 private:
     IPv4subnetList hostIPv4;
     IPv6subnetList hostIPv6;
-    std::unique_ptr<TcpDnsReassembly> _tcpReassembly;
+    std::unique_ptr<TcpMsgReassembly> _tcpReassembly;
     pcpp::PcapLiveDevice *_pcapDevice;
 
     std::unordered_map<std::string, UdpConsumerAsync> _udp_consumers_async;
     std::unordered_map<std::string, UdpConsumer> _udp_consumers;
 
 protected:
-    void onGotDnsMessage(pktvisor::DnsLayer *dnsLayer, Direction dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowKey, timespec stamp);
+    void onGotMessage(Direction dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowKey, timespec stamp);
 
     void openPcap(std::string fileName, std::string bpfFilter = "");
     void openIface(std::string bpfFilter = "");
