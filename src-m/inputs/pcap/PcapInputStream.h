@@ -5,6 +5,7 @@
 #include <IpAddress.h>
 #include <PcapLiveDeviceList.h>
 #include <TcpReassembly.h>
+#include <UdpLayer.h>
 #include <concurrentqueue/blockingconcurrentqueue.h>
 #include <functional>
 #include <memory>
@@ -136,10 +137,28 @@ private:
 class PcapInputStream : public pktvisor::InputStream
 {
 public:
-    typedef moodycamel::BlockingConcurrentQueue<std::shared_ptr<const pcpp::Packet>> ConcurrentQueue;
-    //    typedef moodycamel::ProducerToken QueueToken;
-    //    typedef std::pair<std::unique_ptr<ConcurrentQueue>, QueueToken> ConcurrentQueuePair;
-    //    typedef std::pair<ConcurrentQueue *, QueueToken> ConcurrentQueueConsumerPair;
+    typedef moodycamel::BlockingConcurrentQueue<std::shared_ptr<pcpp::UdpLayer>> ConcurrentUdpQueue;
+    typedef std::function<void(pcpp::UdpLayer &)> UdpPacketCallback;
+
+    struct UdpConsumerAsync {
+        std::unique_ptr<ConcurrentUdpQueue> queue;
+        uint16_t port;
+        UdpConsumerAsync(uint16_t p)
+            : port(p)
+            , queue(std::make_unique<ConcurrentUdpQueue>())
+        {
+        }
+    };
+
+    struct UdpConsumer {
+        UdpPacketCallback callback;
+        uint16_t port;
+        UdpConsumer(uint16_t p, UdpPacketCallback cb)
+            : port(p)
+            , callback(std::move(cb))
+        {
+        }
+    };
 
 private:
     IPv4subnetList hostIPv4;
@@ -147,7 +166,8 @@ private:
     std::unique_ptr<TcpDnsReassembly> _tcpReassembly;
     pcpp::PcapLiveDevice *_pcapDevice;
 
-    std::unordered_map<std::string, ConcurrentQueue *> _queues;
+    std::unordered_map<std::string, UdpConsumerAsync> _udp_consumers_async;
+    std::unordered_map<std::string, UdpConsumer> _udp_consumers;
 
 protected:
     void onGotDnsMessage(pktvisor::DnsLayer *dnsLayer, Direction dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowKey, timespec stamp);
@@ -163,7 +183,8 @@ public:
     void start() override;
     void stop() override;
 
-    ConcurrentQueue *register_consumer(const std::string &name);
+    ConcurrentUdpQueue *register_udp_consumer_async(const std::string &name, uint16_t port);
+    void register_udp_consumer(const std::string &name, uint16_t port, UdpPacketCallback);
 
     // public so it can be called from a static callback method
     void processRawPacket(pcpp::RawPacket *rawPacket);

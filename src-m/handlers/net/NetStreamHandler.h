@@ -10,7 +10,7 @@ namespace handler {
 
 class NetStreamHandler : public pktvisor::StreamHandler
 {
-    pktvisor::input::PcapInputStream::ConcurrentQueue *_packetQueue;
+    pktvisor::input::PcapInputStream::ConcurrentUdpQueue *_udpPacketQueue;
     std::unique_ptr<std::thread> _thread;
 
 public:

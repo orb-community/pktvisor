@@ -7,9 +7,12 @@ namespace handler {
 
 NetStreamHandler::NetStreamHandler(const std::string &name, std::shared_ptr<pktvisor::input::PcapInputStream> stream)
     : pktvisor::StreamHandler(name)
-    , _packetQueue(nullptr)
+    , _udpPacketQueue(nullptr)
 {
-    _packetQueue = stream->register_consumer(name);
+    //    _udpPacketQueue = stream->register_udp_consumer_async(name, 0);
+    stream->register_udp_consumer(name, 0, [](pcpp::UdpLayer &udp) {
+        Corrade::Utility::Debug{} << udp.toString();
+    });
 }
 
 void NetStreamHandler::start()
@@ -19,16 +22,18 @@ void NetStreamHandler::start()
     }
     _running = true;
     !Corrade::Utility::Debug{} << "start";
+
+    // FIXME async
+    /*
     _thread = std::make_unique<std::thread>([this]() {
-        std::shared_ptr<const pcpp::Packet> item;
+        std::shared_ptr<pcpp::UdpLayer> item;
         while (_running) {
-            if (_packetQueue->wait_dequeue_timed(item, std::chrono::milliseconds(5))) {
-                std::vector<std::string> result;
-                item->toStringList(result);
-                Corrade::Utility::Debug{} << result;
+            if (_udpPacketQueue->wait_dequeue_timed(item, std::chrono::milliseconds(5))) {
+                Corrade::Utility::Debug{} << item->toString();
             }
         }
     });
+     */
 }
 
 void NetStreamHandler::stop()
@@ -38,7 +43,10 @@ void NetStreamHandler::stop()
     }
     !Corrade::Utility::Debug{} << "stop";
     _running = false;
-    _thread->join();
+
+    if (_thread->joinable()) {
+        _thread->join();
+    }
 }
 
 NetStreamHandler::~NetStreamHandler()

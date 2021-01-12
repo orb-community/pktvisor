@@ -6,7 +6,6 @@
 #include <PacketUtils.h>
 #include <PcapFileDevice.h>
 #include <SystemUtils.h>
-#include <UdpLayer.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <IpUtils.h>
@@ -64,8 +63,7 @@ void PcapInputStream::start()
 //        std::cerr << "Interface " << dev->getName() << std::endl;
         getHostsFromIface();
 //        showHosts();
-        std::string bpf;
-        openIface(bpf);
+        openIface(std::get<std::string>(_config["bpf"]));
         _running = true;
 }
 
@@ -123,22 +121,22 @@ void PcapInputStream::processRawPacket(pcpp::RawPacket *rawPacket)
 
     pcpp::ProtocolType l3(pcpp::UnknownProtocol), l4(pcpp::UnknownProtocol);
     // we will parse application layer ourselves
-    auto packet = std::make_shared<pcpp::Packet>(rawPacket, pcpp::OsiModelTransportLayer);
-    if (packet->isPacketOfType(pcpp::IPv4)) {
+    pcpp::Packet packet(rawPacket, pcpp::OsiModelTransportLayer);
+    if (packet.isPacketOfType(pcpp::IPv4)) {
         l3 = pcpp::IPv4;
-    } else if (packet->isPacketOfType(pcpp::IPv6)) {
+    } else if (packet.isPacketOfType(pcpp::IPv6)) {
         l3 = pcpp::IPv6;
     }
-    if (packet->isPacketOfType(pcpp::UDP)) {
+    if (packet.isPacketOfType(pcpp::UDP)) {
         l4 = pcpp::UDP;
-    } else if (packet->isPacketOfType(pcpp::TCP)) {
+    } else if (packet.isPacketOfType(pcpp::TCP)) {
         l4 = pcpp::TCP;
     }
     // determine packet direction by matching source/dest ips
     // note the direction may be indeterminate!
     Direction dir = unknown;
-    auto IP4layer = packet->getLayerOfType<pcpp::IPv4Layer>();
-    auto IP6layer = packet->getLayerOfType<pcpp::IPv6Layer>();
+    auto IP4layer = packet.getLayerOfType<pcpp::IPv4Layer>();
+    auto IP6layer = packet.getLayerOfType<pcpp::IPv6Layer>();
     if (IP4layer) {
         for (auto &i : hostIPv4) {
             if (IP4layer->getDstIpAddress().matchSubnet(i.address, i.mask)) {
@@ -161,23 +159,53 @@ void PcapInputStream::processRawPacket(pcpp::RawPacket *rawPacket)
         }
     }
 
-    // TODO interface to handler
-    for (auto&& i : _queues) {
-        i.second->enqueue(std::move(packet));
-    }
 
-    /*    metricsManager->newPacket(packet, dnsQueryPairManager, l4, dir, l3);
+    // interface to handlers
     pcpp::UdpLayer *udpLayer = packet.getLayerOfType<pcpp::UdpLayer>();
-    if (udpLayer && (pktvisor::DnsLayer::isDnsPort(ntohs(udpLayer->getUdpHeader()->portDst)) || pktvisor::DnsLayer::isDnsPort(ntohs(udpLayer->getUdpHeader()->portSrc)))) {
-        pktvisor::DnsLayer dnsLayer = pktvisor::DnsLayer(udpLayer, &packet);
-        onGotDnsMessage(&dnsLayer, dir, l3, l4, pcpp::hash5Tuple(&packet), rawPacket->getPacketTimeStamp());
-    } else if (packet.isPacketOfType(pcpp::TCP)) {
+    if (udpLayer) {
+
+        // sync
+        for (auto&& i : _udp_consumers) {
+            if (i.second.port == 0 || i.second.port == ntohs(udpLayer->getUdpHeader()->portDst) || i.second.port == ntohs(udpLayer->getUdpHeader()->portSrc)) {
+                i.second.callback(*udpLayer);
+            }
+        }
+
+        // FIXME async
+        bool detached = false;
+        std::shared_ptr<pcpp::UdpLayer> udpLayerCopy;
+        for (auto&& i : _udp_consumers_async) {
+            if (i.second.port == 0 || i.second.port == ntohs(udpLayer->getUdpHeader()->portDst) || i.second.port == ntohs(udpLayer->getUdpHeader()->portSrc)) {
+                if (!detached) {
+                    packet.detachLayer(udpLayer);
+                    udpLayerCopy.reset(udpLayer);
+                    detached = true;
+                }
+                i.second.queue->enqueue(udpLayerCopy);
+            }
+        }
+
+    } else if (l4 == pcpp::TCP) {
         // get a pointer to the TCP reassembly instance and feed the packet arrived to it
-        // we don't know yet if it's DNS, the reassembly manager figures that out
-        tcpReassembly->getTcpReassembly()->reassemblePacket(rawPacket);
+        _tcpReassembly->getTcpReassembly()->reassemblePacket(rawPacket);
     } else {
         // unsupported layer3 protocol
-    }*/
+    }
+
+}
+
+void PcapInputStream::register_udp_consumer(const std::string &name, uint16_t port, PcapInputStream::UdpPacketCallback cb)
+{
+    UdpConsumer consumer(port, std::move(cb));
+    _udp_consumers.emplace(std::make_pair(name, std::move(consumer)));
+}
+
+PcapInputStream::ConcurrentUdpQueue* PcapInputStream::register_udp_consumer_async(const std::string &name, uint16_t port)
+{
+    // FIXME
+    UdpConsumerAsync consumer(port);
+    _udp_consumers_async.emplace(std::make_pair(name, std::move(consumer)));
+    return _udp_consumers_async.at(name).queue.get();
 }
 
 void PcapInputStream::openPcap(std::string fileName, std::string bpfFilter)
@@ -274,7 +302,9 @@ void PcapInputStream::openIface(std::string bpfFilter)
     // TODO
     //    metricsManager->setInitialShiftTS();
 
+
     // start capturing packets
+    // TODO Pcap statistics on dropped packets OnStatsUpdateCallback
     if (!_pcapDevice->startCapture(onLivePacketArrives, this)) {
         throw std::runtime_error("Cannot a start packet capture");
     }
@@ -320,12 +350,6 @@ void PcapInputStream::getHostsFromIface()
             hostIPv6.emplace_back(IPv6subnet(pcpp::IPv6Address(buf1), len));
         }
     }
-}
-PcapInputStream::ConcurrentQueue* PcapInputStream::register_consumer(const std::string &name)
-{
-    // FIXME TODO !!! LEAK, NOT DESTRUCTED THIS WAY
-    _queues.emplace(std::make_pair(name, new ConcurrentQueue()));
-    return _queues[name];
 }
 
 TcpDnsSession::TcpDnsSession(

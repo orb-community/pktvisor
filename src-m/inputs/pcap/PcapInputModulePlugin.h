@@ -24,7 +24,7 @@ public:
     }
 
     // CRUD interface
-    const PcapInputStream *op_create(const std::string &name, const std::string &iface);
+    const PcapInputStream *op_create(const std::string &name, const std::string &iface, const std::string &bpf);
     void op_delete(const std::string &name);
 };
 

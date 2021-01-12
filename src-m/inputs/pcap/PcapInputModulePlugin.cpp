@@ -32,7 +32,11 @@ void PcapInputModulePlugin::_setup_routes(HttpServer &svr)
                 res.set_content(result.dump(), "text/json");
                 return;
             }
-            auto input_module = op_create(body["name"], body["iface"]);
+            std::string bpf;
+            if (body.contains("bpf")) {
+                bpf = body["bpf"];
+            }
+            auto input_module = op_create(body["name"], body["iface"], bpf);
             result["name"] = body["name"];
             result["iface"] = body["iface"];
             res.set_content(result.dump(), "text/json");
@@ -63,10 +67,11 @@ void PcapInputModulePlugin::_setup_routes(HttpServer &svr)
         }
     });
 }
-const PcapInputStream *PcapInputModulePlugin::op_create(const std::string &name, const std::string &iface)
+const PcapInputStream *PcapInputModulePlugin::op_create(const std::string &name, const std::string &iface, const std::string &bpf)
 {
     auto input_module = std::make_unique<PcapInputStream>(name);
     input_module->set_config("iface", iface);
+    input_module->set_config("bpf", bpf);
     input_module->start();
     _input_manager->add_module(name, std::move(input_module));
     return input_module.get();
