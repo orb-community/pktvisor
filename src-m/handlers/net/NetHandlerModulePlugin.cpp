@@ -48,13 +48,13 @@ void NetHandlerModulePlugin::_setup_routes(HttpServer &svr)
                 res.set_content(result.dump(), "text/json");
                 return;
             }
-            if (!input_module->running()) {
+            if (input_module && !input_module->running()) {
                 res.status = 400;
                 result["error"] = "input stream is not running";
                 res.set_content(result.dump(), "text/json");
                 return;
             }
-            op_create(pcap_stream, body["name"]);
+            op_create(input_name, body["name"]);
             result["name"] = body["name"];
             res.set_content(result.dump(), "text/json");
         } catch (const std::exception &e) {
@@ -63,15 +63,55 @@ void NetHandlerModulePlugin::_setup_routes(HttpServer &svr)
             res.set_content(result.dump(), "text/json");
         }
     });
+    // DELETE
+    svr.Delete("/api/v1/inputs/pcap/(\\w+)/handlers/net/(\\w+)", [this](const httplib::Request &req, httplib::Response &res) {
+        json result;
+        try {
+            auto input_name = req.matches[1];
+            if (!_input_manager->exists(input_name)) {
+                res.status = 404;
+                result["result"] = "input name does not exist";
+                res.set_content(result.dump(), "text/json");
+                return;
+            }
+            auto handler_name = req.matches[2];
+            if (!_handler_manager->exists(handler_name)) {
+                res.status = 404;
+                result["result"] = "handler name does not exist";
+                res.set_content(result.dump(), "text/json");
+                return;
+            }
+            op_delete(handler_name);
+            res.set_content(result.dump(), "text/json");
+        } catch (const std::exception &e) {
+            res.status = 500;
+            result["result"] = e.what();
+            res.set_content(result.dump(), "text/json");
+        }
+    });
 }
 
-const NetStreamHandler *NetHandlerModulePlugin::op_create(std::shared_ptr<pktvisor::input::PcapInputStream> stream, const std::string &name)
+const NetStreamHandler *NetHandlerModulePlugin::op_create(const std::string &input_name, const std::string &handler_name)
 {
-    auto handler_module = std::make_unique<NetStreamHandler>(name, stream);
+    std::unique_lock lock(_mutex);
+    auto stream = _input_manager->get_module(input_name);
+    auto pcap_stream = std::dynamic_pointer_cast<pktvisor::input::PcapInputStream>(stream);
+    assert(pcap_stream);
+    auto handler_module = std::make_unique<NetStreamHandler>(handler_name, pcap_stream);
     //    handler_module->set_config("iface", iface);
     handler_module->start();
-    _handler_manager->add_module(name, std::move(handler_module));
+    _handler_manager->add_module(handler_name, std::move(handler_module));
     return handler_module.get();
+}
+
+void NetHandlerModulePlugin::op_delete(const std::string &handler_name)
+{
+    std::unique_lock lock(_mutex);
+    auto handler = _handler_manager->get_module(handler_name);
+    auto net_handler = std::dynamic_pointer_cast<NetStreamHandler>(handler);
+    assert(net_handler);
+    net_handler->stop();
+    _handler_manager->remove_module(handler_name);
 }
 
 }

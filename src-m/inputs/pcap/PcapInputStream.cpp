@@ -150,8 +150,14 @@ void PcapInputStream::processRawPacket(pcpp::RawPacket *rawPacket)
 
 
     // interface to handlers
-    pcpp::UdpLayer *udpLayer = packet.getLayerOfType<pcpp::UdpLayer>();
-    if (udpLayer) {
+    for (auto&& i : _packet_consumers) {
+        i.second(packet);
+    }
+
+    if (l4 == pcpp::UDP) {
+
+        pcpp::UdpLayer *udpLayer = packet.getLayerOfType<pcpp::UdpLayer>();
+        assert(udpLayer);
 
         // sync
         for (auto&& i : _udp_consumers) {
@@ -183,7 +189,15 @@ void PcapInputStream::processRawPacket(pcpp::RawPacket *rawPacket)
 
 }
 
-void PcapInputStream::register_udp_consumer(const std::string &name, uint16_t port, PcapInputStream::UdpPacketCallback cb)
+void PcapInputStream::register_packet_consumer(const std::string &name, PcapInputStream::PacketCallback cb) {
+    _packet_consumers.emplace(std::make_pair(name, std::move(cb)));
+}
+
+void PcapInputStream::deregister_packet_consumer(const std::string &name) {
+    _packet_consumers.erase(name);
+}
+
+void PcapInputStream::register_udp_consumer(const std::string &name, uint16_t port, PcapInputStream::UdpLayerCallback cb)
 {
     UdpConsumer consumer(port, std::move(cb));
     _udp_consumers.emplace(std::make_pair(name, std::move(consumer)));

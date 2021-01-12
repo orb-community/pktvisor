@@ -3,12 +3,15 @@
 
 #include "InputModulePlugin.h"
 #include "PcapInputStream.h"
+#include <shared_mutex>
 
 namespace pktvisor {
 namespace input {
 
 class PcapInputModulePlugin : public pktvisor::InputModulePlugin
 {
+    std::shared_mutex _mutex;
+
 protected:
     void _setup_routes(HttpServer &svr) override;
 
@@ -23,7 +26,7 @@ public:
         return "PcapInputModulePlugin";
     }
 
-    // CRUD interface
+    // CRUD interface, must be thread safe
     const PcapInputStream *op_create(const std::string &name, const std::string &iface, const std::string &bpf);
     void op_delete(const std::string &name);
 };

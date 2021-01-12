@@ -48,7 +48,7 @@ void PcapInputModulePlugin::_setup_routes(HttpServer &svr)
     });
 
     // DELETE
-    svr.Delete(R"(/api/v1/inputs/pcap/(\w+))", [this](const httplib::Request &req, httplib::Response &res) {
+    svr.Delete("/api/v1/inputs/pcap/(\\w+)", [this](const httplib::Request &req, httplib::Response &res) {
         json result;
         try {
             auto name = req.matches[1];
@@ -69,6 +69,7 @@ void PcapInputModulePlugin::_setup_routes(HttpServer &svr)
 }
 const PcapInputStream *PcapInputModulePlugin::op_create(const std::string &name, const std::string &iface, const std::string &bpf)
 {
+    std::unique_lock lock(_mutex);
     auto input_module = std::make_unique<PcapInputStream>(name);
     input_module->set_config("iface", iface);
     input_module->set_config("bpf", bpf);
@@ -79,6 +80,7 @@ const PcapInputStream *PcapInputModulePlugin::op_create(const std::string &name,
 
 void PcapInputModulePlugin::op_delete(const std::string &name)
 {
+    std::unique_lock lock(_mutex);
     auto input_module = _input_manager->get_module(name);
     input_module->stop();
     _input_manager->remove_module(name);

@@ -4,11 +4,15 @@
 #include "HandlerModulePlugin.h"
 #include "NetStreamHandler.h"
 #include "PcapInputStream.h"
+#include <shared_mutex>
 
 namespace pktvisor {
 namespace handler {
+
 class NetHandlerModulePlugin : public HandlerModulePlugin
 {
+    std::shared_mutex _mutex;
+
 protected:
     void _setup_routes(HttpServer &svr) override;
 
@@ -23,7 +27,9 @@ public:
         return "NetHandlerModulePlugin";
     }
 
-    const NetStreamHandler *op_create(std::shared_ptr<pktvisor::input::PcapInputStream> stream, const std::string &name);
+    // CRUD interface, must be thread safe
+    const NetStreamHandler *op_create(const std::string &input_name, const std::string &handler_name);
+    void op_delete(const std::string &handler_name);
 };
 }
 }
