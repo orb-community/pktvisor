@@ -11,6 +11,7 @@ namespace handler {
 
 class NetHandlerModulePlugin : public HandlerModulePlugin
 {
+    // TODO this could be more granular, on names
     std::shared_mutex _mutex;
 
 protected:
@@ -28,7 +29,7 @@ public:
     }
 
     // CRUD interface, must be thread safe
-    const NetStreamHandler *op_create(const std::string &input_name, const std::string &handler_name);
+    void op_create(const std::string &input_name, const std::string &handler_name);
     void op_delete(const std::string &handler_name);
 };
 }

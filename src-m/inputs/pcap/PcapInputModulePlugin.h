@@ -10,6 +10,7 @@ namespace input {
 
 class PcapInputModulePlugin : public pktvisor::InputModulePlugin
 {
+    // TODO this could be more granular, on names
     std::shared_mutex _mutex;
 
 protected:
@@ -27,7 +28,7 @@ public:
     }
 
     // CRUD interface, must be thread safe
-    const PcapInputStream *op_create(const std::string &name, const std::string &iface, const std::string &bpf);
+    void op_create(const std::string &name, const std::string &iface, const std::string &bpf);
     void op_delete(const std::string &name);
 };
 
