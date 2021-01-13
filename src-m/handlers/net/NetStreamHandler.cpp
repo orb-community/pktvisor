@@ -5,7 +5,7 @@
 namespace pktvisor {
 namespace handler {
 
-NetStreamHandler::NetStreamHandler(const std::string &name, std::shared_ptr<pktvisor::input::PcapInputStream> stream)
+NetStreamHandler::NetStreamHandler(const std::string &name, pktvisor::input::PcapInputStream *stream)
     : pktvisor::StreamHandler(name)
     , _udpPacketQueue(nullptr)
     , _stream(stream)

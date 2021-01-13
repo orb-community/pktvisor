@@ -11,7 +11,7 @@ class InputModulePlugin : public AbstractPlugin
 {
 
 protected:
-    std::shared_ptr<pktvisor::InputStreamManager> _input_manager;
+    pktvisor::InputStreamManager *_input_manager;
 
     virtual void _setup_routes(HttpServer &svr) = 0;
 
@@ -33,7 +33,7 @@ public:
 
     virtual std::string name() const = 0;
 
-    void init_module(std::shared_ptr<pktvisor::InputStreamManager> im, HttpServer &svr);
+    void init_module(InputStreamManager *im, HttpServer &svr);
 };
 
 }

@@ -88,27 +88,27 @@ int main(int argc, char *argv[])
 
     // inputs
     InputPluginRegistry inputRegistry;
-    auto inputManager = std::make_shared<pktvisor::InputStreamManager>();
+    auto inputManager = std::make_unique<pktvisor::InputStreamManager>();
     std::vector<InputPluginPtr> inputPlugins;
 
     // initialize input plugins
     for (auto &s : inputRegistry.pluginList()) {
         InputPluginPtr mod = inputRegistry.instantiate(s);
         Corrade::Utility::print("Load input plugin: {}\n", mod->name());
-        mod->init_module(inputManager, svr);
+        mod->init_module(inputManager.get(), svr);
         inputPlugins.emplace_back(std::move(mod));
     }
 
     // handlers
     HandlerPluginRegistry handlerRegistry;
-    auto handlerManager = std::make_shared<pktvisor::HandlerManager>();
+    auto handlerManager = std::make_unique<pktvisor::HandlerManager>();
     std::vector<HandlerPluginPtr> handlerPlugins;
 
     // initialize handler plugins
     for (auto &s : handlerRegistry.pluginList()) {
         HandlerPluginPtr mod = handlerRegistry.instantiate(s);
         Corrade::Utility::print("Load handler plugin: {}\n", mod->name());
-        mod->init_module(inputManager, handlerManager, svr);
+        mod->init_module(inputManager.get(), handlerManager.get(), svr);
         handlerPlugins.emplace_back(std::move(mod));
     }
 

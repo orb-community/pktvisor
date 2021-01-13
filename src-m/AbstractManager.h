@@ -16,7 +16,7 @@ template <typename ModuleType>
 class AbstractManager
 {
 public:
-    typedef std::unordered_map<std::string, std::shared_ptr<ModuleType>> ModuleMap;
+    typedef std::unordered_map<std::string, std::unique_ptr<ModuleType>> ModuleMap;
     ModuleMap _map;
     mutable std::shared_mutex _map_mutex;
 
@@ -44,11 +44,11 @@ public:
     }
 
     // note the module returned has separate thread safety
-    std::shared_ptr<ModuleType> get_module(const std::string &name)
+    ModuleType *get_module(const std::string &name)
     {
         assert(exists(name));
         std::unique_lock lock(_map_mutex);
-        return _map[name];
+        return _map[name].get();
     }
 
     void remove_module(const std::string &name)

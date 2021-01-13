@@ -43,7 +43,7 @@ void NetHandlerModulePlugin::_setup_routes(HttpServer &svr)
             // note, may be a race on exists() above, this may fail. if so we will catch and 500.
             auto input_module = _input_manager->get_module(input_name);
             assert(input_module);
-            auto pcap_stream = std::dynamic_pointer_cast<pktvisor::input::PcapInputStream>(input_module);
+            auto pcap_stream = dynamic_cast<pktvisor::input::PcapInputStream *>(input_module);
             if (!pcap_stream) {
                 res.status = 400;
                 result["error"] = "input stream is not pcap";
@@ -99,7 +99,7 @@ void NetHandlerModulePlugin::op_create(const std::string &input_name, const std:
     std::unique_lock lock(_mutex);
     auto stream = _input_manager->get_module(input_name);
     assert(stream);
-    auto pcap_stream = std::dynamic_pointer_cast<pktvisor::input::PcapInputStream>(stream);
+    auto pcap_stream = dynamic_cast<pktvisor::input::PcapInputStream *>(stream);
     assert(pcap_stream);
     auto handler_module = std::make_unique<NetStreamHandler>(handler_name, pcap_stream);
     //    handler_module->set_config("iface", iface);
@@ -112,7 +112,7 @@ void NetHandlerModulePlugin::op_delete(const std::string &handler_name)
     std::unique_lock lock(_mutex);
     auto handler = _handler_manager->get_module(handler_name);
     assert(handler);
-    auto net_handler = std::dynamic_pointer_cast<NetStreamHandler>(handler);
+    auto net_handler = dynamic_cast<NetStreamHandler *>(handler);
     assert(net_handler);
     net_handler->stop();
     _handler_manager->remove_module(handler_name);

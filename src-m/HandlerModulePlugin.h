@@ -11,8 +11,8 @@ namespace pktvisor {
 class HandlerModulePlugin : public AbstractPlugin
 {
 protected:
-    std::shared_ptr<pktvisor::InputStreamManager> _input_manager;
-    std::shared_ptr<pktvisor::HandlerManager> _handler_manager;
+    pktvisor::InputStreamManager *_input_manager;
+    pktvisor::HandlerManager *_handler_manager;
 
     virtual void _setup_routes(HttpServer &svr) = 0;
 
@@ -34,8 +34,8 @@ public:
 
     virtual std::string name() const = 0;
 
-    void init_module(std::shared_ptr<pktvisor::InputStreamManager> im,
-        std::shared_ptr<pktvisor::HandlerManager> hm,
+    void init_module(InputStreamManager *im,
+        HandlerManager *hm,
         HttpServer &svr);
 };
 

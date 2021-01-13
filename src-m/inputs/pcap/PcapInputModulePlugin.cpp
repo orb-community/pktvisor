@@ -79,6 +79,7 @@ void PcapInputModulePlugin::op_create(const std::string &name, const std::string
 
 void PcapInputModulePlugin::op_delete(const std::string &name)
 {
+    // TODO solve problem of handlers referencing this input
     std::unique_lock lock(_mutex);
     auto input_module = _input_manager->get_module(name);
     assert(input_module);

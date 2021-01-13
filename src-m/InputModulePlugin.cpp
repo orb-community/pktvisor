@@ -4,10 +4,10 @@
 
 namespace pktvisor {
 
-void InputModulePlugin::init_module(std::shared_ptr<pktvisor::InputStreamManager> im, HttpServer &svr)
+void InputModulePlugin::init_module(InputStreamManager *im, HttpServer &svr)
 {
     Corrade::Utility::print("Init input plugin: {}\n", name());
-    assert(im.get());
+    assert(im);
     _input_manager = im;
     _setup_routes(svr);
 }
