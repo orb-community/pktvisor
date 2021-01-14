@@ -12,6 +12,7 @@ add_library(pktvisorcore-m
         AbstractPlugin.cpp
         AbstractManager.cpp
         AbstractModule.cpp
+        MetricsManager.cpp
         InputStreamManager.cpp
         HandlerManager.cpp
         StreamHandler.cpp
@@ -23,6 +24,10 @@ add_library(pktvisorcore-m
 target_include_directories(pktvisorcore-m
         PRIVATE
         ${PKTVISOR_VENDOR_DIR}
+        # FIXME
+        ${PKTVISOR_VENDOR_DIR}/datasketches
+        ${PKTVISOR_VENDOR_DIR}/datasketches/datasketches
+        #
         ${CORRADE_INCLUDE_DIR}
         ${Corrade_BINARY_DIR}/src # FIXME configure.h, probably not right
         )

@@ -9,6 +9,10 @@ corrade_add_static_plugin(NetHandler ${CMAKE_CURRENT_BINARY_DIR} NetHandler.conf
 target_include_directories(NetHandler
         PRIVATE
         ${PKTVISOR_VENDOR_DIR}
+        # FIXME
+        ${PKTVISOR_VENDOR_DIR}/datasketches
+        ${PKTVISOR_VENDOR_DIR}/datasketches/datasketches
+        #
         ${LIBPCPP_INCLUDE_DIRS}
         ${CMAKE_SOURCE_DIR}/src-m # FIXME ?
         ${CMAKE_SOURCE_DIR}/src-m/inputs/pcap # FIXME - dependency on pcap
