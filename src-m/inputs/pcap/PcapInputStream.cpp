@@ -150,34 +150,13 @@ void PcapInputStream::processRawPacket(pcpp::RawPacket *rawPacket)
 
 
     // interface to handlers
-    // TODO NETWORK
+    packet_signal(packet);
 
     if (l4 == pcpp::UDP) {
 
         pcpp::UdpLayer *udpLayer = packet.getLayerOfType<pcpp::UdpLayer>();
         assert(udpLayer);
-        _udp_signal(*udpLayer);
-        /*
-        // sync
-        for (auto&& i : _udp_consumers) {
-            if (i.second.port == 0 || i.second.port == ntohs(udpLayer->getUdpHeader()->portDst) || i.second.port == ntohs(udpLayer->getUdpHeader()->portSrc)) {
-                i.second.callback(*udpLayer);
-            }
-        }
-
-        // FIXME async
-        bool detached = false;
-        std::shared_ptr<pcpp::UdpLayer> udpLayerCopy;
-        for (auto&& i : _udp_consumers_async) {
-            if (i.second.port == 0 || i.second.port == ntohs(udpLayer->getUdpHeader()->portDst) || i.second.port == ntohs(udpLayer->getUdpHeader()->portSrc)) {
-                if (!detached) {
-                    packet.detachLayer(udpLayer);
-                    udpLayerCopy.reset(udpLayer);
-                    detached = true;
-                }
-                i.second.queue->enqueue(udpLayerCopy);
-            }
-        }*/
+        udp_signal(*udpLayer);
 
     } else if (l4 == pcpp::TCP) {
         // get a pointer to the TCP reassembly instance and feed the packet arrived to it
@@ -187,32 +166,6 @@ void PcapInputStream::processRawPacket(pcpp::RawPacket *rawPacket)
     }
 
 }
-
-/*void PcapInputStream::register_packet_consumer(const std::string &name, PcapInputStream::PacketCallback cb) {
-    auto lock = _lock_consumers();
-    _packet_consumers.emplace(std::make_pair(name, std::move(cb)));
-}
-
-void PcapInputStream::deregister_packet_consumer(const std::string &name) {
-    auto lock = _lock_consumers();
-    _packet_consumers.erase(name);
-}
-
-void PcapInputStream::register_udp_consumer(const std::string &name, uint16_t port, PcapInputStream::UdpLayerCallback cb)
-{
-    auto lock = _lock_consumers();
-    UdpConsumer consumer(port, std::move(cb));
-    _udp_consumers.emplace(std::make_pair(name, std::move(consumer)));
-}
-
-PcapInputStream::ConcurrentUdpQueue* PcapInputStream::register_udp_consumer_async(const std::string &name, uint16_t port)
-{
-    auto lock = _lock_consumers();
-    // FIXME
-    UdpConsumerAsync consumer(port);
-    _udp_consumers_async.emplace(std::make_pair(name, std::move(consumer)));
-    return _udp_consumers_async.at(name).queue.get();
-}*/
 
 void PcapInputStream::openPcap(std::string fileName, std::string bpfFilter)
 {

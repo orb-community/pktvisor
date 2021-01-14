@@ -130,7 +130,6 @@ private:
     std::unique_ptr<TcpMsgReassembly> _tcpReassembly;
     pcpp::PcapLiveDevice *_pcapDevice;
 
-    sigslot::signal<pcpp::UdpLayer &> _udp_signal;
 
 protected:
     void
@@ -151,14 +150,12 @@ public:
     void processRawPacket(pcpp::RawPacket *rawPacket);
 
     // handler functionality
-    auto &udp_signal()
-    {
-        return _udp_signal;
-    }
+    sigslot::signal<pcpp::Packet &> packet_signal;
+    sigslot::signal<pcpp::UdpLayer &> udp_signal;
 
     size_t consumer_count() override
     {
-        return _udp_signal.slot_count();
+        return packet_signal.slot_count() + udp_signal.slot_count();
     }
 };
 

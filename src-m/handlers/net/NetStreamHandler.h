@@ -11,12 +11,11 @@ namespace handler {
 class NetStreamHandler : public pktvisor::StreamHandler
 {
 
-    //    pktvisor::input::PcapInputStream::ConcurrentUdpQueue *_udpPacketQueue;
-
-    std::unique_ptr<std::thread> _thread;
     pktvisor::input::PcapInputStream *_stream;
 
-    sigslot::connection _udp_connection;
+    sigslot::connection _pkt_connection;
+
+    void process_packet(pcpp::Packet &payload);
 
 public:
     NetStreamHandler(const std::string &name, pktvisor::input::PcapInputStream *stream);
