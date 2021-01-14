@@ -20,8 +20,8 @@ void NetStreamHandler::start()
     _running = true;
     !Corrade::Utility::Debug{} << "start";
 
-    _stream->udp_signal().connect([](pcpp::UdpLayer &payload) {
-        Corrade::Utility::Debug{} << payload.toString();
+    _udp_connection = _stream->udp_signal().connect([this](pcpp::UdpLayer &payload) {
+        Corrade::Utility::Debug{} << _name << ":" << payload.toString();
     });
 
     // FIXME async
@@ -46,7 +46,7 @@ void NetStreamHandler::stop()
     !Corrade::Utility::Debug{} << "stop";
     _running = false;
 
-    //    _stream->deregister_consumer(this);
+    _udp_connection.disconnect();
 
     if (_thread && _thread->joinable()) {
         _thread->join();

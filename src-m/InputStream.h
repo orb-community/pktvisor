@@ -17,7 +17,7 @@ public:
 
     virtual ~InputStream(){};
 
-    virtual bool has_consumers() = 0;
+    virtual size_t consumer_count() = 0;
 };
 
 }

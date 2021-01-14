@@ -156,7 +156,7 @@ public:
         return _udp_signal;
     }
 
-    bool has_consumers() override
+    size_t consumer_count() override
     {
         return _udp_signal.slot_count();
     }

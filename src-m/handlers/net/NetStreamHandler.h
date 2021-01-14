@@ -16,6 +16,8 @@ class NetStreamHandler : public pktvisor::StreamHandler
     std::unique_ptr<std::thread> _thread;
     pktvisor::input::PcapInputStream *_stream;
 
+    sigslot::connection _udp_connection;
+
 public:
     NetStreamHandler(const std::string &name, pktvisor::input::PcapInputStream *stream);
     virtual ~NetStreamHandler();

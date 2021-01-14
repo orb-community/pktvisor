@@ -1,5 +1,6 @@
 #include "PcapInputModulePlugin.h"
 #include <Corrade/PluginManager/AbstractManager.h>
+#include <Corrade/Utility/FormatStl.h>
 
 CORRADE_PLUGIN_REGISTER(PcapInput, pktvisor::input::PcapInputModulePlugin,
     "com.ns1.module.input/1.0")
@@ -58,11 +59,12 @@ void PcapInputModulePlugin::_setup_routes(HttpServer &svr)
                 res.set_content(result.dump(), "text/json");
                 return;
             }
-            auto [input_module, lock] = _input_manager->get_module(name);
-            assert(input_module);
-            if (input_module->has_consumers()) {
+            auto [input_stream, lock] = _input_manager->get_module(name);
+            assert(input_stream);
+            auto count = input_stream->consumer_count();
+            if (count) {
                 res.status = 400;
-                result["error"] = "input stream has existing consumers, remove them first";
+                result["error"] = Corrade::Utility::formatString("input stream has existing consumers ({}), remove them first", count);
                 res.set_content(result.dump(), "text/json");
                 return;
             }
@@ -78,22 +80,22 @@ void PcapInputModulePlugin::_setup_routes(HttpServer &svr)
 }
 void PcapInputModulePlugin::op_create(const std::string &name, const std::string &iface, const std::string &bpf)
 {
-    auto input_module = std::make_unique<PcapInputStream>(name);
-    input_module->set_config("iface", iface);
-    input_module->set_config("bpf", bpf);
-    input_module->start();
-    _input_manager->add_module(name, std::move(input_module));
+    auto input_stream = std::make_unique<PcapInputStream>(name);
+    input_stream->set_config("iface", iface);
+    input_stream->set_config("bpf", bpf);
+    input_stream->start();
+    _input_manager->add_module(name, std::move(input_stream));
 }
 
 void PcapInputModulePlugin::op_delete(const std::string &name)
 {
-    auto [input_module, lock] = _input_manager->get_module(name);
-    assert(input_module);
-    if (input_module->has_consumers()) {
+    auto [input_stream, stream_lock] = _input_manager->get_module(name);
+    assert(input_stream);
+    if (input_stream->consumer_count()) {
         throw std::runtime_error("unable to remove, stream has consumers");
     }
-    input_module->stop();
-    lock.unlock();
+    input_stream->stop();
+    stream_lock.unlock();
     _input_manager->remove_module(name);
 }
 
