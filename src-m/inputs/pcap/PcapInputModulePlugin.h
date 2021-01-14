@@ -3,15 +3,12 @@
 
 #include "InputModulePlugin.h"
 #include "PcapInputStream.h"
-#include <shared_mutex>
 
 namespace pktvisor {
 namespace input {
 
 class PcapInputModulePlugin : public pktvisor::InputModulePlugin
 {
-    // TODO this could be more granular, on names
-    std::shared_mutex _mutex;
 
 protected:
     void _setup_routes(HttpServer &svr) override;

@@ -1,6 +1,7 @@
 #ifndef PKTVISORD_ABSTRACTMANAGER_H
 #define PKTVISORD_ABSTRACTMANAGER_H
 
+#include "AbstractModule.h"
 #include <assert.h>
 #include <memory>
 #include <shared_mutex>
@@ -15,6 +16,8 @@ namespace pktvisor {
 template <typename ModuleType>
 class AbstractManager
 {
+    static_assert(std::is_base_of<AbstractModule, ModuleType>::value, "ModuleType must inherit from AbstractModule");
+
 public:
     typedef std::unordered_map<std::string, std::unique_ptr<ModuleType>> ModuleMap;
     ModuleMap _map;
@@ -38,27 +41,38 @@ public:
 
     void add_module(const std::string &name, std::unique_ptr<ModuleType> &&m)
     {
-        assert(!exists(name));
         std::unique_lock lock(_map_mutex);
+        if (_map.count(name)) {
+            throw std::runtime_error("module name already exists");
+        }
         _map.emplace(std::make_pair(name, std::move(m)));
     }
 
-    // note the module returned has separate thread safety
-    ModuleType *get_module(const std::string &name)
+    // note the module returned has separate thread safety, but the returned lock ensures
+    // the module will not be removed before the caller has a chance to initialize
+    auto get_module(const std::string &name)
     {
-        assert(exists(name));
         std::unique_lock lock(_map_mutex);
-        return _map[name].get();
+        if (_map.count(name) == 0) {
+            throw std::runtime_error("module name does not exist");
+        }
+        struct retVals {
+            ModuleType *map;
+            std::unique_lock<std::shared_mutex> lock;
+        };
+        return retVals{_map[name].get(), std::move(lock)};
     }
 
     void remove_module(const std::string &name)
     {
-        assert(exists(name));
         std::unique_lock lock(_map_mutex);
+        if (_map.count(name) == 0) {
+            throw std::runtime_error("module name does not exist");
+        }
         _map.erase(name);
     }
 
-    // note, this does not guarantee the item will still be there for a subsequent add/remove call!
+    // note, this only guarantees the name existed at the time of call, watch for race conditions!
     bool exists(const std::string &name) const
     {
         std::shared_lock lock(_map_mutex);

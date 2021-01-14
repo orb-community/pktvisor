@@ -58,6 +58,14 @@ void PcapInputModulePlugin::_setup_routes(HttpServer &svr)
                 res.set_content(result.dump(), "text/json");
                 return;
             }
+            auto input_module = _input_manager->get_module(name);
+            assert(input_module);
+            if (input_module->has_consumers()) {
+                res.status = 400;
+                result["error"] = "input stream has existing consumers, remove them first";
+                res.set_content(result.dump(), "text/json");
+                return;
+            }
             op_delete(name);
             res.set_content(result.dump(), "text/json");
         } catch (const std::exception &e) {
@@ -69,7 +77,6 @@ void PcapInputModulePlugin::_setup_routes(HttpServer &svr)
 }
 void PcapInputModulePlugin::op_create(const std::string &name, const std::string &iface, const std::string &bpf)
 {
-    std::unique_lock lock(_mutex);
     auto input_module = std::make_unique<PcapInputStream>(name);
     input_module->set_config("iface", iface);
     input_module->set_config("bpf", bpf);
@@ -79,10 +86,12 @@ void PcapInputModulePlugin::op_create(const std::string &name, const std::string
 
 void PcapInputModulePlugin::op_delete(const std::string &name)
 {
-    // TODO solve problem of handlers referencing this input
-    std::unique_lock lock(_mutex);
     auto input_module = _input_manager->get_module(name);
     assert(input_module);
+    auto handler_lock = input_module->lock_consumers();
+    if (input_module->has_consumers()) {
+        throw std::runtime_error("unable to remove, stream has consumers");
+    }
     input_module->stop();
     _input_manager->remove_module(name);
 }

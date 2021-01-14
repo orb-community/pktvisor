@@ -42,7 +42,7 @@ void PcapInputStream::start()
     !Corrade::Utility::Debug{}  << "start";
 
     // extract pcap live device by interface name or IP address
-    std::string TARGET(std::get<std::string>(_config["iface"]));
+    std::string TARGET(std::get<std::string>(get_config("iface")));
     pcpp::IPv4Address interfaceIP4(TARGET);
     pcpp::IPv6Address interfaceIP6(TARGET);
     if (interfaceIP4.isValid() || interfaceIP6.isValid()) {
@@ -63,7 +63,7 @@ void PcapInputStream::start()
 //        std::cerr << "Interface " << dev->getName() << std::endl;
         getHostsFromIface();
 //        showHosts();
-        openIface(std::get<std::string>(_config["bpf"]));
+        openIface(std::get<std::string>(get_config("bpf")));
         _running = true;
 }
 
@@ -150,13 +150,14 @@ void PcapInputStream::processRawPacket(pcpp::RawPacket *rawPacket)
 
 
     // interface to handlers
-    for (auto&& i : _packet_consumers) {
-        i.second(packet);
+    for (auto&& i : _consumers) {
+        static_cast<pktvisor::StreamPayload> payload(PcapStreamPayload{packet});
+        i.second();
     }
 
     if (l4 == pcpp::UDP) {
 
-        pcpp::UdpLayer *udpLayer = packet.getLayerOfType<pcpp::UdpLayer>();
+/*        pcpp::UdpLayer *udpLayer = packet.getLayerOfType<pcpp::UdpLayer>();
         assert(udpLayer);
 
         // sync
@@ -178,7 +179,7 @@ void PcapInputStream::processRawPacket(pcpp::RawPacket *rawPacket)
                 }
                 i.second.queue->enqueue(udpLayerCopy);
             }
-        }
+        }*/
 
     } else if (l4 == pcpp::TCP) {
         // get a pointer to the TCP reassembly instance and feed the packet arrived to it
@@ -189,27 +190,31 @@ void PcapInputStream::processRawPacket(pcpp::RawPacket *rawPacket)
 
 }
 
-void PcapInputStream::register_packet_consumer(const std::string &name, PcapInputStream::PacketCallback cb) {
+/*void PcapInputStream::register_packet_consumer(const std::string &name, PcapInputStream::PacketCallback cb) {
+    auto lock = _lock_consumers();
     _packet_consumers.emplace(std::make_pair(name, std::move(cb)));
 }
 
 void PcapInputStream::deregister_packet_consumer(const std::string &name) {
+    auto lock = _lock_consumers();
     _packet_consumers.erase(name);
 }
 
 void PcapInputStream::register_udp_consumer(const std::string &name, uint16_t port, PcapInputStream::UdpLayerCallback cb)
 {
+    auto lock = _lock_consumers();
     UdpConsumer consumer(port, std::move(cb));
     _udp_consumers.emplace(std::make_pair(name, std::move(consumer)));
 }
 
 PcapInputStream::ConcurrentUdpQueue* PcapInputStream::register_udp_consumer_async(const std::string &name, uint16_t port)
 {
+    auto lock = _lock_consumers();
     // FIXME
     UdpConsumerAsync consumer(port);
     _udp_consumers_async.emplace(std::make_pair(name, std::move(consumer)));
     return _udp_consumers_async.at(name).queue.get();
-}
+}*/
 
 void PcapInputStream::openPcap(std::string fileName, std::string bpfFilter)
 {

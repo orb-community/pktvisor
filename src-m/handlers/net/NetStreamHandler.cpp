@@ -7,7 +7,7 @@ namespace handler {
 
 NetStreamHandler::NetStreamHandler(const std::string &name, pktvisor::input::PcapInputStream *stream)
     : pktvisor::StreamHandler(name)
-    , _udpPacketQueue(nullptr)
+    //    , _udpPacketQueue(nullptr)
     , _stream(stream)
 {
 }
@@ -20,8 +20,11 @@ void NetStreamHandler::start()
     _running = true;
     !Corrade::Utility::Debug{} << "start";
 
-    _stream->register_packet_consumer(_name, [](pcpp::Packet &packet) {
-        Corrade::Utility::Debug{} << packet.toString();
+    _stream->register_consumer(this, [](StreamPayload &p) {
+        //        Corrade::Utility::Debug{} << packet.toString();
+        auto payload = dynamic_cast<pktvisor::input::PcapStreamPayload &>(p);
+        Corrade::Utility::Debug{} << "NET STREAM PACKET\n";
+        Corrade::Utility::Debug{} << payload;
     });
 
     // FIXME async
@@ -46,7 +49,7 @@ void NetStreamHandler::stop()
     !Corrade::Utility::Debug{} << "stop";
     _running = false;
 
-    _stream->deregister_packet_consumer(_name);
+    _stream->deregister_consumer(this);
 
     if (_thread && _thread->joinable()) {
         _thread->join();

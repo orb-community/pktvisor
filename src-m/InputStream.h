@@ -1,44 +1,64 @@
 #ifndef PKTVISORD_INPUTSTREAM_H
 #define PKTVISORD_INPUTSTREAM_H
 
-#include <atomic>
-#include <string>
-#include <unordered_map>
-#include <variant>
+#include "AbstractModule.h"
+#include "StreamHandler.h"
+#include <functional>
+#include <shared_mutex>
 
 namespace pktvisor {
 
-class InputStream
+class StreamPayload
 {
+public:
+    StreamPayload()
+    {
+    }
+    virtual ~StreamPayload()
+    {
+    }
+};
+
+class InputStream : public AbstractModule
+{
+public:
+    typedef std::function<void(StreamPayload &)> StreamCallback;
+
 protected:
-    std::atomic_bool _running = false;
-    std::string _name;
-    std::unordered_map<std::string, std::variant<std::string, uint64_t>> _config;
+    mutable std::shared_mutex _consumer_mutex;
+
+    std::unordered_map<const StreamHandler *, StreamCallback> _consumers;
 
 public:
     InputStream(const std::string &name)
-        : _name(name)
+        : AbstractModule(name)
     {
     }
-    virtual void start() = 0;
-    virtual void stop() = 0;
+
     virtual ~InputStream(){};
 
-    const std::string &name() const
+    void register_consumer(const StreamHandler *h, StreamCallback cb)
     {
-        return _name;
+        std::unique_lock lock(_consumer_mutex);
+        _consumers.emplace(std::make_pair(h, std::move(cb)));
     }
 
-    bool
-    running() const
+    void deregister_consumer(const StreamHandler *h)
     {
-        return _running;
+        std::unique_lock lock(_consumer_mutex);
+        _consumers.erase(h);
     }
 
-    template <class T>
-    void set_config(const std::string &key, const T &val)
+    bool has_consumers() const
     {
-        _config[key] = val;
+        std::shared_lock lock(_consumer_mutex);
+        return !_consumers.empty();
+    }
+
+    auto lock_consumers()
+    {
+        std::unique_lock lock(_consumer_mutex);
+        return lock;
     }
 };
 

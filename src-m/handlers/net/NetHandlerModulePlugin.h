@@ -11,8 +11,6 @@ namespace handler {
 
 class NetHandlerModulePlugin : public HandlerModulePlugin
 {
-    // TODO this could be more granular, on names
-    std::shared_mutex _mutex;
 
 protected:
     void _setup_routes(HttpServer &svr) override;

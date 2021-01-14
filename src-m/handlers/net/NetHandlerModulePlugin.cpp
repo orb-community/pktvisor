@@ -41,7 +41,7 @@ void NetHandlerModulePlugin::_setup_routes(HttpServer &svr)
                 return;
             }
             // note, may be a race on exists() above, this may fail. if so we will catch and 500.
-            auto input_module = _input_manager->get_module(input_name);
+            auto [input_module, stream_lock] = _input_manager->get_module(input_name);
             assert(input_module);
             auto pcap_stream = dynamic_cast<pktvisor::input::PcapInputStream *>(input_module);
             if (!pcap_stream) {
@@ -96,8 +96,7 @@ void NetHandlerModulePlugin::_setup_routes(HttpServer &svr)
 
 void NetHandlerModulePlugin::op_create(const std::string &input_name, const std::string &handler_name)
 {
-    std::unique_lock lock(_mutex);
-    auto stream = _input_manager->get_module(input_name);
+    auto [stream, stream_lock] = _input_manager->get_module(input_name);
     assert(stream);
     auto pcap_stream = dynamic_cast<pktvisor::input::PcapInputStream *>(stream);
     assert(pcap_stream);
@@ -109,12 +108,13 @@ void NetHandlerModulePlugin::op_create(const std::string &input_name, const std:
 
 void NetHandlerModulePlugin::op_delete(const std::string &handler_name)
 {
-    std::unique_lock lock(_mutex);
-    auto handler = _handler_manager->get_module(handler_name);
+    auto [handler, handler_lock] = _handler_manager->get_module(handler_name);
     assert(handler);
     auto net_handler = dynamic_cast<NetStreamHandler *>(handler);
     assert(net_handler);
     net_handler->stop();
+    handler_lock.release();
+    // TODO race? do we need to pass in the lock?
     _handler_manager->remove_module(handler_name);
 }
 

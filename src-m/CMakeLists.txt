@@ -11,6 +11,7 @@ set_directory_properties(PROPERTIES CORRADE_USE_PEDANTIC_FLAGS ON)
 add_library(pktvisorcore-m
         AbstractPlugin.cpp
         AbstractManager.cpp
+        AbstractModule.cpp
         InputStreamManager.cpp
         HandlerManager.cpp
         StreamHandler.cpp
