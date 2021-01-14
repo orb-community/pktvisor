@@ -25,10 +25,6 @@ public:
     {
         return "NetHandlerModulePlugin";
     }
-
-    // CRUD interface, must be thread safe
-    void op_create(const std::string &input_name, const std::string &handler_name);
-    void op_delete(const std::string &handler_name);
 };
 }
 }

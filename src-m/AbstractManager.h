@@ -18,7 +18,7 @@ class AbstractManager
 {
     static_assert(std::is_base_of<AbstractModule, ModuleType>::value, "ModuleType must inherit from AbstractModule");
 
-public:
+protected:
     typedef std::unordered_map<std::string, std::unique_ptr<ModuleType>> ModuleMap;
     ModuleMap _map;
     mutable std::shared_mutex _map_mutex;
@@ -39,12 +39,14 @@ public:
         return retVals{_map, std::move(lock)};
     }
 
-    void add_module(const std::string &name, std::unique_ptr<ModuleType> &&m)
+    // atomically ensure module starts before arriving in registry
+    virtual void add_module(const std::string &name, std::unique_ptr<ModuleType> &&m)
     {
         std::unique_lock lock(_map_mutex);
         if (_map.count(name)) {
             throw std::runtime_error("module name already exists");
         }
+        m->start();
         _map.emplace(std::make_pair(name, std::move(m)));
     }
 
@@ -63,12 +65,13 @@ public:
         return retVals{_map[name].get(), std::move(lock)};
     }
 
-    void remove_module(const std::string &name)
+    virtual void remove_module(const std::string &name)
     {
         std::unique_lock lock(_map_mutex);
         if (_map.count(name) == 0) {
             throw std::runtime_error("module name does not exist");
         }
+        _map[name]->stop();
         _map.erase(name);
     }
 

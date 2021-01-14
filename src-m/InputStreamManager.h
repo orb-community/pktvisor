@@ -17,6 +17,24 @@ public:
         : AbstractManager<InputStream>()
     {
     }
+
+    virtual ~InputStreamManager()
+    {
+    }
+
+    // override to atomically ensure we don't remove if there are active consumers
+    void remove_module(const std::string &name) override
+    {
+        std::unique_lock lock(_map_mutex);
+        if (_map.count(name) == 0) {
+            throw std::runtime_error("module name does not exist");
+        }
+        if (_map[name]->consumer_count()) {
+            throw std::runtime_error("unable to remove, stream has consumers");
+        }
+        _map[name]->stop();
+        _map.erase(name);
+    }
 };
 
 }

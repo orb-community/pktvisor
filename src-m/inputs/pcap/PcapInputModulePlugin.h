@@ -24,9 +24,6 @@ public:
         return "PcapInputModulePlugin";
     }
 
-    // CRUD interface, must be thread safe
-    void op_create(const std::string &name, const std::string &iface, const std::string &bpf);
-    void op_delete(const std::string &name);
 };
 
 }

@@ -41,7 +41,7 @@ void NetHandlerModulePlugin::_setup_routes(HttpServer &svr)
                 return;
             }
             // note, may be a race on exists() above, this may fail. if so we will catch and 500.
-            auto [input_stream, stream_lock] = _input_manager->get_module(input_name);
+            auto [input_stream, stream_mgr_lock] = _input_manager->get_module(input_name);
             assert(input_stream);
             auto pcap_stream = dynamic_cast<pktvisor::input::PcapInputStream *>(input_stream);
             if (!pcap_stream) {
@@ -56,8 +56,8 @@ void NetHandlerModulePlugin::_setup_routes(HttpServer &svr)
                 res.set_content(result.dump(), "text/json");
                 return;
             }
-            stream_lock.unlock();
-            op_create(input_name, body["name"]);
+            auto handler_module = std::make_unique<NetStreamHandler>(body["name"], pcap_stream);
+            _handler_manager->add_module(body["name"], std::move(handler_module));
             result["name"] = body["name"];
             res.set_content(result.dump(), "text/json");
         } catch (const std::exception &e) {
@@ -84,8 +84,7 @@ void NetHandlerModulePlugin::_setup_routes(HttpServer &svr)
                 res.set_content(result.dump(), "text/json");
                 return;
             }
-            // races will fail with 500
-            op_delete(handler_name);
+            _handler_manager->remove_module(handler_name);
             res.set_content(result.dump(), "text/json");
         } catch (const std::exception &e) {
             res.status = 500;
@@ -93,30 +92,6 @@ void NetHandlerModulePlugin::_setup_routes(HttpServer &svr)
             res.set_content(result.dump(), "text/json");
         }
     });
-}
-
-void NetHandlerModulePlugin::op_create(const std::string &input_name, const std::string &handler_name)
-{
-    auto [stream, stream_lock] = _input_manager->get_module(input_name);
-    assert(stream);
-    auto pcap_stream = dynamic_cast<pktvisor::input::PcapInputStream *>(stream);
-    assert(pcap_stream);
-    auto handler_module = std::make_unique<NetStreamHandler>(handler_name, pcap_stream);
-    //    handler_module->set_config("iface", iface);
-    handler_module->start();
-    _handler_manager->add_module(handler_name, std::move(handler_module));
-}
-
-void NetHandlerModulePlugin::op_delete(const std::string &handler_name)
-{
-    auto [handler, handler_lock] = _handler_manager->get_module(handler_name);
-    assert(handler);
-    auto net_handler = dynamic_cast<NetStreamHandler *>(handler);
-    assert(net_handler);
-    net_handler->stop();
-    handler_lock.unlock();
-    // TODO race? do we need to pass in the lock?
-    _handler_manager->remove_module(handler_name);
 }
 
 }

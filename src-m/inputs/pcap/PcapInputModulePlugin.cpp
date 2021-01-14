@@ -37,7 +37,12 @@ void PcapInputModulePlugin::_setup_routes(HttpServer &svr)
             if (body.contains("bpf")) {
                 bpf = body["bpf"];
             }
-            op_create(body["name"], body["iface"], bpf);
+
+            auto input_stream = std::make_unique<PcapInputStream>(body["name"]);
+            input_stream->set_config("iface", body["iface"].get<std::string>());
+            input_stream->set_config("bpf", bpf);
+            _input_manager->add_module(body["name"], std::move(input_stream));
+
             result["name"] = body["name"];
             result["iface"] = body["iface"];
             res.set_content(result.dump(), "text/json");
@@ -59,7 +64,7 @@ void PcapInputModulePlugin::_setup_routes(HttpServer &svr)
                 res.set_content(result.dump(), "text/json");
                 return;
             }
-            auto [input_stream, lock] = _input_manager->get_module(name);
+            auto [input_stream, stream_mgr_lock] = _input_manager->get_module(name);
             assert(input_stream);
             auto count = input_stream->consumer_count();
             if (count) {
@@ -68,8 +73,8 @@ void PcapInputModulePlugin::_setup_routes(HttpServer &svr)
                 res.set_content(result.dump(), "text/json");
                 return;
             }
-            lock.unlock();
-            op_delete(name);
+            stream_mgr_lock.unlock();
+            _input_manager->remove_module(name);
             res.set_content(result.dump(), "text/json");
         } catch (const std::exception &e) {
             res.status = 500;
@@ -77,26 +82,6 @@ void PcapInputModulePlugin::_setup_routes(HttpServer &svr)
             res.set_content(result.dump(), "text/json");
         }
     });
-}
-void PcapInputModulePlugin::op_create(const std::string &name, const std::string &iface, const std::string &bpf)
-{
-    auto input_stream = std::make_unique<PcapInputStream>(name);
-    input_stream->set_config("iface", iface);
-    input_stream->set_config("bpf", bpf);
-    input_stream->start();
-    _input_manager->add_module(name, std::move(input_stream));
-}
-
-void PcapInputModulePlugin::op_delete(const std::string &name)
-{
-    auto [input_stream, stream_lock] = _input_manager->get_module(name);
-    assert(input_stream);
-    if (input_stream->consumer_count()) {
-        throw std::runtime_error("unable to remove, stream has consumers");
-    }
-    input_stream->stop();
-    stream_lock.unlock();
-    _input_manager->remove_module(name);
 }
 
 }

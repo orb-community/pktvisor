@@ -17,6 +17,10 @@ public:
         : AbstractManager<StreamHandler>()
     {
     }
+
+    virtual ~HandlerManager()
+    {
+    }
 };
 
 }
