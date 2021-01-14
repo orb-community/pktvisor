@@ -58,7 +58,7 @@ void PcapInputModulePlugin::_setup_routes(HttpServer &svr)
                 res.set_content(result.dump(), "text/json");
                 return;
             }
-            auto input_module = _input_manager->get_module(name);
+            auto [input_module, lock] = _input_manager->get_module(name);
             assert(input_module);
             if (input_module->has_consumers()) {
                 res.status = 400;
@@ -66,6 +66,7 @@ void PcapInputModulePlugin::_setup_routes(HttpServer &svr)
                 res.set_content(result.dump(), "text/json");
                 return;
             }
+            lock.unlock();
             op_delete(name);
             res.set_content(result.dump(), "text/json");
         } catch (const std::exception &e) {
@@ -86,13 +87,13 @@ void PcapInputModulePlugin::op_create(const std::string &name, const std::string
 
 void PcapInputModulePlugin::op_delete(const std::string &name)
 {
-    auto input_module = _input_manager->get_module(name);
+    auto [input_module, lock] = _input_manager->get_module(name);
     assert(input_module);
-    auto handler_lock = input_module->lock_consumers();
     if (input_module->has_consumers()) {
         throw std::runtime_error("unable to remove, stream has consumers");
     }
     input_module->stop();
+    lock.unlock();
     _input_manager->remove_module(name);
 }
 

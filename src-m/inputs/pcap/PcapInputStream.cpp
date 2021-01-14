@@ -150,16 +150,14 @@ void PcapInputStream::processRawPacket(pcpp::RawPacket *rawPacket)
 
 
     // interface to handlers
-    for (auto&& i : _consumers) {
-        static_cast<pktvisor::StreamPayload> payload(PcapStreamPayload{packet});
-        i.second();
-    }
+    // TODO NETWORK
 
     if (l4 == pcpp::UDP) {
 
-/*        pcpp::UdpLayer *udpLayer = packet.getLayerOfType<pcpp::UdpLayer>();
+        pcpp::UdpLayer *udpLayer = packet.getLayerOfType<pcpp::UdpLayer>();
         assert(udpLayer);
-
+        _udp_signal(*udpLayer);
+        /*
         // sync
         for (auto&& i : _udp_consumers) {
             if (i.second.port == 0 || i.second.port == ntohs(udpLayer->getUdpHeader()->portDst) || i.second.port == ntohs(udpLayer->getUdpHeader()->portSrc)) {

@@ -41,21 +41,22 @@ void NetHandlerModulePlugin::_setup_routes(HttpServer &svr)
                 return;
             }
             // note, may be a race on exists() above, this may fail. if so we will catch and 500.
-            auto [input_module, stream_lock] = _input_manager->get_module(input_name);
-            assert(input_module);
-            auto pcap_stream = dynamic_cast<pktvisor::input::PcapInputStream *>(input_module);
+            auto [input_stream, stream_lock] = _input_manager->get_module(input_name);
+            assert(input_stream);
+            auto pcap_stream = dynamic_cast<pktvisor::input::PcapInputStream *>(input_stream);
             if (!pcap_stream) {
                 res.status = 400;
                 result["error"] = "input stream is not pcap";
                 res.set_content(result.dump(), "text/json");
                 return;
             }
-            if (!input_module->running()) {
+            if (!input_stream->running()) {
                 res.status = 400;
                 result["error"] = "input stream is not running";
                 res.set_content(result.dump(), "text/json");
                 return;
             }
+            stream_lock.unlock();
             op_create(input_name, body["name"]);
             result["name"] = body["name"];
             res.set_content(result.dump(), "text/json");
@@ -113,7 +114,7 @@ void NetHandlerModulePlugin::op_delete(const std::string &handler_name)
     auto net_handler = dynamic_cast<NetStreamHandler *>(handler);
     assert(net_handler);
     net_handler->stop();
-    handler_lock.release();
+    handler_lock.unlock();
     // TODO race? do we need to pass in the lock?
     _handler_manager->remove_module(handler_name);
 }

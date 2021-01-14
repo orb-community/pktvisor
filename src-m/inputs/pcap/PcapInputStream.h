@@ -9,6 +9,7 @@
 #include <concurrentqueue/blockingconcurrentqueue.h>
 #include <functional>
 #include <memory>
+#include <sigslot/signal.hpp>
 #include <unordered_map>
 #include <vector>
 
@@ -120,43 +121,8 @@ private:
     std::shared_ptr<pcpp::TcpReassembly> _tcpReassembly;
 };
 
-class PcapStreamPayload : public pktvisor::StreamPayload
-{
-public:
-    pcpp::Packet &packet;
-
-    PcapStreamPayload(pcpp::Packet &p)
-        : packet(p)
-    {
-    }
-};
-
 class PcapInputStream : public pktvisor::InputStream
 {
-    /*public:
-    typedef moodycamel::BlockingConcurrentQueue<std::shared_ptr<pcpp::UdpLayer>> ConcurrentUdpQueue;
-    typedef std::function<void(pcpp::UdpLayer &)> UdpLayerCallback;
-    typedef std::function<void(pcpp::Packet &)> PacketCallback;
-
-    struct UdpConsumerAsync {
-        std::unique_ptr<ConcurrentUdpQueue> queue;
-        uint16_t port;
-        UdpConsumerAsync(uint16_t p)
-            : port(p)
-            , queue(std::make_unique<ConcurrentUdpQueue>())
-        {
-        }
-    };
-
-    struct UdpConsumer {
-        UdpLayerCallback callback;
-        uint16_t port;
-        UdpConsumer(uint16_t p, UdpLayerCallback cb)
-            : port(p)
-            , callback(std::move(cb))
-        {
-        }
-    };*/
 
 private:
     IPv4subnetList hostIPv4;
@@ -164,13 +130,11 @@ private:
     std::unique_ptr<TcpMsgReassembly> _tcpReassembly;
     pcpp::PcapLiveDevice *_pcapDevice;
 
-    // see has_consumers() if changing
-    /*    std::unordered_map<std::string, UdpConsumerAsync> _udp_consumers_async;
-    std::unordered_map<std::string, UdpConsumer> _udp_consumers;
-    std::unordered_map<std::string, PacketCallback> _packet_consumers;*/
+    sigslot::signal<pcpp::UdpLayer &> _udp_signal;
 
 protected:
-    void onGotMessage(Direction dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowKey, timespec stamp);
+    void
+    onGotMessage(Direction dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowKey, timespec stamp);
 
     void openPcap(std::string fileName, std::string bpfFilter = "");
     void openIface(std::string bpfFilter = "");
@@ -182,15 +146,20 @@ public:
 
     void start() override;
     void stop() override;
-    /*
-    ConcurrentUdpQueue *register_udp_consumer_async(const std::string &name, uint16_t port);
-    void register_udp_consumer(const std::string &name, uint16_t port, UdpLayerCallback);
-
-    void register_packet_consumer(const std::string &name, PacketCallback);
-    void deregister_packet_consumer(const std::string &name);*/
 
     // public so it can be called from a static callback method
     void processRawPacket(pcpp::RawPacket *rawPacket);
+
+    // handler functionality
+    auto &udp_signal()
+    {
+        return _udp_signal;
+    }
+
+    bool has_consumers() override
+    {
+        return _udp_signal.slot_count();
+    }
 };
 
 }
