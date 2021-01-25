@@ -79,7 +79,7 @@ public:
     void process_packet(pcpp::Packet &payload) override;
 };
 
-class NetworkMetricsManager : pktvisor::MetricsManager<NetworkMetrics>, public NetworkMetricsIface
+class NetworkMetricsManager : public pktvisor::MetricsManager<NetworkMetrics>, public NetworkMetricsIface
 {
 public:
     NetworkMetricsManager(bool singleSummaryMode, uint periods, int deepSampleRate)
@@ -105,8 +105,12 @@ public:
     NetStreamHandler(const std::string &name, pktvisor::input::PcapInputStream *stream);
     virtual ~NetStreamHandler();
 
+    // pktvisor::AbstractModule
     void start() override;
     void stop() override;
+
+    // pktvisor::StreamHandler
+    void toJSON(json &j) override;
 };
 
 }

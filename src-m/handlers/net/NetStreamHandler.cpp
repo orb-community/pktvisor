@@ -51,6 +51,11 @@ void NetStreamHandler::process_packet(pcpp::Packet &payload)
     _metrics.process_packet(payload);
 }
 
+void NetStreamHandler::toJSON(json &j)
+{
+    _metrics.getMetrics(j["net"], 0);
+}
+
 void NetworkMetrics::merge(NetworkMetrics &other)
 {
 
@@ -92,7 +97,6 @@ void NetworkMetrics::merge(NetworkMetrics &other)
 void NetworkMetrics::process_packet(pcpp::Packet &payload)
 {
     _numPackets++;
-    !Corrade::Utility::Debug{} << "pack count: " << _numPackets;
 }
 
 void NetworkMetrics::toJSON(json &j, const std::string &key)

@@ -11,6 +11,7 @@
 #include <json/json.hpp>
 #include <rng/randutils.hpp>
 #include <shared_mutex>
+#include <sys/time.h>
 #include <unordered_map>
 
 using json = nlohmann::json;
@@ -218,10 +219,52 @@ public:
     void setInitialShiftTS();
     //    void setInitialShiftTS(const pcpp::Packet &packet);
 
+    /*
     std::string getAppMetrics();
     std::string getInstantRates();
-    std::string getMetrics(uint64_t period = 0);
+     */
+
+    void getMetrics(json &j, uint64_t period = 0)
+    {
+        if (_singleSummaryMode) {
+            period = 0;
+        } else {
+            if (period >= _numPeriods) {
+                /* TODO
+                std::stringstream err;
+                err << "invalid metrics period, specify [0, " << _numPeriods - 1 << "]";
+                j["error"] = err.str();
+                 */
+            }
+            if (period >= _metrics.size()) {
+                /*
+                std::stringstream err;
+                err << "this metrics period has not yet accumulated, current range is [0, " << _metrics.size() - 1 << "]";
+                j["error"] = err.str();
+                 */
+            }
+        }
+
+        std::string period_str = "1m";
+
+        auto period_length = 0;
+        if (period == 0) {
+            timeval now_ts;
+            gettimeofday(&now_ts, nullptr);
+            period_length = now_ts.tv_sec - _metrics[period]->getTS().tv_sec;
+        } else {
+            period_length = MetricsManager::PERIOD_SEC;
+        }
+
+        j[period_str]["period"]["start_ts"] = _metrics[period]->getTS().tv_sec;
+        j[period_str]["period"]["length"] = period_length;
+
+        _metrics[period]->toJSON(j, period_str);
+    }
+
+    /*
     std::string getMetricsMerged(uint64_t period);
+     */
 };
 
 }

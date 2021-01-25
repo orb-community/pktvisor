@@ -66,6 +66,39 @@ void NetHandlerModulePlugin::_setup_routes(HttpServer &svr)
             res.set_content(result.dump(), "text/json");
         }
     });
+    svr.Get("/api/v1/inputs/pcap/(\\w+)/handlers/net/(\\w+)", [this](const httplib::Request &req, httplib::Response &res) {
+        json result;
+        try {
+            auto input_name = req.matches[1];
+            if (!_input_manager->exists(input_name)) {
+                res.status = 404;
+                result["result"] = "input name does not exist";
+                res.set_content(result.dump(), "text/json");
+                return;
+            }
+            auto handler_name = req.matches[2];
+            if (!_handler_manager->exists(handler_name)) {
+                res.status = 404;
+                result["result"] = "handler name does not exist";
+                res.set_content(result.dump(), "text/json");
+                return;
+            }
+            auto [handler, handler_mgr_lock] = _handler_manager->get_module(handler_name);
+            auto net_handler = dynamic_cast<pktvisor::handler::NetStreamHandler *>(handler);
+            if (!net_handler) {
+                res.status = 400;
+                result["error"] = "handler stream is not net";
+                res.set_content(result.dump(), "text/json");
+                return;
+            }
+            net_handler->toJSON(result);
+            res.set_content(result.dump(), "text/json");
+        } catch (const std::exception &e) {
+            res.status = 500;
+            result["result"] = e.what();
+            res.set_content(result.dump(), "text/json");
+        }
+    });
     // DELETE
     svr.Delete("/api/v1/inputs/pcap/(\\w+)/handlers/net/(\\w+)", [this](const httplib::Request &req, httplib::Response &res) {
         json result;
