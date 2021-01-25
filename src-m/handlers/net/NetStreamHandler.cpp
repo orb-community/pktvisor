@@ -2,12 +2,16 @@
 #include <Corrade/Utility/Debug.h>
 #include <Corrade/Utility/DebugStl.h>
 
+#include <datasketches/datasketches/cpc/cpc_union.hpp>
+
 namespace pktvisor {
 namespace handler {
 
 NetStreamHandler::NetStreamHandler(const std::string &name, pktvisor::input::PcapInputStream *stream)
     : pktvisor::StreamHandler(name)
     , _stream(stream)
+    // TODO
+    , _metrics(false, 5, 100)
 {
 }
 
@@ -43,6 +47,78 @@ NetStreamHandler::~NetStreamHandler()
 void NetStreamHandler::process_packet(pcpp::Packet &payload)
 {
     Corrade::Utility::Debug{} << _name << ":" << payload.toString();
+    _metrics.process_packet(payload);
+}
+
+void NetworkMetrics::merge(NetworkMetrics &other)
+{
+
+    _numPackets += other._numPackets;
+    _numPackets_UDP += other._numPackets_UDP;
+    _numPackets_TCP += other._numPackets_TCP;
+    _numPackets_OtherL4 += other._numPackets_OtherL4;
+    _numPackets_IPv6 += other._numPackets_IPv6;
+    _numPackets_in += other._numPackets_in;
+    _numPackets_out += other._numPackets_out;
+
+    // lock me for for write, other for read/
+    /*
+    std::unique_lock w_lock(_sketchMutex);
+    std::shared_lock r_lock(other._sketchMutex);
+    std::unique_lock w_lock_r(_rateSketchMutex);
+    std::shared_lock r_lock_r(other._rateSketchMutex);
+     */
+
+    _rateSketches.net_rateIn.merge(other._rateSketches.net_rateIn);
+    _rateSketches.net_rateOut.merge(other._rateSketches.net_rateOut);
+
+    datasketches::cpc_union merge_srcIPCard;
+    merge_srcIPCard.update(_sketches->_net_srcIPCard);
+    merge_srcIPCard.update(other._sketches->_net_srcIPCard);
+    _sketches->_net_srcIPCard = merge_srcIPCard.get_result();
+
+    datasketches::cpc_union merge_dstIPCard;
+    merge_dstIPCard.update(_sketches->_net_dstIPCard);
+    merge_dstIPCard.update(other._sketches->_net_dstIPCard);
+    _sketches->_net_dstIPCard = merge_dstIPCard.get_result();
+
+    _sketches->_net_topIPv4.merge(other._sketches->_net_topIPv4);
+    _sketches->_net_topIPv6.merge(other._sketches->_net_topIPv6);
+    _sketches->_net_topGeoLoc.merge(other._sketches->_net_topGeoLoc);
+    _sketches->_net_topASN.merge(other._sketches->_net_topASN);
+}
+void NetworkMetrics::process_packet(pcpp::Packet &payload)
+{
+    _numPackets++;
+}
+void NetworkMetricsManager::process_packet(pcpp::Packet &payload)
+{
+    // at each new packet, we determine if we are sampling, to limit collection of more detailed (expensive) statistics
+    _shouldDeepSample = true;
+    if (_deepSampleRate != 100) {
+        _shouldDeepSample = (_rng.uniform(0, 100) <= _deepSampleRate);
+    }
+    if (!_singleSummaryMode) {
+        // use packet timestamps to track when PERIOD_SEC passes so we don't have to hit system clock
+        auto pkt_ts = payload.getRawPacketReadOnly()->getPacketTimeStamp();
+        if (pkt_ts.tv_sec - _lastShiftTS.tv_sec > MetricsManager::PERIOD_SEC) {
+            _periodShift();
+            _lastShiftTS.tv_sec = pkt_ts.tv_sec;
+            //pairMgr.purgeOldTransactions(pkt_ts);
+            //_openDnsTransactionCount = pairMgr.getOpenTransactionCount();
+        } /*
+        switch (dir) {
+        case fromHost:
+            _instantRates->_rate_out.incCounter();
+            break;
+        case toHost:
+            _instantRates->_rate_in.incCounter();
+            break;
+        case unknown:
+            break;
+        }*/
+    }
+    _metrics.back()->process_packet(payload);
 }
 
 }

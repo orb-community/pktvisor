@@ -93,26 +93,34 @@ struct InstantRateMetrics {
     }
 };
 
-template <class Sketches>
+template <class MetricsClass>
 class MetricsManager;
 
-template <class Sketches>
+template <class MetricsClass, class SketchesClass>
 class Metrics
 {
 
+protected:
     // always the first second of the bucket, i.e. this bucket contains from this timestamp to timestamp + MetricsMgr::PERIOD_SEC
     timeval _bucketTS;
-
     // TODO don't need unique_ptr anymore?
-    std::unique_ptr<Sketches> _sketches;
+    std::unique_ptr<SketchesClass> _sketches;
     std::shared_mutex _sketchMutex;
 
-    MetricsManager<Sketches> &_mmgr;
+    MetricsManager<MetricsClass> &_mmgr;
 
 public:
-    Metrics(MetricsManager<Sketches> &mmgr);
+    Metrics(MetricsManager<MetricsClass> &mmgr)
+        : _mmgr(mmgr)
+    {
+        gettimeofday(&_bucketTS, nullptr);
 
-    void merge(Metrics &other);
+        // lock for write
+        std::unique_lock lock(_sketchMutex);
+        _sketches = std::make_unique<SketchesClass>();
+    }
+
+    //virtual void merge(MetricsClass<SketchesClass> &other) = 0;
 
     timeval getTS() const
     {
@@ -123,13 +131,14 @@ public:
     void toJSON(nlohmann::json &j, const std::string &key);*/
 };
 
-template <class Sketches>
+template <class MetricsClass>
 class MetricsManager
 {
-    std::deque<std::unique_ptr<Metrics<Sketches>>> _metrics;
+protected:
+    std::deque<std::unique_ptr<MetricsClass>> _metrics;
     uint _numPeriods;
     timespec _lastShiftTS;
-    long _openDnsTransactionCount;
+    //    long _openDnsTransactionCount;
     bool _singleSummaryMode;
     std::chrono::system_clock::time_point _startTime;
 
@@ -142,7 +151,21 @@ class MetricsManager
 
     std::unordered_map<uint, std::pair<std::chrono::high_resolution_clock::time_point, std::string>> _mergeResultCache;
 
-    void _periodShift();
+    void _periodShift()
+    {
+
+        // copy instant rate results into bucket before shift
+        //_metrics.back()->assignRateSketches(_instantRates);
+        // reset instant rate quantiles so they are accurate for next minute bucket
+        _instantRates->resetQuantiles();
+
+        // add new bucket
+        _metrics.emplace_back(std::make_unique<MetricsClass>(*this));
+        if (_metrics.size() > _numPeriods) {
+            // if we're at our period history length, pop the oldest
+            _metrics.pop_front();
+        }
+    }
 
 public:
     static const uint PERIOD_SEC = 60;
@@ -152,7 +175,7 @@ public:
         : _metrics()
         , _numPeriods(periods)
         , _lastShiftTS()
-        , _openDnsTransactionCount(0)
+        //        , _openDnsTransactionCount(0)
         , _singleSummaryMode(singleSummaryMode)
         , _startTime()
         , _instantRates()
@@ -171,7 +194,7 @@ public:
         _instantRates = std::make_shared<InstantRateMetrics>();
         _numPeriods = std::min(_numPeriods, 10U);
         _numPeriods = std::max(_numPeriods, 2U);
-        _metrics.emplace_back(std::make_unique<Metrics>(*this));
+        _metrics.emplace_back(std::make_unique<MetricsClass>(*this));
         _lastShiftTS.tv_sec = 0;
         _lastShiftTS.tv_nsec = 0;
         _startTime = std::chrono::system_clock::now();

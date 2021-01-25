@@ -26,19 +26,29 @@ struct NetworkSketches {
 
     datasketches::frequent_items_sketch<std::string> _net_topGeoLoc;
     datasketches::frequent_items_sketch<std::string> _net_topASN;
+    datasketches::frequent_items_sketch<uint32_t> _net_topIPv4;
+    datasketches::frequent_items_sketch<std::string> _net_topIPv6; // TODO not very efficient, should switch to 16 byte uint
 
     NetworkSketches()
         : _net_srcIPCard()
         , _net_dstIPCard()
         , _net_topGeoLoc(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
         , _net_topASN(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
+        , _net_topIPv4(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
+        , _net_topIPv6(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
     {
     }
 };
 
-class NetworkMetrics : public pktvisor::Metrics<NetworkSketches>
+class NetworkMetricsIface
 {
+public:
+    virtual void process_packet(pcpp::Packet &payload) = 0;
+};
 
+class NetworkMetrics : public pktvisor::Metrics<NetworkMetrics, NetworkSketches>, public NetworkMetricsIface
+{
+public:
     uint64_t _numPackets = 0;
     uint64_t _numPackets_UDP = 0;
     uint64_t _numPackets_TCP = 0;
@@ -47,23 +57,38 @@ class NetworkMetrics : public pktvisor::Metrics<NetworkSketches>
     uint64_t _numPackets_in = 0;
     uint64_t _numPackets_out = 0;
 
-    /*    // TODO don't need unique_ptr anymore?
-    std::unique_ptr<NetworkSketches> _sketches;
-    std::shared_mutex _sketchMutex;*/
-
     NetworkRateSketches _rateSketches;
     std::shared_mutex _rateSketchMutex;
 
 public:
-    NetworkMetrics(pktvisor::MetricsManager<NetworkSketches> &mmgr);
+    NetworkMetrics(pktvisor::MetricsManager<NetworkMetrics> &mmgr)
+        : pktvisor::Metrics<NetworkMetrics, NetworkSketches>(mmgr)
+    {
+    }
 
-    void merge(pktvisor::Metrics<NetworkSketches> &other);
+    void merge(NetworkMetrics &other);
+
+    // NetworkMetricsIface
+    void process_packet(pcpp::Packet &payload) override;
+};
+
+class NetworkMetricsManager : pktvisor::MetricsManager<NetworkMetrics>, public NetworkMetricsIface
+{
+public:
+    NetworkMetricsManager(bool singleSummaryMode, uint periods, int deepSampleRate)
+        : pktvisor::MetricsManager<NetworkMetrics>(singleSummaryMode, periods, deepSampleRate)
+    {
+    }
+
+    // NetworkMetricsIface
+    void process_packet(pcpp::Packet &payload) override;
 };
 
 class NetStreamHandler : public pktvisor::StreamHandler
 {
 
     pktvisor::input::PcapInputStream *_stream;
+    NetworkMetricsManager _metrics;
 
     sigslot::connection _pkt_connection;
 
