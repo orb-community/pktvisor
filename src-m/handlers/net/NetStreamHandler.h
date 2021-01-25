@@ -4,9 +4,13 @@
 #include "MetricsManager.h"
 #include "PcapInputStream.h"
 #include "StreamHandler.h"
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wold-style-cast"
+#pragma GCC diagnostic ignored "-Wunused-function"
 #include <datasketches/cpc/cpc_sketch.hpp>
 #include <datasketches/fi/frequent_items_sketch.hpp>
 #include <datasketches/kll/kll_sketch.hpp>
+#pragma GCC diagnostic pop
 #include <string>
 
 namespace pktvisor {
@@ -67,6 +71,9 @@ public:
     }
 
     void merge(NetworkMetrics &other);
+
+    // pktvisor::Metrics
+    void toJSON(json &j, const std::string &key) override;
 
     // NetworkMetricsIface
     void process_packet(pcpp::Packet &payload) override;

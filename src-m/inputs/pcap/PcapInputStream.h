@@ -2,11 +2,13 @@
 #define PKTVISORD_PCAPINPUTSTREAM_H
 
 #include "InputStream.h"
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wold-style-cast"
 #include <IpAddress.h>
 #include <PcapLiveDeviceList.h>
 #include <TcpReassembly.h>
 #include <UdpLayer.h>
-#include <concurrentqueue/blockingconcurrentqueue.h>
+#pragma GCC diagnostic pop
 #include <functional>
 #include <memory>
 #include <sigslot/signal.hpp>

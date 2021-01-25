@@ -1,11 +1,15 @@
 #include "PcapInputStream.h"
 #include "timer.h"
 #include <pcap.h>
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wold-style-cast"
+#pragma GCC diagnostic ignored "-Wunused-parameter"
 #include <IPv4Layer.h>
 #include <IPv6Layer.h>
 #include <PacketUtils.h>
 #include <PcapFileDevice.h>
 #include <SystemUtils.h>
+#pragma GCC diagnostic pop
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <IpUtils.h>

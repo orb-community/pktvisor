@@ -13,6 +13,7 @@ NetStreamHandler::NetStreamHandler(const std::string &name, pktvisor::input::Pca
     // TODO
     , _metrics(false, 5, 100)
 {
+    !Corrade::Utility::Debug{} << "create";
 }
 
 void NetStreamHandler::start()
@@ -87,10 +88,29 @@ void NetworkMetrics::merge(NetworkMetrics &other)
     _sketches->_net_topGeoLoc.merge(other._sketches->_net_topGeoLoc);
     _sketches->_net_topASN.merge(other._sketches->_net_topASN);
 }
+
 void NetworkMetrics::process_packet(pcpp::Packet &payload)
 {
     _numPackets++;
+    !Corrade::Utility::Debug{} << "pack count: " << _numPackets;
 }
+
+void NetworkMetrics::toJSON(json &j, const std::string &key)
+{
+    // lock for read
+    std::shared_lock lock_sketch(_sketchMutex);
+    std::shared_lock lock_rate(_rateSketchMutex);
+
+    j[key]["packets"]["total"] = _numPackets;
+    j[key]["packets"]["udp"] = _numPackets_UDP;
+    j[key]["packets"]["tcp"] = _numPackets_TCP;
+    j[key]["packets"]["other_l4"] = _numPackets_OtherL4;
+    j[key]["packets"]["ipv4"] = _numPackets - _numPackets_IPv6;
+    j[key]["packets"]["ipv6"] = _numPackets_IPv6;
+    j[key]["packets"]["in"] = _numPackets_in;
+    j[key]["packets"]["out"] = _numPackets_out;
+}
+
 void NetworkMetricsManager::process_packet(pcpp::Packet &payload)
 {
     // at each new packet, we determine if we are sampling, to limit collection of more detailed (expensive) statistics

@@ -2,11 +2,18 @@
 #define PKTVISORD_METRICSMANAGER_H
 
 #include "timer.h"
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wold-style-cast"
+#pragma GCC diagnostic ignored "-Wunused-parameter"
 #include <datasketches/kll/kll_sketch.hpp>
+#pragma GCC diagnostic pop
 #include <deque>
+#include <json/json.hpp>
 #include <rng/randutils.hpp>
 #include <shared_mutex>
 #include <unordered_map>
+
+using json = nlohmann::json;
 
 namespace pktvisor {
 
@@ -119,6 +126,9 @@ public:
         std::unique_lock lock(_sketchMutex);
         _sketches = std::make_unique<SketchesClass>();
     }
+    virtual ~Metrics()
+    {
+    }
 
     //virtual void merge(MetricsClass<SketchesClass> &other) = 0;
 
@@ -127,8 +137,8 @@ public:
         return _bucketTS;
     }
 
-    /*    void assignRateSketches(const std::shared_ptr<InstantRateMetrics>);
-    void toJSON(nlohmann::json &j, const std::string &key);*/
+    /*    void assignRateSketches(const std::shared_ptr<InstantRateMetrics>);*/
+    virtual void toJSON(json &j, const std::string &key) = 0;
 };
 
 template <class MetricsClass>
@@ -157,7 +167,7 @@ protected:
         // copy instant rate results into bucket before shift
         //_metrics.back()->assignRateSketches(_instantRates);
         // reset instant rate quantiles so they are accurate for next minute bucket
-        _instantRates->resetQuantiles();
+        //_instantRates->resetQuantiles();
 
         // add new bucket
         _metrics.emplace_back(std::make_unique<MetricsClass>(*this));
