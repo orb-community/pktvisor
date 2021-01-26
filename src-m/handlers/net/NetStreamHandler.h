@@ -21,7 +21,15 @@ struct NetworkRateSketches {
     Rate::QuantileType net_rateOut;
 };
 
-struct NetworkSketches {
+class NetworkMetricsIface
+{
+public:
+    virtual void process_packet(pcpp::Packet &payload) = 0;
+};
+
+class NetworkMetricsBucket : public pktvisor::AbstractMetricsBucket, public NetworkMetricsIface
+{
+public:
     const uint8_t START_FI_MAP_SIZE = 7; // 2^7 = 128
     const uint8_t MAX_FI_MAP_SIZE = 13;  // 2^13 = 8192
 
@@ -33,26 +41,6 @@ struct NetworkSketches {
     datasketches::frequent_items_sketch<uint32_t> _net_topIPv4;
     datasketches::frequent_items_sketch<std::string> _net_topIPv6; // TODO not very efficient, should switch to 16 byte uint
 
-    NetworkSketches()
-        : _net_srcIPCard()
-        , _net_dstIPCard()
-        , _net_topGeoLoc(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
-        , _net_topASN(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
-        , _net_topIPv4(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
-        , _net_topIPv6(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
-    {
-    }
-};
-
-class NetworkMetricsIface
-{
-public:
-    virtual void process_packet(pcpp::Packet &payload) = 0;
-};
-
-class NetworkMetricsBucket : public pktvisor::AbstractMetricsBucket<NetworkSketches>, public NetworkMetricsIface
-{
-public:
     uint64_t _numPackets = 0;
     uint64_t _numPackets_UDP = 0;
     uint64_t _numPackets_TCP = 0;
@@ -66,13 +54,17 @@ public:
 
 public:
     NetworkMetricsBucket()
-        : pktvisor::AbstractMetricsBucket<NetworkSketches>()
+        : _net_srcIPCard()
+        , _net_dstIPCard()
+        , _net_topGeoLoc(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
+        , _net_topASN(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
+        , _net_topIPv4(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
+        , _net_topIPv6(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
     {
     }
 
-    void merge(NetworkMetricsBucket &other);
-
     // pktvisor::AbstractMetricsBucket
+    void merge(NetworkMetricsBucket &other);
     void toJSON(json &j) override;
 
     // NetworkMetricsIface

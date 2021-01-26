@@ -101,37 +101,26 @@ struct InstantRateMetrics {
     }
 };
 
-template <class MetricsClass>
-class AbstractMetricsManager;
-
 /**
- * This class should be specialized with the counters and sketches specific to this handler
- * @tparam SketchesClass
+ * This class should be be specialized to contain metrics and sketches specific to this handler
+ * It *MUST* be thread safe, and should expect mostly writes.
  */
-template <class SketchesClass>
 class AbstractMetricsBucket
 {
 
 protected:
     // always the first second of the bucket, i.e. this bucket contains from this timestamp to timestamp + MetricsMgr::PERIOD_SEC
     timeval _bucketTS;
-    std::unique_ptr<SketchesClass> _sketches;
-    std::shared_mutex _sketchMutex;
+    mutable std::shared_mutex _mutex;
 
 public:
     AbstractMetricsBucket()
     {
         gettimeofday(&_bucketTS, nullptr);
-
-        // lock for write
-        std::unique_lock lock(_sketchMutex);
-        _sketches = std::make_unique<SketchesClass>();
     }
     virtual ~AbstractMetricsBucket()
     {
     }
-
-    //virtual void merge(MetricsBucketClass<SketchesClass> &other) = 0;
 
     timeval getTS() const
     {
@@ -140,12 +129,13 @@ public:
 
     /*    void assignRateSketches(const std::shared_ptr<InstantRateMetrics>);*/
     virtual void toJSON(json &j) = 0;
+    //    virtual void merge(AbstractMetricsBucket &other) = 0;
 };
 
 template <class MetricsBucketClass>
 class AbstractMetricsManager
 {
-    //static_assert(std::is_base_of<AbstractMetricsBucket, MetricsBucketClass>::value, "MetricsBucketClass must inherit from AbstractMetricsBucket");
+    static_assert(std::is_base_of<AbstractMetricsBucket, MetricsBucketClass>::value, "MetricsBucketClass must inherit from AbstractMetricsBucket");
 
 protected:
     std::deque<std::unique_ptr<MetricsBucketClass>> _metricBuckets;
@@ -314,7 +304,7 @@ public:
         j[period_str]["period"]["start_ts"] = oldest_ts.tv_sec;
         j[period_str]["period"]["length"] = period_length;
 
-        merged.toJSON(j, period_str);
+        merged.toJSON(j);
 
         _mergeResultCache[period] = std::pair<std::chrono::high_resolution_clock::time_point, std::string>(std::chrono::high_resolution_clock::now(), j);
     }

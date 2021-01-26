@@ -53,11 +53,18 @@ void NetStreamHandler::process_packet(pcpp::Packet &payload)
 
 void NetStreamHandler::toJSON(json &j, uint64_t period, bool merged)
 {
-    _metrics.toJSONSingle(j["net"], period);
+    if (merged) {
+        _metrics.toJSONMerged(j["net"], period);
+    } else {
+        _metrics.toJSONSingle(j["net"], period);
+    }
 }
 
 void NetworkMetricsBucket::merge(NetworkMetricsBucket &other)
 {
+
+    std::shared_lock r_lock(other._mutex);
+    std::unique_lock w_lock(_mutex);
 
     _numPackets += other._numPackets;
     _numPackets_UDP += other._numPackets_UDP;
@@ -67,43 +74,36 @@ void NetworkMetricsBucket::merge(NetworkMetricsBucket &other)
     _numPackets_in += other._numPackets_in;
     _numPackets_out += other._numPackets_out;
 
-    // lock me for for write, other for read/
-    /*
-    std::unique_lock w_lock(_sketchMutex);
-    std::shared_lock r_lock(other._sketchMutex);
-    std::unique_lock w_lock_r(_rateSketchMutex);
-    std::shared_lock r_lock_r(other._rateSketchMutex);
-     */
-
     _rateSketches.net_rateIn.merge(other._rateSketches.net_rateIn);
     _rateSketches.net_rateOut.merge(other._rateSketches.net_rateOut);
 
     datasketches::cpc_union merge_srcIPCard;
-    merge_srcIPCard.update(_sketches->_net_srcIPCard);
-    merge_srcIPCard.update(other._sketches->_net_srcIPCard);
-    _sketches->_net_srcIPCard = merge_srcIPCard.get_result();
+    merge_srcIPCard.update(_net_srcIPCard);
+    merge_srcIPCard.update(other._net_srcIPCard);
+    _net_srcIPCard = merge_srcIPCard.get_result();
 
     datasketches::cpc_union merge_dstIPCard;
-    merge_dstIPCard.update(_sketches->_net_dstIPCard);
-    merge_dstIPCard.update(other._sketches->_net_dstIPCard);
-    _sketches->_net_dstIPCard = merge_dstIPCard.get_result();
+    merge_dstIPCard.update(_net_dstIPCard);
+    merge_dstIPCard.update(other._net_dstIPCard);
+    _net_dstIPCard = merge_dstIPCard.get_result();
 
-    _sketches->_net_topIPv4.merge(other._sketches->_net_topIPv4);
-    _sketches->_net_topIPv6.merge(other._sketches->_net_topIPv6);
-    _sketches->_net_topGeoLoc.merge(other._sketches->_net_topGeoLoc);
-    _sketches->_net_topASN.merge(other._sketches->_net_topASN);
+    _net_topIPv4.merge(other._net_topIPv4);
+    _net_topIPv6.merge(other._net_topIPv6);
+    _net_topGeoLoc.merge(other._net_topGeoLoc);
+    _net_topASN.merge(other._net_topASN);
 }
 
 void NetworkMetricsBucket::process_packet(pcpp::Packet &payload)
 {
+
+    std::unique_lock w_lock(_mutex);
     _numPackets++;
 }
 
 void NetworkMetricsBucket::toJSON(json &j)
 {
-    // lock for read
-    std::shared_lock lock_sketch(_sketchMutex);
-    std::shared_lock lock_rate(_rateSketchMutex);
+
+    std::shared_lock r_lock(_mutex);
 
     j["packets"]["total"] = _numPackets;
     j["packets"]["udp"] = _numPackets_UDP;
