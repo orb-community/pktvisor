@@ -129,7 +129,7 @@ public:
 
     /*    void assignRateSketches(const std::shared_ptr<InstantRateMetrics>);*/
     virtual void toJSON(json &j) = 0;
-    //    virtual void merge(AbstractMetricsBucket &other) = 0;
+    virtual void merge(const AbstractMetricsBucket &other) = 0;
 };
 
 template <class MetricsBucketClass>

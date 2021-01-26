@@ -50,7 +50,6 @@ public:
     uint64_t _numPackets_out = 0;
 
     NetworkRateSketches _rateSketches;
-    std::shared_mutex _rateSketchMutex;
 
 public:
     NetworkMetricsBucket()
@@ -64,7 +63,7 @@ public:
     }
 
     // pktvisor::AbstractMetricsBucket
-    void merge(NetworkMetricsBucket &other);
+    void merge(const AbstractMetricsBucket &other) override;
     void toJSON(json &j) override;
 
     // NetworkMetricsIface

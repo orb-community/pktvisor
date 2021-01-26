@@ -103,7 +103,7 @@ void PcapInputStream::onGotMessage(Direction dir, pcpp::ProtocolType l3, pcpp::P
     } else {
         dnsQueryPairManager.startDnsTransaction(flowKey, dnsLayer->getDnsHeader()->transactionID, stamp);
     }*/
-};
+}
 
 
 /**

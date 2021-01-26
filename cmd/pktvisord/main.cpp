@@ -83,7 +83,7 @@ int main(int argc, char *argv[])
 
     pktvisor::HttpServer svr;
     svr.set_logger([](const auto &req, const auto &res) {
-        Corrade::Utility::Debug{} << req.method << " " << req.path << " " << res.status;
+        Corrade::Utility::Debug{} << "REQUEST: " << req.method << " " << req.path << " " << res.status;
     });
 
     // inputs

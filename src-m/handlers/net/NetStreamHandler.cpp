@@ -60,9 +60,10 @@ void NetStreamHandler::toJSON(json &j, uint64_t period, bool merged)
     }
 }
 
-void NetworkMetricsBucket::merge(NetworkMetricsBucket &other)
+void NetworkMetricsBucket::merge(const AbstractMetricsBucket &o)
 {
 
+    const auto &other = static_cast<const NetworkMetricsBucket &>(o);
     std::shared_lock r_lock(other._mutex);
     std::unique_lock w_lock(_mutex);
 
