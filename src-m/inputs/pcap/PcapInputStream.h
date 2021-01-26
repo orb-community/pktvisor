@@ -16,8 +16,8 @@
 #include <vector>
 
 namespace pktvisor {
-
 namespace input {
+namespace pcap {
 
 // list of subnets we count as "host" to determine direction of packets
 struct IPv4subnet {
@@ -41,7 +41,7 @@ struct IPv6subnet {
 typedef std::vector<IPv4subnet> IPv4subnetList;
 typedef std::vector<IPv6subnet> IPv6subnetList;
 
-enum Direction { toHost,
+enum PacketDirection { toHost,
     fromHost,
     unknown };
 
@@ -99,7 +99,7 @@ struct TcpReassemblyData {
 
 struct TcpReassemblyMgr {
 
-    using process_msg_cb = std::function<void(Direction dir, pcpp::ProtocolType l3, uint32_t flowKey, timespec stamp)>;
+    using process_msg_cb = std::function<void(PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowKey, timespec stamp)>;
 
     process_msg_cb process_msg_handler;
 
@@ -132,10 +132,8 @@ private:
     std::unique_ptr<TcpMsgReassembly> _tcpReassembly;
     pcpp::PcapLiveDevice *_pcapDevice;
 
-
 protected:
-    void
-    onGotMessage(Direction dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowKey, timespec stamp);
+    void onGotMessage(PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowKey, timespec stamp);
 
     void openPcap(std::string fileName, std::string bpfFilter = "");
     void openIface(std::string bpfFilter = "");
@@ -148,12 +146,12 @@ public:
     void start() override;
     void stop() override;
 
-    // public so it can be called from a static callback method
+    // public so it can be called from a static callback method, required by PcapPlusPlus
     void processRawPacket(pcpp::RawPacket *rawPacket);
 
     // handler functionality
-    sigslot::signal<pcpp::Packet &> packet_signal;
-    sigslot::signal<pcpp::UdpLayer &> udp_signal;
+    sigslot::signal<pcpp::Packet &, PacketDirection, pcpp::ProtocolType, pcpp::ProtocolType, timespec> packet_signal;
+    sigslot::signal<pcpp::UdpLayer &, PacketDirection, pcpp::ProtocolType, uint32_t, timespec> udp_signal;
 
     size_t consumer_count() override
     {
@@ -161,6 +159,7 @@ public:
     }
 };
 
+}
 }
 }
 

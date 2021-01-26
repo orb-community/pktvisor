@@ -20,19 +20,21 @@
 
 namespace pktvisor {
 namespace input {
+namespace pcap {
 
 PcapInputStream::PcapInputStream(const std::string &name)
-    : pktvisor::InputStream(name), _pcapDevice(nullptr)
+    : pktvisor::InputStream(name)
+    , _pcapDevice(nullptr)
 {
     !Corrade::Utility::Debug{} << "create";
 
-    _tcpReassembly = std::make_unique<TcpMsgReassembly>([this](Direction dir, pcpp::ProtocolType l3, uint32_t flowKey, timespec stamp) {
+    _tcpReassembly = std::make_unique<TcpMsgReassembly>([this](PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowKey, timespec stamp) {
         onGotMessage(dir, l3, pcpp::TCP, flowKey, stamp);
     });
-
 }
 
-PcapInputStream::~PcapInputStream() {
+PcapInputStream::~PcapInputStream()
+{
     !Corrade::Utility::Debug{} << "destroy";
 }
 
@@ -43,7 +45,7 @@ void PcapInputStream::start()
         return;
     }
 
-    !Corrade::Utility::Debug{}  << "start";
+    !Corrade::Utility::Debug{} << "start";
 
     // extract pcap live device by interface name or IP address
     std::string TARGET(std::get<std::string>(get_config("iface")));
@@ -64,11 +66,11 @@ void PcapInputStream::start()
             throw std::runtime_error("Couldn't find interface by provided name: " + TARGET);
         }
     }
-//        std::cerr << "Interface " << dev->getName() << std::endl;
-        getHostsFromIface();
-//        showHosts();
-        openIface(std::get<std::string>(get_config("bpf")));
-        _running = true;
+    //        std::cerr << "Interface " << dev->getName() << std::endl;
+    getHostsFromIface();
+    //        showHosts();
+    openIface(std::get<std::string>(get_config("bpf")));
+    _running = true;
 }
 
 void PcapInputStream::stop()
@@ -77,7 +79,7 @@ void PcapInputStream::stop()
         return;
     }
 
-    !Corrade::Utility::Debug{}  << "stop";
+    !Corrade::Utility::Debug{} << "stop";
 
     // stop capturing and close the live device
     _pcapDevice->stopCapture();
@@ -90,7 +92,7 @@ void PcapInputStream::stop()
 }
 
 // got a full DNS wire message. called from all l3 and l4.
-void PcapInputStream::onGotMessage(Direction dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowKey, timespec stamp)
+void PcapInputStream::onGotMessage(PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowKey, timespec stamp)
 {
     // TODO interface to handler
 
@@ -105,7 +107,6 @@ void PcapInputStream::onGotMessage(Direction dir, pcpp::ProtocolType l3, pcpp::P
     }*/
 }
 
-
 /**
  * Called for live and pcap
  */
@@ -113,7 +114,6 @@ void PcapInputStream::processRawPacket(pcpp::RawPacket *rawPacket)
 {
 
     pcpp::ProtocolType l3(pcpp::UnknownProtocol), l4(pcpp::UnknownProtocol);
-    // we will parse application layer ourselves
     pcpp::Packet packet(rawPacket, pcpp::OsiModelTransportLayer);
     if (packet.isPacketOfType(pcpp::IPv4)) {
         l3 = pcpp::IPv4;
@@ -127,7 +127,7 @@ void PcapInputStream::processRawPacket(pcpp::RawPacket *rawPacket)
     }
     // determine packet direction by matching source/dest ips
     // note the direction may be indeterminate!
-    Direction dir = unknown;
+    PacketDirection dir = unknown;
     auto IP4layer = packet.getLayerOfType<pcpp::IPv4Layer>();
     auto IP6layer = packet.getLayerOfType<pcpp::IPv6Layer>();
     if (IP4layer) {
@@ -152,15 +152,14 @@ void PcapInputStream::processRawPacket(pcpp::RawPacket *rawPacket)
         }
     }
 
-
     // interface to handlers
-    packet_signal(packet);
+    packet_signal(packet, dir, l3, l4, rawPacket->getPacketTimeStamp());
 
     if (l4 == pcpp::UDP) {
 
         pcpp::UdpLayer *udpLayer = packet.getLayerOfType<pcpp::UdpLayer>();
         assert(udpLayer);
-        udp_signal(*udpLayer);
+        udp_signal(*udpLayer, dir, l3, pcpp::hash5Tuple(&packet), rawPacket->getPacketTimeStamp());
 
     } else if (l4 == pcpp::TCP) {
         // get a pointer to the TCP reassembly instance and feed the packet arrived to it
@@ -168,7 +167,6 @@ void PcapInputStream::processRawPacket(pcpp::RawPacket *rawPacket)
     } else {
         // unsupported layer3 protocol
     }
-
 }
 
 void PcapInputStream::openPcap(std::string fileName, std::string bpfFilter)
@@ -187,7 +185,7 @@ void PcapInputStream::openPcap(std::string fileName, std::string bpfFilter)
     }
 
     // TODO
-//    pcpp::ApplicationEventHandler::getInstance().onApplicationInterrupted(onApplicationInterrupted, &dC);
+    //    pcpp::ApplicationEventHandler::getInstance().onApplicationInterrupted(onApplicationInterrupted, &dC);
 
     // run in a loop that reads one packet from the file in each iteration and feeds it to the TCP reassembly instance
     pcpp::RawPacket rawPacket;
@@ -207,7 +205,7 @@ void PcapInputStream::openPcap(std::string fileName, std::string bpfFilter)
         pktvisor::Timer::Interval(1000), false);
     t.start();
     // dC.second answers question "stopping?"
-//    while (reader->getNextPacket(rawPacket) && !dC.second) {
+    //    while (reader->getNextPacket(rawPacket) && !dC.second) {
     while (reader->getNextPacket(rawPacket)) {
         packetCount++;
         lastCount++;
@@ -228,7 +226,6 @@ void PcapInputStream::openPcap(std::string fileName, std::string bpfFilter)
  */
 static void onLivePacketArrives(pcpp::RawPacket *rawPacket, pcpp::PcapLiveDevice *dev, void *cookie)
 {
-    Corrade::Utility::Debug{} << "packet arrives";
     PcapInputStream *dC = (PcapInputStream *)cookie;
     dC->processRawPacket(rawPacket);
 }
@@ -265,7 +262,6 @@ void PcapInputStream::openIface(std::string bpfFilter)
     // TODO
     //    metricsManager->setInitialShiftTS();
 
-
     // start capturing packets
     // TODO Pcap statistics on dropped packets OnStatsUpdateCallback
     if (!_pcapDevice->startCapture(onLivePacketArrives, this)) {
@@ -284,13 +280,13 @@ void PcapInputStream::getHostsFromIface()
             auto adrcvt = pcpp::internal::sockaddr2in_addr(i.addr);
             if (!adrcvt) {
                 // TODO
-//                std::cerr << "couldn't parse IPv4 address on device" << std::endl;
+                //                std::cerr << "couldn't parse IPv4 address on device" << std::endl;
                 continue;
             }
             auto nmcvt = pcpp::internal::sockaddr2in_addr(i.netmask);
             if (!nmcvt) {
                 // TODO
-//                std::cerr << "couldn't parse IPv4 netmask address on device" << std::endl;
+                //                std::cerr << "couldn't parse IPv4 netmask address on device" << std::endl;
                 continue;
             }
             hostIPv4.emplace_back(IPv4subnet(pcpp::IPv4Address(pcpp::internal::in_addr2int(*adrcvt)), pcpp::IPv4Address(pcpp::internal::in_addr2int(*nmcvt))));
@@ -300,7 +296,7 @@ void PcapInputStream::getHostsFromIface()
             auto nmcvt = pcpp::internal::sockaddr2in6_addr(i.netmask);
             if (!nmcvt) {
                 // TODO
-//                std::cerr << "couldn't parse IPv4 netmask address on device" << std::endl;
+                //                std::cerr << "couldn't parse IPv4 netmask address on device" << std::endl;
                 continue;
             }
             uint8_t len = 0;
@@ -357,8 +353,7 @@ void TcpSessionData::receive_data(const char data[], size_t len)
     }
 }
 
-
-static void tcpReassemblyConnectionStartCallback(const pcpp::ConnectionData& connectionData, void *userCookie)
+static void tcpReassemblyConnectionStartCallback(const pcpp::ConnectionData &connectionData, void *userCookie)
 {
 
     // only track DNS connections
@@ -382,7 +377,7 @@ static void tcpReassemblyConnectionStartCallback(const pcpp::ConnectionData& con
     }
 }
 
-static void tcpReassemblyConnectionEndCallback(const pcpp::ConnectionData& connectionData, pcpp::TcpReassembly::ConnectionEndReason reason, void *userCookie)
+static void tcpReassemblyConnectionEndCallback(const pcpp::ConnectionData &connectionData, pcpp::TcpReassembly::ConnectionEndReason reason, void *userCookie)
 {
     TcpReassemblyMgr *reassemblyMgr = (TcpReassemblyMgr *)userCookie;
     auto connMgr = reassemblyMgr->connMgr;
@@ -416,8 +411,7 @@ TcpMsgReassembly::TcpMsgReassembly(TcpReassemblyMgr::process_msg_cb process_msg_
         if (iter == connMgr.end() /*&& (pktvisor::DnsLayer::isDnsPort(tcpData.getConnectionData().srcPort) || pktvisor::DnsLayer::isDnsPort(tcpData.getConnectionData().dstPort))*/) {
             connMgr.insert(std::make_pair(flowKey, TcpReassemblyData(tcpData.getConnectionData().srcIP.getType() == pcpp::IPAddress::IPv4AddressType)));
             iter = connMgr.find(tcpData.getConnectionData().flowKey);
-        }
-        else {
+        } else {
             // not tracking
             return;
         }
@@ -427,15 +421,15 @@ TcpMsgReassembly::TcpMsgReassembly(TcpReassemblyMgr::process_msg_cb process_msg_
         // if this messages comes on a different side than previous message seen on this connection
         if (sideIndex != iter->second.curSide) {
             // count number of message in each side
-//            iter->second.numOfMessagesFromSide[sideIndex]++;
+            //            iter->second.numOfMessagesFromSide[sideIndex]++;
 
             // set side index as the current active side
             iter->second.curSide = sideIndex;
         }
 
         // count number of packets and bytes in each side of the connection
-//        iter->second.numOfDataPackets[sideIndex]++;
-//        iter->second.bytesFromSide[sideIndex] += (int)tcpData.getDataLength();
+        //        iter->second.numOfDataPackets[sideIndex]++;
+        //        iter->second.bytesFromSide[sideIndex] += (int)tcpData.getDataLength();
 
         pcpp::ProtocolType l3Type(iter->second.l3Type);
 
@@ -443,12 +437,12 @@ TcpMsgReassembly::TcpMsgReassembly(TcpReassemblyMgr::process_msg_cb process_msg_
             //            std::cerr << "malformed\n";
         };
         auto got_dns_message = [reassemblyMgr, sideIndex, l3Type, flowKey, tcpData](std::unique_ptr<const char[]> data,
-                                                                                    size_t size) {
+                                   size_t size) {
             pcpp::Packet dnsRequest;
             // TODO fixme
             //pktvisor::DnsLayer dnsLayer((uint8_t *)data.get(), size, nullptr, &dnsRequest);
             auto dir = (sideIndex == 0) ? fromHost : toHost;
-            timespec eT{0,0};
+            timespec eT{0, 0};
             TIMEVAL_TO_TIMESPEC(&tcpData.getConnectionData().endTime, &eT)
             reassemblyMgr->process_msg_handler(dir, l3Type, flowKey, eT);
         };
@@ -466,5 +460,6 @@ TcpMsgReassembly::TcpMsgReassembly(TcpReassemblyMgr::process_msg_cb process_msg_
         tcpReassemblyConnectionEndCallback);
 }
 
+}
 }
 }

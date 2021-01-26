@@ -1,13 +1,14 @@
 #include "NetStreamHandler.h"
 #include <Corrade/Utility/Debug.h>
 #include <Corrade/Utility/DebugStl.h>
-
+#include <IPv4Layer.h>
+#include <IPv6Layer.h>
 #include <datasketches/datasketches/cpc/cpc_union.hpp>
 
 namespace pktvisor {
 namespace handler {
 
-NetStreamHandler::NetStreamHandler(const std::string &name, pktvisor::input::PcapInputStream *stream)
+NetStreamHandler::NetStreamHandler(const std::string &name, PcapInputStream *stream)
     : pktvisor::StreamHandler(name)
     , _stream(stream)
     // TODO
@@ -45,10 +46,9 @@ NetStreamHandler::~NetStreamHandler()
     !Corrade::Utility::Debug{} << "destroy";
 }
 
-void NetStreamHandler::process_packet(pcpp::Packet &payload)
+void NetStreamHandler::process_packet(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp)
 {
-    Corrade::Utility::Debug{} << _name << ":" << payload.toString();
-    _metrics.process_packet(payload);
+    _metrics.process_packet(payload, dir, l3, l4, stamp);
 }
 
 void NetStreamHandler::toJSON(json &j, uint64_t period, bool merged)
@@ -94,13 +94,6 @@ void NetworkMetricsBucket::merge(const AbstractMetricsBucket &o)
     _net_topASN.merge(other._net_topASN);
 }
 
-void NetworkMetricsBucket::process_packet(pcpp::Packet &payload)
-{
-
-    std::unique_lock w_lock(_mutex);
-    _numPackets++;
-}
-
 void NetworkMetricsBucket::toJSON(json &j)
 {
 
@@ -116,7 +109,112 @@ void NetworkMetricsBucket::toJSON(json &j)
     j["packets"]["out"] = _numPackets_out;
 }
 
-void NetworkMetricsManager::process_packet(pcpp::Packet &payload)
+void NetworkMetricsBucket::process_packet(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp)
+{
+    std::unique_lock w_lock(_mutex);
+
+    _numPackets++;
+
+    switch (dir) {
+    case PacketDirection::fromHost:
+        _numPackets_out++;
+        break;
+    case toHost:
+        _numPackets_in++;
+        break;
+    case unknown:
+        break;
+    }
+
+    switch (l3) {
+    case pcpp::IPv6:
+        _numPackets_IPv6++;
+        break;
+    default:
+        break;
+    }
+
+    switch (l4) {
+    case pcpp::UDP:
+        _numPackets_UDP++;
+        break;
+    case pcpp::TCP:
+        _numPackets_TCP++;
+        break;
+    default:
+        _numPackets_OtherL4++;
+        break;
+    }
+
+#ifdef MMDB_ENABLE
+    const GeoDB *geoCityDB = _mmgr.getGeoCityDB();
+    const GeoDB *geoASNDB = _mmgr.getGeoASNDB();
+    struct sockaddr_in sa4;
+    struct sockaddr_in6 sa6;
+#endif
+
+    auto IP4layer = payload.getLayerOfType<pcpp::IPv4Layer>();
+    auto IP6layer = payload.getLayerOfType<pcpp::IPv6Layer>();
+    if (IP4layer) {
+        if (dir == toHost) {
+            _net_srcIPCard.update(IP4layer->getSrcIpAddress().toInt());
+            _net_topIPv4.update(IP4layer->getSrcIpAddress().toInt());
+#ifdef MMDB_ENABLE
+            if (IPv4tosockaddr(IP4layer->getSrcIpAddress(), &sa4)) {
+                if (geoCityDB) {
+                    _net_topGeoLoc.update(geoCityDB->getGeoLocString((struct sockaddr *)&sa4));
+                }
+                if (geoASNDB) {
+                    _net_topASN.update(geoASNDB->getASNString((struct sockaddr *)&sa4));
+                }
+            }
+#endif
+        } else if (dir == fromHost) {
+            _net_dstIPCard.update(IP4layer->getDstIpAddress().toInt());
+            _net_topIPv4.update(IP4layer->getDstIpAddress().toInt());
+#ifdef MMDB_ENABLE
+            if (IPv4tosockaddr(IP4layer->getDstIpAddress(), &sa4)) {
+                if (geoCityDB) {
+                    _net_topGeoLoc.update(geoCityDB->getGeoLocString((struct sockaddr *)&sa4));
+                }
+                if (geoASNDB) {
+                    _net_topASN.update(geoASNDB->getASNString((struct sockaddr *)&sa4));
+                }
+            }
+#endif
+        }
+    } else if (IP6layer) {
+        if (dir == toHost) {
+            _net_srcIPCard.update((void *)IP6layer->getSrcIpAddress().toBytes(), 16);
+            _net_topIPv6.update(IP6layer->getSrcIpAddress().toString());
+#ifdef MMDB_ENABLE
+            if (IPv6tosockaddr(IP6layer->getSrcIpAddress(), &sa6)) {
+                if (geoCityDB) {
+                    _net_topGeoLoc.update(geoCityDB->getGeoLocString((struct sockaddr *)&sa6));
+                }
+                if (geoASNDB) {
+                    _net_topASN.update(geoASNDB->getASNString((struct sockaddr *)&sa6));
+                }
+            }
+#endif
+        } else if (dir == fromHost) {
+            _net_dstIPCard.update((void *)IP6layer->getDstIpAddress().toBytes(), 16);
+            _net_topIPv6.update(IP6layer->getDstIpAddress().toString());
+#ifdef MMDB_ENABLE
+            if (IPv6tosockaddr(IP6layer->getDstIpAddress(), &sa6)) {
+                if (geoCityDB) {
+                    _net_topGeoLoc.update(geoCityDB->getGeoLocString((struct sockaddr *)&sa6));
+                }
+                if (geoASNDB) {
+                    _net_topASN.update(geoASNDB->getASNString((struct sockaddr *)&sa6));
+                }
+            }
+#endif
+        }
+    }
+}
+
+void NetworkMetricsManager::process_packet(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp)
 {
     // at each new packet, we determine if we are sampling, to limit collection of more detailed (expensive) statistics
     _shouldDeepSample = true;
@@ -125,10 +223,9 @@ void NetworkMetricsManager::process_packet(pcpp::Packet &payload)
     }
     if (!_singleSummaryMode) {
         // use packet timestamps to track when PERIOD_SEC passes so we don't have to hit system clock
-        auto pkt_ts = payload.getRawPacketReadOnly()->getPacketTimeStamp();
-        if (pkt_ts.tv_sec - _lastShiftTS.tv_sec > AbstractMetricsManager::PERIOD_SEC) {
+        if (stamp.tv_sec - _lastShiftTS.tv_sec > AbstractMetricsManager::PERIOD_SEC) {
             _periodShift();
-            _lastShiftTS.tv_sec = pkt_ts.tv_sec;
+            _lastShiftTS.tv_sec = stamp.tv_sec;
             //pairMgr.purgeOldTransactions(pkt_ts);
             //_openDnsTransactionCount = pairMgr.getOpenTransactionCount();
         } /*
@@ -143,7 +240,12 @@ void NetworkMetricsManager::process_packet(pcpp::Packet &payload)
             break;
         }*/
     }
-    _metricBuckets.back()->process_packet(payload);
+
+    // TODO
+    //    if (_mmgr.shouldDeepSample()) {
+    //        _numSamples.fetch_add(1, std::memory_order_relaxed);
+    //    }
+    _metricBuckets.back()->process_packet(payload, dir, l3, l4, stamp);
 }
 
 }

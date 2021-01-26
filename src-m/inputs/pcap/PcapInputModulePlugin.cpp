@@ -2,11 +2,12 @@
 #include <Corrade/PluginManager/AbstractManager.h>
 #include <Corrade/Utility/FormatStl.h>
 
-CORRADE_PLUGIN_REGISTER(PcapInput, pktvisor::input::PcapInputModulePlugin,
+CORRADE_PLUGIN_REGISTER(PcapInput, pktvisor::input::pcap::PcapInputModulePlugin,
     "com.ns1.module.input/1.0")
 
 namespace pktvisor {
 namespace input {
+namespace pcap {
 
 void PcapInputModulePlugin::_setup_routes(HttpServer &svr)
 {
@@ -84,5 +85,6 @@ void PcapInputModulePlugin::_setup_routes(HttpServer &svr)
     });
 }
 
+}
 }
 }

@@ -43,7 +43,7 @@ void NetHandlerModulePlugin::_setup_routes(HttpServer &svr)
             // note, may be a race on exists() above, this may fail. if so we will catch and 500.
             auto [input_stream, stream_mgr_lock] = _input_manager->get_module(input_name);
             assert(input_stream);
-            auto pcap_stream = dynamic_cast<pktvisor::input::PcapInputStream *>(input_stream);
+            auto pcap_stream = dynamic_cast<PcapInputStream *>(input_stream);
             if (!pcap_stream) {
                 res.status = 400;
                 result["error"] = "input stream is not pcap";

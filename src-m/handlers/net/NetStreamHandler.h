@@ -16,18 +16,14 @@
 namespace pktvisor {
 namespace handler {
 
+using namespace pktvisor::input::pcap;
+
 struct NetworkRateSketches {
     Rate::QuantileType net_rateIn;
     Rate::QuantileType net_rateOut;
 };
 
-class NetworkMetricsIface
-{
-public:
-    virtual void process_packet(pcpp::Packet &payload) = 0;
-};
-
-class NetworkMetricsBucket : public pktvisor::AbstractMetricsBucket, public NetworkMetricsIface
+class NetworkMetricsBucket : public pktvisor::AbstractMetricsBucket
 {
 public:
     const uint8_t START_FI_MAP_SIZE = 7; // 2^7 = 128
@@ -66,11 +62,10 @@ public:
     void merge(const AbstractMetricsBucket &other) override;
     void toJSON(json &j) override;
 
-    // NetworkMetricsIface
-    void process_packet(pcpp::Packet &payload) override;
+    void process_packet(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp);
 };
 
-class NetworkMetricsManager : public pktvisor::AbstractMetricsManager<NetworkMetricsBucket>, public NetworkMetricsIface
+class NetworkMetricsManager : public pktvisor::AbstractMetricsManager<NetworkMetricsBucket>
 {
 public:
     NetworkMetricsManager(bool singleSummaryMode, uint periods, int deepSampleRate)
@@ -78,22 +73,21 @@ public:
     {
     }
 
-    // NetworkMetricsIface
-    void process_packet(pcpp::Packet &payload) override;
+    void process_packet(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp);
 };
 
 class NetStreamHandler : public pktvisor::StreamHandler
 {
 
-    pktvisor::input::PcapInputStream *_stream;
+    PcapInputStream *_stream;
     NetworkMetricsManager _metrics;
 
     sigslot::connection _pkt_connection;
 
-    void process_packet(pcpp::Packet &payload);
+    void process_packet(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp);
 
 public:
-    NetStreamHandler(const std::string &name, pktvisor::input::PcapInputStream *stream);
+    NetStreamHandler(const std::string &name, PcapInputStream *stream);
     virtual ~NetStreamHandler();
 
     // pktvisor::AbstractModule

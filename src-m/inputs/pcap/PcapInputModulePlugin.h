@@ -6,6 +6,7 @@
 
 namespace pktvisor {
 namespace input {
+namespace pcap {
 
 class PcapInputModulePlugin : public pktvisor::InputModulePlugin
 {
@@ -23,9 +24,9 @@ public:
     {
         return "PcapInputModulePlugin";
     }
-
 };
 
+}
 }
 }
 
