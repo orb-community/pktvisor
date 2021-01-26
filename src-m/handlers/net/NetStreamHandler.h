@@ -60,9 +60,9 @@ public:
 
     // pktvisor::AbstractMetricsBucket
     void merge(const AbstractMetricsBucket &other) override;
-    void toJSON(json &j) override;
+    void toJSON(json &j) const override;
 
-    void process_packet(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp);
+    void process_packet(bool deep, pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp);
 };
 
 class NetworkMetricsManager : public pktvisor::AbstractMetricsManager<NetworkMetricsBucket>

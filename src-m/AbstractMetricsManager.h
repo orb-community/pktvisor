@@ -113,6 +113,9 @@ protected:
     timeval _bucketTS;
     mutable std::shared_mutex _mutex;
 
+    uint64_t _numSamples = 0;
+    uint64_t _numEvents = 0;
+
 public:
     AbstractMetricsBucket()
     {
@@ -127,8 +130,17 @@ public:
         return _bucketTS;
     }
 
+    void newEvent(bool deep)
+    {
+        std::unique_lock w_lock(_mutex);
+        _numEvents++;
+        if (deep) {
+            _numSamples++;
+        }
+    }
+
     /*    void assignRateSketches(const std::shared_ptr<InstantRateMetrics>);*/
-    virtual void toJSON(json &j) = 0;
+    virtual void toJSON(json &j) const = 0;
     virtual void merge(const AbstractMetricsBucket &other) = 0;
 };
 
@@ -141,8 +153,6 @@ protected:
     std::deque<std::unique_ptr<MetricsBucketClass>> _metricBuckets;
     uint _numPeriods;
     timespec _lastShiftTS;
-    //    long _openDnsTransactionCount;
-    bool _singleSummaryMode;
     std::chrono::system_clock::time_point _startTime;
 
     // instantaneous rate metrics
@@ -154,20 +164,26 @@ protected:
 
     std::unordered_map<uint, std::pair<std::chrono::high_resolution_clock::time_point, json>> _mergeResultCache;
 
-    void _periodShift()
+    void newEvent(timespec stamp)
     {
-
-        // copy instant rate results into bucket before shift
-        //_metricBuckets.back()->assignRateSketches(_instantRates);
-        // reset instant rate quantiles so they are accurate for next minute bucket
-        //_instantRates->resetQuantiles();
-
-        // add new bucket
-        _metricBuckets.emplace_back(std::make_unique<MetricsBucketClass>());
-        if (_metricBuckets.size() > _numPeriods) {
-            // if we're at our period history length, pop the oldest
-            _metricBuckets.pop_front();
+        // at each new event, we determine if we are sampling, to limit collection of more detailed (expensive) statistics
+        _shouldDeepSample = true;
+        if (_deepSampleRate != 100) {
+            _shouldDeepSample = (_rng.uniform(0, 100) <= _deepSampleRate);
         }
+        if (stamp.tv_sec - _lastShiftTS.tv_sec > AbstractMetricsManager::PERIOD_SEC) {
+            _metricBuckets.emplace_back(std::make_unique<MetricsBucketClass>());
+            if (_metricBuckets.size() > _numPeriods) {
+                // if we're at our period history length, pop the oldest
+                _metricBuckets.pop_front();
+            }
+            _lastShiftTS.tv_sec = stamp.tv_sec;
+            onPeriodShift();
+        }
+    }
+
+    virtual void onPeriodShift()
+    {
     }
 
 public:
@@ -178,8 +194,6 @@ public:
         : _metricBuckets()
         , _numPeriods(periods)
         , _lastShiftTS()
-        //        , _openDnsTransactionCount(0)
-        , _singleSummaryMode(singleSummaryMode)
         , _startTime()
         , _instantRates()
         , _deepSampleRate(deepSampleRate)
@@ -218,25 +232,22 @@ public:
 
     void toJSONSingle(json &j, uint64_t period = 0)
     {
-        if (_singleSummaryMode) {
-            period = 0;
-        } else {
-            if (period >= _numPeriods) {
-                /* TODO
+
+        if (period >= _numPeriods) {
+            /* TODO
                 std::stringstream err;
                 err << "invalid metrics period, specify [0, " << _numPeriods - 1 << "]";
                 j["error"] = err.str();
                  */
-                return;
-            }
-            if (period >= _metricBuckets.size()) {
-                /*
+            return;
+        }
+        if (period >= _metricBuckets.size()) {
+            /*
                 std::stringstream err;
                 err << "this metrics period has not yet accumulated, current range is [0, " << _metricBuckets.size() - 1 << "]";
                 j["error"] = err.str();
                  */
-                return;
-            }
+            return;
         }
 
         std::string period_str = "1m";

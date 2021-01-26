@@ -1,12 +1,10 @@
 #include "NetStreamHandler.h"
 #include <Corrade/Utility/Debug.h>
-#include <Corrade/Utility/DebugStl.h>
 #include <IPv4Layer.h>
 #include <IPv6Layer.h>
 #include <datasketches/datasketches/cpc/cpc_union.hpp>
 
-namespace pktvisor {
-namespace handler {
+namespace pktvisor::handler {
 
 NetStreamHandler::NetStreamHandler(const std::string &name, PcapInputStream *stream)
     : pktvisor::StreamHandler(name)
@@ -94,7 +92,7 @@ void NetworkMetricsBucket::merge(const AbstractMetricsBucket &o)
     _net_topASN.merge(other._net_topASN);
 }
 
-void NetworkMetricsBucket::toJSON(json &j)
+void NetworkMetricsBucket::toJSON(json &j) const
 {
 
     std::shared_lock r_lock(_mutex);
@@ -109,7 +107,7 @@ void NetworkMetricsBucket::toJSON(json &j)
     j["packets"]["out"] = _numPackets_out;
 }
 
-void NetworkMetricsBucket::process_packet(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp)
+void NetworkMetricsBucket::process_packet(bool deep, pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp)
 {
     std::unique_lock w_lock(_mutex);
 
@@ -144,6 +142,10 @@ void NetworkMetricsBucket::process_packet(pcpp::Packet &payload, PacketDirection
     default:
         _numPackets_OtherL4++;
         break;
+    }
+
+    if (!deep) {
+        return;
     }
 
 #ifdef MMDB_ENABLE
@@ -216,37 +218,8 @@ void NetworkMetricsBucket::process_packet(pcpp::Packet &payload, PacketDirection
 
 void NetworkMetricsManager::process_packet(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp)
 {
-    // at each new packet, we determine if we are sampling, to limit collection of more detailed (expensive) statistics
-    _shouldDeepSample = true;
-    if (_deepSampleRate != 100) {
-        _shouldDeepSample = (_rng.uniform(0, 100) <= _deepSampleRate);
-    }
-    if (!_singleSummaryMode) {
-        // use packet timestamps to track when PERIOD_SEC passes so we don't have to hit system clock
-        if (stamp.tv_sec - _lastShiftTS.tv_sec > AbstractMetricsManager::PERIOD_SEC) {
-            _periodShift();
-            _lastShiftTS.tv_sec = stamp.tv_sec;
-            //pairMgr.purgeOldTransactions(pkt_ts);
-            //_openDnsTransactionCount = pairMgr.getOpenTransactionCount();
-        } /*
-        switch (dir) {
-        case fromHost:
-            _instantRates->_rate_out.incCounter();
-            break;
-        case toHost:
-            _instantRates->_rate_in.incCounter();
-            break;
-        case unknown:
-            break;
-        }*/
-    }
-
-    // TODO
-    //    if (_mmgr.shouldDeepSample()) {
-    //        _numSamples.fetch_add(1, std::memory_order_relaxed);
-    //    }
-    _metricBuckets.back()->process_packet(payload, dir, l3, l4, stamp);
+    newEvent(stamp);
+    _metricBuckets.back()->process_packet(_shouldDeepSample, payload, dir, l3, l4, stamp);
 }
 
-}
 }
