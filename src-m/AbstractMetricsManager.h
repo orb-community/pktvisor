@@ -1,5 +1,5 @@
-#ifndef PKTVISORD_METRICSMANAGER_H
-#define PKTVISORD_METRICSMANAGER_H
+#ifndef PKTVISORD_ABSTRACTMETRICSMANAGER_H
+#define PKTVISORD_ABSTRACTMETRICSMANAGER_H
 
 #include "timer.h"
 #pragma GCC diagnostic push
@@ -102,24 +102,24 @@ struct InstantRateMetrics {
 };
 
 template <class MetricsClass>
-class MetricsManager;
+class AbstractMetricsManager;
 
-template <class MetricsClass, class SketchesClass>
-class Metrics
+/**
+ * This class should be specialized with the counters and sketches specific to this handler
+ * @tparam SketchesClass
+ */
+template <class SketchesClass>
+class AbstractMetricsBucket
 {
 
 protected:
     // always the first second of the bucket, i.e. this bucket contains from this timestamp to timestamp + MetricsMgr::PERIOD_SEC
     timeval _bucketTS;
-    // TODO don't need unique_ptr anymore?
     std::unique_ptr<SketchesClass> _sketches;
     std::shared_mutex _sketchMutex;
 
-    MetricsManager<MetricsClass> &_mmgr;
-
 public:
-    Metrics(MetricsManager<MetricsClass> &mmgr)
-        : _mmgr(mmgr)
+    AbstractMetricsBucket()
     {
         gettimeofday(&_bucketTS, nullptr);
 
@@ -127,11 +127,11 @@ public:
         std::unique_lock lock(_sketchMutex);
         _sketches = std::make_unique<SketchesClass>();
     }
-    virtual ~Metrics()
+    virtual ~AbstractMetricsBucket()
     {
     }
 
-    //virtual void merge(MetricsClass<SketchesClass> &other) = 0;
+    //virtual void merge(MetricsBucketClass<SketchesClass> &other) = 0;
 
     timeval getTS() const
     {
@@ -139,14 +139,16 @@ public:
     }
 
     /*    void assignRateSketches(const std::shared_ptr<InstantRateMetrics>);*/
-    virtual void toJSON(json &j, const std::string &key) = 0;
+    virtual void toJSON(json &j) = 0;
 };
 
-template <class MetricsClass>
-class MetricsManager
+template <class MetricsBucketClass>
+class AbstractMetricsManager
 {
+    //static_assert(std::is_base_of<AbstractMetricsBucket, MetricsBucketClass>::value, "MetricsBucketClass must inherit from AbstractMetricsBucket");
+
 protected:
-    std::deque<std::unique_ptr<MetricsClass>> _metrics;
+    std::deque<std::unique_ptr<MetricsBucketClass>> _metricBuckets;
     uint _numPeriods;
     timespec _lastShiftTS;
     //    long _openDnsTransactionCount;
@@ -154,27 +156,27 @@ protected:
     std::chrono::system_clock::time_point _startTime;
 
     // instantaneous rate metrics
-    std::shared_ptr<InstantRateMetrics> _instantRates;
+    std::unique_ptr<InstantRateMetrics> _instantRates;
 
     randutils::default_rng _rng;
     int _deepSampleRate;
     bool _shouldDeepSample;
 
-    std::unordered_map<uint, std::pair<std::chrono::high_resolution_clock::time_point, std::string>> _mergeResultCache;
+    std::unordered_map<uint, std::pair<std::chrono::high_resolution_clock::time_point, json>> _mergeResultCache;
 
     void _periodShift()
     {
 
         // copy instant rate results into bucket before shift
-        //_metrics.back()->assignRateSketches(_instantRates);
+        //_metricBuckets.back()->assignRateSketches(_instantRates);
         // reset instant rate quantiles so they are accurate for next minute bucket
         //_instantRates->resetQuantiles();
 
         // add new bucket
-        _metrics.emplace_back(std::make_unique<MetricsClass>(*this));
-        if (_metrics.size() > _numPeriods) {
+        _metricBuckets.emplace_back(std::make_unique<MetricsBucketClass>());
+        if (_metricBuckets.size() > _numPeriods) {
             // if we're at our period history length, pop the oldest
-            _metrics.pop_front();
+            _metricBuckets.pop_front();
         }
     }
 
@@ -182,8 +184,8 @@ public:
     static const uint PERIOD_SEC = 60;
     static const uint MERGE_CACHE_TTL_MS = 1000;
 
-    MetricsManager(bool singleSummaryMode, uint periods, int deepSampleRate)
-        : _metrics()
+    AbstractMetricsManager(bool singleSummaryMode, uint periods, int deepSampleRate)
+        : _metricBuckets()
         , _numPeriods(periods)
         , _lastShiftTS()
         //        , _openDnsTransactionCount(0)
@@ -202,10 +204,10 @@ public:
         if (_deepSampleRate < 0) {
             _deepSampleRate = 1;
         }
-        _instantRates = std::make_shared<InstantRateMetrics>();
+        _instantRates = std::make_unique<InstantRateMetrics>();
         _numPeriods = std::min(_numPeriods, 10U);
         _numPeriods = std::max(_numPeriods, 2U);
-        _metrics.emplace_back(std::make_unique<MetricsClass>(*this));
+        _metricBuckets.emplace_back(std::make_unique<MetricsBucketClass>());
         _lastShiftTS.tv_sec = 0;
         _lastShiftTS.tv_nsec = 0;
         _startTime = std::chrono::system_clock::now();
@@ -224,7 +226,7 @@ public:
     std::string getInstantRates();
      */
 
-    void getMetrics(json &j, uint64_t period = 0)
+    void toJSONSingle(json &j, uint64_t period = 0)
     {
         if (_singleSummaryMode) {
             period = 0;
@@ -235,13 +237,15 @@ public:
                 err << "invalid metrics period, specify [0, " << _numPeriods - 1 << "]";
                 j["error"] = err.str();
                  */
+                return;
             }
-            if (period >= _metrics.size()) {
+            if (period >= _metricBuckets.size()) {
                 /*
                 std::stringstream err;
-                err << "this metrics period has not yet accumulated, current range is [0, " << _metrics.size() - 1 << "]";
+                err << "this metrics period has not yet accumulated, current range is [0, " << _metricBuckets.size() - 1 << "]";
                 j["error"] = err.str();
                  */
+                return;
             }
         }
 
@@ -251,22 +255,71 @@ public:
         if (period == 0) {
             timeval now_ts;
             gettimeofday(&now_ts, nullptr);
-            period_length = now_ts.tv_sec - _metrics[period]->getTS().tv_sec;
+            period_length = now_ts.tv_sec - _metricBuckets[period]->getTS().tv_sec;
         } else {
-            period_length = MetricsManager::PERIOD_SEC;
+            period_length = AbstractMetricsManager::PERIOD_SEC;
         }
 
-        j[period_str]["period"]["start_ts"] = _metrics[period]->getTS().tv_sec;
+        j[period_str]["period"]["start_ts"] = _metricBuckets[period]->getTS().tv_sec;
         j[period_str]["period"]["length"] = period_length;
 
-        _metrics[period]->toJSON(j, period_str);
+        _metricBuckets[period]->toJSON(j[period_str]);
     }
 
-    /*
-    std::string getMetricsMerged(uint64_t period);
-     */
+    void toJSONMerged(json &j, uint64_t period)
+    {
+
+        if (period <= 1 || period > _numPeriods) {
+            /*            std::stringstream err;
+            err << "invalid metrics period, specify [2, " << _numPeriods << "]";
+            j["error"] = err.str();
+            return j.dump();*/
+            return;
+        }
+
+        auto cached = _mergeResultCache.find(period);
+        if (cached != _mergeResultCache.end()) {
+            // cached results, make sure still valid
+            auto t_diff = std::chrono::high_resolution_clock::now() - cached->second.first;
+            if (std::chrono::duration_cast<std::chrono::milliseconds>(t_diff).count() < MERGE_CACHE_TTL_MS) {
+                j = cached->second.second;
+            } else {
+                // expire
+                _mergeResultCache.erase(period);
+            }
+        }
+
+        auto period_length = 0;
+        MetricsBucketClass merged;
+
+        auto p = period;
+        for (auto &m : _metricBuckets) {
+            if (p-- == 0) {
+                break;
+            }
+            if (m == _metricBuckets.back()) {
+                timeval now_ts;
+                gettimeofday(&now_ts, nullptr);
+                period_length += now_ts.tv_sec - m->getTS().tv_sec;
+            } else {
+                period_length += AbstractMetricsManager::PERIOD_SEC;
+            }
+            merged.merge(*m);
+        }
+
+        std::string period_str = std::to_string(period) + "m";
+
+        auto oldest_ts
+            = _metricBuckets.front()->getTS();
+        j[period_str]["period"]["start_ts"] = oldest_ts.tv_sec;
+        j[period_str]["period"]["length"] = period_length;
+
+        merged.toJSON(j, period_str);
+
+        _mergeResultCache[period] = std::pair<std::chrono::high_resolution_clock::time_point, std::string>(std::chrono::high_resolution_clock::now(), j);
+    }
 };
 
 }
 
-#endif //PKTVISORD_METRICSMANAGER_H
+#endif //PKTVISORD_ABSTRACTMETRICSMANAGER_H

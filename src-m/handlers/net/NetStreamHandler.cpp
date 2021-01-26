@@ -51,12 +51,12 @@ void NetStreamHandler::process_packet(pcpp::Packet &payload)
     _metrics.process_packet(payload);
 }
 
-void NetStreamHandler::toJSON(json &j)
+void NetStreamHandler::toJSON(json &j, uint64_t period, bool merged)
 {
-    _metrics.getMetrics(j["net"], 0);
+    _metrics.toJSONSingle(j["net"], period);
 }
 
-void NetworkMetrics::merge(NetworkMetrics &other)
+void NetworkMetricsBucket::merge(NetworkMetricsBucket &other)
 {
 
     _numPackets += other._numPackets;
@@ -94,25 +94,25 @@ void NetworkMetrics::merge(NetworkMetrics &other)
     _sketches->_net_topASN.merge(other._sketches->_net_topASN);
 }
 
-void NetworkMetrics::process_packet(pcpp::Packet &payload)
+void NetworkMetricsBucket::process_packet(pcpp::Packet &payload)
 {
     _numPackets++;
 }
 
-void NetworkMetrics::toJSON(json &j, const std::string &key)
+void NetworkMetricsBucket::toJSON(json &j)
 {
     // lock for read
     std::shared_lock lock_sketch(_sketchMutex);
     std::shared_lock lock_rate(_rateSketchMutex);
 
-    j[key]["packets"]["total"] = _numPackets;
-    j[key]["packets"]["udp"] = _numPackets_UDP;
-    j[key]["packets"]["tcp"] = _numPackets_TCP;
-    j[key]["packets"]["other_l4"] = _numPackets_OtherL4;
-    j[key]["packets"]["ipv4"] = _numPackets - _numPackets_IPv6;
-    j[key]["packets"]["ipv6"] = _numPackets_IPv6;
-    j[key]["packets"]["in"] = _numPackets_in;
-    j[key]["packets"]["out"] = _numPackets_out;
+    j["packets"]["total"] = _numPackets;
+    j["packets"]["udp"] = _numPackets_UDP;
+    j["packets"]["tcp"] = _numPackets_TCP;
+    j["packets"]["other_l4"] = _numPackets_OtherL4;
+    j["packets"]["ipv4"] = _numPackets - _numPackets_IPv6;
+    j["packets"]["ipv6"] = _numPackets_IPv6;
+    j["packets"]["in"] = _numPackets_in;
+    j["packets"]["out"] = _numPackets_out;
 }
 
 void NetworkMetricsManager::process_packet(pcpp::Packet &payload)
@@ -125,7 +125,7 @@ void NetworkMetricsManager::process_packet(pcpp::Packet &payload)
     if (!_singleSummaryMode) {
         // use packet timestamps to track when PERIOD_SEC passes so we don't have to hit system clock
         auto pkt_ts = payload.getRawPacketReadOnly()->getPacketTimeStamp();
-        if (pkt_ts.tv_sec - _lastShiftTS.tv_sec > MetricsManager::PERIOD_SEC) {
+        if (pkt_ts.tv_sec - _lastShiftTS.tv_sec > AbstractMetricsManager::PERIOD_SEC) {
             _periodShift();
             _lastShiftTS.tv_sec = pkt_ts.tv_sec;
             //pairMgr.purgeOldTransactions(pkt_ts);
@@ -142,7 +142,7 @@ void NetworkMetricsManager::process_packet(pcpp::Packet &payload)
             break;
         }*/
     }
-    _metrics.back()->process_packet(payload);
+    _metricBuckets.back()->process_packet(payload);
 }
 
 }

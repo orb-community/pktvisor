@@ -19,7 +19,7 @@ public:
 
     virtual ~StreamHandler(){};
 
-    virtual void toJSON(json &j) = 0;
+    virtual void toJSON(json &j, uint64_t period, bool merged) = 0;
 };
 
 }

@@ -1,7 +1,7 @@
 #ifndef PKTVISORD_NETSTREAMHANDLER_H
 #define PKTVISORD_NETSTREAMHANDLER_H
 
-#include "MetricsManager.h"
+#include "AbstractMetricsManager.h"
 #include "PcapInputStream.h"
 #include "StreamHandler.h"
 #pragma GCC diagnostic push
@@ -50,7 +50,7 @@ public:
     virtual void process_packet(pcpp::Packet &payload) = 0;
 };
 
-class NetworkMetrics : public pktvisor::Metrics<NetworkMetrics, NetworkSketches>, public NetworkMetricsIface
+class NetworkMetricsBucket : public pktvisor::AbstractMetricsBucket<NetworkSketches>, public NetworkMetricsIface
 {
 public:
     uint64_t _numPackets = 0;
@@ -65,25 +65,25 @@ public:
     std::shared_mutex _rateSketchMutex;
 
 public:
-    NetworkMetrics(pktvisor::MetricsManager<NetworkMetrics> &mmgr)
-        : pktvisor::Metrics<NetworkMetrics, NetworkSketches>(mmgr)
+    NetworkMetricsBucket()
+        : pktvisor::AbstractMetricsBucket<NetworkSketches>()
     {
     }
 
-    void merge(NetworkMetrics &other);
+    void merge(NetworkMetricsBucket &other);
 
-    // pktvisor::Metrics
-    void toJSON(json &j, const std::string &key) override;
+    // pktvisor::AbstractMetricsBucket
+    void toJSON(json &j) override;
 
     // NetworkMetricsIface
     void process_packet(pcpp::Packet &payload) override;
 };
 
-class NetworkMetricsManager : public pktvisor::MetricsManager<NetworkMetrics>, public NetworkMetricsIface
+class NetworkMetricsManager : public pktvisor::AbstractMetricsManager<NetworkMetricsBucket>, public NetworkMetricsIface
 {
 public:
     NetworkMetricsManager(bool singleSummaryMode, uint periods, int deepSampleRate)
-        : pktvisor::MetricsManager<NetworkMetrics>(singleSummaryMode, periods, deepSampleRate)
+        : pktvisor::AbstractMetricsManager<NetworkMetricsBucket>(singleSummaryMode, periods, deepSampleRate)
     {
     }
 
@@ -110,7 +110,7 @@ public:
     void stop() override;
 
     // pktvisor::StreamHandler
-    void toJSON(json &j) override;
+    void toJSON(json &j, uint64_t period, bool merged) override;
 };
 
 }
