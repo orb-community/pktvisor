@@ -12,6 +12,8 @@ target_include_directories(PcapInput
         ${LIBPCPP_INCLUDE_DIRS}
         ${CMAKE_SOURCE_DIR}/src-m # FIXME ?
         ${CORRADE_INCLUDE_DIR}
+        ${PKTVISOR_VENDOR_DIR}/datasketches
+        ${PKTVISOR_VENDOR_DIR}/datasketches/datasketches
         ${Corrade_BINARY_DIR}/src # FIXME configure.h, probably not right
         )
 

@@ -23,7 +23,7 @@ public:
     }
 
     // override to atomically ensure we don't remove if there are active consumers
-    void remove_module(const std::string &name) override
+    void module_remove(const std::string &name) override
     {
         std::unique_lock lock(_map_mutex);
         if (_map.count(name) == 0) {

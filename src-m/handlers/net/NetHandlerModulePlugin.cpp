@@ -28,20 +28,20 @@ void NetHandlerModulePlugin::_setup_routes(HttpServer &svr)
                 return;
             }
             auto input_name = req.matches[1];
-            if (!_input_manager->exists(input_name)) {
+            if (!_input_manager->module_exists(input_name)) {
                 res.status = 404;
                 result["error"] = "input name does not exist";
                 res.set_content(result.dump(), "text/json");
                 return;
             }
-            if (_handler_manager->exists(body["name"])) {
+            if (_handler_manager->module_exists(body["name"])) {
                 res.status = 400;
                 result["error"] = "handler name already exists";
                 res.set_content(result.dump(), "text/json");
                 return;
             }
             // note, may be a race on exists() above, this may fail. if so we will catch and 500.
-            auto [input_stream, stream_mgr_lock] = _input_manager->get_module(input_name);
+            auto [input_stream, stream_mgr_lock] = _input_manager->module_get(input_name);
             assert(input_stream);
             auto pcap_stream = dynamic_cast<PcapInputStream *>(input_stream);
             if (!pcap_stream) {
@@ -56,8 +56,9 @@ void NetHandlerModulePlugin::_setup_routes(HttpServer &svr)
                 res.set_content(result.dump(), "text/json");
                 return;
             }
-            auto handler_module = std::make_unique<NetStreamHandler>(body["name"], pcap_stream);
-            _handler_manager->add_module(std::move(handler_module));
+            // todo period and sample
+            auto handler_module = std::make_unique<NetStreamHandler>(body["name"], pcap_stream, 5, 100);
+            _handler_manager->module_add(std::move(handler_module));
             result["name"] = body["name"];
             res.set_content(result.dump(), "text/json");
         } catch (const std::exception &e) {
@@ -70,20 +71,20 @@ void NetHandlerModulePlugin::_setup_routes(HttpServer &svr)
         json result;
         try {
             auto input_name = req.matches[1];
-            if (!_input_manager->exists(input_name)) {
+            if (!_input_manager->module_exists(input_name)) {
                 res.status = 404;
                 result["result"] = "input name does not exist";
                 res.set_content(result.dump(), "text/json");
                 return;
             }
             auto handler_name = req.matches[2];
-            if (!_handler_manager->exists(handler_name)) {
+            if (!_handler_manager->module_exists(handler_name)) {
                 res.status = 404;
                 result["result"] = "handler name does not exist";
                 res.set_content(result.dump(), "text/json");
                 return;
             }
-            auto [handler, handler_mgr_lock] = _handler_manager->get_module(handler_name);
+            auto [handler, handler_mgr_lock] = _handler_manager->module_get(handler_name);
             auto net_handler = dynamic_cast<pktvisor::handler::NetStreamHandler *>(handler);
             if (!net_handler) {
                 res.status = 400;
@@ -104,20 +105,20 @@ void NetHandlerModulePlugin::_setup_routes(HttpServer &svr)
         json result;
         try {
             auto input_name = req.matches[1];
-            if (!_input_manager->exists(input_name)) {
+            if (!_input_manager->module_exists(input_name)) {
                 res.status = 404;
                 result["result"] = "input name does not exist";
                 res.set_content(result.dump(), "text/json");
                 return;
             }
             auto handler_name = req.matches[2];
-            if (!_handler_manager->exists(handler_name)) {
+            if (!_handler_manager->module_exists(handler_name)) {
                 res.status = 404;
                 result["result"] = "handler name does not exist";
                 res.set_content(result.dump(), "text/json");
                 return;
             }
-            _handler_manager->remove_module(handler_name);
+            _handler_manager->module_remove(handler_name);
             res.set_content(result.dump(), "text/json");
         } catch (const std::exception &e) {
             res.status = 500;

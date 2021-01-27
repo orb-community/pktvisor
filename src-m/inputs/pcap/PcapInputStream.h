@@ -132,6 +132,9 @@ private:
     std::unique_ptr<TcpMsgReassembly> _tcpReassembly;
     pcpp::PcapLiveDevice *_pcapDevice;
 
+    bool _singleSummary = false;
+    bool _pcapFile = false;
+
 protected:
     void onGotMessage(PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowKey, timespec stamp);
 

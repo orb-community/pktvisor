@@ -76,25 +76,24 @@ public:
     void process_packet(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp);
 };
 
-class NetStreamHandler : public pktvisor::StreamHandler
+class NetStreamHandler : public pktvisor::StreamMetricsHandler<NetworkMetricsManager>
 {
 
     PcapInputStream *_stream;
-    NetworkMetricsManager _metrics;
 
     sigslot::connection _pkt_connection;
 
     void process_packet(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp);
 
 public:
-    NetStreamHandler(const std::string &name, PcapInputStream *stream);
+    NetStreamHandler(const std::string &name, PcapInputStream *stream, uint periods, int deepSampleRate);
     virtual ~NetStreamHandler();
 
     // pktvisor::AbstractModule
     void start() override;
     void stop() override;
 
-    // pktvisor::StreamHandler
+    // pktvisor::StreamMetricsHandler
     void toJSON(json &j, uint64_t period, bool merged) override;
 };
 

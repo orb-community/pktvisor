@@ -61,6 +61,24 @@ typedef Corrade::PluginManager::Manager<pktvisor::HandlerModulePlugin> HandlerPl
 typedef Corrade::Containers::Pointer<pktvisor::InputModulePlugin> InputPluginPtr;
 typedef Corrade::Containers::Pointer<pktvisor::HandlerModulePlugin> HandlerPluginPtr;
 
+//void handleGeo(const docopt::value &city, const docopt::value &asn)
+//{
+//    if (city) {
+//        if (!metricsManager->haveGeoCity()) {
+//            std::cerr << "warning: --geo-city has no effect, lacking compile-time support" << std::endl;
+//        } else {
+//            metricsManager->setGeoCityDB(city.asString());
+//        }
+//    }
+//    if (asn) {
+//        if (!metricsManager->haveGeoASN()) {
+//            std::cerr << "warning: --geo-asn has no effect, lacking compile-time support" << std::endl;
+//        } else {
+//            metricsManager->setGeoASNDB(asn.asString());
+//        }
+//    }
+//}
+
 int main(int argc, char *argv[])
 {
     int result{0};
@@ -114,14 +132,53 @@ int main(int argc, char *argv[])
     std::signal(SIGINT, signal_handler);
     std::signal(SIGTERM, signal_handler);
 
+    int sampleRate = 100;
+    if (args["--max-deep-sample"]) {
+        sampleRate = (int)args["--max-deep-sample"].asLong();
+        if (sampleRate != 100) {
+            Corrade::Utility::print("Using maximum deep sample rate: {}%\n", sampleRate);
+        }
+    }
+
+    std::string bpf;
+    if (args["-b"]) {
+        bpf = args["-b"].asString();
+    }
+
+    if (args["-H"]) {
+        auto spec = args["-H"].asString();
+        try {
+            //            pktvisor::parseHostSpec(spec, hostIPv4, hostIPv6);
+        } catch (const std::exception &e) {
+            std::cerr << e.what() << std::endl;
+            return -1;
+        }
+    }
+
+    long periods{0};
+    if (args["--periods"]) {
+        periods = args["--periods"].asLong();
+    }
+
     try {
         auto inputStream = std::make_unique<pktvisor::input::pcap::PcapInputStream>("pcap");
-        inputStream->set_config("pcap_file", args["PCAP"].asString());
-        inputStream->set_config("bpf", args["BPF"].asString());
-        inputManager->add_module(std::move(inputStream), false);
-        auto handler_module = std::make_unique<pktvisor::handler::NetStreamHandler>("net", inputStream.get());
-        handlerManager->add_module(std::move(handler_module));
+        inputStream->config_set("pcap_file", args["PCAP"].asString());
+        inputStream->config_set("bpf", args["BPF"].asString());
+        inputManager->module_add(std::move(inputStream), false);
+        auto handler_module = std::make_unique<pktvisor::handler::NetStreamHandler>("net", inputStream.get(), periods, sampleRate);
+        handlerManager->module_add(std::move(handler_module));
         inputStream->start();
+        //        handleGeo(args["--geo-city"], args["--geo-asn"]);
+        //        openPcap(args["TARGET"].asString(), tcpDnsReassembly, bpf);
+        //        if (args["--summary"].asBool()) {
+        //            // in summary mode we output a single summary of stats
+        //            std::cout << std::endl
+        //                      << metricsManager->getMetrics() << std::endl;
+        //        } else {
+        //            // otherwise, merge the max time window available
+        //            std::cout << std::endl
+        //                      << metricsManager->getMetricsMerged(periods) << std::endl;
+        //        }
     } catch (const std::exception &e) {
         Corrade::Utility::printError("Fatal error: {}\n", e.what());
         result = -1;

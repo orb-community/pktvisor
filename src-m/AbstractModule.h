@@ -40,17 +40,23 @@ public:
         return _running;
     }
 
-    auto get_config(const std::string &key)
+    auto config_get(const std::string &key)
     {
         std::shared_lock lock(_config_mutex);
         return _config[key];
     }
 
     template <class T>
-    void set_config(const std::string &key, const T &val)
+    void config_set(const std::string &key, const T &val)
     {
         std::unique_lock lock(_config_mutex);
         _config[key] = val;
+    }
+
+    bool config_exists(const std::string &name) const
+    {
+        std::shared_lock lock(_config_mutex);
+        return _config.count(name) == 1;
     }
 };
 

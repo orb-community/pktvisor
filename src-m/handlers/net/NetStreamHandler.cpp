@@ -6,11 +6,9 @@
 
 namespace pktvisor::handler {
 
-NetStreamHandler::NetStreamHandler(const std::string &name, PcapInputStream *stream)
-    : pktvisor::StreamHandler(name)
+NetStreamHandler::NetStreamHandler(const std::string &name, PcapInputStream *stream, uint periods, int deepSampleRate)
+    : pktvisor::StreamMetricsHandler<NetworkMetricsManager>(name, periods, deepSampleRate)
     , _stream(stream)
-    // TODO
-    , _metrics(5, 100)
 {
     !Corrade::Utility::Debug{} << "create";
 }
@@ -46,15 +44,15 @@ NetStreamHandler::~NetStreamHandler()
 
 void NetStreamHandler::process_packet(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp)
 {
-    _metrics.process_packet(payload, dir, l3, l4, stamp);
+    _metrics->process_packet(payload, dir, l3, l4, stamp);
 }
 
 void NetStreamHandler::toJSON(json &j, uint64_t period, bool merged)
 {
     if (merged) {
-        _metrics.toJSONMerged(j["net"], period);
+        _metrics->toJSONMerged(j["net"], period);
     } else {
-        _metrics.toJSONSingle(j["net"], period);
+        _metrics->toJSONSingle(j["net"], period);
     }
 }
 

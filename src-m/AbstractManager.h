@@ -40,7 +40,7 @@ public:
     }
 
     // atomically ensure module starts before arriving in registry, if requested
-    virtual void add_module(std::unique_ptr<ModuleType> &&m, bool start = true)
+    virtual void module_add(std::unique_ptr<ModuleType> &&m, bool start = true)
     {
         std::unique_lock lock(_map_mutex);
         if (_map.count(m->name())) {
@@ -54,7 +54,7 @@ public:
 
     // note the module returned has separate thread safety, but the returned lock ensures
     // the module will not be removed before the caller has a chance to initialize
-    auto get_module(const std::string &name)
+    auto module_get(const std::string &name)
     {
         std::unique_lock lock(_map_mutex);
         if (_map.count(name) == 0) {
@@ -67,7 +67,7 @@ public:
         return retVals{_map[name].get(), std::move(lock)};
     }
 
-    virtual void remove_module(const std::string &name)
+    virtual void module_remove(const std::string &name)
     {
         std::unique_lock lock(_map_mutex);
         if (_map.count(name) == 0) {
@@ -78,7 +78,7 @@ public:
     }
 
     // note, this only guarantees the name existed at the time of call, watch for race conditions!
-    bool exists(const std::string &name) const
+    bool module_exists(const std::string &name) const
     {
         std::shared_lock lock(_map_mutex);
         return _map.count(name) == 1;

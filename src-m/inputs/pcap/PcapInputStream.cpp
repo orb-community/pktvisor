@@ -10,13 +10,13 @@
 #include <PcapFileDevice.h>
 #include <SystemUtils.h>
 #pragma GCC diagnostic pop
-#include <arpa/inet.h>
-#include <netinet/in.h>
+#include <Corrade/Utility/Debug.h>
 #include <IpUtils.h>
+#include <arpa/inet.h>
+#include <assert.h>
 #include <cstdint>
 #include <cstring>
-#include <assert.h>
-#include <Corrade/Utility/Debug.h>
+#include <netinet/in.h>
 
 namespace pktvisor {
 namespace input {
@@ -47,29 +47,37 @@ void PcapInputStream::start()
 
     !Corrade::Utility::Debug{} << "start";
 
-    // extract pcap live device by interface name or IP address
-    std::string TARGET(std::get<std::string>(get_config("iface")));
-    pcpp::IPv4Address interfaceIP4(TARGET);
-    pcpp::IPv6Address interfaceIP6(TARGET);
-    if (interfaceIP4.isValid() || interfaceIP6.isValid()) {
-        if (interfaceIP4.isValid()) {
-            _pcapDevice = pcpp::PcapLiveDeviceList::getInstance().getPcapLiveDeviceByIp(interfaceIP4);
-        } else {
-            _pcapDevice = pcpp::PcapLiveDeviceList::getInstance().getPcapLiveDeviceByIp(interfaceIP6);
-        }
-        if (_pcapDevice == nullptr) {
-            throw std::runtime_error("Couldn't find interface by provided IP: " + TARGET);
-        }
+    if (config_exists("pcap_file")) {
+        assert(config_exists("bpf"));
+        _pcapFile = true;
+        openPcap(std::get<std::string>(config_get("pcap_file")), std::get<std::string>(config_get("bpf")));
     } else {
-        _pcapDevice = pcpp::PcapLiveDeviceList::getInstance().getPcapLiveDeviceByName(TARGET);
-        if (_pcapDevice == nullptr) {
-            throw std::runtime_error("Couldn't find interface by provided name: " + TARGET);
+        assert(config_exists("iface"));
+        assert(config_exists("bpf"));
+        std::string TARGET(std::get<std::string>(config_get("iface")));
+        pcpp::IPv4Address interfaceIP4(TARGET);
+        pcpp::IPv6Address interfaceIP6(TARGET);
+        // extract pcap live device by interface name or IP address
+        if (interfaceIP4.isValid() || interfaceIP6.isValid()) {
+            if (interfaceIP4.isValid()) {
+                _pcapDevice = pcpp::PcapLiveDeviceList::getInstance().getPcapLiveDeviceByIp(interfaceIP4);
+            } else {
+                _pcapDevice = pcpp::PcapLiveDeviceList::getInstance().getPcapLiveDeviceByIp(interfaceIP6);
+            }
+            if (_pcapDevice == nullptr) {
+                throw std::runtime_error("Couldn't find interface by provided IP: " + TARGET);
+            }
+        } else {
+            _pcapDevice = pcpp::PcapLiveDeviceList::getInstance().getPcapLiveDeviceByName(TARGET);
+            if (_pcapDevice == nullptr) {
+                throw std::runtime_error("Couldn't find interface by provided name: " + TARGET);
+            }
         }
+        //        std::cerr << "Interface " << dev->getName() << std::endl;
+        getHostsFromIface();
+        //        showHosts();
+        openIface(std::get<std::string>(config_get("bpf")));
     }
-    //        std::cerr << "Interface " << dev->getName() << std::endl;
-    getHostsFromIface();
-    //        showHosts();
-    openIface(std::get<std::string>(get_config("bpf")));
     _running = true;
 }
 
@@ -81,12 +89,16 @@ void PcapInputStream::stop()
 
     !Corrade::Utility::Debug{} << "stop";
 
-    // stop capturing and close the live device
-    _pcapDevice->stopCapture();
-    _pcapDevice->close();
+    if (!_pcapFile) {
 
-    // close all connections which are still opened
-    _tcpReassembly->getTcpReassembly()->closeAllConnections();
+        // stop capturing and close the live device
+        _pcapDevice->stopCapture();
+        _pcapDevice->close();
+
+        // close all connections which are still opened
+        _tcpReassembly->getTcpReassembly()->closeAllConnections();
+        
+    }
 
     _running = false;
 }
@@ -171,6 +183,8 @@ void PcapInputStream::processRawPacket(pcpp::RawPacket *rawPacket)
 
 void PcapInputStream::openPcap(std::string fileName, std::string bpfFilter)
 {
+    assert(_pcapFile);
+
     // open input file (pcap or pcapng file)
     pcpp::IFileReaderDevice *reader = pcpp::IFileReaderDevice::getReader(fileName.c_str());
 
@@ -184,9 +198,6 @@ void PcapInputStream::openPcap(std::string fileName, std::string bpfFilter)
             throw std::runtime_error("Cannot set BPF filter to pcap file");
     }
 
-    // TODO
-    //    pcpp::ApplicationEventHandler::getInstance().onApplicationInterrupted(onApplicationInterrupted, &dC);
-
     // run in a loop that reads one packet from the file in each iteration and feeds it to the TCP reassembly instance
     pcpp::RawPacket rawPacket;
     // setup initial timestamp from first packet to initiate bucketing
@@ -198,14 +209,11 @@ void PcapInputStream::openPcap(std::string fileName, std::string bpfFilter)
 
     int packetCount = 0, lastCount = 0;
     pktvisor::Timer t([&packetCount, &lastCount]() {
-        // TODO
-        //        std::cerr << "\rprocessed " << packetCount << " packets (" << lastCount << "/s)";
+        Corrade::Utility::Debug{} << "\rprocessed " << packetCount << " packets (" << lastCount << "/s)";
         lastCount = 0;
     },
         pktvisor::Timer::Interval(1000), false);
     t.start();
-    // dC.second answers question "stopping?"
-    //    while (reader->getNextPacket(rawPacket) && !dC.second) {
     while (reader->getNextPacket(rawPacket)) {
         packetCount++;
         lastCount++;

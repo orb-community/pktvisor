@@ -28,7 +28,7 @@ void PcapInputModulePlugin::_setup_routes(HttpServer &svr)
                 res.set_content(result.dump(), "text/json");
                 return;
             }
-            if (_input_manager->exists(body["name"])) {
+            if (_input_manager->module_exists(body["name"])) {
                 res.status = 400;
                 result["error"] = "input name already exists";
                 res.set_content(result.dump(), "text/json");
@@ -40,9 +40,9 @@ void PcapInputModulePlugin::_setup_routes(HttpServer &svr)
             }
 
             auto input_stream = std::make_unique<PcapInputStream>(body["name"]);
-            input_stream->set_config("iface", body["iface"].get<std::string>());
-            input_stream->set_config("bpf", bpf);
-            _input_manager->add_module(std::move(input_stream));
+            input_stream->config_set("iface", body["iface"].get<std::string>());
+            input_stream->config_set("bpf", bpf);
+            _input_manager->module_add(std::move(input_stream));
 
             result["name"] = body["name"];
             result["iface"] = body["iface"];
@@ -59,13 +59,13 @@ void PcapInputModulePlugin::_setup_routes(HttpServer &svr)
         json result;
         try {
             auto name = req.matches[1];
-            if (!_input_manager->exists(name)) {
+            if (!_input_manager->module_exists(name)) {
                 res.status = 404;
                 result["result"] = "input name does not exist";
                 res.set_content(result.dump(), "text/json");
                 return;
             }
-            auto [input_stream, stream_mgr_lock] = _input_manager->get_module(name);
+            auto [input_stream, stream_mgr_lock] = _input_manager->module_get(name);
             assert(input_stream);
             auto count = input_stream->consumer_count();
             if (count) {
@@ -75,7 +75,7 @@ void PcapInputModulePlugin::_setup_routes(HttpServer &svr)
                 return;
             }
             stream_mgr_lock.unlock();
-            _input_manager->remove_module(name);
+            _input_manager->module_remove(name);
             res.set_content(result.dump(), "text/json");
         } catch (const std::exception &e) {
             res.status = 500;
