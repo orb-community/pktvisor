@@ -39,15 +39,17 @@ public:
         return retVals{_map, std::move(lock)};
     }
 
-    // atomically ensure module starts before arriving in registry
-    virtual void add_module(const std::string &name, std::unique_ptr<ModuleType> &&m)
+    // atomically ensure module starts before arriving in registry, if requested
+    virtual void add_module(std::unique_ptr<ModuleType> &&m, bool start = true)
     {
         std::unique_lock lock(_map_mutex);
-        if (_map.count(name)) {
+        if (_map.count(m->name())) {
             throw std::runtime_error("module name already exists");
         }
-        m->start();
-        _map.emplace(std::make_pair(name, std::move(m)));
+        if (start) {
+            m->start();
+        }
+        _map.emplace(std::make_pair(m->name(), std::move(m)));
     }
 
     // note the module returned has separate thread safety, but the returned lock ensures

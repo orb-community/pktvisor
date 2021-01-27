@@ -57,7 +57,7 @@ void NetHandlerModulePlugin::_setup_routes(HttpServer &svr)
                 return;
             }
             auto handler_module = std::make_unique<NetStreamHandler>(body["name"], pcap_stream);
-            _handler_manager->add_module(body["name"], std::move(handler_module));
+            _handler_manager->add_module(std::move(handler_module));
             result["name"] = body["name"];
             res.set_content(result.dump(), "text/json");
         } catch (const std::exception &e) {

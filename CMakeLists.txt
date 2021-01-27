@@ -209,3 +209,23 @@ target_include_directories(pktvisord-m
         )
 
 target_link_libraries(pktvisord-m PRIVATE pktvisorcore-m ${PKTVISOR_STATIC_PLUGINS})
+
+add_executable(pktvisor-pcap
+        ${PKTVISOR_VENDOR_DIR}/docopt/docopt.cpp
+        cmd/pktvisor-pcap/main.cpp
+        )
+
+target_include_directories(pktvisor-pcap
+        PRIVATE
+        ${PKTVISOR_VENDOR_DIR}
+        ${CORRADE_INCLUDE_DIR}
+        ${PKTVISOR_VENDOR_DIR}/datasketches
+        ${PKTVISOR_VENDOR_DIR}/datasketches/datasketches
+        ${CMAKE_SOURCE_DIR}/src-m
+        ${LIBPCPP_INCLUDE_DIRS}
+        ${CMAKE_SOURCE_DIR}/src-m/inputs/pcap # FIXME - dependency on pcap
+        ${Corrade_BINARY_DIR}/src # FIXME configure.h, probably not right
+        ${CMAKE_BINARY_DIR}/src-m # FIXME config.h
+        )
+
+target_link_libraries(pktvisor-pcap PRIVATE pktvisorcore-m ${PKTVISOR_STATIC_PLUGINS})

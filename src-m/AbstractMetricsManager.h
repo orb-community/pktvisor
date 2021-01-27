@@ -190,7 +190,7 @@ public:
     static const uint PERIOD_SEC = 60;
     static const uint MERGE_CACHE_TTL_MS = 1000;
 
-    AbstractMetricsManager(bool singleSummaryMode, uint periods, int deepSampleRate)
+    AbstractMetricsManager(uint periods, int deepSampleRate)
         : _metricBuckets()
         , _numPeriods(periods)
         , _lastShiftTS()
@@ -199,9 +199,6 @@ public:
         , _deepSampleRate(deepSampleRate)
         , _shouldDeepSample(true)
     {
-        if (singleSummaryMode) {
-            _numPeriods = 1;
-        }
         if (_deepSampleRate > 100) {
             _deepSampleRate = 100;
         }
@@ -217,13 +214,8 @@ public:
         _startTime = std::chrono::system_clock::now();
     }
 
-    bool shouldDeepSample()
-    {
-        return _shouldDeepSample;
-    }
-
     void setInitialShiftTS();
-    //    void setInitialShiftTS(const pcpp::Packet &packet);
+    //    void setInitialShiftTS(const pcpp::Pack.et &packet);
 
     /*
     std::string getAppMetrics();

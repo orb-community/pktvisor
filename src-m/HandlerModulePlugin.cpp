@@ -14,5 +14,13 @@ void HandlerModulePlugin::init_module(InputStreamManager *im,
     _handler_manager = hm;
     _setup_routes(svr);
 }
+void HandlerModulePlugin::init_module(InputStreamManager *im, HandlerManager *hm)
+{
+    Corrade::Utility::print("Init input plugin (without server): {}\n", name());
+    assert(hm);
+    assert(im);
+    _input_manager = im;
+    _handler_manager = hm;
+}
 
 }

@@ -10,7 +10,7 @@ NetStreamHandler::NetStreamHandler(const std::string &name, PcapInputStream *str
     : pktvisor::StreamHandler(name)
     , _stream(stream)
     // TODO
-    , _metrics(false, 5, 100)
+    , _metrics(5, 100)
 {
     !Corrade::Utility::Debug{} << "create";
 }

@@ -68,8 +68,8 @@ public:
 class NetworkMetricsManager : public pktvisor::AbstractMetricsManager<NetworkMetricsBucket>
 {
 public:
-    NetworkMetricsManager(bool singleSummaryMode, uint periods, int deepSampleRate)
-        : pktvisor::AbstractMetricsManager<NetworkMetricsBucket>(singleSummaryMode, periods, deepSampleRate)
+    NetworkMetricsManager(uint periods, int deepSampleRate)
+        : pktvisor::AbstractMetricsManager<NetworkMetricsBucket>(periods, deepSampleRate)
     {
     }
 

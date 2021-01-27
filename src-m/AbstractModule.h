@@ -12,7 +12,7 @@ namespace pktvisor {
 class AbstractModule
 {
 private:
-    std::unordered_map<std::string, std::variant<std::string, uint64_t>> _config;
+    std::unordered_map<std::string, std::variant<std::string, uint64_t, bool>> _config;
     mutable std::shared_mutex _config_mutex;
 
 protected:

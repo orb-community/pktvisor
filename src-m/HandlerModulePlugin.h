@@ -37,6 +37,9 @@ public:
     void init_module(InputStreamManager *im,
         HandlerManager *hm,
         HttpServer &svr);
+
+    void init_module(InputStreamManager *im,
+        HandlerManager *hm);
 };
 
 }

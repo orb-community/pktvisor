@@ -42,7 +42,7 @@ void PcapInputModulePlugin::_setup_routes(HttpServer &svr)
             auto input_stream = std::make_unique<PcapInputStream>(body["name"]);
             input_stream->set_config("iface", body["iface"].get<std::string>());
             input_stream->set_config("bpf", bpf);
-            _input_manager->add_module(body["name"], std::move(input_stream));
+            _input_manager->add_module(std::move(input_stream));
 
             result["name"] = body["name"];
             result["iface"] = body["iface"];

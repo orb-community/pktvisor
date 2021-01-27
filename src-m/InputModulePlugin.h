@@ -34,6 +34,7 @@ public:
     virtual std::string name() const = 0;
 
     void init_module(InputStreamManager *im, HttpServer &svr);
+    void init_module(InputStreamManager *im);
 };
 
 }
