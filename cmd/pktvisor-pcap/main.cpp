@@ -152,12 +152,13 @@ int main(int argc, char *argv[])
         }
     }
 
-    long periods{0};
-    if (args["--periods"]) {
+    long periods{1};
+    if (!args["--summary"].asBool() && args["--periods"]) {
         periods = args["--periods"].asLong();
     }
 
     try {
+        //        handleGeo(args["--geo-city"], args["--geo-asn"]);
         auto inputStream = std::make_unique<pktvisor::input::pcap::PcapInputStream>("pcap");
         inputStream->config_set("pcap_file", args["PCAP"].asString());
         inputStream->config_set("bpf", bpf);
@@ -174,20 +175,16 @@ int main(int argc, char *argv[])
         pcap_stream->start();
 
         json result;
-        net_handler->toJSON(result, 0, false);
+        if (args["--summary"].asBool()) {
+            // in summary mode we output a single summary of stats
+            net_handler->toJSON(result, 0, false);
+        } else {
+            // otherwise, merge the max time window available
+            net_handler->toJSON(result, periods, true);
+        }
         Corrade::Utility::print("{}", result.dump(4));
         shutdown_handler(SIGUSR1);
 
-        //        handleGeo(args["--geo-city"], args["--geo-asn"]);
-        //        if (args["--summary"].asBool()) {
-        //            // in summary mode we output a single summary of stats
-        //            std::cout << std::endl
-        //                      << metricsManager->getMetrics() << std::endl;
-        //        } else {
-        //            // otherwise, merge the max time window available
-        //            std::cout << std::endl
-        //                      << metricsManager->getMetricsMerged(periods) << std::endl;
-        //        }
     } catch (const std::exception &e) {
         Corrade::Utility::printError("Fatal error: {}\n", e.what());
         result = -1;

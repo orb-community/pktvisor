@@ -11,12 +11,12 @@
 #include <SystemUtils.h>
 #pragma GCC diagnostic pop
 #include <Corrade/Utility/Debug.h>
-#include <IpUtils.h>
 #include <arpa/inet.h>
 #include <assert.h>
 #include <cstdint>
 #include <cstring>
 #include <netinet/in.h>
+#include <IpUtils.h>
 
 namespace pktvisor {
 namespace input {
@@ -97,7 +97,7 @@ void PcapInputStream::stop()
 
         // close all connections which are still opened
         _tcpReassembly->getTcpReassembly()->closeAllConnections();
-        
+
     }
 
     _running = false;
@@ -209,7 +209,7 @@ void PcapInputStream::openPcap(std::string fileName, std::string bpfFilter)
 
     int packetCount = 0, lastCount = 0;
     pktvisor::Timer t([&packetCount, &lastCount]() {
-        Corrade::Utility::Debug{} << "\rprocessed " << packetCount << " packets (" << lastCount << "/s)";
+        std::cerr << "processed " << packetCount << " packets (" << lastCount << "/s)\n";
         lastCount = 0;
     },
         pktvisor::Timer::Interval(1000), false);
@@ -220,6 +220,7 @@ void PcapInputStream::openPcap(std::string fileName, std::string bpfFilter)
         processRawPacket(&rawPacket);
     }
     t.stop();
+    std::cerr << "processed " << packetCount << " packets\n";
 
     // after all packets have been read - close the connections which are still opened
     _tcpReassembly->getTcpReassembly()->closeAllConnections();

@@ -171,7 +171,7 @@ protected:
         if (_deepSampleRate != 100) {
             _shouldDeepSample = (_rng.uniform(0, 100) <= _deepSampleRate);
         }
-        if (stamp.tv_sec - _lastShiftTS.tv_sec > AbstractMetricsManager::PERIOD_SEC) {
+        if (_numPeriods > 1 && stamp.tv_sec - _lastShiftTS.tv_sec > AbstractMetricsManager::PERIOD_SEC) {
             _metricBuckets.emplace_back(std::make_unique<MetricsBucketClass>());
             if (_metricBuckets.size() > _numPeriods) {
                 // if we're at our period history length, pop the oldest
@@ -207,15 +207,14 @@ public:
         }
         _instantRates = std::make_unique<InstantRateMetrics>();
         _numPeriods = std::min(_numPeriods, 10U);
-        _numPeriods = std::max(_numPeriods, 2U);
+        _numPeriods = std::max(_numPeriods, 1U);
         _metricBuckets.emplace_back(std::make_unique<MetricsBucketClass>());
-        _lastShiftTS.tv_sec = 0;
-        _lastShiftTS.tv_nsec = 0;
+        timespec_get(&_lastShiftTS, TIME_UTC);
         _startTime = std::chrono::system_clock::now();
     }
 
     void setInitialShiftTS();
-    //    void setInitialShiftTS(const pcpp::Pack.et &packet);
+    //    void setInitialShiftTS(const pcpp::Packet &packet);
 
     /*
     std::string getAppMetrics();

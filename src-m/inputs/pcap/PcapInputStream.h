@@ -132,7 +132,6 @@ private:
     std::unique_ptr<TcpMsgReassembly> _tcpReassembly;
     pcpp::PcapLiveDevice *_pcapDevice;
 
-    bool _singleSummary = false;
     bool _pcapFile = false;
 
 protected:
