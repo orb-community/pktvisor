@@ -115,16 +115,13 @@ int main(int argc, char *argv[])
     }
 
     shutdown_handler = [&](int signal) {
-        Corrade::Utility::print("Shutting down\n");
         // gracefully close all inputs and handlers
         auto [input_modules, im_lock] = inputManager->all_modules();
         for (auto &[name, mod] : input_modules) {
-            Corrade::Utility::print("Stopping input instance: {}\n", mod->name());
             mod->stop();
         }
         auto [handler_modules, hm_lock] = handlerManager->all_modules();
         for (auto &[name, mod] : handler_modules) {
-            Corrade::Utility::print("Stopping handler instance: {}\n", mod->name());
             mod->stop();
         }
     };
@@ -163,13 +160,25 @@ int main(int argc, char *argv[])
     try {
         auto inputStream = std::make_unique<pktvisor::input::pcap::PcapInputStream>("pcap");
         inputStream->config_set("pcap_file", args["PCAP"].asString());
-        inputStream->config_set("bpf", args["BPF"].asString());
+        inputStream->config_set("bpf", bpf);
         inputManager->module_add(std::move(inputStream), false);
-        auto handler_module = std::make_unique<pktvisor::handler::NetStreamHandler>("net", inputStream.get(), periods, sampleRate);
+        auto [input_stream, stream_mgr_lock] = inputManager->module_get("pcap");
+        stream_mgr_lock.unlock();
+        auto pcap_stream = dynamic_cast<pktvisor::input::pcap::PcapInputStream *>(input_stream);
+        auto handler_module = std::make_unique<pktvisor::handler::NetStreamHandler>("net", pcap_stream, periods, sampleRate);
         handlerManager->module_add(std::move(handler_module));
-        inputStream->start();
+        auto [handler, handler_mgr_lock] = handlerManager->module_get("net");
+        handler_mgr_lock.unlock();
+        auto net_handler = dynamic_cast<pktvisor::handler::NetStreamHandler *>(handler);
+
+        pcap_stream->start();
+
+        json result;
+        net_handler->toJSON(result, 0, false);
+        Corrade::Utility::print("{}", result.dump(4));
+        shutdown_handler(SIGUSR1);
+
         //        handleGeo(args["--geo-city"], args["--geo-asn"]);
-        //        openPcap(args["TARGET"].asString(), tcpDnsReassembly, bpf);
         //        if (args["--summary"].asBool()) {
         //            // in summary mode we output a single summary of stats
         //            std::cout << std::endl

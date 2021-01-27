@@ -11,6 +11,7 @@ NetStreamHandler::NetStreamHandler(const std::string &name, PcapInputStream *str
     , _stream(stream)
 {
     !Corrade::Utility::Debug{} << "create";
+    assert(stream);
 }
 
 void NetStreamHandler::start()
