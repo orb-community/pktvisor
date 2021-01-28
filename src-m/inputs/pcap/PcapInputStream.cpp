@@ -45,6 +45,8 @@ void PcapInputStream::start()
         return;
     }
 
+    _running = true;
+
     !Corrade::Utility::Debug{} << "start";
 
     if (config_exists("pcap_file")) {
@@ -78,7 +80,6 @@ void PcapInputStream::start()
         //        showHosts();
         openIface(std::get<std::string>(config_get("bpf")));
     }
-    _running = true;
 }
 
 void PcapInputStream::stop()
@@ -214,7 +215,7 @@ void PcapInputStream::openPcap(std::string fileName, std::string bpfFilter)
     },
         pktvisor::Timer::Interval(1000), false);
     t.start();
-    while (reader->getNextPacket(rawPacket)) {
+    while (_running && reader->getNextPacket(rawPacket)) {
         packetCount++;
         lastCount++;
         processRawPacket(&rawPacket);
