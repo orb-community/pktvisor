@@ -11,6 +11,7 @@
 #include <datasketches/fi/frequent_items_sketch.hpp>
 #include <datasketches/kll/kll_sketch.hpp>
 #pragma GCC diagnostic pop
+#include <Corrade/Utility/Debug.h>
 #include <string>
 
 namespace pktvisor {
@@ -73,6 +74,11 @@ public:
     {
     }
 
+    void on_period_shift() override
+    {
+        Corrade::Utility::Debug{} << ". shift";
+    }
+
     void process_packet(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp);
 };
 
@@ -82,8 +88,10 @@ class NetStreamHandler : public pktvisor::StreamMetricsHandler<NetworkMetricsMan
     PcapInputStream *_stream;
 
     sigslot::connection _pkt_connection;
+    sigslot::connection _start_tstamp_connection;
 
     void process_packet(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp);
+    void set_initial_tstamp(timespec stamp);
 
 public:
     NetStreamHandler(const std::string &name, PcapInputStream *stream, uint periods, int deepSampleRate);

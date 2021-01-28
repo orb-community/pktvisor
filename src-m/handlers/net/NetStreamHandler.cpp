@@ -24,6 +24,7 @@ void NetStreamHandler::start()
     !Corrade::Utility::Debug{} << "start";
 
     _pkt_connection = _stream->packet_signal.connect(&NetStreamHandler::process_packet, this);
+    _start_tstamp_connection = _stream->start_tstamp_signal.connect(&NetStreamHandler::set_initial_tstamp, this);
 }
 
 void NetStreamHandler::stop()
@@ -32,10 +33,11 @@ void NetStreamHandler::stop()
         return;
     }
 
-    !Corrade::Utility::Debug{} << "stop";
     _running = false;
+    !Corrade::Utility::Debug{} << "stop";
 
     _pkt_connection.disconnect();
+    _start_tstamp_connection.disconnect();
 }
 
 NetStreamHandler::~NetStreamHandler()
@@ -55,6 +57,10 @@ void NetStreamHandler::toJSON(json &j, uint64_t period, bool merged)
     } else {
         _metrics->toJSONSingle(j["net"], period);
     }
+}
+void NetStreamHandler::set_initial_tstamp(timespec stamp)
+{
+    _metrics->set_initial_tstamp(stamp);
 }
 
 void NetworkMetricsBucket::merge(const AbstractMetricsBucket &o)
@@ -217,7 +223,7 @@ void NetworkMetricsBucket::process_packet(bool deep, pcpp::Packet &payload, Pack
 
 void NetworkMetricsManager::process_packet(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp)
 {
-    newEvent(stamp);
+    new_event(stamp);
     _metricBuckets.back()->process_packet(_shouldDeepSample, payload, dir, l3, l4, stamp);
 }
 

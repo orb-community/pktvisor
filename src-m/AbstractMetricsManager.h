@@ -164,7 +164,7 @@ protected:
 
     std::unordered_map<uint, std::pair<std::chrono::high_resolution_clock::time_point, json>> _mergeResultCache;
 
-    void newEvent(timespec stamp)
+    void new_event(timespec stamp)
     {
         // at each new event, we determine if we are sampling, to limit collection of more detailed (expensive) statistics
         _shouldDeepSample = true;
@@ -178,11 +178,11 @@ protected:
                 _metricBuckets.pop_front();
             }
             _lastShiftTS.tv_sec = stamp.tv_sec;
-            onPeriodShift();
+            on_period_shift();
         }
     }
 
-    virtual void onPeriodShift()
+    virtual void on_period_shift()
     {
     }
 
@@ -213,8 +213,10 @@ public:
         _startTime = std::chrono::system_clock::now();
     }
 
-    void setInitialShiftTS();
-    //    void setInitialShiftTS(const pcpp::Packet &packet);
+    void set_initial_tstamp(timespec stamp)
+    {
+        _lastShiftTS = stamp;
+    }
 
     /*
     std::string getAppMetrics();

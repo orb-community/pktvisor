@@ -187,7 +187,8 @@ void PcapInputStream::openPcap(std::string fileName, std::string bpfFilter)
     assert(_pcapFile);
 
     // open input file (pcap or pcapng file)
-    pcpp::IFileReaderDevice *reader = pcpp::IFileReaderDevice::getReader(fileName.c_str());
+    // NOTE, we are the owner and must free this
+    auto reader = pcpp::IFileReaderDevice::getReader(fileName.c_str());
 
     // try to open the file device
     if (!reader->open())
@@ -199,16 +200,15 @@ void PcapInputStream::openPcap(std::string fileName, std::string bpfFilter)
             throw std::runtime_error("Cannot set BPF filter to pcap file");
     }
 
-    // run in a loop that reads one packet from the file in each iteration and feeds it to the TCP reassembly instance
     pcpp::RawPacket rawPacket;
+
     // setup initial timestamp from first packet to initiate bucketing
     if (reader->getNextPacket(rawPacket)) {
-        // TODO interface to handler
-        //        metricsManager->setInitialShiftTS(&rawPacket);
+        start_tstamp_signal(rawPacket.getPacketTimeStamp());
         processRawPacket(&rawPacket);
     }
 
-    int packetCount = 0, lastCount = 0;
+    int packetCount = 1, lastCount = 0;
     pktvisor::Timer t([&packetCount, &lastCount]() {
         std::cerr << "processed " << packetCount << " packets (" << lastCount << "/s)\n";
         lastCount = 0;
@@ -216,9 +216,9 @@ void PcapInputStream::openPcap(std::string fileName, std::string bpfFilter)
         pktvisor::Timer::Interval(1000), false);
     t.start();
     while (_running && reader->getNextPacket(rawPacket)) {
+        processRawPacket(&rawPacket);
         packetCount++;
         lastCount++;
-        processRawPacket(&rawPacket);
     }
     t.stop();
     std::cerr << "processed " << packetCount << " packets\n";
@@ -229,6 +229,7 @@ void PcapInputStream::openPcap(std::string fileName, std::string bpfFilter)
     // close the reader and free its memory
     reader->close();
     delete reader;
+
 }
 
 /**

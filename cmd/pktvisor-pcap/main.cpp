@@ -27,7 +27,7 @@
 static const char USAGE[] =
     R"(pktvisor-pcap
     Usage:
-      pktvisor-pcap [-b BPF] [-H HOSTSPEC] [--geo-city FILE] [--geo-asn FILE] [--max-deep-sample N] [--summary] PCAP
+      pktvisor-pcap [-b BPF] [-H HOSTSPEC] [--geo-city FILE] [--geo-asn FILE] [--max-deep-sample N] [--periods P] PCAP
       pktvisor-pcap (-h | --help)
       pktvisor-pcap --version
 
@@ -35,9 +35,7 @@ static const char USAGE[] =
 
     Options:
       --max-deep-sample N   Never deep sample more than N% of streams (an int between 0 and 100) [default: 100]
-      --periods P           Hold this many 60 second time periods of history in memory [default: 5]
-      --summary             Instead of a time window with P periods, summarize all packets into one bucket for entire time period.
-                            Useful for executive summary of pcap file. [default: false]
+      --periods P           Hold this many 60 second time periods of history in memory. Use 1 to summarize all data. [default: 5]
       -h --help             Show this screen
       --version             Show version
       -b BPF                Filter packets using the given BPF string
@@ -152,10 +150,7 @@ int main(int argc, char *argv[])
         }
     }
 
-    long periods{1};
-    if (!args["--summary"].asBool() && args["--periods"]) {
-        periods = args["--periods"].asLong();
-    }
+    long periods = args["--periods"].asLong();
 
     try {
         //        handleGeo(args["--geo-city"], args["--geo-asn"]);
@@ -175,7 +170,7 @@ int main(int argc, char *argv[])
         pcap_stream->start();
 
         json result;
-        if (args["--summary"].asBool()) {
+        if (periods == 1) {
             // in summary mode we output a single summary of stats
             net_handler->toJSON(result, 0, false);
         } else {
