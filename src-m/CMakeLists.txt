@@ -5,6 +5,7 @@ message(STATUS "Modular support will build")
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/3rd/corrade/modules")
 
 find_package(Corrade REQUIRED PluginManager)
+pkg_check_modules(LIBMMDB REQUIRED libmaxminddb)
 
 set_directory_properties(PROPERTIES CORRADE_USE_PEDANTIC_FLAGS ON)
 
@@ -12,6 +13,7 @@ add_library(pktvisorcore-m
         AbstractPlugin.cpp
         InputModulePlugin.cpp
         HandlerModulePlugin.cpp
+        GeoDB.cpp
         )
 
 target_include_directories(pktvisorcore-m
@@ -21,12 +23,15 @@ target_include_directories(pktvisorcore-m
         ${PKTVISOR_VENDOR_DIR}/datasketches
         ${PKTVISOR_VENDOR_DIR}/datasketches/datasketches
         #
+        PUBLIC ${LIBMMDB_INCLUDE_DIRS}
         ${CORRADE_INCLUDE_DIR}
         ${Corrade_BINARY_DIR}/src # FIXME configure.h, probably not right
         )
 
 target_link_libraries(pktvisorcore-m
         PRIVATE
+        ${LIBMMDB_LDFLAGS}
+        ${LIBMMDB_LIBRARIES}
         Corrade::PluginManager
         )
 

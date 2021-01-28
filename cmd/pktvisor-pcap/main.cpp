@@ -21,6 +21,7 @@
 #include "handlers/static_plugins.h"
 #include "inputs/static_plugins.h"
 
+#include "GeoDB.h"
 #include "handlers/net/NetStreamHandler.h"
 #include "inputs/pcap/PcapInputStream.h"
 
@@ -59,23 +60,15 @@ typedef Corrade::PluginManager::Manager<pktvisor::HandlerModulePlugin> HandlerPl
 typedef Corrade::Containers::Pointer<pktvisor::InputModulePlugin> InputPluginPtr;
 typedef Corrade::Containers::Pointer<pktvisor::HandlerModulePlugin> HandlerPluginPtr;
 
-//void handleGeo(const docopt::value &city, const docopt::value &asn)
-//{
-//    if (city) {
-//        if (!metricsManager->haveGeoCity()) {
-//            std::cerr << "warning: --geo-city has no effect, lacking compile-time support" << std::endl;
-//        } else {
-//            metricsManager->setGeoCityDB(city.asString());
-//        }
-//    }
-//    if (asn) {
-//        if (!metricsManager->haveGeoASN()) {
-//            std::cerr << "warning: --geo-asn has no effect, lacking compile-time support" << std::endl;
-//        } else {
-//            metricsManager->setGeoASNDB(asn.asString());
-//        }
-//    }
-//}
+void initialize_geo(const docopt::value &city, const docopt::value &asn)
+{
+    if (city) {
+        pktvisor::GeoIP.get().enable(city.asString());
+    }
+    if (asn) {
+        pktvisor::GeoASN.get().enable(city.asString());
+    }
+}
 
 int main(int argc, char *argv[])
 {
@@ -153,7 +146,9 @@ int main(int argc, char *argv[])
     long periods = args["--periods"].asLong();
 
     try {
-        //        handleGeo(args["--geo-city"], args["--geo-asn"]);
+
+        initialize_geo(args["--geo-city"], args["--geo-asn"]);
+
         auto inputStream = std::make_unique<pktvisor::input::pcap::PcapInputStream>("pcap");
         inputStream->config_set("pcap_file", args["PCAP"].asString());
         inputStream->config_set("bpf", bpf);
