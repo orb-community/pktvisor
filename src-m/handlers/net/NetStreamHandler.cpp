@@ -66,6 +66,7 @@ void NetStreamHandler::set_initial_tstamp(timespec stamp)
 void NetworkMetricsBucket::merge(const AbstractMetricsBucket &o)
 {
 
+    // static because caller guarantees only our own bucket type
     const auto &other = static_cast<const NetworkMetricsBucket &>(o);
     std::shared_lock r_lock(other._mutex);
     std::unique_lock w_lock(_mutex);

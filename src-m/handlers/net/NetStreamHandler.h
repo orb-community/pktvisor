@@ -19,6 +19,7 @@ namespace handler {
 
 using namespace pktvisor::input::pcap;
 
+// TODO
 struct NetworkRateSketches {
     Rate::QuantileType net_rateIn;
     Rate::QuantileType net_rateOut;
@@ -46,6 +47,7 @@ public:
     uint64_t _numPackets_in = 0;
     uint64_t _numPackets_out = 0;
 
+    // TODO
     NetworkRateSketches _rateSketches;
 
 public:
@@ -74,10 +76,16 @@ public:
     {
     }
 
+#if 0
     void on_period_shift() override
     {
-        Corrade::Utility::Debug{} << ". shift";
+        Corrade::Utility::Debug{} << "period shift";
     }
+    void on_period_evict(const NetworkMetricsBucket *bucket) override
+    {
+        Corrade::Utility::Debug{} << "evict: " << bucket->_numPackets;
+    }
+#endif
 
     void process_packet(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp);
 };

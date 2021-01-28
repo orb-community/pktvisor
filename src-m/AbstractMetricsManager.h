@@ -175,6 +175,7 @@ protected:
             _metricBuckets.emplace_back(std::make_unique<MetricsBucketClass>());
             if (_metricBuckets.size() > _numPeriods) {
                 // if we're at our period history length, pop the oldest
+                on_period_evict(_metricBuckets.front().get());
                 _metricBuckets.pop_front();
             }
             _lastShiftTS.tv_sec = stamp.tv_sec;
@@ -186,7 +187,12 @@ protected:
     {
     }
 
+    virtual void on_period_evict(const MetricsBucketClass *bucket)
+    {
+    }
+
 public:
+    // TODO
     static const uint PERIOD_SEC = 60;
     static const uint MERGE_CACHE_TTL_MS = 1000;
 
@@ -308,9 +314,9 @@ public:
         j[period_str]["period"]["start_ts"] = oldest_ts.tv_sec;
         j[period_str]["period"]["length"] = period_length;
 
-        merged.toJSON(j);
+        merged.toJSON(j[period_str]);
 
-        _mergeResultCache[period] = std::pair<std::chrono::high_resolution_clock::time_point, std::string>(std::chrono::high_resolution_clock::now(), j);
+        _mergeResultCache[period] = std::pair<std::chrono::high_resolution_clock::time_point, json>(std::chrono::high_resolution_clock::now(), j);
     }
 };
 
