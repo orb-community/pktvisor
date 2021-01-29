@@ -63,10 +63,10 @@ typedef Corrade::Containers::Pointer<pktvisor::HandlerModulePlugin> HandlerPlugi
 void initialize_geo(const docopt::value &city, const docopt::value &asn)
 {
     if (city) {
-        pktvisor::GeoIP.get().enable(city.asString());
+        pktvisor::geo::GeoIP.get().enable(city.asString());
     }
     if (asn) {
-        pktvisor::GeoASN.get().enable(city.asString());
+        pktvisor::geo::GeoASN.get().enable(city.asString());
     }
 }
 

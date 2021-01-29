@@ -9,37 +9,14 @@
 #include <TcpReassembly.h>
 #include <UdpLayer.h>
 #pragma GCC diagnostic pop
+#include "utils.h"
 #include <functional>
 #include <memory>
 #include <sigslot/signal.hpp>
 #include <unordered_map>
 #include <vector>
 
-namespace pktvisor {
-namespace input {
-namespace pcap {
-
-// list of subnets we count as "host" to determine direction of packets
-struct IPv4subnet {
-    pcpp::IPv4Address address;
-    pcpp::IPv4Address mask;
-    IPv4subnet(const pcpp::IPv4Address &a, const pcpp::IPv4Address &m)
-        : address(a)
-        , mask(m)
-    {
-    }
-};
-struct IPv6subnet {
-    pcpp::IPv6Address address;
-    uint8_t mask;
-    IPv6subnet(const pcpp::IPv6Address &a, int m)
-        : address(a)
-        , mask(m)
-    {
-    }
-};
-typedef std::vector<IPv4subnet> IPv4subnetList;
-typedef std::vector<IPv6subnet> IPv6subnetList;
+namespace pktvisor::input::pcap {
 
 enum PacketDirection { toHost,
     fromHost,
@@ -162,8 +139,6 @@ public:
     }
 };
 
-}
-}
 }
 
 #endif //PKTVISORD_PCAPINPUTSTREAM_H

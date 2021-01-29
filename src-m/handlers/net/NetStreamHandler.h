@@ -14,8 +14,7 @@
 #include <Corrade/Utility/Debug.h>
 #include <string>
 
-namespace pktvisor {
-namespace handler {
+namespace pktvisor::handler {
 
 using namespace pktvisor::input::pcap;
 
@@ -25,7 +24,7 @@ struct NetworkRateSketches {
     Rate::QuantileType net_rateOut;
 };
 
-class NetworkMetricsBucket : public pktvisor::AbstractMetricsBucket
+class NetworkMetricsBucket final : public pktvisor::AbstractMetricsBucket
 {
 public:
     const uint8_t START_FI_MAP_SIZE = 7; // 2^7 = 128
@@ -68,7 +67,7 @@ public:
     void process_packet(bool deep, pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp);
 };
 
-class NetworkMetricsManager : public pktvisor::AbstractMetricsManager<NetworkMetricsBucket>
+class NetworkMetricsManager final : public pktvisor::AbstractMetricsManager<NetworkMetricsBucket>
 {
 public:
     NetworkMetricsManager(uint periods, int deepSampleRate)
@@ -90,7 +89,7 @@ public:
     void process_packet(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp);
 };
 
-class NetStreamHandler : public pktvisor::StreamMetricsHandler<NetworkMetricsManager>
+class NetStreamHandler final : public pktvisor::StreamMetricsHandler<NetworkMetricsManager>
 {
 
     PcapInputStream *_stream;
@@ -103,7 +102,7 @@ class NetStreamHandler : public pktvisor::StreamMetricsHandler<NetworkMetricsMan
 
 public:
     NetStreamHandler(const std::string &name, PcapInputStream *stream, uint periods, int deepSampleRate);
-    virtual ~NetStreamHandler();
+    ~NetStreamHandler() override;
 
     // pktvisor::AbstractModule
     void start() override;
@@ -113,7 +112,6 @@ public:
     void toJSON(json &j, uint64_t period, bool merged) override;
 };
 
-}
 }
 
 #endif //PKTVISORD_NETSTREAMHANDLER_H

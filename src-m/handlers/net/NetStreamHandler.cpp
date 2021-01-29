@@ -1,7 +1,14 @@
 #include "NetStreamHandler.h"
+#include "GeoDB.h"
+#include "utils.h"
 #include <Corrade/Utility/Debug.h>
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wold-style-cast"
+#pragma GCC diagnostic ignored "-Wunused-parameter"
 #include <IPv4Layer.h>
 #include <IPv6Layer.h>
+#pragma GCC diagnostic pop
+#include <arpa/inet.h>
 #include <datasketches/datasketches/cpc/cpc_union.hpp>
 
 namespace pktvisor::handler {
@@ -111,6 +118,61 @@ void NetworkMetricsBucket::toJSON(json &j) const
     j["packets"]["ipv6"] = _numPackets_IPv6;
     j["packets"]["in"] = _numPackets_in;
     j["packets"]["out"] = _numPackets_out;
+    /*
+ *     const double fractions[4]{0.50, 0.90, 0.95, 0.99};
+    auto quantiles = _rateSketches.net_rateIn.get_quantiles(fractions, 4);
+    if (quantiles.size()) {
+        j[key]["packets"]["rates"]["pps_in"]["p50"] = quantiles[0];
+        j[key]["packets"]["rates"]["pps_in"]["p90"] = quantiles[1];
+        j[key]["packets"]["rates"]["pps_in"]["p95"] = quantiles[2];
+        j[key]["packets"]["rates"]["pps_in"]["p99"] = quantiles[3];
+    }
+    quantiles = _rateSketches.net_rateOut.get_quantiles(fractions, 4);
+    if (quantiles.size()) {
+        j[key]["packets"]["rates"]["pps_out"]["p50"] = quantiles[0];
+        j[key]["packets"]["rates"]["pps_out"]["p90"] = quantiles[1];
+        j[key]["packets"]["rates"]["pps_out"]["p95"] = quantiles[2];
+        j[key]["packets"]["rates"]["pps_out"]["p99"] = quantiles[3];
+    }
+ */
+    j["packets"]["cardinality"]["src_ips_in"] = lround(_net_srcIPCard.get_estimate());
+    j["packets"]["cardinality"]["dst_ips_out"] = lround(_net_dstIPCard.get_estimate());
+
+    {
+        j["packets"]["top_ipv4"] = nlohmann::json::array();
+        auto items = _net_topIPv4.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
+        for (uint64_t i = 0; i < std::min(10UL, items.size()); i++) {
+            j["packets"]["top_ipv4"][i]["name"] = pcpp::IPv4Address(items[i].get_item()).toString();
+            j["packets"]["top_ipv4"][i]["estimate"] = items[i].get_estimate();
+        }
+    }
+
+    {
+        j["packets"]["top_ipv6"] = nlohmann::json::array();
+        auto items = _net_topIPv6.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
+        for (uint64_t i = 0; i < std::min(10UL, items.size()); i++) {
+            j["packets"]["top_ipv6"][i]["name"] = items[i].get_item();
+            j["packets"]["top_ipv6"][i]["estimate"] = items[i].get_estimate();
+        }
+    }
+
+    {
+        j["packets"]["top_geoLoc"] = nlohmann::json::array();
+        auto items = _net_topGeoLoc.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
+        for (uint64_t i = 0; i < std::min(10UL, items.size()); i++) {
+            j["packets"]["top_geoLoc"][i]["name"] = items[i].get_item();
+            j["packets"]["top_geoLoc"][i]["estimate"] = items[i].get_estimate();
+        }
+    }
+
+    {
+        j["packets"]["top_ASN"] = nlohmann::json::array();
+        auto items = _net_topASN.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
+        for (uint64_t i = 0; i < std::min(10UL, items.size()); i++) {
+            j["packets"]["top_ASN"][i]["name"] = items[i].get_item();
+            j["packets"]["top_ASN"][i]["estimate"] = items[i].get_estimate();
+        }
+    }
 }
 
 void NetworkMetricsBucket::process_packet(bool deep, pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp)
@@ -154,12 +216,8 @@ void NetworkMetricsBucket::process_packet(bool deep, pcpp::Packet &payload, Pack
         return;
     }
 
-#ifdef MMDB_ENABLE
-    const GeoDB *geoCityDB = _mmgr.getGeoCityDB();
-    const GeoDB *geoASNDB = _mmgr.getGeoASNDB();
     struct sockaddr_in sa4;
     struct sockaddr_in6 sa6;
-#endif
 
     auto IP4layer = payload.getLayerOfType<pcpp::IPv4Layer>();
     auto IP6layer = payload.getLayerOfType<pcpp::IPv6Layer>();
@@ -167,57 +225,57 @@ void NetworkMetricsBucket::process_packet(bool deep, pcpp::Packet &payload, Pack
         if (dir == toHost) {
             _net_srcIPCard.update(IP4layer->getSrcIpAddress().toInt());
             _net_topIPv4.update(IP4layer->getSrcIpAddress().toInt());
-#ifdef MMDB_ENABLE
-            if (IPv4tosockaddr(IP4layer->getSrcIpAddress(), &sa4)) {
-                if (geoCityDB) {
-                    _net_topGeoLoc.update(geoCityDB->getGeoLocString((struct sockaddr *)&sa4));
-                }
-                if (geoASNDB) {
-                    _net_topASN.update(geoASNDB->getASNString((struct sockaddr *)&sa4));
+            if (geo::enabled()) {
+                if (IPv4tosockaddr(IP4layer->getSrcIpAddress(), &sa4)) {
+                    if (geo::GeoIP.get_const().enabled()) {
+                        _net_topGeoLoc.update(geo::GeoIP.get_const().getGeoLocString((struct sockaddr *)&sa4));
+                    }
+                    if (geo::GeoASN.get_const().enabled()) {
+                        _net_topASN.update(geo::GeoASN.get_const().getASNString((struct sockaddr *)&sa4));
+                    }
                 }
             }
-#endif
         } else if (dir == fromHost) {
             _net_dstIPCard.update(IP4layer->getDstIpAddress().toInt());
             _net_topIPv4.update(IP4layer->getDstIpAddress().toInt());
-#ifdef MMDB_ENABLE
-            if (IPv4tosockaddr(IP4layer->getDstIpAddress(), &sa4)) {
-                if (geoCityDB) {
-                    _net_topGeoLoc.update(geoCityDB->getGeoLocString((struct sockaddr *)&sa4));
-                }
-                if (geoASNDB) {
-                    _net_topASN.update(geoASNDB->getASNString((struct sockaddr *)&sa4));
+            if (geo::enabled()) {
+                if (IPv4tosockaddr(IP4layer->getDstIpAddress(), &sa4)) {
+                    if (geo::GeoIP.get_const().enabled()) {
+                        _net_topGeoLoc.update(geo::GeoIP.get_const().getGeoLocString((struct sockaddr *)&sa4));
+                    }
+                    if (geo::GeoASN.get_const().enabled()) {
+                        _net_topASN.update(geo::GeoASN.get_const().getASNString((struct sockaddr *)&sa4));
+                    }
                 }
             }
-#endif
         }
     } else if (IP6layer) {
         if (dir == toHost) {
             _net_srcIPCard.update((void *)IP6layer->getSrcIpAddress().toBytes(), 16);
             _net_topIPv6.update(IP6layer->getSrcIpAddress().toString());
-#ifdef MMDB_ENABLE
-            if (IPv6tosockaddr(IP6layer->getSrcIpAddress(), &sa6)) {
-                if (geoCityDB) {
-                    _net_topGeoLoc.update(geoCityDB->getGeoLocString((struct sockaddr *)&sa6));
-                }
-                if (geoASNDB) {
-                    _net_topASN.update(geoASNDB->getASNString((struct sockaddr *)&sa6));
+            if (geo::enabled()) {
+                if (IPv6tosockaddr(IP6layer->getSrcIpAddress(), &sa6)) {
+                    if (geo::GeoIP.get_const().enabled()) {
+                        _net_topGeoLoc.update(geo::GeoIP.get_const().getGeoLocString((struct sockaddr *)&sa6));
+                    }
+                    if (geo::GeoASN.get_const().enabled()) {
+                        _net_topASN.update(geo::GeoASN.get_const().getASNString((struct sockaddr *)&sa6));
+                    }
                 }
             }
-#endif
         } else if (dir == fromHost) {
             _net_dstIPCard.update((void *)IP6layer->getDstIpAddress().toBytes(), 16);
             _net_topIPv6.update(IP6layer->getDstIpAddress().toString());
-#ifdef MMDB_ENABLE
-            if (IPv6tosockaddr(IP6layer->getDstIpAddress(), &sa6)) {
-                if (geoCityDB) {
-                    _net_topGeoLoc.update(geoCityDB->getGeoLocString((struct sockaddr *)&sa6));
-                }
-                if (geoASNDB) {
-                    _net_topASN.update(geoASNDB->getASNString((struct sockaddr *)&sa6));
+            if (geo::enabled()) {
+                if (IPv6tosockaddr(IP6layer->getDstIpAddress(), &sa6)) {
+                    if (geo::GeoIP.get_const().enabled()) {
+                        _net_topGeoLoc.update(geo::GeoIP.get_const().getGeoLocString((struct sockaddr *)&sa6));
+                    }
+                    if (geo::GeoASN.get_const().enabled()) {
+                        _net_topASN.update(geo::GeoASN.get_const().getASNString((struct sockaddr *)&sa6));
+                    }
                 }
             }
-#endif
         }
     }
 }

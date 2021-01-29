@@ -4,7 +4,7 @@
 #include <singleton/Singleton.hpp>
 #include <string>
 
-namespace pktvisor {
+namespace pktvisor::geo {
 
 class MaxmindDB
 {
@@ -12,7 +12,7 @@ public:
     ~MaxmindDB();
 
     void enable(const std::string &database_filename);
-    bool is_enabled()
+    bool enabled() const
     {
         return _enabled;
     }
@@ -36,5 +36,7 @@ private:
 
 extern lib::Singleton<MaxmindDB> GeoIP;
 extern lib::Singleton<MaxmindDB> GeoASN;
+
+bool enabled();
 
 }

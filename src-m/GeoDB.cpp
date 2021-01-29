@@ -2,7 +2,11 @@
 #include <cstring>
 #include <stdexcept>
 
-namespace pktvisor {
+// global storage for singletons
+lib::Singleton<pktvisor::geo::MaxmindDB> GeoIP;
+lib::Singleton<pktvisor::geo::MaxmindDB> GeoASN;
+
+namespace pktvisor::geo {
 
 void MaxmindDB::enable(const std::string &database_filename)
 {
@@ -182,8 +186,9 @@ std::string MaxmindDB::_getASNString(MMDB_lookup_result_s *lookup) const
     return geoString;
 }
 
+bool enabled()
+{
+    return (GeoIP.get_const().enabled() || GeoASN.get_const().enabled());
 }
 
-// global storage for singletons
-lib::Singleton<pktvisor::MaxmindDB> GeoIP;
-lib::Singleton<pktvisor::MaxmindDB> GeoASN;
+}
