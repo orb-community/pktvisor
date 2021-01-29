@@ -11,12 +11,13 @@
 #include <SystemUtils.h>
 #pragma GCC diagnostic pop
 #include <Corrade/Utility/Debug.h>
+#include <IpUtils.h>
 #include <arpa/inet.h>
 #include <assert.h>
 #include <cstdint>
 #include <cstring>
 #include <netinet/in.h>
-#include <IpUtils.h>
+#include <sstream>
 
 namespace pktvisor {
 namespace input {
@@ -42,16 +43,16 @@ void PcapInputStream::start()
         return;
     }
 
-    if (config_exists("host_spec")) {
-        parseHostSpec(std::get<std::string>(config_get("host_spec")), _hostIPv4, _hostIPv6);
-    }
     if (config_exists("pcap_file")) {
         assert(config_exists("bpf"));
         _pcapFile = true;
+        // note, parse_host_spec should be called manually by now (in CLI)
+        _running = true;
         openPcap(std::get<std::string>(config_get("pcap_file")), std::get<std::string>(config_get("bpf")));
     } else {
         assert(config_exists("iface"));
         assert(config_exists("bpf"));
+        parse_host_spec();
         std::string TARGET(std::get<std::string>(config_get("iface")));
         pcpp::IPv4Address interfaceIP4(TARGET);
         pcpp::IPv6Address interfaceIP6(TARGET);
@@ -73,9 +74,8 @@ void PcapInputStream::start()
         }
         getHostsFromIface();
         openIface(std::get<std::string>(config_get("bpf")));
+        _running = true;
     }
-
-    _running = true;
 
 }
 
@@ -93,7 +93,6 @@ void PcapInputStream::stop()
 
         // close all connections which are still opened
         _tcpReassembly->getTcpReassembly()->closeAllConnections();
-
     }
 
     _running = false;
@@ -224,7 +223,6 @@ void PcapInputStream::openPcap(const std::string &fileName, const std::string &b
     // close the reader and free its memory
     reader->close();
     delete reader;
-
 }
 
 /**
@@ -319,7 +317,29 @@ void PcapInputStream::getHostsFromIface()
 json PcapInputStream::info_json() const
 {
     json result;
+    for (auto &i : _hostIPv4) {
+        std::stringstream out;
+        int len = 0;
+        auto m = i.mask.toInt();
+        while (m) {
+            len++;
+            m >>= 1;
+        }
+        out << i.address.toString() << '/' << len;
+        result["host_ips"]["ipv4"].push_back(out.str());
+    }
+    for (auto &i : _hostIPv6) {
+        std::stringstream out;
+        out << i.address.toString() << '/' << static_cast<int>(i.mask);
+        result["host_ips"]["ipv6"].push_back(out.str());
+    }
     return result;
+}
+void PcapInputStream::parse_host_spec()
+{
+    if (config_exists("host_spec")) {
+        parseHostSpec(std::get<std::string>(config_get("host_spec")), _hostIPv4, _hostIPv6);
+    }
 }
 
 TcpSessionData::TcpSessionData(

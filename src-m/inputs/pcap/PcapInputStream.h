@@ -122,6 +122,8 @@ public:
     PcapInputStream(const std::string &name);
     ~PcapInputStream();
 
+    void parse_host_spec();
+
     // pktvisor::AbstractModule
     void start() override;
     void stop() override;

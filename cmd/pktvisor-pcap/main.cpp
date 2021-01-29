@@ -148,6 +148,11 @@ int main(int argc, char *argv[])
         inputStream->config_set("pcap_file", args["PCAP"].asString());
         inputStream->config_set("bpf", bpf);
         inputStream->config_set("host_spec", host_spec);
+
+        inputStream->parse_host_spec();
+        Corrade::Utility::print("{}\n", inputStream->config_json().dump(4));
+        Corrade::Utility::print("{}\n", inputStream->info_json().dump(4));
+
         inputManager->module_add(std::move(inputStream), false);
         auto [input_stream, stream_mgr_lock] = inputManager->module_get("pcap");
         stream_mgr_lock.unlock();
@@ -168,7 +173,7 @@ int main(int argc, char *argv[])
             // otherwise, merge the max time window available
             net_handler->toJSON(result, periods, true);
         }
-        Corrade::Utility::print("{}", result.dump(4));
+        Corrade::Utility::print("{}\n", result.dump(4));
         shutdown_handler(SIGUSR1);
 
     } catch (const std::exception &e) {

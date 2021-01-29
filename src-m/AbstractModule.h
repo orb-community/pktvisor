@@ -69,7 +69,7 @@ public:
         std::shared_lock lock(_config_mutex);
         json result;
         for (const auto &[key, value] : _config) {
-            std::visit([&result, key](auto &&arg) {
+            std::visit([&result, key = key](auto &&arg) {
                 result[key] = arg;
             },
                 value);

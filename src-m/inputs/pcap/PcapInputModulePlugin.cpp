@@ -39,13 +39,19 @@ void PcapInputModulePlugin::_setup_routes(HttpServer &svr)
                 bpf = body["bpf"];
             }
 
-            auto input_stream = std::make_unique<PcapInputStream>(body["name"]);
-            input_stream->config_set("iface", body["iface"].get<std::string>());
-            input_stream->config_set("bpf", bpf);
-            _input_manager->module_add(std::move(input_stream));
+            {
+                auto input_stream = std::make_unique<PcapInputStream>(body["name"]);
+                input_stream->config_set("iface", body["iface"].get<std::string>());
+                input_stream->config_set("bpf", bpf);
+                _input_manager->module_add(std::move(input_stream));
+                // the module is now started and owned by the manager
+            }
 
+            auto [input_stream, stream_mgr_lock] = _input_manager->module_get(body["name"]);
+            assert(input_stream);
             result["name"] = body["name"];
-            result["iface"] = body["iface"];
+            result["config"] = input_stream->config_json();
+            result["info"] = input_stream->info_json();
             res.set_content(result.dump(), "text/json");
         } catch (const std::exception &e) {
             res.status = 500;
