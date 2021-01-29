@@ -107,6 +107,7 @@ public:
     // pktvisor::AbstractModule
     void start() override;
     void stop() override;
+    json info_json() const override;
 
     // pktvisor::StreamMetricsHandler
     void toJSON(json &j, uint64_t period, bool merged) override;

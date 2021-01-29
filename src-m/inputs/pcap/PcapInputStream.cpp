@@ -42,8 +42,6 @@ void PcapInputStream::start()
         return;
     }
 
-    _running = true;
-
     if (config_exists("host_spec")) {
         parseHostSpec(std::get<std::string>(config_get("host_spec")), _hostIPv4, _hostIPv6);
     }
@@ -76,6 +74,9 @@ void PcapInputStream::start()
         getHostsFromIface();
         openIface(std::get<std::string>(config_get("bpf")));
     }
+
+    _running = true;
+
 }
 
 void PcapInputStream::stop()
@@ -314,6 +315,11 @@ void PcapInputStream::getHostsFromIface()
             _hostIPv6.emplace_back(IPv6subnet(pcpp::IPv6Address(buf1), len));
         }
     }
+}
+json PcapInputStream::info_json() const
+{
+    json result;
+    return result;
 }
 
 TcpSessionData::TcpSessionData(

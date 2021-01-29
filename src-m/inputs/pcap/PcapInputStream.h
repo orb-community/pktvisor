@@ -122,8 +122,10 @@ public:
     PcapInputStream(const std::string &name);
     ~PcapInputStream();
 
+    // pktvisor::AbstractModule
     void start() override;
     void stop() override;
+    json info_json() const override;
 
     // public so it can be called from a static callback method, required by PcapPlusPlus
     void processRawPacket(pcpp::RawPacket *rawPacket);

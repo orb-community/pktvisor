@@ -146,7 +146,7 @@ int main(int argc, char *argv[])
         }
         Corrade::Utility::print("web server listening on {}:{}\n", host, port);
         if (!svr.listen_after_bind()) {
-            throw std::runtime_error("unable to listen");
+            throw std::runtime_error("error during listen");
         }
     } catch (const std::exception &e) {
         Corrade::Utility::printError("Fatal error: {}\n", e.what());

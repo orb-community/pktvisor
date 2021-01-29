@@ -26,10 +26,10 @@ void NetStreamHandler::start()
         return;
     }
 
-    _running = true;
-
     _pkt_connection = _stream->packet_signal.connect(&NetStreamHandler::process_packet, this);
     _start_tstamp_connection = _stream->start_tstamp_signal.connect(&NetStreamHandler::set_initial_tstamp, this);
+
+    _running = true;
 }
 
 void NetStreamHandler::stop()
@@ -38,10 +38,10 @@ void NetStreamHandler::stop()
         return;
     }
 
-    _running = false;
-
     _pkt_connection.disconnect();
     _start_tstamp_connection.disconnect();
+
+    _running = false;
 }
 
 NetStreamHandler::~NetStreamHandler()
@@ -64,6 +64,11 @@ void NetStreamHandler::toJSON(json &j, uint64_t period, bool merged)
 void NetStreamHandler::set_initial_tstamp(timespec stamp)
 {
     _metrics->set_initial_tstamp(stamp);
+}
+json NetStreamHandler::info_json() const
+{
+    json result;
+    return result;
 }
 
 void NetworkMetricsBucket::merge(const AbstractMetricsBucket &o)

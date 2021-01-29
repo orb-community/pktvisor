@@ -74,8 +74,33 @@ void PcapInputModulePlugin::_setup_routes(HttpServer &svr)
                 res.set_content(result.dump(), "text/json");
                 return;
             }
+            // manually unlock so we can remove
             stream_mgr_lock.unlock();
             _input_manager->module_remove(name);
+            res.set_content(result.dump(), "text/json");
+        } catch (const std::exception &e) {
+            res.status = 500;
+            result["result"] = e.what();
+            res.set_content(result.dump(), "text/json");
+        }
+    });
+    // GET
+    svr.Get("/api/v1/inputs/pcap/(\\w+)", [this](const httplib::Request &req, httplib::Response &res) {
+        json result;
+        try {
+            auto name = req.matches[1];
+            if (!_input_manager->module_exists(name)) {
+                res.status = 404;
+                result["result"] = "input name does not exist";
+                res.set_content(result.dump(), "text/json");
+                return;
+            }
+            auto [input_stream, stream_mgr_lock] = _input_manager->module_get(name);
+            assert(input_stream);
+            result["consumers"] = input_stream->consumer_count();
+            result["running"] = input_stream->running();
+            result["config"] = input_stream->config_json();
+            result["info"] = input_stream->info_json();
             res.set_content(result.dump(), "text/json");
         } catch (const std::exception &e) {
             res.status = 500;

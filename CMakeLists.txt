@@ -203,6 +203,8 @@ target_include_directories(pktvisord-m
         PRIVATE
         ${PKTVISOR_VENDOR_DIR}
         ${CORRADE_INCLUDE_DIR}
+        ${PKTVISOR_VENDOR_DIR}/datasketches
+        ${PKTVISOR_VENDOR_DIR}/datasketches/datasketches
         ${CMAKE_SOURCE_DIR}/src-m
         ${Corrade_BINARY_DIR}/src # FIXME configure.h, probably not right
         ${CMAKE_BINARY_DIR}/src-m # FIXME config.h

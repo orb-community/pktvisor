@@ -2,12 +2,15 @@
 #define PKTVISORD_ABSTRACTMODULE_H
 
 #include <atomic>
+#include <json/json.hpp>
 #include <shared_mutex>
 #include <string>
 #include <unordered_map>
 #include <variant>
 
 namespace pktvisor {
+
+using json = nlohmann::json;
 
 class AbstractModule
 {
@@ -29,6 +32,8 @@ public:
 
     virtual void start() = 0;
     virtual void stop() = 0;
+
+    virtual json info_json() const = 0;
 
     const std::string &name() const
     {
@@ -57,6 +62,19 @@ public:
     {
         std::shared_lock lock(_config_mutex);
         return _config.count(name) == 1;
+    }
+
+    json config_json(void) const
+    {
+        std::shared_lock lock(_config_mutex);
+        json result;
+        for (const auto &[key, value] : _config) {
+            std::visit([&result, key](auto &&arg) {
+                result[key] = arg;
+            },
+                value);
+        }
+        return result;
     }
 };
 
