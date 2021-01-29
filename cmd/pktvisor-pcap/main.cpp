@@ -133,14 +133,9 @@ int main(int argc, char *argv[])
         bpf = args["-b"].asString();
     }
 
+    std::string host_spec;
     if (args["-H"]) {
-        auto spec = args["-H"].asString();
-        try {
-            //            pktvisor::parseHostSpec(spec, hostIPv4, hostIPv6);
-        } catch (const std::exception &e) {
-            std::cerr << e.what() << std::endl;
-            return -1;
-        }
+        host_spec = args["-H"].asString();
     }
 
     long periods = args["--periods"].asLong();
@@ -152,6 +147,7 @@ int main(int argc, char *argv[])
         auto inputStream = std::make_unique<pktvisor::input::pcap::PcapInputStream>("pcap");
         inputStream->config_set("pcap_file", args["PCAP"].asString());
         inputStream->config_set("bpf", bpf);
+        inputStream->config_set("host_spec", host_spec);
         inputManager->module_add(std::move(inputStream), false);
         auto [input_stream, stream_mgr_lock] = inputManager->module_get("pcap");
         stream_mgr_lock.unlock();

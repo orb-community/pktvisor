@@ -48,7 +48,10 @@ void PcapInputStream::start()
     _running = true;
 
     !Corrade::Utility::Debug{} << "start";
-
+    
+    if (config_exists("host_spec")) {
+        parseHostSpec(std::get<std::string>(config_get("host_spec")), _hostIPv4, _hostIPv6);
+    }
     if (config_exists("pcap_file")) {
         assert(config_exists("bpf"));
         _pcapFile = true;
@@ -75,9 +78,7 @@ void PcapInputStream::start()
                 throw std::runtime_error("Couldn't find interface by provided name: " + TARGET);
             }
         }
-        //        std::cerr << "Interface " << dev->getName() << std::endl;
         getHostsFromIface();
-        //        showHosts();
         openIface(std::get<std::string>(config_get("bpf")));
     }
 }
@@ -144,7 +145,7 @@ void PcapInputStream::processRawPacket(pcpp::RawPacket *rawPacket)
     auto IP4layer = packet.getLayerOfType<pcpp::IPv4Layer>();
     auto IP6layer = packet.getLayerOfType<pcpp::IPv6Layer>();
     if (IP4layer) {
-        for (auto &i : hostIPv4) {
+        for (auto &i : _hostIPv4) {
             if (IP4layer->getDstIpAddress().matchSubnet(i.address, i.mask)) {
                 dir = toHost;
                 break;
@@ -154,7 +155,7 @@ void PcapInputStream::processRawPacket(pcpp::RawPacket *rawPacket)
             }
         }
     } else if (IP6layer) {
-        for (auto &i : hostIPv6) {
+        for (auto &i : _hostIPv6) {
             if (IP6layer->getDstIpAddress().matchSubnet(i.address, i.mask)) {
                 dir = toHost;
                 break;
@@ -182,7 +183,7 @@ void PcapInputStream::processRawPacket(pcpp::RawPacket *rawPacket)
     }
 }
 
-void PcapInputStream::openPcap(std::string fileName, std::string bpfFilter)
+void PcapInputStream::openPcap(const std::string &fileName, const std::string &bpfFilter)
 {
     assert(_pcapFile);
 
@@ -241,7 +242,7 @@ static void onLivePacketArrives(pcpp::RawPacket *rawPacket, pcpp::PcapLiveDevice
     dC->processRawPacket(rawPacket);
 }
 
-void PcapInputStream::openIface(std::string bpfFilter)
+void PcapInputStream::openIface(const std::string &bpfFilter)
 {
 
     pcpp::PcapLiveDevice::DeviceConfiguration config;
@@ -300,7 +301,7 @@ void PcapInputStream::getHostsFromIface()
                 //                std::cerr << "couldn't parse IPv4 netmask address on device" << std::endl;
                 continue;
             }
-            hostIPv4.emplace_back(IPv4subnet(pcpp::IPv4Address(pcpp::internal::in_addr2int(*adrcvt)), pcpp::IPv4Address(pcpp::internal::in_addr2int(*nmcvt))));
+            _hostIPv4.emplace_back(IPv4subnet(pcpp::IPv4Address(pcpp::internal::in_addr2int(*adrcvt)), pcpp::IPv4Address(pcpp::internal::in_addr2int(*nmcvt))));
         } else if (i.addr->sa_family == AF_INET6) {
             char buf1[INET6_ADDRSTRLEN];
             pcpp::internal::sockaddr2string(i.addr, buf1);
@@ -317,7 +318,7 @@ void PcapInputStream::getHostsFromIface()
                     nmcvt->s6_addr[i] >>= 1;
                 }
             }
-            hostIPv6.emplace_back(IPv6subnet(pcpp::IPv6Address(buf1), len));
+            _hostIPv6.emplace_back(IPv6subnet(pcpp::IPv6Address(buf1), len));
         }
     }
 }

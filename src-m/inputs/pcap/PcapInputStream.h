@@ -104,8 +104,8 @@ class PcapInputStream : public pktvisor::InputStream
 {
 
 private:
-    IPv4subnetList hostIPv4;
-    IPv6subnetList hostIPv6;
+    IPv4subnetList _hostIPv4;
+    IPv6subnetList _hostIPv6;
     std::unique_ptr<TcpMsgReassembly> _tcpReassembly;
     pcpp::PcapLiveDevice *_pcapDevice;
 
@@ -114,8 +114,8 @@ private:
 protected:
     void onGotMessage(PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowKey, timespec stamp);
 
-    void openPcap(std::string fileName, std::string bpfFilter = "");
-    void openIface(std::string bpfFilter = "");
+    void openPcap(const std::string &fileName, const std::string &bpfFilter = "");
+    void openIface(const std::string &bpfFilter = "");
     void getHostsFromIface();
 
 public:
@@ -135,7 +135,7 @@ public:
 
     size_t consumer_count() override
     {
-        return packet_signal.slot_count() + udp_signal.slot_count();
+        return packet_signal.slot_count() + udp_signal.slot_count() + start_tstamp_signal.slot_count();
     }
 };
 
