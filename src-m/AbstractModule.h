@@ -45,10 +45,11 @@ public:
         return _running;
     }
 
+    template <class T>
     auto config_get(const std::string &key)
     {
         std::shared_lock lock(_config_mutex);
-        return _config[key];
+        return std::get<T>(_config[key]);
     }
 
     template <class T>

@@ -48,12 +48,12 @@ void PcapInputStream::start()
         _pcapFile = true;
         // note, parse_host_spec should be called manually by now (in CLI)
         _running = true;
-        openPcap(std::get<std::string>(config_get("pcap_file")), std::get<std::string>(config_get("bpf")));
+        openPcap(config_get<std::string>("pcap_file"), config_get<std::string>("bpf"));
     } else {
         assert(config_exists("iface"));
         assert(config_exists("bpf"));
         parse_host_spec();
-        std::string TARGET(std::get<std::string>(config_get("iface")));
+        std::string TARGET(config_get<std::string>("iface"));
         pcpp::IPv4Address interfaceIP4(TARGET);
         pcpp::IPv6Address interfaceIP6(TARGET);
         // extract pcap live device by interface name or IP address
@@ -73,7 +73,7 @@ void PcapInputStream::start()
             }
         }
         getHostsFromIface();
-        openIface(std::get<std::string>(config_get("bpf")));
+        openIface(config_get<std::string>("bpf"));
         _running = true;
     }
 
@@ -338,7 +338,7 @@ json PcapInputStream::info_json() const
 void PcapInputStream::parse_host_spec()
 {
     if (config_exists("host_spec")) {
-        parseHostSpec(std::get<std::string>(config_get("host_spec")), _hostIPv4, _hostIPv6);
+        parseHostSpec(config_get<std::string>("host_spec"), _hostIPv4, _hostIPv6);
     }
 }
 
