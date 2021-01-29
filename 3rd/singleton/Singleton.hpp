@@ -19,7 +19,7 @@ struct SingletonWrapper {
 
 template <typename T>
 bool lib::detail::SingletonWrapper<T>::m_bool = false;
-}; /* DgLib::detail */
+} /* DgLib::detail */
 
 template <typename T>
 class Singleton
@@ -61,6 +61,6 @@ public:
        initialized at runtime prior to main() running. */
 template <typename T>
 T &Singleton<T>::m_instance = Singleton<T>::get_instance();
-}; /* lib */
+} /* lib */
 
 #endif /* _SINGLETON_H */

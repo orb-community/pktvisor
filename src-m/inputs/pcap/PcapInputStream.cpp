@@ -26,8 +26,6 @@ PcapInputStream::PcapInputStream(const std::string &name)
     : pktvisor::InputStream(name)
     , _pcapDevice(nullptr)
 {
-    !Corrade::Utility::Debug{} << "create";
-
     _tcpReassembly = std::make_unique<TcpMsgReassembly>([this](PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowKey, timespec stamp) {
         onGotMessage(dir, l3, pcpp::TCP, flowKey, stamp);
     });
@@ -35,7 +33,6 @@ PcapInputStream::PcapInputStream(const std::string &name)
 
 PcapInputStream::~PcapInputStream()
 {
-    !Corrade::Utility::Debug{} << "destroy";
 }
 
 void PcapInputStream::start()
@@ -47,8 +44,6 @@ void PcapInputStream::start()
 
     _running = true;
 
-    !Corrade::Utility::Debug{} << "start";
-    
     if (config_exists("host_spec")) {
         parseHostSpec(std::get<std::string>(config_get("host_spec")), _hostIPv4, _hostIPv6);
     }
@@ -88,8 +83,6 @@ void PcapInputStream::stop()
     if (!_running) {
         return;
     }
-
-    !Corrade::Utility::Debug{} << "stop";
 
     if (!_pcapFile) {
 
