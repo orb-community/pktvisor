@@ -3,8 +3,7 @@
 
 #include "HandlerModulePlugin.h"
 
-namespace pktvisor {
-namespace handler {
+namespace pktvisor::handler::dns {
 
 class DnsHandlerModulePlugin : public HandlerModulePlugin
 {
@@ -23,7 +22,6 @@ public:
         return "DnsHandler";
     }
 };
-}
 }
 
 #endif //PKTVISORD_DNSHANDLERMODULEPLUGIN_H

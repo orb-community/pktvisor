@@ -4,14 +4,13 @@
 #include <Corrade/PluginManager/AbstractManager.h>
 #include <json/json.hpp>
 
-using json = nlohmann::json;
-
-CORRADE_PLUGIN_REGISTER(DnsHandler, pktvisor::handler::DnsHandlerModulePlugin,
+CORRADE_PLUGIN_REGISTER(DnsHandler, pktvisor::handler::dns::DnsHandlerModulePlugin,
     "com.ns1.module.handler/1.0")
 
-namespace pktvisor::handler {
+namespace pktvisor::handler::dns {
 
 using namespace pktvisor::input::pcap;
+using json = nlohmann::json;
 
 void DnsHandlerModulePlugin::_setup_routes(HttpServer &svr)
 {
@@ -88,7 +87,7 @@ void DnsHandlerModulePlugin::_setup_routes(HttpServer &svr)
                 return;
             }
             auto [handler, handler_mgr_lock] = _handler_manager->module_get_locked(handler_name);
-            auto dns_handler = dynamic_cast<pktvisor::handler::DnsStreamHandler *>(handler);
+            auto dns_handler = dynamic_cast<DnsStreamHandler *>(handler);
             if (!dns_handler) {
                 res.status = 400;
                 result["error"] = "handler stream is not dns";

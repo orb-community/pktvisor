@@ -14,11 +14,11 @@
 #include <Corrade/Utility/Debug.h>
 #include <string>
 
-namespace pktvisor::handler {
+namespace pktvisor::handler::dns {
 
 using namespace pktvisor::input::pcap;
 
-class DnsworkMetricsBucket final : public pktvisor::AbstractMetricsBucket
+class DnsMetricsBucket final : public pktvisor::AbstractMetricsBucket
 {
 public:
     const uint8_t START_FI_MAP_SIZE = 7; // 2^7 = 128
@@ -27,37 +27,37 @@ public:
 protected:
     mutable std::shared_mutex _mutex;
 
-    datasketches::cpc_sketch _srcIPCard;
-    datasketches::cpc_sketch _dstIPCard;
+    datasketches::kll_sketch<uint64_t> _dnsXactFromTimeUs;
+    datasketches::kll_sketch<uint64_t> _dnsXactToTimeUs;
 
-    datasketches::frequent_items_sketch<std::string> _topGeoLoc;
-    datasketches::frequent_items_sketch<std::string> _topASN;
-    datasketches::frequent_items_sketch<uint32_t> _topIPv4;
-    datasketches::frequent_items_sketch<std::string> _topIPv6; // TODO not very efficient, should switch to 16 byte uint
+    datasketches::cpc_sketch _dns_qnameCard;
 
-    // total numPackets is tracked in base class num_events
-    uint64_t _numPackets_UDP = 0;
-    uint64_t _numPackets_TCP = 0;
-    uint64_t _numPackets_OtherL4 = 0;
-    uint64_t _numPackets_IPv6 = 0;
-    uint64_t _numPackets_in = 0;
-    uint64_t _numPackets_out = 0;
-
-    Rate _rate_in;
-    Rate _rate_out;
-    Rate _rate_total;
+    datasketches::frequent_items_sketch<std::string> _dns_topQname2;
+    datasketches::frequent_items_sketch<std::string> _dns_topQname3;
+    datasketches::frequent_items_sketch<std::string> _dns_topNX;
+    datasketches::frequent_items_sketch<std::string> _dns_topREFUSED;
+    datasketches::frequent_items_sketch<std::string> _dns_topSRVFAIL;
+    datasketches::frequent_items_sketch<uint16_t> _dns_topUDPPort;
+    datasketches::frequent_items_sketch<uint16_t> _dns_topQType;
+    datasketches::frequent_items_sketch<uint16_t> _dns_topRCode;
+    datasketches::frequent_items_sketch<std::string> _dns_slowXactIn;
+    datasketches::frequent_items_sketch<std::string> _dns_slowXactOut;
 
 public:
-    DnsworkMetricsBucket()
-        : _srcIPCard()
-        , _dstIPCard()
-        , _topGeoLoc(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
-        , _topASN(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
-        , _topIPv4(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
-        , _topIPv6(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
-        , _rate_in()
-        , _rate_out()
-        , _rate_total()
+    DnsMetricsBucket()
+        : _dnsXactFromTimeUs()
+        , _dnsXactToTimeUs()
+        , _dns_qnameCard()
+        , _dns_topQname2(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
+        , _dns_topQname3(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
+        , _dns_topNX(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
+        , _dns_topREFUSED(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
+        , _dns_topSRVFAIL(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
+        , _dns_topUDPPort(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
+        , _dns_topQType(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
+        , _dns_topRCode(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
+        , _dns_slowXactIn(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
+        , _dns_slowXactOut(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
     {
     }
 
@@ -65,14 +65,14 @@ public:
     void specialized_merge(const AbstractMetricsBucket &other) override;
     void toJSON(json &j) const override;
 
-    void process_packet(bool deep, pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp);
+    void process_udp_packet(bool deep, pcpp::UdpLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp);
 };
 
-class DnsworkMetricsManager final : public pktvisor::AbstractMetricsManager<DnsworkMetricsBucket>
+class DnsMetricsManager final : public pktvisor::AbstractMetricsManager<DnsMetricsBucket>
 {
 public:
-    DnsworkMetricsManager(uint periods, int deepSampleRate)
-        : pktvisor::AbstractMetricsManager<DnsworkMetricsBucket>(periods, deepSampleRate)
+    DnsMetricsManager(uint periods, int deepSampleRate)
+        : pktvisor::AbstractMetricsManager<DnsMetricsBucket>(periods, deepSampleRate)
     {
     }
 
@@ -81,24 +81,24 @@ public:
     {
         Corrade::Utility::Debug{} << "period shift";
     }
-    void on_period_evict(const DnsworkMetricsBucket *bucket) override
+    void on_period_evict(const DnsMetricsBucket *bucket) override
     {
         Corrade::Utility::Debug{} << "evict: " << bucket->_numPackets;
     }
 #endif
 
-    void process_packet(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp);
+    void process_udp_packet(pcpp::UdpLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp);
 };
 
-class DnsStreamHandler final : public pktvisor::StreamMetricsHandler<DnsworkMetricsManager>
+class DnsStreamHandler final : public pktvisor::StreamMetricsHandler<DnsMetricsManager>
 {
 
     PcapInputStream *_stream;
 
-    sigslot::connection _pkt_connection;
+    sigslot::connection _pkt_udp_connection;
     sigslot::connection _start_tstamp_connection;
 
-    void process_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp);
+    void process_udp_packet_cb(pcpp::UdpLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp);
     void set_initial_tstamp(timespec stamp);
 
 public:

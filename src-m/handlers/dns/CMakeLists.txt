@@ -4,7 +4,15 @@ pkg_check_modules(LIBPCPP REQUIRED PcapPlusPlus)
 
 set_directory_properties(PROPERTIES CORRADE_USE_PEDANTIC_FLAGS ON)
 
-corrade_add_static_plugin(DnsHandler ${CMAKE_CURRENT_BINARY_DIR} DnsHandler.conf DnsHandlerModulePlugin.cpp DnsStreamHandler.cpp)
+corrade_add_static_plugin(DnsHandler ${CMAKE_CURRENT_BINARY_DIR}
+        DnsHandler.conf
+        DnsHandlerModulePlugin.cpp
+        DnsStreamHandler.cpp
+        # DnsLayer
+        DnsLayer.cpp
+        DnsResource.cpp
+        DnsResourceData.cpp
+        )
 
 target_include_directories(DnsHandler
         PRIVATE
