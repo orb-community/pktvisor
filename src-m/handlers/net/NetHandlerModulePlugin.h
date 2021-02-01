@@ -2,9 +2,6 @@
 #define PKTVISORD_NETHANDLERMODULEPLUGIN_H
 
 #include "HandlerModulePlugin.h"
-#include "NetStreamHandler.h"
-#include "PcapInputStream.h"
-#include <shared_mutex>
 
 namespace pktvisor {
 namespace handler {
@@ -23,7 +20,7 @@ public:
 
     std::string name() const override
     {
-        return "NetHandlerModulePlugin";
+        return "NetHandler";
     }
 };
 }

@@ -1,22 +1,22 @@
-#include "NetHandlerModulePlugin.h"
-#include "NetStreamHandler.h"
+#include "DnsHandlerModulePlugin.h"
+#include "DnsStreamHandler.h"
 #include "PcapInputStream.h"
 #include <Corrade/PluginManager/AbstractManager.h>
 #include <json/json.hpp>
 
 using json = nlohmann::json;
 
-CORRADE_PLUGIN_REGISTER(NetHandler, pktvisor::handler::NetHandlerModulePlugin,
+CORRADE_PLUGIN_REGISTER(DnsHandler, pktvisor::handler::DnsHandlerModulePlugin,
     "com.ns1.module.handler/1.0")
 
 namespace pktvisor::handler {
 
 using namespace pktvisor::input::pcap;
 
-void NetHandlerModulePlugin::_setup_routes(HttpServer &svr)
+void DnsHandlerModulePlugin::_setup_routes(HttpServer &svr)
 {
     // CREATE
-    svr.Post("/api/v1/inputs/pcap/(\\w+)/handlers/net", [this](const httplib::Request &req, httplib::Response &res) {
+    svr.Post("/api/v1/inputs/pcap/(\\w+)/handlers/dns", [this](const httplib::Request &req, httplib::Response &res) {
         json result;
         try {
             auto body = json::parse(req.body);
@@ -60,7 +60,7 @@ void NetHandlerModulePlugin::_setup_routes(HttpServer &svr)
                 return;
             }
             // todo period and sample
-            auto handler_module = std::make_unique<NetStreamHandler>(body["name"], pcap_stream, 5, 100);
+            auto handler_module = std::make_unique<DnsStreamHandler>(body["name"], pcap_stream, 5, 100);
             _handler_manager->module_add(std::move(handler_module));
             result["name"] = body["name"];
             res.set_content(result.dump(), "text/json");
@@ -70,7 +70,7 @@ void NetHandlerModulePlugin::_setup_routes(HttpServer &svr)
             res.set_content(result.dump(), "text/json");
         }
     });
-    svr.Get("/api/v1/inputs/pcap/(\\w+)/handlers/net/(\\w+)", [this](const httplib::Request &req, httplib::Response &res) {
+    svr.Get("/api/v1/inputs/pcap/(\\w+)/handlers/dns/(\\w+)", [this](const httplib::Request &req, httplib::Response &res) {
         json result;
         try {
             auto input_name = req.matches[1];
@@ -88,14 +88,14 @@ void NetHandlerModulePlugin::_setup_routes(HttpServer &svr)
                 return;
             }
             auto [handler, handler_mgr_lock] = _handler_manager->module_get_locked(handler_name);
-            auto net_handler = dynamic_cast<pktvisor::handler::NetStreamHandler *>(handler);
-            if (!net_handler) {
+            auto dns_handler = dynamic_cast<pktvisor::handler::DnsStreamHandler *>(handler);
+            if (!dns_handler) {
                 res.status = 400;
-                result["error"] = "handler stream is not net";
+                result["error"] = "handler stream is not dns";
                 res.set_content(result.dump(), "text/json");
                 return;
             }
-            net_handler->toJSON(result, 0, false);
+            dns_handler->toJSON(result, 0, false);
             res.set_content(result.dump(), "text/json");
         } catch (const std::exception &e) {
             res.status = 500;
@@ -104,7 +104,7 @@ void NetHandlerModulePlugin::_setup_routes(HttpServer &svr)
         }
     });
     // DELETE
-    svr.Delete("/api/v1/inputs/pcap/(\\w+)/handlers/net/(\\w+)", [this](const httplib::Request &req, httplib::Response &res) {
+    svr.Delete("/api/v1/inputs/pcap/(\\w+)/handlers/dns/(\\w+)", [this](const httplib::Request &req, httplib::Response &res) {
         json result;
         try {
             auto input_name = req.matches[1];
