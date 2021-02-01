@@ -41,7 +41,7 @@ void NetHandlerModulePlugin::_setup_routes(HttpServer &svr)
                 return;
             }
             // note, may be a race on exists() above, this may fail. if so we will catch and 500.
-            auto [input_stream, stream_mgr_lock] = _input_manager->module_get(input_name);
+            auto [input_stream, stream_mgr_lock] = _input_manager->module_get_locked(input_name);
             assert(input_stream);
             auto pcap_stream = dynamic_cast<PcapInputStream *>(input_stream);
             if (!pcap_stream) {
@@ -84,7 +84,7 @@ void NetHandlerModulePlugin::_setup_routes(HttpServer &svr)
                 res.set_content(result.dump(), "text/json");
                 return;
             }
-            auto [handler, handler_mgr_lock] = _handler_manager->module_get(handler_name);
+            auto [handler, handler_mgr_lock] = _handler_manager->module_get_locked(handler_name);
             auto net_handler = dynamic_cast<pktvisor::handler::NetStreamHandler *>(handler);
             if (!net_handler) {
                 res.status = 400;

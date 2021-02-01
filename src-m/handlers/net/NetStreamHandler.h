@@ -18,25 +18,19 @@ namespace pktvisor::handler {
 
 using namespace pktvisor::input::pcap;
 
-// TODO
-struct NetworkRateSketches {
-    Rate::QuantileType net_rateIn;
-    Rate::QuantileType net_rateOut;
-};
-
 class NetworkMetricsBucket final : public pktvisor::AbstractMetricsBucket
 {
 public:
     const uint8_t START_FI_MAP_SIZE = 7; // 2^7 = 128
     const uint8_t MAX_FI_MAP_SIZE = 13;  // 2^13 = 8192
 
-    datasketches::cpc_sketch _net_srcIPCard;
-    datasketches::cpc_sketch _net_dstIPCard;
+    datasketches::cpc_sketch _srcIPCard;
+    datasketches::cpc_sketch _dstIPCard;
 
-    datasketches::frequent_items_sketch<std::string> _net_topGeoLoc;
-    datasketches::frequent_items_sketch<std::string> _net_topASN;
-    datasketches::frequent_items_sketch<uint32_t> _net_topIPv4;
-    datasketches::frequent_items_sketch<std::string> _net_topIPv6; // TODO not very efficient, should switch to 16 byte uint
+    datasketches::frequent_items_sketch<std::string> _topGeoLoc;
+    datasketches::frequent_items_sketch<std::string> _topASN;
+    datasketches::frequent_items_sketch<uint32_t> _topIPv4;
+    datasketches::frequent_items_sketch<std::string> _topIPv6; // TODO not very efficient, should switch to 16 byte uint
 
     uint64_t _numPackets = 0;
     uint64_t _numPackets_UDP = 0;
@@ -46,17 +40,21 @@ public:
     uint64_t _numPackets_in = 0;
     uint64_t _numPackets_out = 0;
 
-    // TODO
-    NetworkRateSketches _rateSketches;
+    Rate _rate_in;
+    Rate _rate_out;
+    Rate _rate_total;
 
 public:
     NetworkMetricsBucket()
-        : _net_srcIPCard()
-        , _net_dstIPCard()
-        , _net_topGeoLoc(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
-        , _net_topASN(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
-        , _net_topIPv4(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
-        , _net_topIPv6(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
+        : _srcIPCard()
+        , _dstIPCard()
+        , _topGeoLoc(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
+        , _topASN(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
+        , _topIPv4(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
+        , _topIPv6(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
+        , _rate_in()
+        , _rate_out()
+        , _rate_total()
     {
     }
 

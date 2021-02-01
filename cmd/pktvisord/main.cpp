@@ -117,12 +117,12 @@ int main(int argc, char *argv[])
         Corrade::Utility::print("Shutting down\n");
         svr.stop();
         // gracefully close all inputs and handlers
-        auto [input_modules, im_lock] = inputManager->all_modules();
+        auto [input_modules, im_lock] = inputManager->module_get_all_locked();
         for (auto &[name, mod] : input_modules) {
             Corrade::Utility::print("Stopping input instance: {}\n", mod->name());
             mod->stop();
         }
-        auto [handler_modules, hm_lock] = handlerManager->all_modules();
+        auto [handler_modules, hm_lock] = handlerManager->module_get_all_locked();
         for (auto &[name, mod] : handler_modules) {
             Corrade::Utility::print("Stopping handler instance: {}\n", mod->name());
             mod->stop();

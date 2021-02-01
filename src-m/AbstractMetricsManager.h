@@ -23,13 +23,12 @@ class Rate
 {
 public:
     typedef datasketches::kll_sketch<long> QuantileType;
-    typedef std::vector<long, std::allocator<long>> QuantileResultType;
 
 private:
     std::atomic_uint64_t _counter;
     std::atomic_uint64_t _rate;
-    mutable std::shared_mutex _sketchMutex;
-    std::unique_ptr<QuantileType> _quantile;
+    mutable std::shared_mutex _sketch_mutex;
+    QuantileType _quantile;
     std::unique_ptr<Timer> _timer;
 
 public:
@@ -38,12 +37,12 @@ public:
         , _rate(0.0)
         , _quantile()
     {
-        _quantile = std::make_unique<QuantileType>();
+        _quantile = QuantileType();
         _timer = std::make_unique<Timer>([this] {
             _rate.store(_counter.exchange(0));
             // lock mutex for write
-            std::unique_lock lock(_sketchMutex);
-            _quantile->update(_rate);
+            std::unique_lock lock(_sketch_mutex);
+            _quantile.update(_rate);
         },
             Timer::Interval(1000), false);
         _timer->start();
@@ -52,6 +51,12 @@ public:
     ~Rate()
     {
         _timer->stop();
+    }
+
+    Rate &operator++()
+    {
+        inc_counter();
+        return *this;
     }
 
     void inc_counter()
@@ -69,39 +74,24 @@ public:
         return _rate;
     }
 
-    QuantileType getQuantileCopy() const
+    auto quantile_get_rlocked() const
     {
-        // lock mutex for read
-        std::shared_lock lock(_sketchMutex);
-        return *_quantile;
+        std::shared_lock lock(_sketch_mutex);
+        struct retVals {
+            const QuantileType *quantile;
+            std::shared_lock<std::shared_mutex> lock;
+        };
+        return retVals{&_quantile, std::move(lock)};
     }
 
-    QuantileResultType getQuantileResults() const
+    void merge(const Rate &other)
     {
-        // lock mutex for read
-        std::shared_lock lock(_sketchMutex);
-        const double fractions[4]{0.50, 0.90, 0.95, 0.99};
-        return _quantile->get_quantiles(fractions, 4);
-    }
-
-    void reset_quantile()
-    {
-        // lock mutex for write
-        std::unique_lock lock(_sketchMutex);
-        _quantile = std::make_unique<QuantileType>();
+        auto [o_quantile, o_lock] = other.quantile_get_rlocked();
+        std::unique_lock w_lock(_sketch_mutex);
+        _quantile.merge(*o_quantile);
     }
 };
 
-struct InstantRateMetrics {
-    Rate rate_in;
-    Rate rate_out;
-
-    void reset_quantiles()
-    {
-        rate_in.reset_quantile();
-        rate_out.reset_quantile();
-    }
-};
 
 /**
  * This class should be be specialized to contain metrics and sketches specific to this handler
@@ -157,9 +147,6 @@ protected:
     timespec _lastShiftTS;
     std::chrono::system_clock::time_point _startTime;
 
-    // instantaneous rate metrics
-    std::unique_ptr<InstantRateMetrics> _instantRates;
-
     randutils::default_rng _rng;
     int _deepSampleRate;
     bool _shouldDeepSample;
@@ -203,7 +190,6 @@ public:
         , _numPeriods(periods)
         , _lastShiftTS()
         , _startTime()
-        , _instantRates()
         , _deepSampleRate(deepSampleRate)
         , _shouldDeepSample(true)
     {
@@ -213,7 +199,6 @@ public:
         if (_deepSampleRate < 0) {
             _deepSampleRate = 1;
         }
-        _instantRates = std::make_unique<InstantRateMetrics>();
         _numPeriods = std::min(_numPeriods, 10U);
         _numPeriods = std::max(_numPeriods, 1U);
         _metricBuckets.emplace_back(std::make_unique<MetricsBucketClass>());
@@ -226,10 +211,6 @@ public:
         _lastShiftTS = stamp;
     }
 
-    /*
-    std::string getAppMetrics();
-    std::string getInstantRates();
-     */
 
     void toJSONSingle(json &j, uint64_t period = 0)
     {

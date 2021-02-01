@@ -107,11 +107,11 @@ int main(int argc, char *argv[])
 
     shutdown_handler = [&](int signal) {
         // gracefully close all inputs and handlers
-        auto [input_modules, im_lock] = inputManager->all_modules();
+        auto [input_modules, im_lock] = inputManager->module_get_all_locked();
         for (auto &[name, mod] : input_modules) {
             mod->stop();
         }
-        auto [handler_modules, hm_lock] = handlerManager->all_modules();
+        auto [handler_modules, hm_lock] = handlerManager->module_get_all_locked();
         for (auto &[name, mod] : handler_modules) {
             mod->stop();
         }
@@ -154,12 +154,12 @@ int main(int argc, char *argv[])
         Corrade::Utility::print("{}\n", inputStream->info_json().dump(4));
 
         inputManager->module_add(std::move(inputStream), false);
-        auto [input_stream, stream_mgr_lock] = inputManager->module_get("pcap");
+        auto [input_stream, stream_mgr_lock] = inputManager->module_get_locked("pcap");
         stream_mgr_lock.unlock();
         auto pcap_stream = dynamic_cast<pktvisor::input::pcap::PcapInputStream *>(input_stream);
         auto handler_module = std::make_unique<pktvisor::handler::NetStreamHandler>("net", pcap_stream, periods, sampleRate);
         handlerManager->module_add(std::move(handler_module));
-        auto [handler, handler_mgr_lock] = handlerManager->module_get("net");
+        auto [handler, handler_mgr_lock] = handlerManager->module_get_locked("net");
         handler_mgr_lock.unlock();
         auto net_handler = dynamic_cast<pktvisor::handler::NetStreamHandler *>(handler);
 

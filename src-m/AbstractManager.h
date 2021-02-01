@@ -29,7 +29,7 @@ public:
     {
     }
 
-    auto all_modules()
+    auto module_get_all_locked()
     {
         struct retVals {
             ModuleMap &map;
@@ -49,12 +49,12 @@ public:
         if (start) {
             m->start();
         }
-        _map.emplace(std::make_pair(m->name(), std::move(m)));
+        _map.emplace(m->name(), std::move(m));
     }
 
     // note the module returned has separate thread safety, but the returned lock ensures
     // the module will not be removed before the caller has a chance to initialize
-    auto module_get(const std::string &name)
+    auto module_get_locked(const std::string &name)
     {
         std::unique_lock lock(_map_mutex);
         if (_map.count(name) == 0) {

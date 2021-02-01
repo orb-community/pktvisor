@@ -47,7 +47,7 @@ void PcapInputModulePlugin::_setup_routes(HttpServer &svr)
                 // the module is now started and owned by the manager
             }
 
-            auto [input_stream, stream_mgr_lock] = _input_manager->module_get(body["name"]);
+            auto [input_stream, stream_mgr_lock] = _input_manager->module_get_locked(body["name"]);
             assert(input_stream);
             result["name"] = body["name"];
             result["config"] = input_stream->config_json();
@@ -71,7 +71,7 @@ void PcapInputModulePlugin::_setup_routes(HttpServer &svr)
                 res.set_content(result.dump(), "text/json");
                 return;
             }
-            auto [input_stream, stream_mgr_lock] = _input_manager->module_get(name);
+            auto [input_stream, stream_mgr_lock] = _input_manager->module_get_locked(name);
             assert(input_stream);
             auto count = input_stream->consumer_count();
             if (count) {
@@ -101,7 +101,7 @@ void PcapInputModulePlugin::_setup_routes(HttpServer &svr)
                 res.set_content(result.dump(), "text/json");
                 return;
             }
-            auto [input_stream, stream_mgr_lock] = _input_manager->module_get(name);
+            auto [input_stream, stream_mgr_lock] = _input_manager->module_get_locked(name);
             assert(input_stream);
             result["consumers"] = input_stream->consumer_count();
             result["running"] = input_stream->running();
