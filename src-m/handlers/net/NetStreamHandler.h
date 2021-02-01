@@ -24,6 +24,9 @@ public:
     const uint8_t START_FI_MAP_SIZE = 7; // 2^7 = 128
     const uint8_t MAX_FI_MAP_SIZE = 13;  // 2^13 = 8192
 
+protected:
+    mutable std::shared_mutex _mutex;
+
     datasketches::cpc_sketch _srcIPCard;
     datasketches::cpc_sketch _dstIPCard;
 
@@ -32,7 +35,7 @@ public:
     datasketches::frequent_items_sketch<uint32_t> _topIPv4;
     datasketches::frequent_items_sketch<std::string> _topIPv6; // TODO not very efficient, should switch to 16 byte uint
 
-    uint64_t _numPackets = 0;
+    // total numPackets is tracked in base class num_events
     uint64_t _numPackets_UDP = 0;
     uint64_t _numPackets_TCP = 0;
     uint64_t _numPackets_OtherL4 = 0;
@@ -59,7 +62,7 @@ public:
     }
 
     // pktvisor::AbstractMetricsBucket
-    void merge(const AbstractMetricsBucket &other) override;
+    void specialized_merge(const AbstractMetricsBucket &other) override;
     void toJSON(json &j) const override;
 
     void process_packet(bool deep, pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp);
@@ -95,7 +98,7 @@ class NetStreamHandler final : public pktvisor::StreamMetricsHandler<NetworkMetr
     sigslot::connection _pkt_connection;
     sigslot::connection _start_tstamp_connection;
 
-    void process_packet(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp);
+    void process_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp);
     void set_initial_tstamp(timespec stamp);
 
 public:

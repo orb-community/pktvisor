@@ -42,6 +42,8 @@ public:
             _rate.store(_counter.exchange(0));
             // lock mutex for write
             std::unique_lock lock(_sketch_mutex);
+            // TODO use a high res timer to track Timer calls, to ensure per sec calculation
+            // don't rely on thread sleep timing
             _quantile.update(_rate);
         },
             Timer::Interval(1000), false);
@@ -92,24 +94,27 @@ public:
     }
 };
 
-
 /**
- * This class should be be specialized to contain metrics and sketches specific to this handler
+ * This class should be specialized to contain metrics and sketches specific to this handler
  * It *MUST* be thread safe, and should expect mostly writes.
  */
 class AbstractMetricsBucket
 {
+private:
+    mutable std::shared_mutex _base_mutex;
+    uint64_t _num_samples = 0;
+    uint64_t _num_events = 0;
+
+    Rate _rate_events;
+
+    timeval _bucketTS;
 
 protected:
-    // always the first second of the bucket, i.e. this bucket contains from this timestamp to timestamp + MetricsMgr::PERIOD_SEC
-    timeval _bucketTS;
-    mutable std::shared_mutex _mutex;
-
-    uint64_t _numSamples = 0;
-    uint64_t _numEvents = 0;
+    virtual void specialized_merge(const AbstractMetricsBucket &other) = 0;
 
 public:
     AbstractMetricsBucket()
+        : _rate_events()
     {
         gettimeofday(&_bucketTS, nullptr);
     }
@@ -122,18 +127,38 @@ public:
         return _bucketTS;
     }
 
-    void newEvent(bool deep)
+    virtual void toJSON(json &j) const = 0;
+
+    auto event_data() const
     {
-        std::unique_lock w_lock(_mutex);
-        _numEvents++;
-        if (deep) {
-            _numSamples++;
-        }
+        std::shared_lock lock(_base_mutex);
+        struct eventData {
+            uint64_t num_events;
+            uint64_t num_samples;
+        };
+        return eventData{_num_events, _num_samples};
     }
 
-    /*    void assignRateSketches(const std::shared_ptr<InstantRateMetrics>);*/
-    virtual void toJSON(json &j) const = 0;
-    virtual void merge(const AbstractMetricsBucket &other) = 0;
+    void merge(const AbstractMetricsBucket &other)
+    {
+        {
+            std::shared_lock r_lock(other._base_mutex);
+            std::unique_lock w_lock(_base_mutex);
+            _num_events += other._num_events;
+            _num_samples += other._num_samples;
+        }
+        specialized_merge(other);
+    }
+
+    void new_event(bool deep)
+    {
+        ++_rate_events;
+        std::unique_lock lock(_base_mutex);
+        _num_events++;
+        if (deep) {
+            _num_samples++;
+        }
+    }
 };
 
 template <class MetricsBucketClass>
@@ -170,6 +195,7 @@ protected:
             _lastShiftTS.tv_sec = stamp.tv_sec;
             on_period_shift();
         }
+        _metricBuckets.back()->new_event(_shouldDeepSample);
     }
 
     virtual void on_period_shift()

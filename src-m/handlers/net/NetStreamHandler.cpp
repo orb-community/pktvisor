@@ -26,7 +26,7 @@ void NetStreamHandler::start()
         return;
     }
 
-    _pkt_connection = _stream->packet_signal.connect(&NetStreamHandler::process_packet, this);
+    _pkt_connection = _stream->packet_signal.connect(&NetStreamHandler::process_packet_cb, this);
     _start_tstamp_connection = _stream->start_tstamp_signal.connect(&NetStreamHandler::set_initial_tstamp, this);
 
     _running = true;
@@ -48,7 +48,8 @@ NetStreamHandler::~NetStreamHandler()
 {
 }
 
-void NetStreamHandler::process_packet(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp)
+// callback from input module
+void NetStreamHandler::process_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp)
 {
     _metrics->process_packet(payload, dir, l3, l4, stamp);
 }
@@ -71,7 +72,7 @@ json NetStreamHandler::info_json() const
     return result;
 }
 
-void NetworkMetricsBucket::merge(const AbstractMetricsBucket &o)
+void NetworkMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
 {
     // static because caller guarantees only our own bucket type
     const auto &other = static_cast<const NetworkMetricsBucket &>(o);
@@ -84,7 +85,6 @@ void NetworkMetricsBucket::merge(const AbstractMetricsBucket &o)
     std::shared_lock r_lock(other._mutex);
     std::unique_lock w_lock(_mutex);
 
-    _numPackets += other._numPackets;
     _numPackets_UDP += other._numPackets_UDP;
     _numPackets_TCP += other._numPackets_TCP;
     _numPackets_OtherL4 += other._numPackets_OtherL4;
@@ -145,13 +145,16 @@ void NetworkMetricsBucket::toJSON(json &j) const
             j["packets"]["rates"]["pps_total"]["p99"] = quantiles[3];
         }
     }
+
+    auto [num_events, num_samples] = event_data(); // thread safe
     std::shared_lock r_lock(_mutex);
 
-    j["packets"]["total"] = _numPackets;
+    j["packets"]["total"] = num_events;
+    j["packets"]["samples"] = num_samples;
     j["packets"]["udp"] = _numPackets_UDP;
     j["packets"]["tcp"] = _numPackets_TCP;
     j["packets"]["other_l4"] = _numPackets_OtherL4;
-    j["packets"]["ipv4"] = _numPackets - _numPackets_IPv6;
+    j["packets"]["ipv4"] = num_events - _numPackets_IPv6;
     j["packets"]["ipv6"] = _numPackets_IPv6;
     j["packets"]["in"] = _numPackets_in;
     j["packets"]["out"] = _numPackets_out;
@@ -196,12 +199,13 @@ void NetworkMetricsBucket::toJSON(json &j) const
     }
 }
 
+// the main bucket analysis
 void NetworkMetricsBucket::process_packet(bool deep, pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp)
 {
-    std::unique_lock w_lock(_mutex);
 
-    _numPackets++;
     ++_rate_total;
+
+    std::unique_lock w_lock(_mutex);
 
     switch (dir) {
     case PacketDirection::fromHost:
@@ -304,9 +308,12 @@ void NetworkMetricsBucket::process_packet(bool deep, pcpp::Packet &payload, Pack
     }
 }
 
+// the general metrics manager entry point
 void NetworkMetricsManager::process_packet(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp)
 {
+    // base event
     new_event(stamp);
+    // process in the "live" bucket
     _metricBuckets.back()->process_packet(_shouldDeepSample, payload, dir, l3, l4, stamp);
 }
 
