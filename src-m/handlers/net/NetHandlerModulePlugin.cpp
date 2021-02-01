@@ -4,14 +4,13 @@
 #include <Corrade/PluginManager/AbstractManager.h>
 #include <json/json.hpp>
 
-using json = nlohmann::json;
-
-CORRADE_PLUGIN_REGISTER(NetHandler, pktvisor::handler::NetHandlerModulePlugin,
+CORRADE_PLUGIN_REGISTER(NetHandler, pktvisor::handler::net::NetHandlerModulePlugin,
     "com.ns1.module.handler/1.0")
 
-namespace pktvisor::handler {
+namespace pktvisor::handler::net {
 
 using namespace pktvisor::input::pcap;
+using json = nlohmann::json;
 
 void NetHandlerModulePlugin::_setup_routes(HttpServer &svr)
 {
@@ -88,7 +87,7 @@ void NetHandlerModulePlugin::_setup_routes(HttpServer &svr)
                 return;
             }
             auto [handler, handler_mgr_lock] = _handler_manager->module_get_locked(handler_name);
-            auto net_handler = dynamic_cast<pktvisor::handler::NetStreamHandler *>(handler);
+            auto net_handler = dynamic_cast<NetStreamHandler *>(handler);
             if (!net_handler) {
                 res.status = 400;
                 result["error"] = "handler stream is not net";

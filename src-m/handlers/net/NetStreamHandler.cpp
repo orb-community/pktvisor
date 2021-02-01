@@ -11,7 +11,7 @@
 #include <arpa/inet.h>
 #include <datasketches/datasketches/cpc/cpc_union.hpp>
 
-namespace pktvisor::handler {
+namespace pktvisor::handler::net {
 
 NetStreamHandler::NetStreamHandler(const std::string &name, PcapInputStream *stream, uint periods, int deepSampleRate)
     : pktvisor::StreamMetricsHandler<NetworkMetricsManager>(name, periods, deepSampleRate)

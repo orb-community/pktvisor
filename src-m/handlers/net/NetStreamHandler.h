@@ -14,7 +14,7 @@
 #include <Corrade/Utility/Debug.h>
 #include <string>
 
-namespace pktvisor::handler {
+namespace pktvisor::handler::net {
 
 using namespace pktvisor::input::pcap;
 

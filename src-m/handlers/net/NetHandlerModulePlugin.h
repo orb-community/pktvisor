@@ -3,8 +3,7 @@
 
 #include "HandlerModulePlugin.h"
 
-namespace pktvisor {
-namespace handler {
+namespace pktvisor::handler::net {
 
 class NetHandlerModulePlugin : public HandlerModulePlugin
 {
@@ -23,7 +22,6 @@ public:
         return "NetHandler";
     }
 };
-}
 }
 
 #endif //PKTVISORD_NETHANDLERMODULEPLUGIN_H
