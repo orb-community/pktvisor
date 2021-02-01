@@ -8,9 +8,9 @@
 #include <string>
 #include <unordered_map>
 
-using json = nlohmann::json;
-
 namespace pktvisor {
+
+using json = nlohmann::json;
 
 class SchemaException : public std::exception
 {

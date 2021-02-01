@@ -165,7 +165,7 @@ int main(int argc, char *argv[])
 
         pcap_stream->start();
 
-        json result;
+        pktvisor::json result;
         if (periods == 1) {
             // in summary mode we output a single summary of stats
             net_handler->toJSON(result, 0, false);

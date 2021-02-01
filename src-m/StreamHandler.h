@@ -5,9 +5,9 @@
 #include "AbstractModule.h"
 #include <json/json.hpp>
 
-using json = nlohmann::json;
-
 namespace pktvisor {
+
+using json = nlohmann::json;
 
 class StreamHandler : public AbstractModule
 {

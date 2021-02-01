@@ -7,6 +7,7 @@
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #include <datasketches/kll/kll_sketch.hpp>
 #pragma GCC diagnostic pop
+#include <atomic>
 #include <deque>
 #include <json/json.hpp>
 #include <rng/randutils.hpp>
@@ -14,9 +15,9 @@
 #include <sys/time.h>
 #include <unordered_map>
 
-using json = nlohmann::json;
-
 namespace pktvisor {
+
+using json = nlohmann::json;
 
 class Rate
 {
@@ -25,8 +26,8 @@ public:
     typedef std::vector<long, std::allocator<long>> QuantileResultType;
 
 private:
-    uint64_t _counter;
-    uint64_t _curRate;
+    std::atomic_uint64_t _counter;
+    std::atomic_uint64_t _rate;
     mutable std::shared_mutex _sketchMutex;
     std::unique_ptr<QuantileType> _quantile;
     std::unique_ptr<Timer> _timer;
@@ -34,14 +35,15 @@ private:
 public:
     Rate()
         : _counter(0)
-        , _curRate(0.0)
+        , _rate(0.0)
         , _quantile()
     {
         _quantile = std::make_unique<QuantileType>();
         _timer = std::make_unique<Timer>([this] {
+            _rate.store(_counter.exchange(0));
             // lock mutex for write
             std::unique_lock lock(_sketchMutex);
-            _quantile->update(_curRate);
+            _quantile->update(_rate);
         },
             Timer::Interval(1000), false);
         _timer->start();
@@ -52,30 +54,29 @@ public:
         _timer->stop();
     }
 
-    void incCounter()
+    void inc_counter()
     {
-        _counter++;
+        _counter.fetch_add(1, std::memory_order_relaxed);
     }
-    uint64_t getCounter()
+
+    uint64_t counter() const
     {
         return _counter;
     }
 
-    uint64_t getRate()
+    uint64_t rate() const
     {
-        return _curRate;
+        return _rate;
     }
 
     QuantileType getQuantileCopy() const
     {
         // lock mutex for read
-        std::unique_lock lock(_sketchMutex);
-        // TODO is this two copies at call site? optimize if we care
-        auto q_copy = *_quantile;
-        return q_copy;
+        std::shared_lock lock(_sketchMutex);
+        return *_quantile;
     }
 
-    QuantileResultType getQuantileResults()
+    QuantileResultType getQuantileResults() const
     {
         // lock mutex for read
         std::shared_lock lock(_sketchMutex);
@@ -83,7 +84,7 @@ public:
         return _quantile->get_quantiles(fractions, 4);
     }
 
-    void resetQuantile()
+    void reset_quantile()
     {
         // lock mutex for write
         std::unique_lock lock(_sketchMutex);
@@ -92,12 +93,13 @@ public:
 };
 
 struct InstantRateMetrics {
-    Rate _rate_in;
-    Rate _rate_out;
-    void resetQuantiles()
+    Rate rate_in;
+    Rate rate_out;
+
+    void reset_quantiles()
     {
-        _rate_in.resetQuantile();
-        _rate_out.resetQuantile();
+        rate_in.reset_quantile();
+        rate_out.reset_quantile();
     }
 };
 
