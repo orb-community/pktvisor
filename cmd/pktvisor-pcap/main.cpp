@@ -22,6 +22,7 @@
 #include "inputs/static_plugins.h"
 
 #include "GeoDB.h"
+#include "handlers/dns/DnsStreamHandler.h"
 #include "handlers/net/NetStreamHandler.h"
 #include "inputs/pcap/PcapInputStream.h"
 
@@ -55,18 +56,20 @@ void signal_handler(int signal)
 }
 }
 
-typedef Corrade::PluginManager::Manager<pktvisor::InputModulePlugin> InputPluginRegistry;
-typedef Corrade::PluginManager::Manager<pktvisor::HandlerModulePlugin> HandlerPluginRegistry;
-typedef Corrade::Containers::Pointer<pktvisor::InputModulePlugin> InputPluginPtr;
-typedef Corrade::Containers::Pointer<pktvisor::HandlerModulePlugin> HandlerPluginPtr;
+using namespace pktvisor;
+
+typedef Corrade::PluginManager::Manager<InputModulePlugin> InputPluginRegistry;
+typedef Corrade::PluginManager::Manager<HandlerModulePlugin> HandlerPluginRegistry;
+typedef Corrade::Containers::Pointer<InputModulePlugin> InputPluginPtr;
+typedef Corrade::Containers::Pointer<HandlerModulePlugin> HandlerPluginPtr;
 
 void initialize_geo(const docopt::value &city, const docopt::value &asn)
 {
     if (city) {
-        pktvisor::geo::GeoIP.get().enable(city.asString());
+        geo::GeoIP.get().enable(city.asString());
     }
     if (asn) {
-        pktvisor::geo::GeoASN.get().enable(city.asString());
+        geo::GeoASN.get().enable(city.asString());
     }
 }
 
@@ -81,7 +84,7 @@ int main(int argc, char *argv[])
 
     // inputs
     InputPluginRegistry inputRegistry;
-    auto inputManager = std::make_unique<pktvisor::InputStreamManager>();
+    auto inputManager = std::make_unique<InputStreamManager>();
     std::vector<InputPluginPtr> inputPlugins;
 
     // initialize input plugins
@@ -94,7 +97,7 @@ int main(int argc, char *argv[])
 
     // handlers
     HandlerPluginRegistry handlerRegistry;
-    auto handlerManager = std::make_unique<pktvisor::HandlerManager>();
+    auto handlerManager = std::make_unique<HandlerManager>();
     std::vector<HandlerPluginPtr> handlerPlugins;
 
     // initialize handler plugins
@@ -144,7 +147,7 @@ int main(int argc, char *argv[])
 
         initialize_geo(args["--geo-city"], args["--geo-asn"]);
 
-        auto inputStream = std::make_unique<pktvisor::input::pcap::PcapInputStream>("pcap");
+        auto inputStream = std::make_unique<input::pcap::PcapInputStream>("pcap");
         inputStream->config_set("pcap_file", args["PCAP"].asString());
         inputStream->config_set("bpf", bpf);
         inputStream->config_set("host_spec", host_spec);
@@ -156,22 +159,36 @@ int main(int argc, char *argv[])
         inputManager->module_add(std::move(inputStream), false);
         auto [input_stream, stream_mgr_lock] = inputManager->module_get_locked("pcap");
         stream_mgr_lock.unlock();
-        auto pcap_stream = dynamic_cast<pktvisor::input::pcap::PcapInputStream *>(input_stream);
-        auto handler_module = std::make_unique<pktvisor::handler::NetStreamHandler>("net", pcap_stream, periods, sampleRate);
-        handlerManager->module_add(std::move(handler_module));
-        auto [handler, handler_mgr_lock] = handlerManager->module_get_locked("net");
-        handler_mgr_lock.unlock();
-        auto net_handler = dynamic_cast<pktvisor::handler::NetStreamHandler *>(handler);
+        auto pcap_stream = dynamic_cast<input::pcap::PcapInputStream *>(input_stream);
+
+        handler::net::NetStreamHandler *net_handler{nullptr};
+        {
+            auto handler_module = std::make_unique<handler::net::NetStreamHandler>("net", pcap_stream, periods, sampleRate);
+            handlerManager->module_add(std::move(handler_module));
+            auto [handler, handler_mgr_lock] = handlerManager->module_get_locked("net");
+            handler_mgr_lock.unlock();
+            net_handler = dynamic_cast<handler::net::NetStreamHandler *>(handler);
+        }
+        handler::dns::DnsStreamHandler *dns_handler{nullptr};
+        {
+            auto handler_module = std::make_unique<handler::dns::DnsStreamHandler>("dns", pcap_stream, periods, sampleRate);
+            handlerManager->module_add(std::move(handler_module));
+            auto [handler, handler_mgr_lock] = handlerManager->module_get_locked("dns");
+            handler_mgr_lock.unlock();
+            dns_handler = dynamic_cast<handler::dns::DnsStreamHandler *>(handler);
+        }
 
         pcap_stream->start();
 
-        pktvisor::json result;
+        json result;
         if (periods == 1) {
             // in summary mode we output a single summary of stats
             net_handler->toJSON(result, 0, false);
+            dns_handler->toJSON(result, 0, false);
         } else {
             // otherwise, merge the max time window available
             net_handler->toJSON(result, periods, true);
+            dns_handler->toJSON(result, periods, true);
         }
         Corrade::Utility::print("{}\n", result.dump(4));
         shutdown_handler(SIGUSR1);

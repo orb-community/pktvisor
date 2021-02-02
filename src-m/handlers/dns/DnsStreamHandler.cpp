@@ -10,6 +10,7 @@
 #pragma GCC diagnostic pop
 #include <arpa/inet.h>
 #include <datasketches/datasketches/cpc/cpc_union.hpp>
+#include <sstream>
 
 namespace pktvisor::handler::dns {
 
@@ -90,12 +91,175 @@ void DnsMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
 {
     // static because caller guarantees only our own bucket type
     const auto &other = static_cast<const DnsMetricsBucket &>(o);
+
+    std::shared_lock r_lock(other._mutex);
+    std::unique_lock w_lock(_mutex);
+
+    _DNS_xacts_total += other._DNS_xacts_total;
+    _DNS_xacts_in += other._DNS_xacts_in;
+    _DNS_xacts_out += other._DNS_xacts_out;
+    _DNS_queries += other._DNS_queries;
+    _DNS_replies += other._DNS_replies;
+    _DNS_TCP += other._DNS_TCP;
+    _DNS_IPv6 += other._DNS_IPv6;
+    _DNS_NX += other._DNS_NX;
+    _DNS_REFUSED += other._DNS_REFUSED;
+    _DNS_SRVFAIL += other._DNS_SRVFAIL;
+    _DNS_NOERROR += other._DNS_NOERROR;
+
+    _dnsXactFromTimeUs.merge(other._dnsXactFromTimeUs);
+    _dnsXactToTimeUs.merge(other._dnsXactToTimeUs);
+
+    datasketches::cpc_union merge_qnameCard;
+    merge_qnameCard.update(_dns_qnameCard);
+    merge_qnameCard.update(other._dns_qnameCard);
+    _dns_qnameCard = merge_qnameCard.get_result();
+
+    _dns_topQname2.merge(other._dns_topQname2);
+    _dns_topQname3.merge(other._dns_topQname3);
+    _dns_topNX.merge(other._dns_topNX);
+    _dns_topREFUSED.merge(other._dns_topREFUSED);
+    _dns_topSRVFAIL.merge(other._dns_topSRVFAIL);
+    _dns_topUDPPort.merge(other._dns_topUDPPort);
+    _dns_topQType.merge(other._dns_topQType);
+    _dns_topRCode.merge(other._dns_topRCode);
+    _dns_slowXactIn.merge(other._dns_slowXactIn);
+    _dns_slowXactOut.merge(other._dns_slowXactOut);
 }
 
 void DnsMetricsBucket::toJSON(json &j) const
 {
 
     const double fractions[4]{0.50, 0.90, 0.95, 0.99};
+
+    auto [num_events, num_samples] = event_data(); // thread safe
+    std::shared_lock r_lock(_mutex);
+
+    j["dns"]["wire_packets"]["total"] = num_events;
+    j["dns"]["wire_packets"]["queries"] = _DNS_queries;
+    j["dns"]["wire_packets"]["replies"] = _DNS_replies;
+    j["dns"]["wire_packets"]["tcp"] = _DNS_TCP;
+    j["dns"]["wire_packets"]["udp"] = num_events - _DNS_TCP;
+    j["dns"]["wire_packets"]["ipv4"] = num_events - _DNS_IPv6;
+    j["dns"]["wire_packets"]["ipv6"] = _DNS_IPv6;
+    j["dns"]["wire_packets"]["nxdomain"] = _DNS_NX;
+    j["dns"]["wire_packets"]["refused"] = _DNS_REFUSED;
+    j["dns"]["wire_packets"]["srvfail"] = _DNS_SRVFAIL;
+    j["dns"]["wire_packets"]["noerror"] = _DNS_NOERROR;
+
+    j["dns"]["cardinality"]["qname"] = lround(_dns_qnameCard.get_estimate());
+    j["dns"]["xact"]["counts"]["total"] = _DNS_xacts_total;
+
+    {
+        j["dns"]["xact"]["in"]["total"] = _DNS_xacts_in;
+        j["dns"]["xact"]["in"]["top_slow"] = nlohmann::json::array();
+        auto items = _dns_slowXactIn.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
+        for (uint64_t i = 0; i < std::min(10UL, items.size()); i++) {
+            j["dns"]["xact"]["in"]["top_slow"][i]["name"] = items[i].get_item();
+            j["dns"]["xact"]["in"]["top_slow"][i]["estimate"] = items[i].get_estimate();
+        }
+    }
+
+    auto d_quantiles = _dnsXactFromTimeUs.get_quantiles(fractions, 4);
+    if (d_quantiles.size()) {
+        j["dns"]["xact"]["out"]["quantiles_us"]["p50"] = d_quantiles[0];
+        j["dns"]["xact"]["out"]["quantiles_us"]["p90"] = d_quantiles[1];
+        j["dns"]["xact"]["out"]["quantiles_us"]["p95"] = d_quantiles[2];
+        j["dns"]["xact"]["out"]["quantiles_us"]["p99"] = d_quantiles[3];
+    }
+
+    d_quantiles = _dnsXactToTimeUs.get_quantiles(fractions, 4);
+    if (d_quantiles.size()) {
+        j["dns"]["xact"]["in"]["quantiles_us"]["p50"] = d_quantiles[0];
+        j["dns"]["xact"]["in"]["quantiles_us"]["p90"] = d_quantiles[1];
+        j["dns"]["xact"]["in"]["quantiles_us"]["p95"] = d_quantiles[2];
+        j["dns"]["xact"]["in"]["quantiles_us"]["p99"] = d_quantiles[3];
+    }
+
+    {
+        j["dns"]["xact"]["out"]["total"] = _DNS_xacts_out;
+        j["dns"]["xact"]["out"]["top_slow"] = nlohmann::json::array();
+        auto items = _dns_slowXactOut.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
+        for (uint64_t i = 0; i < std::min(10UL, items.size()); i++) {
+            j["dns"]["xact"]["out"]["top_slow"][i]["name"] = items[i].get_item();
+            j["dns"]["xact"]["out"]["top_slow"][i]["estimate"] = items[i].get_estimate();
+        }
+    }
+
+    {
+        j["dns"]["top_qname2"] = nlohmann::json::array();
+        auto items = _dns_topQname2.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
+        for (uint64_t i = 0; i < std::min(10UL, items.size()); i++) {
+            j["dns"]["top_qname2"][i]["name"] = items[i].get_item();
+            j["dns"]["top_qname2"][i]["estimate"] = items[i].get_estimate();
+        }
+    }
+
+    {
+        j["dns"]["top_qname3"] = nlohmann::json::array();
+        auto items = _dns_topQname3.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
+        for (uint64_t i = 0; i < std::min(10UL, items.size()); i++) {
+            j["dns"]["top_qname3"][i]["name"] = items[i].get_item();
+            j["dns"]["top_qname3"][i]["estimate"] = items[i].get_estimate();
+        }
+    }
+
+    {
+        j["dns"]["top_nxdomain"] = nlohmann::json::array();
+        auto items = _dns_topNX.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
+        for (uint64_t i = 0; i < std::min(10UL, items.size()); i++) {
+            j["dns"]["top_nxdomain"][i]["name"] = items[i].get_item();
+            j["dns"]["top_nxdomain"][i]["estimate"] = items[i].get_estimate();
+        }
+    }
+
+    {
+        j["dns"]["top_refused"] = nlohmann::json::array();
+        auto items = _dns_topREFUSED.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
+        for (uint64_t i = 0; i < std::min(10UL, items.size()); i++) {
+            j["dns"]["top_refused"][i]["name"] = items[i].get_item();
+            j["dns"]["top_refused"][i]["estimate"] = items[i].get_estimate();
+        }
+    }
+
+    {
+        j["dns"]["top_srvfail"] = nlohmann::json::array();
+        auto items = _dns_topSRVFAIL.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
+        for (uint64_t i = 0; i < std::min(10UL, items.size()); i++) {
+            j["dns"]["top_srvfail"][i]["name"] = items[i].get_item();
+            j["dns"]["top_srvfail"][i]["estimate"] = items[i].get_estimate();
+        }
+    }
+
+    {
+        j["dns"]["top_rcode"] = nlohmann::json::array();
+        auto items = _dns_topRCode.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
+        for (uint64_t i = 0; i < std::min(10UL, items.size()); i++) {
+            if (RCodeNames.find(items[i].get_item()) != RCodeNames.end()) {
+                j["dns"]["top_rcode"][i]["name"] = RCodeNames[items[i].get_item()];
+            } else {
+                std::stringstream keyBuf;
+                keyBuf << items[i].get_item();
+                j["dns"]["top_rcode"][i]["name"] = keyBuf.str();
+            }
+            j["dns"]["top_rcode"][i]["estimate"] = items[i].get_estimate();
+        }
+    }
+
+    {
+        j["dns"]["top_qtype"] = nlohmann::json::array();
+        auto items = _dns_topQType.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
+        for (uint64_t i = 0; i < std::min(10UL, items.size()); i++) {
+            if (QTypeNames.find(items[i].get_item()) != QTypeNames.end()) {
+                j["dns"]["top_qtype"][i]["name"] = QTypeNames[items[i].get_item()];
+            } else {
+                std::stringstream keyBuf;
+                keyBuf << items[i].get_item();
+                j["dns"]["top_qtype"][i]["name"] = keyBuf.str();
+            }
+            j["dns"]["top_qtype"][i]["estimate"] = items[i].get_estimate();
+        }
+    }
 }
 
 // the main bucket analysis

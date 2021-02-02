@@ -113,6 +113,7 @@ void NetworkMetricsBucket::toJSON(json &j) const
 
     const double fractions[4]{0.50, 0.90, 0.95, 0.99};
 
+    // do rates first, which handle their own locking
     {
         auto [rate_quantile, rate_lock] = _rate_in.quantile_get_rlocked();
         auto quantiles = rate_quantile->get_quantiles(fractions, 4);
