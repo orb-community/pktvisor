@@ -4,6 +4,7 @@
 #include "AbstractMetricsManager.h"
 #include "PcapInputStream.h"
 #include "StreamHandler.h"
+#include "dns.h"
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 #pragma GCC diagnostic ignored "-Wunused-function"
@@ -43,6 +44,18 @@ protected:
     datasketches::frequent_items_sketch<std::string> _dns_slowXactIn;
     datasketches::frequent_items_sketch<std::string> _dns_slowXactOut;
 
+    uint64_t _DNS_xacts_total = 0;
+    uint64_t _DNS_xacts_in = 0;
+    uint64_t _DNS_xacts_out = 0;
+    uint64_t _DNS_queries = 0;
+    uint64_t _DNS_replies = 0;
+    uint64_t _DNS_TCP = 0;
+    uint64_t _DNS_IPv6 = 0;
+    uint64_t _DNS_NX = 0;
+    uint64_t _DNS_REFUSED = 0;
+    uint64_t _DNS_SRVFAIL = 0;
+    uint64_t _DNS_NOERROR = 0;
+
 public:
     DnsMetricsBucket()
         : _dnsXactFromTimeUs()
@@ -65,7 +78,7 @@ public:
     void specialized_merge(const AbstractMetricsBucket &other) override;
     void toJSON(json &j) const override;
 
-    void process_udp_packet(bool deep, pcpp::UdpLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp);
+    void process_dns_layer(bool deep, DnsLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowkey, uint16_t port, timespec stamp);
 };
 
 class DnsMetricsManager final : public pktvisor::AbstractMetricsManager<DnsMetricsBucket>
@@ -87,7 +100,7 @@ public:
     }
 #endif
 
-    void process_udp_packet(pcpp::UdpLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp);
+    void process_dns_layer(DnsLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowkey, uint16_t port, timespec stamp);
 };
 
 class DnsStreamHandler final : public pktvisor::StreamMetricsHandler<DnsMetricsManager>
@@ -98,7 +111,7 @@ class DnsStreamHandler final : public pktvisor::StreamMetricsHandler<DnsMetricsM
     sigslot::connection _pkt_udp_connection;
     sigslot::connection _start_tstamp_connection;
 
-    void process_udp_packet_cb(pcpp::UdpLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp);
+    void process_udp_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp);
     void set_initial_tstamp(timespec stamp);
 
 public:

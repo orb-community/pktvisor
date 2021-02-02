@@ -8,6 +8,7 @@ corrade_add_static_plugin(DnsHandler ${CMAKE_CURRENT_BINARY_DIR}
         DnsHandler.conf
         DnsHandlerModulePlugin.cpp
         DnsStreamHandler.cpp
+        dns.cpp
         # DnsLayer
         DnsLayer.cpp
         DnsResource.cpp

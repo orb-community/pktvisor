@@ -134,26 +134,26 @@ void PcapInputStream::processRawPacket(pcpp::RawPacket *rawPacket)
     }
     // determine packet direction by matching source/dest ips
     // note the direction may be indeterminate!
-    PacketDirection dir = unknown;
+    PacketDirection dir = PacketDirection::unknown;
     auto IP4layer = packet.getLayerOfType<pcpp::IPv4Layer>();
     auto IP6layer = packet.getLayerOfType<pcpp::IPv6Layer>();
     if (IP4layer) {
         for (auto &i : _hostIPv4) {
             if (IP4layer->getDstIpAddress().matchSubnet(i.address, i.mask)) {
-                dir = toHost;
+                dir = PacketDirection::toHost;
                 break;
             } else if (IP4layer->getSrcIpAddress().matchSubnet(i.address, i.mask)) {
-                dir = fromHost;
+                dir = PacketDirection::fromHost;
                 break;
             }
         }
     } else if (IP6layer) {
         for (auto &i : _hostIPv6) {
             if (IP6layer->getDstIpAddress().matchSubnet(i.address, i.mask)) {
-                dir = toHost;
+                dir = PacketDirection::toHost;
                 break;
             } else if (IP6layer->getSrcIpAddress().matchSubnet(i.address, i.mask)) {
-                dir = fromHost;
+                dir = PacketDirection::fromHost;
                 break;
             }
         }
@@ -163,11 +163,7 @@ void PcapInputStream::processRawPacket(pcpp::RawPacket *rawPacket)
     packet_signal(packet, dir, l3, l4, rawPacket->getPacketTimeStamp());
 
     if (l4 == pcpp::UDP) {
-
-        pcpp::UdpLayer *udpLayer = packet.getLayerOfType<pcpp::UdpLayer>();
-        assert(udpLayer);
-        udp_signal(*udpLayer, dir, l3, pcpp::hash5Tuple(&packet), rawPacket->getPacketTimeStamp());
-
+        udp_signal(packet, dir, l3, pcpp::hash5Tuple(&packet), rawPacket->getPacketTimeStamp());
     } else if (l4 == pcpp::TCP) {
         // get a pointer to the TCP reassembly instance and feed the packet arrived to it
         _tcpReassembly->getTcpReassembly()->reassemblePacket(rawPacket);
@@ -472,7 +468,7 @@ TcpMsgReassembly::TcpMsgReassembly(TcpReassemblyMgr::process_msg_cb process_msg_
             pcpp::Packet dnsRequest;
             // TODO fixme
             //pktvisor::DnsLayer dnsLayer((uint8_t *)data.get(), size, nullptr, &dnsRequest);
-            auto dir = (sideIndex == 0) ? fromHost : toHost;
+            auto dir = (sideIndex == 0) ? PacketDirection::fromHost : PacketDirection::toHost;
             timespec eT{0, 0};
             TIMEVAL_TO_TIMESPEC(&tcpData.getConnectionData().endTime, &eT)
             reassemblyMgr->process_msg_handler(dir, l3Type, flowKey, eT);

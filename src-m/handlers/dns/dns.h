@@ -8,7 +8,22 @@
 
 namespace pktvisor::handler::dns {
 
-static std::unordered_map<uint16_t, std::string> DNS_QTYPES({
+typedef std::pair<std::string_view, std::string_view> AggDomainResult;
+AggDomainResult aggregateDomain(const std::string &domain);
+
+enum QR {
+    query = 0,
+    response = 1
+};
+
+enum RCode {
+    NoError = 0,
+    SrvFail = 2,
+    NXDomain = 3,
+    Refused = 5
+};
+
+static std::unordered_map<uint16_t, std::string> QTypeNames({
     {1, "A"},
     {2, "NS"},
     {3, "MD"},
@@ -96,7 +111,7 @@ static std::unordered_map<uint16_t, std::string> DNS_QTYPES({
     {260, "AMTRELAY"},
 });
 
-static std::unordered_map<uint16_t, std::string> DNS_RCODES({
+static std::unordered_map<uint16_t, std::string> RCodeNames({
     {0, "NOERROR"},
     {1, "FORMERR"},
     {2, "SRVFAIL"},

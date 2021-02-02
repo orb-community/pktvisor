@@ -205,18 +205,18 @@ void NetworkMetricsBucket::process_packet(bool deep, pcpp::Packet &payload, Pack
 
     ++_rate_total;
 
-    std::unique_lock w_lock(_mutex);
+    std::unique_lock lock(_mutex);
 
     switch (dir) {
     case PacketDirection::fromHost:
         _numPackets_out++;
         ++_rate_out;
         break;
-    case toHost:
+    case PacketDirection::toHost:
         _numPackets_in++;
         ++_rate_in;
         break;
-    case unknown:
+    case PacketDirection::unknown:
         break;
     }
 
@@ -250,7 +250,7 @@ void NetworkMetricsBucket::process_packet(bool deep, pcpp::Packet &payload, Pack
     auto IP4layer = payload.getLayerOfType<pcpp::IPv4Layer>();
     auto IP6layer = payload.getLayerOfType<pcpp::IPv6Layer>();
     if (IP4layer) {
-        if (dir == toHost) {
+        if (dir == PacketDirection::toHost) {
             _srcIPCard.update(IP4layer->getSrcIpAddress().toInt());
             _topIPv4.update(IP4layer->getSrcIpAddress().toInt());
             if (geo::enabled()) {
@@ -263,7 +263,7 @@ void NetworkMetricsBucket::process_packet(bool deep, pcpp::Packet &payload, Pack
                     }
                 }
             }
-        } else if (dir == fromHost) {
+        } else if (dir == PacketDirection::fromHost) {
             _dstIPCard.update(IP4layer->getDstIpAddress().toInt());
             _topIPv4.update(IP4layer->getDstIpAddress().toInt());
             if (geo::enabled()) {
@@ -278,7 +278,7 @@ void NetworkMetricsBucket::process_packet(bool deep, pcpp::Packet &payload, Pack
             }
         }
     } else if (IP6layer) {
-        if (dir == toHost) {
+        if (dir == PacketDirection::toHost) {
             _srcIPCard.update((void *)IP6layer->getSrcIpAddress().toBytes(), 16);
             _topIPv6.update(IP6layer->getSrcIpAddress().toString());
             if (geo::enabled()) {
@@ -291,7 +291,7 @@ void NetworkMetricsBucket::process_packet(bool deep, pcpp::Packet &payload, Pack
                     }
                 }
             }
-        } else if (dir == fromHost) {
+        } else if (dir == PacketDirection::fromHost) {
             _dstIPCard.update((void *)IP6layer->getDstIpAddress().toBytes(), 16);
             _topIPv6.update(IP6layer->getDstIpAddress().toString());
             if (geo::enabled()) {

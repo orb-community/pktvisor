@@ -1,6 +1,5 @@
 #include "DnsStreamHandler.h"
 #include "GeoDB.h"
-#include "dns.h"
 #include "utils.h"
 #include <Corrade/Utility/Debug.h>
 #pragma GCC diagnostic push
@@ -50,9 +49,23 @@ DnsStreamHandler::~DnsStreamHandler()
 }
 
 // callback from input module
-void DnsStreamHandler::process_udp_packet_cb(pcpp::UdpLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp)
+void DnsStreamHandler::process_udp_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp)
 {
-    _metrics->process_udp_packet(payload, dir, l3, flowkey, stamp);
+    pcpp::UdpLayer *udpLayer = payload.getLayerOfType<pcpp::UdpLayer>();
+    assert(udpLayer);
+
+    uint16_t port{0};
+    auto dst_port = ntohs(udpLayer->getUdpHeader()->portDst);
+    auto src_port = ntohs(udpLayer->getUdpHeader()->portSrc);
+    if (DnsLayer::isDnsPort(dst_port)) {
+        port = dst_port;
+    } else if (DnsLayer::isDnsPort(src_port)) {
+        port = src_port;
+    }
+    if (port) {
+        DnsLayer dnsLayer(udpLayer, &payload);
+        _metrics->process_dns_layer(dnsLayer, dir, l3, pcpp::UDP, flowkey, port, stamp);
+    }
 }
 
 void DnsStreamHandler::toJSON(json &j, uint64_t period, bool merged)
@@ -86,32 +99,89 @@ void DnsMetricsBucket::toJSON(json &j) const
 }
 
 // the main bucket analysis
-void DnsMetricsBucket::process_udp_packet(bool deep, pcpp::UdpLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp)
+void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowkey, uint16_t port, timespec stamp)
 {
 
-    std::unique_lock w_lock(_mutex);
+    std::unique_lock lock(_mutex);
+
+    if (l3 == pcpp::IPv6) {
+        _DNS_IPv6++;
+    }
+
+    if (l4 == pcpp::TCP) {
+        _DNS_TCP++;
+    }
+
+    // only count response codes on responses (not queries)
+    if (payload.getDnsHeader()->queryOrResponse == QR::response) {
+        _DNS_replies++;
+        switch (payload.getDnsHeader()->responseCode) {
+        case NoError:
+            _DNS_NOERROR++;
+            break;
+        case SrvFail:
+            _DNS_SRVFAIL++;
+            break;
+        case NXDomain:
+            _DNS_NX++;
+            break;
+        case Refused:
+            _DNS_REFUSED++;
+            break;
+        }
+    } else {
+        _DNS_queries++;
+    }
 
     if (!deep) {
         return;
     }
 
-    auto srcPort = ntohs(payload.getUdpHeader()->portSrc);
-    auto dstPort = ntohs(payload.getUdpHeader()->portDst);
-    // track whichever port wasn't a DNS port (in and out)
-    if (DnsLayer::isDnsPort(dstPort)) {
-        _dns_topUDPPort.update(srcPort);
-    } else if (DnsLayer::isDnsPort(srcPort)) {
-        _dns_topUDPPort.update(dstPort);
+    payload.parseResources(true);
+
+    if (payload.getDnsHeader()->queryOrResponse == response) {
+        _dns_topRCode.update(payload.getDnsHeader()->responseCode);
     }
+
+    auto query = payload.getFirstQuery();
+    if (query) {
+
+        auto name = query->getName();
+
+        _dns_qnameCard.update(name);
+        _dns_topQType.update(query->getDnsType());
+
+        if (payload.getDnsHeader()->queryOrResponse == response) {
+            switch (payload.getDnsHeader()->responseCode) {
+            case SrvFail:
+                _dns_topSRVFAIL.update(name);
+                break;
+            case NXDomain:
+                _dns_topNX.update(name);
+                break;
+            case Refused:
+                _dns_topREFUSED.update(name);
+                break;
+            }
+        }
+
+        auto aggDomain = aggregateDomain(name);
+        _dns_topQname2.update(std::string(aggDomain.first));
+        if (aggDomain.second.size()) {
+            _dns_topQname3.update(std::string(aggDomain.second));
+        }
+    }
+
+    _dns_topUDPPort.update(port);
 }
 
-// the general metrics manager entry point
-void DnsMetricsManager::process_udp_packet(pcpp::UdpLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp)
+// the general metrics manager entry point (both UDP and TCP)
+void DnsMetricsManager::process_dns_layer(DnsLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowkey, uint16_t port, timespec stamp)
 {
     // base event
     new_event(stamp);
     // process in the "live" bucket
-    _metricBuckets.back()->process_udp_packet(_shouldDeepSample, payload, dir, l3, flowkey, stamp);
+    _metricBuckets.back()->process_dns_layer(_shouldDeepSample, payload, dir, l3, l4, flowkey, port, stamp);
 }
 
 }

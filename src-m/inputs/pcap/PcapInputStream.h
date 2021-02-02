@@ -18,9 +18,11 @@
 
 namespace pktvisor::input::pcap {
 
-enum PacketDirection { toHost,
+enum class PacketDirection {
+    toHost,
     fromHost,
-    unknown };
+    unknown
+};
 
 class TcpSessionData final
 {
@@ -134,7 +136,7 @@ public:
 
     // handler functionality
     sigslot::signal<pcpp::Packet &, PacketDirection, pcpp::ProtocolType, pcpp::ProtocolType, timespec> packet_signal;
-    sigslot::signal<pcpp::UdpLayer &, PacketDirection, pcpp::ProtocolType, uint32_t, timespec> udp_signal;
+    sigslot::signal<pcpp::Packet &, PacketDirection, pcpp::ProtocolType, uint32_t, timespec> udp_signal;
     sigslot::signal<timespec> start_tstamp_signal;
 
     size_t consumer_count() override
