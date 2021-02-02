@@ -189,20 +189,20 @@ protected:
             _metricBuckets.emplace_back(std::make_unique<MetricsBucketClass>());
             if (_metricBuckets.size() > _numPeriods) {
                 // if we're at our period history length, pop the oldest
-                on_period_evict(_metricBuckets.front().get());
+                on_period_evict(_metricBuckets.front().get(), stamp);
                 _metricBuckets.pop_front();
             }
             _lastShiftTS.tv_sec = stamp.tv_sec;
-            on_period_shift();
+            on_period_shift(stamp);
         }
         _metricBuckets.back()->new_event(_shouldDeepSample);
     }
 
-    virtual void on_period_shift()
+    virtual void on_period_shift(timespec stamp)
     {
     }
 
-    virtual void on_period_evict(const MetricsBucketClass *bucket)
+    virtual void on_period_evict(const MetricsBucketClass *bucket, timespec stamp)
     {
     }
 

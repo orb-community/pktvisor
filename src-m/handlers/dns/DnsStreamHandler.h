@@ -5,6 +5,7 @@
 #include "PcapInputStream.h"
 #include "StreamHandler.h"
 #include "dns.h"
+#include "querypairmgr.h"
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 #pragma GCC diagnostic ignored "-Wunused-function"
@@ -74,31 +75,57 @@ public:
     {
     }
 
+    auto get_xact_data_locked()
+    {
+        std::shared_lock lock(_mutex);
+        struct retVals {
+            datasketches::kll_sketch<uint64_t> &xact_to;
+            datasketches::kll_sketch<uint64_t> &xact_from;
+            std::shared_lock<std::shared_mutex> lock;
+        };
+        return retVals{_dnsXactToTimeUs, _dnsXactFromTimeUs, std::move(lock)};
+    }
+
     // pktvisor::AbstractMetricsBucket
     void specialized_merge(const AbstractMetricsBucket &other) override;
     void toJSON(json &j) const override;
 
     void process_dns_layer(bool deep, DnsLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowkey, uint16_t port, timespec stamp);
+
+    void newDNSXact(bool deep, float to90th, float from90th, DnsLayer &dns, PacketDirection dir, DnsTransaction xact);
 };
 
 class DnsMetricsManager final : public pktvisor::AbstractMetricsManager<DnsMetricsBucket>
 {
+
+    QueryResponsePairMgr _qr_pair_manager;
+    float _to90th = 0.0;
+    float _from90th = 0.0;
+    uint64_t _sample_threshold = 10;
+
 public:
     DnsMetricsManager(uint periods, int deepSampleRate)
         : pktvisor::AbstractMetricsManager<DnsMetricsBucket>(periods, deepSampleRate)
     {
     }
 
-#if 0
-    void on_period_shift() override
+    void on_period_shift(timespec stamp) override
     {
-        Corrade::Utility::Debug{} << "period shift";
+        // DNS transaction support
+        _qr_pair_manager.purgeOldTransactions(stamp);
+        auto [xact_to, xact_from, lock] = _metricBuckets.back()->get_xact_data_locked();
+        if (xact_from.get_n() > _sample_threshold) {
+            _from90th = xact_from.get_quantile(0.90);
+        }
+        if (xact_to.get_n() > _sample_threshold) {
+            _to90th = xact_to.get_quantile(0.90);
+        }
     }
-    void on_period_evict(const DnsMetricsBucket *bucket) override
+
+    size_t num_open_transactions() const
     {
-        Corrade::Utility::Debug{} << "evict: " << bucket->_numPackets;
+        return _qr_pair_manager.getOpenTransactionCount();
     }
-#endif
 
     void process_dns_layer(DnsLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowkey, uint16_t port, timespec stamp);
 };

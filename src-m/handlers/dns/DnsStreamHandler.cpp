@@ -84,6 +84,7 @@ void DnsStreamHandler::set_initial_tstamp(timespec stamp)
 json DnsStreamHandler::info_json() const
 {
     json result;
+    result["xact"]["open"] = _metrics->num_open_transactions();
     return result;
 }
 
@@ -339,11 +340,57 @@ void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, PacketDir
     _dns_topUDPPort.update(port);
 }
 
+void DnsMetricsBucket::newDNSXact(bool deep, float to90th, float from90th, DnsLayer &dns, PacketDirection dir, DnsTransaction xact)
+{
+
+    uint64_t xactTime = ((xact.totalTS.tv_sec * 1'000'000'000L) + xact.totalTS.tv_nsec) / 1'000; // nanoseconds to microseconds
+
+    // lock for write
+    std::unique_lock lock(_mutex);
+
+    _DNS_xacts_total++;
+
+    if (dir == PacketDirection::toHost) {
+        _DNS_xacts_out++;
+        if (deep) {
+            _dnsXactFromTimeUs.update(xactTime);
+        }
+    } else if (dir == PacketDirection::fromHost) {
+        _DNS_xacts_in++;
+        if (deep) {
+            _dnsXactToTimeUs.update(xactTime);
+        }
+    }
+
+    if (deep) {
+        auto query = dns.getFirstQuery();
+        if (query) {
+            auto name = query->getName();
+            // dir is the direction of the last packet, meaning the reply so from a transaction perspective
+            // we look at it from the direction of the query, so the opposite side than we have here
+            if (dir == PacketDirection::toHost && from90th > 0.0 && xactTime >= from90th) {
+                _dns_slowXactOut.update(name);
+            } else if (dir == PacketDirection::fromHost && to90th > 0.0 && xactTime >= to90th) {
+                _dns_slowXactIn.update(name);
+            }
+        }
+    }
+}
+
 // the general metrics manager entry point (both UDP and TCP)
 void DnsMetricsManager::process_dns_layer(DnsLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowkey, uint16_t port, timespec stamp)
 {
     // base event
     new_event(stamp);
+    // handle dns transactions (query/response pairs)
+    if (payload.getDnsHeader()->queryOrResponse == QR::response) {
+        auto xact = _qr_pair_manager.maybeEndDnsTransaction(flowkey, payload.getDnsHeader()->transactionID, stamp);
+        if (xact.first) {
+            _metricBuckets.back()->newDNSXact(_shouldDeepSample, _to90th, _from90th, payload, dir, xact.second);
+        }
+    } else {
+        _qr_pair_manager.startDnsTransaction(flowkey, payload.getDnsHeader()->transactionID, stamp);
+    }
     // process in the "live" bucket
     _metricBuckets.back()->process_dns_layer(_shouldDeepSample, payload, dir, l3, l4, flowkey, port, stamp);
 }
