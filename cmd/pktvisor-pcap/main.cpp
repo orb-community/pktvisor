@@ -190,7 +190,7 @@ int main(int argc, char *argv[])
             net_handler->toJSON(result, periods, true);
             dns_handler->toJSON(result, periods, true);
         }
-        Corrade::Utility::print("{}\n", result.dump(4));
+        Corrade::Utility::print("{}\n", result.dump());
         shutdown_handler(SIGUSR1);
 
     } catch (const std::exception &e) {
