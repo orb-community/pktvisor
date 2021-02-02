@@ -24,6 +24,7 @@ enum class PacketDirection {
     unknown
 };
 
+/*
 class TcpSessionData final
 {
 public:
@@ -50,25 +51,16 @@ struct TcpReassemblyData {
     int curSide;
     pcpp::ProtocolType l3Type;
 
-    /**
-	 * the default c'tor
-	 */
     TcpReassemblyData(bool isIPv4)
     {
         clear();
         (isIPv4) ? l3Type = pcpp::IPv4 : l3Type = pcpp::IPv6;
     }
 
-    /**
-	 * The default d'tor
-	 */
     ~TcpReassemblyData()
     {
     }
 
-    /**
-	 * Clear all data (put 0, false or NULL - whatever relevant for each field)
-	 */
     void clear()
     {
         curSide = -1;
@@ -101,6 +93,7 @@ private:
     TcpReassemblyMgr _reassemblyMgr;
     std::shared_ptr<pcpp::TcpReassembly> _tcpReassembly;
 };
+*/
 
 class PcapInputStream : public pktvisor::InputStream
 {
@@ -108,41 +101,39 @@ class PcapInputStream : public pktvisor::InputStream
 private:
     IPv4subnetList _hostIPv4;
     IPv6subnetList _hostIPv6;
-    std::unique_ptr<TcpMsgReassembly> _tcpReassembly;
+    pcpp::TcpReassembly _tcpReassembly;
     pcpp::PcapLiveDevice *_pcapDevice;
 
     bool _pcapFile = false;
 
 protected:
-    void onGotMessage(PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowKey, timespec stamp);
-
-    void openPcap(const std::string &fileName, const std::string &bpfFilter = "");
-    void openIface(const std::string &bpfFilter = "");
-    void getHostsFromIface();
+    void _open_pcap(const std::string &fileName, const std::string &bpfFilter = "");
+    void _open_iface(const std::string &bpfFilter = "");
+    void _get_hosts_from_iface();
 
 public:
     PcapInputStream(const std::string &name);
     ~PcapInputStream();
 
-    void parse_host_spec();
-
     // pktvisor::AbstractModule
     void start() override;
     void stop() override;
     json info_json() const override;
+    size_t consumer_count() override
+    {
+        return packet_signal.slot_count() + udp_signal.slot_count() + start_tstamp_signal.slot_count();
+    }
+
+    //
+    void parse_host_spec();
 
     // public so it can be called from a static callback method, required by PcapPlusPlus
-    void processRawPacket(pcpp::RawPacket *rawPacket);
+    void process_raw_packet(pcpp::RawPacket *rawPacket);
 
     // handler functionality
     sigslot::signal<pcpp::Packet &, PacketDirection, pcpp::ProtocolType, pcpp::ProtocolType, timespec> packet_signal;
     sigslot::signal<pcpp::Packet &, PacketDirection, pcpp::ProtocolType, uint32_t, timespec> udp_signal;
     sigslot::signal<timespec> start_tstamp_signal;
-
-    size_t consumer_count() override
-    {
-        return packet_signal.slot_count() + udp_signal.slot_count() + start_tstamp_signal.slot_count();
-    }
 };
 
 }

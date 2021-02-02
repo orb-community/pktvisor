@@ -23,13 +23,29 @@ namespace pktvisor {
 namespace input {
 namespace pcap {
 
+// static callbacks for tcp reassembly
+static void tcp_message_ready(int8_t side, const pcpp::TcpStreamData& tcpData, void* userCookie) {
+
+}
+
+static void tcp_connection_start(const pcpp::ConnectionData& connectionData, void* userCookie) {
+
+}
+
+static void tcp_connection_end(const pcpp::ConnectionData& connectionData, pcpp::TcpReassembly::ConnectionEndReason reason, void* userCookie) {
+
+}
+
+
 PcapInputStream::PcapInputStream(const std::string &name)
     : pktvisor::InputStream(name)
     , _pcapDevice(nullptr)
+    , _tcpReassembly(tcp_message_ready,
+          this,
+          tcp_connection_start,
+          tcp_connection_end)
 {
-    _tcpReassembly = std::make_unique<TcpMsgReassembly>([this](PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowKey, timespec stamp) {
-        onGotMessage(dir, l3, pcpp::TCP, flowKey, stamp);
-    });
+
 }
 
 PcapInputStream::~PcapInputStream()
@@ -48,7 +64,7 @@ void PcapInputStream::start()
         _pcapFile = true;
         // note, parse_host_spec should be called manually by now (in CLI)
         _running = true;
-        openPcap(config_get<std::string>("pcap_file"), config_get<std::string>("bpf"));
+        _open_pcap(config_get<std::string>("pcap_file"), config_get<std::string>("bpf"));
     } else {
         assert(config_exists("iface"));
         assert(config_exists("bpf"));
@@ -72,8 +88,8 @@ void PcapInputStream::start()
                 throw std::runtime_error("Couldn't find interface by provided name: " + TARGET);
             }
         }
-        getHostsFromIface();
-        openIface(config_get<std::string>("bpf"));
+        _get_hosts_from_iface();
+        _open_iface(config_get<std::string>("bpf"));
         _running = true;
     }
 
@@ -92,32 +108,13 @@ void PcapInputStream::stop()
         _pcapDevice->close();
 
         // close all connections which are still opened
-        _tcpReassembly->getTcpReassembly()->closeAllConnections();
+        _tcpReassembly.closeAllConnections();
     }
 
     _running = false;
 }
 
-// got a full DNS wire message. called from all l3 and l4.
-void PcapInputStream::onGotMessage(PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowKey, timespec stamp)
-{
-    // TODO interface to handler
-
-    /*    metricsManager->newDNSPacket(dnsLayer, dir, l3, l4);
-    if (dnsLayer->getDnsHeader()->queryOrResponse == pktvisor::response) {
-        auto xact = dnsQueryPairManager.maybeEndDnsTransaction(flowKey, dnsLayer->getDnsHeader()->transactionID, stamp);
-        if (xact.first) {
-            metricsManager->newDNSXact(dnsLayer, dir, xact.second);
-        }
-    } else {
-        dnsQueryPairManager.startDnsTransaction(flowKey, dnsLayer->getDnsHeader()->transactionID, stamp);
-    }*/
-}
-
-/**
- * Called for live and pcap
- */
-void PcapInputStream::processRawPacket(pcpp::RawPacket *rawPacket)
+void PcapInputStream::process_raw_packet(pcpp::RawPacket *rawPacket)
 {
 
     pcpp::ProtocolType l3(pcpp::UnknownProtocol), l4(pcpp::UnknownProtocol);
@@ -165,14 +162,13 @@ void PcapInputStream::processRawPacket(pcpp::RawPacket *rawPacket)
     if (l4 == pcpp::UDP) {
         udp_signal(packet, dir, l3, pcpp::hash5Tuple(&packet), rawPacket->getPacketTimeStamp());
     } else if (l4 == pcpp::TCP) {
-        // get a pointer to the TCP reassembly instance and feed the packet arrived to it
-        _tcpReassembly->getTcpReassembly()->reassemblePacket(rawPacket);
+        _tcpReassembly.reassemblePacket(rawPacket);
     } else {
         // unsupported layer3 protocol
     }
 }
 
-void PcapInputStream::openPcap(const std::string &fileName, const std::string &bpfFilter)
+void PcapInputStream::_open_pcap(const std::string &fileName, const std::string &bpfFilter)
 {
     assert(_pcapFile);
 
@@ -195,7 +191,7 @@ void PcapInputStream::openPcap(const std::string &fileName, const std::string &b
     // setup initial timestamp from first packet to initiate bucketing
     if (reader->getNextPacket(rawPacket)) {
         start_tstamp_signal(rawPacket.getPacketTimeStamp());
-        processRawPacket(&rawPacket);
+        process_raw_packet(&rawPacket);
     }
 
     int packetCount = 1, lastCount = 0;
@@ -206,7 +202,7 @@ void PcapInputStream::openPcap(const std::string &fileName, const std::string &b
         pktvisor::Timer::Interval(1000), false);
     t.start();
     while (_running && reader->getNextPacket(rawPacket)) {
-        processRawPacket(&rawPacket);
+        process_raw_packet(&rawPacket);
         packetCount++;
         lastCount++;
     }
@@ -214,7 +210,7 @@ void PcapInputStream::openPcap(const std::string &fileName, const std::string &b
     std::cerr << "processed " << packetCount << " packets\n";
 
     // after all packets have been read - close the connections which are still opened
-    _tcpReassembly->getTcpReassembly()->closeAllConnections();
+    _tcpReassembly.closeAllConnections();
 
     // close the reader and free its memory
     reader->close();
@@ -227,10 +223,10 @@ void PcapInputStream::openPcap(const std::string &fileName, const std::string &b
 static void onLivePacketArrives(pcpp::RawPacket *rawPacket, pcpp::PcapLiveDevice *dev, void *cookie)
 {
     PcapInputStream *dC = (PcapInputStream *)cookie;
-    dC->processRawPacket(rawPacket);
+    dC->process_raw_packet(rawPacket);
 }
 
-void PcapInputStream::openIface(const std::string &bpfFilter)
+void PcapInputStream::_open_iface(const std::string &bpfFilter)
 {
 
     pcpp::PcapLiveDevice::DeviceConfiguration config;
@@ -257,11 +253,6 @@ void PcapInputStream::openIface(const std::string &bpfFilter)
         //        std::cerr << "BPF: " << bpfFilter << std::endl;
     }
 
-    //printf("Starting packet capture on '%s'...\n", dev->getName());
-
-    // TODO
-    //    metricsManager->setInitialShiftTS();
-
     // start capturing packets
     // TODO Pcap statistics on dropped packets OnStatsUpdateCallback
     if (!_pcapDevice->startCapture(onLivePacketArrives, this)) {
@@ -269,7 +260,7 @@ void PcapInputStream::openIface(const std::string &bpfFilter)
     }
 }
 
-void PcapInputStream::getHostsFromIface()
+void PcapInputStream::_get_hosts_from_iface()
 {
     auto addrs = _pcapDevice->getAddresses();
     for (auto i : addrs) {
@@ -337,7 +328,7 @@ void PcapInputStream::parse_host_spec()
         parseHostSpec(config_get<std::string>("host_spec"), _hostIPv4, _hostIPv6);
     }
 }
-
+/*
 TcpSessionData::TcpSessionData(
     malformed_data_cb malformed_data_handler,
     got_data_cb got_data_handler)
@@ -383,12 +374,6 @@ void TcpSessionData::receive_data(const char data[], size_t len)
 static void tcpReassemblyConnectionStartCallback(const pcpp::ConnectionData &connectionData, void *userCookie)
 {
 
-    // only track DNS connections
-    /*
-    if (!pktvisor::DnsLayer::isDnsPort(connectionData.srcPort) && !pktvisor::DnsLayer::isDnsPort(connectionData.dstPort)) {
-        return;
-    }
-     */
 
     TcpReassemblyMgr *reassemblyMgr = (TcpReassemblyMgr *)userCookie;
     auto connMgr = reassemblyMgr->connMgr;
@@ -435,7 +420,9 @@ TcpMsgReassembly::TcpMsgReassembly(TcpReassemblyMgr::process_msg_cb process_msg_
         auto iter = connMgr.find(flowKey);
 
         // if not tracking connection, and it's DNS, then start tracking.
-        if (iter == connMgr.end() /*&& (pktvisor::DnsLayer::isDnsPort(tcpData.getConnectionData().srcPort) || pktvisor::DnsLayer::isDnsPort(tcpData.getConnectionData().dstPort))*/) {
+        if (iter == connMgr.end()
+        //&& (pktvisor::DnsLayer::isDnsPort(tcpData.getConnectionData().srcPort) || pktvisor::DnsLayer::isDnsPort(tcpData.getConnectionData().dstPort))
+        ) {
             connMgr.insert(std::make_pair(flowKey, TcpReassemblyData(tcpData.getConnectionData().srcIP.getType() == pcpp::IPAddress::IPv4AddressType)));
             iter = connMgr.find(tcpData.getConnectionData().flowKey);
         } else {
@@ -486,6 +473,7 @@ TcpMsgReassembly::TcpMsgReassembly(TcpReassemblyMgr::process_msg_cb process_msg_
         tcpReassemblyConnectionStartCallback,
         tcpReassemblyConnectionEndCallback);
 }
+*/
 
 }
 }
