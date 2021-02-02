@@ -133,40 +133,33 @@ public:
 class TcpSessionData final
 {
 public:
-    using got_data_cb = std::function<void(std::unique_ptr<char[]> data, size_t size)>;
-
-    TcpSessionData(
-        got_data_cb got_data_handler);
-
-    void receive_data(const char data[], size_t len);
+    using got_msg_cb = std::function<void(std::unique_ptr<char[]> data, size_t size)>;
 
 private:
     std::string _buffer;
-    got_data_cb _got_msg;
+    got_msg_cb _got_dns_msg;
+
+public:
+    TcpSessionData(
+        got_msg_cb got_data_handler)
+        : _got_dns_msg{std::move(got_data_handler)}
+    {
+    }
+
+    void receive_dns_wire_data(const char *data, size_t len);
 };
 
-struct TcpReassemblyData {
+struct TcpFlowData {
 
     std::shared_ptr<TcpSessionData> _sessionData[2];
 
-    // a flag indicating on which side was the latest message on this connection
-    int curSide;
     pcpp::ProtocolType l3Type;
+    uint16_t port;
 
-    TcpReassemblyData(bool isIPv4)
+    TcpFlowData(bool isIPv4, uint16_t port)
+        : port(port)
     {
-        clear();
         (isIPv4) ? l3Type = pcpp::IPv4 : l3Type = pcpp::IPv6;
-    }
-
-    ~TcpReassemblyData()
-    {
-    }
-
-    void clear()
-    {
-        curSide = -1;
-        l3Type = pcpp::UnknownProtocol;
     }
 };
 
@@ -176,7 +169,7 @@ class DnsStreamHandler final : public pktvisor::StreamMetricsHandler<DnsMetricsM
     PcapInputStream *_stream;
 
     typedef uint32_t flowKey;
-    std::map<flowKey, TcpReassemblyData> _tcp_connections;
+    std::unordered_map<flowKey, TcpFlowData> _tcp_connections;
 
     sigslot::connection _pkt_udp_connection;
     sigslot::connection _start_tstamp_connection;

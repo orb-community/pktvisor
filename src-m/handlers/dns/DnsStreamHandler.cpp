@@ -68,15 +68,11 @@ void DnsStreamHandler::process_udp_packet_cb(pcpp::Packet &payload, PacketDirect
         _metrics->process_dns_layer(dnsLayer, dir, l3, pcpp::UDP, flowkey, port, stamp);
     }
 }
-/*
-TcpSessionData::TcpSessionData(
-    got_data_cb got_data_handler)
-    : _got_msg{std::move(got_data_handler)}
-{
-}
 
-void TcpSessionData::receive_data(const char data[], size_t len)
+void TcpSessionData::receive_dns_wire_data(const char *data, size_t len)
 {
+    const size_t MIN_DNS_QUERY_SIZE = 17;
+    const size_t MAX_DNS_QUERY_SIZE = 512;
 
     _buffer.append(data, len);
 
@@ -86,14 +82,19 @@ void TcpSessionData::receive_data(const char data[], size_t len)
         if (_buffer.size() < sizeof(size))
             break;
 
-        // size is in network byte order.
+        // dns packet size is in network byte order.
         size = static_cast<unsigned char>(_buffer[1]) | static_cast<unsigned char>(_buffer[0]) << 8;
+
+        // ensure we never allocate more than max
+        if (size < MIN_DNS_QUERY_SIZE || size > MAX_DNS_QUERY_SIZE) {
+            break;
+        }
 
         if (_buffer.size() >= sizeof(size) + size) {
             auto data = std::make_unique<char[]>(size);
             std::memcpy(data.get(), _buffer.data() + sizeof(size), size);
             _buffer.erase(0, sizeof(size) + size);
-            _got_msg(std::move(data), size);
+            _got_dns_msg(std::move(data), size);
         } else {
             // Nope, we need more data.
             break;
@@ -101,99 +102,74 @@ void TcpSessionData::receive_data(const char data[], size_t len)
     }
 }
 
-TcpMsgReassembly::TcpMsgReassembly(TcpReassemblyMgr::process_msg_cb process_msg_handler)
-    : _reassemblyMgr()
+void DnsStreamHandler::tcp_message_ready_cb(int8_t side, const pcpp::TcpStreamData &tcpData)
 {
+    auto flowKey = tcpData.getConnectionData().flowKey;
 
-    auto tcpReassemblyMsgReadyCallback = [](int8_t sideIndex, const pcpp::TcpStreamData &tcpData, void *userCookie) {
-        // extract the connection manager from the user cookie
-        TcpReassemblyMgr *reassemblyMgr = (TcpReassemblyMgr *)userCookie;
-        auto connMgr = reassemblyMgr->connMgr;
-        auto flowKey = tcpData.getConnectionData().flowKey;
+    // check if this flow already appears in the connection manager. If not add it
+    auto iter = _tcp_connections.find(flowKey);
 
-        // check if this flow already appears in the connection manager. If not add it
-        auto iter = connMgr.find(flowKey);
-
-        // if not tracking connection, and it's DNS, then start tracking.
-        if (iter == connMgr.end()
-        //&& (pktvisor::DnsLayer::isDnsPort(tcpData.getConnectionData().srcPort) || pktvisor::DnsLayer::isDnsPort(tcpData.getConnectionData().dstPort))
-        ) {
-            connMgr.insert(std::make_pair(flowKey, TcpReassemblyData(tcpData.getConnectionData().srcIP.getType() == pcpp::IPAddress::IPv4AddressType)));
-            iter = connMgr.find(tcpData.getConnectionData().flowKey);
+    // if not tracking connection, and it's DNS, then start tracking.
+    {
+        uint16_t port{0};
+        if (DnsLayer::isDnsPort(tcpData.getConnectionData().dstPort)) {
+            port = tcpData.getConnectionData().dstPort;
+        } else if (DnsLayer::isDnsPort(tcpData.getConnectionData().srcPort)) {
+            port = tcpData.getConnectionData().srcPort;
+        }
+        if (iter == _tcp_connections.end() && port) {
+            _tcp_connections.emplace(flowKey, TcpFlowData(tcpData.getConnectionData().srcIP.getType() == pcpp::IPAddress::IPv4AddressType, port));
+            iter = _tcp_connections.find(tcpData.getConnectionData().flowKey);
         } else {
             // not tracking
             return;
         }
+    }
 
-        int side(0);
+    pcpp::ProtocolType l3Type{iter->second.l3Type};
+    auto port{iter->second.port};
+    timespec stamp{0, 0};
+    // TODO IS THIS TIME WRONG, does it affect our window
+    TIMEVAL_TO_TIMESPEC(&tcpData.getConnectionData().endTime, &stamp)
+    auto dir = (side == 0) ? PacketDirection::fromHost : PacketDirection::toHost;
 
-        // if this messages comes on a different side than previous message seen on this connection
-        if (sideIndex != iter->second.curSide) {
-            // count number of message in each side
-            //            iter->second.numOfMessagesFromSide[sideIndex]++;
-
-            // set side index as the current active side
-            iter->second.curSide = sideIndex;
-        }
-
-        // count number of packets and bytes in each side of the connection
-        //        iter->second.numOfDataPackets[sideIndex]++;
-        //        iter->second.bytesFromSide[sideIndex] += (int)tcpData.getDataLength();
-
-        pcpp::ProtocolType l3Type(iter->second.l3Type);
-
-        auto malformed_data = []() {
-            //            std::cerr << "malformed\n";
-        };
-        auto got_dns_message = [reassemblyMgr, sideIndex, l3Type, flowKey, tcpData](std::unique_ptr<const char[]> data,
-                                   size_t size) {
-            pcpp::Packet dnsRequest;
-            // TODO fixme
-            //pktvisor::DnsLayer dnsLayer((uint8_t *)data.get(), size, nullptr, &dnsRequest);
-            auto dir = (sideIndex == 0) ? PacketDirection::fromHost : PacketDirection::toHost;
-            timespec eT{0, 0};
-            TIMEVAL_TO_TIMESPEC(&tcpData.getConnectionData().endTime, &eT)
-            reassemblyMgr->process_msg_handler(dir, l3Type, flowKey, eT);
-        };
-        if (!iter->second._sessionData[side].get()) {
-            iter->second._sessionData[side] = std::make_shared<TcpSessionData>(malformed_data, got_dns_message);
-        }
-        iter->second._sessionData[side]->receive_data((char *)tcpData.getData(), tcpData.getDataLength());
+    auto got_dns_message = [this, port, dir, l3Type, flowKey, stamp](std::unique_ptr<const char[]> data, size_t size) {
+        DnsLayer dnsLayer(const_cast<u_int8_t *>(reinterpret_cast<const uint8_t *>(data.get())), size, nullptr, nullptr);
+        _metrics->process_dns_layer(dnsLayer, dir, l3Type, pcpp::TCP, flowKey, port, stamp);
     };
-
-    _reassemblyMgr.process_msg_handler = process_msg_handler;
-    _tcpReassembly = std::make_shared<pcpp::TcpReassembly>(
-        tcpReassemblyMsgReadyCallback,
-        &_reassemblyMgr,
-        tcpReassemblyConnectionStartCallback,
-        tcpReassemblyConnectionEndCallback);
-}
-*/
-void DnsStreamHandler::tcp_message_ready_cb(int8_t side, const pcpp::TcpStreamData &tcpData)
-{
+    if (!iter->second._sessionData[side].get()) {
+        iter->second._sessionData[side] = std::make_shared<TcpSessionData>(got_dns_message);
+    }
+    iter->second._sessionData[side]->receive_dns_wire_data(reinterpret_cast<const char *>(tcpData.getData()), tcpData.getDataLength());
 }
 
 void DnsStreamHandler::tcp_connection_start_cb(const pcpp::ConnectionData &connectionData)
 {
-    // look for the connection in the connection manager
+    // look for the connection
     auto iter = _tcp_connections.find(connectionData.flowKey);
 
-    // assuming it's a new connection
-    if (iter == _tcp_connections.end()) {
-        // add it to the connection manager
-        _tcp_connections.insert(std::make_pair(connectionData.flowKey,
-            TcpReassemblyData(connectionData.srcIP.getType() == pcpp::IPAddress::IPv4AddressType)));
+    // start a new connection if it's DNS
+    uint16_t port{0};
+    if (DnsLayer::isDnsPort(connectionData.dstPort)) {
+        port = connectionData.dstPort;
+    } else if (DnsLayer::isDnsPort(connectionData.srcPort)) {
+        port = connectionData.srcPort;
+    }
+    if (iter == _tcp_connections.end() && port) {
+        // add it to the connections
+        _tcp_connections.emplace(connectionData.flowKey, TcpFlowData(connectionData.srcIP.getType() == pcpp::IPAddress::IPv4AddressType, port));
     }
 }
 
 void DnsStreamHandler::tcp_connection_end_cb(const pcpp::ConnectionData &connectionData, pcpp::TcpReassembly::ConnectionEndReason reason)
 {
-    // find the connection in the connection manager by the flow key
+    // find the connection in the connections by the flow key
     auto iter = _tcp_connections.find(connectionData.flowKey);
 
     // connection wasn't found, we didn't track
-    if (iter == _tcp_connections.end())
+    if (iter == _tcp_connections.end()) {
         return;
+    }
 
     // remove the connection from the connection manager
     _tcp_connections.erase(iter);
