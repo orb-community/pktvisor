@@ -130,15 +130,61 @@ public:
     void process_dns_layer(DnsLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowkey, uint16_t port, timespec stamp);
 };
 
+class TcpSessionData final
+{
+public:
+    using got_data_cb = std::function<void(std::unique_ptr<char[]> data, size_t size)>;
+
+    TcpSessionData(
+        got_data_cb got_data_handler);
+
+    void receive_data(const char data[], size_t len);
+
+private:
+    std::string _buffer;
+    got_data_cb _got_msg;
+};
+
+struct TcpReassemblyData {
+
+    std::shared_ptr<TcpSessionData> _sessionData[2];
+
+    // a flag indicating on which side was the latest message on this connection
+    int curSide;
+    pcpp::ProtocolType l3Type;
+
+    TcpReassemblyData(bool isIPv4)
+    {
+        clear();
+        (isIPv4) ? l3Type = pcpp::IPv4 : l3Type = pcpp::IPv6;
+    }
+
+    ~TcpReassemblyData()
+    {
+    }
+
+    void clear()
+    {
+        curSide = -1;
+        l3Type = pcpp::UnknownProtocol;
+    }
+};
+
 class DnsStreamHandler final : public pktvisor::StreamMetricsHandler<DnsMetricsManager>
 {
 
     PcapInputStream *_stream;
 
+    typedef uint32_t flowKey;
+    std::map<flowKey, TcpReassemblyData> _tcp_connections;
+
     sigslot::connection _pkt_udp_connection;
     sigslot::connection _start_tstamp_connection;
 
     void process_udp_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp);
+    void tcp_message_ready_cb(int8_t side, const pcpp::TcpStreamData &tcpData);
+    void tcp_connection_start_cb(const pcpp::ConnectionData &connectionData);
+    void tcp_connection_end_cb(const pcpp::ConnectionData &connectionData, pcpp::TcpReassembly::ConnectionEndReason reason);
     void set_initial_tstamp(timespec stamp);
 
 public:
