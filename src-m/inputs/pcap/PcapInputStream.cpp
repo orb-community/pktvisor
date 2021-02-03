@@ -46,6 +46,12 @@ static void _packet_arrives_cb(pcpp::RawPacket *rawPacket, pcpp::PcapLiveDevice 
     stream->process_raw_packet(rawPacket);
 }
 
+static void _pcap_stats_update(pcpp::IPcapDevice::PcapStats &stats, void *cookie)
+{
+    auto stream = static_cast<PcapInputStream *>(cookie);
+    // TODO expose this
+}
+
 PcapInputStream::PcapInputStream(const std::string &name)
     : pktvisor::InputStream(name)
     , _pcapDevice(nullptr)
@@ -88,12 +94,12 @@ void PcapInputStream::start()
                 _pcapDevice = pcpp::PcapLiveDeviceList::getInstance().getPcapLiveDeviceByIp(interfaceIP6);
             }
             if (_pcapDevice == nullptr) {
-                throw std::runtime_error("Couldn't find interface by provided IP: " + TARGET);
+                throw PcapException("Couldn't find interface by provided IP: " + TARGET);
             }
         } else {
             _pcapDevice = pcpp::PcapLiveDeviceList::getInstance().getPcapLiveDeviceByName(TARGET);
             if (_pcapDevice == nullptr) {
-                throw std::runtime_error("Couldn't find interface by provided name: " + TARGET);
+                throw PcapException("Couldn't find interface by provided name: " + TARGET);
             }
         }
         _get_hosts_from_iface();
@@ -200,12 +206,12 @@ void PcapInputStream::_open_pcap(const std::string &fileName, const std::string 
 
     // try to open the file device
     if (!reader->open())
-        throw std::runtime_error("Cannot open pcap/pcapng file");
+        throw PcapException("Cannot open pcap/pcapng file");
 
     // set BPF filter if set by the user
     if (bpfFilter != "") {
         if (!reader->setFilter(bpfFilter))
-            throw std::runtime_error("Cannot set BPF filter to pcap file");
+            throw PcapException("Cannot set BPF filter to pcap file");
     }
 
     pcpp::RawPacket rawPacket;
@@ -256,20 +262,18 @@ void PcapInputStream::_open_iface(const std::string &bpfFilter)
     config.packetBufferTimeoutMs = 100;
 
     // try to open device
-    if (!_pcapDevice->open(config))
-        throw std::runtime_error("Cannot open interface for packing capture");
-
-    // set BPF filter if set by the user
-    if (bpfFilter != "") {
-        if (!_pcapDevice->setFilter(bpfFilter))
-            throw std::runtime_error("Cannot set BPF filter to interface");
-        //        std::cerr << "BPF: " << bpfFilter << std::endl;
+    if (!_pcapDevice->open(config)) {
+        throw PcapException("Cannot open interface for packing capture");
     }
 
-    // start capturing packets
-    // TODO Pcap statistics on dropped packets OnStatsUpdateCallback
-    if (!_pcapDevice->startCapture(_packet_arrives_cb, this)) {
-        throw std::runtime_error("Cannot a start packet capture");
+    // set BPF filter if set by the user
+    if (bpfFilter != "" && !_pcapDevice->setFilter(bpfFilter)) {
+        throw PcapException("Cannot set BPF filter to interface");
+    }
+
+    // start capturing packets with stats info
+    if (!_pcapDevice->startCapture(_packet_arrives_cb, this, 1, _pcap_stats_update, this)) {
+        throw PcapException("Cannot a start packet capture");
     }
 }
 
@@ -283,15 +287,11 @@ void PcapInputStream::_get_hosts_from_iface()
         if (i.addr->sa_family == AF_INET) {
             auto adrcvt = pcpp::internal::sockaddr2in_addr(i.addr);
             if (!adrcvt) {
-                // TODO
-                //                std::cerr << "couldn't parse IPv4 address on device" << std::endl;
-                continue;
+                throw PcapException("couldn't parse IPv4 address on device");
             }
             auto nmcvt = pcpp::internal::sockaddr2in_addr(i.netmask);
             if (!nmcvt) {
-                // TODO
-                //                std::cerr << "couldn't parse IPv4 netmask address on device" << std::endl;
-                continue;
+                throw PcapException("couldn't parse IPv4 netmask address on device");
             }
             _hostIPv4.emplace_back(IPv4subnet(pcpp::IPv4Address(pcpp::internal::in_addr2int(*adrcvt)), pcpp::IPv4Address(pcpp::internal::in_addr2int(*nmcvt))));
         } else if (i.addr->sa_family == AF_INET6) {
@@ -299,9 +299,7 @@ void PcapInputStream::_get_hosts_from_iface()
             pcpp::internal::sockaddr2string(i.addr, buf1);
             auto nmcvt = pcpp::internal::sockaddr2in6_addr(i.netmask);
             if (!nmcvt) {
-                // TODO
-                //                std::cerr << "couldn't parse IPv4 netmask address on device" << std::endl;
-                continue;
+                throw PcapException("couldn't parse IPv4 netmask address on device");
             }
             uint8_t len = 0;
             for (int i = 0; i < 16; i++) {

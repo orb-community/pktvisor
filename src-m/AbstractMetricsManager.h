@@ -57,7 +57,7 @@ public:
             _rate.store(_counter.exchange(0));
             // lock mutex for write
             std::unique_lock lock(_sketch_mutex);
-            // TODO use a high res timer to track Timer calls, to ensure per sec calculation
+            // TODO OPTIMIZE use a high res timer to track Timer calls, to ensure per sec calculation
             // don't rely on thread sleep timing
             _quantile.update(_rate);
         },
@@ -222,7 +222,6 @@ protected:
     }
 
 public:
-    // TODO
     static const uint PERIOD_SEC = 60;
     static const uint MERGE_CACHE_TTL_MS = 1000;
 

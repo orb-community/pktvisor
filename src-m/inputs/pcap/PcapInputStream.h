@@ -10,6 +10,7 @@
 #include <UdpLayer.h>
 #pragma GCC diagnostic pop
 #include "utils.h"
+#include <exception>
 #include <functional>
 #include <memory>
 #include <sigslot/signal.hpp>
@@ -22,6 +23,19 @@ enum class PacketDirection {
     toHost,
     fromHost,
     unknown
+};
+
+class PcapException : public std::runtime_error
+{
+public:
+    PcapException(const char *msg)
+        : std::runtime_error(msg)
+    {
+    }
+    PcapException(const std::string &msg)
+        : std::runtime_error(msg)
+    {
+    }
 };
 
 class PcapInputStream : public pktvisor::InputStream
