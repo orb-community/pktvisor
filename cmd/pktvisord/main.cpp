@@ -26,32 +26,37 @@
 static const char USAGE[] =
     R"(pktvisord.
     Usage:
-      pktvisord [-l HOST] [-p PORT] [--full-api] [--periods P] [--geo-city FILE] [--geo-asn FILE] [--max-deep-sample N]
-      pktvisord [-b BPF] [-l HOST] [-p PORT] [--full-api] [-H HOSTSPEC] [--periods P] [--geo-city FILE] [--geo-asn FILE]
-                [--max-deep-sample N] [TARGET]
+      pktvisord [-l HOST] [-p PORT] [--full-api] [--geo-city FILE] [--geo-asn FILE]
+                [--periods P] [--max-deep-sample N]
+      pktvisord [-l HOST] [-p PORT] [--full-api] [--geo-city FILE] [--geo-asn FILE]
+                [--periods P] [--max-deep-sample N]
+                [-b BPF] [-H HOSTSPEC] [PCAP_TARGET]
       pktvisord (-h | --help)
       pktvisord --version
 
     pktvisord summarizes your data streams and exposes a REST API control plane.
 
-    Options:
+    Base Options:
       -l HOST               Run webserver on the given host or IP [default: localhost]
       -p PORT               Run webserver on the given port [default: 10853]
       --full-api            Enable full REST API giving complete control plane functionality [default: false]
                             When false, the exposed API is read-only access to summarized metrics.
                             When true, write access is enabled for all modules.
 
-      --max-deep-sample N   Never deep sample more than N% of streams (an int between 0 and 100) [default: 100]
-      --periods P           Hold this many 60 second time periods of history in memory [default: 5]
       -h --help             Show this screen
       --version             Show version
 
       --geo-city FILE       GeoLite2 City database to use for IP to Geo mapping (if enabled)
       --geo-asn FILE        GeoLite2 ASN database to use for IP to ASN mapping (if enabled)
 
+    Handler Module Defaults
+
+      --max-deep-sample N   Never deep sample more than N% of streams (an int between 0 and 100) [default: 100]
+      --periods P           Hold this many 60 second time periods of history in memory [default: 5]
+
     pcap Input Module
 
-      TARGET, if specified, is either a network interface or an IP address (4 or 6)
+      PCAP_TARGET, if specified, is either a network interface or an IP address (4 or 6)
 
       -b BPF                Filter packets using the given BPF string
       -H HOSTSPEC           Specify subnets (comma separated) to consider HOST, in CIDR form. In live capture this /may/ be detected automatically
@@ -82,7 +87,7 @@ int main(int argc, char *argv[])
         true,              // show help if requested
         PKTVISOR_VERSION); // version string
 
-    pktvisor::HttpServer svr;
+    pktvisor::HttpServer svr(!args["--full-api"].asBool());
     svr.set_logger([](const auto &req, const auto &res) {
         Corrade::Utility::Debug{} << "REQUEST: " << req.method << " " << req.path << " " << res.status;
     });
@@ -129,7 +134,6 @@ int main(int argc, char *argv[])
         }
     };
 
-    // TODO remove verb from url
     Corrade::Utility::print("Initialize server control plane\n");
     svr.Get("/api/v1/server/stop", [&](const httplib::Request &req, httplib::Response &res) {
         shutdown_handler(SIGUSR1);
