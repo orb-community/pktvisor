@@ -13,7 +13,7 @@
 
 namespace pktvisor::handler::net {
 
-NetStreamHandler::NetStreamHandler(const std::string &name, PcapInputStream *stream, uint periods, int deepSampleRate)
+NetStreamHandler::NetStreamHandler(const std::string &name, PcapInputStream *stream, uint periods, uint deepSampleRate)
     : pktvisor::StreamMetricsHandler<NetworkMetricsManager>(name, periods, deepSampleRate)
     , _stream(stream)
 {
@@ -54,12 +54,12 @@ void NetStreamHandler::process_packet_cb(pcpp::Packet &payload, PacketDirection 
     _metrics->process_packet(payload, dir, l3, l4, stamp);
 }
 
-void NetStreamHandler::toJSON(json &j, uint64_t period, bool merged)
+void NetStreamHandler::to_json(json &j, uint64_t period, bool merged)
 {
     if (merged) {
-        _metrics->toJSONMerged(j["net"], period);
+        _metrics->to_json_merged(j["net"], period);
     } else {
-        _metrics->toJSONSingle(j["net"], period);
+        _metrics->to_json_single(j["net"], period);
     }
 }
 void NetStreamHandler::set_initial_tstamp(timespec stamp)
@@ -108,7 +108,7 @@ void NetworkMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
     _topASN.merge(other._topASN);
 }
 
-void NetworkMetricsBucket::toJSON(json &j) const
+void NetworkMetricsBucket::to_json(json &j) const
 {
 
     const double fractions[4]{0.50, 0.90, 0.95, 0.99};

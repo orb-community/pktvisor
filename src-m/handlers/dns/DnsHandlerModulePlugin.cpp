@@ -94,7 +94,7 @@ void DnsHandlerModulePlugin::_setup_routes(HttpServer &svr)
                 res.set_content(result.dump(), "text/json");
                 return;
             }
-            dns_handler->toJSON(result, 0, false);
+            dns_handler->to_json(result, 0, false);
             res.set_content(result.dump(), "text/json");
         } catch (const std::exception &e) {
             res.status = 500;

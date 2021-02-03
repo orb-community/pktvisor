@@ -88,7 +88,7 @@ public:
 
     // pktvisor::AbstractMetricsBucket
     void specialized_merge(const AbstractMetricsBucket &other) override;
-    void toJSON(json &j) const override;
+    void to_json(json &j) const override;
 
     void process_dns_layer(bool deep, DnsLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowkey, uint16_t port, timespec stamp);
 
@@ -194,7 +194,7 @@ public:
     json info_json() const override;
 
     // pktvisor::StreamMetricsHandler
-    void toJSON(json &j, uint64_t period, bool merged) override;
+    void to_json(json &j, uint64_t period, bool merged) override;
 };
 
 }

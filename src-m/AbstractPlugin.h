@@ -12,25 +12,23 @@ namespace pktvisor {
 
 using json = nlohmann::json;
 
-class SchemaException : public std::exception
+class SchemaException : public std::runtime_error
 {
-private:
-    std::string _message;
-
 public:
-    explicit SchemaException(const std::string &message)
-        : std::exception()
-        , _message(message){};
-    const char *what() const noexcept override
+    explicit SchemaException(const std::string &msg)
+        : std::runtime_error(msg)
     {
-        return _message.c_str();
     }
 };
 
 class AbstractPlugin : public Corrade::PluginManager::AbstractPlugin
 {
+public:
+    typedef const std::unordered_map<std::string, std::string> SchemaMap;
+
 protected:
-    void _check_schema(json obj, const std::unordered_map<std::string, std::string> &required);
+    void _check_schema(json obj, SchemaMap &required);
+    void _check_schema(json obj, SchemaMap &required, SchemaMap &optional);
     virtual void _setup_routes(HttpServer &svr) = 0;
 
 public:

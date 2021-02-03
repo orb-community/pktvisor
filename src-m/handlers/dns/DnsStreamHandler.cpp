@@ -188,12 +188,12 @@ void DnsStreamHandler::tcp_connection_end_cb(const pcpp::ConnectionData &connect
     _tcp_connections.erase(iter);
 }
 
-void DnsStreamHandler::toJSON(json &j, uint64_t period, bool merged)
+void DnsStreamHandler::to_json(json &j, uint64_t period, bool merged)
 {
     if (merged) {
-        _metrics->toJSONMerged(j["dns"], period);
+        _metrics->to_json_merged(j["dns"], period);
     } else {
-        _metrics->toJSONSingle(j["dns"], period);
+        _metrics->to_json_single(j["dns"], period);
     }
 }
 void DnsStreamHandler::set_initial_tstamp(timespec stamp)
@@ -247,7 +247,7 @@ void DnsMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
     _dns_slowXactOut.merge(other._dns_slowXactOut);
 }
 
-void DnsMetricsBucket::toJSON(json &j) const
+void DnsMetricsBucket::to_json(json &j) const
 {
 
     const double fractions[4]{0.50, 0.90, 0.95, 0.99};

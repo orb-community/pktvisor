@@ -33,7 +33,7 @@ protected:
     datasketches::frequent_items_sketch<std::string> _topGeoLoc;
     datasketches::frequent_items_sketch<std::string> _topASN;
     datasketches::frequent_items_sketch<uint32_t> _topIPv4;
-    datasketches::frequent_items_sketch<std::string> _topIPv6; // TODO not very efficient, should switch to 16 byte uint
+    datasketches::frequent_items_sketch<std::string> _topIPv6; // TODO OPTIMIZE not very efficient, should switch to 16 byte uint
 
     // total numPackets is tracked in base class num_events
     uint64_t _numPackets_UDP = 0;
@@ -63,7 +63,7 @@ public:
 
     // pktvisor::AbstractMetricsBucket
     void specialized_merge(const AbstractMetricsBucket &other) override;
-    void toJSON(json &j) const override;
+    void to_json(json &j) const override;
 
     void process_packet(bool deep, pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp);
 };
@@ -102,7 +102,7 @@ class NetStreamHandler final : public pktvisor::StreamMetricsHandler<NetworkMetr
     void set_initial_tstamp(timespec stamp);
 
 public:
-    NetStreamHandler(const std::string &name, PcapInputStream *stream, uint periods, int deepSampleRate);
+    NetStreamHandler(const std::string &name, PcapInputStream *stream, uint periods, uint deepSampleRate);
     ~NetStreamHandler() override;
 
     // pktvisor::AbstractModule
@@ -111,7 +111,7 @@ public:
     json info_json() const override;
 
     // pktvisor::StreamMetricsHandler
-    void toJSON(json &j, uint64_t period, bool merged) override;
+    void to_json(json &j, uint64_t period, bool merged) override;
 };
 
 }

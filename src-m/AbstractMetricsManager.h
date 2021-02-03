@@ -142,7 +142,7 @@ public:
         return _bucketTS;
     }
 
-    virtual void toJSON(json &j) const = 0;
+    virtual void to_json(json &j) const = 0;
 
     auto event_data() const
     {
@@ -251,7 +251,7 @@ public:
         _lastShiftTS = stamp;
     }
 
-    void toJSONSingle(json &j, uint64_t period = 0)
+    void to_json_single(json &j, uint64_t period = 0)
     {
 
         if (period >= _numPeriods) {
@@ -279,10 +279,10 @@ public:
         j[period_str]["period"]["start_ts"] = _metricBuckets[period]->getTS().tv_sec;
         j[period_str]["period"]["length"] = period_length;
 
-        _metricBuckets[period]->toJSON(j[period_str]);
+        _metricBuckets[period]->to_json(j[period_str]);
     }
 
-    void toJSONMerged(json &j, uint64_t period)
+    void to_json_merged(json &j, uint64_t period)
     {
 
         if (period <= 1 || period > _numPeriods) {
@@ -328,7 +328,7 @@ public:
         j[period_str]["period"]["start_ts"] = oldest_ts.tv_sec;
         j[period_str]["period"]["length"] = period_length;
 
-        merged.toJSON(j[period_str]);
+        merged.to_json(j[period_str]);
 
         _mergeResultCache[period] = std::pair<std::chrono::high_resolution_clock::time_point, json>(std::chrono::high_resolution_clock::now(), j);
     }

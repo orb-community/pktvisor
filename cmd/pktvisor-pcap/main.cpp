@@ -183,12 +183,12 @@ int main(int argc, char *argv[])
         json result;
         if (periods == 1) {
             // in summary mode we output a single summary of stats
-            net_handler->toJSON(result, 0, false);
-            dns_handler->toJSON(result, 0, false);
+            net_handler->to_json(result, 0, false);
+            dns_handler->to_json(result, 0, false);
         } else {
             // otherwise, merge the max time window available
-            net_handler->toJSON(result, periods, true);
-            dns_handler->toJSON(result, periods, true);
+            net_handler->to_json(result, periods, true);
+            dns_handler->to_json(result, periods, true);
         }
         Corrade::Utility::print("{}\n", result.dump());
         shutdown_handler(SIGUSR1);
