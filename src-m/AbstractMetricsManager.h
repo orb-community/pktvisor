@@ -182,35 +182,35 @@ class AbstractMetricsManager
     static_assert(std::is_base_of<AbstractMetricsBucket, MetricsBucketClass>::value, "MetricsBucketClass must inherit from AbstractMetricsBucket");
 
 protected:
-    std::deque<std::unique_ptr<MetricsBucketClass>> _metricBuckets;
-    uint _numPeriods;
-    timespec _lastShiftTS;
-    std::chrono::system_clock::time_point _startTime;
+    std::deque<std::unique_ptr<MetricsBucketClass>> _metric_buckets;
+    uint _num_periods;
+    timespec _last_shift_ts;
+    std::chrono::system_clock::time_point _start_time;
 
     randutils::default_rng _rng;
-    int _deepSampleRate;
-    bool _shouldDeepSample;
+    uint _deep_sample_rate;
+    bool _deep_sampling_now;
 
     std::unordered_map<uint, std::pair<std::chrono::high_resolution_clock::time_point, json>> _mergeResultCache;
 
     void new_event(timespec stamp)
     {
         // at each new event, we determine if we are sampling, to limit collection of more detailed (expensive) statistics
-        _shouldDeepSample = true;
-        if (_deepSampleRate != 100) {
-            _shouldDeepSample = (_rng.uniform(0, 100) <= _deepSampleRate);
+        _deep_sampling_now = true;
+        if (_deep_sample_rate != 100) {
+            _deep_sampling_now = (_rng.uniform(0U, 100U) <= _deep_sample_rate);
         }
-        if (_numPeriods > 1 && stamp.tv_sec - _lastShiftTS.tv_sec > AbstractMetricsManager::PERIOD_SEC) {
-            _metricBuckets.emplace_back(std::make_unique<MetricsBucketClass>());
-            if (_metricBuckets.size() > _numPeriods) {
+        if (_num_periods > 1 && stamp.tv_sec - _last_shift_ts.tv_sec > AbstractMetricsManager::PERIOD_SEC) {
+            _metric_buckets.emplace_back(std::make_unique<MetricsBucketClass>());
+            if (_metric_buckets.size() > _num_periods) {
                 // if we're at our period history length, pop the oldest
-                on_period_evict(_metricBuckets.front().get(), stamp);
-                _metricBuckets.pop_front();
+                on_period_evict(_metric_buckets.front().get(), stamp);
+                _metric_buckets.pop_front();
             }
-            _lastShiftTS.tv_sec = stamp.tv_sec;
+            _last_shift_ts.tv_sec = stamp.tv_sec;
             on_period_shift(stamp);
         }
-        _metricBuckets.back()->new_event(_shouldDeepSample);
+        _metric_buckets.back()->new_event(_deep_sampling_now);
     }
 
     virtual void on_period_shift(timespec stamp)
@@ -226,42 +226,62 @@ public:
     static const uint MERGE_CACHE_TTL_MS = 1000;
 
     AbstractMetricsManager(uint periods, int deepSampleRate)
-        : _metricBuckets()
-        , _numPeriods(periods)
-        , _lastShiftTS()
-        , _startTime()
-        , _deepSampleRate(deepSampleRate)
-        , _shouldDeepSample(true)
+        : _metric_buckets()
+        , _num_periods(periods)
+        , _last_shift_ts()
+        , _start_time()
+        , _deep_sample_rate(deepSampleRate)
+        , _deep_sampling_now(true)
     {
-        if (_deepSampleRate > 100) {
-            _deepSampleRate = 100;
+        if (_deep_sample_rate > 100) {
+            _deep_sample_rate = 100;
         }
-        if (_deepSampleRate < 0) {
-            _deepSampleRate = 1;
+        if (_deep_sample_rate < 0) {
+            _deep_sample_rate = 1;
         }
-        _numPeriods = std::min(_numPeriods, 10U);
-        _numPeriods = std::max(_numPeriods, 1U);
-        _metricBuckets.emplace_back(std::make_unique<MetricsBucketClass>());
-        timespec_get(&_lastShiftTS, TIME_UTC);
-        _startTime = std::chrono::system_clock::now();
+        _num_periods = std::min(_num_periods, 10U);
+        _num_periods = std::max(_num_periods, 1U);
+        _metric_buckets.emplace_back(std::make_unique<MetricsBucketClass>());
+        timespec_get(&_last_shift_ts, TIME_UTC);
+        _start_time = std::chrono::system_clock::now();
+    }
+
+    uint num_periods() const
+    {
+        return _num_periods;
+    }
+
+    auto current_periods() const
+    {
+        return _metric_buckets.size();
+    }
+
+    uint deep_sample_rate() const
+    {
+        return _deep_sample_rate;
+    }
+
+    auto start_time() const
+    {
+        return _start_time;
     }
 
     void set_initial_tstamp(timespec stamp)
     {
-        _lastShiftTS = stamp;
+        _last_shift_ts = stamp;
     }
 
     void to_json_single(json &j, uint64_t period = 0)
     {
 
-        if (period >= _numPeriods) {
+        if (period >= _num_periods) {
             std::stringstream err;
-            err << "invalid metrics period, specify [0, " << _numPeriods - 1 << "]";
+            err << "invalid metrics period, specify [0, " << _num_periods - 1 << "]";
             throw PeriodException(err.str());
         }
-        if (period >= _metricBuckets.size()) {
+        if (period >= _metric_buckets.size()) {
             std::stringstream err;
-            err << "requested metrics period has not yet accumulated, current range is [0, " << _metricBuckets.size() - 1 << "]";
+            err << "requested metrics period has not yet accumulated, current range is [0, " << _metric_buckets.size() - 1 << "]";
             throw PeriodException(err.str());
         }
 
@@ -271,23 +291,23 @@ public:
         if (period == 0) {
             timeval now_ts;
             gettimeofday(&now_ts, nullptr);
-            period_length = now_ts.tv_sec - _metricBuckets[period]->getTS().tv_sec;
+            period_length = now_ts.tv_sec - _metric_buckets[period]->getTS().tv_sec;
         } else {
             period_length = AbstractMetricsManager::PERIOD_SEC;
         }
 
-        j[period_str]["period"]["start_ts"] = _metricBuckets[period]->getTS().tv_sec;
+        j[period_str]["period"]["start_ts"] = _metric_buckets[period]->getTS().tv_sec;
         j[period_str]["period"]["length"] = period_length;
 
-        _metricBuckets[period]->to_json(j[period_str]);
+        _metric_buckets[period]->to_json(j[period_str]);
     }
 
     void to_json_merged(json &j, uint64_t period)
     {
 
-        if (period <= 1 || period > _numPeriods) {
+        if (period <= 1 || period > _num_periods) {
             std::stringstream err;
-            err << "invalid metrics period, specify [2, " << _numPeriods << "]";
+            err << "invalid metrics period, specify [2, " << _num_periods << "]";
             throw PeriodException(err.str());
         }
 
@@ -307,11 +327,11 @@ public:
         MetricsBucketClass merged;
 
         auto p = period;
-        for (auto &m : _metricBuckets) {
+        for (auto &m : _metric_buckets) {
             if (p-- == 0) {
                 break;
             }
-            if (m == _metricBuckets.back()) {
+            if (m == _metric_buckets.back()) {
                 timeval now_ts;
                 gettimeofday(&now_ts, nullptr);
                 period_length += now_ts.tv_sec - m->getTS().tv_sec;
@@ -324,7 +344,7 @@ public:
         std::string period_str = std::to_string(period) + "m";
 
         auto oldest_ts
-            = _metricBuckets.front()->getTS();
+            = _metric_buckets.front()->getTS();
         j[period_str]["period"]["start_ts"] = oldest_ts.tv_sec;
         j[period_str]["period"]["length"] = period_length;
 

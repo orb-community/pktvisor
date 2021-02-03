@@ -505,13 +505,13 @@ void DnsMetricsManager::process_dns_layer(DnsLayer &payload, PacketDirection dir
     if (payload.getDnsHeader()->queryOrResponse == QR::response) {
         auto xact = _qr_pair_manager.maybeEndDnsTransaction(flowkey, payload.getDnsHeader()->transactionID, stamp);
         if (xact.first) {
-            _metricBuckets.back()->newDNSXact(_shouldDeepSample, _to90th, _from90th, payload, dir, xact.second);
+            _metric_buckets.back()->newDNSXact(_deep_sampling_now, _to90th, _from90th, payload, dir, xact.second);
         }
     } else {
         _qr_pair_manager.startDnsTransaction(flowkey, payload.getDnsHeader()->transactionID, stamp);
     }
     // process in the "live" bucket
-    _metricBuckets.back()->process_dns_layer(_shouldDeepSample, payload, dir, l3, l4, flowkey, port, stamp);
+    _metric_buckets.back()->process_dns_layer(_deep_sampling_now, payload, dir, l3, l4, flowkey, port, stamp);
 }
 
 }
