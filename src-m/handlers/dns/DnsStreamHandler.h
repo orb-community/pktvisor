@@ -133,7 +133,7 @@ public:
 class TcpSessionData final
 {
 public:
-    using got_msg_cb = std::function<void(std::unique_ptr<char[]> data, size_t size)>;
+    using got_msg_cb = std::function<void(std::unique_ptr<uint8_t[]> data, size_t size)>;
 
 private:
     std::string _buffer;
@@ -146,13 +146,13 @@ public:
     {
     }
 
-    void receive_dns_wire_data(const char *data, size_t len);
+    // called from pcpp::TcpReassembly callback, matches types
+    void receive_dns_wire_data(const uint8_t *data, size_t len);
 };
 
 struct TcpFlowData {
 
-    std::shared_ptr<TcpSessionData> _sessionData[2];
-
+    std::unique_ptr<TcpSessionData> sessionData[2];
     pcpp::ProtocolType l3Type;
     uint16_t port;
 
@@ -173,6 +173,10 @@ class DnsStreamHandler final : public pktvisor::StreamMetricsHandler<DnsMetricsM
 
     sigslot::connection _pkt_udp_connection;
     sigslot::connection _start_tstamp_connection;
+
+    sigslot::connection _tcp_start_connection;
+    sigslot::connection _tcp_end_connection;
+    sigslot::connection _tcp_message_connection;
 
     void process_udp_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp);
     void tcp_message_ready_cb(int8_t side, const pcpp::TcpStreamData &tcpData);

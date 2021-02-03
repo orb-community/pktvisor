@@ -29,6 +29,9 @@ void DnsStreamHandler::start()
 
     _pkt_udp_connection = _stream->udp_signal.connect(&DnsStreamHandler::process_udp_packet_cb, this);
     _start_tstamp_connection = _stream->start_tstamp_signal.connect(&DnsStreamHandler::set_initial_tstamp, this);
+    _tcp_start_connection = _stream->tcp_connection_start_signal.connect(&DnsStreamHandler::tcp_connection_start_cb, this);
+    _tcp_end_connection = _stream->tcp_connection_end_signal.connect(&DnsStreamHandler::tcp_connection_end_cb, this);
+    _tcp_message_connection = _stream->tcp_message_ready_signal.connect(&DnsStreamHandler::tcp_message_ready_cb, this);
 
     _running = true;
 }
@@ -41,6 +44,9 @@ void DnsStreamHandler::stop()
 
     _pkt_udp_connection.disconnect();
     _start_tstamp_connection.disconnect();
+    _tcp_start_connection.disconnect();
+    _tcp_end_connection.disconnect();
+    _tcp_message_connection.disconnect();
 
     _running = false;
 }
@@ -69,18 +75,19 @@ void DnsStreamHandler::process_udp_packet_cb(pcpp::Packet &payload, PacketDirect
     }
 }
 
-void TcpSessionData::receive_dns_wire_data(const char *data, size_t len)
+void TcpSessionData::receive_dns_wire_data(const uint8_t *data, size_t len)
 {
     const size_t MIN_DNS_QUERY_SIZE = 17;
     const size_t MAX_DNS_QUERY_SIZE = 512;
 
-    _buffer.append(data, len);
+    _buffer.append(reinterpret_cast<const char *>(data), len);
 
     for (;;) {
         std::uint16_t size;
 
-        if (_buffer.size() < sizeof(size))
+        if (_buffer.size() < sizeof(size)) {
             break;
+        }
 
         // dns packet size is in network byte order.
         size = static_cast<unsigned char>(_buffer[1]) | static_cast<unsigned char>(_buffer[0]) << 8;
@@ -91,7 +98,7 @@ void TcpSessionData::receive_dns_wire_data(const char *data, size_t len)
         }
 
         if (_buffer.size() >= sizeof(size) + size) {
-            auto data = std::make_unique<char[]>(size);
+            auto data = std::make_unique<uint8_t[]>(size);
             std::memcpy(data.get(), _buffer.data() + sizeof(size), size);
             _buffer.erase(0, sizeof(size) + size);
             _got_dns_msg(std::move(data), size);
@@ -110,14 +117,14 @@ void DnsStreamHandler::tcp_message_ready_cb(int8_t side, const pcpp::TcpStreamDa
     auto iter = _tcp_connections.find(flowKey);
 
     // if not tracking connection, and it's DNS, then start tracking.
-    {
+    if (iter == _tcp_connections.end()) {
         uint16_t port{0};
         if (DnsLayer::isDnsPort(tcpData.getConnectionData().dstPort)) {
             port = tcpData.getConnectionData().dstPort;
         } else if (DnsLayer::isDnsPort(tcpData.getConnectionData().srcPort)) {
             port = tcpData.getConnectionData().srcPort;
         }
-        if (iter == _tcp_connections.end() && port) {
+        if (port) {
             _tcp_connections.emplace(flowKey, TcpFlowData(tcpData.getConnectionData().srcIP.getType() == pcpp::IPAddress::IPv4AddressType, port));
             iter = _tcp_connections.find(tcpData.getConnectionData().flowKey);
         } else {
@@ -133,14 +140,19 @@ void DnsStreamHandler::tcp_message_ready_cb(int8_t side, const pcpp::TcpStreamDa
     TIMEVAL_TO_TIMESPEC(&tcpData.getConnectionData().endTime, &stamp)
     auto dir = (side == 0) ? PacketDirection::fromHost : PacketDirection::toHost;
 
-    auto got_dns_message = [this, port, dir, l3Type, flowKey, stamp](std::unique_ptr<const char[]> data, size_t size) {
-        DnsLayer dnsLayer(const_cast<u_int8_t *>(reinterpret_cast<const uint8_t *>(data.get())), size, nullptr, nullptr);
+    auto got_dns_message = [this, port, dir, l3Type, flowKey, stamp](std::unique_ptr<uint8_t[]> data, size_t size) {
+        // this dummy packet prevents DnsLayer from owning and trying to free the data. it is otherwise unused by the DNS la
+        pcpp::Packet dummy_packet;
+        DnsLayer dnsLayer(data.get(), size, nullptr, &dummy_packet);
         _metrics->process_dns_layer(dnsLayer, dir, l3Type, pcpp::TCP, flowKey, port, stamp);
+        // data is freed upon return
     };
-    if (!iter->second._sessionData[side].get()) {
-        iter->second._sessionData[side] = std::make_shared<TcpSessionData>(got_dns_message);
+
+    if (!iter->second.sessionData[side]) {
+        iter->second.sessionData[side] = std::make_unique<TcpSessionData>(got_dns_message);
     }
-    iter->second._sessionData[side]->receive_dns_wire_data(reinterpret_cast<const char *>(tcpData.getData()), tcpData.getDataLength());
+
+    iter->second.sessionData[side]->receive_dns_wire_data(tcpData.getData(), tcpData.getDataLength());
 }
 
 void DnsStreamHandler::tcp_connection_start_cb(const pcpp::ConnectionData &connectionData)
