@@ -9,15 +9,30 @@
 #pragma GCC diagnostic pop
 #include <atomic>
 #include <deque>
+#include <exception>
 #include <json/json.hpp>
 #include <rng/randutils.hpp>
 #include <shared_mutex>
+#include <sstream>
 #include <sys/time.h>
 #include <unordered_map>
 
 namespace pktvisor {
 
 using json = nlohmann::json;
+
+class PeriodException : public std::runtime_error
+{
+public:
+    PeriodException(const char *msg)
+        : std::runtime_error(msg)
+    {
+    }
+    PeriodException(const std::string &msg)
+        : std::runtime_error(msg)
+    {
+    }
+};
 
 class Rate
 {
@@ -237,25 +252,18 @@ public:
         _lastShiftTS = stamp;
     }
 
-
     void toJSONSingle(json &j, uint64_t period = 0)
     {
 
         if (period >= _numPeriods) {
-            /* TODO
-                std::stringstream err;
-                err << "invalid metrics period, specify [0, " << _numPeriods - 1 << "]";
-                j["error"] = err.str();
-                 */
-            return;
+            std::stringstream err;
+            err << "invalid metrics period, specify [0, " << _numPeriods - 1 << "]";
+            throw PeriodException(err.str());
         }
         if (period >= _metricBuckets.size()) {
-            /*
-                std::stringstream err;
-                err << "this metrics period has not yet accumulated, current range is [0, " << _metricBuckets.size() - 1 << "]";
-                j["error"] = err.str();
-                 */
-            return;
+            std::stringstream err;
+            err << "requested metrics period has not yet accumulated, current range is [0, " << _metricBuckets.size() - 1 << "]";
+            throw PeriodException(err.str());
         }
 
         std::string period_str = "1m";
@@ -279,11 +287,9 @@ public:
     {
 
         if (period <= 1 || period > _numPeriods) {
-            /*            std::stringstream err;
+            std::stringstream err;
             err << "invalid metrics period, specify [2, " << _numPeriods << "]";
-            j["error"] = err.str();
-            return j.dump();*/
-            return;
+            throw PeriodException(err.str());
         }
 
         auto cached = _mergeResultCache.find(period);
