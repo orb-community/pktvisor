@@ -136,12 +136,13 @@ void DnsStreamHandler::tcp_message_ready_cb(int8_t side, const pcpp::TcpStreamDa
     pcpp::ProtocolType l3Type{iter->second.l3Type};
     auto port{iter->second.port};
     timespec stamp{0, 0};
-    // TODO IS THIS TIME WRONG, does it affect our window
+    // for tcp, endTime is updated by pcpp to represent the time stamp from the latest packet in the stream
     TIMEVAL_TO_TIMESPEC(&tcpData.getConnectionData().endTime, &stamp)
     auto dir = (side == 0) ? PacketDirection::fromHost : PacketDirection::toHost;
 
     auto got_dns_message = [this, port, dir, l3Type, flowKey, stamp](std::unique_ptr<uint8_t[]> data, size_t size) {
-        // this dummy packet prevents DnsLayer from owning and trying to free the data. it is otherwise unused by the DNS la
+        // this dummy packet prevents DnsLayer from owning and trying to free the data. it is otherwise unused by the DNS layer,
+        // instead using the packet meta data we pass in
         pcpp::Packet dummy_packet;
         DnsLayer dnsLayer(data.get(), size, nullptr, &dummy_packet);
         _metrics->process_dns_layer(dnsLayer, dir, l3Type, pcpp::TCP, flowKey, port, stamp);
