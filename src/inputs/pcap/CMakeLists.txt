@@ -64,5 +64,21 @@ target_include_directories(unit-tests-input-pcap
         )
 
 target_link_libraries(unit-tests-input-pcap
-        PRIVATE pktvisorcore
+        PRIVATE pktvisorcore PcapInput
         )
+
+if (APPLE)
+    target_link_libraries(unit-tests-input-pcap
+            PRIVATE
+            "-L${LIBPCPP_LIBRARY_DIRS}"
+            ${LIBPCPP_LIBRARIES}
+            "-framework CoreFoundation"
+            "-framework SystemConfiguration"
+            )
+else ()
+    target_link_libraries(unit-tests-input-pcap
+            PRIVATE
+            ${LIBPCPP_LDFLAGS}
+            ${LIBPCPP_LIBRARIES}
+            )
+endif ()
