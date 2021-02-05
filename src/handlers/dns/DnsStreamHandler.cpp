@@ -215,17 +215,17 @@ void DnsMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
     std::shared_lock r_lock(other._mutex);
     std::unique_lock w_lock(_mutex);
 
-    _DNS_xacts_total += other._DNS_xacts_total;
-    _DNS_xacts_in += other._DNS_xacts_in;
-    _DNS_xacts_out += other._DNS_xacts_out;
-    _DNS_queries += other._DNS_queries;
-    _DNS_replies += other._DNS_replies;
-    _DNS_TCP += other._DNS_TCP;
-    _DNS_IPv6 += other._DNS_IPv6;
-    _DNS_NX += other._DNS_NX;
-    _DNS_REFUSED += other._DNS_REFUSED;
-    _DNS_SRVFAIL += other._DNS_SRVFAIL;
-    _DNS_NOERROR += other._DNS_NOERROR;
+    _counters.xacts_total += other._counters.xacts_total;
+    _counters.xacts_in += other._counters.xacts_in;
+    _counters.xacts_out += other._counters.xacts_out;
+    _counters.queries += other._counters.queries;
+    _counters.replies += other._counters.replies;
+    _counters.TCP += other._counters.TCP;
+    _counters.IPv6 += other._counters.IPv6;
+    _counters.NX += other._counters.NX;
+    _counters.REFUSED += other._counters.REFUSED;
+    _counters.SRVFAIL += other._counters.SRVFAIL;
+    _counters.NOERROR += other._counters.NOERROR;
 
     _dnsXactFromTimeUs.merge(other._dnsXactFromTimeUs);
     _dnsXactToTimeUs.merge(other._dnsXactToTimeUs);
@@ -256,22 +256,22 @@ void DnsMetricsBucket::to_json(json &j) const
     std::shared_lock r_lock(_mutex);
 
     j["dns"]["wire_packets"]["total"] = num_events;
-    j["dns"]["wire_packets"]["queries"] = _DNS_queries;
-    j["dns"]["wire_packets"]["replies"] = _DNS_replies;
-    j["dns"]["wire_packets"]["tcp"] = _DNS_TCP;
-    j["dns"]["wire_packets"]["udp"] = num_events - _DNS_TCP;
-    j["dns"]["wire_packets"]["ipv4"] = num_events - _DNS_IPv6;
-    j["dns"]["wire_packets"]["ipv6"] = _DNS_IPv6;
-    j["dns"]["wire_packets"]["nxdomain"] = _DNS_NX;
-    j["dns"]["wire_packets"]["refused"] = _DNS_REFUSED;
-    j["dns"]["wire_packets"]["srvfail"] = _DNS_SRVFAIL;
-    j["dns"]["wire_packets"]["noerror"] = _DNS_NOERROR;
+    j["dns"]["wire_packets"]["queries"] = _counters.queries;
+    j["dns"]["wire_packets"]["replies"] = _counters.replies;
+    j["dns"]["wire_packets"]["tcp"] = _counters.TCP;
+    j["dns"]["wire_packets"]["udp"] = num_events - _counters.TCP;
+    j["dns"]["wire_packets"]["ipv4"] = num_events - _counters.IPv6;
+    j["dns"]["wire_packets"]["ipv6"] = _counters.IPv6;
+    j["dns"]["wire_packets"]["nxdomain"] = _counters.NX;
+    j["dns"]["wire_packets"]["refused"] = _counters.REFUSED;
+    j["dns"]["wire_packets"]["srvfail"] = _counters.SRVFAIL;
+    j["dns"]["wire_packets"]["noerror"] = _counters.NOERROR;
 
     j["dns"]["cardinality"]["qname"] = lround(_dns_qnameCard.get_estimate());
-    j["dns"]["xact"]["counts"]["total"] = _DNS_xacts_total;
+    j["dns"]["xact"]["counts"]["total"] = _counters.xacts_total;
 
     {
-        j["dns"]["xact"]["in"]["total"] = _DNS_xacts_in;
+        j["dns"]["xact"]["in"]["total"] = _counters.xacts_in;
         j["dns"]["xact"]["in"]["top_slow"] = nlohmann::json::array();
         auto items = _dns_slowXactIn.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
         for (uint64_t i = 0; i < std::min(10UL, items.size()); i++) {
@@ -297,7 +297,7 @@ void DnsMetricsBucket::to_json(json &j) const
     }
 
     {
-        j["dns"]["xact"]["out"]["total"] = _DNS_xacts_out;
+        j["dns"]["xact"]["out"]["total"] = _counters.xacts_out;
         j["dns"]["xact"]["out"]["top_slow"] = nlohmann::json::array();
         auto items = _dns_slowXactOut.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
         for (uint64_t i = 0; i < std::min(10UL, items.size()); i++) {
@@ -389,32 +389,32 @@ void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, PacketDir
     std::unique_lock lock(_mutex);
 
     if (l3 == pcpp::IPv6) {
-        _DNS_IPv6++;
+        ++_counters.IPv6;
     }
 
     if (l4 == pcpp::TCP) {
-        _DNS_TCP++;
+        ++_counters.TCP;
     }
 
     // only count response codes on responses (not queries)
     if (payload.getDnsHeader()->queryOrResponse == QR::response) {
-        _DNS_replies++;
+        ++_counters.replies;
         switch (payload.getDnsHeader()->responseCode) {
         case NoError:
-            _DNS_NOERROR++;
+            ++_counters.NOERROR;
             break;
         case SrvFail:
-            _DNS_SRVFAIL++;
+            ++_counters.SRVFAIL;
             break;
         case NXDomain:
-            _DNS_NX++;
+            ++_counters.NX;
             break;
         case Refused:
-            _DNS_REFUSED++;
+            ++_counters.REFUSED;
             break;
         }
     } else {
-        _DNS_queries++;
+        ++_counters.queries;
     }
 
     if (!deep) {
@@ -467,15 +467,15 @@ void DnsMetricsBucket::newDNSXact(bool deep, float to90th, float from90th, DnsLa
     // lock for write
     std::unique_lock lock(_mutex);
 
-    _DNS_xacts_total++;
+    ++_counters.xacts_total;
 
     if (dir == PacketDirection::toHost) {
-        _DNS_xacts_out++;
+        ++_counters.xacts_out;
         if (deep) {
             _dnsXactFromTimeUs.update(xactTime);
         }
     } else if (dir == PacketDirection::fromHost) {
-        _DNS_xacts_in++;
+        ++_counters.xacts_in;
         if (deep) {
             _dnsXactToTimeUs.update(xactTime);
         }

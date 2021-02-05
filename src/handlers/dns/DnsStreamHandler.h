@@ -45,17 +45,20 @@ protected:
     datasketches::frequent_items_sketch<std::string> _dns_slowXactIn;
     datasketches::frequent_items_sketch<std::string> _dns_slowXactOut;
 
-    uint64_t _DNS_xacts_total = 0;
-    uint64_t _DNS_xacts_in = 0;
-    uint64_t _DNS_xacts_out = 0;
-    uint64_t _DNS_queries = 0;
-    uint64_t _DNS_replies = 0;
-    uint64_t _DNS_TCP = 0;
-    uint64_t _DNS_IPv6 = 0;
-    uint64_t _DNS_NX = 0;
-    uint64_t _DNS_REFUSED = 0;
-    uint64_t _DNS_SRVFAIL = 0;
-    uint64_t _DNS_NOERROR = 0;
+    struct counters {
+        uint64_t xacts_total = 0;
+        uint64_t xacts_in = 0;
+        uint64_t xacts_out = 0;
+        uint64_t queries = 0;
+        uint64_t replies = 0;
+        uint64_t TCP = 0;
+        uint64_t IPv6 = 0;
+        uint64_t NX = 0;
+        uint64_t REFUSED = 0;
+        uint64_t SRVFAIL = 0;
+        uint64_t NOERROR = 0;
+    };
+    counters _counters;
 
 public:
     DnsMetricsBucket()
@@ -72,6 +75,7 @@ public:
         , _dns_topRCode(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
         , _dns_slowXactIn(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
         , _dns_slowXactOut(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
+        , _counters()
     {
     }
 
@@ -84,6 +88,13 @@ public:
             std::shared_lock<std::shared_mutex> lock;
         };
         return retVals{_dnsXactToTimeUs, _dnsXactFromTimeUs, std::move(lock)};
+    }
+
+    // get a copy of the counters
+    counters counters() const
+    {
+        std::shared_lock lock(_mutex);
+        return _counters;
     }
 
     // pktvisor::AbstractMetricsBucket

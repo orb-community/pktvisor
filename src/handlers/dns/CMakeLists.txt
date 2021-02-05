@@ -57,18 +57,38 @@ set(PKTVISOR_STATIC_PLUGINS ${PKTVISOR_STATIC_PLUGINS} DnsHandler PARENT_SCOPE)
 add_executable(unit-tests-handler-dns
         tests/main.cpp
         tests/test_dns.cpp
-        )
-
-target_include_directories(unit-tests-handler-dns SYSTEM
-        PRIVATE ${CMAKE_SOURCE_DIR}/3rd/datasketches
-        PRIVATE "${CMAKE_SOURCE_DIR}/3rd/catch"
+        tests/test_dns_layer.cpp
         )
 
 target_include_directories(unit-tests-handler-dns
-        PRIVATE "${CMAKE_SOURCE_DIR}/tests"
-        PRIVATE "${CMAKE_SOURCE_DIR}/src"
+        PRIVATE
+        ${PKTVISOR_VENDOR_DIR}
+        ${PKTVISOR_VENDOR_DIR}/catch
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        #
+        ${LIBPCPP_INCLUDE_DIRS}  # pcpp
+        ${CMAKE_SOURCE_DIR}/src # core
+        ${CMAKE_SOURCE_DIR}/src/inputs/pcap # PcapInputStream
+        ${PKTVISOR_VENDOR_DIR}/datasketches
+        ${PKTVISOR_VENDOR_DIR}/datasketches/datasketches
         )
 
 target_link_libraries(unit-tests-handler-dns
-        PRIVATE pktvisorcore
+        PRIVATE pktvisorcore PcapInput DnsHandler
         )
+
+#if (APPLE)
+#    target_link_libraries(unit-tests-handler-dns
+#            PRIVATE
+#            "-L${LIBPCPP_LIBRARY_DIRS}"
+#            ${LIBPCPP_LIBRARIES}
+#            "-framework CoreFoundation"
+#            "-framework SystemConfiguration"
+#            )
+#else ()
+#    target_link_libraries(unit-tests-handler-dns
+#            PRIVATE
+#            ${LIBPCPP_LDFLAGS}
+#            ${LIBPCPP_LIBRARIES}
+#            )
+#endif ()

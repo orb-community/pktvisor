@@ -90,7 +90,7 @@ int main(int argc, char *argv[])
     // initialize input plugins
     for (auto &s : inputRegistry.pluginList()) {
         InputPluginPtr mod = inputRegistry.instantiate(s);
-        Corrade::Utility::print("Load input plugin: {} {}\n", mod->name(), mod->pluginInterface());
+        Corrade::Utility::printError("Load input plugin: {} {}\n", mod->name(), mod->pluginInterface());
         mod->init_module(inputManager.get());
         inputPlugins.emplace_back(std::move(mod));
     }
@@ -103,7 +103,7 @@ int main(int argc, char *argv[])
     // initialize handler plugins
     for (auto &s : handlerRegistry.pluginList()) {
         HandlerPluginPtr mod = handlerRegistry.instantiate(s);
-        Corrade::Utility::print("Load handler plugin: {} {}\n", mod->name(), mod->pluginInterface());
+        Corrade::Utility::printError("Load handler plugin: {} {}\n", mod->name(), mod->pluginInterface());
         mod->init_module(inputManager.get(), handlerManager.get());
         handlerPlugins.emplace_back(std::move(mod));
     }

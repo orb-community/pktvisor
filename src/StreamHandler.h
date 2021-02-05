@@ -35,6 +35,8 @@ public:
         _metrics = std::make_unique<MetricsManagerClass>(periods, deepSampleRate);
     }
 
+    const MetricsManagerClass* metrics() { return _metrics.get(); }
+
     virtual ~StreamMetricsHandler(){};
 
     virtual void to_json(json &j, uint64_t period, bool merged) = 0;

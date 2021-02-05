@@ -191,7 +191,7 @@ protected:
     uint _deep_sample_rate;
     bool _deep_sampling_now;
 
-    std::unordered_map<uint, std::pair<std::chrono::high_resolution_clock::time_point, json>> _mergeResultCache;
+    mutable std::unordered_map<uint, std::pair<std::chrono::high_resolution_clock::time_point, json>> _mergeResultCache;
 
     void new_event(timespec stamp)
     {
@@ -271,7 +271,24 @@ public:
         _last_shift_ts = stamp;
     }
 
-    void to_json_single(json &j, uint64_t period = 0)
+    const MetricsBucketClass *bucket(uint64_t period) const
+    {
+
+        if (period >= _num_periods) {
+            std::stringstream err;
+            err << "invalid metrics period, specify [0, " << _num_periods - 1 << "]";
+            throw PeriodException(err.str());
+        }
+        if (period >= _metric_buckets.size()) {
+            std::stringstream err;
+            err << "requested metrics period has not yet accumulated, current range is [0, " << _metric_buckets.size() - 1 << "]";
+            throw PeriodException(err.str());
+        }
+
+        return _metric_buckets[period].get();
+    }
+
+    void to_json_single(json &j, uint64_t period = 0) const
     {
 
         if (period >= _num_periods) {
@@ -302,7 +319,7 @@ public:
         _metric_buckets[period]->to_json(j[period_str]);
     }
 
-    void to_json_merged(json &j, uint64_t period)
+    void to_json_merged(json &j, uint64_t period) const
     {
 
         if (period <= 1 || period > _num_periods) {
