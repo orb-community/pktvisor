@@ -4,11 +4,17 @@
 TEST_CASE("GeoIP", "[geoip]")
 {
 
-    SECTION("Geo enable")
+    SECTION("Geo enablement")
     {
+        CHECK(!pktvisor::geo::enabled());
         CHECK_THROWS(pktvisor::geo::GeoIP.get().enable("nonexistent.mmdb"));
+        CHECK(!pktvisor::geo::enabled());
+        CHECK(pktvisor::geo::GeoIP.get().getGeoLocString("2a02:dac0::") == "");
+        CHECK(pktvisor::geo::GeoASN.get().getASNString("2a02:dac0::") == "");
         CHECK_NOTHROW(pktvisor::geo::GeoIP.get().enable("fixtures/GeoIP2-City-Test.mmdb"));
+        CHECK(pktvisor::geo::enabled());
         CHECK_NOTHROW(pktvisor::geo::GeoASN.get().enable("fixtures/GeoIP2-ISP-Test.mmdb"));
+        CHECK(pktvisor::geo::enabled());
     }
 
     SECTION("basic Geo lookup")
