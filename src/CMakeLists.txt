@@ -55,12 +55,12 @@ add_executable(unit-tests-core
 target_include_directories(unit-tests-core
         PRIVATE
         ${PKTVISOR_VENDOR_DIR}
+        ${PKTVISOR_VENDOR_DIR}/catch
+        ${CMAKE_CURRENT_SOURCE_DIR}
         # FIXME
         ${PKTVISOR_VENDOR_DIR}/datasketches
         ${PKTVISOR_VENDOR_DIR}/datasketches/datasketches
         #
-        ${PKTVISOR_VENDOR_DIR}/catch
-        ${CMAKE_SOURCE_DIR}/src
         )
 
 target_link_libraries(unit-tests-core

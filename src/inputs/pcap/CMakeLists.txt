@@ -52,14 +52,15 @@ add_executable(unit-tests-input-pcap
         tests/test_utils.cpp
         )
 
-target_include_directories(unit-tests-input-pcap SYSTEM
-        PRIVATE ${CMAKE_SOURCE_DIR}/3rd/datasketches
-        PRIVATE "${CMAKE_SOURCE_DIR}/3rd/catch"
-        )
-
 target_include_directories(unit-tests-input-pcap
-        PRIVATE "${CMAKE_SOURCE_DIR}/tests"
-        PRIVATE "${CMAKE_SOURCE_DIR}/src"
+        PRIVATE
+        ${PKTVISOR_VENDOR_DIR}
+        ${PKTVISOR_VENDOR_DIR}/catch
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        #
+        ${LIBPCPP_INCLUDE_DIRS}  # pcpp
+        ${PKTVISOR_VENDOR_DIR}/datasketches
+        ${PKTVISOR_VENDOR_DIR}/datasketches/datasketches
         )
 
 target_link_libraries(unit-tests-input-pcap

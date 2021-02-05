@@ -1,4 +1,5 @@
 #include "GeoDB.h"
+#include <arpa/inet.h>
 #include <catch2/catch.hpp>
 
 TEST_CASE("GeoIP", "[geoip]")
@@ -35,5 +36,29 @@ TEST_CASE("GeoIP", "[geoip]")
     {
         CHECK(pktvisor::geo::GeoASN.get_const().enabled());
         CHECK(pktvisor::geo::GeoASN.get().getASNString("6.6.6.6") == "Unknown");
+    }
+
+    SECTION("basic Geo lookup, socket")
+    {
+        struct sockaddr_in sa4;
+        sa4.sin_family = AF_INET;
+        inet_pton(AF_INET, "89.160.20.112", &sa4.sin_addr.s_addr);
+        CHECK(pktvisor::geo::GeoIP.get().getGeoLocString((struct sockaddr *)&sa4) == "EU/Sweden/E/Linköping");
+        struct sockaddr_in6 sa6;
+        sa6.sin6_family = AF_INET6;
+        inet_pton(AF_INET6, "2a02:dac0::", &sa6.sin6_addr);
+        CHECK(pktvisor::geo::GeoIP.get().getGeoLocString((struct sockaddr *)&sa6) == "EU/Russia");
+    }
+
+    SECTION("basic ASN lookup, socket")
+    {
+        struct sockaddr_in sa4;
+        sa4.sin_family = AF_INET;
+        inet_pton(AF_INET, "1.128.0.0", &sa4.sin_addr.s_addr);
+        CHECK(pktvisor::geo::GeoASN.get().getASNString((struct sockaddr *)&sa4) == "1221/Telstra Pty Ltd");
+        struct sockaddr_in6 sa6;
+        sa6.sin6_family = AF_INET6;
+        inet_pton(AF_INET6, "2401:8080::", &sa6.sin6_addr);
+        CHECK(pktvisor::geo::GeoASN.get().getASNString((struct sockaddr *)&sa6) == "237/Merit Network Inc.");
     }
 }
