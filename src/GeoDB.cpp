@@ -106,6 +106,7 @@ std::string MaxmindDB::_getGeoLocString(MMDB_lookup_result_s *lookup) const
         }
     }
 
+    // expect implicit move
     return geoString;
 }
 
@@ -183,6 +184,7 @@ std::string MaxmindDB::_getASNString(MMDB_lookup_result_s *lookup) const
         }
     }
 
+    // expect implicit move
     return geoString;
 }
 

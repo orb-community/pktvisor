@@ -5,71 +5,30 @@
 TEST_CASE("parseHostSpec", "[utils]")
 {
 
-    SECTION("aggregateDomain")
+    SECTION("basic Geo lookup")
     {
-        pktvisor::AggDomainResult result;
-        std::string domain;
 
-        domain = "biz.foo.bar.com";
-        result = pktvisor::aggregateDomain(domain);
-        CHECK(result.first == ".bar.com");
-        CHECK(result.second == ".foo.bar.com");
+        pcpp::IPv4Address ip("89.160.20.112");
+        struct sockaddr_in sa4;
+        CHECK(pktvisor::IPv4tosockaddr(ip, &sa4));
+        CHECK(db.getGeoLocString((struct sockaddr *)&sa4) == "EU/Sweden/E/Linköping");
+        pcpp::IPv6Address ip6("2a02:dac0::");
+        struct sockaddr_in6 sa6;
+        CHECK(pktvisor::IPv6tosockaddr(ip6, &sa6));
+        CHECK(db.getGeoLocString((struct sockaddr *)&sa6) == "EU/Russia");
+    }
 
-        domain = "a.com";
-        result = pktvisor::aggregateDomain(domain);
-        CHECK(result.first == "a.com");
-        CHECK(result.second == "");
+    SECTION("basic ASN lookup")
+    {
 
-        domain = "abcdefg.com.";
-        result = pktvisor::aggregateDomain(domain);
-        CHECK(result.first == "abcdefg.com.");
-        CHECK(result.second == "");
-
-        domain = "foo.bar.com";
-        result = pktvisor::aggregateDomain(domain);
-        CHECK(result.first == ".bar.com");
-        CHECK(result.second == "foo.bar.com");
-
-        domain = ".";
-        result = pktvisor::aggregateDomain(domain);
-        CHECK(result.first == ".");
-        CHECK(result.second == "");
-
-        domain = "..";
-        result = pktvisor::aggregateDomain(domain);
-        CHECK(result.first == "..");
-        CHECK(result.second == "");
-
-        domain = "a";
-        result = pktvisor::aggregateDomain(domain);
-        CHECK(result.first == "a");
-        CHECK(result.second == "");
-
-        domain = "a.";
-        result = pktvisor::aggregateDomain(domain);
-        CHECK(result.first == "a.");
-        CHECK(result.second == "");
-
-        domain = "foo.bar.com.";
-        result = pktvisor::aggregateDomain(domain);
-        CHECK(result.first == ".bar.com.");
-        CHECK(result.second == "foo.bar.com.");
-
-        domain = ".foo.bar.com";
-        result = pktvisor::aggregateDomain(domain);
-        CHECK(result.first == ".bar.com");
-        CHECK(result.second == ".foo.bar.com");
-
-        domain = "a.b.c";
-        result = pktvisor::aggregateDomain(domain);
-        CHECK(result.first == ".b.c");
-        CHECK(result.second == "a.b.c");
-
-        domain = ".b.c";
-        result = pktvisor::aggregateDomain(domain);
-        CHECK(result.first == ".b.c");
-        CHECK(result.second == "");
-
+        pcpp::IPv4Address ip("1.128.0.0");
+        struct sockaddr_in sa4;
+        CHECK(pktvisor::IPv4tosockaddr(ip, &sa4));
+        CHECK(db.getASNString((struct sockaddr *)&sa4) == "1221/Telstra Pty Ltd");
+        pcpp::IPv6Address ip6("2401:8080::");
+        struct sockaddr_in6 sa6;
+        CHECK(pktvisor::IPv6tosockaddr(ip6, &sa6));
+        CHECK(db.getASNString((struct sockaddr *)&sa6) == "237/Merit Network Inc.");
     }
 
     SECTION("IPv4 /24")

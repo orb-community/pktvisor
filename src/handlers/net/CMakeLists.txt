@@ -42,3 +42,22 @@ target_link_libraries(NetHandler
         )
 
 set(PKTVISOR_STATIC_PLUGINS ${PKTVISOR_STATIC_PLUGINS} NetHandler PARENT_SCOPE)
+
+## TEST SUITE
+add_executable(unit-tests-handler-net
+        tests/main.cpp
+        )
+
+target_include_directories(unit-tests-handler-net SYSTEM
+        PRIVATE ${CMAKE_SOURCE_DIR}/3rd/datasketches
+        PRIVATE "${CMAKE_SOURCE_DIR}/3rd/catch"
+        )
+
+target_include_directories(unit-tests-handler-net
+        PRIVATE "${CMAKE_SOURCE_DIR}/tests"
+        PRIVATE "${CMAKE_SOURCE_DIR}/src"
+        )
+
+target_link_libraries(unit-tests-handler-net
+        PRIVATE pktvisorcore
+        )

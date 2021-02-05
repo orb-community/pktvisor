@@ -43,3 +43,26 @@ add_subdirectory(handlers/net)
 add_subdirectory(handlers/dns)
 
 set(PKTVISOR_STATIC_PLUGINS ${PKTVISOR_STATIC_PLUGINS} PARENT_SCOPE)
+
+## TEST SUITE
+add_executable(unit-tests-core
+        tests/main.cpp
+        tests/test_sketches.cpp
+        tests/test_metrics.cpp
+        tests/test_geoip.cpp
+        )
+
+target_include_directories(unit-tests-core
+        PRIVATE
+        ${PKTVISOR_VENDOR_DIR}
+        # FIXME
+        ${PKTVISOR_VENDOR_DIR}/datasketches
+        ${PKTVISOR_VENDOR_DIR}/datasketches/datasketches
+        #
+        ${PKTVISOR_VENDOR_DIR}/catch
+        ${CMAKE_SOURCE_DIR}/src
+        )
+
+target_link_libraries(unit-tests-core
+        PRIVATE pktvisorcore
+        )

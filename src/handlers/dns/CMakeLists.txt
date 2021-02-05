@@ -52,3 +52,23 @@ target_link_libraries(DnsHandler
         )
 
 set(PKTVISOR_STATIC_PLUGINS ${PKTVISOR_STATIC_PLUGINS} DnsHandler PARENT_SCOPE)
+
+## TEST SUITE
+add_executable(unit-tests-handler-dns
+        tests/main.cpp
+        tests/test_dns.cpp
+        )
+
+target_include_directories(unit-tests-handler-dns SYSTEM
+        PRIVATE ${CMAKE_SOURCE_DIR}/3rd/datasketches
+        PRIVATE "${CMAKE_SOURCE_DIR}/3rd/catch"
+        )
+
+target_include_directories(unit-tests-handler-dns
+        PRIVATE "${CMAKE_SOURCE_DIR}/tests"
+        PRIVATE "${CMAKE_SOURCE_DIR}/src"
+        )
+
+target_link_libraries(unit-tests-handler-dns
+        PRIVATE pktvisorcore
+        )

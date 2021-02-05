@@ -27,78 +27,10 @@ add_subdirectory(${CMAKE_SOURCE_DIR}/3rd/corrade EXCLUDE_FROM_ALL)
 
 set(PKTVISOR_STATIC_PLUGINS)
 add_subdirectory(src)
+add_subdirectory(cmd/pktvisord)
+add_subdirectory(cmd/pktvisor-pcap)
 
-add_executable(pktvisord
-        ${PKTVISOR_VENDOR_DIR}/docopt/docopt.cpp
-        cmd/pktvisord/main.cpp
-        )
-
-target_include_directories(pktvisord
-        PRIVATE
-        ${PKTVISOR_VENDOR_DIR}
-        ${CORRADE_INCLUDE_DIR}
-        ${PKTVISOR_VENDOR_DIR}/datasketches
-        ${PKTVISOR_VENDOR_DIR}/datasketches/datasketches
-        ${CMAKE_SOURCE_DIR}/src
-        ${Corrade_BINARY_DIR}/src # FIXME configure.h, probably not right
-        ${CMAKE_BINARY_DIR}/src # FIXME config.h
-        )
-
-target_link_libraries(pktvisord PRIVATE pktvisorcore ${PKTVISOR_STATIC_PLUGINS})
-
-add_executable(pktvisor-pcap
-        ${PKTVISOR_VENDOR_DIR}/docopt/docopt.cpp
-        cmd/pktvisor-pcap/main.cpp
-        )
-
-target_include_directories(pktvisor-pcap
-        PRIVATE
-        ${PKTVISOR_VENDOR_DIR}
-        ${CORRADE_INCLUDE_DIR}
-        ${PKTVISOR_VENDOR_DIR}/datasketches
-        ${PKTVISOR_VENDOR_DIR}/datasketches/datasketches
-        ${CMAKE_SOURCE_DIR}/src
-        ${LIBPCPP_INCLUDE_DIRS}
-        ${CMAKE_SOURCE_DIR}/src/inputs/pcap # FIXME - dependency on pcap
-        ${Corrade_BINARY_DIR}/src # FIXME configure.h, probably not right
-        ${CMAKE_BINARY_DIR}/src # FIXME config.h
-        )
-
-target_link_libraries(pktvisor-pcap PRIVATE pktvisorcore ${PKTVISOR_STATIC_PLUGINS})
-
-#add_executable(unit-tests
-#        tests/main.cpp
-#        tests/test_parse_pcap.cpp
-#        tests/test_sketches.cpp
-#        tests/test_utils.cpp
-#        tests/test_metrics.cpp
-#        )
-
-## TEST SUITE
-#if (MMDB_ENABLE)
-#    target_sources(unit-tests
-#            PUBLIC
-#            tests/test_geoip.cpp
-#            )
-#endif ()
-#
-#target_include_directories(unit-tests SYSTEM
-#        PRIVATE ${CMAKE_SOURCE_DIR}/3rd/datasketches
-#        PRIVATE "${CMAKE_SOURCE_DIR}/3rd/catch"
-#        )
-#
-#target_include_directories(unit-tests
-#        PRIVATE "${CMAKE_SOURCE_DIR}/tests"
-#        PRIVATE "${CMAKE_SOURCE_DIR}/src"
-#        )
-#
-#target_link_libraries(unit-tests
-#        PRIVATE pktvisorcore pktvisor-dns
-#        )
-#
-#include_directories(${CMAKE_CURRENT_BINARY_DIR})
-#configure_file(src/config.h.in config.h @ONLY)
-#
+# INTEGRATION TESTING
 #enable_testing()
 #
 #add_test(NAME pktvisor-units

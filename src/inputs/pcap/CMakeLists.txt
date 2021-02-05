@@ -44,3 +44,24 @@ target_link_libraries(PcapInput
         )
 
 set(PKTVISOR_STATIC_PLUGINS ${PKTVISOR_STATIC_PLUGINS} PcapInput PARENT_SCOPE)
+
+## TEST SUITE
+add_executable(unit-tests-input-pcap
+        tests/main.cpp
+        tests/test_parse_pcap.cpp
+        tests/test_utils.cpp
+        )
+
+target_include_directories(unit-tests-input-pcap SYSTEM
+        PRIVATE ${CMAKE_SOURCE_DIR}/3rd/datasketches
+        PRIVATE "${CMAKE_SOURCE_DIR}/3rd/catch"
+        )
+
+target_include_directories(unit-tests-input-pcap
+        PRIVATE "${CMAKE_SOURCE_DIR}/tests"
+        PRIVATE "${CMAKE_SOURCE_DIR}/src"
+        )
+
+target_link_libraries(unit-tests-input-pcap
+        PRIVATE pktvisorcore
+        )
