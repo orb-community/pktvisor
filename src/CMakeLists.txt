@@ -9,14 +9,14 @@ pkg_check_modules(LIBMMDB REQUIRED libmaxminddb)
 
 set_directory_properties(PROPERTIES CORRADE_USE_PEDANTIC_FLAGS ON)
 
-add_library(pktvisorcore-m
+add_library(pktvisorcore
         AbstractPlugin.cpp
         InputModulePlugin.cpp
         HandlerModulePlugin.cpp
         GeoDB.cpp
         )
 
-target_include_directories(pktvisorcore-m
+target_include_directories(pktvisorcore
         PRIVATE
         ${PKTVISOR_VENDOR_DIR}
         # FIXME
@@ -28,7 +28,7 @@ target_include_directories(pktvisorcore-m
         ${Corrade_BINARY_DIR}/src # FIXME configure.h, probably not right
         )
 
-target_link_libraries(pktvisorcore-m
+target_link_libraries(pktvisorcore
         PRIVATE
         ${LIBMMDB_LDFLAGS}
         ${LIBMMDB_LIBRARIES}

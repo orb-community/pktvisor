@@ -1,8 +1,9 @@
 #pragma once
 
-#include <chrono>
-#include <thread>
 #include <atomic>
+#include <chrono>
+#include <functional>
+#include <thread>
 
 namespace pktvisor {
 

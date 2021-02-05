@@ -1,12 +1,22 @@
-message(STATUS "Handler Module: Net")
+message(STATUS "Handler Module: DNS")
 
 pkg_check_modules(LIBPCPP REQUIRED PcapPlusPlus)
 
 set_directory_properties(PROPERTIES CORRADE_USE_PEDANTIC_FLAGS ON)
 
-corrade_add_static_plugin(NetHandler ${CMAKE_CURRENT_BINARY_DIR} NetHandler.conf NetHandlerModulePlugin.cpp NetStreamHandler.cpp)
+corrade_add_static_plugin(DnsHandler ${CMAKE_CURRENT_BINARY_DIR}
+        DnsHandler.conf
+        DnsHandlerModulePlugin.cpp
+        DnsStreamHandler.cpp
+        dns.cpp
+        querypairmgr.cpp
+        # DnsLayer
+        DnsLayer.cpp
+        DnsResource.cpp
+        DnsResourceData.cpp
+        )
 
-target_include_directories(NetHandler
+target_include_directories(DnsHandler
         PRIVATE
         ${PKTVISOR_VENDOR_DIR}
         # FIXME
@@ -14,14 +24,14 @@ target_include_directories(NetHandler
         ${PKTVISOR_VENDOR_DIR}/datasketches/datasketches
         #
         ${LIBPCPP_INCLUDE_DIRS}
-        ${CMAKE_SOURCE_DIR}/src-m # FIXME ?
-        ${CMAKE_SOURCE_DIR}/src-m/inputs/pcap # FIXME - dependency on pcap
+        ${CMAKE_SOURCE_DIR}/src # FIXME ?
+        ${CMAKE_SOURCE_DIR}/src/inputs/pcap # FIXME - dependency on pcap
         ${CORRADE_INCLUDE_DIR}
         ${Corrade_BINARY_DIR}/src # FIXME configure.h, probably not right
         )
 
 if (APPLE)
-    target_link_libraries(NetHandler
+    target_link_libraries(DnsHandler
             PRIVATE
             "-L${LIBPCPP_LIBRARY_DIRS}"
             ${LIBPCPP_LIBRARIES}
@@ -29,16 +39,16 @@ if (APPLE)
             "-framework SystemConfiguration"
             )
 else ()
-    target_link_libraries(NetHandler
+    target_link_libraries(DnsHandler
             PRIVATE
             ${LIBPCPP_LDFLAGS}
             ${LIBPCPP_LIBRARIES}
             )
 endif ()
 
-target_link_libraries(NetHandler
+target_link_libraries(DnsHandler
         PRIVATE
-        pktvisorcore-m
+        pktvisorcore
         )
 
-set(PKTVISOR_STATIC_PLUGINS ${PKTVISOR_STATIC_PLUGINS} NetHandler PARENT_SCOPE)
+set(PKTVISOR_STATIC_PLUGINS ${PKTVISOR_STATIC_PLUGINS} DnsHandler PARENT_SCOPE)

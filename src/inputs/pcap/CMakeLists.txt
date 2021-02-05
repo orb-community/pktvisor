@@ -15,7 +15,7 @@ target_include_directories(PcapInput
         PRIVATE
         ${PKTVISOR_VENDOR_DIR}
         ${LIBPCPP_INCLUDE_DIRS}
-        ${CMAKE_SOURCE_DIR}/src-m # FIXME ?
+        ${CMAKE_SOURCE_DIR}/src # FIXME ?
         ${CORRADE_INCLUDE_DIR}
         ${PKTVISOR_VENDOR_DIR}/datasketches
         ${PKTVISOR_VENDOR_DIR}/datasketches/datasketches
@@ -40,7 +40,7 @@ endif ()
 
 target_link_libraries(PcapInput
         PRIVATE
-        pktvisorcore-m
+        pktvisorcore
         )
 
 set(PKTVISOR_STATIC_PLUGINS ${PKTVISOR_STATIC_PLUGINS} PcapInput PARENT_SCOPE)
