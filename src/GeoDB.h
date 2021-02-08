@@ -1,7 +1,6 @@
 #pragma once
 
 #include <maxminddb.h>
-#include <singleton/Singleton.hpp>
 #include <string>
 
 namespace pktvisor::geo {
@@ -34,9 +33,8 @@ private:
     std::string _getASNString(MMDB_lookup_result_s *lookup) const;
 };
 
-extern lib::Singleton<MaxmindDB> GeoIP;
-extern lib::Singleton<MaxmindDB> GeoASN;
-
+MaxmindDB &GeoIP();
+MaxmindDB &GeoASN();
 bool enabled();
 
 }

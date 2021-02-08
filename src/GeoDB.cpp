@@ -2,11 +2,25 @@
 #include <cstring>
 #include <stdexcept>
 
-// global storage for singletons
-lib::Singleton<pktvisor::geo::MaxmindDB> GeoIP;
-lib::Singleton<pktvisor::geo::MaxmindDB> GeoASN;
 
 namespace pktvisor::geo {
+
+MaxmindDB &GeoIP()
+{
+    static MaxmindDB ip_db;
+    return ip_db;
+}
+
+MaxmindDB &GeoASN()
+{
+    static MaxmindDB asn_db;
+    return asn_db;
+}
+
+bool enabled()
+{
+    return (GeoIP().enabled() || GeoASN().enabled());
+}
 
 void MaxmindDB::enable(const std::string &database_filename)
 {
@@ -186,11 +200,6 @@ std::string MaxmindDB::_getASNString(MMDB_lookup_result_s *lookup) const
 
     // expect implicit move
     return geoString;
-}
-
-bool enabled()
-{
-    return (GeoIP.get_const().enabled() || GeoASN.get_const().enabled());
 }
 
 }
