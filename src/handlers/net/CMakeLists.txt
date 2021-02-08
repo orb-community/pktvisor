@@ -46,18 +46,22 @@ set(PKTVISOR_STATIC_PLUGINS ${PKTVISOR_STATIC_PLUGINS} NetHandler PARENT_SCOPE)
 ## TEST SUITE
 add_executable(unit-tests-handler-net
         tests/main.cpp
-        )
-
-target_include_directories(unit-tests-handler-net SYSTEM
-        PRIVATE ${CMAKE_SOURCE_DIR}/3rd/datasketches
-        PRIVATE "${CMAKE_SOURCE_DIR}/3rd/catch"
+        tests/test_net_layer.cpp
         )
 
 target_include_directories(unit-tests-handler-net
-        PRIVATE "${CMAKE_SOURCE_DIR}/tests"
-        PRIVATE "${CMAKE_SOURCE_DIR}/src"
+        PRIVATE
+        ${PKTVISOR_VENDOR_DIR}
+        ${PKTVISOR_VENDOR_DIR}/catch
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        #
+        ${LIBPCPP_INCLUDE_DIRS}  # pcpp
+        ${CMAKE_SOURCE_DIR}/src # core
+        ${CMAKE_SOURCE_DIR}/src/inputs/pcap # PcapInputStream
+        ${PKTVISOR_VENDOR_DIR}/datasketches
+        ${PKTVISOR_VENDOR_DIR}/datasketches/datasketches
         )
 
 target_link_libraries(unit-tests-handler-net
-        PRIVATE pktvisorcore
+        PRIVATE pktvisorcore PcapInput NetHandler
         )

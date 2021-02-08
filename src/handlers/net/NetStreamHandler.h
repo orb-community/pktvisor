@@ -36,12 +36,16 @@ protected:
     datasketches::frequent_items_sketch<std::string> _topIPv6; // TODO OPTIMIZE not very efficient, should switch to 16 byte uint
 
     // total numPackets is tracked in base class num_events
-    uint64_t _numPackets_UDP = 0;
-    uint64_t _numPackets_TCP = 0;
-    uint64_t _numPackets_OtherL4 = 0;
-    uint64_t _numPackets_IPv6 = 0;
-    uint64_t _numPackets_in = 0;
-    uint64_t _numPackets_out = 0;
+    struct counters {
+        uint64_t UDP = 0;
+        uint64_t TCP = 0;
+        uint64_t OtherL4 = 0;
+        uint64_t IPv4 = 0;
+        uint64_t IPv6 = 0;
+        uint64_t total_in = 0;
+        uint64_t total_out = 0;
+    };
+    counters _counters;
 
     Rate _rate_in;
     Rate _rate_out;
@@ -59,6 +63,13 @@ public:
         , _rate_out()
         , _rate_total()
     {
+    }
+
+    // get a copy of the counters
+    counters counters() const
+    {
+        std::shared_lock lock(_mutex);
+        return _counters;
     }
 
     // pktvisor::AbstractMetricsBucket

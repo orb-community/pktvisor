@@ -92,12 +92,12 @@ void NetworkMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
     std::shared_lock r_lock(other._mutex);
     std::unique_lock w_lock(_mutex);
 
-    _numPackets_UDP += other._numPackets_UDP;
-    _numPackets_TCP += other._numPackets_TCP;
-    _numPackets_OtherL4 += other._numPackets_OtherL4;
-    _numPackets_IPv6 += other._numPackets_IPv6;
-    _numPackets_in += other._numPackets_in;
-    _numPackets_out += other._numPackets_out;
+    _counters.UDP += other._counters.UDP;
+    _counters.TCP += other._counters.TCP;
+    _counters.OtherL4 += other._counters.OtherL4;
+    _counters.IPv6 += other._counters.IPv6;
+    _counters.total_in += other._counters.total_in;
+    _counters.total_out += other._counters.total_out;
 
     datasketches::cpc_union merge_srcIPCard;
     merge_srcIPCard.update(_srcIPCard);
@@ -159,13 +159,13 @@ void NetworkMetricsBucket::to_json(json &j) const
 
     j["packets"]["total"] = num_events;
     j["packets"]["samples"] = num_samples;
-    j["packets"]["udp"] = _numPackets_UDP;
-    j["packets"]["tcp"] = _numPackets_TCP;
-    j["packets"]["other_l4"] = _numPackets_OtherL4;
-    j["packets"]["ipv4"] = num_events - _numPackets_IPv6;
-    j["packets"]["ipv6"] = _numPackets_IPv6;
-    j["packets"]["in"] = _numPackets_in;
-    j["packets"]["out"] = _numPackets_out;
+    j["packets"]["udp"] = _counters.UDP;
+    j["packets"]["tcp"] = _counters.TCP;
+    j["packets"]["other_l4"] = _counters.OtherL4;
+    j["packets"]["ipv4"] = _counters.IPv4;
+    j["packets"]["ipv6"] = _counters.IPv6;
+    j["packets"]["in"] = _counters.total_in;
+    j["packets"]["out"] = _counters.total_out;
 
     j["packets"]["cardinality"]["src_ips_in"] = lround(_srcIPCard.get_estimate());
     j["packets"]["cardinality"]["dst_ips_out"] = lround(_dstIPCard.get_estimate());
@@ -217,11 +217,11 @@ void NetworkMetricsBucket::process_packet(bool deep, pcpp::Packet &payload, Pack
 
     switch (dir) {
     case PacketDirection::fromHost:
-        _numPackets_out++;
+        ++_counters.total_out;
         ++_rate_out;
         break;
     case PacketDirection::toHost:
-        _numPackets_in++;
+        ++_counters.total_in;
         ++_rate_in;
         break;
     case PacketDirection::unknown:
@@ -230,7 +230,10 @@ void NetworkMetricsBucket::process_packet(bool deep, pcpp::Packet &payload, Pack
 
     switch (l3) {
     case pcpp::IPv6:
-        _numPackets_IPv6++;
+        ++_counters.IPv6;
+        break;
+    case pcpp::IPv4:
+        ++_counters.IPv4;
         break;
     default:
         break;
@@ -238,13 +241,13 @@ void NetworkMetricsBucket::process_packet(bool deep, pcpp::Packet &payload, Pack
 
     switch (l4) {
     case pcpp::UDP:
-        _numPackets_UDP++;
+        ++_counters.UDP;
         break;
     case pcpp::TCP:
-        _numPackets_TCP++;
+        ++_counters.TCP;
         break;
     default:
-        _numPackets_OtherL4++;
+        ++_counters.OtherL4;
         break;
     }
 

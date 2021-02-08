@@ -77,18 +77,3 @@ target_link_libraries(unit-tests-handler-dns
         PRIVATE pktvisorcore PcapInput DnsHandler
         )
 
-#if (APPLE)
-#    target_link_libraries(unit-tests-handler-dns
-#            PRIVATE
-#            "-L${LIBPCPP_LIBRARY_DIRS}"
-#            ${LIBPCPP_LIBRARIES}
-#            "-framework CoreFoundation"
-#            "-framework SystemConfiguration"
-#            )
-#else ()
-#    target_link_libraries(unit-tests-handler-dns
-#            PRIVATE
-#            ${LIBPCPP_LDFLAGS}
-#            ${LIBPCPP_LIBRARIES}
-#            )
-#endif ()
