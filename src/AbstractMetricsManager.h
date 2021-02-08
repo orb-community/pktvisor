@@ -289,7 +289,7 @@ public:
         return _metric_buckets[period].get();
     }
 
-    void to_json_single(json &j, uint64_t period = 0) const
+    void to_json_single(json &j, const std::string &key, uint64_t period = 0) const
     {
 
         if (period >= _num_periods) {
@@ -314,13 +314,13 @@ public:
             period_length = AbstractMetricsManager::PERIOD_SEC;
         }
 
-        j[period_str]["period"]["start_ts"] = _metric_buckets[period]->getTS().tv_sec;
-        j[period_str]["period"]["length"] = period_length;
+        j[period_str][key]["period"]["start_ts"] = _metric_buckets[period]->getTS().tv_sec;
+        j[period_str][key]["period"]["length"] = period_length;
 
-        _metric_buckets[period]->to_json(j[period_str]);
+        _metric_buckets[period]->to_json(j[period_str][key]);
     }
 
-    void to_json_merged(json &j, uint64_t period) const
+    void to_json_merged(json &j, const std::string &key, uint64_t period) const
     {
 
         if (period <= 1 || period > _num_periods) {
@@ -361,12 +361,11 @@ public:
 
         std::string period_str = std::to_string(period) + "m";
 
-        auto oldest_ts
-            = _metric_buckets.front()->getTS();
-        j[period_str]["period"]["start_ts"] = oldest_ts.tv_sec;
-        j[period_str]["period"]["length"] = period_length;
+        auto oldest_ts = _metric_buckets.front()->getTS();
+        j[period_str][key]["period"]["start_ts"] = oldest_ts.tv_sec;
+        j[period_str][key]["period"]["length"] = period_length;
 
-        merged.to_json(j[period_str]);
+        merged.to_json(j[period_str][key]);
 
         _mergeResultCache[period] = std::pair<std::chrono::high_resolution_clock::time_point, json>(std::chrono::high_resolution_clock::now(), j);
     }

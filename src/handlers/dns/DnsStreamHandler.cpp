@@ -191,9 +191,9 @@ void DnsStreamHandler::tcp_connection_end_cb(const pcpp::ConnectionData &connect
 void DnsStreamHandler::to_json(json &j, uint64_t period, bool merged)
 {
     if (merged) {
-        _metrics->to_json_merged(j["dns"], period);
+        _metrics->to_json_merged(j, "dns", period);
     } else {
-        _metrics->to_json_single(j["dns"], period);
+        _metrics->to_json_single(j, "dns", period);
     }
 }
 void DnsStreamHandler::set_initial_tstamp(timespec stamp)
@@ -257,129 +257,129 @@ void DnsMetricsBucket::to_json(json &j) const
     auto [num_events, num_samples] = event_data(); // thread safe
     std::shared_lock r_lock(_mutex);
 
-    j["dns"]["wire_packets"]["total"] = num_events;
-    j["dns"]["wire_packets"]["queries"] = _counters.queries;
-    j["dns"]["wire_packets"]["replies"] = _counters.replies;
-    j["dns"]["wire_packets"]["tcp"] = _counters.TCP;
-    j["dns"]["wire_packets"]["udp"] = _counters.UDP;
-    j["dns"]["wire_packets"]["ipv4"] = _counters.IPv4;
-    j["dns"]["wire_packets"]["ipv6"] = _counters.IPv6;
-    j["dns"]["wire_packets"]["nxdomain"] = _counters.NX;
-    j["dns"]["wire_packets"]["refused"] = _counters.REFUSED;
-    j["dns"]["wire_packets"]["srvfail"] = _counters.SRVFAIL;
-    j["dns"]["wire_packets"]["noerror"] = _counters.NOERROR;
+    j["wire_packets"]["total"] = num_events;
+    j["wire_packets"]["queries"] = _counters.queries;
+    j["wire_packets"]["replies"] = _counters.replies;
+    j["wire_packets"]["tcp"] = _counters.TCP;
+    j["wire_packets"]["udp"] = _counters.UDP;
+    j["wire_packets"]["ipv4"] = _counters.IPv4;
+    j["wire_packets"]["ipv6"] = _counters.IPv6;
+    j["wire_packets"]["nxdomain"] = _counters.NX;
+    j["wire_packets"]["refused"] = _counters.REFUSED;
+    j["wire_packets"]["srvfail"] = _counters.SRVFAIL;
+    j["wire_packets"]["noerror"] = _counters.NOERROR;
 
-    j["dns"]["cardinality"]["qname"] = lround(_dns_qnameCard.get_estimate());
-    j["dns"]["xact"]["counts"]["total"] = _counters.xacts_total;
+    j["cardinality"]["qname"] = lround(_dns_qnameCard.get_estimate());
+    j["xact"]["counts"]["total"] = _counters.xacts_total;
 
     {
-        j["dns"]["xact"]["in"]["total"] = _counters.xacts_in;
-        j["dns"]["xact"]["in"]["top_slow"] = nlohmann::json::array();
+        j["xact"]["in"]["total"] = _counters.xacts_in;
+        j["xact"]["in"]["top_slow"] = nlohmann::json::array();
         auto items = _dns_slowXactIn.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
         for (uint64_t i = 0; i < std::min(10UL, items.size()); i++) {
-            j["dns"]["xact"]["in"]["top_slow"][i]["name"] = items[i].get_item();
-            j["dns"]["xact"]["in"]["top_slow"][i]["estimate"] = items[i].get_estimate();
+            j["xact"]["in"]["top_slow"][i]["name"] = items[i].get_item();
+            j["xact"]["in"]["top_slow"][i]["estimate"] = items[i].get_estimate();
         }
     }
 
     auto d_quantiles = _dnsXactFromTimeUs.get_quantiles(fractions, 4);
     if (d_quantiles.size()) {
-        j["dns"]["xact"]["out"]["quantiles_us"]["p50"] = d_quantiles[0];
-        j["dns"]["xact"]["out"]["quantiles_us"]["p90"] = d_quantiles[1];
-        j["dns"]["xact"]["out"]["quantiles_us"]["p95"] = d_quantiles[2];
-        j["dns"]["xact"]["out"]["quantiles_us"]["p99"] = d_quantiles[3];
+        j["xact"]["out"]["quantiles_us"]["p50"] = d_quantiles[0];
+        j["xact"]["out"]["quantiles_us"]["p90"] = d_quantiles[1];
+        j["xact"]["out"]["quantiles_us"]["p95"] = d_quantiles[2];
+        j["xact"]["out"]["quantiles_us"]["p99"] = d_quantiles[3];
     }
 
     d_quantiles = _dnsXactToTimeUs.get_quantiles(fractions, 4);
     if (d_quantiles.size()) {
-        j["dns"]["xact"]["in"]["quantiles_us"]["p50"] = d_quantiles[0];
-        j["dns"]["xact"]["in"]["quantiles_us"]["p90"] = d_quantiles[1];
-        j["dns"]["xact"]["in"]["quantiles_us"]["p95"] = d_quantiles[2];
-        j["dns"]["xact"]["in"]["quantiles_us"]["p99"] = d_quantiles[3];
+        j["xact"]["in"]["quantiles_us"]["p50"] = d_quantiles[0];
+        j["xact"]["in"]["quantiles_us"]["p90"] = d_quantiles[1];
+        j["xact"]["in"]["quantiles_us"]["p95"] = d_quantiles[2];
+        j["xact"]["in"]["quantiles_us"]["p99"] = d_quantiles[3];
     }
 
     {
-        j["dns"]["xact"]["out"]["total"] = _counters.xacts_out;
-        j["dns"]["xact"]["out"]["top_slow"] = nlohmann::json::array();
+        j["xact"]["out"]["total"] = _counters.xacts_out;
+        j["xact"]["out"]["top_slow"] = nlohmann::json::array();
         auto items = _dns_slowXactOut.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
         for (uint64_t i = 0; i < std::min(10UL, items.size()); i++) {
-            j["dns"]["xact"]["out"]["top_slow"][i]["name"] = items[i].get_item();
-            j["dns"]["xact"]["out"]["top_slow"][i]["estimate"] = items[i].get_estimate();
+            j["xact"]["out"]["top_slow"][i]["name"] = items[i].get_item();
+            j["xact"]["out"]["top_slow"][i]["estimate"] = items[i].get_estimate();
         }
     }
 
     {
-        j["dns"]["top_qname2"] = nlohmann::json::array();
+        j["top_qname2"] = nlohmann::json::array();
         auto items = _dns_topQname2.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
         for (uint64_t i = 0; i < std::min(10UL, items.size()); i++) {
-            j["dns"]["top_qname2"][i]["name"] = items[i].get_item();
-            j["dns"]["top_qname2"][i]["estimate"] = items[i].get_estimate();
+            j["top_qname2"][i]["name"] = items[i].get_item();
+            j["top_qname2"][i]["estimate"] = items[i].get_estimate();
         }
     }
 
     {
-        j["dns"]["top_qname3"] = nlohmann::json::array();
+        j["top_qname3"] = nlohmann::json::array();
         auto items = _dns_topQname3.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
         for (uint64_t i = 0; i < std::min(10UL, items.size()); i++) {
-            j["dns"]["top_qname3"][i]["name"] = items[i].get_item();
-            j["dns"]["top_qname3"][i]["estimate"] = items[i].get_estimate();
+            j["top_qname3"][i]["name"] = items[i].get_item();
+            j["top_qname3"][i]["estimate"] = items[i].get_estimate();
         }
     }
 
     {
-        j["dns"]["top_nxdomain"] = nlohmann::json::array();
+        j["top_nxdomain"] = nlohmann::json::array();
         auto items = _dns_topNX.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
         for (uint64_t i = 0; i < std::min(10UL, items.size()); i++) {
-            j["dns"]["top_nxdomain"][i]["name"] = items[i].get_item();
-            j["dns"]["top_nxdomain"][i]["estimate"] = items[i].get_estimate();
+            j["top_nxdomain"][i]["name"] = items[i].get_item();
+            j["top_nxdomain"][i]["estimate"] = items[i].get_estimate();
         }
     }
 
     {
-        j["dns"]["top_refused"] = nlohmann::json::array();
+        j["top_refused"] = nlohmann::json::array();
         auto items = _dns_topREFUSED.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
         for (uint64_t i = 0; i < std::min(10UL, items.size()); i++) {
-            j["dns"]["top_refused"][i]["name"] = items[i].get_item();
-            j["dns"]["top_refused"][i]["estimate"] = items[i].get_estimate();
+            j["top_refused"][i]["name"] = items[i].get_item();
+            j["top_refused"][i]["estimate"] = items[i].get_estimate();
         }
     }
 
     {
-        j["dns"]["top_srvfail"] = nlohmann::json::array();
+        j["top_srvfail"] = nlohmann::json::array();
         auto items = _dns_topSRVFAIL.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
         for (uint64_t i = 0; i < std::min(10UL, items.size()); i++) {
-            j["dns"]["top_srvfail"][i]["name"] = items[i].get_item();
-            j["dns"]["top_srvfail"][i]["estimate"] = items[i].get_estimate();
+            j["top_srvfail"][i]["name"] = items[i].get_item();
+            j["top_srvfail"][i]["estimate"] = items[i].get_estimate();
         }
     }
 
     {
-        j["dns"]["top_rcode"] = nlohmann::json::array();
+        j["top_rcode"] = nlohmann::json::array();
         auto items = _dns_topRCode.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
         for (uint64_t i = 0; i < std::min(10UL, items.size()); i++) {
             if (RCodeNames.find(items[i].get_item()) != RCodeNames.end()) {
-                j["dns"]["top_rcode"][i]["name"] = RCodeNames[items[i].get_item()];
+                j["top_rcode"][i]["name"] = RCodeNames[items[i].get_item()];
             } else {
                 std::stringstream keyBuf;
                 keyBuf << items[i].get_item();
-                j["dns"]["top_rcode"][i]["name"] = keyBuf.str();
+                j["top_rcode"][i]["name"] = keyBuf.str();
             }
-            j["dns"]["top_rcode"][i]["estimate"] = items[i].get_estimate();
+            j["top_rcode"][i]["estimate"] = items[i].get_estimate();
         }
     }
 
     {
-        j["dns"]["top_qtype"] = nlohmann::json::array();
+        j["top_qtype"] = nlohmann::json::array();
         auto items = _dns_topQType.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
         for (uint64_t i = 0; i < std::min(10UL, items.size()); i++) {
             if (QTypeNames.find(items[i].get_item()) != QTypeNames.end()) {
-                j["dns"]["top_qtype"][i]["name"] = QTypeNames[items[i].get_item()];
+                j["top_qtype"][i]["name"] = QTypeNames[items[i].get_item()];
             } else {
                 std::stringstream keyBuf;
                 keyBuf << items[i].get_item();
-                j["dns"]["top_qtype"][i]["name"] = keyBuf.str();
+                j["top_qtype"][i]["name"] = keyBuf.str();
             }
-            j["dns"]["top_qtype"][i]["estimate"] = items[i].get_estimate();
+            j["top_qtype"][i]["estimate"] = items[i].get_estimate();
         }
     }
 }

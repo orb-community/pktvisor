@@ -6,7 +6,7 @@
 using namespace pktvisor::handler::net;
 using namespace pktvisor::input::pcap;
 
-TEST_CASE("Parse DNS UDP IPv4 tests", "[pcap][ipv4][udp][net]")
+TEST_CASE("Parse net (dns) UDP IPv4 tests", "[pcap][ipv4][udp][net]")
 {
 
     PcapInputStream stream{"pcap-test"};
@@ -30,7 +30,7 @@ TEST_CASE("Parse DNS UDP IPv4 tests", "[pcap][ipv4][udp][net]")
     CHECK(counters.IPv6 == 0);
 }
 
-TEST_CASE("Parse DNS TCP IPv4 tests", "[pcap][ipv4][tcp][net]")
+TEST_CASE("Parse net (dns) TCP IPv4 tests", "[pcap][ipv4][tcp][net]")
 {
     PcapInputStream stream{"pcap-test"};
     stream.config_set("pcap_file", "fixtures/dns_ipv4_tcp.pcap");
@@ -52,7 +52,7 @@ TEST_CASE("Parse DNS TCP IPv4 tests", "[pcap][ipv4][tcp][net]")
     CHECK(counters.IPv6 == 0);
 }
 
-TEST_CASE("Parse DNS UDP IPv6 tests", "[pcap][ipv6][udp][net]")
+TEST_CASE("Parse net (dns) UDP IPv6 tests", "[pcap][ipv6][udp][net]")
 {
 
     PcapInputStream stream{"pcap-test"};
@@ -75,7 +75,7 @@ TEST_CASE("Parse DNS UDP IPv6 tests", "[pcap][ipv6][udp][net]")
     CHECK(counters.IPv6 == 140);
 }
 
-TEST_CASE("Parse DNS TCP IPv6 tests", "[pcap][ipv6][tcp][net]")
+TEST_CASE("Parse net (dns) TCP IPv6 tests", "[pcap][ipv6][tcp][net]")
 {
 
     PcapInputStream stream{"pcap-test"};
