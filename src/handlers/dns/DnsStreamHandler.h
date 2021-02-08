@@ -51,7 +51,9 @@ protected:
         uint64_t xacts_out = 0;
         uint64_t queries = 0;
         uint64_t replies = 0;
+        uint64_t UDP = 0;
         uint64_t TCP = 0;
+        uint64_t IPv4 = 0;
         uint64_t IPv6 = 0;
         uint64_t NX = 0;
         uint64_t REFUSED = 0;

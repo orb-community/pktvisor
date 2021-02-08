@@ -115,14 +115,13 @@ void PcapInputStream::stop()
     }
 
     if (!_pcapFile) {
-
         // stop capturing and close the live device
         _pcapDevice->stopCapture();
         _pcapDevice->close();
-
-        // close all connections which are still opened
-        _tcp_reassembly.closeAllConnections();
     }
+
+    // close all connections which are still opened
+    _tcp_reassembly.closeAllConnections();
 
     _running = false;
 }

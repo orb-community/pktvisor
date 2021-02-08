@@ -220,7 +220,9 @@ void DnsMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
     _counters.xacts_out += other._counters.xacts_out;
     _counters.queries += other._counters.queries;
     _counters.replies += other._counters.replies;
+    _counters.UDP += other._counters.UDP;
     _counters.TCP += other._counters.TCP;
+    _counters.IPv4 += other._counters.IPv4;
     _counters.IPv6 += other._counters.IPv6;
     _counters.NX += other._counters.NX;
     _counters.REFUSED += other._counters.REFUSED;
@@ -259,8 +261,8 @@ void DnsMetricsBucket::to_json(json &j) const
     j["dns"]["wire_packets"]["queries"] = _counters.queries;
     j["dns"]["wire_packets"]["replies"] = _counters.replies;
     j["dns"]["wire_packets"]["tcp"] = _counters.TCP;
-    j["dns"]["wire_packets"]["udp"] = num_events - _counters.TCP;
-    j["dns"]["wire_packets"]["ipv4"] = num_events - _counters.IPv6;
+    j["dns"]["wire_packets"]["udp"] = _counters.UDP;
+    j["dns"]["wire_packets"]["ipv4"] = _counters.IPv4;
     j["dns"]["wire_packets"]["ipv6"] = _counters.IPv6;
     j["dns"]["wire_packets"]["nxdomain"] = _counters.NX;
     j["dns"]["wire_packets"]["refused"] = _counters.REFUSED;

@@ -205,6 +205,7 @@ protected:
             if (_metric_buckets.size() > _num_periods) {
                 // if we're at our period history length, pop the oldest
                 on_period_evict(_metric_buckets.front().get(), stamp);
+                // importantly, this frees memory from bucket at end of time window
                 _metric_buckets.pop_front();
             }
             _last_shift_ts.tv_sec = stamp.tv_sec;
@@ -213,11 +214,11 @@ protected:
         _metric_buckets.back()->new_event(_deep_sampling_now);
     }
 
-    virtual void on_period_shift(timespec stamp)
+    virtual void on_period_shift([[maybe_unused]] timespec stamp)
     {
     }
 
-    virtual void on_period_evict(const MetricsBucketClass *bucket, timespec stamp)
+    virtual void on_period_evict([[maybe_unused]] const MetricsBucketClass *bucket, [[maybe_unused]] timespec stamp)
     {
     }
 

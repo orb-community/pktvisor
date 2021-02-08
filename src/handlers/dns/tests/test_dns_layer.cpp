@@ -16,51 +16,29 @@ using namespace pktvisor::input::pcap;
 TEST_CASE("Parse DNS UDP IPv4 tests, basic DnsLayer functionality", "[pcap][ipv4][udp][dns]")
 {
 
-    pcpp::IFileReaderDevice *reader = pcpp::IFileReaderDevice::getReader("fixtures/dns_ipv4_udp.pcap");
+    PcapInputStream stream{"pcap-test"};
+    stream.config_set("pcap_file", "fixtures/dns_ipv4_udp.pcap");
+    stream.config_set("bpf", "");
 
-    CHECK(reader->open());
+    DnsStreamHandler dns_handler{"dns-test", &stream, 1, 100};
 
-    pcpp::RawPacket rawPacket;
-    int numUDP(0);
-    int numDNS(0);
-    while (reader->getNextPacket(rawPacket)) {
-        // only parse to transport layer (in this case udp) so we can do our own dns
-        pcpp::Packet request(&rawPacket, pcpp::OsiModelTransportLayer);
-        // udp layer life cycle is managed by packet
-        pcpp::UdpLayer *udpLayer = request.getLayerOfType<pcpp::UdpLayer>();
-        CHECK(udpLayer != nullptr);
-        numUDP++;
-        // custom DNS layer, life cycle maintained manually
-        DnsLayer dnsLayer = DnsLayer(udpLayer, &request);
-        // manually resource parse
-        dnsLayer.parseResources(true);
-        // only check the first packet by name
-        if (numDNS == 0) {
-            CHECK(dnsLayer.getFirstQuery() != nullptr);
-            CHECK(dnsLayer.getFirstQuery()->getName() == "utadwnME.POJwOc9R.KtfO.test.com");
-            CHECK(dnsLayer.getFirstQuery()->getDnsType() == DNS_TYPE_AAAA);
-        }
-        numDNS++;
-    }
+    stream.start();
+    stream.stop();
 
-    reader->close();
-    delete reader;
+    auto counters = dns_handler.metrics()->bucket(0)->counters();
 
-    SECTION("Parse counts")
-    {
-        CHECK(numUDP == 140);
-        CHECK(numDNS == 140);
-    }
+    CHECK(counters.UDP == 140);
+    CHECK(counters.queries == 210);
+    CHECK(counters.replies == 210);
 }
 
 TEST_CASE("Parse DNS TCP IPv4 tests", "[pcap][ipv4][tcp][dns]")
 {
-
-    PcapInputStream stream("pcap-test");
+    PcapInputStream stream{"pcap-test"};
     stream.config_set("pcap_file", "fixtures/dns_ipv4_tcp.pcap");
     stream.config_set("bpf", "");
 
-    DnsStreamHandler dns_handler("dns-test", &stream, 1, 100);
+    DnsStreamHandler dns_handler{"dns-test", &stream, 1, 100};
 
     stream.start();
     stream.stop();
