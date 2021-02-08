@@ -392,10 +392,14 @@ void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, PacketDir
 
     if (l3 == pcpp::IPv6) {
         ++_counters.IPv6;
+    } else {
+        ++_counters.IPv4;
     }
 
     if (l4 == pcpp::TCP) {
         ++_counters.TCP;
+    } else {
+        ++_counters.UDP;
     }
 
     // only count response codes on responses (not queries)
