@@ -1,5 +1,4 @@
-#ifndef VIZERD_INPUTSTREAM_H
-#define VIZERD_INPUTSTREAM_H
+#pragma once
 
 #include "AbstractModule.h"
 #include "StreamHandler.h"
@@ -22,4 +21,3 @@ public:
 
 }
 
-#endif //VIZERD_INPUTSTREAM_H

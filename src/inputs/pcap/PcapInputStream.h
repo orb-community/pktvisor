@@ -1,5 +1,4 @@
-#ifndef VIZERD_PCAPINPUTSTREAM_H
-#define VIZERD_PCAPINPUTSTREAM_H
+#pragma once
 
 #include "InputStream.h"
 #pragma GCC diagnostic push
@@ -89,4 +88,3 @@ public:
 
 }
 
-#endif //VIZERD_PCAPINPUTSTREAM_H

@@ -1,5 +1,4 @@
-#ifndef VIZERD_ABSTRACTPLUGIN_H
-#define VIZERD_ABSTRACTPLUGIN_H
+#pragma once
 
 #include "HttpServer.h"
 #include <Corrade/PluginManager/AbstractPlugin.h>
@@ -47,4 +46,3 @@ public:
 
 }
 
-#endif //VIZERD_ABSTRACTPLUGIN_H

@@ -1,5 +1,4 @@
-#ifndef VIZERD_INPUTMODULEPLUGIN_H
-#define VIZERD_INPUTMODULEPLUGIN_H
+#pragma once
 
 #include "AbstractPlugin.h"
 #include "InputStreamManager.h"
@@ -39,4 +38,3 @@ public:
 
 }
 
-#endif //VIZERD_INPUTMODULEPLUGIN_H

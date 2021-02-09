@@ -1,5 +1,4 @@
-#ifndef VIZERD_DNSHANDLERMODULEPLUGIN_H
-#define VIZERD_DNSHANDLERMODULEPLUGIN_H
+#pragma once
 
 #include "HandlerModulePlugin.h"
 
@@ -24,4 +23,3 @@ public:
 };
 }
 
-#endif //VIZERD_DNSHANDLERMODULEPLUGIN_H

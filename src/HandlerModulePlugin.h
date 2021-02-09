@@ -1,5 +1,4 @@
-#ifndef VIZERD_HANDLERMODULEPLUGIN_H
-#define VIZERD_HANDLERMODULEPLUGIN_H
+#pragma once
 
 #include "AbstractPlugin.h"
 #include "HandlerManager.h"
@@ -44,4 +43,3 @@ public:
 
 }
 
-#endif //VIZERD_HANDLERMODULEPLUGIN_H

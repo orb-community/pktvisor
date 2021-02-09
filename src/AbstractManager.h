@@ -1,5 +1,4 @@
-#ifndef VIZERD_ABSTRACTMANAGER_H
-#define VIZERD_ABSTRACTMANAGER_H
+#pragma once
 
 #include "AbstractModule.h"
 #include <assert.h>
@@ -87,4 +86,3 @@ public:
 
 }
 
-#endif //VIZERD_ABSTRACTMANAGER_H

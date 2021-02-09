@@ -1,5 +1,4 @@
-#ifndef VIZER3_QUERYPAIRMGR_H
-#define VIZER3_QUERYPAIRMGR_H
+#pragma once
 
 #include <chrono>
 #include <memory>
@@ -51,4 +50,3 @@ public:
 
 }
 
-#endif //VIZER3_QUERYPAIRMGR_H

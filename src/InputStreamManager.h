@@ -1,5 +1,4 @@
-#ifndef VIZERD_INPUTSTREAMMANAGER_H
-#define VIZERD_INPUTSTREAMMANAGER_H
+#pragma once
 
 #include "AbstractManager.h"
 #include "InputStream.h"
@@ -38,5 +37,3 @@ public:
 };
 
 }
-
-#endif //VIZERD_INPUTSTREAMMANAGER_H

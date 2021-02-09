@@ -1,5 +1,4 @@
-#ifndef VIZERD_HANDLERMANAGER_H
-#define VIZERD_HANDLERMANAGER_H
+#pragma once
 
 #include "AbstractManager.h"
 #include "StreamHandler.h"
@@ -25,4 +24,3 @@ public:
 
 }
 
-#endif //VIZERD_HANDLERMANAGER_H

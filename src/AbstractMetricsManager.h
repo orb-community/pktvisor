@@ -1,5 +1,4 @@
-#ifndef VIZERD_ABSTRACTMETRICSMANAGER_H
-#define VIZERD_ABSTRACTMETRICSMANAGER_H
+#pragma once
 
 #include "timer.h"
 #pragma GCC diagnostic push
@@ -373,4 +372,3 @@ public:
 
 }
 
-#endif //VIZERD_ABSTRACTMETRICSMANAGER_H

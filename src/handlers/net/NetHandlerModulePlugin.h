@@ -1,5 +1,4 @@
-#ifndef VIZERD_NETHANDLERMODULEPLUGIN_H
-#define VIZERD_NETHANDLERMODULEPLUGIN_H
+#pragma once
 
 #include "HandlerModulePlugin.h"
 
@@ -24,4 +23,3 @@ public:
 };
 }
 
-#endif //VIZERD_NETHANDLERMODULEPLUGIN_H

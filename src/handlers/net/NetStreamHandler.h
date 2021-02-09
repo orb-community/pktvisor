@@ -1,5 +1,4 @@
-#ifndef VIZERD_NETSTREAMHANDLER_H
-#define VIZERD_NETSTREAMHANDLER_H
+#pragma once
 
 #include "AbstractMetricsManager.h"
 #include "PcapInputStream.h"
@@ -127,4 +126,3 @@ public:
 
 }
 
-#endif //VIZERD_NETSTREAMHANDLER_H

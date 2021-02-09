@@ -1,5 +1,4 @@
-#ifndef VIZERD_PCAPINPUTMODULEPLUGIN_H
-#define VIZERD_PCAPINPUTMODULEPLUGIN_H
+#pragma once
 
 #include "InputModulePlugin.h"
 #include "PcapInputStream.h"
@@ -26,4 +25,3 @@ public:
 
 }
 
-#endif //VIZERD_PCAPINPUTMODULEPLUGIN_H

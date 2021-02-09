@@ -1,5 +1,4 @@
-#ifndef VIZERD_ABSTRACTMODULE_H
-#define VIZERD_ABSTRACTMODULE_H
+#pragma once
 
 #include <atomic>
 #include <json/json.hpp>
@@ -81,4 +80,3 @@ public:
 
 }
 
-#endif //VIZERD_ABSTRACTMODULE_H

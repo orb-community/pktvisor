@@ -1,5 +1,4 @@
-#ifndef VIZERD_HTTPSERVER_H
-#define VIZERD_HTTPSERVER_H
+#pragma once
 
 #include <Corrade/Utility/Format.h>
 #include <Corrade/Utility/FormatStl.h>
@@ -47,5 +46,3 @@ public:
     }
 };
 }
-
-#endif //VIZERD_HTTPSERVER_H

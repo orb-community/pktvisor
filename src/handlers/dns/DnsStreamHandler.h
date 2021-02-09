@@ -1,5 +1,4 @@
-#ifndef VIZERD_DNSSTREAMHANDLER_H
-#define VIZERD_DNSSTREAMHANDLER_H
+#pragma once
 
 #include "AbstractMetricsManager.h"
 #include "PcapInputStream.h"
@@ -211,5 +210,3 @@ public:
 };
 
 }
-
-#endif //VIZERD_DNSSTREAMHANDLER_H

@@ -1,5 +1,4 @@
-#ifndef VIZERD_STREAMHANDLER_H
-#define VIZERD_STREAMHANDLER_H
+#pragma once
 
 #include "AbstractMetricsManager.h"
 #include "AbstractModule.h"
@@ -44,4 +43,3 @@ public:
 
 }
 
-#endif //VIZERD_STREAMHANDLER_H
