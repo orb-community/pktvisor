@@ -7,18 +7,16 @@
 #include <string.h>
 #include <EndianPortable/EndianPortable.h>
 
-namespace pktvisor::handler::dns
-{
+namespace vizer::handler::dns {
 
-size_t IDnsResourceData::decodeName(const char* encodedName, char* result, IDnsResource* dnsResource) const
+size_t IDnsResourceData::decodeName(const char *encodedName, char *result, IDnsResource *dnsResource) const
 {
-	if (dnsResource == NULL)
-	{
-		LOG_ERROR("Cannot decode name, DNS resource object is NULL");
-		return 0;
-	}
+    if (dnsResource == NULL) {
+        LOG_ERROR("Cannot decode name, DNS resource object is NULL");
+        return 0;
+    }
 
-	return dnsResource->decodeName(encodedName, result);
+    return dnsResource->decodeName(encodedName, result);
 }
 
 void IDnsResourceData::encodeName(const std::string& decodedName, char* result, size_t& resultLen, IDnsResource* dnsResource) const

@@ -1,10 +1,10 @@
-#ifndef PKTVISORD_HANDLERMANAGER_H
-#define PKTVISORD_HANDLERMANAGER_H
+#ifndef VIZERD_HANDLERMANAGER_H
+#define VIZERD_HANDLERMANAGER_H
 
 #include "AbstractManager.h"
 #include "StreamHandler.h"
 
-namespace pktvisor {
+namespace vizer {
 
 /**
  * called from HTTP threads so must be thread safe
@@ -25,4 +25,4 @@ public:
 
 }
 
-#endif //PKTVISORD_HANDLERMANAGER_H
+#endif //VIZERD_HANDLERMANAGER_H

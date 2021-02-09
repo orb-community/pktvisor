@@ -5,7 +5,7 @@
 #include <functional>
 #include <thread>
 
-namespace pktvisor {
+namespace vizer {
 
 // adapted from https://codereview.stackexchange.com/questions/40915/simple-multithread-timer
 class Timer

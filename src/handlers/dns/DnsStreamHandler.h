@@ -1,5 +1,5 @@
-#ifndef PKTVISORD_DNSSTREAMHANDLER_H
-#define PKTVISORD_DNSSTREAMHANDLER_H
+#ifndef VIZERD_DNSSTREAMHANDLER_H
+#define VIZERD_DNSSTREAMHANDLER_H
 
 #include "AbstractMetricsManager.h"
 #include "PcapInputStream.h"
@@ -16,11 +16,11 @@
 #include <Corrade/Utility/Debug.h>
 #include <string>
 
-namespace pktvisor::handler::dns {
+namespace vizer::handler::dns {
 
-using namespace pktvisor::input::pcap;
+using namespace vizer::input::pcap;
 
-class DnsMetricsBucket final : public pktvisor::AbstractMetricsBucket
+class DnsMetricsBucket final : public vizer::AbstractMetricsBucket
 {
 public:
     const uint8_t START_FI_MAP_SIZE = 7; // 2^7 = 128
@@ -99,7 +99,7 @@ public:
         return _counters;
     }
 
-    // pktvisor::AbstractMetricsBucket
+    // vizer::AbstractMetricsBucket
     void specialized_merge(const AbstractMetricsBucket &other) override;
     void to_json(json &j) const override;
 
@@ -108,7 +108,7 @@ public:
     void newDNSXact(bool deep, float to90th, float from90th, DnsLayer &dns, PacketDirection dir, DnsTransaction xact);
 };
 
-class DnsMetricsManager final : public pktvisor::AbstractMetricsManager<DnsMetricsBucket>
+class DnsMetricsManager final : public vizer::AbstractMetricsManager<DnsMetricsBucket>
 {
 
     QueryResponsePairMgr _qr_pair_manager;
@@ -118,7 +118,7 @@ class DnsMetricsManager final : public pktvisor::AbstractMetricsManager<DnsMetri
 
 public:
     DnsMetricsManager(uint periods, int deepSampleRate)
-        : pktvisor::AbstractMetricsManager<DnsMetricsBucket>(periods, deepSampleRate)
+        : vizer::AbstractMetricsManager<DnsMetricsBucket>(periods, deepSampleRate)
     {
     }
 
@@ -176,7 +176,7 @@ struct TcpFlowData {
     }
 };
 
-class DnsStreamHandler final : public pktvisor::StreamMetricsHandler<DnsMetricsManager>
+class DnsStreamHandler final : public vizer::StreamMetricsHandler<DnsMetricsManager>
 {
 
     PcapInputStream *_stream;
@@ -201,15 +201,15 @@ public:
     DnsStreamHandler(const std::string &name, PcapInputStream *stream, uint periods, int deepSampleRate);
     ~DnsStreamHandler() override;
 
-    // pktvisor::AbstractModule
+    // vizer::AbstractModule
     void start() override;
     void stop() override;
     json info_json() const override;
 
-    // pktvisor::StreamMetricsHandler
+    // vizer::StreamMetricsHandler
     void to_json(json &j, uint64_t period, bool merged) override;
 };
 
 }
 
-#endif //PKTVISORD_DNSSTREAMHANDLER_H
+#endif //VIZERD_DNSSTREAMHANDLER_H

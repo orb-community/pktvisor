@@ -56,7 +56,7 @@ void signal_handler(int signal)
 }
 }
 
-using namespace pktvisor;
+using namespace vizer;
 
 typedef Corrade::PluginManager::Manager<InputModulePlugin> InputPluginRegistry;
 typedef Corrade::PluginManager::Manager<HandlerModulePlugin> HandlerPluginRegistry;
@@ -79,8 +79,8 @@ int main(int argc, char *argv[])
 
     std::map<std::string, docopt::value> args = docopt::docopt(USAGE,
         {argv + 1, argv + argc},
-        true,              // show help if requested
-        PKTVISOR_VERSION); // version string
+        true,           // show help if requested
+        VIZER_VERSION); // version string
 
     // inputs
     InputPluginRegistry inputRegistry;

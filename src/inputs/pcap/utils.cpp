@@ -6,7 +6,7 @@
 #include <netinet/in.h>
 #include <sstream>
 
-namespace pktvisor::input::pcap {
+namespace vizer::input::pcap {
 
 template <typename Out>
 void split(const std::string &s, char delim, Out result)

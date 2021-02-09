@@ -2,7 +2,7 @@
 #include <Corrade/Utility/Format.h>
 #include <Corrade/Utility/FormatStl.h>
 
-namespace pktvisor {
+namespace vizer {
 
 void HandlerModulePlugin::init_module(InputStreamManager *im,
     HandlerManager *hm, HttpServer &svr)

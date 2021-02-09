@@ -6,7 +6,7 @@
 #include "DnsResource.h"
 #include "DnsResourceData.h"
 
-namespace pktvisor::handler::dns {
+namespace vizer::handler::dns {
 
 typedef std::pair<std::string_view, std::string_view> AggDomainResult;
 AggDomainResult aggregateDomain(const std::string &domain);

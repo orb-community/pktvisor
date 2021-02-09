@@ -1,14 +1,12 @@
-#ifndef PKTVISORD_PCAPINPUTMODULEPLUGIN_H
-#define PKTVISORD_PCAPINPUTMODULEPLUGIN_H
+#ifndef VIZERD_PCAPINPUTMODULEPLUGIN_H
+#define VIZERD_PCAPINPUTMODULEPLUGIN_H
 
 #include "InputModulePlugin.h"
 #include "PcapInputStream.h"
 
-namespace pktvisor {
-namespace input {
-namespace pcap {
+namespace vizer::input::pcap {
 
-class PcapInputModulePlugin : public pktvisor::InputModulePlugin
+class PcapInputModulePlugin : public vizer::InputModulePlugin
 {
 
 protected:
@@ -16,7 +14,7 @@ protected:
 
 public:
     explicit PcapInputModulePlugin(Corrade::PluginManager::AbstractManager &manager, const std::string &plugin)
-        : pktvisor::InputModulePlugin{manager, plugin}
+        : vizer::InputModulePlugin{manager, plugin}
     {
     }
 
@@ -27,7 +25,5 @@ public:
 };
 
 }
-}
-}
 
-#endif //PKTVISORD_PCAPINPUTMODULEPLUGIN_H
+#endif //VIZERD_PCAPINPUTMODULEPLUGIN_H

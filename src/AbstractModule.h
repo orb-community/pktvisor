@@ -1,5 +1,5 @@
-#ifndef PKTVISORD_ABSTRACTMODULE_H
-#define PKTVISORD_ABSTRACTMODULE_H
+#ifndef VIZERD_ABSTRACTMODULE_H
+#define VIZERD_ABSTRACTMODULE_H
 
 #include <atomic>
 #include <json/json.hpp>
@@ -8,7 +8,7 @@
 #include <unordered_map>
 #include <variant>
 
-namespace pktvisor {
+namespace vizer {
 
 using json = nlohmann::json;
 
@@ -81,4 +81,4 @@ public:
 
 }
 
-#endif //PKTVISORD_ABSTRACTMODULE_H
+#endif //VIZERD_ABSTRACTMODULE_H

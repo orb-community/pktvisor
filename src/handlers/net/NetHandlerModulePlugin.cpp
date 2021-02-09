@@ -4,12 +4,12 @@
 #include <Corrade/PluginManager/AbstractManager.h>
 #include <json/json.hpp>
 
-CORRADE_PLUGIN_REGISTER(NetHandler, pktvisor::handler::net::NetHandlerModulePlugin,
-    "com.ns1.module.handler/1.0")
+CORRADE_PLUGIN_REGISTER(NetHandler, vizer::handler::net::NetHandlerModulePlugin,
+    "dev.vizer.module.handler/1.0")
 
-namespace pktvisor::handler::net {
+namespace vizer::handler::net {
 
-using namespace pktvisor::input::pcap;
+using namespace vizer::input::pcap;
 using json = nlohmann::json;
 
 void NetHandlerModulePlugin::_setup_routes(HttpServer &svr)

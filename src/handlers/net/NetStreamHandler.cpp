@@ -11,10 +11,10 @@
 #include <arpa/inet.h>
 #include <datasketches/datasketches/cpc/cpc_union.hpp>
 
-namespace pktvisor::handler::net {
+namespace vizer::handler::net {
 
 NetStreamHandler::NetStreamHandler(const std::string &name, PcapInputStream *stream, uint periods, uint deepSampleRate)
-    : pktvisor::StreamMetricsHandler<NetworkMetricsManager>(name, periods, deepSampleRate)
+    : vizer::StreamMetricsHandler<NetworkMetricsManager>(name, periods, deepSampleRate)
     , _stream(stream)
 {
     assert(stream);

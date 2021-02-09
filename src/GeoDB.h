@@ -3,7 +3,7 @@
 #include <maxminddb.h>
 #include <string>
 
-namespace pktvisor::geo {
+namespace vizer::geo {
 
 class MaxmindDB
 {

@@ -9,26 +9,26 @@ pkg_check_modules(LIBMMDB REQUIRED libmaxminddb)
 
 set_directory_properties(PROPERTIES CORRADE_USE_PEDANTIC_FLAGS ON)
 
-add_library(pktvisorcore
+add_library(vizer-core
         AbstractPlugin.cpp
         InputModulePlugin.cpp
         HandlerModulePlugin.cpp
         GeoDB.cpp
         )
 
-target_include_directories(pktvisorcore
+target_include_directories(vizer-core
         PRIVATE
-        ${PKTVISOR_VENDOR_DIR}
+        ${VIZER_VENDOR_DIR}
         # FIXME
-        ${PKTVISOR_VENDOR_DIR}/datasketches
-        ${PKTVISOR_VENDOR_DIR}/datasketches/datasketches
+        ${VIZER_VENDOR_DIR}/datasketches
+        ${VIZER_VENDOR_DIR}/datasketches/datasketches
         #
         PUBLIC ${LIBMMDB_INCLUDE_DIRS}
         ${CORRADE_INCLUDE_DIR}
         ${Corrade_BINARY_DIR}/src # FIXME configure.h, probably not right
         )
 
-target_link_libraries(pktvisorcore
+target_link_libraries(vizer-core
         PRIVATE
         ${LIBMMDB_LDFLAGS}
         ${LIBMMDB_LIBRARIES}
@@ -42,7 +42,7 @@ add_subdirectory(inputs/pcap)
 add_subdirectory(handlers/net)
 add_subdirectory(handlers/dns)
 
-set(PKTVISOR_STATIC_PLUGINS ${PKTVISOR_STATIC_PLUGINS} PARENT_SCOPE)
+set(VIZER_STATIC_PLUGINS ${VIZER_STATIC_PLUGINS} PARENT_SCOPE)
 
 ## TEST SUITE
 add_executable(unit-tests-core
@@ -54,15 +54,15 @@ add_executable(unit-tests-core
 
 target_include_directories(unit-tests-core
         PRIVATE
-        ${PKTVISOR_VENDOR_DIR}
-        ${PKTVISOR_VENDOR_DIR}/catch
+        ${VIZER_VENDOR_DIR}
+        ${VIZER_VENDOR_DIR}/catch
         ${CMAKE_CURRENT_SOURCE_DIR}
         # FIXME
-        ${PKTVISOR_VENDOR_DIR}/datasketches
-        ${PKTVISOR_VENDOR_DIR}/datasketches/datasketches
+        ${VIZER_VENDOR_DIR}/datasketches
+        ${VIZER_VENDOR_DIR}/datasketches/datasketches
         #
         )
 
 target_link_libraries(unit-tests-core
-        PRIVATE pktvisorcore
+        PRIVATE vizer-core
         )

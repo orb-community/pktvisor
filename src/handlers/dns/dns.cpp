@@ -1,6 +1,6 @@
 #include "dns.h"
 
-namespace pktvisor::handler::dns {
+namespace vizer::handler::dns {
 
 AggDomainResult aggregateDomain(const std::string &domain)
 {

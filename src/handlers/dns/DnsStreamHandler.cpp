@@ -12,10 +12,10 @@
 #include <datasketches/datasketches/cpc/cpc_union.hpp>
 #include <sstream>
 
-namespace pktvisor::handler::dns {
+namespace vizer::handler::dns {
 
 DnsStreamHandler::DnsStreamHandler(const std::string &name, PcapInputStream *stream, uint periods, int deepSampleRate)
-    : pktvisor::StreamMetricsHandler<DnsMetricsManager>(name, periods, deepSampleRate)
+    : vizer::StreamMetricsHandler<DnsMetricsManager>(name, periods, deepSampleRate)
     , _stream(stream)
 {
     assert(stream);

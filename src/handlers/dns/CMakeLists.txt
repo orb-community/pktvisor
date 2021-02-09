@@ -18,10 +18,10 @@ corrade_add_static_plugin(DnsHandler ${CMAKE_CURRENT_BINARY_DIR}
 
 target_include_directories(DnsHandler
         PRIVATE
-        ${PKTVISOR_VENDOR_DIR}
+        ${VIZER_VENDOR_DIR}
         # FIXME
-        ${PKTVISOR_VENDOR_DIR}/datasketches
-        ${PKTVISOR_VENDOR_DIR}/datasketches/datasketches
+        ${VIZER_VENDOR_DIR}/datasketches
+        ${VIZER_VENDOR_DIR}/datasketches/datasketches
         #
         ${LIBPCPP_INCLUDE_DIRS}
         ${CMAKE_SOURCE_DIR}/src # FIXME ?
@@ -48,10 +48,10 @@ endif ()
 
 target_link_libraries(DnsHandler
         PRIVATE
-        pktvisorcore
+        vizer-core
         )
 
-set(PKTVISOR_STATIC_PLUGINS ${PKTVISOR_STATIC_PLUGINS} DnsHandler PARENT_SCOPE)
+set(VIZER_STATIC_PLUGINS ${VIZER_STATIC_PLUGINS} DnsHandler PARENT_SCOPE)
 
 ## TEST SUITE
 add_executable(unit-tests-handler-dns
@@ -62,18 +62,18 @@ add_executable(unit-tests-handler-dns
 
 target_include_directories(unit-tests-handler-dns
         PRIVATE
-        ${PKTVISOR_VENDOR_DIR}
-        ${PKTVISOR_VENDOR_DIR}/catch
+        ${VIZER_VENDOR_DIR}
+        ${VIZER_VENDOR_DIR}/catch
         ${CMAKE_CURRENT_SOURCE_DIR}
         #
         ${LIBPCPP_INCLUDE_DIRS}  # pcpp
         ${CMAKE_SOURCE_DIR}/src # core
         ${CMAKE_SOURCE_DIR}/src/inputs/pcap # PcapInputStream
-        ${PKTVISOR_VENDOR_DIR}/datasketches
-        ${PKTVISOR_VENDOR_DIR}/datasketches/datasketches
+        ${VIZER_VENDOR_DIR}/datasketches
+        ${VIZER_VENDOR_DIR}/datasketches/datasketches
         )
 
 target_link_libraries(unit-tests-handler-dns
-        PRIVATE pktvisorcore PcapInput DnsHandler
+        PRIVATE vizer-core PcapInput DnsHandler
         )
 

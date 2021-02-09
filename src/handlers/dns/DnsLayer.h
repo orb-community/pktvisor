@@ -9,20 +9,18 @@
 /// @file
 
 /**
- * \namespace pktvisor
+ * \namespace vizer
  */
-namespace pktvisor::handler::dns
-{
+namespace vizer::handler::dns {
 
-	/**
+/**
 	 * @struct dnshdr
 	 * Represents the fixed part of the DNS header, meaning the part that doesn't include the DNS data (queries, answers, authorities
 	 * and additional records)
 	 */
 #pragma pack(push, 1)
-	struct dnshdr
-	{
-		/** DNS query identification */
+struct dnshdr {
+    /** DNS query identification */
 		uint16_t transactionID;
 #if (BYTE_ORDER == LITTLE_ENDIAN)
 		uint16_t
@@ -469,16 +467,16 @@ namespace pktvisor::handler::dns
 	{
 		switch (port)
 		{
-		case 53:
-		case 5353:
-		case 5355:
-                case 53000:
-			return true;
-		default:
-			return false;
-		}
-	}
+            case 53:
+            case 5353:
+            case 5355:
+            case 53000:
+                return true;
+            default:
+                return false;
+            }
+        }
 
-} // namespace pktvisor
+        } // namespace vizer
 
 #endif /* PV_PACKETPP_DNS_LAYER */

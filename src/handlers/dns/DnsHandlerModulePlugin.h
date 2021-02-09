@@ -1,9 +1,9 @@
-#ifndef PKTVISORD_DNSHANDLERMODULEPLUGIN_H
-#define PKTVISORD_DNSHANDLERMODULEPLUGIN_H
+#ifndef VIZERD_DNSHANDLERMODULEPLUGIN_H
+#define VIZERD_DNSHANDLERMODULEPLUGIN_H
 
 #include "HandlerModulePlugin.h"
 
-namespace pktvisor::handler::dns {
+namespace vizer::handler::dns {
 
 class DnsHandlerModulePlugin : public HandlerModulePlugin
 {
@@ -13,7 +13,7 @@ protected:
 
 public:
     explicit DnsHandlerModulePlugin(Corrade::PluginManager::AbstractManager &manager, const std::string &plugin)
-        : pktvisor::HandlerModulePlugin{manager, plugin}
+        : vizer::HandlerModulePlugin{manager, plugin}
     {
     }
 
@@ -24,4 +24,4 @@ public:
 };
 }
 
-#endif //PKTVISORD_DNSHANDLERMODULEPLUGIN_H
+#endif //VIZERD_DNSHANDLERMODULEPLUGIN_H

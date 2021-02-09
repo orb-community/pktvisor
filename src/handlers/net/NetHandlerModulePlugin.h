@@ -1,9 +1,9 @@
-#ifndef PKTVISORD_NETHANDLERMODULEPLUGIN_H
-#define PKTVISORD_NETHANDLERMODULEPLUGIN_H
+#ifndef VIZERD_NETHANDLERMODULEPLUGIN_H
+#define VIZERD_NETHANDLERMODULEPLUGIN_H
 
 #include "HandlerModulePlugin.h"
 
-namespace pktvisor::handler::net {
+namespace vizer::handler::net {
 
 class NetHandlerModulePlugin : public HandlerModulePlugin
 {
@@ -13,7 +13,7 @@ protected:
 
 public:
     explicit NetHandlerModulePlugin(Corrade::PluginManager::AbstractManager &manager, const std::string &plugin)
-        : pktvisor::HandlerModulePlugin{manager, plugin}
+        : vizer::HandlerModulePlugin{manager, plugin}
     {
     }
 
@@ -24,4 +24,4 @@ public:
 };
 }
 
-#endif //PKTVISORD_NETHANDLERMODULEPLUGIN_H
+#endif //VIZERD_NETHANDLERMODULEPLUGIN_H

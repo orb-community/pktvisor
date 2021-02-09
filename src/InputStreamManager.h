@@ -1,10 +1,10 @@
-#ifndef PKTVISORD_INPUTSTREAMMANAGER_H
-#define PKTVISORD_INPUTSTREAMMANAGER_H
+#ifndef VIZERD_INPUTSTREAMMANAGER_H
+#define VIZERD_INPUTSTREAMMANAGER_H
 
 #include "AbstractManager.h"
 #include "InputStream.h"
 
-namespace pktvisor {
+namespace vizer {
 
 /**
  * called from HTTP threads so must be thread safe
@@ -39,4 +39,4 @@ public:
 
 }
 
-#endif //PKTVISORD_INPUTSTREAMMANAGER_H
+#endif //VIZERD_INPUTSTREAMMANAGER_H

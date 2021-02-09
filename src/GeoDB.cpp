@@ -2,8 +2,7 @@
 #include <cstring>
 #include <stdexcept>
 
-
-namespace pktvisor::geo {
+namespace vizer::geo {
 
 MaxmindDB &GeoIP()
 {

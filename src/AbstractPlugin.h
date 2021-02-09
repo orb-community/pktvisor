@@ -1,5 +1,5 @@
-#ifndef PKTVISORD_ABSTRACTPLUGIN_H
-#define PKTVISORD_ABSTRACTPLUGIN_H
+#ifndef VIZERD_ABSTRACTPLUGIN_H
+#define VIZERD_ABSTRACTPLUGIN_H
 
 #include "HttpServer.h"
 #include <Corrade/PluginManager/AbstractPlugin.h>
@@ -8,7 +8,7 @@
 #include <string>
 #include <unordered_map>
 
-namespace pktvisor {
+namespace vizer {
 
 using json = nlohmann::json;
 
@@ -47,4 +47,4 @@ public:
 
 }
 
-#endif //PKTVISORD_ABSTRACTPLUGIN_H
+#endif //VIZERD_ABSTRACTPLUGIN_H

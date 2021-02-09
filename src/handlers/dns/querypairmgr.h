@@ -1,11 +1,11 @@
-#ifndef PKTVISOR3_QUERYPAIRMGR_H
-#define PKTVISOR3_QUERYPAIRMGR_H
+#ifndef VIZER3_QUERYPAIRMGR_H
+#define VIZER3_QUERYPAIRMGR_H
 
 #include <chrono>
 #include <memory>
 #include <unordered_map>
 
-namespace pktvisor::handler::dns {
+namespace vizer::handler::dns {
 
 using hr_clock = std::chrono::high_resolution_clock;
 
@@ -51,4 +51,4 @@ public:
 
 }
 
-#endif //PKTVISOR3_QUERYPAIRMGR_H
+#endif //VIZER3_QUERYPAIRMGR_H

@@ -4,12 +4,12 @@
 #include <Corrade/PluginManager/AbstractManager.h>
 #include <json/json.hpp>
 
-CORRADE_PLUGIN_REGISTER(DnsHandler, pktvisor::handler::dns::DnsHandlerModulePlugin,
-    "com.ns1.module.handler/1.0")
+CORRADE_PLUGIN_REGISTER(DnsHandler, vizer::handler::dns::DnsHandlerModulePlugin,
+    "dev.vizer.module.handler/1.0")
 
-namespace pktvisor::handler::dns {
+namespace vizer::handler::dns {
 
-using namespace pktvisor::input::pcap;
+using namespace vizer::input::pcap;
 using json = nlohmann::json;
 
 void DnsHandlerModulePlugin::_setup_routes(HttpServer &svr)

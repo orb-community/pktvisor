@@ -6,13 +6,17 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
-namespace pktvisor::input::pcap {
+namespace vizer::input::pcap {
 
 // list of subnets we count as "host" to determine direction of packets
 struct IPv4subnet {
     pcpp::IPv4Address address;
     pcpp::IPv4Address mask;
-    IPv4subnet(const pcpp::IPv4Address &a, const pcpp::IPv4Address &m): address(a), mask(m) { }
+    IPv4subnet(const pcpp::IPv4Address &a, const pcpp::IPv4Address &m)
+        : address(a)
+        , mask(m)
+    {
+    }
 };
 struct IPv6subnet {
     pcpp::IPv6Address address;

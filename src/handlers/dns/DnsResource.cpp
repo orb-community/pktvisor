@@ -6,16 +6,17 @@
 #include <string.h>
 #include <EndianPortable/EndianPortable.h>
 
-namespace pktvisor::handler::dns
-{
+namespace vizer::handler::dns {
 
-IDnsResource::IDnsResource(DnsLayer* dnsLayer, size_t offsetInLayer)
-	: m_DnsLayer(dnsLayer), m_OffsetInLayer(offsetInLayer), m_NextResource(NULL)
+IDnsResource::IDnsResource(DnsLayer *dnsLayer, size_t offsetInLayer)
+    : m_DnsLayer(dnsLayer)
+    , m_OffsetInLayer(offsetInLayer)
+    , m_NextResource(NULL)
 {
-	char decodedName[256];
-	m_NameLength = decodeName((const char*)getRawData(), decodedName);
-	if (m_NameLength > 0)
-		m_DecodedName = decodedName;
+    char decodedName[256];
+    m_NameLength = decodeName((const char *)getRawData(), decodedName);
+    if (m_NameLength > 0)
+        m_DecodedName = decodedName;
 }
 
 IDnsResource::IDnsResource(uint8_t* emptyRawData)

@@ -1,11 +1,11 @@
-#ifndef PKTVISORD_STREAMHANDLER_H
-#define PKTVISORD_STREAMHANDLER_H
+#ifndef VIZERD_STREAMHANDLER_H
+#define VIZERD_STREAMHANDLER_H
 
 #include "AbstractMetricsManager.h"
 #include "AbstractModule.h"
 #include <json/json.hpp>
 
-namespace pktvisor {
+namespace vizer {
 
 using json = nlohmann::json;
 
@@ -44,4 +44,4 @@ public:
 
 }
 
-#endif //PKTVISORD_STREAMHANDLER_H
+#endif //VIZERD_STREAMHANDLER_H

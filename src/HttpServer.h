@@ -1,11 +1,11 @@
-#ifndef PKTVISORD_HTTPSERVER_H
-#define PKTVISORD_HTTPSERVER_H
+#ifndef VIZERD_HTTPSERVER_H
+#define VIZERD_HTTPSERVER_H
 
 #include <Corrade/Utility/Format.h>
 #include <Corrade/Utility/FormatStl.h>
 #include <cpp-httplib/httplib.h>
 
-namespace pktvisor {
+namespace vizer {
 class HttpServer : public httplib::Server
 {
     bool _read_only = true;
@@ -48,4 +48,4 @@ public:
 };
 }
 
-#endif //PKTVISORD_HTTPSERVER_H
+#endif //VIZERD_HTTPSERVER_H

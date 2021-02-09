@@ -2,7 +2,7 @@
 #include <regex>
 #include <sstream>
 
-namespace pktvisor {
+namespace vizer {
 
 void AbstractPlugin::_check_schema(json obj, SchemaMap &required, SchemaMap &optional)
 {

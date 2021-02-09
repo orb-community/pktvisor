@@ -1,5 +1,5 @@
-#ifndef PKTVISORD_ABSTRACTMETRICSMANAGER_H
-#define PKTVISORD_ABSTRACTMETRICSMANAGER_H
+#ifndef VIZERD_ABSTRACTMETRICSMANAGER_H
+#define VIZERD_ABSTRACTMETRICSMANAGER_H
 
 #include "timer.h"
 #pragma GCC diagnostic push
@@ -17,7 +17,7 @@
 #include <sys/time.h>
 #include <unordered_map>
 
-namespace pktvisor {
+namespace vizer {
 
 using json = nlohmann::json;
 
@@ -373,4 +373,4 @@ public:
 
 }
 
-#endif //PKTVISORD_ABSTRACTMETRICSMANAGER_H
+#endif //VIZERD_ABSTRACTMETRICSMANAGER_H

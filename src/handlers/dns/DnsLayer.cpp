@@ -9,18 +9,17 @@
 #include <stdlib.h>
 #include <EndianPortable/EndianPortable.h>
 
-namespace pktvisor::handler::dns
-{
+namespace vizer::handler::dns {
 
-DnsLayer::DnsLayer(uint8_t* data, size_t dataLen, Layer* prevLayer, pcpp::Packet* packet)
-	: Layer(data, dataLen, prevLayer, packet)
+DnsLayer::DnsLayer(uint8_t *data, size_t dataLen, Layer *prevLayer, pcpp::Packet *packet)
+    : Layer(data, dataLen, prevLayer, packet)
 {
-	m_Protocol = pcpp::DNS;
-	m_ResourceList = NULL;
+    m_Protocol = pcpp::DNS;
+    m_ResourceList = NULL;
 
-	m_FirstQuery = NULL;
-	m_FirstAnswer = NULL;
-	m_FirstAuthority = NULL;
+    m_FirstQuery = NULL;
+    m_FirstAnswer = NULL;
+    m_FirstAuthority = NULL;
 	m_FirstAdditional = NULL;
 
 }
@@ -826,14 +825,14 @@ bool DnsLayer::removeResource(IDnsResource* resourceToRemove)
 		IDnsResource* nextResource = resourceToRemove->getNextResource();
 		if (nextResource != NULL && nextResource->getType() == resourceToRemove->getType())
 			setFirstResource(resourceToRemove->getType(), nextResource);
-		else
-			setFirstResource(resourceToRemove->getType(), NULL);
-	}
+                else
+                    setFirstResource(resourceToRemove->getType(), NULL);
+        }
 
-	// free resourceToRemove memory
-	delete resourceToRemove;
+        // free resourceToRemove memory
+        delete resourceToRemove;
 
-	return true;
+        return true;
 }
 
-} // namespace pktvisor
+} // namespace vizer

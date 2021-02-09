@@ -13,12 +13,12 @@ corrade_add_static_plugin(PcapInput ${CMAKE_CURRENT_BINARY_DIR}
 
 target_include_directories(PcapInput
         PRIVATE
-        ${PKTVISOR_VENDOR_DIR}
+        ${VIZER_VENDOR_DIR}
         ${LIBPCPP_INCLUDE_DIRS}
         ${CMAKE_SOURCE_DIR}/src # FIXME ?
         ${CORRADE_INCLUDE_DIR}
-        ${PKTVISOR_VENDOR_DIR}/datasketches
-        ${PKTVISOR_VENDOR_DIR}/datasketches/datasketches
+        ${VIZER_VENDOR_DIR}/datasketches
+        ${VIZER_VENDOR_DIR}/datasketches/datasketches
         ${Corrade_BINARY_DIR}/src # FIXME configure.h, probably not right
         )
 
@@ -40,10 +40,10 @@ endif ()
 
 target_link_libraries(PcapInput
         PRIVATE
-        pktvisorcore
+        vizer-core
         )
 
-set(PKTVISOR_STATIC_PLUGINS ${PKTVISOR_STATIC_PLUGINS} PcapInput PARENT_SCOPE)
+set(VIZER_STATIC_PLUGINS ${VIZER_STATIC_PLUGINS} PcapInput PARENT_SCOPE)
 
 ## TEST SUITE
 add_executable(unit-tests-input-pcap
@@ -54,17 +54,17 @@ add_executable(unit-tests-input-pcap
 
 target_include_directories(unit-tests-input-pcap
         PRIVATE
-        ${PKTVISOR_VENDOR_DIR}
-        ${PKTVISOR_VENDOR_DIR}/catch
+        ${VIZER_VENDOR_DIR}
+        ${VIZER_VENDOR_DIR}/catch
         ${CMAKE_CURRENT_SOURCE_DIR}
         #
         ${LIBPCPP_INCLUDE_DIRS}  # pcpp
-        ${PKTVISOR_VENDOR_DIR}/datasketches
-        ${PKTVISOR_VENDOR_DIR}/datasketches/datasketches
+        ${VIZER_VENDOR_DIR}/datasketches
+        ${VIZER_VENDOR_DIR}/datasketches/datasketches
         )
 
 target_link_libraries(unit-tests-input-pcap
-        PRIVATE pktvisorcore PcapInput
+        PRIVATE vizer-core PcapInput
         )
 
 if (APPLE)

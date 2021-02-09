@@ -1,24 +1,24 @@
-#ifndef PKTVISORD_INPUTMODULEPLUGIN_H
-#define PKTVISORD_INPUTMODULEPLUGIN_H
+#ifndef VIZERD_INPUTMODULEPLUGIN_H
+#define VIZERD_INPUTMODULEPLUGIN_H
 
 #include "AbstractPlugin.h"
 #include "InputStreamManager.h"
 #include <string>
 
-namespace pktvisor {
+namespace vizer {
 
 class InputModulePlugin : public AbstractPlugin
 {
 
 protected:
-    pktvisor::InputStreamManager *_input_manager;
+    vizer::InputStreamManager *_input_manager;
 
     virtual void _setup_routes(HttpServer &svr) = 0;
 
 public:
     static std::string pluginInterface()
     {
-        return "com.ns1.module.input/1.0";
+        return "dev.vizer.module.input/1.0";
     }
 
     static std::vector<std::string> pluginSearchPaths()
@@ -39,4 +39,4 @@ public:
 
 }
 
-#endif //PKTVISORD_INPUTMODULEPLUGIN_H
+#endif //VIZERD_INPUTMODULEPLUGIN_H

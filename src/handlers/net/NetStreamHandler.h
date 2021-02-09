@@ -1,5 +1,5 @@
-#ifndef PKTVISORD_NETSTREAMHANDLER_H
-#define PKTVISORD_NETSTREAMHANDLER_H
+#ifndef VIZERD_NETSTREAMHANDLER_H
+#define VIZERD_NETSTREAMHANDLER_H
 
 #include "AbstractMetricsManager.h"
 #include "PcapInputStream.h"
@@ -14,11 +14,11 @@
 #include <Corrade/Utility/Debug.h>
 #include <string>
 
-namespace pktvisor::handler::net {
+namespace vizer::handler::net {
 
-using namespace pktvisor::input::pcap;
+using namespace vizer::input::pcap;
 
-class NetworkMetricsBucket final : public pktvisor::AbstractMetricsBucket
+class NetworkMetricsBucket final : public vizer::AbstractMetricsBucket
 {
 public:
     const uint8_t START_FI_MAP_SIZE = 7; // 2^7 = 128
@@ -72,18 +72,18 @@ public:
         return _counters;
     }
 
-    // pktvisor::AbstractMetricsBucket
+    // vizer::AbstractMetricsBucket
     void specialized_merge(const AbstractMetricsBucket &other) override;
     void to_json(json &j) const override;
 
     void process_packet(bool deep, pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp);
 };
 
-class NetworkMetricsManager final : public pktvisor::AbstractMetricsManager<NetworkMetricsBucket>
+class NetworkMetricsManager final : public vizer::AbstractMetricsManager<NetworkMetricsBucket>
 {
 public:
     NetworkMetricsManager(uint periods, int deepSampleRate)
-        : pktvisor::AbstractMetricsManager<NetworkMetricsBucket>(periods, deepSampleRate)
+        : vizer::AbstractMetricsManager<NetworkMetricsBucket>(periods, deepSampleRate)
     {
     }
 
@@ -101,7 +101,7 @@ public:
     void process_packet(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp);
 };
 
-class NetStreamHandler final : public pktvisor::StreamMetricsHandler<NetworkMetricsManager>
+class NetStreamHandler final : public vizer::StreamMetricsHandler<NetworkMetricsManager>
 {
 
     PcapInputStream *_stream;
@@ -116,15 +116,15 @@ public:
     NetStreamHandler(const std::string &name, PcapInputStream *stream, uint periods, uint deepSampleRate);
     ~NetStreamHandler() override;
 
-    // pktvisor::AbstractModule
+    // vizer::AbstractModule
     void start() override;
     void stop() override;
     json info_json() const override;
 
-    // pktvisor::StreamMetricsHandler
+    // vizer::StreamMetricsHandler
     void to_json(json &j, uint64_t period, bool merged) override;
 };
 
 }
 
-#endif //PKTVISORD_NETSTREAMHANDLER_H
+#endif //VIZERD_NETSTREAMHANDLER_H

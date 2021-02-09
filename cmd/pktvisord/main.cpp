@@ -73,10 +73,10 @@ void signal_handler(int signal)
 }
 }
 
-typedef Corrade::PluginManager::Manager<pktvisor::InputModulePlugin> InputPluginRegistry;
-typedef Corrade::PluginManager::Manager<pktvisor::HandlerModulePlugin> HandlerPluginRegistry;
-typedef Corrade::Containers::Pointer<pktvisor::InputModulePlugin> InputPluginPtr;
-typedef Corrade::Containers::Pointer<pktvisor::HandlerModulePlugin> HandlerPluginPtr;
+typedef Corrade::PluginManager::Manager<vizer::InputModulePlugin> InputPluginRegistry;
+typedef Corrade::PluginManager::Manager<vizer::HandlerModulePlugin> HandlerPluginRegistry;
+typedef Corrade::Containers::Pointer<vizer::InputModulePlugin> InputPluginPtr;
+typedef Corrade::Containers::Pointer<vizer::HandlerModulePlugin> HandlerPluginPtr;
 
 int main(int argc, char *argv[])
 {
@@ -84,17 +84,17 @@ int main(int argc, char *argv[])
 
     std::map<std::string, docopt::value> args = docopt::docopt(USAGE,
         {argv + 1, argv + argc},
-        true,              // show help if requested
-        PKTVISOR_VERSION); // version string
+        true,           // show help if requested
+        VIZER_VERSION); // version string
 
-    pktvisor::HttpServer svr(!args["--full-api"].asBool());
+    vizer::HttpServer svr(!args["--full-api"].asBool());
     svr.set_logger([](const auto &req, const auto &res) {
         Corrade::Utility::Debug{} << "REQUEST: " << req.method << " " << req.path << " " << res.status;
     });
 
     // inputs
     InputPluginRegistry inputRegistry;
-    auto inputManager = std::make_unique<pktvisor::InputStreamManager>();
+    auto inputManager = std::make_unique<vizer::InputStreamManager>();
     std::vector<InputPluginPtr> inputPlugins;
 
     // initialize input plugins
@@ -107,7 +107,7 @@ int main(int argc, char *argv[])
 
     // handlers
     HandlerPluginRegistry handlerRegistry;
-    auto handlerManager = std::make_unique<pktvisor::HandlerManager>();
+    auto handlerManager = std::make_unique<vizer::HandlerManager>();
     std::vector<HandlerPluginPtr> handlerPlugins;
 
     // initialize handler plugins

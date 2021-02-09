@@ -1,10 +1,10 @@
-#ifndef PKTVISORD_INPUTSTREAM_H
-#define PKTVISORD_INPUTSTREAM_H
+#ifndef VIZERD_INPUTSTREAM_H
+#define VIZERD_INPUTSTREAM_H
 
 #include "AbstractModule.h"
 #include "StreamHandler.h"
 
-namespace pktvisor {
+namespace vizer {
 
 class InputStream : public AbstractModule
 {
@@ -22,4 +22,4 @@ public:
 
 }
 
-#endif //PKTVISORD_INPUTSTREAM_H
+#endif //VIZERD_INPUTSTREAM_H

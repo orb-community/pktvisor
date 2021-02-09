@@ -1,5 +1,5 @@
-#ifndef PKTVISORD_ABSTRACTMANAGER_H
-#define PKTVISORD_ABSTRACTMANAGER_H
+#ifndef VIZERD_ABSTRACTMANAGER_H
+#define VIZERD_ABSTRACTMANAGER_H
 
 #include "AbstractModule.h"
 #include <assert.h>
@@ -8,7 +8,7 @@
 #include <string>
 #include <unordered_map>
 
-namespace pktvisor {
+namespace vizer {
 
 /**
  * called from HTTP threads so must be thread safe
@@ -87,4 +87,4 @@ public:
 
 }
 
-#endif //PKTVISORD_ABSTRACTMANAGER_H
+#endif //VIZERD_ABSTRACTMANAGER_H

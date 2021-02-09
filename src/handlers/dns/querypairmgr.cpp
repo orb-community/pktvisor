@@ -13,7 +13,7 @@ static inline void timespec_diff(struct timespec *a, struct timespec *b,
     }
 }
 
-namespace pktvisor::handler::dns {
+namespace vizer::handler::dns {
 
 void QueryResponsePairMgr::startDnsTransaction(uint32_t flowKey, uint16_t queryID, timespec stamp)
 {

@@ -1,25 +1,25 @@
-#ifndef PKTVISORD_HANDLERMODULEPLUGIN_H
-#define PKTVISORD_HANDLERMODULEPLUGIN_H
+#ifndef VIZERD_HANDLERMODULEPLUGIN_H
+#define VIZERD_HANDLERMODULEPLUGIN_H
 
 #include "AbstractPlugin.h"
 #include "HandlerManager.h"
 #include "InputStreamManager.h"
 #include <string>
 
-namespace pktvisor {
+namespace vizer {
 
 class HandlerModulePlugin : public AbstractPlugin
 {
 protected:
-    pktvisor::InputStreamManager *_input_manager;
-    pktvisor::HandlerManager *_handler_manager;
+    vizer::InputStreamManager *_input_manager;
+    vizer::HandlerManager *_handler_manager;
 
     virtual void _setup_routes(HttpServer &svr) = 0;
 
 public:
     static std::string pluginInterface()
     {
-        return "com.ns1.module.handler/1.0";
+        return "dev.vizer.module.handler/1.0";
     }
 
     static std::vector<std::string> pluginSearchPaths()
@@ -44,4 +44,4 @@ public:
 
 }
 
-#endif //PKTVISORD_HANDLERMODULEPLUGIN_H
+#endif //VIZERD_HANDLERMODULEPLUGIN_H

@@ -1,5 +1,5 @@
-#ifndef PKTVISORD_PCAPINPUTSTREAM_H
-#define PKTVISORD_PCAPINPUTSTREAM_H
+#ifndef VIZERD_PCAPINPUTSTREAM_H
+#define VIZERD_PCAPINPUTSTREAM_H
 
 #include "InputStream.h"
 #pragma GCC diagnostic push
@@ -17,7 +17,7 @@
 #include <unordered_map>
 #include <vector>
 
-namespace pktvisor::input::pcap {
+namespace vizer::input::pcap {
 
 enum class PacketDirection {
     toHost,
@@ -38,7 +38,7 @@ public:
     }
 };
 
-class PcapInputStream : public pktvisor::InputStream
+class PcapInputStream : public vizer::InputStream
 {
 
 private:
@@ -59,7 +59,7 @@ public:
     PcapInputStream(const std::string &name);
     ~PcapInputStream();
 
-    // pktvisor::AbstractModule
+    // vizer::AbstractModule
     void start() override;
     void stop() override;
     json info_json() const override;
@@ -89,4 +89,4 @@ public:
 
 }
 
-#endif //PKTVISORD_PCAPINPUTSTREAM_H
+#endif //VIZERD_PCAPINPUTSTREAM_H

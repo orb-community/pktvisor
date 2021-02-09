@@ -19,7 +19,7 @@
 #include <netinet/in.h>
 #include <sstream>
 
-namespace pktvisor::input::pcap {
+namespace vizer::input::pcap {
 
 // static callbacks for PcapPlusPlus
 static void _tcp_message_ready_cb(int8_t side, const pcpp::TcpStreamData &tcpData, void *cookie)
@@ -53,7 +53,7 @@ static void _pcap_stats_update(pcpp::IPcapDevice::PcapStats &stats, void *cookie
 }
 
 PcapInputStream::PcapInputStream(const std::string &name)
-    : pktvisor::InputStream(name)
+    : vizer::InputStream(name)
     , _pcapDevice(nullptr)
     , _tcp_reassembly(_tcp_message_ready_cb,
           this,
@@ -222,11 +222,11 @@ void PcapInputStream::_open_pcap(const std::string &fileName, const std::string 
     }
 
     int packetCount = 1, lastCount = 0;
-    pktvisor::Timer t([&packetCount, &lastCount]() {
+    vizer::Timer t([&packetCount, &lastCount]() {
         std::cerr << "processed " << packetCount << " packets (" << lastCount << "/s)\n";
         lastCount = 0;
     },
-        pktvisor::Timer::Interval(1000), false);
+        vizer::Timer::Interval(1000), false);
     t.start();
     while (_running && reader->getNextPacket(rawPacket)) {
         process_raw_packet(&rawPacket);

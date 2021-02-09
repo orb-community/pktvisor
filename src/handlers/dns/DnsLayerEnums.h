@@ -4,20 +4,18 @@
 /// @file
 
 /**
- * \namespace pktvisor
+ * \namespace vizer
  */
-namespace pktvisor::handler::dns
-{
-	/**
+namespace vizer::handler::dns {
+/**
 	 * An enum for all possible DNS record types
 	 */
-	enum DnsType
-	{
-		/** IPv4 address record */
-		DNS_TYPE_A = 1,
-		/** Name Server record */
-		DNS_TYPE_NS,
-		/** Obsolete, replaced by MX */
+enum DnsType {
+    /** IPv4 address record */
+    DNS_TYPE_A = 1,
+    /** Name Server record */
+    DNS_TYPE_NS,
+    /** Obsolete, replaced by MX */
 		DNS_TYPE_MD,
 		/** Obsolete, replaced by MX */
 		DNS_TYPE_MF,
