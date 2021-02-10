@@ -25,6 +25,7 @@ target_include_directories(vizer-core
         #
         PUBLIC ${LIBMMDB_INCLUDE_DIRS}
         ${CORRADE_INCLUDE_DIR}
+        ${CONAN_INCLUDE_DIRS}
         ${Corrade_BINARY_DIR}/src # FIXME configure.h, probably not right
         )
 
@@ -33,6 +34,7 @@ target_link_libraries(vizer-core
         ${LIBMMDB_LDFLAGS}
         ${LIBMMDB_LIBRARIES}
         Corrade::PluginManager
+        PUBLIC ${CONAN_LIBS}
         )
 
 configure_file(config.h.in config.h @ONLY)

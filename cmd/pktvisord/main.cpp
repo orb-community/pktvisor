@@ -10,14 +10,10 @@
 #include "HandlerModulePlugin.h"
 #include "InputModulePlugin.h"
 #include "InputStreamManager.h"
-
 #include <Corrade/PluginManager/Manager.h>
 #include <Corrade/PluginManager/PluginMetadata.h>
-#include <Corrade/Utility/Arguments.h>
-#include <Corrade/Utility/ConfigurationGroup.h>
-#include <Corrade/Utility/Debug.h>
-#include <Corrade/Utility/DebugStl.h>
-#include <Corrade/Utility/Format.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
+#include <spdlog/spdlog.h>
 
 #include "config.h" // FIXME
 #include "handlers/static_plugins.h"
@@ -82,14 +78,17 @@ int main(int argc, char *argv[])
 {
     int result{0};
 
+    auto console = spdlog::stdout_color_mt("console");
+    auto err_logger = spdlog::stderr_color_mt("stderr");
+
     std::map<std::string, docopt::value> args = docopt::docopt(USAGE,
         {argv + 1, argv + argc},
         true,           // show help if requested
         VIZER_VERSION); // version string
 
     vizer::HttpServer svr(!args["--full-api"].asBool());
-    svr.set_logger([](const auto &req, const auto &res) {
-        Corrade::Utility::Debug{} << "REQUEST: " << req.method << " " << req.path << " " << res.status;
+    svr.set_logger([&err_logger](const auto &req, const auto &res) {
+        err_logger->info("REQUEST: {} {} {}", req.method, req.path, res.status);
     });
 
     // inputs
@@ -100,7 +99,7 @@ int main(int argc, char *argv[])
     // initialize input plugins
     for (auto &s : inputRegistry.pluginList()) {
         InputPluginPtr mod = inputRegistry.instantiate(s);
-        Corrade::Utility::print("Load input plugin: {} {}\n", mod->name(), mod->pluginInterface());
+        console->info("Load input plugin: {} {}", mod->name(), mod->pluginInterface());
         mod->init_module(inputManager.get(), svr);
         inputPlugins.emplace_back(std::move(mod));
     }
@@ -113,28 +112,28 @@ int main(int argc, char *argv[])
     // initialize handler plugins
     for (auto &s : handlerRegistry.pluginList()) {
         HandlerPluginPtr mod = handlerRegistry.instantiate(s);
-        Corrade::Utility::print("Load handler plugin: {} {}\n", mod->name(), mod->pluginInterface());
+        console->info("Load handler plugin: {} {}", mod->name(), mod->pluginInterface());
         mod->init_module(inputManager.get(), handlerManager.get(), svr);
         handlerPlugins.emplace_back(std::move(mod));
     }
 
     shutdown_handler = [&](int signal) {
-        Corrade::Utility::print("Shutting down\n");
+        console->info("Shutting down");
         svr.stop();
         // gracefully close all inputs and handlers
         auto [input_modules, im_lock] = inputManager->module_get_all_locked();
         for (auto &[name, mod] : input_modules) {
-            Corrade::Utility::print("Stopping input instance: {}\n", mod->name());
+            console->info("Stopping input instance: {}", mod->name());
             mod->stop();
         }
         auto [handler_modules, hm_lock] = handlerManager->module_get_all_locked();
         for (auto &[name, mod] : handler_modules) {
-            Corrade::Utility::print("Stopping handler instance: {}\n", mod->name());
+            console->info("Stopping handler instance: {}", mod->name());
             mod->stop();
         }
     };
 
-    Corrade::Utility::print("Initialize server control plane\n");
+    console->info("Initialize server control plane");
     svr.Get("/api/v1/server/stop", [&](const httplib::Request &req, httplib::Response &res) {
         shutdown_handler(SIGUSR1);
     });
@@ -148,12 +147,12 @@ int main(int argc, char *argv[])
         if (!svr.bind_to_port(host.c_str(), port)) {
             throw std::runtime_error("unable to bind host/port");
         }
-        Corrade::Utility::print("web server listening on {}:{}\n", host, port);
+        console->info("web server listening on {}:{}", host, port);
         if (!svr.listen_after_bind()) {
             throw std::runtime_error("error during listen");
         }
     } catch (const std::exception &e) {
-        Corrade::Utility::printError("Fatal error: {}\n", e.what());
+        err_logger->error("Fatal error: {}", e.what());
         result = -1;
     }
 

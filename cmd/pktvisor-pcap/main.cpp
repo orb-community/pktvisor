@@ -9,13 +9,10 @@
 #include "HandlerModulePlugin.h"
 #include "InputModulePlugin.h"
 #include "InputStreamManager.h"
-
 #include <Corrade/PluginManager/Manager.h>
 #include <Corrade/PluginManager/PluginMetadata.h>
-#include <Corrade/Utility/Arguments.h>
-#include <Corrade/Utility/ConfigurationGroup.h>
-#include <Corrade/Utility/Debug.h>
-#include <Corrade/Utility/Format.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
+#include <spdlog/spdlog.h>
 
 #include "config.h" // FIXME
 #include "handlers/static_plugins.h"
@@ -77,6 +74,9 @@ int main(int argc, char *argv[])
 {
     int result{0};
 
+    auto console = spdlog::stdout_color_mt("console");
+    auto err_logger = spdlog::stderr_color_mt("stderr");
+
     std::map<std::string, docopt::value> args = docopt::docopt(USAGE,
         {argv + 1, argv + argc},
         true,           // show help if requested
@@ -90,7 +90,7 @@ int main(int argc, char *argv[])
     // initialize input plugins
     for (auto &s : inputRegistry.pluginList()) {
         InputPluginPtr mod = inputRegistry.instantiate(s);
-        Corrade::Utility::printError("Load input plugin: {} {}\n", mod->name(), mod->pluginInterface());
+        err_logger->info("Load input plugin: {} {}", mod->name(), mod->pluginInterface());
         mod->init_module(inputManager.get());
         inputPlugins.emplace_back(std::move(mod));
     }
@@ -103,7 +103,7 @@ int main(int argc, char *argv[])
     // initialize handler plugins
     for (auto &s : handlerRegistry.pluginList()) {
         HandlerPluginPtr mod = handlerRegistry.instantiate(s);
-        Corrade::Utility::printError("Load handler plugin: {} {}\n", mod->name(), mod->pluginInterface());
+        err_logger->info("Load handler plugin: {} {}", mod->name(), mod->pluginInterface());
         mod->init_module(inputManager.get(), handlerManager.get());
         handlerPlugins.emplace_back(std::move(mod));
     }
@@ -127,7 +127,7 @@ int main(int argc, char *argv[])
     if (args["--max-deep-sample"]) {
         sampleRate = (int)args["--max-deep-sample"].asLong();
         if (sampleRate != 100) {
-            Corrade::Utility::print("Using maximum deep sample rate: {}%\n", sampleRate);
+            err_logger->info("Using maximum deep sample rate: {}%", sampleRate);
         }
     }
 
@@ -153,8 +153,8 @@ int main(int argc, char *argv[])
         inputStream->config_set("host_spec", host_spec);
 
         inputStream->parse_host_spec();
-        Corrade::Utility::print("{}\n", inputStream->config_json().dump(4));
-        Corrade::Utility::print("{}\n", inputStream->info_json().dump(4));
+        console->info("{}", inputStream->config_json().dump(4));
+        console->info("{}", inputStream->info_json().dump(4));
 
         inputManager->module_add(std::move(inputStream), false);
         auto [input_stream, stream_mgr_lock] = inputManager->module_get_locked("pcap");
@@ -190,11 +190,11 @@ int main(int argc, char *argv[])
             net_handler->to_json(result, periods, true);
             dns_handler->to_json(result, periods, true);
         }
-        Corrade::Utility::print("{}\n", result.dump());
+        console->info("{}", result.dump());
         shutdown_handler(SIGUSR1);
 
     } catch (const std::exception &e) {
-        Corrade::Utility::printError("Fatal error: {}\n", e.what());
+        err_logger->error("Fatal error: {}", e.what());
         result = -1;
     }
 

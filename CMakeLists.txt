@@ -18,6 +18,9 @@ find_package(PkgConfig)
 
 include(sanitizer)
 
+include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
+conan_basic_setup()
+
 # Corrade depedency
 set(WITH_TESTSUITE OFF CACHE BOOL "" FORCE)
 set(WITH_INTERCONNECT OFF CACHE BOOL "" FORCE)

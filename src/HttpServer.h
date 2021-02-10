@@ -1,8 +1,7 @@
 #pragma once
 
-#include <Corrade/Utility/Format.h>
-#include <Corrade/Utility/FormatStl.h>
 #include <cpp-httplib/httplib.h>
+#include <spdlog/spdlog.h>
 
 namespace vizer {
 class HttpServer : public httplib::Server
@@ -17,7 +16,7 @@ public:
 
     Server &Get(const char *pattern, Handler handler)
     {
-        Corrade::Utility::print("Registering GET {}\n", pattern);
+        spdlog::info("Registering GET {}", pattern);
         return httplib::Server::Get(pattern, handler);
     }
     Server &Post(const char *pattern, Handler handler)
@@ -25,7 +24,7 @@ public:
         if (_read_only) {
             return *this;
         }
-        Corrade::Utility::print("Registering POST {}\n", pattern);
+        spdlog::info("Registering POST {}", pattern);
         return httplib::Server::Post(pattern, handler);
     }
     Server &Put(const char *pattern, Handler handler)
@@ -33,7 +32,7 @@ public:
         if (_read_only) {
             return *this;
         }
-        Corrade::Utility::print("Registering PUT {}\n", pattern);
+        spdlog::info("Registering PUT {}", pattern);
         return httplib::Server::Put(pattern, handler);
     }
     Server &Delete(const char *pattern, Handler handler)
@@ -41,7 +40,7 @@ public:
         if (_read_only) {
             return *this;
         }
-        Corrade::Utility::print("Registering DELETE {}\n", pattern);
+        spdlog::info("Registering DELETE {}", pattern);
         return httplib::Server::Delete(pattern, handler);
     }
 };
