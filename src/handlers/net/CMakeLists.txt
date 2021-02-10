@@ -16,8 +16,6 @@ target_include_directories(NetHandler
         ${LIBPCPP_INCLUDE_DIRS}
         ${CMAKE_SOURCE_DIR}/src # FIXME ?
         ${CMAKE_SOURCE_DIR}/src/inputs/pcap # FIXME - dependency on pcap
-        ${CORRADE_INCLUDE_DIR}
-        ${Corrade_BINARY_DIR}/src # FIXME configure.h, probably not right
         )
 
 if (APPLE)

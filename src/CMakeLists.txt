@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 3.13)
 
-message(STATUS "Modular support will build")
-
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/3rd/corrade/modules")
+message(STATUS "vizer-core")
 
 find_package(Corrade REQUIRED PluginManager)
 pkg_check_modules(LIBMMDB REQUIRED libmaxminddb)
@@ -24,16 +22,13 @@ target_include_directories(vizer-core
         ${VIZER_VENDOR_DIR}/datasketches/datasketches
         #
         PUBLIC ${LIBMMDB_INCLUDE_DIRS}
-        ${CORRADE_INCLUDE_DIR}
-        ${CONAN_INCLUDE_DIRS}
-        ${Corrade_BINARY_DIR}/src # FIXME configure.h, probably not right
+        PUBLIC ${CONAN_INCLUDE_DIRS}
         )
 
 target_link_libraries(vizer-core
         PRIVATE
         ${LIBMMDB_LDFLAGS}
         ${LIBMMDB_LIBRARIES}
-        Corrade::PluginManager
         PUBLIC ${CONAN_LIBS}
         )
 
@@ -47,17 +42,16 @@ add_subdirectory(handlers/dns)
 set(VIZER_STATIC_PLUGINS ${VIZER_STATIC_PLUGINS} PARENT_SCOPE)
 
 ## TEST SUITE
-add_executable(unit-tests-core
+add_executable(vizor-core-tests
         tests/main.cpp
         tests/test_sketches.cpp
         tests/test_metrics.cpp
         tests/test_geoip.cpp
         )
 
-target_include_directories(unit-tests-core
+target_include_directories(vizor-core-tests
         PRIVATE
         ${VIZER_VENDOR_DIR}
-        ${VIZER_VENDOR_DIR}/catch
         ${CMAKE_CURRENT_SOURCE_DIR}
         # FIXME
         ${VIZER_VENDOR_DIR}/datasketches
@@ -65,6 +59,6 @@ target_include_directories(unit-tests-core
         #
         )
 
-target_link_libraries(unit-tests-core
+target_link_libraries(vizor-core-tests
         PRIVATE vizer-core
         )

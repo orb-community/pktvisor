@@ -21,12 +21,6 @@ include(sanitizer)
 include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
 conan_basic_setup()
 
-# Corrade depedency
-set(WITH_TESTSUITE OFF CACHE BOOL "" FORCE)
-set(WITH_INTERCONNECT OFF CACHE BOOL "" FORCE)
-set(BUILD_STATIC ON CACHE BOOL "" FORCE)
-add_subdirectory(${CMAKE_SOURCE_DIR}/3rd/corrade EXCLUDE_FROM_ALL)
-
 set(VIZER_STATIC_PLUGINS)
 add_subdirectory(src)
 add_subdirectory(cmd/pktvisord)

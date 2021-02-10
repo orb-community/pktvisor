@@ -16,10 +16,8 @@ target_include_directories(PcapInput
         ${VIZER_VENDOR_DIR}
         ${LIBPCPP_INCLUDE_DIRS}
         ${CMAKE_SOURCE_DIR}/src # FIXME ?
-        ${CORRADE_INCLUDE_DIR}
         ${VIZER_VENDOR_DIR}/datasketches
         ${VIZER_VENDOR_DIR}/datasketches/datasketches
-        ${Corrade_BINARY_DIR}/src # FIXME configure.h, probably not right
         )
 
 if (APPLE)

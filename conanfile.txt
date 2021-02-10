@@ -5,6 +5,10 @@ catch2/2.13.4
 docopt.cpp/0.6.3
 nlohmann_json/3.9.1
 cpp-httplib/0.8.0
+corrade/2020.06
+
+[options]
+corrade:with_pluginmanager=True
 
 [generators]
 cmake
