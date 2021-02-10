@@ -2,7 +2,7 @@
 
 #include "AbstractMetricsManager.h"
 #include "AbstractModule.h"
-#include <json/json.hpp>
+#include <nlohmann/json.hpp>
 
 namespace vizer {
 

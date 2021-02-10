@@ -1,6 +1,6 @@
 #pragma once
 
-#include <cpp-httplib/httplib.h>
+#include <httplib.h>
 #include <spdlog/spdlog.h>
 
 namespace vizer {

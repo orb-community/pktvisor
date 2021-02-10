@@ -2,7 +2,7 @@
 #include "NetStreamHandler.h"
 #include "PcapInputStream.h"
 #include <Corrade/PluginManager/AbstractManager.h>
-#include <json/json.hpp>
+#include <nlohmann/json.hpp>
 
 CORRADE_PLUGIN_REGISTER(NetHandler, vizer::handler::net::NetHandlerModulePlugin,
     "dev.vizer.module.handler/1.0")

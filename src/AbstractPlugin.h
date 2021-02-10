@@ -3,7 +3,7 @@
 #include "HttpServer.h"
 #include <Corrade/PluginManager/AbstractPlugin.h>
 #include <exception>
-#include <json/json.hpp>
+#include <nlohmann/json.hpp>
 #include <string>
 #include <unordered_map>
 

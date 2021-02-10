@@ -1,5 +1,4 @@
 add_executable(pktvisor-pcap
-        ${VIZER_VENDOR_DIR}/docopt/docopt.cpp
         main.cpp
         )
 

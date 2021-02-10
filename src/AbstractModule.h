@@ -1,7 +1,7 @@
 #pragma once
 
 #include <atomic>
-#include <json/json.hpp>
+#include <nlohmann/json.hpp>
 #include <shared_mutex>
 #include <string>
 #include <unordered_map>

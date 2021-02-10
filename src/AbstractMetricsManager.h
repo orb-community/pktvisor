@@ -9,7 +9,7 @@
 #include <atomic>
 #include <deque>
 #include <exception>
-#include <json/json.hpp>
+#include <nlohmann/json.hpp>
 #include <rng/randutils.hpp>
 #include <shared_mutex>
 #include <sstream>
