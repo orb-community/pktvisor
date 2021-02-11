@@ -1,13 +1,13 @@
 #define LOG_MODULE pcpp::PacketLogModuleDnsLayer
 
 #include "DnsLayer.h"
-#include <Logger.h>
+#include "EndianPortable.h"
 #include <IpAddress.h>
-#include <sstream>
-#include <string.h>
+#include <Logger.h>
 #include <iomanip>
+#include <sstream>
 #include <stdlib.h>
-#include <EndianPortable/EndianPortable.h>
+#include <string.h>
 
 namespace vizer::handler::dns {
 

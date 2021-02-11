@@ -49,17 +49,6 @@ add_executable(unit-tests-input-pcap
         tests/test_utils.cpp
         )
 
-#target_include_directories(unit-tests-input-pcap
-#        PRIVATE
-#        ${VIZER_VENDOR_DIR}
-#        ${VIZER_VENDOR_DIR}/catch
-#        ${CMAKE_CURRENT_SOURCE_DIR}
-#        #
-#        ${LIBPCPP_INCLUDE_DIRS}  # pcpp
-#        ${VIZER_VENDOR_DIR}/datasketches
-#        ${VIZER_VENDOR_DIR}/datasketches/datasketches
-#        )
-
 target_link_libraries(unit-tests-input-pcap
         PRIVATE Vizer::Input::Pcap
         )

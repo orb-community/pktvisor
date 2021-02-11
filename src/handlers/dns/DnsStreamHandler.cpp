@@ -9,7 +9,7 @@
 #include <IPv6Layer.h>
 #pragma GCC diagnostic pop
 #include <arpa/inet.h>
-#include <datasketches/datasketches/cpc/cpc_union.hpp>
+#include <cpc_union.hpp>
 #include <sstream>
 
 namespace vizer::handler::dns {

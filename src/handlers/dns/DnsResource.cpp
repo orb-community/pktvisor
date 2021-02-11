@@ -1,10 +1,10 @@
 #define LOG_MODULE PacketLogModuleDnsLayer
 
 #include "DnsResource.h"
+#include "EndianPortable.h"
 #include <Logger.h>
 #include <sstream>
 #include <string.h>
-#include <EndianPortable/EndianPortable.h>
 
 namespace vizer::handler::dns {
 
