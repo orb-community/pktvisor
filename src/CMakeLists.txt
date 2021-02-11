@@ -13,31 +13,25 @@ add_library(vizer-core
         HandlerModulePlugin.cpp
         GeoDB.cpp
         )
+add_library(Vizer::Core ALIAS vizer-core)
 
 target_include_directories(vizer-core
-        PRIVATE
-        ${VIZER_VENDOR_DIR}
-        # FIXME
-        ${VIZER_VENDOR_DIR}/datasketches
-        ${VIZER_VENDOR_DIR}/datasketches/datasketches
-        #
-        PUBLIC ${LIBMMDB_INCLUDE_DIRS}
-        PUBLIC ${CONAN_INCLUDE_DIRS}
+        PUBLIC
+        ${LIBMMDB_INCLUDE_DIRS}
         )
 
 target_link_libraries(vizer-core
-        PRIVATE
+        PUBLIC
+        datasketches
+        rng
         ${LIBMMDB_LDFLAGS}
         ${LIBMMDB_LIBRARIES}
-        PUBLIC ${CONAN_LIBS}
         )
 
 configure_file(config.h.in config.h @ONLY)
 
-add_subdirectory(inputs/pcap)
-
-add_subdirectory(handlers/net)
-add_subdirectory(handlers/dns)
+add_subdirectory(inputs)
+add_subdirectory(handlers)
 
 set(VIZER_STATIC_PLUGINS ${VIZER_STATIC_PLUGINS} PARENT_SCOPE)
 
@@ -50,15 +44,7 @@ add_executable(vizor-core-tests
         )
 
 target_include_directories(vizor-core-tests
-        PRIVATE
-        ${VIZER_VENDOR_DIR}
-        ${CMAKE_CURRENT_SOURCE_DIR}
-        # FIXME
-        ${VIZER_VENDOR_DIR}/datasketches
-        ${VIZER_VENDOR_DIR}/datasketches/datasketches
-        #
+        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
         )
 
-target_link_libraries(vizor-core-tests
-        PRIVATE vizer-core
-        )
+target_link_libraries(vizor-core-tests PRIVATE Vizer::Core)

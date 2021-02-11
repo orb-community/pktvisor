@@ -1,7 +1,7 @@
 #include <catch2/catch.hpp>
-#include <datasketches/fi/frequent_items_sketch.hpp>
-#include <datasketches/cpc/cpc_sketch.hpp>
-#include <datasketches/kll/kll_sketch.hpp>
+#include <cpc_sketch.hpp>
+#include <frequent_items_sketch.hpp>
+#include <kll_sketch.hpp>
 
 TEST_CASE("Top-K", "[topk]")
 {

@@ -4,13 +4,13 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 #pragma GCC diagnostic ignored "-Wunused-parameter"
-#include <datasketches/kll/kll_sketch.hpp>
+#include <kll_sketch.hpp>
 #pragma GCC diagnostic pop
 #include <atomic>
 #include <deque>
 #include <exception>
 #include <nlohmann/json.hpp>
-#include <rng/randutils.hpp>
+#include <randutils.hpp>
 #include <shared_mutex>
 #include <sstream>
 #include <sys/time.h>
