@@ -18,6 +18,8 @@ add_library(Vizer::Core ALIAS vizer-core)
 target_include_directories(vizer-core
         PUBLIC
         ${LIBMMDB_INCLUDE_DIRS}
+        INTERFACE
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
         )
 
 target_link_libraries(vizer-core

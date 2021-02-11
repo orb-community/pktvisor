@@ -6,9 +6,9 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 #pragma GCC diagnostic ignored "-Wunused-function"
-#include <datasketches/cpc/cpc_sketch.hpp>
-#include <datasketches/fi/frequent_items_sketch.hpp>
-#include <datasketches/kll/kll_sketch.hpp>
+#include <cpc_sketch.hpp>
+#include <frequent_items_sketch.hpp>
+#include <kll_sketch.hpp>
 #pragma GCC diagnostic pop
 #include <Corrade/Utility/Debug.h>
 #include <string>
