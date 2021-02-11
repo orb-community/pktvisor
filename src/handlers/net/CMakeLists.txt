@@ -21,7 +21,7 @@ target_link_libraries(VizerHandlerNet
         Vizer::Input::Pcap
         )
 
-set(VIZER_STATIC_PLUGINS ${VIZER_STATIC_PLUGINS} VizerHandlerNet PARENT_SCOPE)
+set(VIZER_STATIC_PLUGINS ${VIZER_STATIC_PLUGINS} Vizer::Handler::Net PARENT_SCOPE)
 
 ## TEST SUITE
 add_executable(unit-tests-handler-net

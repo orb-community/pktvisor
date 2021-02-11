@@ -4,7 +4,7 @@
 #include <Corrade/PluginManager/AbstractManager.h>
 #include <nlohmann/json.hpp>
 
-CORRADE_PLUGIN_REGISTER(NetHandler, vizer::handler::net::NetHandlerModulePlugin,
+CORRADE_PLUGIN_REGISTER(VizerHandlerNet, vizer::handler::net::NetHandlerModulePlugin,
     "dev.vizer.module.handler/1.0")
 
 namespace vizer::handler::net {

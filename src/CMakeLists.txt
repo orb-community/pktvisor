@@ -1,4 +1,3 @@
-cmake_minimum_required(VERSION 3.13)
 
 message(STATUS "vizer-core")
 
@@ -26,11 +25,15 @@ target_link_libraries(vizer-core
         PUBLIC
         datasketches
         rng
+        ${CONAN_LIBS_CORRADE}
+        ${CONAN_LIBS_SPDLOG}
+        ${CONAN_LIBS_FMT}
+        ${CONAN_LIBS_CPP-HTTPLIB}
         ${LIBMMDB_LDFLAGS}
         ${LIBMMDB_LIBRARIES}
         )
 
-configure_file(config.h.in config.h @ONLY)
+configure_file(vizer_config.h.in vizer_config.h @ONLY)
 
 add_subdirectory(inputs)
 add_subdirectory(handlers)

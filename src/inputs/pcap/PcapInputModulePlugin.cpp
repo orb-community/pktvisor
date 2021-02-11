@@ -2,7 +2,7 @@
 #include <Corrade/PluginManager/AbstractManager.h>
 #include <Corrade/Utility/FormatStl.h>
 
-CORRADE_PLUGIN_REGISTER(PcapInput, vizer::input::pcap::PcapInputModulePlugin,
+CORRADE_PLUGIN_REGISTER(VizerInputPcap, vizer::input::pcap::PcapInputModulePlugin,
     "dev.vizer.module.input/1.0")
 
 namespace vizer::input::pcap {

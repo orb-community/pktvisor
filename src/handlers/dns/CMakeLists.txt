@@ -26,7 +26,7 @@ target_link_libraries(VizerHandlerDns
         Vizer::Input::Pcap
         )
 
-set(VIZER_STATIC_PLUGINS ${VIZER_STATIC_PLUGINS} VizerHandlerDns PARENT_SCOPE)
+set(VIZER_STATIC_PLUGINS ${VIZER_STATIC_PLUGINS} Vizer::Handler::Dns PARENT_SCOPE)
 
 ## TEST SUITE
 add_executable(unit-tests-handler-dns

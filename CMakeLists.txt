@@ -14,11 +14,12 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_VERBOSE_MAKEFILE ON)
 add_compile_options(-Wall -pedantic -W -Wextra)
 
-find_package(PkgConfig)
-include(sanitizer)
-
 include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
 conan_basic_setup()
+
+find_package(Corrade REQUIRED PluginManager)
+find_package(PkgConfig)
+include(sanitizer)
 
 set(VIZER_STATIC_PLUGINS)
 

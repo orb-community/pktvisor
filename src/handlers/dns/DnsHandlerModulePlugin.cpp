@@ -4,7 +4,7 @@
 #include <Corrade/PluginManager/AbstractManager.h>
 #include <nlohmann/json.hpp>
 
-CORRADE_PLUGIN_REGISTER(DnsHandler, vizer::handler::dns::DnsHandlerModulePlugin,
+CORRADE_PLUGIN_REGISTER(VizerHandlerDns, vizer::handler::dns::DnsHandlerModulePlugin,
     "dev.vizer.module.handler/1.0")
 
 namespace vizer::handler::dns {

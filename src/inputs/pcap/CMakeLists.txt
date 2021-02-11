@@ -40,7 +40,7 @@ target_link_libraries(VizerInputPcap
         Vizer::Core
         )
 
-set(VIZER_STATIC_PLUGINS ${VIZER_STATIC_PLUGINS} VizerInputPcap PARENT_SCOPE)
+set(VIZER_STATIC_PLUGINS ${VIZER_STATIC_PLUGINS} Vizer::Input::Pcap PARENT_SCOPE)
 
 ## TEST SUITE
 add_executable(unit-tests-input-pcap
