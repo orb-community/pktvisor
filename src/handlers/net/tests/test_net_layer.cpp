@@ -11,7 +11,7 @@ TEST_CASE("Parse net (dns) UDP IPv4 tests", "[pcap][ipv4][udp][net]")
 
     PcapInputStream stream{"pcap-test"};
     stream.config_set("pcap_file", "fixtures/dns_ipv4_udp.pcap");
-    stream.config_set("bpf", "");
+    stream.config_set("bpf", std::string());
 
     NetStreamHandler net_handler{"net-test", &stream, 1, 100};
 

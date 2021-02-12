@@ -28,7 +28,6 @@ target_link_libraries(vizer-core
         ${CONAN_LIBS_CORRADE}
         ${CONAN_LIBS_SPDLOG}
         ${CONAN_LIBS_FMT}
-        ${CONAN_LIBS_CPP-HTTPLIB}
         ${LIBMMDB_LDFLAGS}
         ${LIBMMDB_LIBRARIES}
         )
