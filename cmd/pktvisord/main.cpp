@@ -84,7 +84,6 @@ void initialize_geo(const docopt::value &city, const docopt::value &asn)
 
 int main(int argc, char *argv[])
 {
-    int result{0};
 
     auto console = spdlog::stdout_color_mt("console");
     auto err_logger = spdlog::stderr_color_mt("stderr");
@@ -165,7 +164,7 @@ int main(int argc, char *argv[])
         initialize_geo(args["--geo-city"], args["--geo-asn"]);
     } catch (const std::exception &e) {
         err_logger->error("Fatal error: {}", e.what());
-        result = -1;
+        exit(-1);
     }
 
     // pcap command line functionality (deprecated)
