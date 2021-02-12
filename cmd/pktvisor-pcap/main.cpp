@@ -83,38 +83,38 @@ int main(int argc, char *argv[])
         VIZER_VERSION); // version string
 
     // inputs
-    InputPluginRegistry inputRegistry;
-    auto inputManager = std::make_unique<InputStreamManager>();
-    std::vector<InputPluginPtr> inputPlugins;
+    InputPluginRegistry input_registry;
+    auto input_manager = std::make_unique<InputStreamManager>();
+    std::vector<InputPluginPtr> input_plugins;
 
     // initialize input plugins
-    for (auto &s : inputRegistry.pluginList()) {
-        InputPluginPtr mod = inputRegistry.instantiate(s);
+    for (auto &s : input_registry.pluginList()) {
+        InputPluginPtr mod = input_registry.instantiate(s);
         err_logger->info("Load input plugin: {} {}", mod->name(), mod->pluginInterface());
-        mod->init_module(inputManager.get());
-        inputPlugins.emplace_back(std::move(mod));
+        mod->init_module(input_manager.get());
+        input_plugins.emplace_back(std::move(mod));
     }
 
     // handlers
-    HandlerPluginRegistry handlerRegistry;
-    auto handlerManager = std::make_unique<HandlerManager>();
-    std::vector<HandlerPluginPtr> handlerPlugins;
+    HandlerPluginRegistry handler_registry;
+    auto handler_manager = std::make_unique<HandlerManager>();
+    std::vector<HandlerPluginPtr> handler_plugins;
 
     // initialize handler plugins
-    for (auto &s : handlerRegistry.pluginList()) {
-        HandlerPluginPtr mod = handlerRegistry.instantiate(s);
+    for (auto &s : handler_registry.pluginList()) {
+        HandlerPluginPtr mod = handler_registry.instantiate(s);
         err_logger->info("Load handler plugin: {} {}", mod->name(), mod->pluginInterface());
-        mod->init_module(inputManager.get(), handlerManager.get());
-        handlerPlugins.emplace_back(std::move(mod));
+        mod->init_module(input_manager.get(), handler_manager.get());
+        handler_plugins.emplace_back(std::move(mod));
     }
 
-    shutdown_handler = [&](int signal) {
+    shutdown_handler = [&]([[maybe_unused]] int signal) {
         // gracefully close all inputs and handlers
-        auto [input_modules, im_lock] = inputManager->module_get_all_locked();
+        auto [input_modules, im_lock] = input_manager->module_get_all_locked();
         for (auto &[name, mod] : input_modules) {
             mod->stop();
         }
-        auto [handler_modules, hm_lock] = handlerManager->module_get_all_locked();
+        auto [handler_modules, hm_lock] = handler_manager->module_get_all_locked();
         for (auto &[name, mod] : handler_modules) {
             mod->stop();
         }
@@ -123,11 +123,11 @@ int main(int argc, char *argv[])
     std::signal(SIGINT, signal_handler);
     std::signal(SIGTERM, signal_handler);
 
-    int sampleRate = 100;
+    int sample_rate = 100;
     if (args["--max-deep-sample"]) {
-        sampleRate = (int)args["--max-deep-sample"].asLong();
-        if (sampleRate != 100) {
-            err_logger->info("Using maximum deep sample rate: {}%", sampleRate);
+        sample_rate = (int)args["--max-deep-sample"].asLong();
+        if (sample_rate != 100) {
+            err_logger->info("Using maximum deep sample rate: {}%", sample_rate);
         }
     }
 
@@ -147,33 +147,33 @@ int main(int argc, char *argv[])
 
         initialize_geo(args["--geo-city"], args["--geo-asn"]);
 
-        auto inputStream = std::make_unique<input::pcap::PcapInputStream>("pcap");
-        inputStream->config_set("pcap_file", args["PCAP"].asString());
-        inputStream->config_set("bpf", bpf);
-        inputStream->config_set("host_spec", host_spec);
+        auto input_stream = std::make_unique<input::pcap::PcapInputStream>("pcap");
+        input_stream->config_set("pcap_file", args["PCAP"].asString());
+        input_stream->config_set("bpf", bpf);
+        input_stream->config_set("host_spec", host_spec);
 
-        inputStream->parse_host_spec();
-        console->info("{}", inputStream->config_json().dump(4));
-        console->info("{}", inputStream->info_json().dump(4));
+        input_stream->parse_host_spec();
+        console->info("{}", input_stream->config_json().dump(4));
+        console->info("{}", input_stream->info_json().dump(4));
 
-        inputManager->module_add(std::move(inputStream), false);
-        auto [input_stream, stream_mgr_lock] = inputManager->module_get_locked("pcap");
+        input_manager->module_add(std::move(input_stream), false);
+        auto [input_stream_, stream_mgr_lock] = input_manager->module_get_locked("pcap");
         stream_mgr_lock.unlock();
-        auto pcap_stream = dynamic_cast<input::pcap::PcapInputStream *>(input_stream);
+        auto pcap_stream = dynamic_cast<input::pcap::PcapInputStream *>(input_stream_);
 
         handler::net::NetStreamHandler *net_handler{nullptr};
         {
-            auto handler_module = std::make_unique<handler::net::NetStreamHandler>("net", pcap_stream, periods, sampleRate);
-            handlerManager->module_add(std::move(handler_module));
-            auto [handler, handler_mgr_lock] = handlerManager->module_get_locked("net");
+            auto handler_module = std::make_unique<handler::net::NetStreamHandler>("net", pcap_stream, periods, sample_rate);
+            handler_manager->module_add(std::move(handler_module));
+            auto [handler, handler_mgr_lock] = handler_manager->module_get_locked("net");
             handler_mgr_lock.unlock();
             net_handler = dynamic_cast<handler::net::NetStreamHandler *>(handler);
         }
         handler::dns::DnsStreamHandler *dns_handler{nullptr};
         {
-            auto handler_module = std::make_unique<handler::dns::DnsStreamHandler>("dns", pcap_stream, periods, sampleRate);
-            handlerManager->module_add(std::move(handler_module));
-            auto [handler, handler_mgr_lock] = handlerManager->module_get_locked("dns");
+            auto handler_module = std::make_unique<handler::dns::DnsStreamHandler>("dns", pcap_stream, periods, sample_rate);
+            handler_manager->module_add(std::move(handler_module));
+            auto [handler, handler_mgr_lock] = handler_manager->module_get_locked("dns");
             handler_mgr_lock.unlock();
             dns_handler = dynamic_cast<handler::dns::DnsStreamHandler *>(handler);
         }

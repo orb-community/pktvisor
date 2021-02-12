@@ -92,41 +92,41 @@ int main(int argc, char *argv[])
     });
 
     // inputs
-    InputPluginRegistry inputRegistry;
-    auto inputManager = std::make_unique<vizer::InputStreamManager>();
-    std::vector<InputPluginPtr> inputPlugins;
+    InputPluginRegistry input_registry;
+    auto input_manager = std::make_unique<vizer::InputStreamManager>();
+    std::vector<InputPluginPtr> input_plugins;
 
     // initialize input plugins
-    for (auto &s : inputRegistry.pluginList()) {
-        InputPluginPtr mod = inputRegistry.instantiate(s);
+    for (auto &s : input_registry.pluginList()) {
+        InputPluginPtr mod = input_registry.instantiate(s);
         console->info("Load input plugin: {} {}", mod->name(), mod->pluginInterface());
-        mod->init_module(inputManager.get(), svr);
-        inputPlugins.emplace_back(std::move(mod));
+        mod->init_module(input_manager.get(), svr);
+        input_plugins.emplace_back(std::move(mod));
     }
 
     // handlers
-    HandlerPluginRegistry handlerRegistry;
-    auto handlerManager = std::make_unique<vizer::HandlerManager>();
-    std::vector<HandlerPluginPtr> handlerPlugins;
+    HandlerPluginRegistry handler_registry;
+    auto handler_manager = std::make_unique<vizer::HandlerManager>();
+    std::vector<HandlerPluginPtr> handler_plugins;
 
     // initialize handler plugins
-    for (auto &s : handlerRegistry.pluginList()) {
-        HandlerPluginPtr mod = handlerRegistry.instantiate(s);
+    for (auto &s : handler_registry.pluginList()) {
+        HandlerPluginPtr mod = handler_registry.instantiate(s);
         console->info("Load handler plugin: {} {}", mod->name(), mod->pluginInterface());
-        mod->init_module(inputManager.get(), handlerManager.get(), svr);
-        handlerPlugins.emplace_back(std::move(mod));
+        mod->init_module(input_manager.get(), handler_manager.get(), svr);
+        handler_plugins.emplace_back(std::move(mod));
     }
 
-    shutdown_handler = [&](int signal) {
+    shutdown_handler = [&]([[maybe_unused]] int signal) {
         console->info("Shutting down");
         svr.stop();
         // gracefully close all inputs and handlers
-        auto [input_modules, im_lock] = inputManager->module_get_all_locked();
+        auto [input_modules, im_lock] = input_manager->module_get_all_locked();
         for (auto &[name, mod] : input_modules) {
             console->info("Stopping input instance: {}", mod->name());
             mod->stop();
         }
-        auto [handler_modules, hm_lock] = handlerManager->module_get_all_locked();
+        auto [handler_modules, hm_lock] = handler_manager->module_get_all_locked();
         for (auto &[name, mod] : handler_modules) {
             console->info("Stopping handler instance: {}", mod->name());
             mod->stop();
@@ -134,7 +134,7 @@ int main(int argc, char *argv[])
     };
 
     console->info("Initialize server control plane");
-    svr.Get("/api/v1/server/stop", [&](const httplib::Request &req, httplib::Response &res) {
+    svr.Get("/api/v1/server/stop", [&]([[maybe_unused]] const httplib::Request &req, [[maybe_unused]] httplib::Response &res) {
         shutdown_handler(SIGUSR1);
     });
     std::signal(SIGINT, signal_handler);
