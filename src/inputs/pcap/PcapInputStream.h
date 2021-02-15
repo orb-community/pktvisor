@@ -9,32 +9,26 @@
 #include <UdpLayer.h>
 #pragma GCC diagnostic pop
 #include "utils.h"
-#include <exception>
 #include <functional>
 #include <memory>
 #include <sigslot/signal.hpp>
 #include <unordered_map>
 #include <vector>
+#ifdef __linux__
+#include "afpacket.h"
+#endif
 
 namespace vizer::input::pcap {
+
+enum class PcapSource {
+    libpcap,
+    af_packet
+};
 
 enum class PacketDirection {
     toHost,
     fromHost,
     unknown
-};
-
-class PcapException : public std::runtime_error
-{
-public:
-    PcapException(const char *msg)
-        : std::runtime_error(msg)
-    {
-    }
-    PcapException(const std::string &msg)
-        : std::runtime_error(msg)
-    {
-    }
 };
 
 class PcapInputStream : public vizer::InputStream
@@ -50,9 +44,13 @@ private:
     pcpp::TcpReassembly _tcp_reassembly;
 
 protected:
-    void _open_pcap(const std::string &fileName, const std::string &bpfFilter = "");
-    void _open_iface(const std::string &bpfFilter = "");
-    void _get_hosts_from_iface();
+    void _open_pcap(const std::string &fileName, const std::string &bpfFilter);
+    void _open_libpcap_iface(const std::string &bpfFilter = "");
+    void _get_hosts_from_libpcap_iface();
+
+#ifdef __linux__
+    void _open_af_packet_iface(const std::string &iface, const std::string &bpfFilter);
+#endif
 
 public:
     PcapInputStream(const std::string &name);

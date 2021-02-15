@@ -1,12 +1,26 @@
 #pragma once
 
 #include <IpAddress.h>
-#include <string>
-#include <vector>
-#include <sys/socket.h>
 #include <netinet/in.h>
+#include <stdexcept>
+#include <string>
+#include <sys/socket.h>
+#include <vector>
 
 namespace vizer::input::pcap {
+
+class PcapException : public std::runtime_error
+{
+public:
+    PcapException(const char *msg)
+        : std::runtime_error(msg)
+    {
+    }
+    PcapException(const std::string &msg)
+        : std::runtime_error(msg)
+    {
+    }
+};
 
 // list of subnets we count as "host" to determine direction of packets
 struct IPv4subnet {

@@ -8,6 +8,7 @@ corrade_add_static_plugin(VizerInputPcap ${CMAKE_CURRENT_BINARY_DIR}
         PcapInput.conf
         PcapInputModulePlugin.cpp
         PcapInputStream.cpp
+        afpacket.cpp
         utils.cpp
         )
 add_library(Vizer::Input::Pcap ALIAS VizerInputPcap)

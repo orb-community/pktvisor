@@ -74,18 +74,47 @@ void PcapInputStream::start()
     }
 
     if (config_exists("pcap_file")) {
+        // read from pcap file. this is a special case from a command line utility
         assert(config_exists("bpf"));
         _pcapFile = true;
         // note, parse_host_spec should be called manually by now (in CLI)
         _running = true;
         _open_pcap(config_get<std::string>("pcap_file"), config_get<std::string>("bpf"));
-    } else {
-        assert(config_exists("iface"));
-        assert(config_exists("bpf"));
-        parse_host_spec();
-        std::string TARGET(config_get<std::string>("iface"));
-        pcpp::IPv4Address interfaceIP4(TARGET);
-        pcpp::IPv6Address interfaceIP6(TARGET);
+        return;
+    }
+
+    // live capture
+    assert(config_exists("iface"));
+    assert(config_exists("bpf"));
+    parse_host_spec();
+    std::string TARGET(config_get<std::string>("iface"));
+    pcpp::IPv4Address interfaceIP4(TARGET);
+    pcpp::IPv6Address interfaceIP6(TARGET);
+
+#ifdef __linux__
+    PcapSource source{PcapSource::af_packet};
+#else
+    PcapSource source{PcapSource::libpcap};
+#endif
+
+    if (config_exists("pcap_source")) {
+        auto req_source = config_get<std::string>("pcap_source");
+        if (req_source == "libpcap") {
+            source = PcapSource::libpcap;
+        }
+        else if (req_source == "af_packet") {
+#ifndef __linux__
+            throw PcapException("af_packet is only available on linux");
+#else
+            source = PcapSource::af_packet;
+#endif
+        }
+        else {
+            throw PcapException("unknown pcap source");
+        }
+    }
+
+    if (source == PcapSource::libpcap) {
         // extract pcap live device by interface name or IP address
         if (interfaceIP4.isValid() || interfaceIP6.isValid()) {
             if (interfaceIP4.isValid()) {
@@ -102,10 +131,21 @@ void PcapInputStream::start()
                 throw PcapException("Couldn't find interface by provided name: " + TARGET);
             }
         }
-        _get_hosts_from_iface();
-        _open_iface(config_get<std::string>("bpf"));
-        _running = true;
+        _get_hosts_from_libpcap_iface();
+        _open_libpcap_iface(config_get<std::string>("bpf"));
     }
+    else if (source == PcapSource::af_packet) {
+#ifndef __linux__
+        assert(1, "logic error");
+#else
+        _open_af_packet_iface(TARGET, config_get<std::string>("bpf"));
+#endif
+    }
+    else {
+        assert(1);
+    }
+
+    _running = true;
 }
 
 void PcapInputStream::stop()
@@ -244,7 +284,16 @@ void PcapInputStream::_open_pcap(const std::string &fileName, const std::string 
     delete reader;
 }
 
-void PcapInputStream::_open_iface(const std::string &bpfFilter)
+#ifdef __linux__
+void PcapInputStream::_open_af_packet_iface(const std::string &iface, const std::string &bpfFilter) {
+
+    AFPacket af(this, _packet_arrives_cb, bpfFilter, iface);
+    af.start_capture();
+
+}
+#endif
+
+void PcapInputStream::_open_libpcap_iface(const std::string &bpfFilter)
 {
 
     pcpp::PcapLiveDevice::DeviceConfiguration config;
@@ -276,7 +325,7 @@ void PcapInputStream::_open_iface(const std::string &bpfFilter)
     }
 }
 
-void PcapInputStream::_get_hosts_from_iface()
+void PcapInputStream::_get_hosts_from_libpcap_iface()
 {
     auto addrs = _pcapDevice->getAddresses();
     for (auto i : addrs) {
