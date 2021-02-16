@@ -96,6 +96,9 @@ int main(int argc, char *argv[])
     vizer::HttpServer svr(!args["--full-api"].asBool());
     svr.set_logger([&err_logger](const auto &req, const auto &res) {
         err_logger->info("REQUEST: {} {} {}", req.method, req.path, res.status);
+        if (res.status == 500) {
+            err_logger->error(res.body);
+        }
     });
 
     // inputs
@@ -204,7 +207,7 @@ int main(int argc, char *argv[])
             }
 
         } catch (const std::exception &e) {
-            err_logger->error("Fatal error: {}", e.what());
+            err_logger->error(e.what());
             exit(-1);
         }
     } else if (!args["--full-api"].asBool()) {
@@ -223,7 +226,7 @@ int main(int argc, char *argv[])
             throw std::runtime_error("error during listen");
         }
     } catch (const std::exception &e) {
-        err_logger->error("Fatal error: {}", e.what());
+        err_logger->error(e.what());
         exit(-1);
     }
 

@@ -5,7 +5,6 @@
 #include <arpa/inet.h>
 #include <cerrno>
 #include <cstring>
-#include <fmt/format.h>
 #include <net/ethernet.h>
 #include <net/if.h>
 #include <pcap/pcap.h>
@@ -40,8 +39,7 @@ AFPacket::AFPacket(PcapInputStream *stream, pcpp::OnPacketArrivesCallback cb, st
     fd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
 
     if (fd == -1) {
-        throw PcapException(fmt::format(
-            "Failed to create AF_PACKET socket: {}\n", strerror(errno)));
+        throw PcapException("Failed to create AF_PACKET socket: " + std::string(strerror(errno)));
     }
 }
 
@@ -97,13 +95,13 @@ void AFPacket::set_interface()
     memset(&ifr, 0, sizeof(ifr));
 
     if (interface_name.size() > IFNAMSIZ) {
-        throw PcapException(fmt::format("Invalid argument: interface name is to long got '{}'", interface_name));
+        throw PcapException("Invalid argument: interface name is too long: " + interface_name);
     }
 
     strncpy(ifr.ifr_name, interface_name.c_str(), sizeof(ifr.ifr_name));
 
     if (ioctl(fd, SIOCGIFINDEX, &ifr) == -1) {
-        throw PcapException(fmt::format("Failed to get interface index from name '{}': {}", interface_name, strerror(errno)));
+        throw PcapException("Failed to get interface index from name '" + interface_name + "': " + std::string(strerror(errno)));
     }
     interface = ifr.ifr_ifindex;
 
@@ -111,7 +109,7 @@ void AFPacket::set_interface()
     strncpy(ifr.ifr_name, interface_name.c_str(), sizeof(ifr.ifr_name));
 
     if (ioctl(fd, SIOCGIFHWADDR, &ifr) == -1) {
-        throw PcapException(fmt::format("Failed to get interface type from name '{}': {}", interface_name, strerror(errno)));
+        throw PcapException("Failed to get interface type from name '" + interface_name + "': " + std::string(strerror(errno)));
     }
     interface_type = ifr.ifr_hwaddr.sa_family;
 }
@@ -120,9 +118,7 @@ void AFPacket::set_socket_opts()
 {
     // Set the packet version to TPACKET_V3
     if (setsockopt(fd, SOL_PACKET, PACKET_VERSION, &VERSION, sizeof(VERSION)) == -1) {
-        throw PcapException(
-            fmt::format("Failed to set packet v3 version on AF_PACKET socket: {}\n",
-                strerror(errno)));
+        throw PcapException("Failed to set packet v3 version on AF_PACKET socket: " + std::string(strerror(errno)));
     }
 
     // Enable promisc mode for the socket if not listening on 'any'.
@@ -136,9 +132,7 @@ void AFPacket::set_socket_opts()
         if (setsockopt(fd, SOL_PACKET, PACKET_ADD_MEMBERSHIP, (void *)&sock_params,
                 sizeof(sock_params))
             == -1) {
-            throw PcapException(
-                fmt::format("Failed to enable promisc mode on AF_PACKET socket: {}\n",
-                    strerror(errno)));
+            throw PcapException("Failed to enable promisc mode on AF_PACKET socket: " + std::string(strerror(errno)));
         }
     }
 
@@ -147,16 +141,12 @@ void AFPacket::set_socket_opts()
         filter_try_compile(filter, &bpf, interface_type);
 
         if (setsockopt(fd, SOL_SOCKET, SO_ATTACH_FILTER, &bpf, sizeof(bpf)) == -1) {
-            throw PcapException(
-                fmt::format("Failed to attach supplied BPF filter to AF_PACKET socket: {}\n",
-                    strerror(errno)));
+            throw PcapException("Failed to attach supplied BPF filter to AF_PACKET socket: " + std::string(strerror(errno)));
         }
 
         int lock = 1;
         if (setsockopt(fd, SOL_SOCKET, SO_LOCK_FILTER, &lock, sizeof(lock)) == -1) {
-            throw PcapException(
-                fmt::format("Failed to lock supplied BPF filter to AF_PACKET socket: {}\n",
-                    strerror(errno)));
+            throw PcapException("Failed to lock supplied BPF filter to AF_PACKET socket: " + std::string(strerror(errno)));
         }
     }
 
@@ -174,9 +164,7 @@ void AFPacket::set_socket_opts()
     req.tp_feature_req_word = TP_FT_REQ_FILL_RXHASH;
 
     if (setsockopt(fd, SOL_PACKET, PACKET_RX_RING, (void *)&req, sizeof(req)) == -1) {
-        throw PcapException(
-            fmt::format("Failed to enable RX_RING for AF_PACKET socket: {}\n",
-                strerror(errno)));
+        throw PcapException("Failed to enable RX_RING for AF_PACKET socket: " + std::string(strerror(errno)));
     }
 }
 
@@ -190,8 +178,7 @@ void AFPacket::setup()
         MAP_SHARED | MAP_LOCKED, fd, 0);
 
     if (map == MAP_FAILED) {
-        throw PcapException(fmt::format(
-            "Failed to initialize RX_RING mmap: {}\n", strerror(errno)));
+        throw PcapException("Failed to initialize RX_RING mmap: " + std::string(strerror(errno)));
     }
 
     // Allocate iov structure for each block
@@ -219,9 +206,7 @@ void AFPacket::setup()
     bind_address.sll_halen = 0;
 
     if (bind(fd, (struct sockaddr *)&bind_address, sizeof(bind_address)) == -1) {
-        throw PcapException(fmt::format(
-            "Failed binding the AF_PACKET socket {} to the specified interface '{}' ({}): {}\n",
-            fd, interface_name, interface, strerror(errno)));
+        throw PcapException("Failed binding the AF_PACKET socket to the specified interface: " + std::string(strerror(errno)));
     }
 
     // Setup fanout if enabled.
@@ -235,9 +220,7 @@ void AFPacket::setup()
         if (setsockopt(fd, SOL_PACKET, PACKET_FANOUT, &fanout_arg,
                 sizeof(fanout_arg))
             < 0) {
-            throw PcapException(
-                fmt::format("Failed to configure fanout for AF_PACKET socket: {}\n",
-                    strerror(errno)));
+            throw PcapException("Failed to configure fanout for AF_PACKET socket: " + std::string(strerror(errno)));
         }
     }
 }
@@ -288,7 +271,7 @@ void filter_try_compile(const std::string &filter, struct sock_fprog *bpf, int l
 
     ret = pcap_compile_nopcap(65535, link_type, &prog, filter.c_str(), 1, 0xffffffff);
     if (ret < 0) {
-        throw PcapException(fmt::format("Failed to parse bpf filter '{}'", filter));
+        throw PcapException("Failed to parse bpf filter: " + filter);
     }
 
     bpf->len = prog.bf_len;
