@@ -37,16 +37,20 @@ jobs:
         # uses: turtlebrowser/get-conan@4dc7e6dd45c8b1e02e909979d7cfc5ebba6ddbe2
         uses: turtlebrowser/get-conan@v1.0
       
+      - name: Conan profile
+        run: |
+          conan profile new --detect default
+          conan profile update settings.compiler.libcxx=libstdc++11 default
+      
       - name: Conan install
         working-directory: ${{github.workspace}}/build
         run: conan install ..
         
-      - name: Conan C++ ABI
-        run: conan profile update settings.compiler.libcxx=libstdc++11 default
-      
       - name: linux package install install
         if: matrix.os == 'ubuntu-latest' || matrix.os == 'ubuntu-20.04' || matrix.os == 'ubuntu-18.04'
-        run: sudo apt-get install --yes --no-install-recommends libpcap-dev pkgconf golang ca-certificates libmaxminddb-dev jq
+        run: | 
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends libpcap-dev pkgconf golang ca-certificates libmaxminddb-dev jq
       
       - name: PcapPlusPlus install
         run: |
