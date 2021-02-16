@@ -52,6 +52,7 @@ jobs:
         run: |
               git clone https://github.com/ns1/PcapPlusPlus.git
               cd PcapPlusPlus
+              mkdir ${{github.workspace}}/local
               ./configure-linux.sh --install-dir ${{github.workspace}}/local
               make libs 
               make install
