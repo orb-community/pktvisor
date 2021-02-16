@@ -46,7 +46,7 @@ jobs:
       
       - name: linux package install install
         if: matrix.os == 'ubuntu-latest' || matrix.os == 'ubuntu-20.04' || matrix.os == 'ubuntu-18.04'
-        run: apt-get install --yes --no-install-recommends libpcap-dev pkgconf golang ca-certificates libmaxminddb-dev jq'
+        run: apt-get install --yes --no-install-recommends libpcap-dev pkgconf golang ca-certificates libmaxminddb-dev jq
       
       - name: PcapPlusPlus install
         run: |
