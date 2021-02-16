@@ -31,7 +31,19 @@ jobs:
         # Some projects don't allow in-source building, so create a separate build directory
         # We'll use this as our working directory for all subsequent commands
         run: cmake -E make_directory ${{github.workspace}}/build
-
+        
+      - name: Get Conan
+        # You may pin to the exact commit or the version.
+        # uses: turtlebrowser/get-conan@4dc7e6dd45c8b1e02e909979d7cfc5ebba6ddbe2
+        uses: turtlebrowser/get-conan@v1.0
+  
+      - name: Conan version
+        run: echo "${{ steps.conan.outputs.version }}"
+      
+      - name: Conan install
+        working-directory: ${{github.workspace}}/build
+        run: conan install ..
+      
       - name: Configure CMake
         # Use a bash shell so we can use the same syntax for environment variable
         # access regardless of the host operating system
