@@ -1,0 +1,4 @@
+#pragma once
+
+#cmakedefine VIZER_VERSION_NUM "@VIZER_VERSION_NUM@"
+#cmakedefine VIZER_VERSION "@VIZER_VERSION@"

@@ -115,7 +115,7 @@ The command line UI (`pktvisor`) connects to a collector daemon to visualize the
 Advanced Collector Daemon Usage Examples
 ---
 
-Starting the collector daemon from Docker with GeoDB and Host options:
+Starting the collector daemon from Docker with MaxmindDB and Host options:
 
 ```
 docker run --rm --net=host -d --mount type=bind,source=/opt/geo,target=/geo ns1labs/pktvisor pktvisord --geo-city /geo/GeoIP2-City.mmdb --geo-asn /geo/GeoIP2-ISP.mmdb -H 192.168.0.54/32,127.0.0.1/32 any
