@@ -132,13 +132,13 @@ void PcapInputStream::start()
     }
     else if (_cur_pcap_source == PcapSource::af_packet) {
 #ifndef __linux__
-        assert(1, "logic error");
+        assert(true);
 #else
         _open_af_packet_iface(TARGET, config_get<std::string>("bpf"));
 #endif
     }
     else {
-        assert(1);
+        assert(true);
     }
 
     _running = true;

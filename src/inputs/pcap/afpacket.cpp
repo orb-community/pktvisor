@@ -1,3 +1,4 @@
+#ifdef __linux__
 #include "afpacket.h"
 
 #include "utils.h"
@@ -302,3 +303,4 @@ void filter_try_compile(const std::string &filter, struct sock_fprog *bpf, int l
 }
 
 }
+#endif
