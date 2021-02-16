@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        os: [ ubuntu-latest, windows-latest, macOS-latest ]
+        os: [ ubuntu-latest ]
 
     steps:
       - uses: actions/checkout@v2
@@ -36,13 +36,25 @@ jobs:
         # You may pin to the exact commit or the version.
         # uses: turtlebrowser/get-conan@4dc7e6dd45c8b1e02e909979d7cfc5ebba6ddbe2
         uses: turtlebrowser/get-conan@v1.0
-  
-      - name: Conan version
-        run: echo "${{ steps.conan.outputs.version }}"
+      
+      - name: Conan C++ ABI
+        run: conan profile update settings.compiler.libcxx=libstdc++11 default
       
       - name: Conan install
         working-directory: ${{github.workspace}}/build
         run: conan install ..
+      
+      - name: maxmind install
+        if: matrix.os == 'ubuntu-20.04' || matrix.os == 'ubuntu-18.04'
+        run: apt-get install --yes --no-install-recommends libpcap-dev pkgconf golang ca-certificates libmaxminddb-dev jq'
+      
+      - name: PcapPlusPlus install
+        run: |
+              git clone https://github.com/ns1/PcapPlusPlus.git
+              cd PcapPlusPlus
+              ./configure-linux.sh --install-dir ${{github.workspace}}/local
+              make libs 
+              make install
       
       - name: Configure CMake
         # Use a bash shell so we can use the same syntax for environment variable
@@ -52,7 +64,7 @@ jobs:
         # Note the current convention is to use the -S and -B options here to specify source
         # and build directories, but this is only available with CMake 3.13 and higher.
         # The CMake binaries on the Github Actions machines are (as of this writing) 3.12
-        run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE
+        run: PKG_CONFIG_PATH=${{github.workspace}}/local/lib/pkgconfig cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE
 
       - name: Build
         working-directory: ${{github.workspace}}/build
