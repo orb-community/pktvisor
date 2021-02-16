@@ -21,6 +21,7 @@
 namespace vizer::input::pcap {
 
 enum class PcapSource {
+    unknown,
     libpcap,
     af_packet
 };
@@ -35,11 +36,21 @@ class PcapInputStream : public vizer::InputStream
 {
 
 private:
+    static const PcapSource DefaultPcapSource = PcapSource::libpcap;
+
     IPv4subnetList _hostIPv4;
     IPv6subnetList _hostIPv6;
 
-    pcpp::PcapLiveDevice *_pcapDevice = nullptr;
+    PcapSource _cur_pcap_source{PcapSource::unknown};
+
+    // libpcap source
+    pcpp::PcapLiveDevice *_pcapDevice = nullptr; // non owning
     bool _pcapFile = false;
+
+#ifdef __linux__
+    // af_packet source
+    std::unique_ptr<AFPacket> _af_device;
+#endif
 
     pcpp::TcpReassembly _tcp_reassembly;
 

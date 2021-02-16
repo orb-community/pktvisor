@@ -45,6 +45,12 @@ AFPacket::AFPacket(PcapInputStream *stream, pcpp::OnPacketArrivesCallback cb, st
 
 AFPacket::~AFPacket()
 {
+    if (running) {
+        stop_capture();
+    }
+    if (cap_thread) {
+        cap_thread->join();
+    }
     if (fd != -1) {
         close(fd);
         fd = -1;
@@ -230,30 +236,30 @@ void AFPacket::start_capture()
     // Configure the packet socket.
     setup();
 
-    // Setup poller to watch for new packets.
-    unsigned int current_block_num = 0;
+    cap_thread = std::make_unique<std::thread>([this] {
+        unsigned int current_block_num = 0;
 
-    struct pollfd pfd {
-    };
-    memset(&pfd, 0, sizeof(pfd));
+        struct pollfd pfd {
+        };
+        memset(&pfd, 0, sizeof(pfd));
 
-    pfd.fd = fd;
-    pfd.events = POLLIN | POLLERR;
-    pfd.revents = 0;
+        pfd.fd = fd;
+        pfd.events = POLLIN | POLLERR;
+        pfd.revents = 0;
 
-    while (true) {
-        auto pbd = (struct block_desc *)rd[current_block_num].iov_base;
+        while (running) {
+            auto pbd = (struct block_desc *)rd[current_block_num].iov_base;
 
-        if ((pbd->h1.block_status & TP_STATUS_USER) == 0) {
-            poll(&pfd, 1, -1);
+            if ((pbd->h1.block_status & TP_STATUS_USER) == 0) {
+                poll(&pfd, 1, -1);
+                continue;
+            }
 
-            continue;
+            walk_block(pbd);
+            flush_block(pbd);
+            current_block_num = (current_block_num + 1) % num_blocks;
         }
-
-        walk_block(pbd);
-        flush_block(pbd);
-        current_block_num = (current_block_num + 1) % num_blocks;
-    }
+    });
 }
 
 void filter_try_compile(const std::string &filter, struct sock_fprog *bpf, int link_type)

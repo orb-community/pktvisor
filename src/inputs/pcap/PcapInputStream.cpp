@@ -91,22 +91,18 @@ void PcapInputStream::start()
     pcpp::IPv4Address interfaceIP4(TARGET);
     pcpp::IPv6Address interfaceIP6(TARGET);
 
-#ifdef __linux__
-    PcapSource source{PcapSource::af_packet};
-#else
-    PcapSource source{PcapSource::libpcap};
-#endif
+    _cur_pcap_source = PcapInputStream::DefaultPcapSource;
 
     if (config_exists("pcap_source")) {
         auto req_source = config_get<std::string>("pcap_source");
         if (req_source == "libpcap") {
-            source = PcapSource::libpcap;
+            _cur_pcap_source = PcapSource::libpcap;
         }
         else if (req_source == "af_packet") {
 #ifndef __linux__
             throw PcapException("af_packet is only available on linux");
 #else
-            source = PcapSource::af_packet;
+            _cur_pcap_source = PcapSource::af_packet;
 #endif
         }
         else {
@@ -114,7 +110,7 @@ void PcapInputStream::start()
         }
     }
 
-    if (source == PcapSource::libpcap) {
+    if (_cur_pcap_source == PcapSource::libpcap) {
         // extract pcap live device by interface name or IP address
         if (interfaceIP4.isValid() || interfaceIP6.isValid()) {
             if (interfaceIP4.isValid()) {
@@ -134,7 +130,7 @@ void PcapInputStream::start()
         _get_hosts_from_libpcap_iface();
         _open_libpcap_iface(config_get<std::string>("bpf"));
     }
-    else if (source == PcapSource::af_packet) {
+    else if (_cur_pcap_source == PcapSource::af_packet) {
 #ifndef __linux__
         assert(1, "logic error");
 #else
@@ -154,11 +150,17 @@ void PcapInputStream::stop()
         return;
     }
 
-    if (!_pcapFile) {
+    if (!_pcapFile && _pcapDevice) {
         // stop capturing and close the live device
         _pcapDevice->stopCapture();
         _pcapDevice->close();
     }
+
+#ifdef __linux__
+    if (_af_device) {
+        _af_device->stop_capture();
+    }
+#endif
 
     // close all connections which are still opened
     _tcp_reassembly.closeAllConnections();
@@ -287,8 +289,8 @@ void PcapInputStream::_open_pcap(const std::string &fileName, const std::string 
 #ifdef __linux__
 void PcapInputStream::_open_af_packet_iface(const std::string &iface, const std::string &bpfFilter) {
 
-    AFPacket af(this, _packet_arrives_cb, bpfFilter, iface);
-    af.start_capture();
+    _af_device = std::make_unique<AFPacket>(this, _packet_arrives_cb, bpfFilter, iface);
+    _af_device->start_capture();
 
 }
 #endif
@@ -379,6 +381,17 @@ json PcapInputStream::info_json() const
         std::stringstream out;
         out << i.address.toString() << '/' << static_cast<int>(i.mask);
         result["host_ips"]["ipv6"].push_back(out.str());
+    }
+    switch (_cur_pcap_source) {
+    case PcapSource::unknown:
+        result["pcap_source"] = "unknown";
+        break;
+    case PcapSource::libpcap:
+        result["pcap_source"] = "libpcap";
+        break;
+    case PcapSource::af_packet:
+        result["pcap_source"] = "af_packet";
+        break;
     }
     return result;
 }

@@ -1,10 +1,12 @@
 #include <PcapLiveDevice.h>
+#include <atomic>
 #include <cstdint>
 #include <functional>
 #include <linux/filter.h>
 #include <linux/if_packet.h>
 #include <string>
 #include <sys/uio.h>
+#include <thread>
 
 namespace vizer::input::pcap {
 
@@ -50,6 +52,9 @@ class AFPacket final
     void set_socket_opts();
     void setup();
 
+    std::atomic<bool> running;
+    std::unique_ptr<std::thread> cap_thread;
+
 public:
     AFPacket(PcapInputStream *stream, pcpp::OnPacketArrivesCallback cb, std::string filter,
         std::string interface_name,
@@ -60,6 +65,10 @@ public:
     ~AFPacket();
 
     void start_capture();
+    void stop_capture()
+    {
+        running = false;
+    }
 };
 
 void filter_try_compile(const std::string &, struct sock_fprog *, int);

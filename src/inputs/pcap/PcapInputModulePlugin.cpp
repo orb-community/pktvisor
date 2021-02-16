@@ -18,8 +18,10 @@ void PcapInputModulePlugin::_setup_routes(HttpServer &svr)
             std::unordered_map<std::string, std::string> schema = {
                 {"name", "\\w+"},
                 {"iface", "\\w+"}};
+            std::unordered_map<std::string, std::string> opt_schema = {
+                {"pcap_source", "[_a-z]+"}};
             try {
-                _check_schema(body, schema);
+                _check_schema(body, schema, opt_schema);
             } catch (const SchemaException &e) {
                 res.status = 400;
                 result["error"] = e.what();
@@ -41,6 +43,9 @@ void PcapInputModulePlugin::_setup_routes(HttpServer &svr)
                 auto input_stream = std::make_unique<PcapInputStream>(body["name"]);
                 input_stream->config_set("iface", body["iface"].get<std::string>());
                 input_stream->config_set("bpf", bpf);
+                if (body.contains("pcap_source")) {
+                    input_stream->config_set("pcap_source", body["pcap_source"].get<std::string>());
+                }
                 _input_manager->module_add(std::move(input_stream));
                 // the module is now started and owned by the manager
             }
