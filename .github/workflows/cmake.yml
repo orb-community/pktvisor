@@ -81,7 +81,6 @@ jobs:
               ./configure-mac_os_x.sh --install-dir ${{github.workspace}}/local
 
       - name: PcapPlusPlus install
-        if: matrix.os == 'ubuntu-latest'
         working-directory: ${{github.workspace}}/PcapPlusPlus        
         run: |
               make libs 
