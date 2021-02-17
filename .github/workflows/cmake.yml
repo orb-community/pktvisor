@@ -40,6 +40,10 @@ jobs:
       - name: Conan profile
         run: |
           conan profile new --detect default
+
+      - name: Conan profile (linux)
+        if: matrix.os == 'ubuntu-latest'
+        run:
           conan profile update settings.compiler.libcxx=libstdc++11 default
       
       - name: Conan install
@@ -47,7 +51,7 @@ jobs:
         run: conan install ..
         
       - name: linux package install
-        if: matrix.os == 'ubuntu-latest' || matrix.os == 'ubuntu-20.04' || matrix.os == 'ubuntu-18.04'
+        if: matrix.os == 'ubuntu-latest'
         run: | 
           sudo apt-get update
           sudo apt-get install --yes --no-install-recommends libpcap-dev pkgconf golang ca-certificates libmaxminddb-dev jq
