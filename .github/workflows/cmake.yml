@@ -46,13 +46,20 @@ jobs:
         working-directory: ${{github.workspace}}/build
         run: conan install ..
         
-      - name: linux package install install
+      - name: linux package install
         if: matrix.os == 'ubuntu-latest' || matrix.os == 'ubuntu-20.04' || matrix.os == 'ubuntu-18.04'
         run: | 
           sudo apt-get update
           sudo apt-get install --yes --no-install-recommends libpcap-dev pkgconf golang ca-certificates libmaxminddb-dev jq
-      
-      - name: PcapPlusPlus install
+          
+      - name: osx package install
+        if: matrix.os == 'macos-latest'
+        run: | 
+          brew update
+          brew install libmaxminddb pcapplusplus
+          
+      - name: PcapPlusPlus install (linux)
+        if: matrix.os == 'ubuntu-latest' || matrix.os == 'ubuntu-20.04' || matrix.os == 'ubuntu-18.04'
         run: |
               git clone https://github.com/ns1/PcapPlusPlus.git
               cd PcapPlusPlus
