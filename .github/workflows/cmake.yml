@@ -60,15 +60,30 @@ jobs:
         if: matrix.os == 'macos-latest'
         run: | 
           brew update
-          brew install libmaxminddb pcapplusplus
+          brew install libmaxminddb
           
-      - name: PcapPlusPlus install (linux)
-        if: matrix.os == 'ubuntu-latest' || matrix.os == 'ubuntu-20.04' || matrix.os == 'ubuntu-18.04'
+      - name: PcapPlusPlus checkout
         run: |
               git clone https://github.com/ns1/PcapPlusPlus.git
               cd PcapPlusPlus
               mkdir ${{github.workspace}}/local
+              
+      - name: PcapPlusPlus config (linux)
+        if: matrix.os == 'ubuntu-latest'
+        working-directory: ${{github.workspace}}/PcapPlusPlus
+        run: |
               ./configure-linux.sh --install-dir ${{github.workspace}}/local
+
+      - name: PcapPlusPlus config (macos)
+        if: matrix.os == 'macos-latest'
+        working-directory: ${{github.workspace}}/PcapPlusPlus
+        run: |
+              ./configure-mac_os_x.sh --install-dir ${{github.workspace}}/local
+
+      - name: PcapPlusPlus install
+        if: matrix.os == 'ubuntu-latest'
+        working-directory: ${{github.workspace}}/PcapPlusPlus        
+        run: |
               make libs 
               make install
       
