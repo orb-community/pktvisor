@@ -34,6 +34,7 @@ static const char USAGE[] =
                             When not specified, the exposed API is read-only access to summarized metrics.
                             When specified, write access is enabled for all modules.
       -h --help             Show this screen
+      -v                    Verbose log output
       --version             Show version
       --geo-city FILE       GeoLite2 City database to use for IP to Geo mapping (if enabled)
       --geo-asn FILE        GeoLite2 ASN database to use for IP to ASN mapping (if enabled)
@@ -70,24 +71,26 @@ void initialize_geo(const docopt::value &city, const docopt::value &asn)
 int main(int argc, char *argv[])
 {
 
-    auto console = spdlog::stdout_color_mt("pktvisord");
-    auto err_logger = spdlog::stderr_color_mt("error");
-
     std::map<std::string, docopt::value> args = docopt::docopt(USAGE,
         {argv + 1, argv + argc},
         true,           // show help if requested
         VIZER_VERSION); // version string
 
-    CoreServer svr(!args["--full-api"].asBool(), console, err_logger);
-    svr.set_http_logger([&err_logger](const auto &req, const auto &res) {
-        err_logger->info("REQUEST: {} {} {}", req.method, req.path, res.status);
+    auto logger = spdlog::stdout_color_mt("pktvisord");
+    if (args["-v"].asBool()) {
+        logger->set_level(spdlog::level::debug);
+    }
+
+    CoreServer svr(!args["--full-api"].asBool(), logger);
+    svr.set_http_logger([&logger](const auto &req, const auto &res) {
+        logger->info("REQUEST: {} {} {}", req.method, req.path, res.status);
         if (res.status == 500) {
-            err_logger->error(res.body);
+            logger->error(res.body);
         }
     });
 
     shutdown_handler = [&]([[maybe_unused]] int signal) {
-        console->info("Shutting down");
+        logger->info("Shutting down");
         svr.stop();
     };
     std::signal(SIGINT, signal_handler);
@@ -100,7 +103,7 @@ int main(int argc, char *argv[])
     if (args["--max-deep-sample"]) {
         sample_rate = (int)args["--max-deep-sample"].asLong();
         if (sample_rate != 100) {
-            err_logger->info("Using maximum deep sample rate: {}%", sample_rate);
+            logger->info("Using maximum deep sample rate: {}%", sample_rate);
         }
     }
 
@@ -109,7 +112,7 @@ int main(int argc, char *argv[])
     try {
         initialize_geo(args["--geo-city"], args["--geo-asn"]);
     } catch (const std::exception &e) {
-        err_logger->error("Fatal error: {}", e.what());
+        logger->error("Fatal error: {}", e.what());
         exit(-1);
     }
 
@@ -148,16 +151,16 @@ int main(int argc, char *argv[])
                 handler_manager->module_add(std::move(handler_module));
             }
 
-            console->info("{}", input_stream_->config_json().dump(4));
-            console->info("{}", input_stream_->info_json().dump(4));
+            logger->info("{}", input_stream_->config_json().dump(4));
+            logger->info("{}", input_stream_->info_json().dump(4));
 
         } catch (const std::exception &e) {
-            err_logger->error(e.what());
+            logger->error(e.what());
             exit(-1);
         }
     } else if (!args["--full-api"].asBool()) {
         // if they didn't specify pcap target, or config file, or full api then there is nothing to do
-        console->error("Nothing to do: specify --full-api or IFACE.");
+        logger->error("Nothing to do: specify --full-api or IFACE.");
         std::cerr << USAGE << std::endl;
         exit(-1);
     }
@@ -165,7 +168,7 @@ int main(int argc, char *argv[])
     try {
         svr.start(host.c_str(), port);
     } catch (const std::exception &e) {
-        err_logger->error(e.what());
+        logger->error(e.what());
         exit(-1);
     }
 

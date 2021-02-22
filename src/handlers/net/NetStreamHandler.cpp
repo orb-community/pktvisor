@@ -57,9 +57,9 @@ void NetStreamHandler::process_packet_cb(pcpp::Packet &payload, PacketDirection 
 void NetStreamHandler::to_json(json &j, uint64_t period, bool merged)
 {
     if (merged) {
-        _metrics->to_json_merged(j, "net", period);
+        _metrics->to_json_merged(j, "packets", period);
     } else {
-        _metrics->to_json_single(j, "net", period);
+        _metrics->to_json_single(j, "packets", period);
     }
 }
 void NetStreamHandler::set_initial_tstamp(timespec stamp)
@@ -125,10 +125,10 @@ void NetworkMetricsBucket::to_json(json &j) const
         auto [rate_quantile, rate_lock] = _rate_in.quantile_get_rlocked();
         auto quantiles = rate_quantile->get_quantiles(fractions, 4);
         if (quantiles.size()) {
-            j["packets"]["rates"]["pps_in"]["p50"] = quantiles[0];
-            j["packets"]["rates"]["pps_in"]["p90"] = quantiles[1];
-            j["packets"]["rates"]["pps_in"]["p95"] = quantiles[2];
-            j["packets"]["rates"]["pps_in"]["p99"] = quantiles[3];
+            j["rates"]["pps_in"]["p50"] = quantiles[0];
+            j["rates"]["pps_in"]["p90"] = quantiles[1];
+            j["rates"]["pps_in"]["p95"] = quantiles[2];
+            j["rates"]["pps_in"]["p99"] = quantiles[3];
         }
     }
 
@@ -136,10 +136,10 @@ void NetworkMetricsBucket::to_json(json &j) const
         auto [rate_quantile, rate_lock] = _rate_out.quantile_get_rlocked();
         auto quantiles = rate_quantile->get_quantiles(fractions, 4);
         if (quantiles.size()) {
-            j["packets"]["rates"]["pps_out"]["p50"] = quantiles[0];
-            j["packets"]["rates"]["pps_out"]["p90"] = quantiles[1];
-            j["packets"]["rates"]["pps_out"]["p95"] = quantiles[2];
-            j["packets"]["rates"]["pps_out"]["p99"] = quantiles[3];
+            j["rates"]["pps_out"]["p50"] = quantiles[0];
+            j["rates"]["pps_out"]["p90"] = quantiles[1];
+            j["rates"]["pps_out"]["p95"] = quantiles[2];
+            j["rates"]["pps_out"]["p99"] = quantiles[3];
         }
     }
 
@@ -147,62 +147,62 @@ void NetworkMetricsBucket::to_json(json &j) const
         auto [rate_quantile, rate_lock] = _rate_total.quantile_get_rlocked();
         auto quantiles = rate_quantile->get_quantiles(fractions, 4);
         if (quantiles.size()) {
-            j["packets"]["rates"]["pps_total"]["p50"] = quantiles[0];
-            j["packets"]["rates"]["pps_total"]["p90"] = quantiles[1];
-            j["packets"]["rates"]["pps_total"]["p95"] = quantiles[2];
-            j["packets"]["rates"]["pps_total"]["p99"] = quantiles[3];
+            j["rates"]["pps_total"]["p50"] = quantiles[0];
+            j["rates"]["pps_total"]["p90"] = quantiles[1];
+            j["rates"]["pps_total"]["p95"] = quantiles[2];
+            j["rates"]["pps_total"]["p99"] = quantiles[3];
         }
     }
 
     auto [num_events, num_samples] = event_data(); // thread safe
     std::shared_lock r_lock(_mutex);
 
-    j["packets"]["total"] = num_events;
-    j["packets"]["samples"] = num_samples;
-    j["packets"]["udp"] = _counters.UDP;
-    j["packets"]["tcp"] = _counters.TCP;
-    j["packets"]["other_l4"] = _counters.OtherL4;
-    j["packets"]["ipv4"] = _counters.IPv4;
-    j["packets"]["ipv6"] = _counters.IPv6;
-    j["packets"]["in"] = _counters.total_in;
-    j["packets"]["out"] = _counters.total_out;
+    j["total"] = num_events;
+    j["samples"] = num_samples;
+    j["udp"] = _counters.UDP;
+    j["tcp"] = _counters.TCP;
+    j["other_l4"] = _counters.OtherL4;
+    j["ipv4"] = _counters.IPv4;
+    j["ipv6"] = _counters.IPv6;
+    j["in"] = _counters.total_in;
+    j["out"] = _counters.total_out;
 
-    j["packets"]["cardinality"]["src_ips_in"] = lround(_srcIPCard.get_estimate());
-    j["packets"]["cardinality"]["dst_ips_out"] = lround(_dstIPCard.get_estimate());
+    j["cardinality"]["src_ips_in"] = lround(_srcIPCard.get_estimate());
+    j["cardinality"]["dst_ips_out"] = lround(_dstIPCard.get_estimate());
 
     {
-        j["packets"]["top_ipv4"] = nlohmann::json::array();
+        j["top_ipv4"] = nlohmann::json::array();
         auto items = _topIPv4.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
         for (uint64_t i = 0; i < std::min(10UL, items.size()); i++) {
-            j["packets"]["top_ipv4"][i]["name"] = pcpp::IPv4Address(items[i].get_item()).toString();
-            j["packets"]["top_ipv4"][i]["estimate"] = items[i].get_estimate();
+            j["top_ipv4"][i]["name"] = pcpp::IPv4Address(items[i].get_item()).toString();
+            j["top_ipv4"][i]["estimate"] = items[i].get_estimate();
         }
     }
 
     {
-        j["packets"]["top_ipv6"] = nlohmann::json::array();
+        j["top_ipv6"] = nlohmann::json::array();
         auto items = _topIPv6.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
         for (uint64_t i = 0; i < std::min(10UL, items.size()); i++) {
-            j["packets"]["top_ipv6"][i]["name"] = items[i].get_item();
-            j["packets"]["top_ipv6"][i]["estimate"] = items[i].get_estimate();
+            j["top_ipv6"][i]["name"] = items[i].get_item();
+            j["top_ipv6"][i]["estimate"] = items[i].get_estimate();
         }
     }
 
     {
-        j["packets"]["top_geoLoc"] = nlohmann::json::array();
+        j["top_geoLoc"] = nlohmann::json::array();
         auto items = _topGeoLoc.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
         for (uint64_t i = 0; i < std::min(10UL, items.size()); i++) {
-            j["packets"]["top_geoLoc"][i]["name"] = items[i].get_item();
-            j["packets"]["top_geoLoc"][i]["estimate"] = items[i].get_estimate();
+            j["top_geoLoc"][i]["name"] = items[i].get_item();
+            j["top_geoLoc"][i]["estimate"] = items[i].get_estimate();
         }
     }
 
     {
-        j["packets"]["top_ASN"] = nlohmann::json::array();
+        j["top_ASN"] = nlohmann::json::array();
         auto items = _topASN.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
         for (uint64_t i = 0; i < std::min(10UL, items.size()); i++) {
-            j["packets"]["top_ASN"][i]["name"] = items[i].get_item();
-            j["packets"]["top_ASN"][i]["estimate"] = items[i].get_estimate();
+            j["top_ASN"][i]["name"] = items[i].get_item();
+            j["top_ASN"][i]["estimate"] = items[i].get_estimate();
         }
     }
 }

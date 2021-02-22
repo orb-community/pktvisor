@@ -29,13 +29,12 @@ private:
     std::unique_ptr<InputStreamManager> _input_manager;
     std::unique_ptr<HandlerManager> _handler_manager;
 
-    std::shared_ptr<spdlog::logger> _console;
-    std::shared_ptr<spdlog::logger> _err;
+    std::shared_ptr<spdlog::logger> _logger;
 
     void _setup_routes();
 
 public:
-    CoreServer(bool read_only, std::shared_ptr<spdlog::logger> console, std::shared_ptr<spdlog::logger> err);
+    CoreServer(bool read_only, std::shared_ptr<spdlog::logger> logger);
     ~CoreServer();
 
     void start(const std::string &host, int port);

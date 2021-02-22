@@ -413,7 +413,7 @@ func quit(g *gocui.Gui, v *gocui.View) error {
 
 func getMetrics(url string, payload interface{}) error {
 	spaceClient := http.Client{
-		Timeout: time.Second * 2, // Maximum of 2 secs
+		Timeout: time.Second * 6, // Maximum of 2 secs
 	}
 
 	req, err := http.NewRequest(http.MethodGet, url, nil)
@@ -445,10 +445,10 @@ func getStats() (*client.StatSnapshot, *client.InstantRates, error) {
 	raw5m := rawStats["5m"]
 
 	var rawRates client.InstantRates
-	err = getMetrics(fmt.Sprintf("http://%s:%d/api/v1/metrics/rates", statHost, statPort), &rawRates)
-	if err != nil {
-		return nil, nil, err
-	}
+	//err = getMetrics(fmt.Sprintf("http://%s:%d/api/v1/metrics/rates", statHost, statPort), &rawRates)
+	//if err != nil {
+	//	return nil, nil, err
+	//}
 
 	return &raw5m, &rawRates, nil
 }
