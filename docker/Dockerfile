@@ -33,11 +33,7 @@ RUN \
 
 RUN \
     cd /tmp/build && \
-    go get github.com/pkg/errors && \
-    go get github.com/jroimartin/gocui && \
-    go get github.com/docopt/docopt-go && \
-    cd /src/cmd/pktvisor && \
-    go build
+    go build /src/golang/cmd/pktvisor-cli/main.go
 
 FROM debian:buster-slim AS runtime
 
@@ -50,7 +46,7 @@ RUN \
 
 COPY --from=build /tmp/build/bin/pktvisord /usr/local/sbin/pktvisord
 COPY --from=build /tmp/build/bin/pktvisor-pcap /usr/local/sbin/pktvisor-pcap
-COPY --from=build /src/golang/cmd/pktvisor-cli/pktvisor-cli /usr/local/bin/pktvisor-cli
+COPY --from=build /src/golang/pktvisor-cli /usr/local/bin/pktvisor-cli
 COPY docker/entry.sh /usr/local/bin/
 
 ENTRYPOINT [ "entry.sh" ]

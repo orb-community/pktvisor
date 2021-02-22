@@ -11,7 +11,7 @@ add_library(vizer-core
         InputModulePlugin.cpp
         HandlerModulePlugin.cpp
         GeoDB.cpp
-        )
+        CoreServer.cpp)
 add_library(Vizer::Core ALIAS vizer-core)
 
 target_include_directories(vizer-core
@@ -30,6 +30,7 @@ target_link_libraries(vizer-core
         ${CONAN_LIBS_FMT}
         ${LIBMMDB_LDFLAGS}
         ${LIBMMDB_LIBRARIES}
+        ${VIZER_STATIC_PLUGINS}
         )
 
 configure_file(vizer_config.h.in vizer_config.h @ONLY)

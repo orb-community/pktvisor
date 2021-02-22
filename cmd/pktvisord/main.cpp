@@ -1,23 +1,13 @@
 #include <csignal>
 #include <functional>
-#include <map>
-#include <vector>
 
-#include "HttpServer.h"
-#include <docopt/docopt.h>
-
-#include "HandlerManager.h"
-#include "HandlerModulePlugin.h"
-#include "InputModulePlugin.h"
-#include "InputStreamManager.h"
-#include <Corrade/PluginManager/Manager.h>
-#include <Corrade/PluginManager/PluginMetadata.h>
-#include <spdlog/sinks/stdout_color_sinks.h>
-#include <spdlog/spdlog.h>
-
+#include "CoreServer.h"
 #include "handlers/static_plugins.h"
 #include "inputs/static_plugins.h"
 #include "vizer_config.h"
+#include <docopt/docopt.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
+#include <spdlog/spdlog.h>
 
 #include "GeoDB.h"
 #include "handlers/dns/DnsStreamHandler.h"
@@ -31,11 +21,11 @@ static const char USAGE[] =
       pktvisord (-h | --help)
       pktvisord --version
 
-    pktvisord summarizes your data streams and exposes a REST API control plane.
+    pktvisord summarizes data streams and exposes a REST API control plane for configuration and metrics.
 
     IFACE, if specified, is either a network interface or an IP address (4 or 6). If this is specified,
     a "pcap" input stream will be automatically created, with "net" and "dns" handler modules attached.
-    Note that this is deprecated; you should instead use --full-api and create the pcap input stream via API.
+    ** Note that this is deprecated; you should instead use --full-api and create the pcap input stream via API.
 
     Base Options:
       -l HOST               Run webserver on the given host or IP [default: localhost]
@@ -67,11 +57,6 @@ void signal_handler(int signal)
 
 using namespace vizer;
 
-typedef Corrade::PluginManager::Manager<InputModulePlugin> InputPluginRegistry;
-typedef Corrade::PluginManager::Manager<HandlerModulePlugin> HandlerPluginRegistry;
-typedef Corrade::Containers::Pointer<InputModulePlugin> InputPluginPtr;
-typedef Corrade::Containers::Pointer<HandlerModulePlugin> HandlerPluginPtr;
-
 void initialize_geo(const docopt::value &city, const docopt::value &asn)
 {
     if (city) {
@@ -85,68 +70,26 @@ void initialize_geo(const docopt::value &city, const docopt::value &asn)
 int main(int argc, char *argv[])
 {
 
-    auto console = spdlog::stdout_color_mt("console");
-    auto err_logger = spdlog::stderr_color_mt("stderr");
+    auto console = spdlog::stdout_color_mt("pktvisord");
+    auto err_logger = spdlog::stderr_color_mt("error");
 
     std::map<std::string, docopt::value> args = docopt::docopt(USAGE,
         {argv + 1, argv + argc},
         true,           // show help if requested
         VIZER_VERSION); // version string
 
-    vizer::HttpServer svr(!args["--full-api"].asBool());
-    svr.set_logger([&err_logger](const auto &req, const auto &res) {
+    CoreServer svr(!args["--full-api"].asBool(), console, err_logger);
+    svr.set_http_logger([&err_logger](const auto &req, const auto &res) {
         err_logger->info("REQUEST: {} {} {}", req.method, req.path, res.status);
         if (res.status == 500) {
             err_logger->error(res.body);
         }
     });
 
-    // inputs
-    InputPluginRegistry input_registry;
-    auto input_manager = std::make_unique<InputStreamManager>();
-    std::vector<InputPluginPtr> input_plugins;
-
-    // initialize input plugins
-    for (auto &s : input_registry.pluginList()) {
-        InputPluginPtr mod = input_registry.instantiate(s);
-        console->info("Load input plugin: {} {}", mod->name(), mod->pluginInterface());
-        mod->init_module(input_manager.get(), svr);
-        input_plugins.emplace_back(std::move(mod));
-    }
-
-    // handlers
-    HandlerPluginRegistry handler_registry;
-    auto handler_manager = std::make_unique<HandlerManager>();
-    std::vector<HandlerPluginPtr> handler_plugins;
-
-    // initialize handler plugins
-    for (auto &s : handler_registry.pluginList()) {
-        HandlerPluginPtr mod = handler_registry.instantiate(s);
-        console->info("Load handler plugin: {} {}", mod->name(), mod->pluginInterface());
-        mod->init_module(input_manager.get(), handler_manager.get(), svr);
-        handler_plugins.emplace_back(std::move(mod));
-    }
-
     shutdown_handler = [&]([[maybe_unused]] int signal) {
         console->info("Shutting down");
         svr.stop();
-        // gracefully close all inputs and handlers
-        auto [input_modules, im_lock] = input_manager->module_get_all_locked();
-        for (auto &[name, mod] : input_modules) {
-            console->info("Stopping input instance: {}", mod->name());
-            mod->stop();
-        }
-        auto [handler_modules, hm_lock] = handler_manager->module_get_all_locked();
-        for (auto &[name, mod] : handler_modules) {
-            console->info("Stopping handler instance: {}", mod->name());
-            mod->stop();
-        }
     };
-
-    console->info("Initialize server control plane");
-    svr.Get("/api/v1/server/stop", [&]([[maybe_unused]] const httplib::Request &req, [[maybe_unused]] httplib::Response &res) {
-        shutdown_handler(SIGUSR1);
-    });
     std::signal(SIGINT, signal_handler);
     std::signal(SIGTERM, signal_handler);
 
@@ -188,6 +131,9 @@ int main(int argc, char *argv[])
             input_stream->config_set("bpf", bpf);
             input_stream->config_set("host_spec", host_spec);
 
+            auto input_manager = svr.input_manager();
+            auto handler_manager = svr.handler_manager();
+
             input_manager->module_add(std::move(input_stream));
             auto [input_stream_, stream_mgr_lock] = input_manager->module_get_locked("pcap");
             stream_mgr_lock.unlock();
@@ -217,13 +163,7 @@ int main(int argc, char *argv[])
     }
 
     try {
-        if (!svr.bind_to_port(host.c_str(), port)) {
-            throw std::runtime_error("unable to bind host/port");
-        }
-        console->info("web server listening on {}:{}", host, port);
-        if (!svr.listen_after_bind()) {
-            throw std::runtime_error("error during listen");
-        }
+        svr.start(host.c_str(), port);
     } catch (const std::exception &e) {
         err_logger->error(e.what());
         exit(-1);
