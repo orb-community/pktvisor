@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/jroimartin/gocui"
+	"pktvisor/pkg/client"
 )
 
 var (
@@ -61,7 +62,7 @@ func main() {
 	}
 }
 
-func updateHeader(v *gocui.View, rates *InstantRates, stats *StatSnapshot) {
+func updateHeader(v *gocui.View, rates *client.InstantRates, stats *client.StatSnapshot) {
 	v.Clear()
 	pcounts := stats.Packets
 	// there may be some unknown
@@ -151,7 +152,7 @@ func updateHeader(v *gocui.View, rates *InstantRates, stats *StatSnapshot) {
 
 }
 
-func updateTable(data []NameCount, v *gocui.View, baseNumber int64) {
+func updateTable(data []client.NameCount, v *gocui.View, baseNumber int64) {
 	v.Clear()
 	top3 := 0
 	for _, stat := range data {
@@ -435,15 +436,15 @@ func getMetrics(url string, payload interface{}) error {
 	return nil
 }
 
-func getStats() (*StatSnapshot, *InstantRates, error) {
-	var rawStats map[string]StatSnapshot
+func getStats() (*client.StatSnapshot, *client.InstantRates, error) {
+	var rawStats map[string]client.StatSnapshot
 	err := getMetrics(fmt.Sprintf("http://%s:%d/api/v1/metrics/window/5", statHost, statPort), &rawStats)
 	if err != nil {
 		return nil, nil, err
 	}
 	raw5m := rawStats["5m"]
 
-	var rawRates InstantRates
+	var rawRates client.InstantRates
 	err = getMetrics(fmt.Sprintf("http://%s:%d/api/v1/metrics/rates", statHost, statPort), &rawRates)
 	if err != nil {
 		return nil, nil, err

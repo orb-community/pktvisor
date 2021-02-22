@@ -170,8 +170,8 @@ int main(int argc, char *argv[])
         exit(-1);
     }
 
-    // pcap command line functionality (deprecated)
     if (args["IFACE"]) {
+        // pcap command line functionality (deprecated)
         try {
             std::string bpf;
             if (args["-b"]) {
@@ -188,10 +188,6 @@ int main(int argc, char *argv[])
             input_stream->config_set("bpf", bpf);
             input_stream->config_set("host_spec", host_spec);
 
-            input_stream->parse_host_spec();
-            console->info("{}", input_stream->config_json().dump(4));
-            console->info("{}", input_stream->info_json().dump(4));
-
             input_manager->module_add(std::move(input_stream));
             auto [input_stream_, stream_mgr_lock] = input_manager->module_get_locked("pcap");
             stream_mgr_lock.unlock();
@@ -205,6 +201,9 @@ int main(int argc, char *argv[])
                 auto handler_module = std::make_unique<handler::dns::DnsStreamHandler>("dns", pcap_stream, periods, sample_rate);
                 handler_manager->module_add(std::move(handler_module));
             }
+
+            console->info("{}", input_stream_->config_json().dump(4));
+            console->info("{}", input_stream_->info_json().dump(4));
 
         } catch (const std::exception &e) {
             err_logger->error(e.what());

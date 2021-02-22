@@ -50,7 +50,7 @@ RUN \
 
 COPY --from=build /tmp/build/bin/pktvisord /usr/local/sbin/pktvisord
 COPY --from=build /tmp/build/bin/pktvisor-pcap /usr/local/sbin/pktvisor-pcap
-COPY --from=build /src/cmd/pktvisor/pktvisor /usr/local/bin/pktvisor
+COPY --from=build /src/golang/cmd/pktvisor-cli/pktvisor-cli /usr/local/bin/pktvisor-cli
 COPY docker/entry.sh /usr/local/bin/
 
 ENTRYPOINT [ "entry.sh" ]

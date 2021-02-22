@@ -1,4 +1,4 @@
-package main
+package client
 
 // NameCount represents the count of a unique domain name
 type NameCount struct {
