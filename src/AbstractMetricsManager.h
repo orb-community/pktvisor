@@ -292,7 +292,7 @@ public:
         return _metric_buckets[period].get();
     }
 
-    void to_json_single(json &j, const std::string &key, uint64_t period = 0) const
+    void window_single_json(json &j, const std::string &key, uint64_t period = 0) const
     {
 
         if (period >= _num_periods) {
@@ -323,7 +323,7 @@ public:
         _metric_buckets[period]->to_json(j[period_str][key]);
     }
 
-    void to_json_merged(json &j, const std::string &key, uint64_t period) const
+    void window_merged_json(json &j, const std::string &key, uint64_t period) const
     {
 
         if (period <= 1 || period > _num_periods) {

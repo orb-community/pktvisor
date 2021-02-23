@@ -188,12 +188,12 @@ void DnsStreamHandler::tcp_connection_end_cb(const pcpp::ConnectionData &connect
     _tcp_connections.erase(iter);
 }
 
-void DnsStreamHandler::to_json(json &j, uint64_t period, bool merged)
+void DnsStreamHandler::window_json(json &j, uint64_t period, bool merged)
 {
     if (merged) {
-        _metrics->to_json_merged(j, "dns", period);
+        _metrics->window_merged_json(j, "dns", period);
     } else {
-        _metrics->to_json_single(j, "dns", period);
+        _metrics->window_single_json(j, "dns", period);
     }
 }
 void DnsStreamHandler::set_initial_tstamp(timespec stamp)

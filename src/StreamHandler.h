@@ -19,7 +19,7 @@ public:
 
     virtual ~StreamHandler(){};
 
-    virtual void to_json(json &j, uint64_t period, bool merged) = 0;
+    virtual void window_json(json &j, uint64_t period, bool merged) = 0;
 };
 
 template <class MetricsManagerClass>

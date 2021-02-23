@@ -137,7 +137,7 @@ void NetHandlerModulePlugin::_setup_routes(HttpServer &svr)
                 res.set_content(result.dump(), "text/json");
                 return;
             }
-            net_handler->to_json(result, std::stoi(req.matches[3]), false);
+            net_handler->window_json(result, std::stoi(req.matches[3]), false);
             res.set_content(result.dump(), "text/json");
         } catch (const std::runtime_error &e) {
             res.status = 500;
