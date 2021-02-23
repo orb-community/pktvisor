@@ -76,7 +76,7 @@ int main(int argc, char *argv[])
         true,           // show help if requested
         VIZER_VERSION); // version string
 
-    auto logger = spdlog::stdout_color_mt("pktvisord");
+    auto logger = spdlog::stdout_color_mt("pktvisor");
     if (args["-v"].asBool()) {
         logger->set_level(spdlog::level::debug);
     }

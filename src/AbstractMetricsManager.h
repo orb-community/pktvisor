@@ -1,6 +1,6 @@
 #pragma once
 
-#include "timer.h"
+#include <timer.hpp>
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 #pragma GCC diagnostic ignored "-Wunused-parameter"
@@ -33,6 +33,8 @@ public:
     }
 };
 
+using namespace std::chrono;
+
 class Rate
 {
 public:
@@ -43,7 +45,8 @@ private:
     std::atomic_uint64_t _rate;
     mutable std::shared_mutex _sketch_mutex;
     QuantileType _quantile;
-    std::unique_ptr<Timer> _timer;
+    std::unique_ptr<timer> _timer;
+    std::shared_ptr<timer::interval_handle> _t0;
 
 public:
     Rate()
@@ -52,21 +55,20 @@ public:
         , _quantile()
     {
         _quantile = QuantileType();
-        _timer = std::make_unique<Timer>([this] {
+        _timer = std::make_unique<timer>(50ms);
+        _t0 = _timer->set_interval(1s, [this] {
             _rate.store(_counter.exchange(0));
             // lock mutex for write
             std::unique_lock lock(_sketch_mutex);
             // TODO OPTIMIZE use a high res timer to track Timer calls, to ensure per sec calculation
             // don't rely on thread sleep timing
             _quantile.update(_rate);
-        },
-            Timer::Interval(1000), false);
-        _timer->start();
+        });
     }
 
     ~Rate()
     {
-        _timer->stop();
+        _t0->cancel();
     }
 
     Rate &operator++()
@@ -371,4 +373,3 @@ public:
 };
 
 }
-
