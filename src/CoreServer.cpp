@@ -9,26 +9,24 @@ vizer::CoreServer::CoreServer(bool read_only, std::shared_ptr<spdlog::logger> lo
 
     // inputs
     _input_manager = std::make_unique<InputStreamManager>();
-    std::vector<InputPluginPtr> input_plugins;
 
     // initialize input plugins
     for (auto &s : _input_registry.pluginList()) {
         InputPluginPtr mod = _input_registry.instantiate(s);
         _logger->info("Load input plugin: {} {}", mod->name(), mod->pluginInterface());
         mod->init_module(_input_manager.get(), _svr);
-        input_plugins.emplace_back(std::move(mod));
+        _input_plugins.emplace_back(std::move(mod));
     }
 
     // handlers
     _handler_manager = std::make_unique<HandlerManager>();
-    std::vector<HandlerPluginPtr> handler_plugins;
 
     // initialize handler plugins
     for (auto &s : _handler_registry.pluginList()) {
         HandlerPluginPtr mod = _handler_registry.instantiate(s);
         _logger->info("Load handler plugin: {} {}", mod->name(), mod->pluginInterface());
         mod->init_module(_input_manager.get(), _handler_manager.get(), _svr);
-        handler_plugins.emplace_back(std::move(mod));
+        _handler_plugins.emplace_back(std::move(mod));
     }
 
     _setup_routes();
@@ -84,7 +82,7 @@ void vizer::CoreServer::_setup_routes()
         try {
             //            out = metricsManager->getAppMetrics();
             res.set_content(out, "text/json");
-        } catch (const std::exception &e) {
+        } catch (const std::runtime_error &e) {
             res.status = 500;
             res.set_content(e.what(), "text/plain");
         }
@@ -94,7 +92,7 @@ void vizer::CoreServer::_setup_routes()
         try {
             //            out = metricsManager->getInstantRates();
             res.set_content(out, "text/json");
-        } catch (const std::exception &e) {
+        } catch (const std::runtime_error &e) {
             res.status = 500;
             res.set_content(e.what(), "text/plain");
         }
@@ -105,7 +103,7 @@ void vizer::CoreServer::_setup_routes()
             uint64_t period(std::stol(req.matches[1]));
             //            out = metricsManager->getMetrics(period);
             res.set_content(out, "text/json");
-        } catch (const std::exception &e) {
+        } catch (const std::runtime_error &e) {
             res.status = 500;
             res.set_content(e.what(), "text/plain");
         }
@@ -124,7 +122,7 @@ void vizer::CoreServer::_setup_routes()
                 }
             }
             res.set_content(j.dump(), "text/json");
-        } catch (const std::exception &e) {
+        } catch (const std::runtime_error &e) {
             res.status = 500;
             res.set_content(e.what(), "text/plain");
         }

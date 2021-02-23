@@ -63,7 +63,7 @@ void DnsHandlerModulePlugin::_setup_routes(HttpServer &svr)
             _handler_manager->module_add(std::move(handler_module));
             result["name"] = body["name"];
             res.set_content(result.dump(), "text/json");
-        } catch (const std::exception &e) {
+        } catch (const std::runtime_error &e) {
             res.status = 500;
             result["error"] = e.what();
             res.set_content(result.dump(), "text/json");
@@ -96,7 +96,7 @@ void DnsHandlerModulePlugin::_setup_routes(HttpServer &svr)
             }
             dns_handler->to_json(result, 0, false);
             res.set_content(result.dump(), "text/json");
-        } catch (const std::exception &e) {
+        } catch (const std::runtime_error &e) {
             res.status = 500;
             result["result"] = e.what();
             res.set_content(result.dump(), "text/json");
@@ -122,7 +122,7 @@ void DnsHandlerModulePlugin::_setup_routes(HttpServer &svr)
             }
             _handler_manager->module_remove(handler_name);
             res.set_content(result.dump(), "text/json");
-        } catch (const std::exception &e) {
+        } catch (const std::runtime_error &e) {
             res.status = 500;
             result["result"] = e.what();
             res.set_content(result.dump(), "text/json");

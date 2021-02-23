@@ -56,7 +56,7 @@ void PcapInputModulePlugin::_setup_routes(HttpServer &svr)
             result["config"] = input_stream->config_json();
             result["info"] = input_stream->info_json();
             res.set_content(result.dump(), "text/json");
-        } catch (const std::exception &e) {
+        } catch (const std::runtime_error &e) {
             res.status = 500;
             result["error"] = e.what();
             res.set_content(result.dump(), "text/json");
@@ -87,7 +87,7 @@ void PcapInputModulePlugin::_setup_routes(HttpServer &svr)
             stream_mgr_lock.unlock();
             _input_manager->module_remove(name);
             res.set_content(result.dump(), "text/json");
-        } catch (const std::exception &e) {
+        } catch (const std::runtime_error &e) {
             res.status = 500;
             result["result"] = e.what();
             res.set_content(result.dump(), "text/json");
@@ -111,7 +111,7 @@ void PcapInputModulePlugin::_setup_routes(HttpServer &svr)
             result["config"] = input_stream->config_json();
             result["info"] = input_stream->info_json();
             res.set_content(result.dump(), "text/json");
-        } catch (const std::exception &e) {
+        } catch (const std::runtime_error &e) {
             res.status = 500;
             result["result"] = e.what();
             res.set_content(result.dump(), "text/json");

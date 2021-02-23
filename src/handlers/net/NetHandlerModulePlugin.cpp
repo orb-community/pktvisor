@@ -73,7 +73,7 @@ void NetHandlerModulePlugin::_setup_routes(HttpServer &svr)
             result["periods"] = periods;
             result["deep_sample_rate"] = deep_sample_rate;
             res.set_content(result.dump(), "text/json");
-        } catch (const std::exception &e) {
+        } catch (const std::runtime_error &e) {
             res.status = 500;
             result["error"] = e.what();
             res.set_content(result.dump(), "text/json");
@@ -106,7 +106,7 @@ void NetHandlerModulePlugin::_setup_routes(HttpServer &svr)
             }
             result = net_handler->info_json();
             res.set_content(result.dump(), "text/json");
-        } catch (const std::exception &e) {
+        } catch (const std::runtime_error &e) {
             res.status = 500;
             result["result"] = e.what();
             res.set_content(result.dump(), "text/json");
@@ -139,7 +139,7 @@ void NetHandlerModulePlugin::_setup_routes(HttpServer &svr)
             }
             net_handler->to_json(result, std::stoi(req.matches[3]), false);
             res.set_content(result.dump(), "text/json");
-        } catch (const std::exception &e) {
+        } catch (const std::runtime_error &e) {
             res.status = 500;
             result["result"] = e.what();
             res.set_content(result.dump(), "text/json");
@@ -165,7 +165,7 @@ void NetHandlerModulePlugin::_setup_routes(HttpServer &svr)
             }
             _handler_manager->module_remove(handler_name);
             res.set_content(result.dump(), "text/json");
-        } catch (const std::exception &e) {
+        } catch (const std::runtime_error &e) {
             res.status = 500;
             result["result"] = e.what();
             res.set_content(result.dump(), "text/json");

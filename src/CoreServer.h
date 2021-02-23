@@ -22,7 +22,10 @@ private:
     typedef Corrade::Containers::Pointer<HandlerModulePlugin> HandlerPluginPtr;
 
     InputPluginRegistry _input_registry;
+    std::vector<InputPluginPtr> _input_plugins;
+
     HandlerPluginRegistry _handler_registry;
+    std::vector<HandlerPluginPtr> _handler_plugins;
 
     vizer::HttpServer _svr;
 
