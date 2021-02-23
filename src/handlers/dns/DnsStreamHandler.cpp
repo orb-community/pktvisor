@@ -200,11 +200,9 @@ void DnsStreamHandler::set_initial_tstamp(timespec stamp)
 {
     _metrics->set_initial_tstamp(stamp);
 }
-json DnsStreamHandler::info_json() const
+void DnsStreamHandler::info_json(json &j) const
 {
-    json result;
-    result["xact"]["open"] = _metrics->num_open_transactions();
-    return result;
+    j["xact"]["open"] = _metrics->num_open_transactions();
 }
 
 void DnsMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
@@ -258,6 +256,7 @@ void DnsMetricsBucket::to_json(json &j) const
     std::shared_lock r_lock(_mutex);
 
     j["wire_packets"]["total"] = num_events;
+    j["wire_packets"]["deep_samples"] = num_samples;
     j["wire_packets"]["queries"] = _counters.queries;
     j["wire_packets"]["replies"] = _counters.replies;
     j["wire_packets"]["tcp"] = _counters.TCP;

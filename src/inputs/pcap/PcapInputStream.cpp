@@ -364,9 +364,8 @@ void PcapInputStream::_get_hosts_from_libpcap_iface()
     }
 }
 
-json PcapInputStream::info_json() const
+void PcapInputStream::info_json(json& j) const
 {
-    json result;
     for (auto &i : _hostIPv4) {
         std::stringstream out;
         int len = 0;
@@ -376,25 +375,24 @@ json PcapInputStream::info_json() const
             m >>= 1;
         }
         out << i.address.toString() << '/' << len;
-        result["host_ips"]["ipv4"].push_back(out.str());
+        j["host_ips"]["ipv4"].push_back(out.str());
     }
     for (auto &i : _hostIPv6) {
         std::stringstream out;
         out << i.address.toString() << '/' << static_cast<int>(i.mask);
-        result["host_ips"]["ipv6"].push_back(out.str());
+        j["host_ips"]["ipv6"].push_back(out.str());
     }
     switch (_cur_pcap_source) {
     case PcapSource::unknown:
-        result["pcap_source"] = "unknown";
+        j["pcap_source"] = "unknown";
         break;
     case PcapSource::libpcap:
-        result["pcap_source"] = "libpcap";
+        j["pcap_source"] = "libpcap";
         break;
     case PcapSource::af_packet:
-        result["pcap_source"] = "af_packet";
+        j["pcap_source"] = "af_packet";
         break;
     }
-    return result;
 }
 
 void PcapInputStream::parse_host_spec()

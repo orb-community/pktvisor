@@ -152,8 +152,10 @@ int main(int argc, char *argv[])
         input_stream->config_set("host_spec", host_spec);
 
         input_stream->parse_host_spec();
-        console->info("{}", input_stream->config_json().dump(4));
-        console->info("{}", input_stream->info_json().dump(4));
+        json j;
+        input_stream->config_json(j["config"]);
+        input_stream->info_json(j["info"]);
+        console->info("{}", j.dump(4));
 
         input_manager->module_add(std::move(input_stream), false);
         auto [input_stream_, stream_mgr_lock] = input_manager->module_get_locked("pcap");
@@ -182,12 +184,12 @@ int main(int argc, char *argv[])
         json result;
         if (periods == 1) {
             // in summary mode we output a single summary of stats
-            net_handler->to_json(result, 0, false);
-            dns_handler->to_json(result, 0, false);
+            net_handler->window_json(result, 0, false);
+            dns_handler->window_json(result, 0, false);
         } else {
             // otherwise, merge the max time window available
-            net_handler->to_json(result, periods, true);
-            dns_handler->to_json(result, periods, true);
+            net_handler->window_json(result, periods, true);
+            dns_handler->window_json(result, periods, true);
         }
         console->info("{}", result.dump());
         shutdown_handler(SIGUSR1);

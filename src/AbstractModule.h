@@ -42,7 +42,7 @@ public:
     virtual void start() = 0;
     virtual void stop() = 0;
 
-    virtual json info_json() const = 0;
+    virtual void info_json(json &j) const = 0;
 
     const std::string &name() const
     {
@@ -88,17 +88,15 @@ public:
         return _config.count(name) == 1;
     }
 
-    json config_json(void) const
+    void config_json(json &j) const
     {
         std::shared_lock lock(_config_mutex);
-        json result;
         for (const auto &[key, value] : _config) {
-            std::visit([&result, key = key](auto &&arg) {
-                result[key] = arg;
+            std::visit([&j, key = key](auto &&arg) {
+                j[key] = arg;
             },
                 value);
         }
-        return result;
     }
 };
 

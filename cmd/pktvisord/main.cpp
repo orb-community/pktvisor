@@ -151,8 +151,10 @@ int main(int argc, char *argv[])
                 handler_manager->module_add(std::move(handler_module));
             }
 
-            logger->info("{}", input_stream_->config_json().dump(4));
-            logger->info("{}", input_stream_->info_json().dump(4));
+            json j;
+            input_stream_->config_json(j["config"]);
+            input_stream_->info_json(j["info"]);
+            logger->info("{}", j.dump(4));
 
         } catch (const std::exception &e) {
             logger->error(e.what());

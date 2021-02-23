@@ -70,7 +70,7 @@ public:
     // vizer::AbstractModule
     void start() override;
     void stop() override;
-    json info_json() const override;
+    void info_json(json &j) const override;
     size_t consumer_count() override
     {
         return packet_signal.slot_count() + udp_signal.slot_count() + start_tstamp_signal.slot_count() + tcp_message_ready_signal.slot_count() + tcp_connection_start_signal.slot_count() + tcp_connection_end_signal.slot_count();

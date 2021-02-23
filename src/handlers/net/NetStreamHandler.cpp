@@ -66,17 +66,15 @@ void NetStreamHandler::set_initial_tstamp(timespec stamp)
 {
     _metrics->set_initial_tstamp(stamp);
 }
-json NetStreamHandler::info_json() const
+void NetStreamHandler::info_json(json &j) const
 {
-    json result;
-    result["periods"] = _metrics->num_periods();
-    result["current_periods"] = _metrics->current_periods();
-    result["deep_sample_rate"] = _metrics->deep_sample_rate();
+    j["periods"] = _metrics->num_periods();
+    j["current_periods"] = _metrics->current_periods();
+    j["deep_sample_rate"] = _metrics->deep_sample_rate();
     std::stringstream ss;
     auto in_time_t = std::chrono::system_clock::to_time_t(_metrics->start_time());
     ss << std::put_time(std::gmtime(&in_time_t), "%Y-%m-%d %X");
-    result["start_time"] = ss.str();
-    return result;
+    j["start_time"] = ss.str();
 }
 
 void NetworkMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
@@ -95,6 +93,7 @@ void NetworkMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
     _counters.UDP += other._counters.UDP;
     _counters.TCP += other._counters.TCP;
     _counters.OtherL4 += other._counters.OtherL4;
+    _counters.IPv4 += other._counters.IPv4;
     _counters.IPv6 += other._counters.IPv6;
     _counters.total_in += other._counters.total_in;
     _counters.total_out += other._counters.total_out;
@@ -158,7 +157,7 @@ void NetworkMetricsBucket::to_json(json &j) const
     std::shared_lock r_lock(_mutex);
 
     j["total"] = num_events;
-    j["samples"] = num_samples;
+    j["deep_samples"] = num_samples;
     j["udp"] = _counters.UDP;
     j["tcp"] = _counters.TCP;
     j["other_l4"] = _counters.OtherL4;

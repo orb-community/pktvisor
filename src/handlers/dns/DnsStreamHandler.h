@@ -203,7 +203,7 @@ public:
     // vizer::AbstractModule
     void start() override;
     void stop() override;
-    json info_json() const override;
+    void info_json(json &j) const override;
 
     // vizer::StreamHandler
     void window_json(json &j, uint64_t period, bool merged) override;

@@ -62,9 +62,9 @@ func main() {
 	}
 }
 
-func updateHeader(v *gocui.View, rates *client.InstantRates, stats *client.StatSnapshot) {
+func updateHeader(v *gocui.View, live *client.StatSnapshot, window5m *client.StatSnapshot) {
 	v.Clear()
-	pcounts := stats.Packets
+	pcounts := window5m.Packets
 	// there may be some unknown
 	inOutDiff := pcounts.Total - (pcounts.In + pcounts.Out)
 	_, _ = fmt.Fprintf(v, "Pkts  %d | UDP %d (%3.1f%%) | TCP %d (%3.1f%%) | Other %d (%3.1f%%) | IPv4 %d (%3.1f%%) | IPv6 %d (%3.1f%%) | In %d (%3.1f%%) | Out %d (%3.1f%%) | Deep Samples %d (%3.1f%%)\n",
@@ -87,12 +87,12 @@ func updateHeader(v *gocui.View, rates *client.InstantRates, stats *client.StatS
 		(float64(pcounts.DeepSamples)/float64(pcounts.Total))*100,
 	)
 	_, _ = fmt.Fprintf(v, "Pkt Rates In %d/s %d/%d/%d/%d pps | Out %d/s %d/%d/%d/%d pps | IP Card. In: %d | Out: %d\n\n",
-		rates.Packets.In,
+		live.Packets.Rates.Pps_in.P99,
 		pcounts.Rates.Pps_in.P50,
 		pcounts.Rates.Pps_in.P90,
 		pcounts.Rates.Pps_in.P95,
 		pcounts.Rates.Pps_in.P99,
-		rates.Packets.Out,
+		live.Packets.Rates.Pps_out.P99,
 		pcounts.Rates.Pps_out.P50,
 		pcounts.Rates.Pps_out.P90,
 		pcounts.Rates.Pps_out.P95,
@@ -100,7 +100,7 @@ func updateHeader(v *gocui.View, rates *client.InstantRates, stats *client.StatS
 		pcounts.Cardinality.SrcIpsIn,
 		pcounts.Cardinality.DstIpsOut,
 	)
-	dnsc := stats.DNS.WirePackets
+	dnsc := window5m.DNS.WirePackets
 	_, _ = fmt.Fprintf(v, "DNS Wire Pkts %d (%3.1f%%) | UDP %d (%3.1f%%) | TCP %d (%3.1f%%) | IPv4 %d (%3.1f%%) | IPv6 %d (%3.1f%%) | Query %d (%3.1f%%) | Response %d (%3.1f%%)\n",
 		dnsc.Total,
 		(float64(dnsc.Total)/float64(pcounts.Total))*100,
@@ -117,7 +117,7 @@ func updateHeader(v *gocui.View, rates *client.InstantRates, stats *client.StatS
 		dnsc.Replies,
 		(float64(dnsc.Replies)/float64(dnsc.Total))*100,
 	)
-	xact := stats.DNS.Xact
+	xact := window5m.DNS.Xact
 	_, _ = fmt.Fprintf(v, "DNS Xacts %d | In %d (%3.1f%%) | Out %d (%3.1f%%) | In %3.1f/%3.1f/%3.1f/%3.1f ms | Out %3.1f/%3.1f/%3.1f/%3.1f ms | Qname Card. %d\n",
 		xact.Counts.Total,
 		xact.In.Total,
@@ -132,10 +132,10 @@ func updateHeader(v *gocui.View, rates *client.InstantRates, stats *client.StatS
 		float64(xact.Out.QuantilesUS.P90)/1000,
 		float64(xact.Out.QuantilesUS.P95)/1000,
 		float64(xact.Out.QuantilesUS.P99)/1000,
-		stats.DNS.Cardinality.Qname,
+		window5m.DNS.Cardinality.Qname,
 	)
-	startTime := time.Unix(stats.Period.StartTS, 0)
-	endTime := time.Unix(stats.Period.StartTS+stats.Period.Length, 0)
+	startTime := time.Unix(window5m.Period.StartTS, 0)
+	endTime := time.Unix(window5m.Period.StartTS+window5m.Period.Length, 0)
 	_, _ = fmt.Fprintf(v, "DNS NOERROR %d (%3.1f%%) | SRVFAIL %d (%3.1f%%) | NXDOMAIN %d (%3.1f%%) | REFUSED %d (%3.1f%%) | Time Window %v to %v, Period %ds\n",
 		dnsc.NoError,
 		(float64(dnsc.NoError)/float64(dnsc.Replies))*100,
@@ -147,7 +147,7 @@ func updateHeader(v *gocui.View, rates *client.InstantRates, stats *client.StatS
 		(float64(dnsc.Refused)/float64(dnsc.Replies))*100,
 		startTime.Format(time.Kitchen),
 		endTime.Format(time.Kitchen),
-		stats.Period.Length,
+		window5m.Period.Length,
 	)
 
 }
@@ -436,7 +436,7 @@ func getMetrics(url string, payload interface{}) error {
 	return nil
 }
 
-func getStats() (*client.StatSnapshot, *client.InstantRates, error) {
+func getStats() (*client.StatSnapshot, *client.StatSnapshot, error) {
 	var rawStats map[string]client.StatSnapshot
 	err := getMetrics(fmt.Sprintf("http://%s:%d/api/v1/metrics/window/5", statHost, statPort), &rawStats)
 	if err != nil {
@@ -444,8 +444,8 @@ func getStats() (*client.StatSnapshot, *client.InstantRates, error) {
 	}
 	raw5m := rawStats["5m"]
 
-	var rawRates client.InstantRates
-	err = getMetrics(fmt.Sprintf("http://%s:%d/api/v1/metrics/rates", statHost, statPort), &rawRates)
+	var rawRates client.StatSnapshot
+	err = getMetrics(fmt.Sprintf("http://%s:%d/api/v1/metrics/bucket/0", statHost, statPort), &rawRates)
 	if err != nil {
 		return nil, nil, err
 	}

@@ -6,25 +6,6 @@ type NameCount struct {
 	Estimate int64  `json:"estimate"`
 }
 
-// InstantRates is used to get the rate at a certain point in time
-type InstantRates struct {
-	Packets struct {
-		//Ipv4  int64 `json:"ipv4"`
-		//Ipv6  int64 `json:"ipv6"`
-		//Tcp   int64 `json:"tcp"`
-		//Total int64 `json:"total"`
-		//Udp   int64 `json:"udp"`
-		In  int64 `json:"in"`
-		Out int64 `json:"out"`
-	} `json:"packets"`
-	//DNS struct {
-	//InstantRates struct {
-	//	In  int64 `json:"in"`
-	//	Out int64 `json:"out"`
-	//} `json:"rates"`
-	//}
-}
-
 // DNSPayload contains the information specifically for the DNS protocol
 type DNSPayload struct {
 	WirePackets struct {

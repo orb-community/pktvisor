@@ -53,8 +53,8 @@ void PcapInputModulePlugin::_setup_routes(HttpServer &svr)
             auto [input_stream, stream_mgr_lock] = _input_manager->module_get_locked(body["name"]);
             assert(input_stream);
             result["name"] = body["name"];
-            result["config"] = input_stream->config_json();
-            result["info"] = input_stream->info_json();
+            input_stream->config_json(result["config"]);
+            input_stream->info_json(result["info"]);
             res.set_content(result.dump(), "text/json");
         } catch (const std::runtime_error &e) {
             res.status = 500;
@@ -108,8 +108,8 @@ void PcapInputModulePlugin::_setup_routes(HttpServer &svr)
             assert(input_stream);
             result["consumers"] = input_stream->consumer_count();
             result["running"] = input_stream->running();
-            result["config"] = input_stream->config_json();
-            result["info"] = input_stream->info_json();
+            input_stream->config_json(result["config"]);
+            input_stream->info_json(result["info"]);
             res.set_content(result.dump(), "text/json");
         } catch (const std::runtime_error &e) {
             res.status = 500;
