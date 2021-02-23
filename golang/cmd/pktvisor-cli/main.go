@@ -25,11 +25,11 @@ var (
 )
 
 func main() {
-	usage := `pktvisor v3 UI
+	usage := `pktvisor-cli command line UI
 
    Usage:
-      pktvisor [-p PORT] [-H HOST]
-      pktvisor (-h | --help)
+      pktvisor-cli [-p PORT] [-H HOST]
+      pktvisor-cli (-h | --help)
 
     Options:
       -p PORT               Query pktvisord metrics webserver on the given port [default: 10853]
@@ -342,7 +342,7 @@ func layout(g *gocui.Gui) error {
 		if err != gocui.ErrUnknownView {
 			return err
 		}
-		v.Title = "pktvisor v3"
+		v.Title = "pktvisor-cli"
 	}
 
 	//if currentView == "main" {
@@ -413,7 +413,7 @@ func quit(g *gocui.Gui, v *gocui.View) error {
 
 func getMetrics(url string, payload interface{}) error {
 	spaceClient := http.Client{
-		Timeout: time.Second * 6, // Maximum of 2 secs
+		Timeout: time.Second * 2, // Maximum of 2 secs
 	}
 
 	req, err := http.NewRequest(http.MethodGet, url, nil)

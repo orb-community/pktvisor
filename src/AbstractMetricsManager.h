@@ -45,8 +45,9 @@ private:
     std::atomic_uint64_t _rate;
     mutable std::shared_mutex _sketch_mutex;
     QuantileType _quantile;
-    std::unique_ptr<timer> _timer;
-    std::shared_ptr<timer::interval_handle> _t0;
+
+    std::shared_ptr<timer::interval_handle> _timer_handle;
+    high_resolution_clock::time_point _last_ts;
 
 public:
     Rate()
@@ -55,20 +56,21 @@ public:
         , _quantile()
     {
         _quantile = QuantileType();
-        _timer = std::make_unique<timer>(50ms);
-        _t0 = _timer->set_interval(1s, [this] {
+        _last_ts = high_resolution_clock::now();
+        // all rates use a single static timer object which holds its own thread
+        // the tick argument determines the granularity of job running and canceling
+        static timer timer_thread{100ms};
+        _timer_handle = timer_thread.set_interval(1s, [this] {
             _rate.store(_counter.exchange(0));
             // lock mutex for write
             std::unique_lock lock(_sketch_mutex);
-            // TODO OPTIMIZE use a high res timer to track Timer calls, to ensure per sec calculation
-            // don't rely on thread sleep timing
             _quantile.update(_rate);
         });
     }
 
     ~Rate()
     {
-        _t0->cancel();
+        _timer_handle->cancel();
     }
 
     Rate &operator++()
