@@ -68,13 +68,7 @@ void NetStreamHandler::set_initial_tstamp(timespec stamp)
 }
 void NetStreamHandler::info_json(json &j) const
 {
-    j["periods"] = _metrics->num_periods();
-    j["current_periods"] = _metrics->current_periods();
-    j["deep_sample_rate"] = _metrics->deep_sample_rate();
-    std::stringstream ss;
-    auto in_time_t = std::chrono::system_clock::to_time_t(_metrics->start_time());
-    ss << std::put_time(std::gmtime(&in_time_t), "%Y-%m-%d %X");
-    j["start_time"] = ss.str();
+    _common_info_json(j);
 }
 
 void NetworkMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)

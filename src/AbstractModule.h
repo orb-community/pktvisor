@@ -31,6 +31,13 @@ protected:
     std::atomic_bool _running = false;
     std::string _name;
 
+    void _common_info_json(json &j) const
+    {
+        j["module"]["name"] = _name;
+        j["module"]["running"] = _running.load();
+        config_json(j["module"]["config"]);
+    }
+
 public:
     AbstractModule(const std::string &name)
         : _name(name)

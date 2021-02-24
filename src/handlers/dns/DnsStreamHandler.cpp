@@ -202,7 +202,8 @@ void DnsStreamHandler::set_initial_tstamp(timespec stamp)
 }
 void DnsStreamHandler::info_json(json &j) const
 {
-    j["xact"]["open"] = _metrics->num_open_transactions();
+    _common_info_json(j);
+    j["dns"]["xact"]["open"] = _metrics->num_open_transactions();
 }
 
 void DnsMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)

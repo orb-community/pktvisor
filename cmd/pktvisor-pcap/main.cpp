@@ -153,7 +153,6 @@ int main(int argc, char *argv[])
 
         input_stream->parse_host_spec();
         json j;
-        input_stream->config_json(j["config"]);
         input_stream->info_json(j["info"]);
         console->info("{}", j.dump(4));
 

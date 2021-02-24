@@ -152,7 +152,6 @@ int main(int argc, char *argv[])
             }
 
             json j;
-            input_stream_->config_json(j["config"]);
             input_stream_->info_json(j["info"]);
             logger->info("{}", j.dump(4));
 
