@@ -64,7 +64,7 @@ void PcapInputModulePlugin::_create(const httplib::Request &req, httplib::Respon
         assert(input_stream);
         input_stream->info_json(result);
         res.set_content(result.dump(), "text/json");
-    } catch (const std::runtime_error &e) {
+    } catch (const std::exception &e) {
         res.status = 500;
         result["error"] = e.what();
         res.set_content(result.dump(), "text/json");
@@ -77,7 +77,7 @@ void PcapInputModulePlugin::_read(const httplib::Request &req, httplib::Response
         auto name = req.matches[1];
         if (!_input_manager->module_exists(name)) {
             res.status = 404;
-            result["result"] = "input name does not exist";
+            result["error"] = "input name does not exist";
             res.set_content(result.dump(), "text/json");
             return;
         }
@@ -85,9 +85,9 @@ void PcapInputModulePlugin::_read(const httplib::Request &req, httplib::Response
         assert(input_stream);
         input_stream->info_json(result);
         res.set_content(result.dump(), "text/json");
-    } catch (const std::runtime_error &e) {
+    } catch (const std::exception &e) {
         res.status = 500;
-        result["result"] = e.what();
+        result["error"] = e.what();
         res.set_content(result.dump(), "text/json");
     }
 }
@@ -98,7 +98,7 @@ void PcapInputModulePlugin::_delete(const httplib::Request &req, httplib::Respon
         auto name = req.matches[1];
         if (!_input_manager->module_exists(name)) {
             res.status = 404;
-            result["result"] = "input name does not exist";
+            result["error"] = "input name does not exist";
             res.set_content(result.dump(), "text/json");
             return;
         }
@@ -115,9 +115,9 @@ void PcapInputModulePlugin::_delete(const httplib::Request &req, httplib::Respon
         stream_mgr_lock.unlock();
         _input_manager->module_remove(name);
         res.set_content(result.dump(), "text/json");
-    } catch (const std::runtime_error &e) {
+    } catch (const std::exception &e) {
         res.status = 500;
-        result["result"] = e.what();
+        result["error"] = e.what();
         res.set_content(result.dump(), "text/json");
     }
 }
