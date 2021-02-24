@@ -125,7 +125,7 @@ public:
     {
         // DNS transaction support
         _qr_pair_manager.purgeOldTransactions(stamp);
-        auto [xact_to, xact_from, lock] = _metric_buckets.back()->get_xact_data_locked();
+        auto [xact_to, xact_from, lock] = _metric_buckets.front()->get_xact_data_locked();
         if (xact_from.get_n() > _sample_threshold) {
             _from90th = xact_from.get_quantile(0.90);
         }

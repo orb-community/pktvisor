@@ -204,17 +204,17 @@ protected:
             _deep_sampling_now = (_rng.uniform(0U, 100U) <= _deep_sample_rate);
         }
         if (_num_periods > 1 && stamp.tv_sec - _last_shift_ts.tv_sec > AbstractMetricsManager::PERIOD_SEC) {
-            _metric_buckets.emplace_back(std::make_unique<MetricsBucketClass>());
+            _metric_buckets.emplace_front(std::make_unique<MetricsBucketClass>());
             if (_metric_buckets.size() > _num_periods) {
                 // if we're at our period history length, pop the oldest
-                on_period_evict(_metric_buckets.front().get(), stamp);
+                on_period_evict(_metric_buckets.back().get(), stamp);
                 // importantly, this frees memory from bucket at end of time window
-                _metric_buckets.pop_front();
+                _metric_buckets.pop_back();
             }
             _last_shift_ts.tv_sec = stamp.tv_sec;
             on_period_shift(stamp);
         }
-        _metric_buckets.back()->new_event(_deep_sampling_now);
+        _metric_buckets.front()->new_event(_deep_sampling_now);
     }
 
     virtual void on_period_shift([[maybe_unused]] timespec stamp)
@@ -245,7 +245,7 @@ public:
         }
         _num_periods = std::min(_num_periods, 10U);
         _num_periods = std::max(_num_periods, 1U);
-        _metric_buckets.emplace_back(std::make_unique<MetricsBucketClass>());
+        _metric_buckets.emplace_front(std::make_unique<MetricsBucketClass>());
         timespec_get(&_last_shift_ts, TIME_UTC);
         _start_time = std::chrono::system_clock::now();
     }
@@ -289,7 +289,7 @@ public:
             throw PeriodException(err.str());
         }
 
-        return _metric_buckets[period].get();
+        return _metric_buckets.at(period).get();
     }
 
     void window_single_json(json &j, const std::string &key, uint64_t period = 0) const
@@ -312,15 +312,15 @@ public:
         if (period == 0) {
             timeval now_ts;
             gettimeofday(&now_ts, nullptr);
-            period_length = now_ts.tv_sec - _metric_buckets[period]->getTS().tv_sec;
+            period_length = now_ts.tv_sec - _metric_buckets.at(period)->getTS().tv_sec;
         } else {
             period_length = AbstractMetricsManager::PERIOD_SEC;
         }
 
-        j[period_str][key]["period"]["start_ts"] = _metric_buckets[period]->getTS().tv_sec;
+        j[period_str][key]["period"]["start_ts"] = _metric_buckets.at(period)->getTS().tv_sec;
         j[period_str][key]["period"]["length"] = period_length;
 
-        _metric_buckets[period]->to_json(j[period_str][key]);
+        _metric_buckets.at(period)->to_json(j[period_str][key]);
     }
 
     void window_merged_json(json &j, const std::string &key, uint64_t period) const
@@ -352,7 +352,7 @@ public:
             if (p-- == 0) {
                 break;
             }
-            if (m == _metric_buckets.back()) {
+            if (m == _metric_buckets.front()) {
                 timeval now_ts;
                 gettimeofday(&now_ts, nullptr);
                 period_length += now_ts.tv_sec - m->getTS().tv_sec;
@@ -364,7 +364,7 @@ public:
 
         std::string period_str = std::to_string(period) + "m";
 
-        auto oldest_ts = _metric_buckets.front()->getTS();
+        auto oldest_ts = _metric_buckets.back()->getTS();
         j[period_str][key]["period"]["start_ts"] = oldest_ts.tv_sec;
         j[period_str][key]["period"]["length"] = period_length;
 

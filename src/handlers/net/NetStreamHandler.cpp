@@ -318,7 +318,7 @@ void NetworkMetricsManager::process_packet(pcpp::Packet &payload, PacketDirectio
     // base event
     new_event(stamp);
     // process in the "live" bucket
-    _metric_buckets.back()->process_packet(_deep_sampling_now, payload, dir, l3, l4, stamp);
+    _metric_buckets.front()->process_packet(_deep_sampling_now, payload, dir, l3, l4, stamp);
 }
 
 }

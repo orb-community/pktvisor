@@ -37,14 +37,13 @@ protected:
         ss << std::put_time(std::gmtime(&in_time_t), "%Y-%m-%d %X");
         j["metrics"]["start_time"] = ss.str();
         j["metrics"]["deep_sample_rate"] = _metrics->deep_sample_rate();
-        j["metrics"]["periods"] = _metrics->num_periods();
-        j["metrics"]["current_periods"] = _metrics->current_periods();
-        j["metrics"]["buckets"] = json::array();
+        j["metrics"]["periods_configured"] = _metrics->num_periods();
+        j["metrics"]["periods"] = json::array();
         for (int i = 0; i < _metrics->current_periods(); ++i) {
             std::stringstream ssts;
             time_t b_time_t = _metrics->bucket(i)->getTS().tv_sec;
             ssts << std::put_time(std::gmtime(&b_time_t), "%Y-%m-%d %X");
-            j["metrics"]["buckets"][i]["start_time"] = ssts.str();
+            j["metrics"]["periods"][i]["start_time"] = ssts.str();
         }
     }
 
