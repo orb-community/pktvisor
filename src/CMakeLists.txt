@@ -16,6 +16,8 @@ add_library(vizer-core
 add_library(Vizer::Core ALIAS vizer-core)
 
 target_include_directories(vizer-core
+        PRIVATE
+        ${CMAKE_BINARY_DIR}/src # Vizer::Core config.h
         PUBLIC
         ${LIBMMDB_INCLUDE_DIRS}
         INTERFACE

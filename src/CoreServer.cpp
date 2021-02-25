@@ -1,10 +1,13 @@
 #include "CoreServer.h"
+#include "vizer_config.h"
+#include <chrono>
 #include <spdlog/stopwatch.h>
 #include <vector>
 
 vizer::CoreServer::CoreServer(bool read_only, std::shared_ptr<spdlog::logger> logger)
     : _svr(read_only)
     , _logger(logger)
+    , _start_time(std::chrono::system_clock::now())
 {
 
     // inputs
@@ -80,8 +83,8 @@ void vizer::CoreServer::_setup_routes()
     _svr.Get("/api/v1/metrics/app", [&]([[maybe_unused]] const httplib::Request &req, httplib::Response &res) {
         json j;
         try {
-            // todo
-            //            out = metricsManager->getAppMetrics();
+            j["app"]["version"] = VIZER_VERSION_NUM;
+            j["app"]["up_time_min"] = float(std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now() - _start_time).count()) / 60;
             res.set_content(j.dump(), "text/json");
         } catch (const std::runtime_error &e) {
             res.status = 500;

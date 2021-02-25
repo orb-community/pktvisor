@@ -33,6 +33,7 @@ private:
     std::unique_ptr<HandlerManager> _handler_manager;
 
     std::shared_ptr<spdlog::logger> _logger;
+    std::chrono::system_clock::time_point _start_time;
 
     void _setup_routes();
 
