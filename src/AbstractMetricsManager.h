@@ -73,6 +73,15 @@ public:
         _timer_handle->cancel();
     }
 
+    /**
+     * stop rate collection, ie. expect no more counter updates.
+     * does not affect the quantiles - in effect, it makes the rate read only
+     */
+    void cancel()
+    {
+        _timer_handle->cancel();
+    }
+
     Rate &operator++()
     {
         inc_counter();
@@ -146,6 +155,8 @@ public:
     }
 
     virtual void to_json(json &j) const = 0;
+
+    virtual void set_read_only() = 0;
 
     auto event_data() const
     {
@@ -230,6 +241,8 @@ protected:
             // unlock as fast as possible, in particular before period shift callback
             wl.unlock();
             _last_shift_ts.tv_sec = stamp.tv_sec;
+            // notify bucket that it is now read only
+            _metric_buckets[1]->set_read_only();
             on_period_shift(stamp);
             on_period_shift();
         }
@@ -246,6 +259,8 @@ protected:
             _deep_sampling_now = (_rng.uniform(0U, 100U) <= _deep_sample_rate);
         }
         std::shared_lock rl(_bucket_mutex);
+        // notify bucket that it is now read only
+        _metric_buckets[1]->set_read_only();
         _metric_buckets[0]->new_event(_deep_sampling_now);
     }
 

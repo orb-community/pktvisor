@@ -74,6 +74,13 @@ public:
     // vizer::AbstractMetricsBucket
     void specialized_merge(const AbstractMetricsBucket &other) override;
     void to_json(json &j) const override;
+    void set_read_only() override
+    {
+        // stop rate collection
+        _rate_in.cancel();
+        _rate_out.cancel();
+        _rate_total.cancel();
+    }
 
     void process_packet(bool deep, pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp);
 };
