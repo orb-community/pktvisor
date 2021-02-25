@@ -20,6 +20,15 @@ type DNSPayload struct {
 		NxDomain int64 `json:"nxdomain"`
 		SrvFail  int64 `json:"srvfail"`
 		Refused  int64 `json:"refused"`
+		Rates    struct {
+			Total struct {
+				Live int64 `json:"live"`
+				P50  int64 `json:"p50"`
+				P90  int64 `json:"p90"`
+				P95  int64 `json:"p95"`
+				P99  int64 `json:"p99"`
+			} `json:"total"`
+		} `json:"rates"`
 	} `json:"wire_packets"`
 	Cardinality struct {
 		Qname int64 `json:"qname"`
@@ -76,17 +85,26 @@ type PacketPayload struct {
 	DeepSamples int64 `json:"deep_samples"`
 	Rates       struct {
 		Pps_in struct {
-			P50 int64 `json:"p50"`
-			P90 int64 `json:"p90"`
-			P95 int64 `json:"p95"`
-			P99 int64 `json:"p99"`
+			Live int64 `json:"live"`
+			P50  int64 `json:"p50"`
+			P90  int64 `json:"p90"`
+			P95  int64 `json:"p95"`
+			P99  int64 `json:"p99"`
 		} `json:"pps_in"`
 		Pps_out struct {
-			P50 int64 `json:"p50"`
-			P90 int64 `json:"p90"`
-			P95 int64 `json:"p95"`
-			P99 int64 `json:"p99"`
+			Live int64 `json:"live"`
+			P50  int64 `json:"p50"`
+			P90  int64 `json:"p90"`
+			P95  int64 `json:"p95"`
+			P99  int64 `json:"p99"`
 		} `json:"pps_out"`
+		Pps_total struct {
+			Live int64 `json:"live"`
+			P50  int64 `json:"p50"`
+			P90  int64 `json:"p90"`
+			P95  int64 `json:"p95"`
+			P99  int64 `json:"p99"`
+		} `json:"pps_total"`
 	} `json:"rates"`
 	TopIpv4   []NameCount `json:"top_ipv4"`
 	TopIpv6   []NameCount `json:"top_ipv6"`

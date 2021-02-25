@@ -114,6 +114,9 @@ void NetworkMetricsBucket::to_json(json &j) const
 
     // do rates first, which handle their own locking
     {
+        if (!read_only()) {
+            j["rates"]["pps_in"]["live"] = _rate_in.rate();
+        }
         auto [rate_quantile, rate_lock] = _rate_in.quantile_get_rlocked();
         auto quantiles = rate_quantile->get_quantiles(fractions, 4);
         if (quantiles.size()) {
@@ -125,6 +128,9 @@ void NetworkMetricsBucket::to_json(json &j) const
     }
 
     {
+        if (!read_only()) {
+            j["rates"]["pps_out"]["live"] = _rate_out.rate();
+        }
         auto [rate_quantile, rate_lock] = _rate_out.quantile_get_rlocked();
         auto quantiles = rate_quantile->get_quantiles(fractions, 4);
         if (quantiles.size()) {
@@ -138,6 +144,9 @@ void NetworkMetricsBucket::to_json(json &j) const
     auto [num_events, num_samples, event_rate] = event_data(); // thread safe
 
     {
+        if (!read_only()) {
+            j["rates"]["pps_total"]["live"] = event_rate->rate();
+        }
         auto [rate_quantile, rate_lock] = event_rate->quantile_get_rlocked();
         auto quantiles = rate_quantile->get_quantiles(fractions, 4);
         if (quantiles.size()) {

@@ -119,6 +119,8 @@ public:
         auto [o_quantile, o_lock] = other.quantile_get_rlocked();
         std::unique_lock w_lock(_sketch_mutex);
         _quantile.merge(*o_quantile);
+        // the live rate to simply copied
+        _rate.store(other._rate, std::memory_order_relaxed);
     }
 };
 
@@ -162,6 +164,11 @@ public:
     }
 
     virtual void to_json(json &j) const = 0;
+
+    bool read_only() const
+    {
+        return _read_only;
+    }
 
     // must be thread safe as it is called from time window maintenance thread
     void set_read_only()

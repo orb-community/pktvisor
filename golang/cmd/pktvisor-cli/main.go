@@ -62,7 +62,7 @@ func main() {
 	}
 }
 
-func updateHeader(v *gocui.View, live *client.StatSnapshot, window5m *client.StatSnapshot) {
+func updateHeader(v *gocui.View, window5m *client.StatSnapshot) {
 	v.Clear()
 	pcounts := window5m.Packets
 	// there may be some unknown
@@ -86,13 +86,18 @@ func updateHeader(v *gocui.View, live *client.StatSnapshot, window5m *client.Sta
 		pcounts.DeepSamples,
 		(float64(pcounts.DeepSamples)/float64(pcounts.Total))*100,
 	)
-	_, _ = fmt.Fprintf(v, "Pkt Rates In %d/s %d/%d/%d/%d pps | Out %d/s %d/%d/%d/%d pps | IP Card. In: %d | Out: %d\n\n",
-		live.Packets.Rates.Pps_in.P99,
+	_, _ = fmt.Fprintf(v, "Pkt Rates Total %d/s %d/%d/%d/%d pps | In %d/s %d/%d/%d/%d pps | Out %d/s %d/%d/%d/%d pps | IP Card. In: %d | Out: %d\n\n",
+		pcounts.Rates.Pps_total.Live,
+		pcounts.Rates.Pps_total.P50,
+		pcounts.Rates.Pps_total.P90,
+		pcounts.Rates.Pps_total.P95,
+		pcounts.Rates.Pps_total.P99,
+		pcounts.Rates.Pps_in.Live,
 		pcounts.Rates.Pps_in.P50,
 		pcounts.Rates.Pps_in.P90,
 		pcounts.Rates.Pps_in.P95,
 		pcounts.Rates.Pps_in.P99,
-		live.Packets.Rates.Pps_out.P99,
+		pcounts.Rates.Pps_out.Live,
 		pcounts.Rates.Pps_out.P50,
 		pcounts.Rates.Pps_out.P90,
 		pcounts.Rates.Pps_out.P95,
@@ -101,9 +106,14 @@ func updateHeader(v *gocui.View, live *client.StatSnapshot, window5m *client.Sta
 		pcounts.Cardinality.DstIpsOut,
 	)
 	dnsc := window5m.DNS.WirePackets
-	_, _ = fmt.Fprintf(v, "DNS Wire Pkts %d (%3.1f%%) | UDP %d (%3.1f%%) | TCP %d (%3.1f%%) | IPv4 %d (%3.1f%%) | IPv6 %d (%3.1f%%) | Query %d (%3.1f%%) | Response %d (%3.1f%%)\n",
+	_, _ = fmt.Fprintf(v, "DNS Wire Pkts %d (%3.1f%%) | Rates Total %d/s %d/%d/%d/%d | UDP %d (%3.1f%%) | TCP %d (%3.1f%%) | IPv4 %d (%3.1f%%) | IPv6 %d (%3.1f%%) | Query %d (%3.1f%%) | Response %d (%3.1f%%)\n",
 		dnsc.Total,
 		(float64(dnsc.Total)/float64(pcounts.Total))*100,
+		dnsc.Rates.Total.Live,
+		dnsc.Rates.Total.P50,
+		dnsc.Rates.Total.P90,
+		dnsc.Rates.Total.P95,
+		dnsc.Rates.Total.P99,
 		dnsc.UDP,
 		(float64(dnsc.UDP)/float64(dnsc.Total))*100,
 		dnsc.TCP,
@@ -436,26 +446,19 @@ func getMetrics(url string, payload interface{}) error {
 	return nil
 }
 
-func getStats() (*client.StatSnapshot, *client.StatSnapshot, error) {
+func getStats() (*client.StatSnapshot, error) {
 	var rawStats map[string]client.StatSnapshot
 	err := getMetrics(fmt.Sprintf("http://%s:%d/api/v1/metrics/window/5", statHost, statPort), &rawStats)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	raw5m := rawStats["5m"]
 
-	var liveBucket map[string]client.StatSnapshot
-	err = getMetrics(fmt.Sprintf("http://%s:%d/api/v1/metrics/bucket/0", statHost, statPort), &liveBucket)
-	if err != nil {
-		return nil, nil, err
-	}
-	raw1m := liveBucket["1m"]
-
-	return &raw5m, &raw1m, nil
+	return &raw5m, nil
 }
 
 func updateViews(g *gocui.Gui) {
-	stats, live, err := getStats()
+	stats, err := getStats()
 	if err != nil {
 		g.Close()
 		panic(err)
@@ -465,7 +468,7 @@ func updateViews(g *gocui.Gui) {
 		if err != nil {
 			return err
 		}
-		updateHeader(v, live, stats)
+		updateHeader(v, stats)
 		currentView = "main"
 		if currentView == "main" {
 			v, err = g.View("top_ipv4")

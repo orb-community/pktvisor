@@ -255,6 +255,9 @@ void DnsMetricsBucket::to_json(json &j) const
 
     auto [num_events, num_samples, event_rate] = event_data(); // thread safe
     {
+        if (!read_only()) {
+            j["wire_packets"]["rates"]["total"]["live"] = event_rate->rate();
+        }
         auto [rate_quantile, rate_lock] = event_rate->quantile_get_rlocked();
         auto quantiles = rate_quantile->get_quantiles(fractions, 4);
         if (quantiles.size()) {
