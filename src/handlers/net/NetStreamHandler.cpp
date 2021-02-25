@@ -13,8 +13,8 @@
 
 namespace vizer::handler::net {
 
-NetStreamHandler::NetStreamHandler(const std::string &name, PcapInputStream *stream, uint periods, uint deepSampleRate)
-    : vizer::StreamMetricsHandler<NetworkMetricsManager>(name, periods, deepSampleRate)
+NetStreamHandler::NetStreamHandler(const std::string &name, PcapInputStream *stream, uint periods, uint deepSampleRate, bool realtime)
+    : vizer::StreamMetricsHandler<NetworkMetricsManager>(name, periods, deepSampleRate, realtime)
     , _stream(stream)
 {
     assert(stream);
@@ -318,7 +318,7 @@ void NetworkMetricsManager::process_packet(pcpp::Packet &payload, PacketDirectio
     // base event
     new_event(stamp);
     // process in the "live" bucket
-    _metric_buckets.front()->process_packet(_deep_sampling_now, payload, dir, l3, l4, stamp);
+    live_bucket()->process_packet(_deep_sampling_now, payload, dir, l3, l4, stamp);
 }
 
 }

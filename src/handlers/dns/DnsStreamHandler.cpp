@@ -14,8 +14,8 @@
 
 namespace vizer::handler::dns {
 
-DnsStreamHandler::DnsStreamHandler(const std::string &name, PcapInputStream *stream, uint periods, int deepSampleRate)
-    : vizer::StreamMetricsHandler<DnsMetricsManager>(name, periods, deepSampleRate)
+DnsStreamHandler::DnsStreamHandler(const std::string &name, PcapInputStream *stream, uint periods, int deepSampleRate, bool realtime)
+    : vizer::StreamMetricsHandler<DnsMetricsManager>(name, periods, deepSampleRate, realtime)
     , _stream(stream)
 {
     assert(stream);
@@ -465,7 +465,7 @@ void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, PacketDir
     _dns_topUDPPort.update(port);
 }
 
-void DnsMetricsBucket::newDNSXact(bool deep, float to90th, float from90th, DnsLayer &dns, PacketDirection dir, DnsTransaction xact)
+void DnsMetricsBucket::new_dns_transaction(bool deep, float to90th, float from90th, DnsLayer &dns, PacketDirection dir, DnsTransaction xact)
 {
 
     uint64_t xactTime = ((xact.totalTS.tv_sec * 1'000'000'000L) + xact.totalTS.tv_nsec) / 1'000; // nanoseconds to microseconds
@@ -509,15 +509,15 @@ void DnsMetricsManager::process_dns_layer(DnsLayer &payload, PacketDirection dir
     new_event(stamp);
     // handle dns transactions (query/response pairs)
     if (payload.getDnsHeader()->queryOrResponse == QR::response) {
-        auto xact = _qr_pair_manager.maybeEndDnsTransaction(flowkey, payload.getDnsHeader()->transactionID, stamp);
+        auto xact = _qr_pair_manager.maybe_end_transaction(flowkey, payload.getDnsHeader()->transactionID, stamp);
         if (xact.first) {
-            _metric_buckets.front()->newDNSXact(_deep_sampling_now, _to90th, _from90th, payload, dir, xact.second);
+            live_bucket()->new_dns_transaction(_deep_sampling_now, _to90th, _from90th, payload, dir, xact.second);
         }
     } else {
-        _qr_pair_manager.startDnsTransaction(flowkey, payload.getDnsHeader()->transactionID, stamp);
+        _qr_pair_manager.start_transaction(flowkey, payload.getDnsHeader()->transactionID, stamp);
     }
     // process in the "live" bucket
-    _metric_buckets.front()->process_dns_layer(_deep_sampling_now, payload, dir, l3, l4, flowkey, port, stamp);
+    live_bucket()->process_dns_layer(_deep_sampling_now, payload, dir, l3, l4, flowkey, port, stamp);
 }
 
 }

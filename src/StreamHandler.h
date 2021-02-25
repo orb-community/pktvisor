@@ -48,13 +48,13 @@ protected:
     }
 
 public:
-    StreamMetricsHandler(const std::string &name, uint periods, int deepSampleRate)
+    StreamMetricsHandler(const std::string &name, uint periods, int deepSampleRate, bool realtime = true)
         : StreamHandler(name)
     {
-        _metrics = std::make_unique<MetricsManagerClass>(periods, deepSampleRate);
+        _metrics = std::make_unique<MetricsManagerClass>(periods, deepSampleRate, realtime);
     }
 
-    const MetricsManagerClass *metrics()
+    const MetricsManagerClass *metrics() const
     {
         return _metrics.get();
     }

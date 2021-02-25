@@ -184,58 +184,88 @@ class AbstractMetricsManager
 {
     static_assert(std::is_base_of<AbstractMetricsBucket, MetricsBucketClass>::value, "MetricsBucketClass must inherit from AbstractMetricsBucket");
 
-protected:
+    // this protects changes to the container, _not_ changes to the bucket itself, which should only be written to by one thread
+    mutable std::shared_mutex _bucket_mutex;
     std::deque<std::unique_ptr<MetricsBucketClass>> _metric_buckets;
+    std::shared_ptr<timer::interval_handle> _timer_handle;
+
+public:
+    static const uint PERIOD_SEC = 60;
+    static const uint MERGE_CACHE_TTL_MS = 1000;
+
+protected:
     uint _num_periods;
-    timespec _last_shift_ts;
     std::chrono::system_clock::time_point _start_time;
 
     randutils::default_rng _rng;
     uint _deep_sample_rate;
     bool _deep_sampling_now;
 
+    bool _realtime;
+    // only used for non real time events
+    timespec _last_shift_ts;
+
     mutable std::unordered_map<uint, std::pair<std::chrono::high_resolution_clock::time_point, json>> _mergeResultCache;
 
+    // this version is called when events have time stamps, such as packets from live device or pcap.
+    // if the time stamp is not live, i.e. they are prerecorded events such as pcap file, then _realtime
+    // should be set to false so that period management will happen according to the time stamps instead of
+    // a timer thread.
     void new_event(timespec stamp)
     {
-        // at each new event, we determine if we are sampling, to limit collection of more detailed (expensive) statistics
+        // CRITICAL EVENT PATH
         _deep_sampling_now = true;
         if (_deep_sample_rate != 100) {
             _deep_sampling_now = (_rng.uniform(0U, 100U) <= _deep_sample_rate);
         }
-        if (_num_periods > 1 && stamp.tv_sec - _last_shift_ts.tv_sec > AbstractMetricsManager::PERIOD_SEC) {
+        if (!_realtime && _num_periods > 1 && stamp.tv_sec - _last_shift_ts.tv_sec > AbstractMetricsManager::PERIOD_SEC) {
+            // ensure access to the buckets is locked while we period shift
+            std::unique_lock wl(_bucket_mutex);
             _metric_buckets.emplace_front(std::make_unique<MetricsBucketClass>());
             if (_metric_buckets.size() > _num_periods) {
                 // if we're at our period history length, pop the oldest
-                on_period_evict(_metric_buckets.back().get(), stamp);
                 // importantly, this frees memory from bucket at end of time window
                 _metric_buckets.pop_back();
             }
+            // unlock as fast as possible, in particular before period shift callback
+            wl.unlock();
             _last_shift_ts.tv_sec = stamp.tv_sec;
             on_period_shift(stamp);
+            on_period_shift();
         }
-        _metric_buckets.front()->new_event(_deep_sampling_now);
+        std::shared_lock rl(_bucket_mutex);
+        _metric_buckets[0]->new_event(_deep_sampling_now);
+    }
+
+    // this version is called when events are happening in real time, and no time stamp is available
+    void new_event()
+    {
+        // CRITICAL EVENT PATH
+        _deep_sampling_now = true;
+        if (_deep_sample_rate != 100) {
+            _deep_sampling_now = (_rng.uniform(0U, 100U) <= _deep_sample_rate);
+        }
+        std::shared_lock rl(_bucket_mutex);
+        _metric_buckets[0]->new_event(_deep_sampling_now);
     }
 
     virtual void on_period_shift([[maybe_unused]] timespec stamp)
     {
     }
 
-    virtual void on_period_evict([[maybe_unused]] const MetricsBucketClass *bucket, [[maybe_unused]] timespec stamp)
+    virtual void on_period_shift()
     {
     }
 
 public:
-    static const uint PERIOD_SEC = 60;
-    static const uint MERGE_CACHE_TTL_MS = 1000;
-
-    AbstractMetricsManager(uint periods, int deepSampleRate)
+    AbstractMetricsManager(uint periods, int deepSampleRate, bool realtime = true)
         : _metric_buckets()
         , _num_periods(periods)
-        , _last_shift_ts()
         , _start_time()
         , _deep_sample_rate(deepSampleRate)
         , _deep_sampling_now(true)
+        , _realtime(realtime)
+        , _last_shift_ts()
     {
         if (_deep_sample_rate > 100) {
             _deep_sample_rate = 100;
@@ -243,11 +273,31 @@ public:
         if (_deep_sample_rate < 0) {
             _deep_sample_rate = 1;
         }
+
         _num_periods = std::min(_num_periods, 10U);
         _num_periods = std::max(_num_periods, 1U);
-        _metric_buckets.emplace_front(std::make_unique<MetricsBucketClass>());
         timespec_get(&_last_shift_ts, TIME_UTC);
         _start_time = std::chrono::system_clock::now();
+
+        std::unique_lock _l{_bucket_mutex};
+        _metric_buckets.emplace_front(std::make_unique<MetricsBucketClass>());
+        static timer timer_thread{100ms};
+        if (_num_periods > 1 && _realtime) {
+            // set up time window maintenance thread
+            _timer_handle = timer_thread.set_interval(60s, [this] {
+                // ensure access to the buckets is locked while we period shift
+                std::unique_lock wl(_bucket_mutex);
+                _metric_buckets.emplace_front(std::make_unique<MetricsBucketClass>());
+                if (_metric_buckets.size() > _num_periods) {
+                    // if we're at our period history length, pop the oldest
+                    // importantly, this frees memory from bucket at end of time window
+                    _metric_buckets.pop_back();
+                }
+                // unlock as fast as possible, in particular before period shift callback
+                wl.unlock();
+                on_period_shift();
+            });
+        }
     }
 
     uint num_periods() const
@@ -277,19 +327,17 @@ public:
 
     const MetricsBucketClass *bucket(uint64_t period) const
     {
-
-        if (period >= _num_periods) {
-            std::stringstream err;
-            err << "invalid metrics period, specify [0, " << _num_periods - 1 << "]";
-            throw PeriodException(err.str());
-        }
-        if (period >= _metric_buckets.size()) {
-            std::stringstream err;
-            err << "requested metrics period has not yet accumulated, current range is [0, " << _metric_buckets.size() - 1 << "]";
-            throw PeriodException(err.str());
-        }
-
+        std::shared_lock rl(_bucket_mutex);
+        // bounds checked
         return _metric_buckets.at(period).get();
+    }
+
+    MetricsBucketClass *live_bucket()
+    {
+        // CRITICAL PATH
+        std::shared_lock rl(_bucket_mutex);
+        // NOT bounds checked
+        return _metric_buckets[0].get();
     }
 
     void window_single_json(json &j, const std::string &key, uint64_t period = 0) const
