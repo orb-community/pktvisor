@@ -48,7 +48,6 @@ protected:
 
     Rate _rate_in;
     Rate _rate_out;
-    Rate _rate_total;
 
 public:
     NetworkMetricsBucket()
@@ -60,7 +59,6 @@ public:
         , _topIPv6(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
         , _rate_in()
         , _rate_out()
-        , _rate_total()
     {
     }
 
@@ -74,12 +72,13 @@ public:
     // vizer::AbstractMetricsBucket
     void specialized_merge(const AbstractMetricsBucket &other) override;
     void to_json(json &j) const override;
-    void set_read_only() override
+
+    // must be thread safe as it is called from time window maintenance thread
+    void on_set_read_only() override
     {
         // stop rate collection
         _rate_in.cancel();
         _rate_out.cancel();
-        _rate_total.cancel();
     }
 
     void process_packet(bool deep, pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp);

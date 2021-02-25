@@ -79,7 +79,6 @@ void NetworkMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
     // rates maintain their own thread safety
     _rate_in.merge(other._rate_in);
     _rate_out.merge(other._rate_out);
-    _rate_total.merge(other._rate_total);
 
     std::shared_lock r_lock(other._mutex);
     std::unique_lock w_lock(_mutex);
@@ -136,8 +135,10 @@ void NetworkMetricsBucket::to_json(json &j) const
         }
     }
 
+    auto [num_events, num_samples, event_rate] = event_data(); // thread safe
+
     {
-        auto [rate_quantile, rate_lock] = _rate_total.quantile_get_rlocked();
+        auto [rate_quantile, rate_lock] = event_rate->quantile_get_rlocked();
         auto quantiles = rate_quantile->get_quantiles(fractions, 4);
         if (quantiles.size()) {
             j["rates"]["pps_total"]["p50"] = quantiles[0];
@@ -147,7 +148,6 @@ void NetworkMetricsBucket::to_json(json &j) const
         }
     }
 
-    auto [num_events, num_samples] = event_data(); // thread safe
     std::shared_lock r_lock(_mutex);
 
     j["total"] = num_events;
@@ -203,8 +203,6 @@ void NetworkMetricsBucket::to_json(json &j) const
 // the main bucket analysis
 void NetworkMetricsBucket::process_packet(bool deep, pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp)
 {
-
-    ++_rate_total;
 
     std::unique_lock lock(_mutex);
 

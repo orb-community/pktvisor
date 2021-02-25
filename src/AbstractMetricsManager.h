@@ -76,6 +76,7 @@ public:
     /**
      * stop rate collection, ie. expect no more counter updates.
      * does not affect the quantiles - in effect, it makes the rate read only
+     * must be thread safe
      */
     void cancel()
     {
@@ -135,9 +136,15 @@ private:
     Rate _rate_events;
 
     timeval _bucketTS;
+    std::atomic<bool> _read_only = false;
 
 protected:
+    // merge the metrics of the specialized metric bucket
     virtual void specialized_merge(const AbstractMetricsBucket &other) = 0;
+
+    // must be thread safe as it is called from time window maintenance thread
+    // can be used to set any bucket metrics to read only, e.g. cancel Rate metrics
+    virtual void on_set_read_only(){};
 
 public:
     AbstractMetricsBucket()
@@ -156,7 +163,13 @@ public:
 
     virtual void to_json(json &j) const = 0;
 
-    virtual void set_read_only() = 0;
+    // must be thread safe as it is called from time window maintenance thread
+    void set_read_only()
+    {
+        _read_only = true;
+        _rate_events.cancel();
+        on_set_read_only();
+    }
 
     auto event_data() const
     {
@@ -164,8 +177,9 @@ public:
         struct eventData {
             uint64_t num_events;
             uint64_t num_samples;
+            const Rate *event_rate;
         };
-        return eventData{_num_events, _num_samples};
+        return eventData{_num_events, _num_samples, &_rate_events};
     }
 
     void merge(const AbstractMetricsBucket &other)
@@ -175,12 +189,14 @@ public:
             std::unique_lock w_lock(_base_mutex);
             _num_events += other._num_events;
             _num_samples += other._num_samples;
+            _rate_events.merge(other._rate_events);
         }
         specialized_merge(other);
     }
 
     void new_event(bool deep)
     {
+        // note, currently not enforcing _read_only
         ++_rate_events;
         std::unique_lock lock(_base_mutex);
         _num_events++;
@@ -238,15 +254,16 @@ protected:
                 // importantly, this frees memory from bucket at end of time window
                 _metric_buckets.pop_back();
             }
+            // notify bucket that it is now read only
+            _metric_buckets[1]->set_read_only();
             // unlock as fast as possible, in particular before period shift callback
             wl.unlock();
             _last_shift_ts.tv_sec = stamp.tv_sec;
-            // notify bucket that it is now read only
-            _metric_buckets[1]->set_read_only();
             on_period_shift(stamp);
             on_period_shift();
         }
         std::shared_lock rl(_bucket_mutex);
+        // bucket base event
         _metric_buckets[0]->new_event(_deep_sampling_now);
     }
 
@@ -259,8 +276,7 @@ protected:
             _deep_sampling_now = (_rng.uniform(0U, 100U) <= _deep_sample_rate);
         }
         std::shared_lock rl(_bucket_mutex);
-        // notify bucket that it is now read only
-        _metric_buckets[1]->set_read_only();
+        // bucket base event
         _metric_buckets[0]->new_event(_deep_sampling_now);
     }
 
@@ -308,6 +324,8 @@ public:
                     // importantly, this frees memory from bucket at end of time window
                     _metric_buckets.pop_back();
                 }
+                // notify bucket that it is now read only. this is thread safe.
+                _metric_buckets[1]->set_read_only();
                 // unlock as fast as possible, in particular before period shift callback
                 wl.unlock();
                 on_period_shift();

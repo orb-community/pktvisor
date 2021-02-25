@@ -101,10 +101,6 @@ public:
     // vizer::AbstractMetricsBucket
     void specialized_merge(const AbstractMetricsBucket &other) override;
     void to_json(json &j) const override;
-    void set_read_only() override
-    {
-        // nothing to do yet. this can e.g. cancel Rates
-    }
 
     void process_dns_layer(bool deep, DnsLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowkey, uint16_t port, timespec stamp);
 

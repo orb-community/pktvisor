@@ -444,17 +444,18 @@ func getStats() (*client.StatSnapshot, *client.StatSnapshot, error) {
 	}
 	raw5m := rawStats["5m"]
 
-	var rawRates client.StatSnapshot
-	err = getMetrics(fmt.Sprintf("http://%s:%d/api/v1/metrics/bucket/0", statHost, statPort), &rawRates)
+	var liveBucket map[string]client.StatSnapshot
+	err = getMetrics(fmt.Sprintf("http://%s:%d/api/v1/metrics/bucket/0", statHost, statPort), &liveBucket)
 	if err != nil {
 		return nil, nil, err
 	}
+	raw1m := liveBucket["1m"]
 
-	return &raw5m, &rawRates, nil
+	return &raw5m, &raw1m, nil
 }
 
 func updateViews(g *gocui.Gui) {
-	stats, rates, err := getStats()
+	stats, live, err := getStats()
 	if err != nil {
 		g.Close()
 		panic(err)
@@ -464,7 +465,7 @@ func updateViews(g *gocui.Gui) {
 		if err != nil {
 			return err
 		}
-		updateHeader(v, rates, stats)
+		updateHeader(v, live, stats)
 		currentView = "main"
 		if currentView == "main" {
 			v, err = g.View("top_ipv4")
