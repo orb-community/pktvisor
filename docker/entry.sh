@@ -23,4 +23,5 @@ if [ "$BINARY" = 'pktvisor-cli' ]; then
   sleep 1
 fi
 
-exec "$@"
+shift
+exec "$BINARY" "$@"

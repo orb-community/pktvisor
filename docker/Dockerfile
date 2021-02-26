@@ -1,39 +1,36 @@
-FROM debian:buster-slim AS build
+FROM debian:buster-slim AS cppbuild
 
-ENV BUILD_DEPS "g++ cmake make git libpcap-dev pkgconf golang ca-certificates libmaxminddb-dev jq python3-pip python3-setuptools"
+ENV BUILD_DEPS "g++ cmake make git libpcap-dev pkgconf libmaxminddb-dev jq python3-pip python3-setuptools"
 
 RUN \
     apt-get update && \
-    apt-get install --yes --no-install-recommends ${BUILD_DEPS}
-
-RUN \
+    apt-get install --yes --no-install-recommends ${BUILD_DEPS} && \
     pip3 install conan
-
-COPY . /src
 
 RUN \
     mkdir /local && \
     cd /tmp && \
-    git clone https://github.com/ns1/PcapPlusPlus.git
-
-RUN \
+    git clone https://github.com/ns1/PcapPlusPlus.git && \
     cd /tmp/PcapPlusPlus && \
     ./configure-linux.sh --install-dir /local && \
-    make libs && \
+    make libs -j 4 && \
     make install
 
+COPY . /pktvisor-src/
+
+WORKDIR /tmp/build
 RUN \
     conan profile new --detect default && \
     conan profile update settings.compiler.libcxx=libstdc++11 default && \
-    mkdir /tmp/build && \
-    cd /tmp/build && \
-    conan install /src && \
-    PKG_CONFIG_PATH=/local/lib/pkgconfig cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo /src && \
-    make all
-
+    conan install /pktvisor-src
 RUN \
-    cd /tmp/build && \
-    go build /src/golang/cmd/pktvisor-cli/main.go
+    PKG_CONFIG_PATH=/local/lib/pkgconfig cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo /pktvisor-src && \
+    make pktvisord pktvisor-pcap -j 4
+
+FROM golang:latest AS gobuild
+COPY golang/ /src/
+WORKDIR /src/
+RUN go build -o pktvisor-cli cmd/pktvisor-cli/main.go
 
 FROM debian:buster-slim AS runtime
 
@@ -44,9 +41,9 @@ RUN \
     apt-get install --yes --no-install-recommends ${RUNTIME_DEPS} && \
     rm -rf /var/lib/apt
 
-COPY --from=build /tmp/build/bin/pktvisord /usr/local/sbin/pktvisord
-COPY --from=build /tmp/build/bin/pktvisor-pcap /usr/local/sbin/pktvisor-pcap
-COPY --from=build /src/golang/pktvisor-cli /usr/local/bin/pktvisor-cli
+COPY --from=cppbuild /tmp/build/bin/pktvisord /usr/local/sbin/pktvisord
+COPY --from=cppbuild /tmp/build/bin/pktvisor-pcap /usr/local/sbin/pktvisor-pcap
+COPY --from=gobuild /src/pktvisor-cli /usr/local/bin/pktvisor-cli
 COPY docker/entry.sh /usr/local/bin/
 
 ENTRYPOINT [ "entry.sh" ]
