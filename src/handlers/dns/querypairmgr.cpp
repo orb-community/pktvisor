@@ -33,7 +33,7 @@ std::pair<bool, DnsTransaction> QueryResponsePairMgr::maybe_end_transaction(uint
     }
 }
 
-void QueryResponsePairMgr::purge_old_transactions(timespec now)
+size_t QueryResponsePairMgr::purge_old_transactions(timespec now)
 {
     // TODO this is a simple linear search, can optimize with some better data structures
     std::vector<DnsXactID> timed_out;
@@ -45,6 +45,7 @@ void QueryResponsePairMgr::purge_old_transactions(timespec now)
     for (auto i : timed_out) {
         _dns_transactions.erase(i);
     }
+    return timed_out.size();
 }
 
 }

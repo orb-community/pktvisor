@@ -48,6 +48,7 @@ protected:
         uint64_t xacts_total = 0;
         uint64_t xacts_in = 0;
         uint64_t xacts_out = 0;
+        uint64_t xacts_timed_out = 0;
         uint64_t queries = 0;
         uint64_t replies = 0;
         uint64_t UDP = 0;
@@ -91,6 +92,12 @@ public:
         return retVals{_dnsXactToTimeUs, _dnsXactFromTimeUs, std::move(lock)};
     }
 
+    void inc_xact_timed_out(uint64_t c)
+    {
+        std::unique_lock lock(_mutex);
+        _counters.xacts_timed_out += c;
+    }
+
     // get a copy of the counters
     counters counters() const
     {
@@ -124,7 +131,10 @@ public:
     void on_period_shift(timespec stamp) override
     {
         // DNS transaction support
-        _qr_pair_manager.purge_old_transactions(stamp);
+        auto timed_out = _qr_pair_manager.purge_old_transactions(stamp);
+        if (timed_out) {
+            live_bucket()->inc_xact_timed_out(timed_out);
+        }
         auto [xact_to, xact_from, lock] = live_bucket()->get_xact_data_locked();
         if (xact_from.get_n() > _sample_threshold) {
             _from90th = xact_from.get_quantile(0.90);

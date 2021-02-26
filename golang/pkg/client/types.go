@@ -36,6 +36,7 @@ type DNSPayload struct {
 	Xact struct {
 		Counts struct {
 			Total int64 `json:"total"`
+			TimedOut int64 `json:"timed_out"`
 		} `json:"counts"`
 		In struct {
 			QuantilesUS struct {

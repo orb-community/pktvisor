@@ -44,7 +44,7 @@ public:
 
     std::pair<bool, DnsTransaction> maybe_end_transaction(uint32_t flowKey, uint16_t queryID, timespec stamp);
 
-    void purge_old_transactions(timespec now);
+    size_t purge_old_transactions(timespec now);
 
     DnsXactMap::size_type open_transaction_count() const
     {

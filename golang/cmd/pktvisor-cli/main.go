@@ -128,8 +128,9 @@ func updateHeader(v *gocui.View, window5m *client.StatSnapshot) {
 		(float64(dnsc.Replies)/float64(dnsc.Total))*100,
 	)
 	xact := window5m.DNS.Xact
-	_, _ = fmt.Fprintf(v, "DNS Xacts %d | In %d (%3.1f%%) | Out %d (%3.1f%%) | In %3.1f/%3.1f/%3.1f/%3.1f ms | Out %3.1f/%3.1f/%3.1f/%3.1f ms | Qname Card. %d\n",
+	_, _ = fmt.Fprintf(v, "DNS Xacts %d | Timed Out %d | In %d (%3.1f%%) | Out %d (%3.1f%%) | In %3.1f/%3.1f/%3.1f/%3.1f ms | Out %3.1f/%3.1f/%3.1f/%3.1f ms | Qname Card. %d\n",
 		xact.Counts.Total,
+		xact.Counts.TimedOut,
 		xact.In.Total,
 		(float64(xact.In.Total)/float64(xact.Counts.Total))*100,
 		xact.Out.Total,

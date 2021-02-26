@@ -217,6 +217,7 @@ void DnsMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
     _counters.xacts_total += other._counters.xacts_total;
     _counters.xacts_in += other._counters.xacts_in;
     _counters.xacts_out += other._counters.xacts_out;
+    _counters.xacts_timed_out += other._counters.xacts_timed_out;
     _counters.queries += other._counters.queries;
     _counters.replies += other._counters.replies;
     _counters.UDP += other._counters.UDP;
@@ -285,6 +286,7 @@ void DnsMetricsBucket::to_json(json &j) const
 
     j["cardinality"]["qname"] = lround(_dns_qnameCard.get_estimate());
     j["xact"]["counts"]["total"] = _counters.xacts_total;
+    j["xact"]["counts"]["timed_out"] = _counters.xacts_timed_out;
 
     {
         j["xact"]["in"]["total"] = _counters.xacts_in;
