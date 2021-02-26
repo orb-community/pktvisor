@@ -144,8 +144,8 @@ func updateHeader(v *gocui.View, window5m *client.StatSnapshot) {
 		float64(xact.Out.QuantilesUS.P99)/1000,
 		window5m.DNS.Cardinality.Qname,
 	)
-	startTime := time.Unix(window5m.Period.StartTS, 0)
-	endTime := time.Unix(window5m.Period.StartTS+window5m.Period.Length, 0)
+	startTime := time.Unix(window5m.Packets.Period.StartTS, 0)
+	endTime := time.Unix(window5m.Packets.Period.StartTS+window5m.Packets.Period.Length, 0)
 	_, _ = fmt.Fprintf(v, "DNS NOERROR %d (%3.1f%%) | SRVFAIL %d (%3.1f%%) | NXDOMAIN %d (%3.1f%%) | REFUSED %d (%3.1f%%) | Time Window %v to %v, Period %ds\n",
 		dnsc.NoError,
 		(float64(dnsc.NoError)/float64(dnsc.Replies))*100,
@@ -157,7 +157,7 @@ func updateHeader(v *gocui.View, window5m *client.StatSnapshot) {
 		(float64(dnsc.Refused)/float64(dnsc.Replies))*100,
 		startTime.Format(time.Kitchen),
 		endTime.Format(time.Kitchen),
-		window5m.Period.Length,
+		window5m.Packets.Period.Length,
 	)
 
 }

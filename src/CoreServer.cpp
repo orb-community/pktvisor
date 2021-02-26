@@ -88,7 +88,7 @@ void vizer::CoreServer::_setup_routes()
             res.set_content(j.dump(), "text/json");
         } catch (const std::runtime_error &e) {
             res.status = 500;
-            j["result"] = e.what();
+            j["error"] = e.what();
             res.set_content(j.dump(), "text/json");
         }
     });
@@ -99,22 +99,22 @@ void vizer::CoreServer::_setup_routes()
             // just backwards compatibility
             j["packets"]["in"] = 0;
             j["packets"]["out"] = 0;
-            j["warning"] = "deprecated: use data from /api/v1/metrics/bucket/0 instead";
+            j["warning"] = "deprecated: use 'live' data from /api/v1/metrics/bucket/0 instead";
             res.set_content(j.dump(), "text/json");
         } catch (const std::runtime_error &e) {
             res.status = 500;
-            j["result"] = e.what();
+            j["error"] = e.what();
             res.set_content(j.dump(), "text/json");
         }
     });
     _svr.Get(R"(/api/v1/metrics/bucket/(\d+))", [&](const httplib::Request &req, httplib::Response &res) {
-        json j;
+        json j, bc_period;
         try {
             uint64_t period(std::stol(req.matches[1]));
             auto [handler_modules, hm_lock] = _handler_manager->module_get_all_locked();
             for (auto &[name, mod] : handler_modules) {
                 auto hmod = dynamic_cast<StreamHandler *>(mod.get());
-                // TODO need to add policy name, break backwards compatible
+                // TODO need to add policy name, break backwards compatible since multiple otherwise policies will overwrite
                 if (hmod) {
                     spdlog::stopwatch sw;
                     hmod->window_json(j, period, false);
@@ -124,7 +124,7 @@ void vizer::CoreServer::_setup_routes()
             res.set_content(j.dump(), "text/json");
         } catch (const std::runtime_error &e) {
             res.status = 500;
-            j["result"] = e.what();
+            j["error"] = e.what();
             res.set_content(j.dump(), "text/json");
         }
     });
@@ -135,7 +135,7 @@ void vizer::CoreServer::_setup_routes()
             auto [handler_modules, hm_lock] = _handler_manager->module_get_all_locked();
             for (auto &[name, mod] : handler_modules) {
                 auto hmod = dynamic_cast<StreamHandler *>(mod.get());
-                // TODO need to add policy name, break backwards compatible
+                // TODO need to add policy name, break backwards compatible since multiple otherwise policies will overwrite
                 if (hmod) {
                     spdlog::stopwatch sw;
                     hmod->window_json(j, period, true);

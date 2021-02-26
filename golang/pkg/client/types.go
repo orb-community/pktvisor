@@ -66,6 +66,7 @@ type DNSPayload struct {
 	TopREFUSED  []NameCount `json:"top_refused"`
 	TopSRVFAIL  []NameCount `json:"top_srvfail"`
 	TopUDPPorts []NameCount `json:"top_udp_ports"`
+	Period  PeriodPayload `json:"period"`
 }
 
 // PacketPayload contains information about raw packets regardless of protocol
@@ -110,6 +111,7 @@ type PacketPayload struct {
 	TopIpv6   []NameCount `json:"top_ipv6"`
 	TopGeoLoc []NameCount `json:"top_geoLoc"`
 	TopASN    []NameCount `json:"top_asn"`
+	Period  PeriodPayload `json:"period"`
 }
 
 // PeriodPayload indicates the period of time for which a snapshot refers to
@@ -122,5 +124,4 @@ type PeriodPayload struct {
 type StatSnapshot struct {
 	DNS     DNSPayload    `json:"dns"`
 	Packets PacketPayload `json:"packets"`
-	Period  PeriodPayload `json:"period"`
 }

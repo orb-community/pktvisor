@@ -119,8 +119,10 @@ public:
         auto [o_quantile, o_lock] = other.quantile_get_rlocked();
         std::unique_lock w_lock(_sketch_mutex);
         _quantile.merge(*o_quantile);
-        // the live rate to simply copied
-        _rate.store(other._rate, std::memory_order_relaxed);
+        // the live rate to simply copied if non zero
+        if (other._rate != 0) {
+            _rate.store(other._rate, std::memory_order_relaxed);
+        }
     }
 };
 
