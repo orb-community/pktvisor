@@ -81,6 +81,8 @@ public:
     void cancel()
     {
         _timer_handle->cancel();
+        _rate.store(0);
+        _counter.store(0);
     }
 
     Rate &operator++()
@@ -160,6 +162,10 @@ public:
     {
     }
 
+    /**
+     * not thread safe but never written to except by constructor
+     * @return
+     */
     timeval getTS() const
     {
         return _bucketTS;
