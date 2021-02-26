@@ -238,7 +238,6 @@ protected:
     bool _deep_sampling_now;
 
     bool _realtime;
-    // only used for non real time events
     timespec _last_shift_ts;
 
     mutable std::unordered_map<uint, std::pair<std::chrono::high_resolution_clock::time_point, json>> _mergeResultCache;
@@ -255,6 +254,9 @@ protected:
             _deep_sampling_now = (_rng.uniform(0U, 100U) <= _deep_sample_rate);
         }
         if (!_realtime && _num_periods > 1 && stamp.tv_sec - _last_shift_ts.tv_sec > AbstractMetricsManager::PERIOD_SEC) {
+            // manage the time window when we are in non real time mode
+            // realistically this is only entered on pre recorded data such as pcap file
+
             // ensure access to the buckets is locked while we period shift
             std::unique_lock wl(_bucket_mutex);
             _metric_buckets.emplace_front(std::make_unique<MetricsBucketClass>());
@@ -269,14 +271,13 @@ protected:
             wl.unlock();
             _last_shift_ts.tv_sec = stamp.tv_sec;
             on_period_shift(stamp);
-            on_period_shift();
         }
         std::shared_lock rl(_bucket_mutex);
         // bucket base event
         _metric_buckets[0]->new_event(_deep_sampling_now);
     }
 
-    // this version is called when events are happening in real time, and no time stamp is available
+    // this version is called when events are happening in real time, and no time stamp is associated with the event
     void new_event()
     {
         // CRITICAL EVENT PATH
@@ -289,11 +290,15 @@ protected:
         _metric_buckets[0]->new_event(_deep_sampling_now);
     }
 
+    /**
+     * call back when the time window periods shift. note, if the handler is using new_event with a time stamp
+     * but in real time mode, there is the possibility that the time stamps coming through new event do not
+     * synchronize with "now" passed via maintenance window thread - it is the handler's responsibility to take care here
+     * by making sure the time stamps past a new event are reasonable
+     *
+     * @param stamp if the base event included a time stamp, it will be passed along here, otherwise "now"
+     */
     virtual void on_period_shift([[maybe_unused]] timespec stamp)
-    {
-    }
-
-    virtual void on_period_shift()
     {
     }
 
@@ -323,7 +328,8 @@ public:
         _metric_buckets.emplace_front(std::make_unique<MetricsBucketClass>());
         static timer timer_thread{100ms};
         if (_num_periods > 1 && _realtime) {
-            // set up time window maintenance thread
+            // set up time window maintenance thread. this is only active for real time events,
+            // and will pass "now" as the time stamp to the period shift call back
             _timer_handle = timer_thread.set_interval(60s, [this] {
                 // ensure access to the buckets is locked while we period shift
                 std::unique_lock wl(_bucket_mutex);
@@ -337,7 +343,8 @@ public:
                 _metric_buckets[1]->set_read_only();
                 // unlock as fast as possible, in particular before period shift callback
                 wl.unlock();
-                on_period_shift();
+                timespec_get(&_last_shift_ts, TIME_UTC);
+                on_period_shift(_last_shift_ts);
             });
         }
     }
