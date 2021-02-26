@@ -32,19 +32,23 @@ class QueryResponsePairMgr
     typedef std::unordered_map<DnsXactID, DnsTransaction, hash_pair> DnsXactMap;
 
     unsigned int _ttl_secs;
-    DnsXactMap _dnsTransactions;
+    DnsXactMap _dns_transactions;
 
 public:
     QueryResponsePairMgr(unsigned int ttl_secs = 5)
         : _ttl_secs(ttl_secs)
     {
     }
-    void startDnsTransaction(uint32_t flowKey, uint16_t queryID, timespec stamp);
-    std::pair<bool, DnsTransaction> maybeEndDnsTransaction(uint32_t flowKey, uint16_t queryID, timespec stamp);
-    void purgeOldTransactions(timespec now);
-    DnsXactMap::size_type getOpenTransactionCount() const
+
+    void start_transaction(uint32_t flowKey, uint16_t queryID, timespec stamp);
+
+    std::pair<bool, DnsTransaction> maybe_end_transaction(uint32_t flowKey, uint16_t queryID, timespec stamp);
+
+    size_t purge_old_transactions(timespec now);
+
+    DnsXactMap::size_type open_transaction_count() const
     {
-        return _dnsTransactions.size();
+        return _dns_transactions.size();
     }
 };
 

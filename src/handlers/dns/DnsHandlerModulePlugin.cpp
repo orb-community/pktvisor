@@ -75,14 +75,14 @@ void DnsHandlerModulePlugin::_setup_routes(HttpServer &svr)
             auto input_name = req.matches[1];
             if (!_input_manager->module_exists(input_name)) {
                 res.status = 404;
-                result["result"] = "input name does not exist";
+                result["error"] = "input name does not exist";
                 res.set_content(result.dump(), "text/json");
                 return;
             }
             auto handler_name = req.matches[2];
             if (!_handler_manager->module_exists(handler_name)) {
                 res.status = 404;
-                result["result"] = "handler name does not exist";
+                result["error"] = "handler name does not exist";
                 res.set_content(result.dump(), "text/json");
                 return;
             }
@@ -94,11 +94,44 @@ void DnsHandlerModulePlugin::_setup_routes(HttpServer &svr)
                 res.set_content(result.dump(), "text/json");
                 return;
             }
-            dns_handler->to_json(result, 0, false);
+            dns_handler->info_json(result);
             res.set_content(result.dump(), "text/json");
         } catch (const std::exception &e) {
             res.status = 500;
-            result["result"] = e.what();
+            result["error"] = e.what();
+            res.set_content(result.dump(), "text/json");
+        }
+    });
+    svr.Get("/api/v1/inputs/pcap/(\\w+)/handlers/dns/(\\w+)/bucket/(\\d+)", [this](const httplib::Request &req, httplib::Response &res) {
+        json result;
+        try {
+            auto input_name = req.matches[1];
+            if (!_input_manager->module_exists(input_name)) {
+                res.status = 404;
+                result["error"] = "input name does not exist";
+                res.set_content(result.dump(), "text/json");
+                return;
+            }
+            auto handler_name = req.matches[2];
+            if (!_handler_manager->module_exists(handler_name)) {
+                res.status = 404;
+                result["error"] = "handler name does not exist";
+                res.set_content(result.dump(), "text/json");
+                return;
+            }
+            auto [handler, handler_mgr_lock] = _handler_manager->module_get_locked(handler_name);
+            auto dns_handler = dynamic_cast<DnsStreamHandler *>(handler);
+            if (!dns_handler) {
+                res.status = 400;
+                result["error"] = "handler stream is not dns";
+                res.set_content(result.dump(), "text/json");
+                return;
+            }
+            dns_handler->window_json(result, std::stoi(req.matches[3]), false);
+            res.set_content(result.dump(), "text/json");
+        } catch (const std::exception &e) {
+            res.status = 500;
+            result["error"] = e.what();
             res.set_content(result.dump(), "text/json");
         }
     });
@@ -109,14 +142,14 @@ void DnsHandlerModulePlugin::_setup_routes(HttpServer &svr)
             auto input_name = req.matches[1];
             if (!_input_manager->module_exists(input_name)) {
                 res.status = 404;
-                result["result"] = "input name does not exist";
+                result["error"] = "input name does not exist";
                 res.set_content(result.dump(), "text/json");
                 return;
             }
             auto handler_name = req.matches[2];
             if (!_handler_manager->module_exists(handler_name)) {
                 res.status = 404;
-                result["result"] = "handler name does not exist";
+                result["error"] = "handler name does not exist";
                 res.set_content(result.dump(), "text/json");
                 return;
             }
@@ -124,7 +157,7 @@ void DnsHandlerModulePlugin::_setup_routes(HttpServer &svr)
             res.set_content(result.dump(), "text/json");
         } catch (const std::exception &e) {
             res.status = 500;
-            result["result"] = e.what();
+            result["error"] = e.what();
             res.set_content(result.dump(), "text/json");
         }
     });

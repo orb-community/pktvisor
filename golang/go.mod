@@ -1,4 +1,4 @@
-module github.com/ns1/pktvisor/cmd/pktvisor
+module pktvisor
 
 go 1.15
 

@@ -48,7 +48,6 @@ protected:
 
     Rate _rate_in;
     Rate _rate_out;
-    Rate _rate_total;
 
 public:
     NetworkMetricsBucket()
@@ -60,7 +59,6 @@ public:
         , _topIPv6(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
         , _rate_in()
         , _rate_out()
-        , _rate_total()
     {
     }
 
@@ -75,14 +73,22 @@ public:
     void specialized_merge(const AbstractMetricsBucket &other) override;
     void to_json(json &j) const override;
 
+    // must be thread safe as it is called from time window maintenance thread
+    void on_set_read_only() override
+    {
+        // stop rate collection
+        _rate_in.cancel();
+        _rate_out.cancel();
+    }
+
     void process_packet(bool deep, pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp);
 };
 
 class NetworkMetricsManager final : public vizer::AbstractMetricsManager<NetworkMetricsBucket>
 {
 public:
-    NetworkMetricsManager(uint periods, int deepSampleRate)
-        : vizer::AbstractMetricsManager<NetworkMetricsBucket>(periods, deepSampleRate)
+    NetworkMetricsManager(uint periods, int deepSampleRate, bool realtime = true)
+        : vizer::AbstractMetricsManager<NetworkMetricsBucket>(periods, deepSampleRate, realtime)
     {
     }
 
@@ -112,16 +118,16 @@ class NetStreamHandler final : public vizer::StreamMetricsHandler<NetworkMetrics
     void set_initial_tstamp(timespec stamp);
 
 public:
-    NetStreamHandler(const std::string &name, PcapInputStream *stream, uint periods, uint deepSampleRate);
+    NetStreamHandler(const std::string &name, PcapInputStream *stream, uint periods, uint deepSampleRate, bool realtime = true);
     ~NetStreamHandler() override;
 
     // vizer::AbstractModule
     void start() override;
     void stop() override;
-    json info_json() const override;
+    void info_json(json &j) const override;
 
-    // vizer::StreamMetricsHandler
-    void to_json(json &j, uint64_t period, bool merged) override;
+    // vizer::StreamHandler
+    void window_json(json &j, uint64_t period, bool merged) override;
 };
 
 }

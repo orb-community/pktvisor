@@ -13,8 +13,8 @@
 
 namespace vizer::handler::net {
 
-NetStreamHandler::NetStreamHandler(const std::string &name, PcapInputStream *stream, uint periods, uint deepSampleRate)
-    : vizer::StreamMetricsHandler<NetworkMetricsManager>(name, periods, deepSampleRate)
+NetStreamHandler::NetStreamHandler(const std::string &name, PcapInputStream *stream, uint periods, uint deepSampleRate, bool realtime)
+    : vizer::StreamMetricsHandler<NetworkMetricsManager>(name, periods, deepSampleRate, realtime)
     , _stream(stream)
 {
     assert(stream);
@@ -54,29 +54,21 @@ void NetStreamHandler::process_packet_cb(pcpp::Packet &payload, PacketDirection 
     _metrics->process_packet(payload, dir, l3, l4, stamp);
 }
 
-void NetStreamHandler::to_json(json &j, uint64_t period, bool merged)
+void NetStreamHandler::window_json(json &j, uint64_t period, bool merged)
 {
     if (merged) {
-        _metrics->to_json_merged(j, "net", period);
+        _metrics->window_merged_json(j, "packets", period);
     } else {
-        _metrics->to_json_single(j, "net", period);
+        _metrics->window_single_json(j, "packets", period);
     }
 }
 void NetStreamHandler::set_initial_tstamp(timespec stamp)
 {
     _metrics->set_initial_tstamp(stamp);
 }
-json NetStreamHandler::info_json() const
+void NetStreamHandler::info_json(json &j) const
 {
-    json result;
-    result["periods"] = _metrics->num_periods();
-    result["current_periods"] = _metrics->current_periods();
-    result["deep_sample_rate"] = _metrics->deep_sample_rate();
-    std::stringstream ss;
-    auto in_time_t = std::chrono::system_clock::to_time_t(_metrics->start_time());
-    ss << std::put_time(std::gmtime(&in_time_t), "%Y-%m-%d %X");
-    result["start_time"] = ss.str();
-    return result;
+    _common_info_json(j);
 }
 
 void NetworkMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
@@ -87,7 +79,6 @@ void NetworkMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
     // rates maintain their own thread safety
     _rate_in.merge(other._rate_in);
     _rate_out.merge(other._rate_out);
-    _rate_total.merge(other._rate_total);
 
     std::shared_lock r_lock(other._mutex);
     std::unique_lock w_lock(_mutex);
@@ -95,6 +86,7 @@ void NetworkMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
     _counters.UDP += other._counters.UDP;
     _counters.TCP += other._counters.TCP;
     _counters.OtherL4 += other._counters.OtherL4;
+    _counters.IPv4 += other._counters.IPv4;
     _counters.IPv6 += other._counters.IPv6;
     _counters.total_in += other._counters.total_in;
     _counters.total_out += other._counters.total_out;
@@ -122,87 +114,97 @@ void NetworkMetricsBucket::to_json(json &j) const
 
     // do rates first, which handle their own locking
     {
+        if (!read_only()) {
+            j["rates"]["pps_in"]["live"] = _rate_in.rate();
+        }
         auto [rate_quantile, rate_lock] = _rate_in.quantile_get_rlocked();
         auto quantiles = rate_quantile->get_quantiles(fractions, 4);
         if (quantiles.size()) {
-            j["packets"]["rates"]["pps_in"]["p50"] = quantiles[0];
-            j["packets"]["rates"]["pps_in"]["p90"] = quantiles[1];
-            j["packets"]["rates"]["pps_in"]["p95"] = quantiles[2];
-            j["packets"]["rates"]["pps_in"]["p99"] = quantiles[3];
+            j["rates"]["pps_in"]["p50"] = quantiles[0];
+            j["rates"]["pps_in"]["p90"] = quantiles[1];
+            j["rates"]["pps_in"]["p95"] = quantiles[2];
+            j["rates"]["pps_in"]["p99"] = quantiles[3];
         }
     }
 
     {
+        if (!read_only()) {
+            j["rates"]["pps_out"]["live"] = _rate_out.rate();
+        }
         auto [rate_quantile, rate_lock] = _rate_out.quantile_get_rlocked();
         auto quantiles = rate_quantile->get_quantiles(fractions, 4);
         if (quantiles.size()) {
-            j["packets"]["rates"]["pps_out"]["p50"] = quantiles[0];
-            j["packets"]["rates"]["pps_out"]["p90"] = quantiles[1];
-            j["packets"]["rates"]["pps_out"]["p95"] = quantiles[2];
-            j["packets"]["rates"]["pps_out"]["p99"] = quantiles[3];
+            j["rates"]["pps_out"]["p50"] = quantiles[0];
+            j["rates"]["pps_out"]["p90"] = quantiles[1];
+            j["rates"]["pps_out"]["p95"] = quantiles[2];
+            j["rates"]["pps_out"]["p99"] = quantiles[3];
         }
     }
 
+    auto [num_events, num_samples, event_rate] = event_data(); // thread safe
+
     {
-        auto [rate_quantile, rate_lock] = _rate_total.quantile_get_rlocked();
+        if (!read_only()) {
+            j["rates"]["pps_total"]["live"] = event_rate->rate();
+        }
+        auto [rate_quantile, rate_lock] = event_rate->quantile_get_rlocked();
         auto quantiles = rate_quantile->get_quantiles(fractions, 4);
         if (quantiles.size()) {
-            j["packets"]["rates"]["pps_total"]["p50"] = quantiles[0];
-            j["packets"]["rates"]["pps_total"]["p90"] = quantiles[1];
-            j["packets"]["rates"]["pps_total"]["p95"] = quantiles[2];
-            j["packets"]["rates"]["pps_total"]["p99"] = quantiles[3];
+            j["rates"]["pps_total"]["p50"] = quantiles[0];
+            j["rates"]["pps_total"]["p90"] = quantiles[1];
+            j["rates"]["pps_total"]["p95"] = quantiles[2];
+            j["rates"]["pps_total"]["p99"] = quantiles[3];
         }
     }
 
-    auto [num_events, num_samples] = event_data(); // thread safe
     std::shared_lock r_lock(_mutex);
 
-    j["packets"]["total"] = num_events;
-    j["packets"]["samples"] = num_samples;
-    j["packets"]["udp"] = _counters.UDP;
-    j["packets"]["tcp"] = _counters.TCP;
-    j["packets"]["other_l4"] = _counters.OtherL4;
-    j["packets"]["ipv4"] = _counters.IPv4;
-    j["packets"]["ipv6"] = _counters.IPv6;
-    j["packets"]["in"] = _counters.total_in;
-    j["packets"]["out"] = _counters.total_out;
+    j["total"] = num_events;
+    j["deep_samples"] = num_samples;
+    j["udp"] = _counters.UDP;
+    j["tcp"] = _counters.TCP;
+    j["other_l4"] = _counters.OtherL4;
+    j["ipv4"] = _counters.IPv4;
+    j["ipv6"] = _counters.IPv6;
+    j["in"] = _counters.total_in;
+    j["out"] = _counters.total_out;
 
-    j["packets"]["cardinality"]["src_ips_in"] = lround(_srcIPCard.get_estimate());
-    j["packets"]["cardinality"]["dst_ips_out"] = lround(_dstIPCard.get_estimate());
+    j["cardinality"]["src_ips_in"] = lround(_srcIPCard.get_estimate());
+    j["cardinality"]["dst_ips_out"] = lround(_dstIPCard.get_estimate());
 
     {
-        j["packets"]["top_ipv4"] = nlohmann::json::array();
+        j["top_ipv4"] = nlohmann::json::array();
         auto items = _topIPv4.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
         for (uint64_t i = 0; i < std::min(10UL, items.size()); i++) {
-            j["packets"]["top_ipv4"][i]["name"] = pcpp::IPv4Address(items[i].get_item()).toString();
-            j["packets"]["top_ipv4"][i]["estimate"] = items[i].get_estimate();
+            j["top_ipv4"][i]["name"] = pcpp::IPv4Address(items[i].get_item()).toString();
+            j["top_ipv4"][i]["estimate"] = items[i].get_estimate();
         }
     }
 
     {
-        j["packets"]["top_ipv6"] = nlohmann::json::array();
+        j["top_ipv6"] = nlohmann::json::array();
         auto items = _topIPv6.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
         for (uint64_t i = 0; i < std::min(10UL, items.size()); i++) {
-            j["packets"]["top_ipv6"][i]["name"] = items[i].get_item();
-            j["packets"]["top_ipv6"][i]["estimate"] = items[i].get_estimate();
+            j["top_ipv6"][i]["name"] = items[i].get_item();
+            j["top_ipv6"][i]["estimate"] = items[i].get_estimate();
         }
     }
 
     {
-        j["packets"]["top_geoLoc"] = nlohmann::json::array();
+        j["top_geoLoc"] = nlohmann::json::array();
         auto items = _topGeoLoc.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
         for (uint64_t i = 0; i < std::min(10UL, items.size()); i++) {
-            j["packets"]["top_geoLoc"][i]["name"] = items[i].get_item();
-            j["packets"]["top_geoLoc"][i]["estimate"] = items[i].get_estimate();
+            j["top_geoLoc"][i]["name"] = items[i].get_item();
+            j["top_geoLoc"][i]["estimate"] = items[i].get_estimate();
         }
     }
 
     {
-        j["packets"]["top_ASN"] = nlohmann::json::array();
+        j["top_ASN"] = nlohmann::json::array();
         auto items = _topASN.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
         for (uint64_t i = 0; i < std::min(10UL, items.size()); i++) {
-            j["packets"]["top_ASN"][i]["name"] = items[i].get_item();
-            j["packets"]["top_ASN"][i]["estimate"] = items[i].get_estimate();
+            j["top_ASN"][i]["name"] = items[i].get_item();
+            j["top_ASN"][i]["estimate"] = items[i].get_estimate();
         }
     }
 }
@@ -210,8 +212,6 @@ void NetworkMetricsBucket::to_json(json &j) const
 // the main bucket analysis
 void NetworkMetricsBucket::process_packet(bool deep, pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp)
 {
-
-    ++_rate_total;
 
     std::unique_lock lock(_mutex);
 
@@ -325,7 +325,7 @@ void NetworkMetricsManager::process_packet(pcpp::Packet &payload, PacketDirectio
     // base event
     new_event(stamp);
     // process in the "live" bucket
-    _metric_buckets.back()->process_packet(_deep_sampling_now, payload, dir, l3, l4, stamp);
+    live_bucket()->process_packet(_deep_sampling_now, payload, dir, l3, l4, stamp);
 }
 
 }

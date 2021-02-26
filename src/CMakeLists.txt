@@ -11,10 +11,13 @@ add_library(vizer-core
         InputModulePlugin.cpp
         HandlerModulePlugin.cpp
         GeoDB.cpp
-        )
+        CoreServer.cpp
+        StreamHandler.cpp)
 add_library(Vizer::Core ALIAS vizer-core)
 
 target_include_directories(vizer-core
+        PRIVATE
+        ${CMAKE_BINARY_DIR}/src # Vizer::Core config.h
         PUBLIC
         ${LIBMMDB_INCLUDE_DIRS}
         INTERFACE
@@ -25,11 +28,13 @@ target_link_libraries(vizer-core
         PUBLIC
         datasketches
         rng
+        timer
         ${CONAN_LIBS_CORRADE}
         ${CONAN_LIBS_SPDLOG}
         ${CONAN_LIBS_FMT}
         ${LIBMMDB_LDFLAGS}
         ${LIBMMDB_LIBRARIES}
+        ${VIZER_STATIC_PLUGINS}
         )
 
 configure_file(vizer_config.h.in vizer_config.h @ONLY)

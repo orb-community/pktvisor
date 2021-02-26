@@ -1,28 +1,9 @@
-package main
+package client
 
 // NameCount represents the count of a unique domain name
 type NameCount struct {
 	Name     string `json:"name"`
 	Estimate int64  `json:"estimate"`
-}
-
-// InstantRates is used to get the rate at a certain point in time
-type InstantRates struct {
-	Packets struct {
-		//Ipv4  int64 `json:"ipv4"`
-		//Ipv6  int64 `json:"ipv6"`
-		//Tcp   int64 `json:"tcp"`
-		//Total int64 `json:"total"`
-		//Udp   int64 `json:"udp"`
-		In  int64 `json:"in"`
-		Out int64 `json:"out"`
-	} `json:"packets"`
-	//DNS struct {
-	//InstantRates struct {
-	//	In  int64 `json:"in"`
-	//	Out int64 `json:"out"`
-	//} `json:"rates"`
-	//}
 }
 
 // DNSPayload contains the information specifically for the DNS protocol
@@ -39,6 +20,15 @@ type DNSPayload struct {
 		NxDomain int64 `json:"nxdomain"`
 		SrvFail  int64 `json:"srvfail"`
 		Refused  int64 `json:"refused"`
+		Rates    struct {
+			Total struct {
+				Live int64 `json:"live"`
+				P50  int64 `json:"p50"`
+				P90  int64 `json:"p90"`
+				P95  int64 `json:"p95"`
+				P99  int64 `json:"p99"`
+			} `json:"total"`
+		} `json:"rates"`
 	} `json:"wire_packets"`
 	Cardinality struct {
 		Qname int64 `json:"qname"`
@@ -46,6 +36,7 @@ type DNSPayload struct {
 	Xact struct {
 		Counts struct {
 			Total int64 `json:"total"`
+			TimedOut int64 `json:"timed_out"`
 		} `json:"counts"`
 		In struct {
 			QuantilesUS struct {
@@ -76,6 +67,7 @@ type DNSPayload struct {
 	TopREFUSED  []NameCount `json:"top_refused"`
 	TopSRVFAIL  []NameCount `json:"top_srvfail"`
 	TopUDPPorts []NameCount `json:"top_udp_ports"`
+	Period  PeriodPayload `json:"period"`
 }
 
 // PacketPayload contains information about raw packets regardless of protocol
@@ -95,22 +87,32 @@ type PacketPayload struct {
 	DeepSamples int64 `json:"deep_samples"`
 	Rates       struct {
 		Pps_in struct {
-			P50 int64 `json:"p50"`
-			P90 int64 `json:"p90"`
-			P95 int64 `json:"p95"`
-			P99 int64 `json:"p99"`
+			Live int64 `json:"live"`
+			P50  int64 `json:"p50"`
+			P90  int64 `json:"p90"`
+			P95  int64 `json:"p95"`
+			P99  int64 `json:"p99"`
 		} `json:"pps_in"`
 		Pps_out struct {
-			P50 int64 `json:"p50"`
-			P90 int64 `json:"p90"`
-			P95 int64 `json:"p95"`
-			P99 int64 `json:"p99"`
+			Live int64 `json:"live"`
+			P50  int64 `json:"p50"`
+			P90  int64 `json:"p90"`
+			P95  int64 `json:"p95"`
+			P99  int64 `json:"p99"`
 		} `json:"pps_out"`
+		Pps_total struct {
+			Live int64 `json:"live"`
+			P50  int64 `json:"p50"`
+			P90  int64 `json:"p90"`
+			P95  int64 `json:"p95"`
+			P99  int64 `json:"p99"`
+		} `json:"pps_total"`
 	} `json:"rates"`
 	TopIpv4   []NameCount `json:"top_ipv4"`
 	TopIpv6   []NameCount `json:"top_ipv6"`
 	TopGeoLoc []NameCount `json:"top_geoLoc"`
 	TopASN    []NameCount `json:"top_asn"`
+	Period  PeriodPayload `json:"period"`
 }
 
 // PeriodPayload indicates the period of time for which a snapshot refers to
@@ -123,5 +125,4 @@ type PeriodPayload struct {
 type StatSnapshot struct {
 	DNS     DNSPayload    `json:"dns"`
 	Packets PacketPayload `json:"packets"`
-	Period  PeriodPayload `json:"period"`
 }

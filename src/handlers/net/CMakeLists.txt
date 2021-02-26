@@ -1,7 +1,5 @@
 message(STATUS "Handler Module: Net")
 
-pkg_check_modules(LIBPCPP REQUIRED PcapPlusPlus)
-
 set_directory_properties(PROPERTIES CORRADE_USE_PEDANTIC_FLAGS ON)
 
 corrade_add_static_plugin(VizerHandlerNet

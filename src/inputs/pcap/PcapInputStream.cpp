@@ -1,5 +1,5 @@
 #include "PcapInputStream.h"
-#include "timer.h"
+#include <timer.hpp>
 #include <pcap.h>
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wold-style-cast"
@@ -18,6 +18,8 @@
 #include <cstring>
 #include <netinet/in.h>
 #include <sstream>
+
+using namespace std::chrono;
 
 namespace vizer::input::pcap {
 
@@ -264,18 +266,17 @@ void PcapInputStream::_open_pcap(const std::string &fileName, const std::string 
     }
 
     int packetCount = 1, lastCount = 0;
-    vizer::Timer t([&packetCount, &lastCount]() {
+    timer t(100ms);
+    auto t0 = t.set_interval(1s, [&packetCount, &lastCount]() {
         std::cerr << "processed " << packetCount << " packets (" << lastCount << "/s)\n";
         lastCount = 0;
-    },
-        vizer::Timer::Interval(1000), false);
-    t.start();
+    });
     while (_running && reader->getNextPacket(rawPacket)) {
         process_raw_packet(&rawPacket);
         packetCount++;
         lastCount++;
     }
-    t.stop();
+    t0->cancel();
     std::cerr << "processed " << packetCount << " packets\n";
 
     // after all packets have been read - close the connections which are still opened
@@ -363,9 +364,10 @@ void PcapInputStream::_get_hosts_from_libpcap_iface()
     }
 }
 
-json PcapInputStream::info_json() const
+void PcapInputStream::info_json(json& j) const
 {
-    json result;
+    _common_info_json(j);
+    j["pcap"]["host_ips"] = json::object();
     for (auto &i : _hostIPv4) {
         std::stringstream out;
         int len = 0;
@@ -375,25 +377,24 @@ json PcapInputStream::info_json() const
             m >>= 1;
         }
         out << i.address.toString() << '/' << len;
-        result["host_ips"]["ipv4"].push_back(out.str());
+        j["pcap"]["host_ips"]["ipv4"].push_back(out.str());
     }
     for (auto &i : _hostIPv6) {
         std::stringstream out;
         out << i.address.toString() << '/' << static_cast<int>(i.mask);
-        result["host_ips"]["ipv6"].push_back(out.str());
+        j["pcap"]["host_ips"]["ipv6"].push_back(out.str());
     }
     switch (_cur_pcap_source) {
     case PcapSource::unknown:
-        result["pcap_source"] = "unknown";
+        j["pcap"]["pcap_source"] = "unknown";
         break;
     case PcapSource::libpcap:
-        result["pcap_source"] = "libpcap";
+        j["pcap"]["pcap_source"] = "libpcap";
         break;
     case PcapSource::af_packet:
-        result["pcap_source"] = "af_packet";
+        j["pcap"]["pcap_source"] = "af_packet";
         break;
     }
-    return result;
 }
 
 void PcapInputStream::parse_host_spec()

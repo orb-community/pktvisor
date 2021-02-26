@@ -48,6 +48,7 @@ protected:
         uint64_t xacts_total = 0;
         uint64_t xacts_in = 0;
         uint64_t xacts_out = 0;
+        uint64_t xacts_timed_out = 0;
         uint64_t queries = 0;
         uint64_t replies = 0;
         uint64_t UDP = 0;
@@ -91,6 +92,12 @@ public:
         return retVals{_dnsXactToTimeUs, _dnsXactFromTimeUs, std::move(lock)};
     }
 
+    void inc_xact_timed_out(uint64_t c)
+    {
+        std::unique_lock lock(_mutex);
+        _counters.xacts_timed_out += c;
+    }
+
     // get a copy of the counters
     counters counters() const
     {
@@ -104,7 +111,7 @@ public:
 
     void process_dns_layer(bool deep, DnsLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowkey, uint16_t port, timespec stamp);
 
-    void newDNSXact(bool deep, float to90th, float from90th, DnsLayer &dns, PacketDirection dir, DnsTransaction xact);
+    void new_dns_transaction(bool deep, float to90th, float from90th, DnsLayer &dns, PacketDirection dir, DnsTransaction xact);
 };
 
 class DnsMetricsManager final : public vizer::AbstractMetricsManager<DnsMetricsBucket>
@@ -116,16 +123,19 @@ class DnsMetricsManager final : public vizer::AbstractMetricsManager<DnsMetricsB
     uint64_t _sample_threshold = 10;
 
 public:
-    DnsMetricsManager(uint periods, int deepSampleRate)
-        : vizer::AbstractMetricsManager<DnsMetricsBucket>(periods, deepSampleRate)
+    DnsMetricsManager(uint periods, int deepSampleRate, bool realtime = true)
+        : vizer::AbstractMetricsManager<DnsMetricsBucket>(periods, deepSampleRate, realtime)
     {
     }
 
     void on_period_shift(timespec stamp) override
     {
         // DNS transaction support
-        _qr_pair_manager.purgeOldTransactions(stamp);
-        auto [xact_to, xact_from, lock] = _metric_buckets.back()->get_xact_data_locked();
+        auto timed_out = _qr_pair_manager.purge_old_transactions(stamp);
+        if (timed_out) {
+            live_bucket()->inc_xact_timed_out(timed_out);
+        }
+        auto [xact_to, xact_from, lock] = live_bucket()->get_xact_data_locked();
         if (xact_from.get_n() > _sample_threshold) {
             _from90th = xact_from.get_quantile(0.90);
         }
@@ -136,7 +146,7 @@ public:
 
     size_t num_open_transactions() const
     {
-        return _qr_pair_manager.getOpenTransactionCount();
+        return _qr_pair_manager.open_transaction_count();
     }
 
     void process_dns_layer(DnsLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowkey, uint16_t port, timespec stamp);
@@ -197,16 +207,16 @@ class DnsStreamHandler final : public vizer::StreamMetricsHandler<DnsMetricsMana
     void set_initial_tstamp(timespec stamp);
 
 public:
-    DnsStreamHandler(const std::string &name, PcapInputStream *stream, uint periods, int deepSampleRate);
+    DnsStreamHandler(const std::string &name, PcapInputStream *stream, uint periods, int deepSampleRate, bool realtime = true);
     ~DnsStreamHandler() override;
 
     // vizer::AbstractModule
     void start() override;
     void stop() override;
-    json info_json() const override;
+    void info_json(json &j) const override;
 
-    // vizer::StreamMetricsHandler
-    void to_json(json &j, uint64_t period, bool merged) override;
+    // vizer::StreamHandler
+    void window_json(json &j, uint64_t period, bool merged) override;
 };
 
 }

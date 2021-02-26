@@ -152,8 +152,9 @@ int main(int argc, char *argv[])
         input_stream->config_set("host_spec", host_spec);
 
         input_stream->parse_host_spec();
-        console->info("{}", input_stream->config_json().dump(4));
-        console->info("{}", input_stream->info_json().dump(4));
+        json j;
+        input_stream->info_json(j["info"]);
+        console->info("{}", j.dump(4));
 
         input_manager->module_add(std::move(input_stream), false);
         auto [input_stream_, stream_mgr_lock] = input_manager->module_get_locked("pcap");
@@ -162,7 +163,7 @@ int main(int argc, char *argv[])
 
         handler::net::NetStreamHandler *net_handler{nullptr};
         {
-            auto handler_module = std::make_unique<handler::net::NetStreamHandler>("net", pcap_stream, periods, sample_rate);
+            auto handler_module = std::make_unique<handler::net::NetStreamHandler>("net", pcap_stream, periods, sample_rate, false);
             handler_manager->module_add(std::move(handler_module));
             auto [handler, handler_mgr_lock] = handler_manager->module_get_locked("net");
             handler_mgr_lock.unlock();
@@ -170,7 +171,7 @@ int main(int argc, char *argv[])
         }
         handler::dns::DnsStreamHandler *dns_handler{nullptr};
         {
-            auto handler_module = std::make_unique<handler::dns::DnsStreamHandler>("dns", pcap_stream, periods, sample_rate);
+            auto handler_module = std::make_unique<handler::dns::DnsStreamHandler>("dns", pcap_stream, periods, sample_rate, false);
             handler_manager->module_add(std::move(handler_module));
             auto [handler, handler_mgr_lock] = handler_manager->module_get_locked("dns");
             handler_mgr_lock.unlock();
@@ -182,12 +183,12 @@ int main(int argc, char *argv[])
         json result;
         if (periods == 1) {
             // in summary mode we output a single summary of stats
-            net_handler->to_json(result, 0, false);
-            dns_handler->to_json(result, 0, false);
+            net_handler->window_json(result, 0, false);
+            dns_handler->window_json(result, 0, false);
         } else {
             // otherwise, merge the max time window available
-            net_handler->to_json(result, periods, true);
-            dns_handler->to_json(result, periods, true);
+            net_handler->window_json(result, periods, true);
+            dns_handler->window_json(result, periods, true);
         }
         console->info("{}", result.dump());
         shutdown_handler(SIGUSR1);

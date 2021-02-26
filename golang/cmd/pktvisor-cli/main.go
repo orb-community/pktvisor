@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/jroimartin/gocui"
+	"pktvisor/pkg/client"
 )
 
 var (
@@ -24,11 +25,11 @@ var (
 )
 
 func main() {
-	usage := `pktvisor v3 UI
+	usage := `pktvisor-cli command line UI
 
    Usage:
-      pktvisor [-p PORT] [-H HOST]
-      pktvisor (-h | --help)
+      pktvisor-cli [-p PORT] [-H HOST]
+      pktvisor-cli (-h | --help)
 
     Options:
       -p PORT               Query pktvisord metrics webserver on the given port [default: 10853]
@@ -61,9 +62,9 @@ func main() {
 	}
 }
 
-func updateHeader(v *gocui.View, rates *InstantRates, stats *StatSnapshot) {
+func updateHeader(v *gocui.View, window5m *client.StatSnapshot) {
 	v.Clear()
-	pcounts := stats.Packets
+	pcounts := window5m.Packets
 	// there may be some unknown
 	inOutDiff := pcounts.Total - (pcounts.In + pcounts.Out)
 	_, _ = fmt.Fprintf(v, "Pkts  %d | UDP %d (%3.1f%%) | TCP %d (%3.1f%%) | Other %d (%3.1f%%) | IPv4 %d (%3.1f%%) | IPv6 %d (%3.1f%%) | In %d (%3.1f%%) | Out %d (%3.1f%%) | Deep Samples %d (%3.1f%%)\n",
@@ -85,13 +86,18 @@ func updateHeader(v *gocui.View, rates *InstantRates, stats *StatSnapshot) {
 		pcounts.DeepSamples,
 		(float64(pcounts.DeepSamples)/float64(pcounts.Total))*100,
 	)
-	_, _ = fmt.Fprintf(v, "Pkt Rates In %d/s %d/%d/%d/%d pps | Out %d/s %d/%d/%d/%d pps | IP Card. In: %d | Out: %d\n\n",
-		rates.Packets.In,
+	_, _ = fmt.Fprintf(v, "Pkt Rates Total %d/s %d/%d/%d/%d pps | In %d/s %d/%d/%d/%d pps | Out %d/s %d/%d/%d/%d pps | IP Card. In: %d | Out: %d\n\n",
+		pcounts.Rates.Pps_total.Live,
+		pcounts.Rates.Pps_total.P50,
+		pcounts.Rates.Pps_total.P90,
+		pcounts.Rates.Pps_total.P95,
+		pcounts.Rates.Pps_total.P99,
+		pcounts.Rates.Pps_in.Live,
 		pcounts.Rates.Pps_in.P50,
 		pcounts.Rates.Pps_in.P90,
 		pcounts.Rates.Pps_in.P95,
 		pcounts.Rates.Pps_in.P99,
-		rates.Packets.Out,
+		pcounts.Rates.Pps_out.Live,
 		pcounts.Rates.Pps_out.P50,
 		pcounts.Rates.Pps_out.P90,
 		pcounts.Rates.Pps_out.P95,
@@ -99,10 +105,15 @@ func updateHeader(v *gocui.View, rates *InstantRates, stats *StatSnapshot) {
 		pcounts.Cardinality.SrcIpsIn,
 		pcounts.Cardinality.DstIpsOut,
 	)
-	dnsc := stats.DNS.WirePackets
-	_, _ = fmt.Fprintf(v, "DNS Wire Pkts %d (%3.1f%%) | UDP %d (%3.1f%%) | TCP %d (%3.1f%%) | IPv4 %d (%3.1f%%) | IPv6 %d (%3.1f%%) | Query %d (%3.1f%%) | Response %d (%3.1f%%)\n",
+	dnsc := window5m.DNS.WirePackets
+	_, _ = fmt.Fprintf(v, "DNS Wire Pkts %d (%3.1f%%) | Rates Total %d/s %d/%d/%d/%d | UDP %d (%3.1f%%) | TCP %d (%3.1f%%) | IPv4 %d (%3.1f%%) | IPv6 %d (%3.1f%%) | Query %d (%3.1f%%) | Response %d (%3.1f%%)\n",
 		dnsc.Total,
 		(float64(dnsc.Total)/float64(pcounts.Total))*100,
+		dnsc.Rates.Total.Live,
+		dnsc.Rates.Total.P50,
+		dnsc.Rates.Total.P90,
+		dnsc.Rates.Total.P95,
+		dnsc.Rates.Total.P99,
 		dnsc.UDP,
 		(float64(dnsc.UDP)/float64(dnsc.Total))*100,
 		dnsc.TCP,
@@ -116,9 +127,10 @@ func updateHeader(v *gocui.View, rates *InstantRates, stats *StatSnapshot) {
 		dnsc.Replies,
 		(float64(dnsc.Replies)/float64(dnsc.Total))*100,
 	)
-	xact := stats.DNS.Xact
-	_, _ = fmt.Fprintf(v, "DNS Xacts %d | In %d (%3.1f%%) | Out %d (%3.1f%%) | In %3.1f/%3.1f/%3.1f/%3.1f ms | Out %3.1f/%3.1f/%3.1f/%3.1f ms | Qname Card. %d\n",
+	xact := window5m.DNS.Xact
+	_, _ = fmt.Fprintf(v, "DNS Xacts %d | Timed Out %d | In %d (%3.1f%%) | Out %d (%3.1f%%) | In %3.1f/%3.1f/%3.1f/%3.1f ms | Out %3.1f/%3.1f/%3.1f/%3.1f ms | Qname Card. %d\n",
 		xact.Counts.Total,
+		xact.Counts.TimedOut,
 		xact.In.Total,
 		(float64(xact.In.Total)/float64(xact.Counts.Total))*100,
 		xact.Out.Total,
@@ -131,10 +143,10 @@ func updateHeader(v *gocui.View, rates *InstantRates, stats *StatSnapshot) {
 		float64(xact.Out.QuantilesUS.P90)/1000,
 		float64(xact.Out.QuantilesUS.P95)/1000,
 		float64(xact.Out.QuantilesUS.P99)/1000,
-		stats.DNS.Cardinality.Qname,
+		window5m.DNS.Cardinality.Qname,
 	)
-	startTime := time.Unix(stats.Period.StartTS, 0)
-	endTime := time.Unix(stats.Period.StartTS+stats.Period.Length, 0)
+	startTime := time.Unix(window5m.Packets.Period.StartTS, 0)
+	endTime := time.Unix(window5m.Packets.Period.StartTS+window5m.Packets.Period.Length, 0)
 	_, _ = fmt.Fprintf(v, "DNS NOERROR %d (%3.1f%%) | SRVFAIL %d (%3.1f%%) | NXDOMAIN %d (%3.1f%%) | REFUSED %d (%3.1f%%) | Time Window %v to %v, Period %ds\n",
 		dnsc.NoError,
 		(float64(dnsc.NoError)/float64(dnsc.Replies))*100,
@@ -146,12 +158,12 @@ func updateHeader(v *gocui.View, rates *InstantRates, stats *StatSnapshot) {
 		(float64(dnsc.Refused)/float64(dnsc.Replies))*100,
 		startTime.Format(time.Kitchen),
 		endTime.Format(time.Kitchen),
-		stats.Period.Length,
+		window5m.Packets.Period.Length,
 	)
 
 }
 
-func updateTable(data []NameCount, v *gocui.View, baseNumber int64) {
+func updateTable(data []client.NameCount, v *gocui.View, baseNumber int64) {
 	v.Clear()
 	top3 := 0
 	for _, stat := range data {
@@ -341,7 +353,7 @@ func layout(g *gocui.Gui) error {
 		if err != gocui.ErrUnknownView {
 			return err
 		}
-		v.Title = "pktvisor v3"
+		v.Title = "pktvisor-cli"
 	}
 
 	//if currentView == "main" {
@@ -435,25 +447,19 @@ func getMetrics(url string, payload interface{}) error {
 	return nil
 }
 
-func getStats() (*StatSnapshot, *InstantRates, error) {
-	var rawStats map[string]StatSnapshot
+func getStats() (*client.StatSnapshot, error) {
+	var rawStats map[string]client.StatSnapshot
 	err := getMetrics(fmt.Sprintf("http://%s:%d/api/v1/metrics/window/5", statHost, statPort), &rawStats)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	raw5m := rawStats["5m"]
 
-	var rawRates InstantRates
-	err = getMetrics(fmt.Sprintf("http://%s:%d/api/v1/metrics/rates", statHost, statPort), &rawRates)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return &raw5m, &rawRates, nil
+	return &raw5m, nil
 }
 
 func updateViews(g *gocui.Gui) {
-	stats, rates, err := getStats()
+	stats, err := getStats()
 	if err != nil {
 		g.Close()
 		panic(err)
@@ -463,7 +469,7 @@ func updateViews(g *gocui.Gui) {
 		if err != nil {
 			return err
 		}
-		updateHeader(v, rates, stats)
+		updateHeader(v, stats)
 		currentView = "main"
 		if currentView == "main" {
 			v, err = g.View("top_ipv4")

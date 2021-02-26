@@ -14,8 +14,8 @@
 
 namespace vizer::handler::dns {
 
-DnsStreamHandler::DnsStreamHandler(const std::string &name, PcapInputStream *stream, uint periods, int deepSampleRate)
-    : vizer::StreamMetricsHandler<DnsMetricsManager>(name, periods, deepSampleRate)
+DnsStreamHandler::DnsStreamHandler(const std::string &name, PcapInputStream *stream, uint periods, int deepSampleRate, bool realtime)
+    : vizer::StreamMetricsHandler<DnsMetricsManager>(name, periods, deepSampleRate, realtime)
     , _stream(stream)
 {
     assert(stream);
@@ -188,23 +188,22 @@ void DnsStreamHandler::tcp_connection_end_cb(const pcpp::ConnectionData &connect
     _tcp_connections.erase(iter);
 }
 
-void DnsStreamHandler::to_json(json &j, uint64_t period, bool merged)
+void DnsStreamHandler::window_json(json &j, uint64_t period, bool merged)
 {
     if (merged) {
-        _metrics->to_json_merged(j, "dns", period);
+        _metrics->window_merged_json(j, "dns", period);
     } else {
-        _metrics->to_json_single(j, "dns", period);
+        _metrics->window_single_json(j, "dns", period);
     }
 }
 void DnsStreamHandler::set_initial_tstamp(timespec stamp)
 {
     _metrics->set_initial_tstamp(stamp);
 }
-json DnsStreamHandler::info_json() const
+void DnsStreamHandler::info_json(json &j) const
 {
-    json result;
-    result["xact"]["open"] = _metrics->num_open_transactions();
-    return result;
+    _common_info_json(j);
+    j["dns"]["xact"]["open"] = _metrics->num_open_transactions();
 }
 
 void DnsMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
@@ -218,6 +217,7 @@ void DnsMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
     _counters.xacts_total += other._counters.xacts_total;
     _counters.xacts_in += other._counters.xacts_in;
     _counters.xacts_out += other._counters.xacts_out;
+    _counters.xacts_timed_out += other._counters.xacts_timed_out;
     _counters.queries += other._counters.queries;
     _counters.replies += other._counters.replies;
     _counters.UDP += other._counters.UDP;
@@ -254,10 +254,25 @@ void DnsMetricsBucket::to_json(json &j) const
 
     const double fractions[4]{0.50, 0.90, 0.95, 0.99};
 
-    auto [num_events, num_samples] = event_data(); // thread safe
+    auto [num_events, num_samples, event_rate] = event_data(); // thread safe
+    {
+        if (!read_only()) {
+            j["wire_packets"]["rates"]["total"]["live"] = event_rate->rate();
+        }
+        auto [rate_quantile, rate_lock] = event_rate->quantile_get_rlocked();
+        auto quantiles = rate_quantile->get_quantiles(fractions, 4);
+        if (quantiles.size()) {
+            j["wire_packets"]["rates"]["total"]["p50"] = quantiles[0];
+            j["wire_packets"]["rates"]["total"]["p90"] = quantiles[1];
+            j["wire_packets"]["rates"]["total"]["p95"] = quantiles[2];
+            j["wire_packets"]["rates"]["total"]["p99"] = quantiles[3];
+        }
+    }
+
     std::shared_lock r_lock(_mutex);
 
     j["wire_packets"]["total"] = num_events;
+    j["wire_packets"]["deep_samples"] = num_samples;
     j["wire_packets"]["queries"] = _counters.queries;
     j["wire_packets"]["replies"] = _counters.replies;
     j["wire_packets"]["tcp"] = _counters.TCP;
@@ -271,6 +286,7 @@ void DnsMetricsBucket::to_json(json &j) const
 
     j["cardinality"]["qname"] = lround(_dns_qnameCard.get_estimate());
     j["xact"]["counts"]["total"] = _counters.xacts_total;
+    j["xact"]["counts"]["timed_out"] = _counters.xacts_timed_out;
 
     {
         j["xact"]["in"]["total"] = _counters.xacts_in;
@@ -465,7 +481,7 @@ void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, PacketDir
     _dns_topUDPPort.update(port);
 }
 
-void DnsMetricsBucket::newDNSXact(bool deep, float to90th, float from90th, DnsLayer &dns, PacketDirection dir, DnsTransaction xact)
+void DnsMetricsBucket::new_dns_transaction(bool deep, float to90th, float from90th, DnsLayer &dns, PacketDirection dir, DnsTransaction xact)
 {
 
     uint64_t xactTime = ((xact.totalTS.tv_sec * 1'000'000'000L) + xact.totalTS.tv_nsec) / 1'000; // nanoseconds to microseconds
@@ -509,15 +525,15 @@ void DnsMetricsManager::process_dns_layer(DnsLayer &payload, PacketDirection dir
     new_event(stamp);
     // handle dns transactions (query/response pairs)
     if (payload.getDnsHeader()->queryOrResponse == QR::response) {
-        auto xact = _qr_pair_manager.maybeEndDnsTransaction(flowkey, payload.getDnsHeader()->transactionID, stamp);
+        auto xact = _qr_pair_manager.maybe_end_transaction(flowkey, payload.getDnsHeader()->transactionID, stamp);
         if (xact.first) {
-            _metric_buckets.back()->newDNSXact(_deep_sampling_now, _to90th, _from90th, payload, dir, xact.second);
+            live_bucket()->new_dns_transaction(_deep_sampling_now, _to90th, _from90th, payload, dir, xact.second);
         }
     } else {
-        _qr_pair_manager.startDnsTransaction(flowkey, payload.getDnsHeader()->transactionID, stamp);
+        _qr_pair_manager.start_transaction(flowkey, payload.getDnsHeader()->transactionID, stamp);
     }
     // process in the "live" bucket
-    _metric_buckets.back()->process_dns_layer(_deep_sampling_now, payload, dir, l3, l4, flowkey, port, stamp);
+    live_bucket()->process_dns_layer(_deep_sampling_now, payload, dir, l3, l4, flowkey, port, stamp);
 }
 
 }

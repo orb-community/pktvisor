@@ -75,6 +75,7 @@ void NetHandlerModulePlugin::_setup_routes(HttpServer &svr)
             res.set_content(result.dump(), "text/json");
         } catch (const std::exception &e) {
             res.status = 500;
+            result.clear();
             result["error"] = e.what();
             res.set_content(result.dump(), "text/json");
         }
@@ -85,14 +86,14 @@ void NetHandlerModulePlugin::_setup_routes(HttpServer &svr)
             auto input_name = req.matches[1];
             if (!_input_manager->module_exists(input_name)) {
                 res.status = 404;
-                result["result"] = "input name does not exist";
+                result["error"] = "input name does not exist";
                 res.set_content(result.dump(), "text/json");
                 return;
             }
             auto handler_name = req.matches[2];
             if (!_handler_manager->module_exists(handler_name)) {
                 res.status = 404;
-                result["result"] = "handler name does not exist";
+                result["error"] = "handler name does not exist";
                 res.set_content(result.dump(), "text/json");
                 return;
             }
@@ -104,11 +105,12 @@ void NetHandlerModulePlugin::_setup_routes(HttpServer &svr)
                 res.set_content(result.dump(), "text/json");
                 return;
             }
-            result = net_handler->info_json();
+            net_handler->info_json(result);
             res.set_content(result.dump(), "text/json");
         } catch (const std::exception &e) {
             res.status = 500;
-            result["result"] = e.what();
+            result.clear();
+            result["error"] = e.what();
             res.set_content(result.dump(), "text/json");
         }
     });
@@ -118,14 +120,14 @@ void NetHandlerModulePlugin::_setup_routes(HttpServer &svr)
             auto input_name = req.matches[1];
             if (!_input_manager->module_exists(input_name)) {
                 res.status = 404;
-                result["result"] = "input name does not exist";
+                result["error"] = "input name does not exist";
                 res.set_content(result.dump(), "text/json");
                 return;
             }
             auto handler_name = req.matches[2];
             if (!_handler_manager->module_exists(handler_name)) {
                 res.status = 404;
-                result["result"] = "handler name does not exist";
+                result["error"] = "handler name does not exist";
                 res.set_content(result.dump(), "text/json");
                 return;
             }
@@ -137,11 +139,12 @@ void NetHandlerModulePlugin::_setup_routes(HttpServer &svr)
                 res.set_content(result.dump(), "text/json");
                 return;
             }
-            net_handler->to_json(result, std::stoi(req.matches[3]), false);
+            net_handler->window_json(result, std::stoi(req.matches[3]), false);
             res.set_content(result.dump(), "text/json");
         } catch (const std::exception &e) {
             res.status = 500;
-            result["result"] = e.what();
+            result.clear();
+            result["error"] = e.what();
             res.set_content(result.dump(), "text/json");
         }
     });
@@ -152,14 +155,14 @@ void NetHandlerModulePlugin::_setup_routes(HttpServer &svr)
             auto input_name = req.matches[1];
             if (!_input_manager->module_exists(input_name)) {
                 res.status = 404;
-                result["result"] = "input name does not exist";
+                result["error"] = "input name does not exist";
                 res.set_content(result.dump(), "text/json");
                 return;
             }
             auto handler_name = req.matches[2];
             if (!_handler_manager->module_exists(handler_name)) {
                 res.status = 404;
-                result["result"] = "handler name does not exist";
+                result["error"] = "handler name does not exist";
                 res.set_content(result.dump(), "text/json");
                 return;
             }
@@ -167,7 +170,8 @@ void NetHandlerModulePlugin::_setup_routes(HttpServer &svr)
             res.set_content(result.dump(), "text/json");
         } catch (const std::exception &e) {
             res.status = 500;
-            result["result"] = e.what();
+            result.clear();
+            result["error"] = e.what();
             res.set_content(result.dump(), "text/json");
         }
     });
