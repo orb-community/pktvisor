@@ -23,10 +23,10 @@ void DnsHandlerModulePlugin::_setup_routes(HttpServer &svr)
         json result;
         try {
             auto body = json::parse(req.body);
-            std::unordered_map<std::string, std::string> schema = {
-                {"name", "\\w+"}};
+            SchemaMap req_schema = {{"name", "\\w+"}};
+            SchemaMap opt_schema = {{"periods", "\\d{1,3}"}, {"deep_sample_rate", "\\d{1,3}"}};
             try {
-                _check_schema(body, schema);
+                _check_schema(body, req_schema, opt_schema);
             } catch (const SchemaException &e) {
                 res.status = 400;
                 result["error"] = e.what();
@@ -62,10 +62,20 @@ void DnsHandlerModulePlugin::_setup_routes(HttpServer &svr)
                 res.set_content(result.dump(), "text/json");
                 return;
             }
-            // todo period and sample
-            auto handler_module = std::make_unique<DnsStreamHandler>(body["name"], pcap_stream, 5, 100);
+            // TODO use global default from command line
+            uint periods{5};
+            uint deep_sample_rate{100};
+            if (body.contains("periods")) {
+                periods = body["periods"];
+            }
+            if (body.contains("deep_sample_rate")) {
+                deep_sample_rate = body["deep_sample_rate"];
+            }
+            auto handler_module = std::make_unique<DnsStreamHandler>(body["name"], pcap_stream, periods, deep_sample_rate);
             _handler_manager->module_add(std::move(handler_module));
             result["name"] = body["name"];
+            result["periods"] = periods;
+            result["deep_sample_rate"] = deep_sample_rate;
             res.set_content(result.dump(), "text/json");
         } catch (const std::exception &e) {
             res.status = 500;
