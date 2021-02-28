@@ -1,4 +1,4 @@
-FROM debian:buster-slim AS cppbuild
+FROM debian:bullseye-slim AS cppbuild
 
 ENV BUILD_DEPS "g++ cmake make git libpcap-dev pkgconf libmaxminddb-dev jq python3-pip python3-setuptools"
 
@@ -32,7 +32,7 @@ COPY golang/ /src/
 WORKDIR /src/
 RUN go build -o pktvisor-cli cmd/pktvisor-cli/main.go
 
-FROM debian:buster-slim AS runtime
+FROM debian:bullseye-slim AS runtime
 
 ENV RUNTIME_DEPS "curl libpcap0.8 libmaxminddb0"
 
