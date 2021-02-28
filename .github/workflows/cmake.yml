@@ -84,7 +84,7 @@ jobs:
         working-directory: ${{github.workspace}}/PcapPlusPlus        
         run: |
               make libs 
-              make install
+              make install -j 2
       
       - name: Configure CMake
         # Use a bash shell so we can use the same syntax for environment variable
@@ -100,7 +100,7 @@ jobs:
         working-directory: ${{github.workspace}}/build
         shell: bash
         # Execute the build.  You can specify a specific target with "--target <NAME>"
-        run: cmake --build . --config $BUILD_TYPE
+        run: cmake -j 2 --build . --config $BUILD_TYPE
 
 #     - name: Test
 #       working-directory: ${{github.workspace}}/build
