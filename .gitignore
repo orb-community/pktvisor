@@ -3,3 +3,4 @@ cmake-build-*/
 .DS_Store*
 docs/html-documentation-generated*
 tests/external
+golang/pkg/client/version.go

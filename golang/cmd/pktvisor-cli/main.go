@@ -11,7 +11,7 @@ import (
 	"log"
 	"strconv"
 
-	"github.com/docopt/docopt-go"
+	"flag"
 	"github.com/pkg/errors"
 
 	"net/http"
@@ -26,23 +26,47 @@ var (
 	statPort      = 10853
 	refreshPeriod = 1 // seconds
 	currentView   = "main"
+	serverVersion = ""
 )
 
 func main() {
 	usage := `pktvisor-cli command line UI
 
-   Usage:
-      pktvisor-cli [-p PORT] [-H HOST]
-      pktvisor-cli (-h | --help)
+Usage:
+  pktvisor-cli [-p PORT] [-H HOST]
+  pktvisor-cli -h
+  pktvisor-cli --version
 
-    Options:
-      -p PORT               Query pktvisord metrics webserver on the given port [default: 10853]
-      -H HOST               Query pktvisord metrics webserver on the given host [default: localhost]
-      -h --help             Show this screen
-`
-	opts, err := docopt.ParseDoc(usage)
-	statPort, _ = opts.Int("-p")
-	statHost, _ = opts.String("-H")
+Options:
+  -p PORT               Query pktvisord metrics webserver on the given port [default: 10853]
+  -H HOST               Query pktvisord metrics webserver on the given host [default: localhost]
+  -h                    Show this screen
+  --version             Show client version`
+
+	wantVersion := flag.Bool("version", false, "Show client version")
+	wantHelp := flag.Bool("h", false, "Show help")
+	fPort := flag.Int("p", 10853, "Query pktvisord metrics webserver on the given port")
+	fHost := flag.String("H", "localhost", "Query pktvisord metrics webserver on the given host")
+	flag.Parse()
+
+	if *wantVersion {
+		fmt.Println(client.VizerVersionNum)
+		return
+	}
+	if *wantHelp {
+		fmt.Println(usage)
+		return
+	}
+	statPort = *fPort
+	statHost = *fHost
+
+	var appMetrics client.AppMetrics
+	err := getMetrics(fmt.Sprintf("http://%s:%d/api/v1/metrics/app", statHost, statPort), &appMetrics)
+	if err != nil {
+		log.Panicln(err)
+	}
+	serverVersion = appMetrics.App.Version
+
 	g, err := gocui.NewGui(gocui.OutputNormal)
 	if err != nil {
 		log.Panicln(err)
@@ -357,7 +381,7 @@ func layout(g *gocui.Gui) error {
 		if err != gocui.ErrUnknownView {
 			return err
 		}
-		v.Title = "pktvisor-cli"
+		v.Title = fmt.Sprintf("pktvisor-cli (client: %s | server: %s)", client.VizerVersionNum, serverVersion)
 	}
 
 	//if currentView == "main" {

@@ -28,7 +28,6 @@ struct DnsTransaction {
     timespec totalTS;
 };
 
-// TODO not thread safe
 class QueryResponsePairMgr
 {
 

@@ -4,6 +4,14 @@
 
 package client
 
+// AppMetrics represents server application information
+type AppMetrics struct {
+	App struct {
+		Version   string  `json:"version"`
+		UpTimeMin float64 `json:"up_time_min"`
+	} `json:"app"`
+}
+
 // NameCount represents the count of a unique domain name
 type NameCount struct {
 	Name     string `json:"name"`
@@ -39,7 +47,7 @@ type DNSPayload struct {
 	} `json:"cardinality"`
 	Xact struct {
 		Counts struct {
-			Total int64 `json:"total"`
+			Total    int64 `json:"total"`
 			TimedOut int64 `json:"timed_out"`
 		} `json:"counts"`
 		In struct {
@@ -63,15 +71,15 @@ type DNSPayload struct {
 			Total   int64       `json:"total"`
 		} `json:"out"`
 	} `json:"xact"`
-	TopQname2   []NameCount `json:"top_qname2"`
-	TopQname3   []NameCount `json:"top_qname3"`
-	TopNX       []NameCount `json:"top_nxdomain"`
-	TopQtype    []NameCount `json:"top_qtype"`
-	TopRcode    []NameCount `json:"top_rcode"`
-	TopREFUSED  []NameCount `json:"top_refused"`
-	TopSRVFAIL  []NameCount `json:"top_srvfail"`
-	TopUDPPorts []NameCount `json:"top_udp_ports"`
-	Period  PeriodPayload `json:"period"`
+	TopQname2   []NameCount   `json:"top_qname2"`
+	TopQname3   []NameCount   `json:"top_qname3"`
+	TopNX       []NameCount   `json:"top_nxdomain"`
+	TopQtype    []NameCount   `json:"top_qtype"`
+	TopRcode    []NameCount   `json:"top_rcode"`
+	TopREFUSED  []NameCount   `json:"top_refused"`
+	TopSRVFAIL  []NameCount   `json:"top_srvfail"`
+	TopUDPPorts []NameCount   `json:"top_udp_ports"`
+	Period      PeriodPayload `json:"period"`
 }
 
 // PacketPayload contains information about raw packets regardless of protocol
@@ -112,11 +120,11 @@ type PacketPayload struct {
 			P99  int64 `json:"p99"`
 		} `json:"pps_total"`
 	} `json:"rates"`
-	TopIpv4   []NameCount `json:"top_ipv4"`
-	TopIpv6   []NameCount `json:"top_ipv6"`
-	TopGeoLoc []NameCount `json:"top_geoLoc"`
-	TopASN    []NameCount `json:"top_asn"`
-	Period  PeriodPayload `json:"period"`
+	TopIpv4   []NameCount   `json:"top_ipv4"`
+	TopIpv6   []NameCount   `json:"top_ipv6"`
+	TopGeoLoc []NameCount   `json:"top_geoLoc"`
+	TopASN    []NameCount   `json:"top_asn"`
+	Period    PeriodPayload `json:"period"`
 }
 
 // PeriodPayload indicates the period of time for which a snapshot refers to

@@ -76,7 +76,7 @@ public:
     void start() override;
     void stop() override;
     void info_json(json &j) const override;
-    size_t consumer_count() override
+    size_t consumer_count() const override
     {
         return packet_signal.slot_count() + udp_signal.slot_count() + start_tstamp_signal.slot_count() + tcp_message_ready_signal.slot_count() + tcp_connection_start_signal.slot_count() + tcp_connection_end_signal.slot_count();
     }
@@ -92,12 +92,13 @@ public:
 
     // handler functionality
     // IF THIS changes, see consumer_count()
-    sigslot::signal<pcpp::Packet &, PacketDirection, pcpp::ProtocolType, pcpp::ProtocolType, timespec> packet_signal;
-    sigslot::signal<pcpp::Packet &, PacketDirection, pcpp::ProtocolType, uint32_t, timespec> udp_signal;
-    sigslot::signal<timespec> start_tstamp_signal;
-    sigslot::signal<int8_t, const pcpp::TcpStreamData &> tcp_message_ready_signal;
-    sigslot::signal<const pcpp::ConnectionData &> tcp_connection_start_signal;
-    sigslot::signal<const pcpp::ConnectionData &, pcpp::TcpReassembly::ConnectionEndReason> tcp_connection_end_signal;
+    // note: these are mutable because consumer_count() calls slot_count() which is not const (unclear if it could/should be)
+    mutable sigslot::signal<pcpp::Packet &, PacketDirection, pcpp::ProtocolType, pcpp::ProtocolType, timespec> packet_signal;
+    mutable sigslot::signal<pcpp::Packet &, PacketDirection, pcpp::ProtocolType, uint32_t, timespec> udp_signal;
+    mutable sigslot::signal<timespec> start_tstamp_signal;
+    mutable sigslot::signal<int8_t, const pcpp::TcpStreamData &> tcp_message_ready_signal;
+    mutable sigslot::signal<const pcpp::ConnectionData &> tcp_connection_start_signal;
+    mutable sigslot::signal<const pcpp::ConnectionData &, pcpp::TcpReassembly::ConnectionEndReason> tcp_connection_end_signal;
 };
 
 }
