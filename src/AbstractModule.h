@@ -33,6 +33,10 @@ private:
 
 protected:
     std::atomic_bool _running = false;
+
+    /**
+     * the module instance identifier: unique name associated with this instance
+     */
     std::string _name;
 
     void _common_info_json(json &j) const
@@ -59,6 +63,12 @@ public:
     {
         return _name;
     }
+
+    /**
+     * the module schema key: the same for all instances of this module
+     * used in schemas such as json
+     */
+    virtual std::string schema_key() const = 0;
 
     bool running() const
     {
@@ -112,4 +122,3 @@ public:
 };
 
 }
-

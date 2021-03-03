@@ -127,6 +127,10 @@ public:
     ~NetStreamHandler() override;
 
     // vizer::AbstractModule
+    std::string schema_key() const override
+    {
+        return "packets";
+    }
     void start() override;
     void stop() override;
     void info_json(json &j) const override;

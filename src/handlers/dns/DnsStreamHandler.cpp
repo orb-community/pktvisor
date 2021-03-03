@@ -195,9 +195,9 @@ void DnsStreamHandler::tcp_connection_end_cb(const pcpp::ConnectionData &connect
 void DnsStreamHandler::window_json(json &j, uint64_t period, bool merged)
 {
     if (merged) {
-        _metrics->window_merged_json(j, "dns", period);
+        _metrics->window_merged_json(j, schema_key(), period);
     } else {
-        _metrics->window_single_json(j, "dns", period);
+        _metrics->window_single_json(j, schema_key(), period);
     }
 }
 void DnsStreamHandler::set_initial_tstamp(timespec stamp)
@@ -207,7 +207,7 @@ void DnsStreamHandler::set_initial_tstamp(timespec stamp)
 void DnsStreamHandler::info_json(json &j) const
 {
     _common_info_json(j);
-    j["dns"]["xact"]["open"] = _metrics->num_open_transactions();
+    j[schema_key()]["xact"]["open"] = _metrics->num_open_transactions();
 }
 
 void DnsMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
@@ -325,6 +325,15 @@ void DnsMetricsBucket::to_json(json &j) const
         for (uint64_t i = 0; i < std::min(10UL, items.size()); i++) {
             j["xact"]["out"]["top_slow"][i]["name"] = items[i].get_item();
             j["xact"]["out"]["top_slow"][i]["estimate"] = items[i].get_estimate();
+        }
+    }
+
+    {
+        j["top_udp_ports"] = nlohmann::json::array();
+        auto items = _dns_topUDPPort.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
+        for (uint64_t i = 0; i < std::min(10UL, items.size()); i++) {
+            j["top_udp_ports"][i]["name"] = std::to_string(items[i].get_item());
+            j["top_udp_ports"][i]["estimate"] = items[i].get_estimate();
         }
     }
 
@@ -527,6 +536,8 @@ void DnsMetricsManager::process_dns_layer(DnsLayer &payload, PacketDirection dir
 {
     // base event
     new_event(stamp);
+    // process in the "live" bucket. this will parse the resources if we are deep sampling
+    live_bucket()->process_dns_layer(_deep_sampling_now, payload, dir, l3, l4, flowkey, port, stamp);
     // handle dns transactions (query/response pairs)
     if (payload.getDnsHeader()->queryOrResponse == QR::response) {
         auto xact = _qr_pair_manager.maybe_end_transaction(flowkey, payload.getDnsHeader()->transactionID, stamp);
@@ -536,8 +547,6 @@ void DnsMetricsManager::process_dns_layer(DnsLayer &payload, PacketDirection dir
     } else {
         _qr_pair_manager.start_transaction(flowkey, payload.getDnsHeader()->transactionID, stamp);
     }
-    // process in the "live" bucket
-    live_bucket()->process_dns_layer(_deep_sampling_now, payload, dir, l3, l4, flowkey, port, stamp);
 }
 
 }

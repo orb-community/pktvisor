@@ -8,7 +8,7 @@ Branch | Build Status
 Master | ![build status](https://github.com/ns1/pktvisor/workflows/CMake/badge.svg?branch=master)
 Develop | ![build status](https://github.com/ns1/pktvisor/workflows/CMake/badge.svg?branch=develop)
 
-pktvisor summarizes data streams in real time and provides a clean, time-windowed HTTP interface and command line UI to the results.
+pktvisor summarizes network data streams in real time, enabling on-node and centralized data visibility and analysis.
 
 Summarized information includes, for example:
 * Packet rates: 50th, 90th, 95th, 99th percentiles
@@ -18,7 +18,7 @@ Summarized information includes, for example:
 
 Although currently DNS and packet capture focused, it is designed to be used in broader contexts.
 
-2019-2020© NSONE, Inc.
+2019-2021© NSONE, Inc.
 
 ![Image of CLI UI](docs/pktvisor3-cli-ui-screenshot.png)
 ![Image of Grafana Dash](docs/pktvisor3-grafana-screenshot.png)
@@ -27,23 +27,25 @@ Overview
 ---
 
 pktvisor consists of:
-1. A collector daemon which efficiently summarizes streams and exposes a REST API to collect the results
+
+1. A collector daemon which efficiently summarizes streams and exposes a REST API for results and control plane
 1. A terminal based, command line UI which can visualize the real-time summarized data
 1. Tools for collecting and visualizing a globally distributed set of agents to a central location
 
 The agent can also summarize pcap files.
 
-[_drafting_]
-
 API Documentation
 ---
-The REST API documentation, including a description of the metrics that are available, is available in OpenAPI format. See the `docs/` directory.
+The REST API documentation, including a description of the metrics that are available, is available in OpenAPI format.
+See the `docs/` directory.
 
 
 Getting Started
 ---
 
-The easiest way to get started with pktvisor is to use the public docker image. The image contains both the command line UI (`pktvisor`) and the collector daemon (`pktvisord`).
+The easiest way to get started with pktvisor is to use
+the [public docker image](https://hub.docker.com/r/ns1labs/pktvisor). The image contains the command line
+UI (`pktvisor-cli`), the pcap file analyzer (`pktvisor-pcap`), and the collector daemon (`pktvisord`).
 
 1. *Pull the container*
 ```
@@ -51,19 +53,18 @@ docker pull ns1labs/pktvisor
 ``` 
 2. *Start the collector daemon* 
 
-This will run in the background and stay running.
-Note that the final two arguments request `pktvisord` binary (with the final 'd' for daemon), 
-and to packet capture on the `any` ethernet interface. You may substitute that for
-a known interface on your device.
+This will run in the background and stay running. Note that the final two arguments request `pktvisord` binary (with the
+final 'd' for daemon), and to packet capture on the `any` ethernet interface. You may substitute that for a known
+interface on your device. Note that this requires docker host networking to observe traffic outside the container:
 ```
 docker run --rm --net=host -d ns1labs/pktvisor pktvisord any
 ```
 3. *Run the command line UI*
 
-After the collector is running, you can visualize results locally with the included UI.
-This command will run the command line UI (`pktvisor` with no 'd') in the foreground, and exit when Ctrl-C is pressed
+After the collector is running, you can visualize results locally with the included UI. This command will run the
+command line UI (`pktvisor-cli`) in the foreground, and exit when Ctrl-C is pressed
 ```
-docker run -it --rm --net=host ns1labs/pktvisor pktvisor
+docker run -it --rm --net=host ns1labs/pktvisor pktvisor-cli
 ```
 
 See usage examples below for more complex scenarios, including specification of the local host IP(s) and Geo support.
@@ -85,38 +86,43 @@ pktvisord --help
 ```
 
     Usage:
-      pktvisord [-b BPF] [-l HOST] [-p PORT] [-H HOSTSPEC] [--periods P] [--summary] [--geo-city FILE] [--geo-asn FILE]
-                [--max-deep-sample N]
-                TARGET
+      pktvisord [options] [IFACE]
       pktvisord (-h | --help)
       pktvisord --version
 
-    pktvisord summarizes your data streams.
+    pktvisord summarizes data streams and exposes a REST API control plane for configuration and metrics.
 
-    TARGET is either a network interface, an IP address (4 or 6) or a pcap file (ending in .pcap or .cap)
+    IFACE, if specified, is either a network interface or an IP address (4 or 6). If this is specified,
+    a "pcap" input stream will be automatically created, with "net" and "dns" handler modules attached.
+    ** Note that this is deprecated; you should instead use --full-api and create the pcap input stream via API.
 
-    Options:
-      -l HOST               Run metrics webserver on the given host or IP [default: localhost]
-      -p PORT               Run metrics webserver on the given port [default: 10853]
-      -b BPF                Filter packets using the given BPF string
+    Base Options:
+      -l HOST               Run webserver on the given host or IP [default: localhost]
+      -p PORT               Run webserver on the given port [default: 10853]
+      --full-api            Enable full REST API giving complete control plane functionality [default: false]
+                            When not specified, the exposed API is read-only access to summarized metrics.
+                            When specified, write access is enabled for all modules.
+      -h --help             Show this screen
+      -v                    Verbose log output
+      --version             Show version
       --geo-city FILE       GeoLite2 City database to use for IP to Geo mapping (if enabled)
       --geo-asn FILE        GeoLite2 ASN database to use for IP to ASN mapping (if enabled)
-      --max-deep-sample N   Never deep sample more than N% of packets (an int between 0 and 100) [default: 100]
+    Handler Module Defaults:
+      --max-deep-sample N   Never deep sample more than N% of streams (an int between 0 and 100) [default: 100]
       --periods P           Hold this many 60 second time periods of history in memory [default: 5]
-      --summary             Instead of a time window with P periods, summarize all packets into one bucket for entire time period.
-                            Useful for executive summary of (and applicable only to) a pcap file. [default: false]
+    pcap Input Module Options (deprecated, use full-api instead):
+      -b BPF                Filter packets using the given BPF string
       -H HOSTSPEC           Specify subnets (comma separated) to consider HOST, in CIDR form. In live capture this /may/ be detected automatically
                             from capture device but /must/ be specified for pcaps. Example: "10.0.1.0/24,10.0.2.1/32,2001:db8::/64"
                             Specifying this for live capture will append to any automatic detection.
-      -h --help             Show this screen
-      --version             Show version
 
 ```
 
 Command Line UI Usage
 ---
 
-The command line UI (`pktvisor`) connects to a collector daemon to visualize the real time stream summarization. It can connect to a local or remote agent.
+The command line UI (`pktvisor-cli`) connects to a collector daemon to visualize the real time stream summarization. It
+can connect to a local or remote agent.
 
 Advanced Collector Daemon Usage Examples
 ---
@@ -132,13 +138,10 @@ Centralized Collection
 ---
 
 pktvisor may be collected centrally to give a global view of the collected information.
-[_drafting_]
 
 Host Concept
 ---
 Ingress and egress (in/out) related metrics can only be calculated if the agent understands how to identify the host.
-
-[_drafting_]
 
 Build Dependencies
 ---
@@ -147,8 +150,7 @@ Build Dependencies
 * Linux or OSX
 * C++ compiler supporting C++17
 * PcapPlusPlus https://github.com/ns1/PcapPlusPlus
-
-Optional
+* Conan C++ package manager
 * MaxMind DB libmaxmindb
 
 Building
@@ -159,6 +161,7 @@ Building is based on CMake.
 Default build:
 ```
 mkdir build; cd build
+conan install ..
 cmake ..
 make
 ```
@@ -177,4 +180,4 @@ Pull Requests and issues are welcome. See the [NS1 Contribution Guidelines](http
 
 License
 ---
-This code is released under Apache License 2.0. You can find terms and conditions in the LICENSE file.
+This code is released under Mozilla Public License 2.0. You can find terms and conditions in the LICENSE file.
