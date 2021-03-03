@@ -90,7 +90,7 @@ void vizer::CoreServer::_setup_routes()
             j["app"]["version"] = VIZER_VERSION_NUM;
             j["app"]["up_time_min"] = float(std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now() - _start_time).count()) / 60;
             res.set_content(j.dump(), "text/json");
-        } catch (const std::runtime_error &e) {
+        } catch (const std::exception &e) {
             res.status = 500;
             j["error"] = e.what();
             res.set_content(j.dump(), "text/json");
@@ -105,14 +105,15 @@ void vizer::CoreServer::_setup_routes()
             j["packets"]["out"] = 0;
             j["warning"] = "deprecated: use 'live' data from /api/v1/metrics/bucket/0 instead";
             res.set_content(j.dump(), "text/json");
-        } catch (const std::runtime_error &e) {
+        } catch (const std::exception &e) {
             res.status = 500;
             j["error"] = e.what();
             res.set_content(j.dump(), "text/json");
         }
     });
     _svr.Get(R"(/api/v1/metrics/bucket/(\d+))", [&](const httplib::Request &req, httplib::Response &res) {
-        json j, bc_period;
+        json j;
+        bool bc_period{false};
         try {
             uint64_t period(std::stol(req.matches[1]));
             auto [handler_modules, hm_lock] = _handler_manager->module_get_all_locked();
@@ -122,11 +123,16 @@ void vizer::CoreServer::_setup_routes()
                 if (hmod) {
                     spdlog::stopwatch sw;
                     hmod->window_json(j, period, false);
+                    // hoist up the first "period" we see for backwards compatibility with 3.0.x
+                    if (!bc_period && j["1m"][hmod->schema_key()].contains("period")) {
+                        j["1m"]["period"] = j["1m"][hmod->schema_key()]["period"];
+                        bc_period = true;
+                    }
                     _logger->debug("{} elapsed time: {}", hmod->name(), sw);
                 }
             }
             res.set_content(j.dump(), "text/json");
-        } catch (const std::runtime_error &e) {
+        } catch (const std::exception &e) {
             res.status = 500;
             j["error"] = e.what();
             res.set_content(j.dump(), "text/json");
@@ -147,7 +153,7 @@ void vizer::CoreServer::_setup_routes()
                 }
             }
             res.set_content(j.dump(), "text/json");
-        } catch (const std::runtime_error &e) {
+        } catch (const std::exception &e) {
             res.status = 500;
             res.set_content(e.what(), "text/plain");
         }

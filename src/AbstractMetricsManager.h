@@ -19,7 +19,6 @@
 #include <sstream>
 #include <sys/time.h>
 #include <unordered_map>
-
 namespace vizer {
 
 using json = nlohmann::json;
@@ -225,7 +224,7 @@ public:
     }
 };
 
-template <class MetricsBucketClass>
+template <typename MetricsBucketClass>
 class AbstractMetricsManager
 {
     static_assert(std::is_base_of<AbstractMetricsBucket, MetricsBucketClass>::value, "MetricsBucketClass must inherit from AbstractMetricsBucket");
@@ -269,18 +268,21 @@ protected:
 
             // ensure access to the buckets is locked while we period shift
             std::unique_lock wl(_bucket_mutex);
-            _metric_buckets.emplace_front(std::make_unique<MetricsBucketClass>());
+            std::unique_ptr<MetricsBucketClass> expiring_bucket;
+            // this changes the live bucket
+            // notify second most recent bucket that it is now read only
+            _metric_buckets[1]->set_read_only();
+            // if we're at our period history length max, pop the oldest
             if (_metric_buckets.size() > _num_periods) {
-                // if we're at our period history length, pop the oldest
-                // importantly, this frees memory from bucket at end of time window
+                // before popping, take ownership of the bucket we are expiring so that it can be examined by the period shift callback handler
+                expiring_bucket = std::move(_metric_buckets.back());
                 _metric_buckets.pop_back();
             }
-            // notify bucket that it is now read only
-            _metric_buckets[1]->set_read_only();
             // unlock as fast as possible, in particular before period shift callback
             wl.unlock();
             _last_shift_ts.tv_sec = stamp.tv_sec;
-            on_period_shift(stamp);
+            on_period_shift(stamp, (expiring_bucket) ? expiring_bucket.get() : nullptr);
+            // expiring bucket will destruct here if it exists
         }
         std::shared_lock rl(_bucket_mutex);
         // bucket base event
@@ -307,8 +309,9 @@ protected:
      * by making sure the time stamps past a new event are reasonable
      *
      * @param stamp if the base event included a time stamp, it will be passed along here, otherwise "now"
+     * @param expiring_bucket pointer to bucket that is expiring, or nullptr if there was none (since shift may occur that does not expire a bucket)
      */
-    virtual void on_period_shift([[maybe_unused]] timespec stamp)
+    virtual void on_period_shift([[maybe_unused]] timespec stamp, [[maybe_unused]] const MetricsBucketClass *maybe_expiring_bucket)
     {
     }
 
@@ -343,18 +346,22 @@ public:
             _timer_handle = timer_thread.set_interval(60s, [this] {
                 // ensure access to the buckets is locked while we period shift
                 std::unique_lock wl(_bucket_mutex);
+                std::unique_ptr<MetricsBucketClass> expiring_bucket;
+                // this changes the live bucket
                 _metric_buckets.emplace_front(std::make_unique<MetricsBucketClass>());
+                // notify second most recent bucket that it is now read only
+                _metric_buckets[1]->set_read_only();
+                // if we're at our period history length max, pop the oldest
                 if (_metric_buckets.size() > _num_periods) {
-                    // if we're at our period history length, pop the oldest
-                    // importantly, this frees memory from bucket at end of time window
+                    // before popping, take ownership of the bucket we are expiring so that it can be examined by the period shift callback handler
+                    expiring_bucket = std::move(_metric_buckets.back());
                     _metric_buckets.pop_back();
                 }
-                // notify bucket that it is now read only. this is thread safe.
-                _metric_buckets[1]->set_read_only();
                 // unlock as fast as possible, in particular before period shift callback
                 wl.unlock();
                 timespec_get(&_last_shift_ts, TIME_UTC);
-                on_period_shift(_last_shift_ts);
+                on_period_shift(_last_shift_ts, (expiring_bucket) ? expiring_bucket.get() : nullptr);
+                // expiring bucket will destruct here if it exists
             });
         }
     }

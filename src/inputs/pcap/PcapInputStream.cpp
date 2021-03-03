@@ -371,7 +371,8 @@ void PcapInputStream::_get_hosts_from_libpcap_iface()
 void PcapInputStream::info_json(json& j) const
 {
     _common_info_json(j);
-    j["pcap"]["host_ips"] = json::object();
+    json info;
+    info["host_ips"] = json::object();
     for (auto &i : _hostIPv4) {
         std::stringstream out;
         int len = 0;
@@ -381,24 +382,25 @@ void PcapInputStream::info_json(json& j) const
             m >>= 1;
         }
         out << i.address.toString() << '/' << len;
-        j["pcap"]["host_ips"]["ipv4"].push_back(out.str());
+        info["host_ips"]["ipv4"].push_back(out.str());
     }
     for (auto &i : _hostIPv6) {
         std::stringstream out;
         out << i.address.toString() << '/' << static_cast<int>(i.mask);
-        j["pcap"]["host_ips"]["ipv6"].push_back(out.str());
+        info["host_ips"]["ipv6"].push_back(out.str());
     }
     switch (_cur_pcap_source) {
     case PcapSource::unknown:
-        j["pcap"]["pcap_source"] = "unknown";
+        info["pcap_source"] = "unknown";
         break;
     case PcapSource::libpcap:
-        j["pcap"]["pcap_source"] = "libpcap";
+        info["pcap_source"] = "libpcap";
         break;
     case PcapSource::af_packet:
-        j["pcap"]["pcap_source"] = "af_packet";
+        info["pcap_source"] = "af_packet";
         break;
     }
+    j[schema_key()] = info;
 }
 
 void PcapInputStream::parse_host_spec()

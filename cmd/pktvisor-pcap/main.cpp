@@ -29,7 +29,7 @@
 static const char USAGE[] =
     R"(pktvisor-pcap
     Usage:
-      pktvisor-pcap [-b BPF] [-H HOSTSPEC] [--geo-city FILE] [--geo-asn FILE] [--max-deep-sample N] [--periods P] PCAP
+      pktvisor-pcap [options] PCAP
       pktvisor-pcap (-h | --help)
       pktvisor-pcap --version
 
@@ -40,6 +40,7 @@ static const char USAGE[] =
       --periods P           Hold this many 60 second time periods of history in memory. Use 1 to summarize all data. [default: 5]
       -h --help             Show this screen
       --version             Show version
+      -v                    Verbose log output
       -b BPF                Filter packets using the given BPF string
       --geo-city FILE       GeoLite2 City database to use for IP to Geo mapping (if enabled)
       --geo-asn FILE        GeoLite2 ASN database to use for IP to ASN mapping (if enabled)
@@ -77,13 +78,15 @@ int main(int argc, char *argv[])
 {
     int result{0};
 
-    auto console = spdlog::stdout_color_mt("console");
-    auto err_logger = spdlog::stderr_color_mt("stderr");
-
     std::map<std::string, docopt::value> args = docopt::docopt(USAGE,
         {argv + 1, argv + argc},
         true,           // show help if requested
         VIZER_VERSION); // version string
+
+    auto logger = spdlog::stdout_color_mt("pktvisor");
+    if (args["-v"].asBool()) {
+        logger->set_level(spdlog::level::debug);
+    }
 
     // inputs
     InputPluginRegistry input_registry;
@@ -93,7 +96,7 @@ int main(int argc, char *argv[])
     // initialize input plugins
     for (auto &s : input_registry.pluginList()) {
         InputPluginPtr mod = input_registry.instantiate(s);
-        err_logger->info("Load input plugin: {} {}", mod->name(), mod->pluginInterface());
+        logger->info("Load input plugin: {} {}", mod->name(), mod->pluginInterface());
         mod->init_module(input_manager.get());
         input_plugins.emplace_back(std::move(mod));
     }
@@ -106,7 +109,7 @@ int main(int argc, char *argv[])
     // initialize handler plugins
     for (auto &s : handler_registry.pluginList()) {
         HandlerPluginPtr mod = handler_registry.instantiate(s);
-        err_logger->info("Load handler plugin: {} {}", mod->name(), mod->pluginInterface());
+        logger->info("Load handler plugin: {} {}", mod->name(), mod->pluginInterface());
         mod->init_module(input_manager.get(), handler_manager.get());
         handler_plugins.emplace_back(std::move(mod));
     }
@@ -130,7 +133,7 @@ int main(int argc, char *argv[])
     if (args["--max-deep-sample"]) {
         sample_rate = (int)args["--max-deep-sample"].asLong();
         if (sample_rate != 100) {
-            err_logger->info("Using maximum deep sample rate: {}%", sample_rate);
+            logger->info("Using maximum deep sample rate: {}%", sample_rate);
         }
     }
 
@@ -158,7 +161,7 @@ int main(int argc, char *argv[])
         input_stream->parse_host_spec();
         json j;
         input_stream->info_json(j["info"]);
-        console->info("{}", j.dump(4));
+        logger->info("{}", j.dump(4));
 
         input_manager->module_add(std::move(input_stream), false);
         auto [input_stream_, stream_mgr_lock] = input_manager->module_get_locked("pcap");
@@ -194,11 +197,11 @@ int main(int argc, char *argv[])
             net_handler->window_json(result, periods, true);
             dns_handler->window_json(result, periods, true);
         }
-        console->info("{}", result.dump());
+        logger->info("{}", result.dump());
         shutdown_handler(SIGUSR1);
 
     } catch (const std::exception &e) {
-        err_logger->error("Fatal error: {}", e.what());
+        logger->error("Fatal error: {}", e.what());
         result = -1;
     }
 

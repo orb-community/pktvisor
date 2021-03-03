@@ -61,9 +61,9 @@ void NetStreamHandler::process_packet_cb(pcpp::Packet &payload, PacketDirection 
 void NetStreamHandler::window_json(json &j, uint64_t period, bool merged)
 {
     if (merged) {
-        _metrics->window_merged_json(j, "packets", period);
+        _metrics->window_merged_json(j, schema_key(), period);
     } else {
-        _metrics->window_single_json(j, "packets", period);
+        _metrics->window_single_json(j, schema_key(), period);
     }
 }
 void NetStreamHandler::set_initial_tstamp(timespec stamp)

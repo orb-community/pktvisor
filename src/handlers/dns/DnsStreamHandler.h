@@ -85,12 +85,12 @@ public:
     {
     }
 
-    auto get_xact_data_locked()
+    auto get_xact_data_locked() const
     {
         std::shared_lock lock(_mutex);
         struct retVals {
-            datasketches::kll_sketch<uint64_t> &xact_to;
-            datasketches::kll_sketch<uint64_t> &xact_from;
+            const datasketches::kll_sketch<uint64_t> &xact_to;
+            const datasketches::kll_sketch<uint64_t> &xact_from;
             std::shared_lock<std::shared_mutex> lock;
         };
         return retVals{_dnsXactToTimeUs, _dnsXactFromTimeUs, std::move(lock)};
@@ -124,7 +124,6 @@ class DnsMetricsManager final : public vizer::AbstractMetricsManager<DnsMetricsB
     QueryResponsePairMgr _qr_pair_manager;
     float _to90th = 0.0;
     float _from90th = 0.0;
-    uint64_t _sample_threshold = 10;
 
 public:
     DnsMetricsManager(uint periods, int deepSampleRate, bool realtime = true)
@@ -132,18 +131,19 @@ public:
     {
     }
 
-    void on_period_shift(timespec stamp) override
+    void on_period_shift(timespec stamp, [[maybe_unused]] const DnsMetricsBucket *maybe_expiring_bucket) override
     {
         // DNS transaction support
         auto timed_out = _qr_pair_manager.purge_old_transactions(stamp);
         if (timed_out) {
             live_bucket()->inc_xact_timed_out(timed_out);
         }
-        auto [xact_to, xact_from, lock] = live_bucket()->get_xact_data_locked();
-        if (xact_from.get_n() > _sample_threshold) {
+        // collect to/from 90th percentile every period shift to judge slow xacts
+        auto [xact_to, xact_from, lock] = bucket(1)->get_xact_data_locked();
+        if (xact_from.get_n()) {
             _from90th = xact_from.get_quantile(0.90);
         }
-        if (xact_to.get_n() > _sample_threshold) {
+        if (xact_to.get_n()) {
             _to90th = xact_to.get_quantile(0.90);
         }
     }
@@ -215,6 +215,10 @@ public:
     ~DnsStreamHandler() override;
 
     // vizer::AbstractModule
+    std::string schema_key() const override
+    {
+        return "dns";
+    }
     void start() override;
     void stop() override;
     void info_json(json &j) const override;
