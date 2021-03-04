@@ -270,6 +270,7 @@ protected:
             std::unique_lock wl(_bucket_mutex);
             std::unique_ptr<MetricsBucketClass> expiring_bucket;
             // this changes the live bucket
+            _metric_buckets.emplace_front(std::make_unique<MetricsBucketClass>());
             // notify second most recent bucket that it is now read only
             _metric_buckets[1]->set_read_only();
             // if we're at our period history length max, pop the oldest
