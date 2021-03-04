@@ -39,10 +39,10 @@ if [[ ! -z "${CTEST_OUTPUT_ON_FAILURE}" ]]; then
   if command -v graphtage &>/dev/null; then
     result=$(graphtage -j --quiet --from-json --to-json $JSONTPT.${OSTYPE}.json $tmpfile)
     status=$?
-    rm $tmpfile
   fi
 fi
 
 echo "diff failure"
+rm $tmpfile
 echo $result
 exit $status
