@@ -31,7 +31,8 @@ void NetStreamHandler::start()
     }
 
     _pkt_connection = _stream->packet_signal.connect(&NetStreamHandler::process_packet_cb, this);
-    _start_tstamp_connection = _stream->start_tstamp_signal.connect(&NetStreamHandler::set_initial_tstamp, this);
+    _start_tstamp_connection = _stream->start_tstamp_signal.connect(&NetStreamHandler::set_start_tstamp, this);
+    _end_tstamp_connection = _stream->end_tstamp_signal.connect(&NetStreamHandler::set_end_tstamp, this);
 
     _running = true;
 }
@@ -44,6 +45,7 @@ void NetStreamHandler::stop()
 
     _pkt_connection.disconnect();
     _start_tstamp_connection.disconnect();
+    _end_tstamp_connection.disconnect();
 
     _running = false;
 }
@@ -66,9 +68,13 @@ void NetStreamHandler::window_json(json &j, uint64_t period, bool merged)
         _metrics->window_single_json(j, schema_key(), period);
     }
 }
-void NetStreamHandler::set_initial_tstamp(timespec stamp)
+void NetStreamHandler::set_start_tstamp(timespec stamp)
 {
-    _metrics->set_initial_tstamp(stamp);
+    _metrics->set_start_tstamp(stamp);
+}
+void NetStreamHandler::set_end_tstamp(timespec stamp)
+{
+    _metrics->set_end_tstamp(stamp);
 }
 void NetStreamHandler::info_json(json &j) const
 {

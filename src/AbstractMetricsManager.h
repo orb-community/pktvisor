@@ -144,7 +144,7 @@ private:
 
     Rate _rate_events;
 
-    timeval _bucketTS;
+    timespec _start_tstamp;
     std::atomic<bool> _read_only = false;
 
 protected:
@@ -159,19 +159,22 @@ public:
     AbstractMetricsBucket()
         : _rate_events()
     {
-        gettimeofday(&_bucketTS, nullptr);
+        timespec_get(&_start_tstamp, TIME_UTC);
     }
     virtual ~AbstractMetricsBucket()
     {
     }
 
-    /**
-     * not thread safe but never written to except by constructor
-     * @return
-     */
-    timeval getTS() const
+    timespec start_tstamp() const
     {
-        return _bucketTS;
+        std::shared_lock r_lock(_base_mutex);
+        return _start_tstamp;
+    }
+
+    void set_start_tstamp(timespec stamp)
+    {
+        std::unique_lock w_lock(_base_mutex);
+        _start_tstamp = stamp;
     }
 
     virtual void to_json(json &j) const = 0;
@@ -240,14 +243,15 @@ public:
 
 protected:
     uint _num_periods;
-    std::chrono::system_clock::time_point _start_time;
+    timespec _start_tstamp;
+    timespec _end_tstamp; // only used by pre recorded inputs like pcap
 
     randutils::default_rng _rng;
     uint _deep_sample_rate;
     bool _deep_sampling_now;
 
     bool _realtime;
-    timespec _last_shift_ts;
+    timespec _last_shift_tstamp;
 
     mutable std::unordered_map<uint, std::pair<std::chrono::high_resolution_clock::time_point, json>> _mergeResultCache;
 
@@ -262,7 +266,7 @@ protected:
         if (_deep_sample_rate != 100) {
             _deep_sampling_now = (_rng.uniform(0U, 100U) <= _deep_sample_rate);
         }
-        if (!_realtime && _num_periods > 1 && stamp.tv_sec - _last_shift_ts.tv_sec > AbstractMetricsManager::PERIOD_SEC) {
+        if (!_realtime && _num_periods > 1 && stamp.tv_sec - _last_shift_tstamp.tv_sec > AbstractMetricsManager::PERIOD_SEC) {
             // manage the time window when we are in non real time mode
             // realistically this is only entered on pre recorded data such as pcap file
 
@@ -271,6 +275,7 @@ protected:
             std::unique_ptr<MetricsBucketClass> expiring_bucket;
             // this changes the live bucket
             _metric_buckets.emplace_front(std::make_unique<MetricsBucketClass>());
+            _metric_buckets[0]->set_start_tstamp(stamp);
             // notify second most recent bucket that it is now read only
             _metric_buckets[1]->set_read_only();
             // if we're at our period history length max, pop the oldest
@@ -281,7 +286,7 @@ protected:
             }
             // unlock as fast as possible, in particular before period shift callback
             wl.unlock();
-            _last_shift_ts.tv_sec = stamp.tv_sec;
+            _last_shift_tstamp.tv_sec = stamp.tv_sec;
             on_period_shift(stamp, (expiring_bucket) ? expiring_bucket.get() : nullptr);
             // expiring bucket will destruct here if it exists
         }
@@ -320,11 +325,12 @@ public:
     AbstractMetricsManager(uint periods, int deepSampleRate, bool realtime = true)
         : _metric_buckets()
         , _num_periods(periods)
-        , _start_time()
+        , _start_tstamp{0, 20}
+        , _end_tstamp{0, 0}
         , _deep_sample_rate(deepSampleRate)
         , _deep_sampling_now(true)
         , _realtime(realtime)
-        , _last_shift_ts()
+        , _last_shift_tstamp()
     {
         if (_deep_sample_rate > 100) {
             _deep_sample_rate = 100;
@@ -335,8 +341,8 @@ public:
 
         _num_periods = std::min(_num_periods, 10U);
         _num_periods = std::max(_num_periods, 1U);
-        timespec_get(&_last_shift_ts, TIME_UTC);
-        _start_time = std::chrono::system_clock::now();
+        timespec_get(&_last_shift_tstamp, TIME_UTC);
+        timespec_get(&_start_tstamp, TIME_UTC);
 
         std::unique_lock _l{_bucket_mutex};
         _metric_buckets.emplace_front(std::make_unique<MetricsBucketClass>());
@@ -360,8 +366,8 @@ public:
                 }
                 // unlock as fast as possible, in particular before period shift callback
                 wl.unlock();
-                timespec_get(&_last_shift_ts, TIME_UTC);
-                on_period_shift(_last_shift_ts, (expiring_bucket) ? expiring_bucket.get() : nullptr);
+                timespec_get(&_last_shift_tstamp, TIME_UTC);
+                on_period_shift(_last_shift_tstamp, (expiring_bucket) ? expiring_bucket.get() : nullptr);
                 // expiring bucket will destruct here if it exists
             });
         }
@@ -382,14 +388,26 @@ public:
         return _deep_sample_rate;
     }
 
-    auto start_time() const
+    auto start_tstamp() const
     {
-        return _start_time;
+        return _start_tstamp;
     }
 
-    void set_initial_tstamp(timespec stamp)
+    auto end_tstamp() const
     {
-        _last_shift_ts = stamp;
+        return _end_tstamp;
+    }
+
+    void set_start_tstamp(timespec stamp)
+    {
+        _metric_buckets[0]->set_start_tstamp(stamp);
+        _start_tstamp = stamp;
+        _last_shift_tstamp = stamp;
+    }
+
+    void set_end_tstamp(timespec stamp)
+    {
+        _end_tstamp = stamp;
     }
 
     const MetricsBucketClass *bucket(uint64_t period) const
@@ -425,14 +443,18 @@ public:
 
         auto period_length = 0;
         if (period == 0) {
-            timeval now_ts;
-            gettimeofday(&now_ts, nullptr);
-            period_length = now_ts.tv_sec - _metric_buckets.at(period)->getTS().tv_sec;
+            timespec now_ts;
+            if (_end_tstamp.tv_sec) {
+                now_ts = _end_tstamp;
+            } else {
+                timespec_get(&now_ts, TIME_UTC);
+            }
+            period_length = now_ts.tv_sec - _metric_buckets.at(period)->start_tstamp().tv_sec;
         } else {
             period_length = AbstractMetricsManager::PERIOD_SEC;
         }
 
-        j[period_str][key]["period"]["start_ts"] = _metric_buckets.at(period)->getTS().tv_sec;
+        j[period_str][key]["period"]["start_ts"] = _metric_buckets.at(period)->start_tstamp().tv_sec;
         j[period_str][key]["period"]["length"] = period_length;
 
         _metric_buckets.at(period)->to_json(j[period_str][key]);
@@ -468,9 +490,13 @@ public:
                 break;
             }
             if (m == _metric_buckets.front()) {
-                timeval now_ts;
-                gettimeofday(&now_ts, nullptr);
-                period_length += now_ts.tv_sec - m->getTS().tv_sec;
+                timespec now_ts;
+                if (_end_tstamp.tv_sec) {
+                    now_ts = _end_tstamp;
+                } else {
+                    timespec_get(&now_ts, TIME_UTC);
+                }
+                period_length += now_ts.tv_sec - m->start_tstamp().tv_sec;
             } else {
                 period_length += AbstractMetricsManager::PERIOD_SEC;
             }
@@ -479,7 +505,7 @@ public:
 
         std::string period_str = std::to_string(period) + "m";
 
-        auto oldest_ts = _metric_buckets.back()->getTS();
+        auto oldest_ts = _metric_buckets.back()->start_tstamp();
         j[period_str][key]["period"]["start_ts"] = oldest_ts.tv_sec;
         j[period_str][key]["period"]["length"] = period_length;
 

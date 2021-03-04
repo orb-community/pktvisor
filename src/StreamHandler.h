@@ -37,18 +37,18 @@ protected:
     {
         AbstractModule::_common_info_json(j);
         std::stringstream ss;
-        auto in_time_t = std::chrono::system_clock::to_time_t(_metrics->start_time());
+        time_t in_time_t = _metrics->start_tstamp().tv_sec;
         ss << std::put_time(std::gmtime(&in_time_t), "%Y-%m-%d %X");
-        j["metrics"]["start_time"] = ss.str();
+        j["metrics"]["start_tstamp"] = ss.str();
         j["metrics"]["deep_sample_rate"] = _metrics->deep_sample_rate();
         j["metrics"]["periods_configured"] = _metrics->num_periods();
         j["metrics"]["periods"] = json::array();
         const double fractions[4]{0.50, 0.90, 0.95, 0.99};
         for (int i = 0; i < _metrics->current_periods(); ++i) {
             std::stringstream ssts;
-            time_t b_time_t = _metrics->bucket(i)->getTS().tv_sec;
+            time_t b_time_t = _metrics->bucket(i)->start_tstamp().tv_sec;
             ssts << std::put_time(std::gmtime(&b_time_t), "%Y-%m-%d %X");
-            j["metrics"]["periods"][i]["start_time"] = ssts.str();
+            j["metrics"]["periods"][i]["start_tstamp"] = ssts.str();
             j["metrics"]["periods"][i]["read_only"] = _metrics->bucket(i)->read_only();     // thread safe
             auto [num_events, num_samples, event_rate] = _metrics->bucket(i)->event_data(); // thread safe
             j["metrics"]["periods"][i]["events"]["total"] = num_events;

@@ -118,9 +118,11 @@ class NetStreamHandler final : public vizer::StreamMetricsHandler<NetworkMetrics
 
     sigslot::connection _pkt_connection;
     sigslot::connection _start_tstamp_connection;
+    sigslot::connection _end_tstamp_connection;
 
     void process_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp);
-    void set_initial_tstamp(timespec stamp);
+    void set_start_tstamp(timespec stamp);
+    void set_end_tstamp(timespec stamp);
 
 public:
     NetStreamHandler(const std::string &name, PcapInputStream *stream, uint periods, uint deepSampleRate, bool realtime = true);

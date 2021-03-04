@@ -262,6 +262,7 @@ void PcapInputStream::_open_pcap(const std::string &fileName, const std::string 
     }
 
     pcpp::RawPacket rawPacket;
+    timespec end_tstamp;
 
     // setup initial timestamp from first packet to initiate bucketing
     if (reader->getNextPacket(rawPacket)) {
@@ -279,7 +280,9 @@ void PcapInputStream::_open_pcap(const std::string &fileName, const std::string 
         process_raw_packet(&rawPacket);
         packetCount++;
         lastCount++;
+        end_tstamp = rawPacket.getPacketTimeStamp();
     }
+    end_tstamp_signal(end_tstamp);
     t0->cancel();
     std::cerr << "processed " << packetCount << " packets\n";
 

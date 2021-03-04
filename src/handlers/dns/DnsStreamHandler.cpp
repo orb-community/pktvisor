@@ -32,7 +32,8 @@ void DnsStreamHandler::start()
     }
 
     _pkt_udp_connection = _stream->udp_signal.connect(&DnsStreamHandler::process_udp_packet_cb, this);
-    _start_tstamp_connection = _stream->start_tstamp_signal.connect(&DnsStreamHandler::set_initial_tstamp, this);
+    _start_tstamp_connection = _stream->start_tstamp_signal.connect(&DnsStreamHandler::set_start_tstamp, this);
+    _end_tstamp_connection = _stream->start_tstamp_signal.connect(&DnsStreamHandler::set_end_tstamp, this);
     _tcp_start_connection = _stream->tcp_connection_start_signal.connect(&DnsStreamHandler::tcp_connection_start_cb, this);
     _tcp_end_connection = _stream->tcp_connection_end_signal.connect(&DnsStreamHandler::tcp_connection_end_cb, this);
     _tcp_message_connection = _stream->tcp_message_ready_signal.connect(&DnsStreamHandler::tcp_message_ready_cb, this);
@@ -48,6 +49,7 @@ void DnsStreamHandler::stop()
 
     _pkt_udp_connection.disconnect();
     _start_tstamp_connection.disconnect();
+    _end_tstamp_connection.disconnect();
     _tcp_start_connection.disconnect();
     _tcp_end_connection.disconnect();
     _tcp_message_connection.disconnect();
@@ -205,9 +207,13 @@ void DnsStreamHandler::window_json(json &j, uint64_t period, bool merged)
         _metrics->window_single_json(j, schema_key(), period);
     }
 }
-void DnsStreamHandler::set_initial_tstamp(timespec stamp)
+void DnsStreamHandler::set_start_tstamp(timespec stamp)
 {
-    _metrics->set_initial_tstamp(stamp);
+    _metrics->set_start_tstamp(stamp);
+}
+void DnsStreamHandler::set_end_tstamp(timespec stamp)
+{
+    _metrics->set_end_tstamp(stamp);
 }
 void DnsStreamHandler::info_json(json &j) const
 {

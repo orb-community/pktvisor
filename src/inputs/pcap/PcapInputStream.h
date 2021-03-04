@@ -100,6 +100,7 @@ public:
     mutable sigslot::signal<pcpp::Packet &, PacketDirection, pcpp::ProtocolType, pcpp::ProtocolType, timespec> packet_signal;
     mutable sigslot::signal<pcpp::Packet &, PacketDirection, pcpp::ProtocolType, uint32_t, timespec> udp_signal;
     mutable sigslot::signal<timespec> start_tstamp_signal;
+    mutable sigslot::signal<timespec> end_tstamp_signal;
     mutable sigslot::signal<int8_t, const pcpp::TcpStreamData &> tcp_message_ready_signal;
     mutable sigslot::signal<const pcpp::ConnectionData &> tcp_connection_start_signal;
     mutable sigslot::signal<const pcpp::ConnectionData &, pcpp::TcpReassembly::ConnectionEndReason> tcp_connection_end_signal;
