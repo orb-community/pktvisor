@@ -156,7 +156,8 @@ TEST_CASE("Parse DNS random UDP/TCP tests", "[pcap][net]")
     CHECK(counters.xacts_in == 0);
     CHECK(counters.xacts_out == 2921); // wireshark: 2894
     CHECK(counters.xacts_timed_out == 0);
-    CHECK(counters.NOERROR == 2921); // wireshark: 5838
+    CHECK(counters.NOERROR == 2921); // wireshark: 5838 (we only count reply result codes)
+    CHECK(counters.NOERROR == 2921); // wireshark: 5838 (we only count reply result codes)
     CHECK(counters.NX == 0);
     CHECK(counters.REFUSED == 0);
     CHECK(counters.SRVFAIL == 0);
@@ -166,6 +167,28 @@ TEST_CASE("Parse DNS random UDP/TCP tests", "[pcap][net]")
     WARN(j.dump(4));
 
     CHECK(j["cardinality"]["qname"] == 2055); // flame was run with 1000 randoms x2 (udp+tcp)
+
     CHECK(j["top_qname2"][0]["name"] == ".test.com");
-    CHECK(j["top_qname2"][0]["estimate"] == 5851);
+    CHECK(j["top_qname2"][0]["estimate"] == event_data.num_events);
+
+    CHECK(j["top_rcode"][0]["name"] == "NOERROR");
+    CHECK(j["top_rcode"][0]["estimate"] == counters.NOERROR);
+
+    CHECK(j["top_udp_ports"][0]["name"] == "57975");
+    CHECK(j["top_udp_ports"][0]["estimate"] == 302);
+
+    CHECK(j["top_qtype"][0]["name"] == "AAAA");
+    CHECK(j["top_qtype"][0]["estimate"] == 1476);
+    CHECK(j["top_qtype"][1]["name"] == "CNAME");
+    CHECK(j["top_qtype"][1]["estimate"] == 825);
+    CHECK(j["top_qtype"][2]["name"] == "SOA");
+    CHECK(j["top_qtype"][2]["estimate"] == 794);
+    CHECK(j["top_qtype"][3]["name"] == "MX");
+    CHECK(j["top_qtype"][3]["estimate"] == 757);
+    CHECK(j["top_qtype"][4]["name"] == "A");
+    CHECK(j["top_qtype"][4]["estimate"] == 717);
+    CHECK(j["top_qtype"][5]["name"] == "NS");
+    CHECK(j["top_qtype"][5]["estimate"] == 662);
+    CHECK(j["top_qtype"][6]["name"] == "TXT");
+    CHECK(j["top_qtype"][6]["estimate"] == 620);
 }
