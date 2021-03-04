@@ -122,3 +122,50 @@ TEST_CASE("Parse DNS TCP IPv6 tests", "[pcap][ipv6][tcp][dns]")
     CHECK(j["top_qname2"][0]["name"] == ".test.com");
     CHECK(j["top_qname2"][0]["estimate"] == 360);
 }
+
+TEST_CASE("Parse DNS random UDP/TCP tests", "[pcap][net]")
+{
+
+    PcapInputStream stream{"pcap-test"};
+    stream.config_set("pcap_file", "fixtures/dns_udp_tcp_random.pcap");
+    stream.config_set("bpf", "");
+    stream.config_set("host_spec", "192.168.0.0/24");
+    stream.parse_host_spec();
+
+    DnsStreamHandler dns_handler{"dns-test", &stream, 1, 100};
+
+    dns_handler.start();
+    stream.start();
+    stream.stop();
+    dns_handler.stop();
+
+    auto counters = dns_handler.metrics()->bucket(0)->counters();
+    auto event_data = dns_handler.metrics()->bucket(0)->event_data();
+
+    // confirmed with wireshark. there are 14 TCP retransmissions which are counted differently in our state machine
+    // and account for some minor differences in TCP based stats
+    CHECK(event_data.num_events == 5851); // wireshark: 5838
+    CHECK(event_data.num_samples == 5851);
+    CHECK(counters.TCP == 2880); // wireshark: 2867
+    CHECK(counters.UDP == 2971);
+    CHECK(counters.IPv4 == 5851); // wireshark: 5838
+    CHECK(counters.IPv6 == 0);
+    CHECK(counters.queries == 2930);
+    CHECK(counters.replies == 2921);     // wireshark: 2908
+    CHECK(counters.xacts_total == 2921); // wireshark: 2894
+    CHECK(counters.xacts_in == 0);
+    CHECK(counters.xacts_out == 2921); // wireshark: 2894
+    CHECK(counters.xacts_timed_out == 0);
+    CHECK(counters.NOERROR == 2921); // wireshark: 5838
+    CHECK(counters.NX == 0);
+    CHECK(counters.REFUSED == 0);
+    CHECK(counters.SRVFAIL == 0);
+
+    nlohmann::json j;
+    dns_handler.metrics()->bucket(0)->to_json(j);
+    WARN(j.dump(4));
+
+    CHECK(j["cardinality"]["qname"] == 2055); // flame was run with 1000 randoms x2 (udp+tcp)
+    CHECK(j["top_qname2"][0]["name"] == ".test.com");
+    CHECK(j["top_qname2"][0]["estimate"] == 5851);
+}
