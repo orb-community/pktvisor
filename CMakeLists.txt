@@ -23,6 +23,7 @@ include(sanitizer)
 
 set(VIZER_STATIC_PLUGINS)
 
+enable_testing()
 add_subdirectory(3rd)
 add_subdirectory(src)
 add_subdirectory(cmd)

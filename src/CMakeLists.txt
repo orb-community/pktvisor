@@ -45,15 +45,20 @@ add_subdirectory(handlers)
 set(VIZER_STATIC_PLUGINS ${VIZER_STATIC_PLUGINS} PARENT_SCOPE)
 
 ## TEST SUITE
-add_executable(vizor-core-tests
+add_executable(unit-tests-vizor-core
         tests/main.cpp
         tests/test_sketches.cpp
         tests/test_metrics.cpp
         tests/test_geoip.cpp
         )
 
-target_include_directories(vizor-core-tests
+target_include_directories(unit-tests-vizor-core
         PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
         )
 
-target_link_libraries(vizor-core-tests PRIVATE Vizer::Core)
+target_link_libraries(unit-tests-vizor-core PRIVATE Vizer::Core)
+
+add_test(NAME unit-tests-vizor-core
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/src/tests
+        COMMAND unit-tests-vizor-core
+        )

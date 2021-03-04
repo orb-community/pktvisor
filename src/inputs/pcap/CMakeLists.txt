@@ -54,3 +54,7 @@ target_link_libraries(unit-tests-input-pcap
         PRIVATE Vizer::Input::Pcap
         )
 
+add_test(NAME unit-tests-input-pcap
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/src/tests
+        COMMAND unit-tests-input-pcap
+        )

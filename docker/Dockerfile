@@ -25,7 +25,8 @@ RUN \
     conan install /pktvisor-src
 RUN \
     PKG_CONFIG_PATH=/local/lib/pkgconfig cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo /pktvisor-src && \
-    make pktvisord pktvisor-pcap -j 4
+    make pktvisord pktvisor-pcap -j 4 && \
+    make test
 
 FROM golang:latest AS gobuild
 COPY golang/ /src/
