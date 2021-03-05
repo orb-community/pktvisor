@@ -145,30 +145,50 @@ private:
     Rate _rate_events;
 
     timespec _start_tstamp;
-    std::atomic<bool> _read_only = false;
+    timespec _end_tstamp;
+    uint _period_length = 0;
+    bool _read_only = false;
 
 protected:
     // merge the metrics of the specialized metric bucket
     virtual void specialized_merge(const AbstractMetricsBucket &other) = 0;
 
-    // must be thread safe as it is called from time window maintenance thread
+    // should be thread safe
     // can be used to set any bucket metrics to read only, e.g. cancel Rate metrics
     virtual void on_set_read_only(){};
 
 public:
     AbstractMetricsBucket()
         : _rate_events()
+        , _start_tstamp{0, 0}
+        , _end_tstamp{0, 0}
     {
         timespec_get(&_start_tstamp, TIME_UTC);
     }
-    virtual ~AbstractMetricsBucket()
-    {
-    }
+
+    virtual ~AbstractMetricsBucket() = default;
 
     timespec start_tstamp() const
     {
         std::shared_lock r_lock(_base_mutex);
         return _start_tstamp;
+    }
+
+    timespec end_tstamp() const
+    {
+        std::shared_lock r_lock(_base_mutex);
+        return _end_tstamp;
+    }
+
+    uint period_length() const
+    {
+        std::shared_lock r_lock(_base_mutex);
+        if (_read_only) {
+            return _period_length;
+        }
+        timespec now;
+        timespec_get(&now, TIME_UTC);
+        return now.tv_sec - _start_tstamp.tv_sec;
     }
 
     void set_start_tstamp(timespec stamp)
@@ -177,17 +197,19 @@ public:
         _start_tstamp = stamp;
     }
 
-    virtual void to_json(json &j) const = 0;
-
     bool read_only() const
     {
+        std::shared_lock r_lock(_base_mutex);
         return _read_only;
     }
 
-    // must be thread safe as it is called from time window maintenance thread
-    void set_read_only()
+    void set_read_only(timespec stamp)
     {
+        std::unique_lock w_lock(_base_mutex);
+        _end_tstamp = stamp;
+        _period_length = _end_tstamp.tv_sec - _start_tstamp.tv_sec;
         _read_only = true;
+        w_lock.unlock();
         _rate_events.cancel();
         on_set_read_only();
     }
@@ -225,6 +247,8 @@ public:
             _num_samples++;
         }
     }
+
+    virtual void to_json(json &j) const = 0;
 };
 
 template <typename MetricsBucketClass>
@@ -232,33 +256,85 @@ class AbstractMetricsManager
 {
     static_assert(std::is_base_of<AbstractMetricsBucket, MetricsBucketClass>::value, "MetricsBucketClass must inherit from AbstractMetricsBucket");
 
-    // this protects changes to the container, _not_ changes to the bucket itself, which should only be written to by one thread
+    // this protects changes to the bucket container, _not_ changes to the bucket itself
     mutable std::shared_mutex _bucket_mutex;
+    mutable std::shared_mutex _base_mutex;
     std::deque<std::unique_ptr<MetricsBucketClass>> _metric_buckets;
-    std::shared_ptr<timer::interval_handle> _timer_handle;
+
+    /**
+     * manage the time window
+     * @param stamp time stamp of the event
+     */
+    void _period_shift(timespec stamp)
+    {
+        // ensure access to the buckets is locked while we period shift
+        std::unique_lock wl(_bucket_mutex);
+        std::unique_ptr<MetricsBucketClass> expiring_bucket;
+        // this changes the live bucket
+        _metric_buckets.emplace_front(std::make_unique<MetricsBucketClass>());
+        _metric_buckets[0]->set_start_tstamp(stamp);
+        // notify second most recent bucket that it is now read only, save end time
+        _metric_buckets[1]->set_read_only(stamp);
+        // if we're at our period history length max, pop the oldest
+        if (_metric_buckets.size() > _num_periods) {
+            // before popping, take ownership of the bucket we are expiring so that it can be examined by the period shift callback handler
+            expiring_bucket = std::move(_metric_buckets.back());
+            _metric_buckets.pop_back();
+        }
+        // unlock bucket lock as fast as possible, in particular before period shift callback
+        wl.unlock();
+        std::unique_lock wlb(_base_mutex);
+        _last_shift_tstamp.tv_sec = stamp.tv_sec;
+        _next_shift_tstamp.tv_sec = stamp.tv_sec + AbstractMetricsManager::PERIOD_SEC;
+        wlb.unlock();
+        on_period_shift(stamp, (expiring_bucket) ? expiring_bucket.get() : nullptr);
+        // expiring bucket will destruct here if it exists
+    }
 
 public:
     static const uint PERIOD_SEC = 60;
     static const uint MERGE_CACHE_TTL_MS = 1000;
 
 protected:
+    /**
+     * the total number of periods we will maintain in the window
+     */
     uint _num_periods;
-    timespec _start_tstamp;
-    timespec _end_tstamp; // only used by pre recorded inputs like pcap
 
+    /**
+     * the earliest time stamp across all windows
+     */
+    timespec _start_tstamp;
+    /**
+     * usually the "live" time stamp is now(), but in pre recorded situations like pcap,
+     * we are able to set the very final time stamped at the window represents
+     */
+    timespec _end_tstamp;
+
+    /**
+     * sampling
+     */
     randutils::default_rng _rng;
     uint _deep_sample_rate;
     bool _deep_sampling_now;
 
-    bool _realtime;
+    /**
+     * window maintenance
+     */
     timespec _last_shift_tstamp;
+    timespec _next_shift_tstamp;
 
+    /**
+     * simple cache for json results
+     */
     mutable std::unordered_map<uint, std::pair<std::chrono::high_resolution_clock::time_point, json>> _mergeResultCache;
 
-    // this version is called when events have time stamps, such as packets from live device or pcap.
-    // if the time stamp is not live, i.e. they are prerecorded events such as pcap file, then _realtime
-    // should be set to false so that period management will happen according to the time stamps instead of
-    // a timer thread.
+    /**
+     * the "base" event method that should be called on every event before specialized event functionality. sampling will be
+     * chosen, and the time window will be maintained
+     *
+     * @param stamp time stamp of the event
+     */
     void new_event(timespec stamp)
     {
         // CRITICAL EVENT PATH
@@ -266,42 +342,8 @@ protected:
         if (_deep_sample_rate != 100) {
             _deep_sampling_now = (_rng.uniform(0U, 100U) <= _deep_sample_rate);
         }
-        if (!_realtime && _num_periods > 1 && stamp.tv_sec - _last_shift_tstamp.tv_sec > AbstractMetricsManager::PERIOD_SEC) {
-            // manage the time window when we are in non real time mode
-            // realistically this is only entered on pre recorded data such as pcap file
-
-            // ensure access to the buckets is locked while we period shift
-            std::unique_lock wl(_bucket_mutex);
-            std::unique_ptr<MetricsBucketClass> expiring_bucket;
-            // this changes the live bucket
-            _metric_buckets.emplace_front(std::make_unique<MetricsBucketClass>());
-            _metric_buckets[0]->set_start_tstamp(stamp);
-            // notify second most recent bucket that it is now read only
-            _metric_buckets[1]->set_read_only();
-            // if we're at our period history length max, pop the oldest
-            if (_metric_buckets.size() > _num_periods) {
-                // before popping, take ownership of the bucket we are expiring so that it can be examined by the period shift callback handler
-                expiring_bucket = std::move(_metric_buckets.back());
-                _metric_buckets.pop_back();
-            }
-            // unlock as fast as possible, in particular before period shift callback
-            wl.unlock();
-            _last_shift_tstamp.tv_sec = stamp.tv_sec;
-            on_period_shift(stamp, (expiring_bucket) ? expiring_bucket.get() : nullptr);
-            // expiring bucket will destruct here if it exists
-        }
-        std::shared_lock rl(_bucket_mutex);
-        // bucket base event
-        _metric_buckets[0]->new_event(_deep_sampling_now);
-    }
-
-    // this version is called when events are happening in real time, and no time stamp is associated with the event
-    void new_event()
-    {
-        // CRITICAL EVENT PATH
-        _deep_sampling_now = true;
-        if (_deep_sample_rate != 100) {
-            _deep_sampling_now = (_rng.uniform(0U, 100U) <= _deep_sample_rate);
+        if (_num_periods > 1 && stamp.tv_sec > _next_shift_tstamp.tv_sec) {
+            _period_shift(stamp);
         }
         std::shared_lock rl(_bucket_mutex);
         // bucket base event
@@ -309,10 +351,7 @@ protected:
     }
 
     /**
-     * call back when the time window periods shift. note, if the handler is using new_event with a time stamp
-     * but in real time mode, there is the possibility that the time stamps coming through new event do not
-     * synchronize with "now" passed via maintenance window thread - it is the handler's responsibility to take care here
-     * by making sure the time stamps past a new event are reasonable
+     * call back when the time window period shift
      *
      * @param stamp if the base event included a time stamp, it will be passed along here, otherwise "now"
      * @param expiring_bucket pointer to bucket that is expiring, or nullptr if there was none (since shift may occur that does not expire a bucket)
@@ -322,15 +361,15 @@ protected:
     }
 
 public:
-    AbstractMetricsManager(uint periods, int deepSampleRate, bool realtime = true)
-        : _metric_buckets()
-        , _num_periods(periods)
-        , _start_tstamp{0, 20}
+    AbstractMetricsManager(uint periods, int deepSampleRate)
+        : _metric_buckets{}
+        , _num_periods{periods}
+        , _start_tstamp{0, 0}
         , _end_tstamp{0, 0}
         , _deep_sample_rate(deepSampleRate)
-        , _deep_sampling_now(true)
-        , _realtime(realtime)
-        , _last_shift_tstamp()
+        , _deep_sampling_now{true}
+        , _last_shift_tstamp{0, 0}
+        , _next_shift_tstamp{0, 0}
     {
         if (_deep_sample_rate > 100) {
             _deep_sample_rate = 100;
@@ -342,72 +381,61 @@ public:
         _num_periods = std::min(_num_periods, 10U);
         _num_periods = std::max(_num_periods, 1U);
         timespec_get(&_last_shift_tstamp, TIME_UTC);
-        timespec_get(&_start_tstamp, TIME_UTC);
+        _next_shift_tstamp = _last_shift_tstamp;
+        _next_shift_tstamp.tv_sec += AbstractMetricsManager::PERIOD_SEC;
+        _start_tstamp = _last_shift_tstamp;
 
-        std::unique_lock _l{_bucket_mutex};
         _metric_buckets.emplace_front(std::make_unique<MetricsBucketClass>());
-        static timer timer_thread{100ms};
-        if (_num_periods > 1 && _realtime) {
-            // set up time window maintenance thread. this is only active for real time events,
-            // and will pass "now" as the time stamp to the period shift call back
-            _timer_handle = timer_thread.set_interval(60s, [this] {
-                // ensure access to the buckets is locked while we period shift
-                std::unique_lock wl(_bucket_mutex);
-                std::unique_ptr<MetricsBucketClass> expiring_bucket;
-                // this changes the live bucket
-                _metric_buckets.emplace_front(std::make_unique<MetricsBucketClass>());
-                // notify second most recent bucket that it is now read only
-                _metric_buckets[1]->set_read_only();
-                // if we're at our period history length max, pop the oldest
-                if (_metric_buckets.size() > _num_periods) {
-                    // before popping, take ownership of the bucket we are expiring so that it can be examined by the period shift callback handler
-                    expiring_bucket = std::move(_metric_buckets.back());
-                    _metric_buckets.pop_back();
-                }
-                // unlock as fast as possible, in particular before period shift callback
-                wl.unlock();
-                timespec_get(&_last_shift_tstamp, TIME_UTC);
-                on_period_shift(_last_shift_tstamp, (expiring_bucket) ? expiring_bucket.get() : nullptr);
-                // expiring bucket will destruct here if it exists
-            });
-        }
     }
 
     uint num_periods() const
     {
+        std::shared_lock rl(_base_mutex);
         return _num_periods;
     }
 
     auto current_periods() const
     {
+        std::shared_lock rl(_bucket_mutex);
         return _metric_buckets.size();
     }
 
     uint deep_sample_rate() const
     {
+        std::shared_lock rl(_base_mutex);
         return _deep_sample_rate;
     }
 
     auto start_tstamp() const
     {
+        std::shared_lock rl(_base_mutex);
         return _start_tstamp;
     }
 
     auto end_tstamp() const
     {
+        std::shared_lock rl(_base_mutex);
         return _end_tstamp;
     }
 
     void set_start_tstamp(timespec stamp)
     {
-        _metric_buckets[0]->set_start_tstamp(stamp);
+        std::unique_lock wl(_base_mutex);
         _start_tstamp = stamp;
         _last_shift_tstamp = stamp;
+        _next_shift_tstamp.tv_sec = stamp.tv_sec + AbstractMetricsManager::PERIOD_SEC;
+        wl.unlock();
+        std::shared_lock rl(_bucket_mutex);
+        _metric_buckets[0]->set_start_tstamp(stamp);
     }
 
     void set_end_tstamp(timespec stamp)
     {
+        std::unique_lock wl(_base_mutex);
         _end_tstamp = stamp;
+        wl.unlock();
+        std::shared_lock rl(_bucket_mutex);
+        _metric_buckets[0]->set_read_only(stamp);
     }
 
     const MetricsBucketClass *bucket(uint64_t period) const
@@ -427,6 +455,8 @@ public:
 
     void window_single_json(json &j, const std::string &key, uint64_t period = 0) const
     {
+        std::shared_lock rl(_base_mutex);
+        std::shared_lock rbl(_bucket_mutex);
 
         if (period >= _num_periods) {
             std::stringstream err;
@@ -441,27 +471,16 @@ public:
 
         std::string period_str = "1m";
 
-        auto period_length = 0;
-        if (period == 0) {
-            timespec now_ts;
-            if (_end_tstamp.tv_sec) {
-                now_ts = _end_tstamp;
-            } else {
-                timespec_get(&now_ts, TIME_UTC);
-            }
-            period_length = now_ts.tv_sec - _metric_buckets.at(period)->start_tstamp().tv_sec;
-        } else {
-            period_length = AbstractMetricsManager::PERIOD_SEC;
-        }
-
         j[period_str][key]["period"]["start_ts"] = _metric_buckets.at(period)->start_tstamp().tv_sec;
-        j[period_str][key]["period"]["length"] = period_length;
+        j[period_str][key]["period"]["length"] = _metric_buckets.at(period)->period_length();
 
         _metric_buckets.at(period)->to_json(j[period_str][key]);
     }
 
     void window_merged_json(json &j, const std::string &key, uint64_t period) const
     {
+        std::shared_lock rl(_base_mutex);
+        std::shared_lock rbl(_bucket_mutex);
 
         if (period <= 1 || period > _num_periods) {
             std::stringstream err;
@@ -489,17 +508,7 @@ public:
             if (p-- == 0) {
                 break;
             }
-            if (m == _metric_buckets.front()) {
-                timespec now_ts;
-                if (_end_tstamp.tv_sec) {
-                    now_ts = _end_tstamp;
-                } else {
-                    timespec_get(&now_ts, TIME_UTC);
-                }
-                period_length += now_ts.tv_sec - m->start_tstamp().tv_sec;
-            } else {
-                period_length += AbstractMetricsManager::PERIOD_SEC;
-            }
+            period_length += m->period_length();
             merged.merge(*m);
         }
 

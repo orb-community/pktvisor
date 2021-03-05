@@ -18,8 +18,8 @@
 
 namespace vizer::handler::dns {
 
-DnsStreamHandler::DnsStreamHandler(const std::string &name, PcapInputStream *stream, uint periods, int deepSampleRate, bool realtime)
-    : vizer::StreamMetricsHandler<DnsMetricsManager>(name, periods, deepSampleRate, realtime)
+DnsStreamHandler::DnsStreamHandler(const std::string &name, PcapInputStream *stream, uint periods, int deepSampleRate)
+    : vizer::StreamMetricsHandler<DnsMetricsManager>(name, periods, deepSampleRate)
     , _stream(stream)
 {
     assert(stream);

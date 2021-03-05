@@ -126,8 +126,8 @@ class DnsMetricsManager final : public vizer::AbstractMetricsManager<DnsMetricsB
     float _from90th = 0.0;
 
 public:
-    DnsMetricsManager(uint periods, int deepSampleRate, bool realtime = true)
-        : vizer::AbstractMetricsManager<DnsMetricsBucket>(periods, deepSampleRate, realtime)
+    DnsMetricsManager(uint periods, int deepSampleRate)
+        : vizer::AbstractMetricsManager<DnsMetricsBucket>(periods, deepSampleRate)
     {
     }
 
@@ -213,7 +213,7 @@ class DnsStreamHandler final : public vizer::StreamMetricsHandler<DnsMetricsMana
     void set_end_tstamp(timespec stamp);
 
 public:
-    DnsStreamHandler(const std::string &name, PcapInputStream *stream, uint periods, int deepSampleRate, bool realtime = true);
+    DnsStreamHandler(const std::string &name, PcapInputStream *stream, uint periods, int deepSampleRate);
     ~DnsStreamHandler() override;
 
     // vizer::AbstractModule

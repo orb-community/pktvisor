@@ -92,8 +92,8 @@ public:
 class NetworkMetricsManager final : public vizer::AbstractMetricsManager<NetworkMetricsBucket>
 {
 public:
-    NetworkMetricsManager(uint periods, int deepSampleRate, bool realtime = true)
-        : vizer::AbstractMetricsManager<NetworkMetricsBucket>(periods, deepSampleRate, realtime)
+    NetworkMetricsManager(uint periods, int deepSampleRate)
+        : vizer::AbstractMetricsManager<NetworkMetricsBucket>(periods, deepSampleRate)
     {
     }
 
@@ -125,7 +125,7 @@ class NetStreamHandler final : public vizer::StreamMetricsHandler<NetworkMetrics
     void set_end_tstamp(timespec stamp);
 
 public:
-    NetStreamHandler(const std::string &name, PcapInputStream *stream, uint periods, uint deepSampleRate, bool realtime = true);
+    NetStreamHandler(const std::string &name, PcapInputStream *stream, uint periods, uint deepSampleRate);
     ~NetStreamHandler() override;
 
     // vizer::AbstractModule

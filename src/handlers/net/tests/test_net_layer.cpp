@@ -27,6 +27,12 @@ TEST_CASE("Parse net (dns) UDP IPv4 tests", "[pcap][ipv4][udp][net]")
     CHECK(net_handler.metrics()->current_periods() == 1);
     CHECK(net_handler.metrics()->start_tstamp().tv_sec == 1567706414);
     CHECK(net_handler.metrics()->start_tstamp().tv_nsec == 599964000);
+
+    CHECK(net_handler.metrics()->end_tstamp().tv_sec == 1567706420);
+    CHECK(net_handler.metrics()->end_tstamp().tv_nsec == 602866000);
+
+    CHECK(net_handler.metrics()->bucket(0)->period_length() == 6);
+
     CHECK(event_data.num_events == 140);
     CHECK(counters.UDP == 140);
     CHECK(counters.IPv4 == 140);

@@ -17,8 +17,8 @@
 
 namespace vizer::handler::net {
 
-NetStreamHandler::NetStreamHandler(const std::string &name, PcapInputStream *stream, uint periods, uint deepSampleRate, bool realtime)
-    : vizer::StreamMetricsHandler<NetworkMetricsManager>(name, periods, deepSampleRate, realtime)
+NetStreamHandler::NetStreamHandler(const std::string &name, PcapInputStream *stream, uint periods, uint deepSampleRate)
+    : vizer::StreamMetricsHandler<NetworkMetricsManager>(name, periods, deepSampleRate)
     , _stream(stream)
 {
     assert(stream);

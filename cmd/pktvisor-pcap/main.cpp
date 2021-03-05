@@ -171,7 +171,7 @@ int main(int argc, char *argv[])
 
         handler::net::NetStreamHandler *net_handler{nullptr};
         {
-            auto handler_module = std::make_unique<handler::net::NetStreamHandler>("net", pcap_stream, periods, sample_rate, false);
+            auto handler_module = std::make_unique<handler::net::NetStreamHandler>("net", pcap_stream, periods, sample_rate);
             handler_manager->module_add(std::move(handler_module));
             auto [handler, handler_mgr_lock] = handler_manager->module_get_locked("net");
             handler_mgr_lock.unlock();
@@ -179,7 +179,7 @@ int main(int argc, char *argv[])
         }
         handler::dns::DnsStreamHandler *dns_handler{nullptr};
         {
-            auto handler_module = std::make_unique<handler::dns::DnsStreamHandler>("dns", pcap_stream, periods, sample_rate, false);
+            auto handler_module = std::make_unique<handler::dns::DnsStreamHandler>("dns", pcap_stream, periods, sample_rate);
             handler_manager->module_add(std::move(handler_module));
             auto [handler, handler_mgr_lock] = handler_manager->module_get_locked("dns");
             handler_mgr_lock.unlock();
