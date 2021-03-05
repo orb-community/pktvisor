@@ -18,7 +18,7 @@ fi
 tmpfile=$(mktemp /tmp/pktvisor-ftest.XXXXXX)
 CMD="$PKTVISORPCAP $@"
 echo "--- running: $CMD | jq -c '$JSONFILTER' ---"
-$($CMD | jq $JSONFILTER >$tmpfile)
+$($CMD | jq -c $JSONFILTER >$tmpfile)
 status=$?
 if [[ $status -eq 0 ]]; then
   echo "pktvisor success"
@@ -29,12 +29,16 @@ else
 fi
 
 OSTYPE=$(uname -s)
-result=$(cmp -s $JSONTPT.${OSTYPE}.json $tmpfile)
+CMD="cmp -s $JSONTPT.${OSTYPE}.json $tmpfile"
+echo "--- running: $CMD"
+result=$($CMD)
 status=$?
 if [[ $status -eq 0 ]]; then
   rm $tmpfile
   echo "diff success"
   exit 0
+else
+  echo "diff failure: $result"
 fi
 
 # get a diff on bad result
@@ -47,7 +51,6 @@ if [[ ! -z "${CTEST_OUTPUT_ON_FAILURE}" ]]; then
   fi
 fi
 
-echo "diff failure"
 # leave failure output for examination later
 echo $result
 exit $status
