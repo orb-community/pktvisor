@@ -23,6 +23,16 @@ TEST_CASE("Parse DNS UDP IPv4 tests", "[pcap][ipv4][udp][dns]")
 
     auto counters = dns_handler.metrics()->bucket(0)->counters();
     auto event_data = dns_handler.metrics()->bucket(0)->event_data();
+
+    CHECK(dns_handler.metrics()->current_periods() == 1);
+    CHECK(dns_handler.metrics()->start_tstamp().tv_sec == 1567706414);
+    CHECK(dns_handler.metrics()->start_tstamp().tv_nsec == 599964000);
+
+    CHECK(dns_handler.metrics()->end_tstamp().tv_sec == 1567706420);
+    CHECK(dns_handler.metrics()->end_tstamp().tv_nsec == 602866000);
+
+    CHECK(dns_handler.metrics()->bucket(0)->period_length() == 6);
+    
     json j;
     dns_handler.metrics()->bucket(0)->to_json(j);
 

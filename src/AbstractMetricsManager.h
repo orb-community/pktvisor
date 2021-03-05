@@ -256,10 +256,38 @@ class AbstractMetricsManager
 {
     static_assert(std::is_base_of<AbstractMetricsBucket, MetricsBucketClass>::value, "MetricsBucketClass must inherit from AbstractMetricsBucket");
 
+private:
     // this protects changes to the bucket container, _not_ changes to the bucket itself
     mutable std::shared_mutex _bucket_mutex;
-    mutable std::shared_mutex _base_mutex;
     std::deque<std::unique_ptr<MetricsBucketClass>> _metric_buckets;
+
+    mutable std::shared_mutex _base_mutex;
+
+    /**
+     * the total number of periods we will maintain in the window
+     */
+    uint _num_periods;
+
+    /**
+     * sampling
+     */
+    randutils::default_rng _rng;
+    uint _deep_sample_rate;
+
+protected:
+    std::atomic_bool _deep_sampling_now; // atomic so we can reference without mutex
+
+private:
+    /**
+     * window maintenance
+     */
+    timespec _last_shift_tstamp;
+    timespec _next_shift_tstamp;
+
+    /**
+     * simple cache for json results
+     */
+    mutable std::unordered_map<uint, std::pair<std::chrono::high_resolution_clock::time_point, json>> _mergeResultCache;
 
     /**
      * manage the time window
@@ -296,38 +324,6 @@ public:
     static const uint MERGE_CACHE_TTL_MS = 1000;
 
 protected:
-    /**
-     * the total number of periods we will maintain in the window
-     */
-    uint _num_periods;
-
-    /**
-     * the earliest time stamp across all windows
-     */
-    timespec _start_tstamp;
-    /**
-     * usually the "live" time stamp is now(), but in pre recorded situations like pcap,
-     * we are able to set the very final time stamped at the window represents
-     */
-    timespec _end_tstamp;
-
-    /**
-     * sampling
-     */
-    randutils::default_rng _rng;
-    uint _deep_sample_rate;
-    bool _deep_sampling_now;
-
-    /**
-     * window maintenance
-     */
-    timespec _last_shift_tstamp;
-    timespec _next_shift_tstamp;
-
-    /**
-     * simple cache for json results
-     */
-    mutable std::unordered_map<uint, std::pair<std::chrono::high_resolution_clock::time_point, json>> _mergeResultCache;
 
     /**
      * the "base" event method that should be called on every event before specialized event functionality. sampling will be
@@ -338,11 +334,14 @@ protected:
     void new_event(timespec stamp)
     {
         // CRITICAL EVENT PATH
-        _deep_sampling_now = true;
+        _deep_sampling_now.store(true, std::memory_order_relaxed);
         if (_deep_sample_rate != 100) {
-            _deep_sampling_now = (_rng.uniform(0U, 100U) <= _deep_sample_rate);
+            _deep_sampling_now.store((_rng.uniform(0U, 100U) <= _deep_sample_rate), std::memory_order_relaxed);
         }
-        if (_num_periods > 1 && stamp.tv_sec > _next_shift_tstamp.tv_sec) {
+        std::shared_lock rlb(_base_mutex);
+        bool will_shift = _num_periods > 1 && stamp.tv_sec > _next_shift_tstamp.tv_sec;
+        rlb.unlock();
+        if (will_shift) {
             _period_shift(stamp);
         }
         std::shared_lock rl(_bucket_mutex);
@@ -364,8 +363,6 @@ public:
     AbstractMetricsManager(uint periods, int deepSampleRate)
         : _metric_buckets{}
         , _num_periods{periods}
-        , _start_tstamp{0, 0}
-        , _end_tstamp{0, 0}
         , _deep_sample_rate(deepSampleRate)
         , _deep_sampling_now{true}
         , _last_shift_tstamp{0, 0}
@@ -374,7 +371,7 @@ public:
         if (_deep_sample_rate > 100) {
             _deep_sample_rate = 100;
         }
-        if (_deep_sample_rate < 0) {
+        if (_deep_sample_rate < 1) {
             _deep_sample_rate = 1;
         }
 
@@ -383,7 +380,6 @@ public:
         timespec_get(&_last_shift_tstamp, TIME_UTC);
         _next_shift_tstamp = _last_shift_tstamp;
         _next_shift_tstamp.tv_sec += AbstractMetricsManager::PERIOD_SEC;
-        _start_tstamp = _last_shift_tstamp;
 
         _metric_buckets.emplace_front(std::make_unique<MetricsBucketClass>());
     }
@@ -408,34 +404,30 @@ public:
 
     auto start_tstamp() const
     {
-        std::shared_lock rl(_base_mutex);
-        return _start_tstamp;
+        std::shared_lock rl(_bucket_mutex);
+        return _metric_buckets.front()->start_tstamp();
     }
 
     auto end_tstamp() const
     {
-        std::shared_lock rl(_base_mutex);
-        return _end_tstamp;
+        std::shared_lock rl(_bucket_mutex);
+        return _metric_buckets.back()->end_tstamp();
     }
 
     void set_start_tstamp(timespec stamp)
     {
         std::unique_lock wl(_base_mutex);
-        _start_tstamp = stamp;
         _last_shift_tstamp = stamp;
         _next_shift_tstamp.tv_sec = stamp.tv_sec + AbstractMetricsManager::PERIOD_SEC;
         wl.unlock();
         std::shared_lock rl(_bucket_mutex);
-        _metric_buckets[0]->set_start_tstamp(stamp);
+        _metric_buckets.front()->set_start_tstamp(stamp);
     }
 
     void set_end_tstamp(timespec stamp)
     {
-        std::unique_lock wl(_base_mutex);
-        _end_tstamp = stamp;
-        wl.unlock();
         std::shared_lock rl(_bucket_mutex);
-        _metric_buckets[0]->set_read_only(stamp);
+        _metric_buckets.back()->set_read_only(stamp);
     }
 
     const MetricsBucketClass *bucket(uint64_t period) const
