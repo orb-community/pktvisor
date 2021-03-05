@@ -205,11 +205,12 @@ public:
 
     void set_read_only(timespec stamp)
     {
-        std::unique_lock w_lock(_base_mutex);
-        _end_tstamp = stamp;
-        _period_length = _end_tstamp.tv_sec - _start_tstamp.tv_sec;
-        _read_only = true;
-        w_lock.unlock();
+        {
+            std::unique_lock w_lock(_base_mutex);
+            _end_tstamp = stamp;
+            _period_length = _end_tstamp.tv_sec - _start_tstamp.tv_sec;
+            _read_only = true;
+        }
         _rate_events.cancel();
         on_set_read_only();
     }
@@ -232,6 +233,14 @@ public:
             std::unique_lock w_lock(_base_mutex);
             _num_events += other._num_events;
             _num_samples += other._num_samples;
+            _period_length += other._period_length;
+            if (other._start_tstamp.tv_sec < _start_tstamp.tv_sec) {
+                _start_tstamp.tv_sec = other._start_tstamp.tv_sec;
+            }
+            if (other._end_tstamp.tv_sec > _end_tstamp.tv_sec) {
+                _end_tstamp.tv_sec = other._end_tstamp.tv_sec;
+            }
+            _read_only = true;
             _rate_events.merge(other._rate_events);
         }
         specialized_merge(other);
@@ -427,7 +436,7 @@ public:
     void set_end_tstamp(timespec stamp)
     {
         std::shared_lock rl(_bucket_mutex);
-        _metric_buckets.back()->set_read_only(stamp);
+        _metric_buckets.front()->set_read_only(stamp);
     }
 
     const MetricsBucketClass *bucket(uint64_t period) const
@@ -492,7 +501,6 @@ public:
             }
         }
 
-        auto period_length = 0;
         MetricsBucketClass merged;
 
         auto p = period;
@@ -500,15 +508,13 @@ public:
             if (p-- == 0) {
                 break;
             }
-            period_length += m->period_length();
             merged.merge(*m);
         }
 
         std::string period_str = std::to_string(period) + "m";
 
-        auto oldest_ts = _metric_buckets.back()->start_tstamp();
-        j[period_str][key]["period"]["start_ts"] = oldest_ts.tv_sec;
-        j[period_str][key]["period"]["length"] = period_length;
+        j[period_str][key]["period"]["start_ts"] = merged.start_tstamp().tv_sec;
+        j[period_str][key]["period"]["length"] = merged.period_length();
 
         merged.to_json(j[period_str][key]);
 

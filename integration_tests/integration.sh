@@ -14,7 +14,7 @@ fi
 
 tmpfile=$(mktemp /tmp/pktvisor-ftest.XXXXXX)
 CMD="$PKTVISORPCAP $@"
-echo "--- running: cd $PWD; $CMD; cd -"
+echo "--- running: $CMD ---"
 $($CMD >$tmpfile)
 status=$?
 if [[ $status -eq 0 ]]; then
@@ -37,12 +37,14 @@ fi
 # get a diff on bad result
 if [[ ! -z "${CTEST_OUTPUT_ON_FAILURE}" ]]; then
   if command -v graphtage &>/dev/null; then
+    MAN_CMD="graphtage --from-json --to-json $JSONTPT.${OSTYPE}.json $tmpfile"
+    echo "full diff command: $MAN_CMD"
     result=$(graphtage -j --quiet --from-json --to-json $JSONTPT.${OSTYPE}.json $tmpfile)
     status=$?
   fi
 fi
 
 echo "diff failure"
-rm $tmpfile
+# leave failure output for examination later
 echo $result
 exit $status
