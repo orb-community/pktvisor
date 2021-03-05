@@ -1,4 +1,4 @@
 cmake-build*
-tests/external*
+integration_tests/external*
 Dockerfile
 .dockerignore
