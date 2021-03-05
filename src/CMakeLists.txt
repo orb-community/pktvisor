@@ -12,7 +12,7 @@ add_library(vizer-core
         HandlerModulePlugin.cpp
         GeoDB.cpp
         CoreServer.cpp
-        StreamHandler.cpp)
+        )
 add_library(Vizer::Core ALIAS vizer-core)
 
 target_include_directories(vizer-core

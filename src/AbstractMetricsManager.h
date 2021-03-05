@@ -293,6 +293,8 @@ private:
     timespec _last_shift_tstamp;
     timespec _next_shift_tstamp;
 
+    std::shared_ptr<timer::interval_handle> _flush_timer_handle;
+
     /**
      * simple cache for json results
      */
@@ -348,7 +350,7 @@ protected:
             _deep_sampling_now.store((_rng.uniform(0U, 100U) <= _deep_sample_rate), std::memory_order_relaxed);
         }
         std::shared_lock rlb(_base_mutex);
-        bool will_shift = _num_periods > 1 && stamp.tv_sec > _next_shift_tstamp.tv_sec;
+        bool will_shift = _num_periods > 1 && stamp.tv_sec >= _next_shift_tstamp.tv_sec;
         rlb.unlock();
         if (will_shift) {
             _period_shift(stamp);
@@ -391,6 +393,21 @@ public:
         _next_shift_tstamp.tv_sec += AbstractMetricsManager::PERIOD_SEC;
 
         _metric_buckets.emplace_front(std::make_unique<MetricsBucketClass>());
+
+        // the normal time window maintenance period shifting is driven by time stamps in new_event
+        // but if there is are no events for more than a period, we need to flush manually to maintain
+        // a proper time window
+        static timer timer_thread{100ms};
+        _flush_timer_handle = timer_thread.set_interval(60s, [this] {
+            timespec stamp;
+            timespec_get(&stamp, TIME_UTC);
+            std::shared_lock rlb(_base_mutex);
+            bool will_shift = _num_periods > 1 && stamp.tv_sec >= _next_shift_tstamp.tv_sec;
+            rlb.unlock();
+            if (will_shift) {
+                _period_shift(stamp);
+            }
+        });
     }
 
     uint num_periods() const
@@ -426,6 +443,8 @@ public:
     void set_start_tstamp(timespec stamp)
     {
         std::unique_lock wl(_base_mutex);
+        // with prerecorded data with a time stamp in the past, we do not use the flush thread
+        _flush_timer_handle->cancel();
         _last_shift_tstamp = stamp;
         _next_shift_tstamp.tv_sec = stamp.tv_sec + AbstractMetricsManager::PERIOD_SEC;
         wl.unlock();
