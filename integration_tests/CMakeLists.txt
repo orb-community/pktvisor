@@ -13,9 +13,9 @@ macro(vizer_int_test name)
 endmacro()
 
 vizer_int_test(dns_ipv4_udp)
-#vizer_int_test(dns_ipv4_tcp)
-#vizer_int_test(dns_ipv6_udp)
-#vizer_int_test(dns_ipv6_tcp)
+vizer_int_test(dns_ipv4_tcp)
+vizer_int_test(dns_ipv6_udp)
+vizer_int_test(dns_ipv6_tcp)
 
 #add_test(NAME external-tests
 #        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/tests

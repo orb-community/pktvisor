@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# we filter out some paths due to probabalistic results
+JSONFILTER='delpaths([["5m","dns","cardinality"]])|delpaths([["5m","packets","cardinality"]])|delpaths([["5m","dns","xact","out","quantiles_us"]])'
+
 # run pktvisor-pcap ($1) and expect json output to match that found in given file ($2), using pktvisor-pcap args in ($3)
 PKTVISORPCAP=$1
 JSONTPT=$2
@@ -14,8 +17,8 @@ fi
 
 tmpfile=$(mktemp /tmp/pktvisor-ftest.XXXXXX)
 CMD="$PKTVISORPCAP $@"
-echo "--- running: $CMD ---"
-$($CMD >$tmpfile)
+echo "--- running: $CMD | jq -c '$JSONFILTER' ---"
+$($CMD | jq $JSONFILTER >$tmpfile)
 status=$?
 if [[ $status -eq 0 ]]; then
   echo "pktvisor success"
