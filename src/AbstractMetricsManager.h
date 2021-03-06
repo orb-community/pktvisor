@@ -233,7 +233,7 @@ public:
             std::unique_lock w_lock(_base_mutex);
             _num_events += other._num_events;
             _num_samples += other._num_samples;
-            _period_length += other._period_length;
+            _period_length += other.period_length();
             if (other._start_tstamp.tv_sec < _start_tstamp.tv_sec) {
                 _start_tstamp.tv_sec = other._start_tstamp.tv_sec;
             }
