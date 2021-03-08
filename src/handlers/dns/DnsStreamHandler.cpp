@@ -18,8 +18,8 @@
 
 namespace vizer::handler::dns {
 
-DnsStreamHandler::DnsStreamHandler(const std::string &name, PcapInputStream *stream, uint periods, int deepSampleRate, bool realtime)
-    : vizer::StreamMetricsHandler<DnsMetricsManager>(name, periods, deepSampleRate, realtime)
+DnsStreamHandler::DnsStreamHandler(const std::string &name, PcapInputStream *stream, uint periods, int deepSampleRate)
+    : vizer::StreamMetricsHandler<DnsMetricsManager>(name, periods, deepSampleRate)
     , _stream(stream)
 {
     assert(stream);
@@ -32,7 +32,8 @@ void DnsStreamHandler::start()
     }
 
     _pkt_udp_connection = _stream->udp_signal.connect(&DnsStreamHandler::process_udp_packet_cb, this);
-    _start_tstamp_connection = _stream->start_tstamp_signal.connect(&DnsStreamHandler::set_initial_tstamp, this);
+    _start_tstamp_connection = _stream->start_tstamp_signal.connect(&DnsStreamHandler::set_start_tstamp, this);
+    _end_tstamp_connection = _stream->end_tstamp_signal.connect(&DnsStreamHandler::set_end_tstamp, this);
     _tcp_start_connection = _stream->tcp_connection_start_signal.connect(&DnsStreamHandler::tcp_connection_start_cb, this);
     _tcp_end_connection = _stream->tcp_connection_end_signal.connect(&DnsStreamHandler::tcp_connection_end_cb, this);
     _tcp_message_connection = _stream->tcp_message_ready_signal.connect(&DnsStreamHandler::tcp_message_ready_cb, this);
@@ -48,6 +49,7 @@ void DnsStreamHandler::stop()
 
     _pkt_udp_connection.disconnect();
     _start_tstamp_connection.disconnect();
+    _end_tstamp_connection.disconnect();
     _tcp_start_connection.disconnect();
     _tcp_end_connection.disconnect();
     _tcp_message_connection.disconnect();
@@ -65,17 +67,19 @@ void DnsStreamHandler::process_udp_packet_cb(pcpp::Packet &payload, PacketDirect
     pcpp::UdpLayer *udpLayer = payload.getLayerOfType<pcpp::UdpLayer>();
     assert(udpLayer);
 
-    uint16_t port{0};
+    uint16_t metric_port{0};
     auto dst_port = ntohs(udpLayer->getUdpHeader()->portDst);
     auto src_port = ntohs(udpLayer->getUdpHeader()->portSrc);
+    // note we want to capture metrics only when one of the ports is dns,
+    // but metrics on the port which is _not_ the dns port
     if (DnsLayer::isDnsPort(dst_port)) {
-        port = dst_port;
+        metric_port = src_port;
     } else if (DnsLayer::isDnsPort(src_port)) {
-        port = src_port;
+        metric_port = dst_port;
     }
-    if (port) {
+    if (metric_port) {
         DnsLayer dnsLayer(udpLayer, &payload);
-        _metrics->process_dns_layer(dnsLayer, dir, l3, pcpp::UDP, flowkey, port, stamp);
+        _metrics->process_dns_layer(dnsLayer, dir, l3, pcpp::UDP, flowkey, metric_port, stamp);
     }
 }
 
@@ -122,14 +126,16 @@ void DnsStreamHandler::tcp_message_ready_cb(int8_t side, const pcpp::TcpStreamDa
 
     // if not tracking connection, and it's DNS, then start tracking.
     if (iter == _tcp_connections.end()) {
-        uint16_t port{0};
+        // note we want to capture metrics only when one of the ports is dns,
+        // but metrics on the port which is _not_ the dns port
+        uint16_t metric_port{0};
         if (DnsLayer::isDnsPort(tcpData.getConnectionData().dstPort)) {
-            port = tcpData.getConnectionData().dstPort;
+            metric_port = tcpData.getConnectionData().srcPort;
         } else if (DnsLayer::isDnsPort(tcpData.getConnectionData().srcPort)) {
-            port = tcpData.getConnectionData().srcPort;
+            metric_port = tcpData.getConnectionData().dstPort;
         }
-        if (port) {
-            _tcp_connections.emplace(flowKey, TcpFlowData(tcpData.getConnectionData().srcIP.getType() == pcpp::IPAddress::IPv4AddressType, port));
+        if (metric_port) {
+            _tcp_connections.emplace(flowKey, TcpFlowData(tcpData.getConnectionData().srcIP.getType() == pcpp::IPAddress::IPv4AddressType, metric_port));
             iter = _tcp_connections.find(tcpData.getConnectionData().flowKey);
         } else {
             // not tracking
@@ -165,16 +171,17 @@ void DnsStreamHandler::tcp_connection_start_cb(const pcpp::ConnectionData &conne
     // look for the connection
     auto iter = _tcp_connections.find(connectionData.flowKey);
 
-    // start a new connection if it's DNS
-    uint16_t port{0};
+    // note we want to capture metrics only when one of the ports is dns,
+    // but metrics on the port which is _not_ the dns port
+    uint16_t metric_port{0};
     if (DnsLayer::isDnsPort(connectionData.dstPort)) {
-        port = connectionData.dstPort;
+        metric_port = connectionData.srcPort;
     } else if (DnsLayer::isDnsPort(connectionData.srcPort)) {
-        port = connectionData.srcPort;
+        metric_port = connectionData.dstPort;
     }
-    if (iter == _tcp_connections.end() && port) {
+    if (iter == _tcp_connections.end() && metric_port) {
         // add it to the connections
-        _tcp_connections.emplace(connectionData.flowKey, TcpFlowData(connectionData.srcIP.getType() == pcpp::IPAddress::IPv4AddressType, port));
+        _tcp_connections.emplace(connectionData.flowKey, TcpFlowData(connectionData.srcIP.getType() == pcpp::IPAddress::IPv4AddressType, metric_port));
     }
 }
 
@@ -200,9 +207,13 @@ void DnsStreamHandler::window_json(json &j, uint64_t period, bool merged)
         _metrics->window_single_json(j, schema_key(), period);
     }
 }
-void DnsStreamHandler::set_initial_tstamp(timespec stamp)
+void DnsStreamHandler::set_start_tstamp(timespec stamp)
 {
-    _metrics->set_initial_tstamp(stamp);
+    _metrics->set_start_tstamp(stamp);
+}
+void DnsStreamHandler::set_end_tstamp(timespec stamp)
+{
+    _metrics->set_end_tstamp(stamp);
 }
 void DnsStreamHandler::info_json(json &j) const
 {

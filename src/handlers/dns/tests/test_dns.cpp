@@ -9,24 +9,6 @@ using namespace vizer::handler::dns;
 TEST_CASE("dns", "[dns]")
 {
 
-    // TODO replace with pcap integration test
-    //    SECTION("random qnames")
-    //    {
-    //        MetricsMgr mm(false, 5, 100);
-    //        mm.setInitialShiftTS();
-    //
-    //        for (int i = 0; i < 9; i++) {
-    //            for (int k = 0; k < 11; k++) {
-    //                DnsLayer dns;
-    //                dns.getDnsHeader()->queryOrResponse = query;
-    //                std::stringstream name;
-    //                name << "0000" << k << ".0000" << i << ".com";
-    //                dns.addQuery(name.str(), DnsType::DNS_TYPE_A, DnsClass::DNS_CLASS_IN);
-    //                mm.newDNSPacket(&dns, Direction::toHost, pcpp::IPv4, pcpp::UDP);
-    //            }
-    //        }
-    //    }
-
     SECTION("aggregateDomain")
     {
         AggDomainResult result;

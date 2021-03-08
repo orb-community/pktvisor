@@ -31,12 +31,12 @@ jobs:
         # Some projects don't allow in-source building, so create a separate build directory
         # We'll use this as our working directory for all subsequent commands
         run: cmake -E make_directory ${{github.workspace}}/build
-        
+
       - name: Get Conan
         # You may pin to the exact commit or the version.
         # uses: turtlebrowser/get-conan@4dc7e6dd45c8b1e02e909979d7cfc5ebba6ddbe2
         uses: turtlebrowser/get-conan@v1.0
-      
+
       - name: Conan profile
         run: |
           conan profile new --detect default
@@ -45,47 +45,47 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run:
           conan profile update settings.compiler.libcxx=libstdc++11 default
-      
+
       - name: Conan install
         working-directory: ${{github.workspace}}/build
         run: conan install ..
-        
+
       - name: linux package install
         if: matrix.os == 'ubuntu-latest'
-        run: | 
+        run: |
           sudo apt-get update
           sudo apt-get install --yes --no-install-recommends libpcap-dev pkgconf golang ca-certificates libmaxminddb-dev jq
-          
+
       - name: osx package install
         if: matrix.os == 'macos-latest'
-        run: | 
+        run: |
           brew update
           brew install libmaxminddb
-          
+
       - name: PcapPlusPlus checkout
         run: |
-              git clone https://github.com/ns1/PcapPlusPlus.git
-              cd PcapPlusPlus
-              mkdir ${{github.workspace}}/local
-              
+          git clone https://github.com/ns1/PcapPlusPlus.git
+          cd PcapPlusPlus
+          mkdir ${{github.workspace}}/local
+
       - name: PcapPlusPlus config (linux)
         if: matrix.os == 'ubuntu-latest'
         working-directory: ${{github.workspace}}/PcapPlusPlus
         run: |
-              ./configure-linux.sh --install-dir ${{github.workspace}}/local
+          ./configure-linux.sh --install-dir ${{github.workspace}}/local
 
       - name: PcapPlusPlus config (macos)
         if: matrix.os == 'macos-latest'
         working-directory: ${{github.workspace}}/PcapPlusPlus
         run: |
-              ./configure-mac_os_x.sh --install-dir ${{github.workspace}}/local
+          ./configure-mac_os_x.sh --install-dir ${{github.workspace}}/local
 
       - name: PcapPlusPlus install
-        working-directory: ${{github.workspace}}/PcapPlusPlus        
+        working-directory: ${{github.workspace}}/PcapPlusPlus
         run: |
-              make libs 
-              make install -j 2
-      
+          make libs
+          make install -j 2
+
       - name: Configure CMake
         # Use a bash shell so we can use the same syntax for environment variable
         # access regardless of the host operating system
@@ -102,9 +102,9 @@ jobs:
         # Execute the build.  You can specify a specific target with "--target <NAME>"
         run: cmake --build . --config $BUILD_TYPE -- -j 2
 
-#     - name: Test
-#       working-directory: ${{github.workspace}}/build
-#       shell: bash
-#       # Execute tests defined by the CMake configuration.
-#       # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
-#       run: ctest -C $BUILD_TYPE
+      - name: Test
+        working-directory: ${{github.workspace}}/build
+        shell: bash
+        # Execute tests defined by the CMake configuration.
+        # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
+        run: ctest -C $BUILD_TYPE

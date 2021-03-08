@@ -37,3 +37,7 @@ add_executable(unit-tests-handler-dns
 
 target_link_libraries(unit-tests-handler-dns PRIVATE Vizer::Handler::Dns)
 
+add_test(NAME unit-tests-handler-dns
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/src/tests
+        COMMAND unit-tests-handler-dns
+        )

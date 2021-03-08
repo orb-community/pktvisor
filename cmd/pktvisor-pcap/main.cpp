@@ -33,7 +33,8 @@ static const char USAGE[] =
       pktvisor-pcap (-h | --help)
       pktvisor-pcap --version
 
-    Summarize a pcap file
+    Summarize a pcap file. The result will be written to stdout in JSON format, while console logs will be printed
+    to stderr.
 
     Options:
       --max-deep-sample N   Never deep sample more than N% of streams (an int between 0 and 100) [default: 100]
@@ -70,7 +71,7 @@ void initialize_geo(const docopt::value &city, const docopt::value &asn)
         geo::GeoIP().enable(city.asString());
     }
     if (asn) {
-        geo::GeoASN().enable(city.asString());
+        geo::GeoASN().enable(asn.asString());
     }
 }
 
@@ -83,7 +84,7 @@ int main(int argc, char *argv[])
         true,           // show help if requested
         VIZER_VERSION); // version string
 
-    auto logger = spdlog::stdout_color_mt("pktvisor");
+    auto logger = spdlog::stderr_color_mt("pktvisor");
     if (args["-v"].asBool()) {
         logger->set_level(spdlog::level::debug);
     }
@@ -170,7 +171,7 @@ int main(int argc, char *argv[])
 
         handler::net::NetStreamHandler *net_handler{nullptr};
         {
-            auto handler_module = std::make_unique<handler::net::NetStreamHandler>("net", pcap_stream, periods, sample_rate, false);
+            auto handler_module = std::make_unique<handler::net::NetStreamHandler>("net", pcap_stream, periods, sample_rate);
             handler_manager->module_add(std::move(handler_module));
             auto [handler, handler_mgr_lock] = handler_manager->module_get_locked("net");
             handler_mgr_lock.unlock();
@@ -178,13 +179,14 @@ int main(int argc, char *argv[])
         }
         handler::dns::DnsStreamHandler *dns_handler{nullptr};
         {
-            auto handler_module = std::make_unique<handler::dns::DnsStreamHandler>("dns", pcap_stream, periods, sample_rate, false);
+            auto handler_module = std::make_unique<handler::dns::DnsStreamHandler>("dns", pcap_stream, periods, sample_rate);
             handler_manager->module_add(std::move(handler_module));
             auto [handler, handler_mgr_lock] = handler_manager->module_get_locked("dns");
             handler_mgr_lock.unlock();
             dns_handler = dynamic_cast<handler::dns::DnsStreamHandler *>(handler);
         }
 
+        // blocking
         pcap_stream->start();
 
         json result;
@@ -197,7 +199,8 @@ int main(int argc, char *argv[])
             net_handler->window_json(result, periods, true);
             dns_handler->window_json(result, periods, true);
         }
-        logger->info("{}", result.dump());
+        std::cout << result.dump() << std::endl;
+
         shutdown_handler(SIGUSR1);
 
     } catch (const std::exception &e) {

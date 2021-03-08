@@ -68,7 +68,7 @@ void initialize_geo(const docopt::value &city, const docopt::value &asn)
         geo::GeoIP().enable(city.asString());
     }
     if (asn) {
-        geo::GeoASN().enable(city.asString());
+        geo::GeoASN().enable(asn.asString());
     }
 }
 

@@ -126,8 +126,8 @@ class DnsMetricsManager final : public vizer::AbstractMetricsManager<DnsMetricsB
     float _from90th = 0.0;
 
 public:
-    DnsMetricsManager(uint periods, int deepSampleRate, bool realtime = true)
-        : vizer::AbstractMetricsManager<DnsMetricsBucket>(periods, deepSampleRate, realtime)
+    DnsMetricsManager(uint periods, int deepSampleRate)
+        : vizer::AbstractMetricsManager<DnsMetricsBucket>(periods, deepSampleRate)
     {
     }
 
@@ -199,6 +199,7 @@ class DnsStreamHandler final : public vizer::StreamMetricsHandler<DnsMetricsMana
 
     sigslot::connection _pkt_udp_connection;
     sigslot::connection _start_tstamp_connection;
+    sigslot::connection _end_tstamp_connection;
 
     sigslot::connection _tcp_start_connection;
     sigslot::connection _tcp_end_connection;
@@ -208,10 +209,11 @@ class DnsStreamHandler final : public vizer::StreamMetricsHandler<DnsMetricsMana
     void tcp_message_ready_cb(int8_t side, const pcpp::TcpStreamData &tcpData);
     void tcp_connection_start_cb(const pcpp::ConnectionData &connectionData);
     void tcp_connection_end_cb(const pcpp::ConnectionData &connectionData, pcpp::TcpReassembly::ConnectionEndReason reason);
-    void set_initial_tstamp(timespec stamp);
+    void set_start_tstamp(timespec stamp);
+    void set_end_tstamp(timespec stamp);
 
 public:
-    DnsStreamHandler(const std::string &name, PcapInputStream *stream, uint periods, int deepSampleRate, bool realtime = true);
+    DnsStreamHandler(const std::string &name, PcapInputStream *stream, uint periods, int deepSampleRate);
     ~DnsStreamHandler() override;
 
     // vizer::AbstractModule
