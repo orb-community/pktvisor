@@ -31,12 +31,12 @@ static const char USAGE[] =
 
     IFACE, if specified, is either a network interface or an IP address (4 or 6). If this is specified,
     a "pcap" input stream will be automatically created, with "net" and "dns" handler modules attached.
-    ** Note that this is deprecated; you should instead use --full-api and create the pcap input stream via API.
+    ** Note that this is deprecated; you should instead use --admin-api and create the pcap input stream via API.
 
     Base Options:
       -l HOST               Run webserver on the given host or IP [default: localhost]
       -p PORT               Run webserver on the given port [default: 10853]
-      --full-api            Enable full REST API giving complete control plane functionality [default: false]
+      --admin-api           Enable admin REST API giving complete control plane functionality [default: false]
                             When not specified, the exposed API is read-only access to summarized metrics.
                             When specified, write access is enabled for all modules.
       -h --help             Show this screen
@@ -48,7 +48,7 @@ static const char USAGE[] =
     Handler Module Defaults:
       --max-deep-sample N   Never deep sample more than N% of streams (an int between 0 and 100) [default: 100]
       --periods P           Hold this many 60 second time periods of history in memory [default: 5]
-    pcap Input Module Options (deprecated, use full-api instead):
+    pcap Input Module Options (deprecated, use admin-api instead):
       -b BPF                Filter packets using the given BPF string
       -H HOSTSPEC           Specify subnets (comma separated) to consider HOST, in CIDR form. In live capture this /may/ be detected automatically
                             from capture device but /must/ be specified for pcaps. Example: "10.0.1.0/24,10.0.2.1/32,2001:db8::/64"
@@ -88,7 +88,7 @@ int main(int argc, char *argv[])
         logger->set_level(spdlog::level::debug);
     }
 
-    CoreServer svr(!args["--full-api"].asBool(), logger);
+    CoreServer svr(!args["--admin-api"].asBool(), logger);
     svr.set_http_logger([&logger](const auto &req, const auto &res) {
         logger->info("REQUEST: {} {} {}", req.method, req.path, res.status);
         if (res.status == 500) {
@@ -188,9 +188,9 @@ int main(int argc, char *argv[])
             logger->error(e.what());
             exit(-1);
         }
-    } else if (!args["--full-api"].asBool()) {
-        // if they didn't specify pcap target, or config file, or full api then there is nothing to do
-        logger->error("Nothing to do: specify --full-api or IFACE.");
+    } else if (!args["--admin-api"].asBool()) {
+        // if they didn't specify pcap target, or config file, or admin api then there is nothing to do
+        logger->error("Nothing to do: specify --admin-api or IFACE.");
         std::cerr << USAGE << std::endl;
         exit(-1);
     }
