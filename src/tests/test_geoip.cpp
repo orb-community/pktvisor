@@ -1,6 +1,7 @@
 #include "GeoDB.h"
 #include <arpa/inet.h>
 #include <catch2/catch.hpp>
+#pragma GCC diagnostic ignored "-Wold-style-cast"
 
 TEST_CASE("GeoIP", "[geoip]")
 {

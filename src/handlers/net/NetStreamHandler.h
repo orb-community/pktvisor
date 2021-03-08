@@ -11,6 +11,7 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 #pragma GCC diagnostic ignored "-Wunused-function"
+#pragma GCC diagnostic ignored "-Wrange-loop-analysis"
 #include <cpc_sketch.hpp>
 #include <frequent_items_sketch.hpp>
 #include <kll_sketch.hpp>
@@ -86,7 +87,7 @@ public:
         _rate_out.cancel();
     }
 
-    void process_packet(bool deep, pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp);
+    void process_packet(bool deep, pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4);
 };
 
 class NetworkMetricsManager final : public vizer::AbstractMetricsManager<NetworkMetricsBucket>

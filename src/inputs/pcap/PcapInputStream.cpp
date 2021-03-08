@@ -8,6 +8,7 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 #pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma GCC diagnostic ignored "-Wc99-extensions"
 #include <IPv4Layer.h>
 #include <IPv6Layer.h>
 #include <PacketUtils.h>
@@ -46,15 +47,15 @@ static void _tcp_connection_end_cb(const pcpp::ConnectionData &connectionData, p
     stream->tcp_connection_end(connectionData, reason);
 }
 
-static void _packet_arrives_cb(pcpp::RawPacket *rawPacket, pcpp::PcapLiveDevice *dev, void *cookie)
+static void _packet_arrives_cb(pcpp::RawPacket *rawPacket, [[maybe_unused]] pcpp::PcapLiveDevice *dev, void *cookie)
 {
     auto stream = static_cast<PcapInputStream *>(cookie);
     stream->process_raw_packet(rawPacket);
 }
 
-static void _pcap_stats_update(pcpp::IPcapDevice::PcapStats &stats, void *cookie)
+static void _pcap_stats_update([[maybe_unused]] pcpp::IPcapDevice::PcapStats &stats, [[maybe_unused]] void *cookie)
 {
-    auto stream = static_cast<PcapInputStream *>(cookie);
+    // auto stream = static_cast<PcapInputStream *>(cookie);
     // TODO expose this
 }
 

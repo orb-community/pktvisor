@@ -9,6 +9,7 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 #pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma GCC diagnostic ignored "-Wc99-extensions"
 #include <IPv4Layer.h>
 #include <IPv6Layer.h>
 #pragma GCC diagnostic pop
@@ -220,7 +221,7 @@ void NetworkMetricsBucket::to_json(json &j) const
 }
 
 // the main bucket analysis
-void NetworkMetricsBucket::process_packet(bool deep, pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp)
+void NetworkMetricsBucket::process_packet(bool deep, pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4)
 {
 
     std::unique_lock lock(_mutex);
@@ -277,10 +278,10 @@ void NetworkMetricsBucket::process_packet(bool deep, pcpp::Packet &payload, Pack
             if (geo::enabled()) {
                 if (IPv4tosockaddr(IP4layer->getSrcIpAddress(), &sa4)) {
                     if (geo::GeoIP().enabled()) {
-                        _topGeoLoc.update(geo::GeoIP().getGeoLocString((struct sockaddr *)&sa4));
+                        _topGeoLoc.update(geo::GeoIP().getGeoLocString(reinterpret_cast<struct sockaddr *>(&sa4)));
                     }
                     if (geo::GeoASN().enabled()) {
-                        _topASN.update(geo::GeoASN().getASNString((struct sockaddr *)&sa4));
+                        _topASN.update(geo::GeoASN().getASNString(reinterpret_cast<struct sockaddr *>(&sa4)));
                     }
                 }
             }
@@ -290,38 +291,38 @@ void NetworkMetricsBucket::process_packet(bool deep, pcpp::Packet &payload, Pack
             if (geo::enabled()) {
                 if (IPv4tosockaddr(IP4layer->getDstIpAddress(), &sa4)) {
                     if (geo::GeoIP().enabled()) {
-                        _topGeoLoc.update(geo::GeoIP().getGeoLocString((struct sockaddr *)&sa4));
+                        _topGeoLoc.update(geo::GeoIP().getGeoLocString(reinterpret_cast<struct sockaddr *>(&sa4)));
                     }
                     if (geo::GeoASN().enabled()) {
-                        _topASN.update(geo::GeoASN().getASNString((struct sockaddr *)&sa4));
+                        _topASN.update(geo::GeoASN().getASNString(reinterpret_cast<struct sockaddr *>(&sa4)));
                     }
                 }
             }
         }
     } else if (IP6layer) {
         if (dir == PacketDirection::toHost) {
-            _srcIPCard.update((void *)IP6layer->getSrcIpAddress().toBytes(), 16);
+            _srcIPCard.update(reinterpret_cast<const void *>(IP6layer->getSrcIpAddress().toBytes()), 16);
             _topIPv6.update(IP6layer->getSrcIpAddress().toString());
             if (geo::enabled()) {
                 if (IPv6tosockaddr(IP6layer->getSrcIpAddress(), &sa6)) {
                     if (geo::GeoIP().enabled()) {
-                        _topGeoLoc.update(geo::GeoIP().getGeoLocString((struct sockaddr *)&sa6));
+                        _topGeoLoc.update(geo::GeoIP().getGeoLocString(reinterpret_cast<struct sockaddr *>(&sa6)));
                     }
                     if (geo::GeoASN().enabled()) {
-                        _topASN.update(geo::GeoASN().getASNString((struct sockaddr *)&sa6));
+                        _topASN.update(geo::GeoASN().getASNString(reinterpret_cast<struct sockaddr *>(&sa6)));
                     }
                 }
             }
         } else if (dir == PacketDirection::fromHost) {
-            _dstIPCard.update((void *)IP6layer->getDstIpAddress().toBytes(), 16);
+            _dstIPCard.update(reinterpret_cast<const void *>(IP6layer->getDstIpAddress().toBytes()), 16);
             _topIPv6.update(IP6layer->getDstIpAddress().toString());
             if (geo::enabled()) {
                 if (IPv6tosockaddr(IP6layer->getDstIpAddress(), &sa6)) {
                     if (geo::GeoIP().enabled()) {
-                        _topGeoLoc.update(geo::GeoIP().getGeoLocString((struct sockaddr *)&sa6));
+                        _topGeoLoc.update(geo::GeoIP().getGeoLocString(reinterpret_cast<struct sockaddr *>(&sa6)));
                     }
                     if (geo::GeoASN().enabled()) {
-                        _topASN.update(geo::GeoASN().getASNString((struct sockaddr *)&sa6));
+                        _topASN.update(geo::GeoASN().getASNString(reinterpret_cast<struct sockaddr *>(&sa6)));
                     }
                 }
             }
@@ -335,7 +336,7 @@ void NetworkMetricsManager::process_packet(pcpp::Packet &payload, PacketDirectio
     // base event
     new_event(stamp);
     // process in the "live" bucket
-    live_bucket()->process_packet(_deep_sampling_now, payload, dir, l3, l4, stamp);
+    live_bucket()->process_packet(_deep_sampling_now, payload, dir, l3, l4);
 }
 
 }

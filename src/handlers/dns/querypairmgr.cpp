@@ -21,7 +21,7 @@ namespace vizer::handler::dns {
 
 void QueryResponsePairMgr::start_transaction(uint32_t flowKey, uint16_t queryID, timespec stamp)
 {
-    _dns_transactions[DnsXactID(flowKey, queryID)] = {stamp};
+    _dns_transactions[DnsXactID(flowKey, queryID)] = {stamp, {0, 0}};
 }
 
 std::pair<bool, DnsTransaction> QueryResponsePairMgr::maybe_end_transaction(uint32_t flowKey, uint16_t queryID, timespec stamp)
@@ -33,7 +33,7 @@ std::pair<bool, DnsTransaction> QueryResponsePairMgr::maybe_end_transaction(uint
         _dns_transactions.erase(key);
         return std::pair<bool, DnsTransaction>(true, result);
     } else {
-        return std::pair<bool, DnsTransaction>(false, DnsTransaction{timespec{0, 0}});
+        return std::pair<bool, DnsTransaction>(false, DnsTransaction{{0, 0}, {0, 0}});
     }
 }
 

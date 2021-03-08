@@ -43,7 +43,7 @@ protected:
 
         j["metrics"]["periods"] = json::array();
         const double fractions[4]{0.50, 0.90, 0.95, 0.99};
-        for (int i = 0; i < _metrics->current_periods(); ++i) {
+        for (auto i = 0UL; i < _metrics->current_periods(); ++i) {
             {
                 std::stringstream ssts;
                 time_t b_time_t = _metrics->bucket(i)->start_tstamp().tv_sec;
