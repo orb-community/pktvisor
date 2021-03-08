@@ -7,6 +7,8 @@ target_include_directories(pktvisord
 
 target_link_libraries(pktvisord
         PRIVATE
+        timer
+        resolv
         ${CONAN_LIBS_DOCOPT.CPP}
         Vizer::Core
         ${VIZER_STATIC_PLUGINS}

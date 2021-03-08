@@ -174,7 +174,6 @@ TEST_CASE("Parse DNS random UDP/TCP tests", "[pcap][net]")
 
     nlohmann::json j;
     dns_handler.metrics()->bucket(0)->to_json(j);
-    WARN(j.dump(4));
 
     CHECK(j["cardinality"]["qname"] == 2055); // flame was run with 1000 randoms x2 (udp+tcp)
 

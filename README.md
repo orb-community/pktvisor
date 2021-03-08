@@ -153,12 +153,18 @@ Build Dependencies
 * Conan C++ package manager
 * MaxMind DB libmaxmindb
 
+Running/Debugging Integration Tests:
+
+* jq
+* graphtage
+
 Building
 ---
 
 Building is based on CMake.
 
 Default build:
+
 ```
 mkdir build; cd build
 conan install ..

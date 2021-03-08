@@ -10,6 +10,7 @@
 #include "inputs/static_plugins.h"
 #include "vizer_config.h"
 #include <docopt/docopt.h>
+#include <resolv.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
 
@@ -17,6 +18,7 @@
 #include "handlers/dns/DnsStreamHandler.h"
 #include "handlers/net/NetStreamHandler.h"
 #include "inputs/pcap/PcapInputStream.h"
+#include "timer.hpp"
 
 static const char USAGE[] =
     R"(pktvisord.
@@ -39,6 +41,7 @@ static const char USAGE[] =
                             When specified, write access is enabled for all modules.
       -h --help             Show this screen
       -v                    Verbose log output
+      --no-track            Don't send lightweight, anonymous usage metrics.
       --version             Show version
       --geo-city FILE       GeoLite2 City database to use for IP to Geo mapping (if enabled)
       --geo-asn FILE        GeoLite2 ASN database to use for IP to ASN mapping (if enabled)
@@ -109,6 +112,28 @@ int main(int argc, char *argv[])
         if (sample_rate != 100) {
             logger->info("Using maximum deep sample rate: {}%", sample_rate);
         }
+    }
+
+    /**
+     * anonymous lightweight usage metrics, to help understand project usage
+     */
+    std::shared_ptr<timer::interval_handle> timer_handle;
+    auto usage_metrics = [&logger] {
+        u_char buf[1024];
+        std::string version_str{VIZER_VERSION_NUM};
+        std::reverse(version_str.begin(), version_str.end());
+        std::string target = version_str + ".pktvisord.metrics.pktvisor.dev.";
+        logger->info("sending anonymous usage metrics (once/day, use --no-track to disable): {}", target);
+        if (res_query(target.c_str(), ns_c_in, ns_t_txt, buf, 1024) < 0) {
+            logger->warn("metrics send failed");
+        }
+    };
+    if (!args["--no-track"].asBool()) {
+        static timer timer_thread{1min};
+        // once at start up
+        usage_metrics();
+        // once per day
+        timer_handle = timer_thread.set_interval(24h, usage_metrics);
     }
 
     long periods = args["--periods"].asLong();
