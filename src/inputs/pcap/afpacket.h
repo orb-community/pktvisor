@@ -4,7 +4,10 @@
 
 #pragma once
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wold-style-cast"
 #include <PcapLiveDevice.h>
+#pragma GCC diagnostic pop
 #include <atomic>
 #include <cstdint>
 #include <functional>

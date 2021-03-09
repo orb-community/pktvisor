@@ -10,6 +10,7 @@
 #include "inputs/static_plugins.h"
 #include "vizer_config.h"
 #include <docopt/docopt.h>
+#include <resolv.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
 
@@ -17,6 +18,7 @@
 #include "handlers/dns/DnsStreamHandler.h"
 #include "handlers/net/NetStreamHandler.h"
 #include "inputs/pcap/PcapInputStream.h"
+#include "timer.hpp"
 
 static const char USAGE[] =
     R"(pktvisord.
@@ -29,23 +31,24 @@ static const char USAGE[] =
 
     IFACE, if specified, is either a network interface or an IP address (4 or 6). If this is specified,
     a "pcap" input stream will be automatically created, with "net" and "dns" handler modules attached.
-    ** Note that this is deprecated; you should instead use --full-api and create the pcap input stream via API.
+    ** Note that this is deprecated; you should instead use --admin-api and create the pcap input stream via API.
 
     Base Options:
       -l HOST               Run webserver on the given host or IP [default: localhost]
       -p PORT               Run webserver on the given port [default: 10853]
-      --full-api            Enable full REST API giving complete control plane functionality [default: false]
+      --admin-api           Enable admin REST API giving complete control plane functionality [default: false]
                             When not specified, the exposed API is read-only access to summarized metrics.
                             When specified, write access is enabled for all modules.
       -h --help             Show this screen
       -v                    Verbose log output
+      --no-track            Don't send lightweight, anonymous usage metrics.
       --version             Show version
       --geo-city FILE       GeoLite2 City database to use for IP to Geo mapping (if enabled)
       --geo-asn FILE        GeoLite2 ASN database to use for IP to ASN mapping (if enabled)
     Handler Module Defaults:
       --max-deep-sample N   Never deep sample more than N% of streams (an int between 0 and 100) [default: 100]
       --periods P           Hold this many 60 second time periods of history in memory [default: 5]
-    pcap Input Module Options (deprecated, use full-api instead):
+    pcap Input Module Options (deprecated, use admin-api instead):
       -b BPF                Filter packets using the given BPF string
       -H HOSTSPEC           Specify subnets (comma separated) to consider HOST, in CIDR form. In live capture this /may/ be detected automatically
                             from capture device but /must/ be specified for pcaps. Example: "10.0.1.0/24,10.0.2.1/32,2001:db8::/64"
@@ -85,7 +88,7 @@ int main(int argc, char *argv[])
         logger->set_level(spdlog::level::debug);
     }
 
-    CoreServer svr(!args["--full-api"].asBool(), logger);
+    CoreServer svr(!args["--admin-api"].asBool(), logger);
     svr.set_http_logger([&logger](const auto &req, const auto &res) {
         logger->info("REQUEST: {} {} {}", req.method, req.path, res.status);
         if (res.status == 500) {
@@ -109,6 +112,28 @@ int main(int argc, char *argv[])
         if (sample_rate != 100) {
             logger->info("Using maximum deep sample rate: {}%", sample_rate);
         }
+    }
+
+    /**
+     * anonymous lightweight usage metrics, to help understand project usage
+     */
+    std::shared_ptr<timer::interval_handle> timer_handle;
+    auto usage_metrics = [&logger] {
+        u_char buf[1024];
+        std::string version_str{VIZER_VERSION_NUM};
+        std::reverse(version_str.begin(), version_str.end());
+        std::string target = version_str + ".pktvisord.metrics.pktvisor.dev.";
+        logger->info("sending anonymous usage metrics (once/day, use --no-track to disable): {}", target);
+        if (res_query(target.c_str(), ns_c_in, ns_t_txt, buf, 1024) < 0) {
+            logger->warn("metrics send failed");
+        }
+    };
+    if (!args["--no-track"].asBool()) {
+        static timer timer_thread{1min};
+        // once at start up
+        usage_metrics();
+        // once per day
+        timer_handle = timer_thread.set_interval(24h, usage_metrics);
     }
 
     long periods = args["--periods"].asLong();
@@ -163,9 +188,9 @@ int main(int argc, char *argv[])
             logger->error(e.what());
             exit(-1);
         }
-    } else if (!args["--full-api"].asBool()) {
-        // if they didn't specify pcap target, or config file, or full api then there is nothing to do
-        logger->error("Nothing to do: specify --full-api or IFACE.");
+    } else if (!args["--admin-api"].asBool()) {
+        // if they didn't specify pcap target, or config file, or admin api then there is nothing to do
+        logger->error("Nothing to do: specify --admin-api or IFACE.");
         std::cerr << USAGE << std::endl;
         exit(-1);
     }

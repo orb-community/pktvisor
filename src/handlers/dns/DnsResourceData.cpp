@@ -3,9 +3,15 @@
 #include "DnsResourceData.h"
 #include "EndianPortable.h"
 #include <GeneralUtils.h>
+#pragma GCC diagnostic push
+#pragma clang diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"
 #include <Logger.h>
+#pragma GCC diagnostic pop
 #include <sstream>
 #include <string.h>
+
+// forked code
+#pragma GCC diagnostic ignored "-Wunused-parameter"
 
 namespace vizer::handler::dns {
 
@@ -161,7 +167,8 @@ GenericDnsResourceData::GenericDnsResourceData(const std::string& dataAsHexStrin
 	}
 }
 
-GenericDnsResourceData::GenericDnsResourceData(const GenericDnsResourceData& other)
+GenericDnsResourceData::GenericDnsResourceData(const GenericDnsResourceData &other)
+    : IDnsResourceData()
 {
 	m_DataLen = other.m_DataLen;
 

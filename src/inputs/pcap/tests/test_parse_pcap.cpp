@@ -1,3 +1,8 @@
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wold-style-cast"
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma clang diagnostic ignored "-Wc99-extensions"
+#pragma clang diagnostic ignored "-Wrange-loop-analysis"
 #include <Packet.h>
 #include <PcapFileDevice.h>
 #include <ProtocolType.h>
@@ -5,6 +10,8 @@
 #include <arpa/inet.h>
 #include <catch2/catch.hpp>
 #include <frequent_items_sketch.hpp>
+#pragma GCC diagnostic pop
+#pragma GCC diagnostic ignored "-Wold-style-cast"
 
 TEST_CASE("Top K Src Ports", "[pcap][ipv4][topk][dns][udp]")
 {

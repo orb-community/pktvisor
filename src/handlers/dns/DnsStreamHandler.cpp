@@ -9,6 +9,8 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 #pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma clang diagnostic ignored "-Wc99-extensions"
+#pragma GCC diagnostic ignored "-Wpedantic"
 #include <IPv4Layer.h>
 #include <IPv6Layer.h>
 #pragma GCC diagnostic pop
@@ -185,7 +187,7 @@ void DnsStreamHandler::tcp_connection_start_cb(const pcpp::ConnectionData &conne
     }
 }
 
-void DnsStreamHandler::tcp_connection_end_cb(const pcpp::ConnectionData &connectionData, pcpp::TcpReassembly::ConnectionEndReason reason)
+void DnsStreamHandler::tcp_connection_end_cb(const pcpp::ConnectionData &connectionData, [[maybe_unused]] pcpp::TcpReassembly::ConnectionEndReason reason)
 {
     // find the connection in the connections by the flow key
     auto iter = _tcp_connections.find(connectionData.flowKey);
@@ -425,7 +427,7 @@ void DnsMetricsBucket::to_json(json &j) const
 }
 
 // the main bucket analysis
-void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowkey, uint16_t port, timespec stamp)
+void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint16_t port)
 {
 
     std::unique_lock lock(_mutex);
@@ -533,9 +535,9 @@ void DnsMetricsBucket::new_dns_transaction(bool deep, float to90th, float from90
             auto name = query->getName();
             // dir is the direction of the last packet, meaning the reply so from a transaction perspective
             // we look at it from the direction of the query, so the opposite side than we have here
-            if (dir == PacketDirection::toHost && from90th > 0.0 && xactTime >= from90th) {
+            if (dir == PacketDirection::toHost && from90th > 0 && xactTime >= from90th) {
                 _dns_slowXactOut.update(name);
-            } else if (dir == PacketDirection::fromHost && to90th > 0.0 && xactTime >= to90th) {
+            } else if (dir == PacketDirection::fromHost && to90th > 0 && xactTime >= to90th) {
                 _dns_slowXactIn.update(name);
             }
         }
@@ -548,7 +550,7 @@ void DnsMetricsManager::process_dns_layer(DnsLayer &payload, PacketDirection dir
     // base event
     new_event(stamp);
     // process in the "live" bucket. this will parse the resources if we are deep sampling
-    live_bucket()->process_dns_layer(_deep_sampling_now, payload, dir, l3, l4, flowkey, port, stamp);
+    live_bucket()->process_dns_layer(_deep_sampling_now, payload, l3, l4, port);
     // handle dns transactions (query/response pairs)
     if (payload.getDnsHeader()->queryOrResponse == QR::response) {
         auto xact = _qr_pair_manager.maybe_end_transaction(flowkey, payload.getDnsHeader()->transactionID, stamp);

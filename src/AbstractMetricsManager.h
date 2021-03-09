@@ -14,7 +14,10 @@
 #include <deque>
 #include <exception>
 #include <nlohmann/json.hpp>
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
 #include <randutils.hpp>
+#pragma GCC diagnostic pop
 #include <shared_mutex>
 #include <sstream>
 #include <sys/time.h>
