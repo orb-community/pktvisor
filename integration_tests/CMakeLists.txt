@@ -18,7 +18,7 @@ vizer_int_test(dns_ipv6_udp)
 vizer_int_test(dns_ipv6_tcp)
 
 # this allows local, non-public integration tests (for example, on private pcap data)
-add_test(NAME external-tests
-        WORKING_DIRECTORY ${WORKING_DIR}
-        COMMAND ${CMAKE_SOURCE_DIR}/integration_tests/external.sh ${PCAP_BINARY}
-        )
+#add_test(NAME external-tests
+#        WORKING_DIRECTORY ${WORKING_DIR}
+#        COMMAND ${CMAKE_SOURCE_DIR}/integration_tests/external.sh ${PCAP_BINARY}
+#        )

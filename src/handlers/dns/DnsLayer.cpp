@@ -4,7 +4,7 @@
 #include "EndianPortable.h"
 #include <IpAddress.h>
 #pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"
+#pragma clang diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"
 #include <Logger.h>
 #pragma GCC diagnostic pop
 #include <iomanip>

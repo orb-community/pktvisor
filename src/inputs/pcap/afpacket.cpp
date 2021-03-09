@@ -28,7 +28,6 @@ AFPacket::AFPacket(PcapInputStream *stream, pcpp::OnPacketArrivesCallback cb, st
     unsigned int frame_size,
     unsigned int num_blocks)
     : fd(-1)
-    , inputStream(stream)
     , block_size(block_size)
     , frame_size(frame_size)
     , num_blocks(num_blocks)
@@ -40,6 +39,7 @@ AFPacket::AFPacket(PcapInputStream *stream, pcpp::OnPacketArrivesCallback cb, st
     , fanout_group_id(fanout_group_id)
     , map(nullptr)
     , cb(std::move(cb))
+    , inputStream(stream)
 {
     fd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
 
@@ -75,21 +75,17 @@ void AFPacket::walk_block(struct block_desc *pbd)
     int num_pkts = pbd->h1.num_pkts, i;
     uint64_t bytes = 0;
     struct tpacket3_hdr *ppd;
-    struct sockaddr_ll *sll;
 
-    ppd = (struct tpacket3_hdr *)((uint8_t *)pbd + pbd->h1.offset_to_first_pkt);
+    ppd = reinterpret_cast<struct tpacket3_hdr *>(reinterpret_cast<uint8_t *>(pbd) + pbd->h1.offset_to_first_pkt);
     for (i = 0; i < num_pkts; ++i) {
         bytes += ppd->tp_snaplen;
 
-        u_int8_t timestamp = 0;
-        u_int8_t add_hash = 0;
-
-        auto data_pointer = (uint8_t *)ppd + ppd->tp_mac;
+        auto data_pointer = reinterpret_cast<uint8_t *>(pbd) + ppd->tp_mac;
         pcpp::RawPacket packet(data_pointer, ppd->tp_snaplen, timespec{pbd->h1.ts_last_pkt.ts_sec, pbd->h1.ts_last_pkt.ts_nsec},
             false, pcpp::LINKTYPE_ETHERNET);
         cb(&packet, nullptr, inputStream);
 
-        ppd = (struct tpacket3_hdr *)((uint8_t *)ppd + ppd->tp_next_offset);
+        ppd = reinterpret_cast<struct tpacket3_hdr *>(reinterpret_cast<uint8_t *>(pbd) + ppd->tp_next_offset);
     }
 }
 
@@ -140,7 +136,7 @@ void AFPacket::set_socket_opts()
         sock_params.mr_type = PACKET_MR_PROMISC;
         sock_params.mr_ifindex = interface;
 
-        if (setsockopt(fd, SOL_PACKET, PACKET_ADD_MEMBERSHIP, (void *)&sock_params,
+        if (setsockopt(fd, SOL_PACKET, PACKET_ADD_MEMBERSHIP, reinterpret_cast<void *>(&sock_params),
                 sizeof(sock_params))
             == -1) {
             throw PcapException("Failed to enable promisc mode on AF_PACKET socket: " + std::string(strerror(errno)));
@@ -174,7 +170,7 @@ void AFPacket::set_socket_opts()
     req.tp_retire_blk_tov = 60; // Timeout in msec
     req.tp_feature_req_word = TP_FT_REQ_FILL_RXHASH;
 
-    if (setsockopt(fd, SOL_PACKET, PACKET_RX_RING, (void *)&req, sizeof(req)) == -1) {
+    if (setsockopt(fd, SOL_PACKET, PACKET_RX_RING, reinterpret_cast<void *>(&req), sizeof(req)) == -1) {
         throw PcapException("Failed to enable RX_RING for AF_PACKET socket: " + std::string(strerror(errno)));
     }
 }
@@ -185,8 +181,7 @@ void AFPacket::setup()
     set_socket_opts();
 
     // Enable mmap for PACKET_RX_RING.
-    map = (uint8_t *)mmap(nullptr, block_size * num_blocks, PROT_READ | PROT_WRITE,
-        MAP_SHARED | MAP_LOCKED, fd, 0);
+    map = reinterpret_cast<uint8_t *>(mmap(nullptr, block_size * num_blocks, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_LOCKED, fd, 0));
 
     if (map == MAP_FAILED) {
         throw PcapException("Failed to initialize RX_RING mmap: " + std::string(strerror(errno)));
@@ -196,7 +191,7 @@ void AFPacket::setup()
     rd.reserve(num_blocks); // = (struct iovec *)malloc(num_blocks * sizeof(struct iovec));
 
     // Initilize iov structures
-    for (int i = 0; i < num_blocks; ++i) {
+    for (auto i = 0U; i < num_blocks; ++i) {
         struct iovec cur {
         };
         cur.iov_base = map + (i * block_size);
@@ -216,7 +211,7 @@ void AFPacket::setup()
     bind_address.sll_pkttype = 0;
     bind_address.sll_halen = 0;
 
-    if (bind(fd, (struct sockaddr *)&bind_address, sizeof(bind_address)) == -1) {
+    if (bind(fd, reinterpret_cast<struct sockaddr *>(&bind_address), sizeof(bind_address)) == -1) {
         throw PcapException("Failed binding the AF_PACKET socket to the specified interface: " + std::string(strerror(errno)));
     }
 
@@ -253,7 +248,7 @@ void AFPacket::start_capture()
         pfd.revents = 0;
 
         while (running) {
-            auto pbd = (struct block_desc *)rd[current_block_num].iov_base;
+            auto pbd = reinterpret_cast<struct block_desc *>(rd[current_block_num].iov_base);
 
             if ((pbd->h1.block_status & TP_STATUS_USER) == 0) {
                 poll(&pfd, 1, -1);
@@ -286,7 +281,7 @@ void filter_try_compile(const std::string &filter, struct sock_fprog *bpf, int l
     }
 
     bpf->len = prog.bf_len;
-    bpf->filter = (struct sock_filter *)malloc(bpf->len * sizeof(struct sock_filter));
+    bpf->filter = reinterpret_cast<struct sock_filter *>(malloc(bpf->len * sizeof(struct sock_filter)));
     if (bpf->filter == nullptr) {
         throw PcapException("Failed to generating bpf filter: Out of memory");
     }

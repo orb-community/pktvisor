@@ -9,7 +9,8 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 #pragma GCC diagnostic ignored "-Wunused-parameter"
-#pragma GCC diagnostic ignored "-Wc99-extensions"
+#pragma clang diagnostic ignored "-Wc99-extensions"
+#pragma GCC diagnostic ignored "-Wpedantic"
 #include <IPv4Layer.h>
 #include <IPv6Layer.h>
 #pragma GCC diagnostic pop

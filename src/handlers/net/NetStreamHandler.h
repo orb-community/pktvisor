@@ -11,7 +11,7 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 #pragma GCC diagnostic ignored "-Wunused-function"
-#pragma GCC diagnostic ignored "-Wrange-loop-analysis"
+#pragma clang diagnostic ignored "-Wrange-loop-analysis"
 #include <cpc_sketch.hpp>
 #include <frequent_items_sketch.hpp>
 #include <kll_sketch.hpp>

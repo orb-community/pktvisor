@@ -9,7 +9,8 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 #pragma GCC diagnostic ignored "-Wunused-parameter"
-#pragma GCC diagnostic ignored "-Wc99-extensions"
+#pragma clang diagnostic ignored "-Wc99-extensions"
+#pragma GCC diagnostic ignored "-Wpedantic"
 #include <IPv4Layer.h>
 #include <IPv6Layer.h>
 #pragma GCC diagnostic pop
@@ -534,9 +535,9 @@ void DnsMetricsBucket::new_dns_transaction(bool deep, float to90th, float from90
             auto name = query->getName();
             // dir is the direction of the last packet, meaning the reply so from a transaction perspective
             // we look at it from the direction of the query, so the opposite side than we have here
-            if (dir == PacketDirection::toHost && from90th > 0.0 && xactTime >= from90th) {
+            if (dir == PacketDirection::toHost && from90th > 0 && xactTime >= from90th) {
                 _dns_slowXactOut.update(name);
-            } else if (dir == PacketDirection::fromHost && to90th > 0.0 && xactTime >= to90th) {
+            } else if (dir == PacketDirection::fromHost && to90th > 0 && xactTime >= to90th) {
                 _dns_slowXactIn.update(name);
             }
         }

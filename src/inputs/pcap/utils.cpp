@@ -90,7 +90,7 @@ void parseHostSpec(const std::string &spec, IPv4subnetList &ipv4List, IPv6subnet
             in6_addr mask_addr;
             ipv6_netmask(&mask_addr, std::stoi(cidr[1]));
             char buf[INET6_ADDRSTRLEN];
-            if (inet_ntop(AF_INET6, &mask_addr, buf, INET6_ADDRSTRLEN) == 0) {
+            if (inet_ntop(AF_INET6, &mask_addr, buf, INET6_ADDRSTRLEN) == nullptr) {
                 std::stringstream err;
                 err << "invalid IPv6 address mask: " << cidr[1];
                 throw std::runtime_error(err.str());
@@ -106,7 +106,7 @@ void parseHostSpec(const std::string &spec, IPv4subnetList &ipv4List, IPv6subnet
             in_addr mask_addr;
             ipv4_netmask(&mask_addr, std::stoi(cidr[1]));
             char buf[INET_ADDRSTRLEN];
-            if (inet_ntop(AF_INET, &mask_addr, buf, INET_ADDRSTRLEN) == 0) {
+            if (inet_ntop(AF_INET, &mask_addr, buf, INET_ADDRSTRLEN) == nullptr) {
                 std::stringstream err;
                 err << "invalid IPv4 address mask: " << cidr[1];
                 throw std::runtime_error(err.str());
