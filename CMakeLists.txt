@@ -4,7 +4,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
 # this is the source of truth for version, which will be written to config.h include file.
 project(vizer VERSION 3.1.0)
-set(VIZER_PRERELEASE "-develop-0.4")
+set(VIZER_PRERELEASE "")
 set(VIZER_VERSION_NUM "${PROJECT_VERSION}${VIZER_PRERELEASE}")
 set(VIZER_VERSION " pktvisor ${PROJECT_VERSION}${VIZER_PRERELEASE}")
 

@@ -1,64 +1,84 @@
-pktvisor
-===
+![pktvisor](docs/images/pktvisor-header.png)
 
 > This project is in [active development](https://github.com/ns1/community/blob/master/project_status/ACTIVE_DEVELOPMENT.md).
 
-Branch | Build Status
------- | ------------
-Master | ![build status](https://github.com/ns1/pktvisor/workflows/CMake/badge.svg?branch=master)
-Develop | ![build status](https://github.com/ns1/pktvisor/workflows/CMake/badge.svg?branch=develop)
+![Build status](https://github.com/ns1/pktvisor/workflows/Build/badge.svg)
+[![LGTM alerts](https://img.shields.io/lgtm/alerts/g/ns1/pktvisor.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/ns1/pktvisor/alerts/)
+[![Coverity alerts](https://img.shields.io/coverity/scan/22731.svg)](https://scan.coverity.com/projects/ns1-pktvisor)
 
-pktvisor summarizes network data streams in real time, enabling on-node and centralized data visibility and analysis.
+<p align="left">
+  <strong>
+    <a href="#what-is-pktvisor">Introduction<a/>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
+    <a href="#get-started">Get Started<a/>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
+    <a href="#docs">Docs<a/>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
+    <a href="#contact-us">Contact Us<a/>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
+    <a href="#building">Building<a/>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
+    <a href="#contribute">Contribute<a/>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
+    <a href="#faq">FAQ<a/>
+  </strong>
+</p>
 
-Summarized information includes, for example:
-* Packet rates: 50th, 90th, 95th, 99th percentiles
-* Packet counts by protocol and IP version
-* Cardinality of set of source IPs and DNS qnames seen in window
-* Top 10 heavy hitters: IPs, ASNs, Geo, DNS qnames, DNS slow xacts...
+## What is pktvisor?
 
-Although currently DNS and packet capture focused, it is designed to be used in broader contexts.
+pktvisor is an observability tool for _summarizing_ high volume, information overloaded data streams directly at the
+edge. Its goal is to extract the useful signal from the less useful noise; to separate the needles from the haystacks as
+close to the source as possible. This results in lightweight, immediately actionable observability data.
 
-2019-2021© NSONE, Inc.
+It is a resource efficient, side-car style agent built from the ground up to be dynamically controlled in real time via
+API. Its output is useful both on-node via command line (for a localized, hyper real-time view) as well as centrally
+collected into industry standard observability stacks like Prometheus and Grafana.
 
-![Image of CLI UI](docs/pktvisor3-cli-ui-screenshot.png)
-![Image of Grafana Dash](docs/pktvisor3-grafana-screenshot.png)
+The modular input stream system is designed to _tap into_ data streams, and currently focuses
+on [packet capture](https://en.wikipedia.org/wiki/Packet_analyzer) but will soon support additional taps such
+as [sFlow](https://en.wikipedia.org/wiki/SFlow) / [Netflow](https://en.wikipedia.org/wiki/NetFlow)
+, [dnstap](https://dnstap.info/), [envoy taps](https://www.envoyproxy.io/docs/envoy/latest/operations/traffic_tapping),
+and [eBPF](https://ebpf.io/).
 
-Overview
----
+The modular, real-time stream processor includes full application level analysis, and typically summarizes to one minute
+buckets of:
 
-pktvisor consists of:
+* Counters
+* Histograms
+* Timers
+* Heavy Hitters/Frequent Items
+* Cardinality
+* Rates
 
-1. A collector daemon which efficiently summarizes streams and exposes a REST API for results and control plane
-1. A terminal based, command line UI which can visualize the real-time summarized data
-1. Tools for collecting and visualizing a globally distributed set of agents to a central location
+These screenshots display both the command line and centralized views of
+the [Network](https://github.com/ns1/pktvisor/tree/master/src/handlers/net)
+and [DNS](https://github.com/ns1/pktvisor/tree/master/src/handlers/dns) stream processors, and the types of summary
+information provided:
 
-The agent can also summarize pcap files.
+![Image of CLI UI](docs/images/pktvisor3-cli-ui-screenshot.png)
+![Image of Grafana Dash](docs/inages/pktvisor3-grafana-screenshot.png)
 
-API Documentation
----
-The REST API documentation, including a description of the metrics that are available, is available in OpenAPI format.
-See the `docs/` directory.
+## Docs
 
+REST API documentation, including a description of the metrics that are available, is available in OpenAPI format. See
+the `docs/` directory.
 
-Getting Started
----
+## Get Started
 
 The easiest way to get started with pktvisor is to use
 the [public docker image](https://hub.docker.com/r/ns1labs/pktvisor). The image contains the command line
 UI (`pktvisor-cli`), the pcap file analyzer (`pktvisor-pcap`), and the collector daemon (`pktvisord`).
 
 1. *Pull the container*
+
 ```
 docker pull ns1labs/pktvisor
 ``` 
-2. *Start the collector daemon* 
+
+2. *Start the collector daemon*
 
 This will run in the background and stay running. Note that the final two arguments request `pktvisord` binary (with the
 final 'd' for daemon), and to packet capture on the `any` ethernet interface. You may substitute that for a known
 interface on your device. Note that this requires docker host networking to observe traffic outside the container:
+
 ```
 docker run --rm --net=host -d ns1labs/pktvisor pktvisord any
 ```
+
 3. *Run the command line UI*
 
 After the collector is running, you can visualize results locally with the included UI. This command will run the
@@ -133,6 +153,9 @@ Starting the collector daemon from Docker with MaxmindDB and Host options:
 docker run --rm --net=host -d --mount type=bind,source=/opt/geo,target=/geo ns1labs/pktvisor pktvisord --geo-city /geo/GeoIP2-City.mmdb --geo-asn /geo/GeoIP2-ISP.mmdb -H 192.168.0.54/32,127.0.0.1/32 any
 ```
 
+## Contact Us
+
+[Join us on Slack](https://join.slack.com/t/getorb/shared_invite/zt-nn4joou9-71Bp3HkubYf5Adh9c4cDNw)
 
 Centralized Collection
 ---
