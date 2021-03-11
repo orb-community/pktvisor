@@ -13,7 +13,7 @@
     <a href="#docs">Docs<a/>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
     <a href="#build">Build<a/>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
     <a href="#contribute">Contribute<a/>&nbsp;&nbsp;&bull;&nbsp;&nbsp;    
-    <a href="#contact-us">Contact Us<a/>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
+    <a href="#contact-us">Contact Us<a/>
   </strong>
 </p>
 
@@ -39,10 +39,9 @@ buckets of:
 
 * Counters
 * Histograms and Quantiles
-* Timers
+* Timers and Rates
 * Heavy Hitters/Frequent Items/Top N
 * Set Cardinality
-* Rates
 * GeoIP
 
 pktvisor has its origins in observability of critical internet infrastructure, including traffic engineering and DDoS
