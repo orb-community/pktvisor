@@ -14,7 +14,6 @@
     <a href="#build">Build<a/>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
     <a href="#contribute">Contribute<a/>&nbsp;&nbsp;&bull;&nbsp;&nbsp;    
     <a href="#contact-us">Contact Us<a/>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
-    <a href="#faq">FAQ<a/>
   </strong>
 </p>
 
@@ -23,7 +22,7 @@
 **pktvisor** (pronounced "packet visor") is an **observability tool** for _summarizing_ high volume, information
 overloaded data streams directly at the edge. Its goal is to extract the useful signal from the less useful noise; to
 separate the needles from the haystacks as close to the source as possible. This results in lightweight, immediately
-actionable observability data.
+actionable observability data at a tiny fraction of the raw data size.
 
 It is a resource efficient, side-car style agent built from the ground up to be dynamically controlled in real time via
 API. Its output is useful both on-node via command line (for a localized, hyper real-time view) as well as centrally
@@ -39,12 +38,15 @@ The modular, real-time stream processor includes full application level analysis
 buckets of:
 
 * Counters
-* Histograms
+* Histograms and Quantiles
 * Timers
 * Heavy Hitters/Frequent Items/Top N
-* Cardinality
+* Set Cardinality
 * Rates
 * GeoIP
+
+pktvisor has its origins in observability of critical internet infrastructure, including traffic engineering and DDoS
+protection.
 
 These screenshots display both the command line and centralized views of
 the [Network](https://github.com/ns1/pktvisor/tree/master/src/handlers/net)
@@ -53,7 +55,6 @@ information provided:
 
 ![Image of CLI UI](docs/images/pktvisor3-cli-ui-screenshot.png)
 ![Image of Grafana Dash](docs/images/pktvisor3-grafana-screenshot.png)
-
 
 ## Get Started
 
@@ -174,7 +175,7 @@ Usage:
 ### pcap File Analysis
 
 `pktvisor-pcap` is a tool that can statically analyze prerecorded packet capture files. It takes many of the same
-options as, and does all the same analysis as the live agent version.
+options, and does all of the same analysis, as the live agent version.
 
 ```
 
@@ -207,8 +208,8 @@ docker run --rm ns1labs/pktvisor pktvisor-pcap --help
 
 ```
 
-You can use the docker container by passing in a volume. The standard output will contain the JSON summarization output,
-what you can pipe to further tools, for example:
+You can use the docker container by passing in a volume referencing the directory containing the pcap file. The standard
+output will contain the JSON summarization output, which you can capture or pipe into other tools, for example:
 ```
 
 $ docker run --rm -v /pktvisor/src/tests/fixtures:/pcaps ns1labs/pktvisor pktvisor-pcap /pcaps/dns_ipv4_udp.pcap | jq .
@@ -242,7 +243,7 @@ processed 140 packets
 
 The metrics are available from the agent in JSON format via the [REST API](#rest-api).
 
-Most use cases will want to collect the most recent full 1-minute bucket, once per minute:
+For most use cases, you will want to collect the most recent full 1-minute bucket, once per minute:
 
 ```
 curl localhost:10853/api/v1/metrics/bucket/1
@@ -294,7 +295,7 @@ ingress and egress traffic:
 
 ```
 docker run --rm --net=host -d \
-	--mount type=bind,source=/opt/geo,target=/geo \
+    --mount type=bind,source=/opt/geo,target=/geo \
     ns1labs/pktvisor pktvisord \
     --geo-city /geo/GeoIP2-City.mmdb \
     --geo-asn /geo/GeoIP2-ISP.mmdb \
@@ -331,10 +332,10 @@ build system requires CMake and the [Conan](https://conan.io/) package manager s
 * MaxMind DB (`libmaxmindb-dev`)
 * [PcapPlusPlus](https://github.com/ns1/PcapPlusPlus) (NS1 fork)
 
-In addition, running and debugging integration tests requires:
+In addition, debugging integration tests requires:
 
-* jq
-* graphtage
+* [jq](https://stedolan.github.io/jq/)
+* [graphtage](https://github.com/trailofbits/graphtage)
 
 #### Building
 
@@ -355,9 +356,10 @@ the [Dockerfile](https://github.com/ns1/pktvisor/blob/master/docker/Dockerfile)
 and [Continuous Integration build file](https://github.com/ns1/pktvisor/blob/master/.github/workflows/cmake.yml) for
 reference.
 
-## Contributions
+## Contribute
 
-We welcome contributions! We will expand this section with more detailed information to guide you through the process.
+Thanks for considering contributing! We will expand this section with more detailed information to guide you through the
+process.
 
 Please open Pull Requests against the `develop` branch. If you are considering a larger
 contribution, [please contact us](#contact-us) to discuss your design.
