@@ -20,10 +20,10 @@
 
 ## What is pktvisor?
 
-pktvisor (pronounced "packet visor") is an observability tool for _summarizing_ high volume, information overloaded data
-streams directly at the edge. Its goal is to extract the useful signal from the less useful noise; to separate the
-needles from the haystacks as close to the source as possible. This results in lightweight, immediately actionable
-observability data.
+**pktvisor** (pronounced "packet visor") is an **observability tool** for _summarizing_ high volume, information
+overloaded data streams directly at the edge. Its goal is to extract the useful signal from the less useful noise; to
+separate the needles from the haystacks as close to the source as possible. This results in lightweight, immediately
+actionable observability data.
 
 It is a resource efficient, side-car style agent built from the ground up to be dynamically controlled in real time via
 API. Its output is useful both on-node via command line (for a localized, hyper real-time view) as well as centrally
@@ -53,6 +53,7 @@ information provided:
 
 ![Image of CLI UI](docs/images/pktvisor3-cli-ui-screenshot.png)
 ![Image of Grafana Dash](docs/images/pktvisor3-grafana-screenshot.png)
+
 
 ## Get Started
 
@@ -85,7 +86,6 @@ docker run --rm --net=host -d ns1labs/pktvisor pktvisord any
 After the agent is running, you can observe results locally with the included command line UI. This command will run the
 UI (`pktvisor-cli`) in the foreground, and exit when Ctrl-C is pressed. It connects to the running agent locally using
 the built in [REST API](https://app.swaggerhub.com/apis/ns1labs/pktvisor/3.1.0#/).
-
 ```
 docker run -it --rm --net=host ns1labs/pktvisor pktvisor-cli
 ```
@@ -209,34 +209,14 @@ docker run --rm ns1labs/pktvisor pktvisor-pcap --help
 
 You can use the docker container by passing in a volume. The standard output will contain the JSON summarization output,
 what you can pipe to further tools, for example:
-
 ```
 
-$ docker run --rm -v $HOME/workspace/pktvisor/src/tests/fixtures:/pcaps ns1labs/pktvisor pktvisor-pcap /pcaps/dns_ipv4_udp.pcap | jq .
+$ docker run --rm -v /pktvisor/src/tests/fixtures:/pcaps ns1labs/pktvisor pktvisor-pcap /pcaps/dns_ipv4_udp.pcap | jq .
 
 [2021-03-11 18:45:04.572] [pktvisor] [info] Load input plugin: PcapInputModulePlugin dev.vizer.module.input/1.0
 [2021-03-11 18:45:04.573] [pktvisor] [info] Load handler plugin: DnsHandler dev.vizer.module.handler/1.0
 [2021-03-11 18:45:04.573] [pktvisor] [info] Load handler plugin: NetHandler dev.vizer.module.handler/1.0
-[2021-03-11 18:45:04.573] [pktvisor] [info] {
-    "info": {
-        "input": {
-            "consumers": 0
-        },
-        "module": {
-            "config": {
-                "bpf": "",
-                "host_spec": "",
-                "pcap_file": "/pcaps/dns_ipv4_udp.pcap"
-            },
-            "name": "pcap",
-            "running": false
-        },
-        "pcap": {
-            "host_ips": {},
-            "pcap_source": "unknown"
-        }
-    }
-}
+...
 processed 140 packets
 {
   "5m": {
@@ -258,36 +238,86 @@ processed 140 packets
 ...     
 ```
 
+### Metrics Collection
+
+The metrics are available from the agent in JSON format via the [REST API](#rest-api).
+
+Most use cases will want to collect the most recent full 1-minute bucket, once per minute:
+
+```
+curl localhost:10853/api/v1/metrics/bucket/1
+```
+
+This can be done with tools like [telegraf](https://docs.influxdata.com/telegraf/) and
+the [standard HTTP plugin](https://github.com/influxdata/telegraf/blob/release-1.17/plugins/inputs/http/README.md).
+Example telegraf config snippet:
+
+```
+
+[inputs]
+[[inputs.http]]
+urls = [ "http://127.0.0.1:10853/api/v1/metrics/bucket/1",]
+interval = "60s"
+data_format = "json"
+json_query = "1m"
+json_time_key = "period_start_ts"
+json_time_format = "unix"
+json_string_fields = [
+  "dns_*",
+  "packets_*",
+]
+
+[inputs.http.tags]
+t = "pktvisor"
+interval = "60"
+
+```
+
+#### Prometheus
+
+`pktvisord` will have native Prometheus support in version 3.2.0. Until
+then, [an adapter is available](https://github.com/ns1/pktvisor/tree/master/reporting/pktvisor_prometheus) in the
+repository.
+
 ### REST API
 
-REST API documentation, including a description of the metrics that are available, is available in OpenAPI format. See
-the `docs/` directory.
+REST API documentation, including a description of the metrics that are available, is available
+in [OpenAPI Format](https://app.swaggerhub.com/apis/ns1labs/pktvisor/3.1.0#/)
 
-### Advanced Agent Usage Examples
+Please note that the administration control plane API is currently undergoing heavy iteration and so is not yet
+documented. If you have a use case that requires the administration API, please [contact us](#contact-us) to discuss.
 
-Starting the collector daemon from Docker with MaxmindDB and Host options:
+### Advanced Agent Example
+
+Starting the collector agent from Docker with MaxmindDB GeoIP/GeoASN support and using the Host option to identify
+ingress and egress traffic:
 
 ```
-docker run --rm --net=host -d --mount type=bind,source=/opt/geo,target=/geo ns1labs/pktvisor pktvisord --geo-city /geo/GeoIP2-City.mmdb --geo-asn /geo/GeoIP2-ISP.mmdb -H 192.168.0.54/32,127.0.0.1/32 any
+docker run --rm --net=host -d \
+	--mount type=bind,source=/opt/geo,target=/geo \
+    ns1labs/pktvisor pktvisord \
+    --geo-city /geo/GeoIP2-City.mmdb \
+    --geo-asn /geo/GeoIP2-ISP.mmdb \
+    -H 192.168.0.54/32,127.0.0.1/32 \
+    eth0
 ```
 
-### Other Documentation
+### Further Documentation
 
 We recognize the value of first class documentation, and this section is being expanded.
 Please [contact us](#contact-us) if you have any questions on installation, use, or development.
 
 ## Contact Us
 
-[Join us on Slack](https://join.slack.com/t/getorb/shared_invite/zt-nn4joou9-71Bp3HkubYf5Adh9c4cDNw)
+We are _very_ interested in hearing about your use cases, feature requests, and other feedback!
 
-Centralized Collection
----
+* [File an issue](https://github.com/ns1/pktvisor/issues/new)
+* Use our [public feature board](https://github.com/ns1/pktvisor/projects/1)
+* Start a [Discussion](https://github.com/ns1/pktvisor/discussions)
+* [Join us on Slack](https://join.slack.com/t/getorb/shared_invite/zt-nn4joou9-71Bp3HkubYf5Adh9c4cDNw)
+* Send mail to [info@pktvisor.dev](mailto:info@pktvisor.dev)
 
-pktvisor may be collected centrally to give a global view of the collected information.
-
-Host Concept
----
-Ingress and egress (in/out) related metrics can only be calculated if the agent understands how to identify the host.
+## Build
 
 Build Dependencies
 ---
@@ -304,8 +334,7 @@ Running/Debugging Integration Tests:
 * jq
 * graphtage
 
-Building
----
+### Building with CMake
 
 Building is based on CMake.
 
