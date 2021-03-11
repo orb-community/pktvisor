@@ -1,0 +1,24 @@
+
+set(FIXTURE_DIR ${CMAKE_SOURCE_DIR}/src/tests/fixtures)
+set(TEMPLATE_DIR ${CMAKE_SOURCE_DIR}/integration_tests/output-templates)
+set(HOST_VAR "-H 127.0.0.1/32")
+set(PCAP_BINARY ${CMAKE_BINARY_DIR}/bin/pktvisor-pcap)
+set(INT_SH ${CMAKE_SOURCE_DIR}/integration_tests/integration.sh)
+set(WORKING_DIR ${CMAKE_SOURCE_DIR}/integration_tests)
+
+macro(vizer_int_test name)
+    add_test(NAME ${name}
+            WORKING_DIRECTORY ${WORKING_DIR}
+            COMMAND ${INT_SH} ${PCAP_BINARY} ${TEMPLATE_DIR}/${name} -- ${HOST_VAR} --geo-city ${FIXTURE_DIR}/GeoIP2-City-Test.mmdb --geo-asn ${FIXTURE_DIR}/GeoIP2-ISP-Test.mmdb ${FIXTURE_DIR}/${name}.pcap)
+endmacro()
+
+vizer_int_test(dns_ipv4_udp)
+vizer_int_test(dns_ipv4_tcp)
+vizer_int_test(dns_ipv6_udp)
+vizer_int_test(dns_ipv6_tcp)
+
+# this allows local, non-public integration tests (for example, on private pcap data)
+#add_test(NAME external-tests
+#        WORKING_DIRECTORY ${WORKING_DIR}
+#        COMMAND ${CMAKE_SOURCE_DIR}/integration_tests/external.sh ${PCAP_BINARY}
+#        )

@@ -1,1 +1,4 @@
-tests/external
+cmake-build*
+integration_tests/external*
+Dockerfile
+.dockerignore
