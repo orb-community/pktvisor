@@ -322,6 +322,8 @@ We are _very_ interested in hearing about your use cases, feature requests, and 
 The main code base is written in clean, modern C++. The `pktvisor-cli` command line interface is written in Go. The
 build system requires CMake and the [Conan](https://conan.io/) package manager system.
 
+pktvisor adheres to [semantic versioning](https://semver.org/).
+
 #### Dependencies
 
 * Linux or OSX
