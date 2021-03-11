@@ -319,46 +319,51 @@ We are _very_ interested in hearing about your use cases, feature requests, and 
 
 ## Build
 
-Build Dependencies
----
+The main code base is written in clean, modern C++. The `pktvisor-cli` command line interface is written in Go. The
+build system requires CMake and the [Conan](https://conan.io/) package manager system.
 
-* CMake >= 3.8
+#### Dependencies
+
 * Linux or OSX
+* [Conan](https://conan.io/) C++ package manager
+* CMake >= 3.13 (`cmake`)
 * C++ compiler supporting C++17
-* PcapPlusPlus https://github.com/ns1/PcapPlusPlus
-* Conan C++ package manager
-* MaxMind DB libmaxmindb
+* MaxMind DB (`libmaxmindb-dev`)
+* [PcapPlusPlus](https://github.com/ns1/PcapPlusPlus) (NS1 fork)
 
-Running/Debugging Integration Tests:
+In addition, running and debugging integration tests requires:
 
 * jq
 * graphtage
 
-### Building with CMake
+#### Building
 
-Building is based on CMake.
-
-Default build:
+The general build steps are:
 
 ```
-mkdir build; cd build
-conan install ..
-cmake ..
-make
+$ git clone https://github.com/ns1/pktvisor.git
+$ cd pktvisor
+$ mkdir build && cd build
+$ conan install ..
+$ cmake ..
+$ make all test
+$ bin/pktvisord --help
 ```
 
-Building the docker image (from the root project directory):
-```
-org="myorg"
-image="mypktvisor"
-tag="latest"
-docker build -t ${org}/${image}:${tag} -f docker/Dockerfile .
-```
+As development environments can vary widely, please see
+the [Dockerfile](https://github.com/ns1/pktvisor/blob/master/docker/Dockerfile)
+and [Continuous Integration build file](https://github.com/ns1/pktvisor/blob/master/.github/workflows/cmake.yml) for
+reference.
 
-Contributions
----
-Pull Requests and issues are welcome. See the [NS1 Contribution Guidelines](https://github.com/ns1/community) for more information.
+## Contributions
 
-License
----
+We welcome contributions! We will expand this section with more detailed information to guide you through the process.
+
+Please open Pull Requests against the `develop` branch. If you are considering a larger
+contribution, [please contact us](#contact-us) to discuss your design.
+
+See the [NS1 Contribution Guidelines](https://github.com/ns1/community) for more information.
+
+## License
+
 This code is released under Mozilla Public License 2.0. You can find terms and conditions in the LICENSE file.
