@@ -20,9 +20,10 @@
 
 ## What is pktvisor?
 
-pktvisor is an observability tool for _summarizing_ high volume, information overloaded data streams directly at the
-edge. Its goal is to extract the useful signal from the less useful noise; to separate the needles from the haystacks as
-close to the source as possible. This results in lightweight, immediately actionable observability data.
+pktvisor (pronounced "packet visor") is an observability tool for _summarizing_ high volume, information overloaded data
+streams directly at the edge. Its goal is to extract the useful signal from the less useful noise; to separate the
+needles from the haystacks as close to the source as possible. This results in lightweight, immediately actionable
+observability data.
 
 It is a resource efficient, side-car style agent built from the ground up to be dynamically controlled in real time via
 API. Its output is useful both on-node via command line (for a localized, hyper real-time view) as well as centrally
@@ -40,7 +41,7 @@ buckets of:
 * Counters
 * Histograms
 * Timers
-* Heavy Hitters/Frequent Items
+* Heavy Hitters/Frequent Items/Top N
 * Cardinality
 * Rates
 
@@ -50,7 +51,7 @@ and [DNS](https://github.com/ns1/pktvisor/tree/master/src/handlers/dns) stream p
 information provided:
 
 ![Image of CLI UI](docs/images/pktvisor3-cli-ui-screenshot.png)
-![Image of Grafana Dash](docs/inages/pktvisor3-grafana-screenshot.png)
+![Image of Grafana Dash](docs/images/pktvisor3-grafana-screenshot.png)
 
 ## Docs
 
