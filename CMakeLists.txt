@@ -3,8 +3,8 @@ cmake_minimum_required(VERSION 3.13)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
 # this is the source of truth for version, which will be written to config.h include file.
-project(vizer VERSION 3.1.0)
-set(VIZER_PRERELEASE "")
+project(vizer VERSION 3.2.0)
+set(VIZER_PRERELEASE "-develop")
 set(VIZER_VERSION_NUM "${PROJECT_VERSION}${VIZER_PRERELEASE}")
 set(VIZER_VERSION " pktvisor ${PROJECT_VERSION}${VIZER_PRERELEASE}")
 
