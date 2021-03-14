@@ -7,15 +7,6 @@ RUN \
     apt-get install --yes --no-install-recommends ${BUILD_DEPS} && \
     pip3 install conan
 
-RUN \
-    mkdir /local && \
-    cd /tmp && \
-    git clone https://github.com/ns1/PcapPlusPlus.git && \
-    cd /tmp/PcapPlusPlus && \
-    ./configure-linux.sh --install-dir /local && \
-    make libs -j 4 && \
-    make install
-
 COPY . /pktvisor-src/
 
 WORKDIR /tmp/build

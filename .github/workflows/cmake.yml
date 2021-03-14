@@ -64,30 +64,6 @@ jobs:
           brew update
           brew install libmaxminddb
 
-      - name: PcapPlusPlus checkout
-        run: |
-          git clone https://github.com/ns1/PcapPlusPlus.git
-          cd PcapPlusPlus
-          mkdir ${{github.workspace}}/local
-
-      - name: PcapPlusPlus config (linux)
-        if: matrix.os == 'ubuntu-latest'
-        working-directory: ${{github.workspace}}/PcapPlusPlus
-        run: |
-          ./configure-linux.sh --install-dir ${{github.workspace}}/local
-
-      - name: PcapPlusPlus config (macos)
-        if: matrix.os == 'macos-latest'
-        working-directory: ${{github.workspace}}/PcapPlusPlus
-        run: |
-          ./configure-mac_os_x.sh --install-dir ${{github.workspace}}/local
-
-      - name: PcapPlusPlus install
-        working-directory: ${{github.workspace}}/PcapPlusPlus
-        run: |
-          make libs
-          make install -j 2
-
       - name: Configure CMake
         # Use a bash shell so we can use the same syntax for environment variable
         # access regardless of the host operating system
