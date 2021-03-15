@@ -54,7 +54,7 @@ static void _packet_arrives_cb(pcpp::RawPacket *rawPacket, [[maybe_unused]] pcpp
     stream->process_raw_packet(rawPacket);
 }
 
-static void _pcap_stats_update([[maybe_unused]] pcpp::IPcapDevice::PcapStats &stats, [[maybe_unused]] void *cookie)
+static void _pcap_stats_update([[maybe_unused]] pcap_stat &stats, [[maybe_unused]] void *cookie)
 {
     // auto stream = static_cast<PcapInputStream *>(cookie);
     // TODO expose this
@@ -345,19 +345,19 @@ void PcapInputStream::_get_hosts_from_libpcap_iface()
             continue;
         }
         if (i.addr->sa_family == AF_INET) {
-            auto adrcvt = pcpp::internal::sockaddr2in_addr(i.addr);
+            auto adrcvt = pcpp::sockaddr2in_addr(i.addr);
             if (!adrcvt) {
                 throw PcapException("couldn't parse IPv4 address on device");
             }
-            auto nmcvt = pcpp::internal::sockaddr2in_addr(i.netmask);
+            auto nmcvt = pcpp::sockaddr2in_addr(i.netmask);
             if (!nmcvt) {
                 throw PcapException("couldn't parse IPv4 netmask address on device");
             }
-            _hostIPv4.emplace_back(IPv4subnet(pcpp::IPv4Address(pcpp::internal::in_addr2int(*adrcvt)), pcpp::IPv4Address(pcpp::internal::in_addr2int(*nmcvt))));
+            _hostIPv4.emplace_back(IPv4subnet(pcpp::IPv4Address(pcpp::in_addr2int(*adrcvt)), pcpp::IPv4Address(pcpp::in_addr2int(*nmcvt))));
         } else if (i.addr->sa_family == AF_INET6) {
             char buf1[INET6_ADDRSTRLEN];
-            pcpp::internal::sockaddr2string(i.addr, buf1);
-            auto nmcvt = pcpp::internal::sockaddr2in6_addr(i.netmask);
+            pcpp::sockaddr2string(i.addr, buf1);
+            auto nmcvt = pcpp::sockaddr2in6_addr(i.netmask);
             if (!nmcvt) {
                 throw PcapException("couldn't parse IPv4 netmask address on device");
             }

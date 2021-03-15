@@ -48,45 +48,16 @@ jobs:
         run:
           conan profile update settings.compiler.libcxx=libstdc++11 default
 
-      - name: Conan install
-        working-directory: ${{github.workspace}}/build
-        run: conan install ..
-
       - name: linux package install
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install --yes --no-install-recommends libpcap-dev pkgconf golang ca-certificates libmaxminddb-dev jq
+          sudo apt-get install --yes --no-install-recommends golang ca-certificates jq
 
       - name: osx package install
         if: matrix.os == 'macos-latest'
         run: |
           brew update
-          brew install libmaxminddb
-
-      - name: PcapPlusPlus checkout
-        run: |
-          git clone https://github.com/ns1/PcapPlusPlus.git
-          cd PcapPlusPlus
-          mkdir ${{github.workspace}}/local
-
-      - name: PcapPlusPlus config (linux)
-        if: matrix.os == 'ubuntu-latest'
-        working-directory: ${{github.workspace}}/PcapPlusPlus
-        run: |
-          ./configure-linux.sh --install-dir ${{github.workspace}}/local
-
-      - name: PcapPlusPlus config (macos)
-        if: matrix.os == 'macos-latest'
-        working-directory: ${{github.workspace}}/PcapPlusPlus
-        run: |
-          ./configure-mac_os_x.sh --install-dir ${{github.workspace}}/local
-
-      - name: PcapPlusPlus install
-        working-directory: ${{github.workspace}}/PcapPlusPlus
-        run: |
-          make libs
-          make install -j 2
 
       - name: Configure CMake
         # Use a bash shell so we can use the same syntax for environment variable

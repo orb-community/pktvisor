@@ -15,11 +15,21 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 #set(CMAKE_VERBOSE_MAKEFILE ON)
 add_compile_options(-Wall -pedantic -W -Wextra -Wno-unknown-pragmas)
 
+include(conan)
+
+conan_add_remote(NAME bincrafters INDEX 1
+        URL https://api.bintray.com/conan/bincrafters/public-conan
+        VERIFY_SSL True)
+
+conan_cmake_install(PATH_OR_REFERENCE ${CMAKE_SOURCE_DIR}
+        BUILD missing
+        GENERATOR cmake
+        INSTALL_FOLDER ${CMAKE_BINARY_DIR})
+
 include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
 conan_basic_setup()
 
 find_package(Corrade REQUIRED PluginManager)
-find_package(PkgConfig)
 include(sanitizer)
 
 set(VIZER_STATIC_PLUGINS)
