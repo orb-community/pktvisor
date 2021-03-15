@@ -324,14 +324,17 @@ build system requires CMake and the [Conan](https://conan.io/) package manager s
 
 pktvisor adheres to [semantic versioning](https://semver.org/).
 
+pktvisor is developed and tested on Linux and OSX. Windows is not yet officially supported, but the dependencies and
+code base do not preclude a Windows build. If you are interested in developing a Windows version,
+please [contact us](#contact-us).
+
 #### Dependencies
 
-* Linux or OSX
 * [Conan](https://conan.io/) C++ package manager
 * CMake >= 3.13 (`cmake`)
 * C++ compiler supporting C++17
-* MaxMind DB (`libmaxmindb-dev`)
-* [PcapPlusPlus](https://github.com/ns1/PcapPlusPlus) (NS1 fork)
+
+For the list of packages included by conan, see [conanfile.txt](conanfile.txt)
 
 In addition, debugging integration tests requires:
 
@@ -346,7 +349,8 @@ The general build steps are:
 $ git clone https://github.com/ns1/pktvisor.git
 $ cd pktvisor
 $ mkdir build && cd build
-$ conan install ..
+$ conan remote add public-conan https://api.bintray.com/conan/bincrafters/public-conan
+$ conan install --build=missing ..
 $ cmake ..
 $ make all test
 $ bin/pktvisord --help

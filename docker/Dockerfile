@@ -1,6 +1,6 @@
 FROM debian:bullseye-slim AS cppbuild
 
-ENV BUILD_DEPS "g++ cmake make git libpcap-dev pkgconf libmaxminddb-dev jq python3-pip python3-setuptools"
+ENV BUILD_DEPS "g++ cmake make git pkgconf jq python3-pip python3-setuptools"
 
 RUN \
     apt-get update && \
@@ -26,7 +26,7 @@ RUN go build -o pktvisor-cli cmd/pktvisor-cli/main.go
 
 FROM debian:bullseye-slim AS runtime
 
-ENV RUNTIME_DEPS "curl libpcap0.8 libmaxminddb0"
+ENV RUNTIME_DEPS "curl"
 
 RUN \
     apt-get update && \
