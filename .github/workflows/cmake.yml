@@ -54,6 +54,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install --yes --no-install-recommends golang ca-certificates jq
 
+      - name: osx package install
+        if: matrix.os == 'macos-latest'
+        run: |
+          brew update
+
       - name: Configure CMake
         # Use a bash shell so we can use the same syntax for environment variable
         # access regardless of the host operating system
