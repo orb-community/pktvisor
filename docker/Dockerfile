@@ -12,7 +12,8 @@ COPY . /pktvisor-src/
 WORKDIR /tmp/build
 RUN \
     conan profile new --detect default && \
-    conan profile update settings.compiler.libcxx=libstdc++11 default && \
+    conan profile update settings.compiler.libcxx=libstdc++11 default
+
 RUN \
     PKG_CONFIG_PATH=/local/lib/pkgconfig cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo /pktvisor-src && \
     make all test -j 4

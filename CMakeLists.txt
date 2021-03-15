@@ -17,8 +17,6 @@ add_compile_options(-Wall -pedantic -W -Wextra -Wno-unknown-pragmas)
 
 include(conan)
 
-conan_cmake_autodetect(settings)
-
 conan_add_remote(NAME bincrafters INDEX 1
         URL https://api.bintray.com/conan/bincrafters/public-conan
         VERIFY_SSL True)
@@ -26,8 +24,7 @@ conan_add_remote(NAME bincrafters INDEX 1
 conan_cmake_install(PATH_OR_REFERENCE ${CMAKE_SOURCE_DIR}
         BUILD missing
         GENERATOR cmake
-        INSTALL_FOLDER ${CMAKE_BINARY_DIR}
-        SETTINGS ${settings})
+        INSTALL_FOLDER ${CMAKE_BINARY_DIR})
 
 include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
 conan_basic_setup()
