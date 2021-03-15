@@ -13,8 +13,6 @@ WORKDIR /tmp/build
 RUN \
     conan profile new --detect default && \
     conan profile update settings.compiler.libcxx=libstdc++11 default && \
-    conan remote add public-conan https://api.bintray.com/conan/bincrafters/public-conan && \
-    conan install --build=missing /pktvisor-src
 RUN \
     PKG_CONFIG_PATH=/local/lib/pkgconfig cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo /pktvisor-src && \
     make all test -j 4

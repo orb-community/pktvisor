@@ -39,31 +39,20 @@ jobs:
         # uses: turtlebrowser/get-conan@4dc7e6dd45c8b1e02e909979d7cfc5ebba6ddbe2
         uses: turtlebrowser/get-conan@v1.0
 
-      - name: Conan profile and remotes
+      - name: Conan profile
         run: |
           conan profile new --detect default
-          conan remote add public-conan https://api.bintray.com/conan/bincrafters/public-conan
 
       - name: Conan profile (linux)
         if: matrix.os == 'ubuntu-latest'
         run:
           conan profile update settings.compiler.libcxx=libstdc++11 default
 
-      - name: Conan install
-        working-directory: ${{github.workspace}}/build
-        run: conan install --build=missing ..
-
       - name: linux package install
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install --yes --no-install-recommends libpcap-dev pkgconf golang ca-certificates libmaxminddb-dev jq
-
-      - name: osx package install
-        if: matrix.os == 'macos-latest'
-        run: |
-          brew update
-          brew install libmaxminddb
+          sudo apt-get install --yes --no-install-recommends golang ca-certificates jq
 
       - name: Configure CMake
         # Use a bash shell so we can use the same syntax for environment variable
