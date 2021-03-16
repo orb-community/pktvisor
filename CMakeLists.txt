@@ -4,9 +4,9 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
 # this is the source of truth for version, which will be written to config.h include file.
 project(visor VERSION 3.2.0)
-set(VIZER_PRERELEASE "-develop")
-set(VIZER_VERSION_NUM "${PROJECT_VERSION}${VIZER_PRERELEASE}")
-set(VIZER_VERSION " pktvisor ${PROJECT_VERSION}${VIZER_PRERELEASE}")
+set(VISOR_PRERELEASE "-develop")
+set(VISOR_VERSION_NUM "${PROJECT_VERSION}${VISOR_PRERELEASE}")
+set(VISOR_VERSION " pktvisor ${PROJECT_VERSION}${VISOR_PRERELEASE}")
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -21,9 +21,12 @@ conan_add_remote(NAME bincrafters INDEX 1
         URL https://api.bintray.com/conan/bincrafters/public-conan
         VERIFY_SSL True)
 
+conan_cmake_autodetect(settings)
+
 conan_cmake_install(PATH_OR_REFERENCE ${CMAKE_SOURCE_DIR}
         BUILD missing
         GENERATOR cmake
+        SETTINGS ${settings}
         INSTALL_FOLDER ${CMAKE_BINARY_DIR})
 
 include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
@@ -32,7 +35,7 @@ conan_basic_setup()
 find_package(Corrade REQUIRED PluginManager)
 include(sanitizer)
 
-set(VIZER_STATIC_PLUGINS)
+set(VISOR_STATIC_PLUGINS)
 
 enable_testing()
 add_subdirectory(3rd)

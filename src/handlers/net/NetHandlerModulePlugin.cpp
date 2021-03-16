@@ -8,7 +8,7 @@
 #include <Corrade/PluginManager/AbstractManager.h>
 #include <nlohmann/json.hpp>
 
-CORRADE_PLUGIN_REGISTER(VizerHandlerNet, visor::handler::net::NetHandlerModulePlugin,
+CORRADE_PLUGIN_REGISTER(VisorHandlerNet, visor::handler::net::NetHandlerModulePlugin,
     "dev.visor.module.handler/1.0")
 
 namespace visor::handler::net {

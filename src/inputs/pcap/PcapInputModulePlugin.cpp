@@ -6,7 +6,7 @@
 #include <Corrade/PluginManager/AbstractManager.h>
 #include <Corrade/Utility/FormatStl.h>
 
-CORRADE_PLUGIN_REGISTER(VizerInputPcap, visor::input::pcap::PcapInputModulePlugin,
+CORRADE_PLUGIN_REGISTER(VisorInputPcap, visor::input::pcap::PcapInputModulePlugin,
     "dev.visor.module.input/1.0")
 
 namespace visor::input::pcap {

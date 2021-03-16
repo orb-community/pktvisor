@@ -2,7 +2,7 @@ message(STATUS "Handler Module: DNS")
 
 set_directory_properties(PROPERTIES CORRADE_USE_PEDANTIC_FLAGS ON)
 
-corrade_add_static_plugin(VizerHandlerDns
+corrade_add_static_plugin(VisorHandlerDns
         ${CMAKE_CURRENT_BINARY_DIR}
         DnsHandler.conf
         DnsHandlerModulePlugin.cpp
@@ -14,19 +14,19 @@ corrade_add_static_plugin(VizerHandlerDns
         DnsResource.cpp
         DnsResourceData.cpp
         )
-add_library(Vizer::Handler::Dns ALIAS VizerHandlerDns)
+add_library(Visor::Handler::Dns ALIAS VisorHandlerDns)
 
-target_include_directories(VizerHandlerDns
+target_include_directories(VisorHandlerDns
         INTERFACE
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
         )
 
-target_link_libraries(VizerHandlerDns
+target_link_libraries(VisorHandlerDns
         PUBLIC
-        Vizer::Input::Pcap
+        Visor::Input::Pcap
         )
 
-set(VIZER_STATIC_PLUGINS ${VIZER_STATIC_PLUGINS} Vizer::Handler::Dns PARENT_SCOPE)
+set(VISOR_STATIC_PLUGINS ${VISOR_STATIC_PLUGINS} Visor::Handler::Dns PARENT_SCOPE)
 
 ## TEST SUITE
 add_executable(unit-tests-handler-dns
@@ -35,7 +35,7 @@ add_executable(unit-tests-handler-dns
         tests/test_dns_layer.cpp
         )
 
-target_link_libraries(unit-tests-handler-dns PRIVATE Vizer::Handler::Dns)
+target_link_libraries(unit-tests-handler-dns PRIVATE Visor::Handler::Dns)
 
 add_test(NAME unit-tests-handler-dns
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/src/tests

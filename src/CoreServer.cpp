@@ -87,7 +87,7 @@ void visor::CoreServer::_setup_routes()
     _svr.Get("/api/v1/metrics/app", [&]([[maybe_unused]] const httplib::Request &req, httplib::Response &res) {
         json j;
         try {
-            j["app"]["version"] = VIZER_VERSION_NUM;
+            j["app"]["version"] = VISOR_VERSION_NUM;
             j["app"]["up_time_min"] = float(std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now() - _start_time).count()) / 60;
             res.set_content(j.dump(), "text/json");
         } catch (const std::exception &e) {

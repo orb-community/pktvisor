@@ -12,11 +12,11 @@ add_library(visor-core
         GeoDB.cpp
         CoreServer.cpp
         )
-add_library(Vizer::Core ALIAS visor-core)
+add_library(Visor::Core ALIAS visor-core)
 
 target_include_directories(visor-core
         PRIVATE
-        ${CMAKE_BINARY_DIR}/src # Vizer::Core config.h
+        ${CMAKE_BINARY_DIR}/src # Visor::Core config.h
         INTERFACE
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
         )
@@ -30,7 +30,7 @@ target_link_libraries(visor-core
         ${CONAN_LIBS_CORRADE}
         ${CONAN_LIBS_SPDLOG}
         ${CONAN_LIBS_FMT}
-        ${VIZER_STATIC_PLUGINS}
+        ${VISOR_STATIC_PLUGINS}
         )
 
 configure_file(visor_config.h.in visor_config.h @ONLY)
@@ -38,7 +38,7 @@ configure_file(visor_config.h.in visor_config.h @ONLY)
 add_subdirectory(inputs)
 add_subdirectory(handlers)
 
-set(VIZER_STATIC_PLUGINS ${VIZER_STATIC_PLUGINS} PARENT_SCOPE)
+set(VISOR_STATIC_PLUGINS ${VISOR_STATIC_PLUGINS} PARENT_SCOPE)
 
 ## TEST SUITE
 add_executable(unit-tests-vizor-core
@@ -52,7 +52,7 @@ target_include_directories(unit-tests-vizor-core
         PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
         )
 
-target_link_libraries(unit-tests-vizor-core PRIVATE Vizer::Core)
+target_link_libraries(unit-tests-vizor-core PRIVATE Visor::Core)
 
 add_test(NAME unit-tests-vizor-core
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/src/tests

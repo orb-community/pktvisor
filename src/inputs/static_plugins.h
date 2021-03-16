@@ -1,7 +1,7 @@
 
 int import_input_plugins()
 {
-    CORRADE_PLUGIN_IMPORT(VizerInputPcap);
+    CORRADE_PLUGIN_IMPORT(VisorInputPcap);
     return 0;
 }
 

@@ -81,7 +81,7 @@ int main(int argc, char *argv[])
     std::map<std::string, docopt::value> args = docopt::docopt(USAGE,
         {argv + 1, argv + argc},
         true,           // show help if requested
-        VIZER_VERSION); // version string
+        VISOR_VERSION); // version string
 
     auto logger = spdlog::stdout_color_mt("pktvisor");
     if (args["-v"].asBool()) {
@@ -120,7 +120,7 @@ int main(int argc, char *argv[])
     std::shared_ptr<timer::interval_handle> timer_handle;
     auto usage_metrics = [&logger] {
         u_char buf[1024];
-        std::string version_str{VIZER_VERSION_NUM};
+        std::string version_str{VISOR_VERSION_NUM};
         std::reverse(version_str.begin(), version_str.end());
         std::string target = version_str + ".pktvisord.metrics.pktvisor.dev.";
         logger->info("sending anonymous usage metrics (once/day, use --no-track to disable): {}", target);

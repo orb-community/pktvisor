@@ -82,7 +82,7 @@ int main(int argc, char *argv[])
     std::map<std::string, docopt::value> args = docopt::docopt(USAGE,
         {argv + 1, argv + argc},
         true,           // show help if requested
-        VIZER_VERSION); // version string
+        VISOR_VERSION); // version string
 
     auto logger = spdlog::stderr_color_mt("pktvisor");
     if (args["-v"].asBool()) {

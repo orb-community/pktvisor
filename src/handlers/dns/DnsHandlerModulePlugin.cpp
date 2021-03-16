@@ -8,7 +8,7 @@
 #include <Corrade/PluginManager/AbstractManager.h>
 #include <nlohmann/json.hpp>
 
-CORRADE_PLUGIN_REGISTER(VizerHandlerDns, visor::handler::dns::DnsHandlerModulePlugin,
+CORRADE_PLUGIN_REGISTER(VisorHandlerDns, visor::handler::dns::DnsHandlerModulePlugin,
     "dev.visor.module.handler/1.0")
 
 namespace visor::handler::dns {
