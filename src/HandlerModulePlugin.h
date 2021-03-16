@@ -9,20 +9,20 @@
 #include "InputStreamManager.h"
 #include <string>
 
-namespace vizer {
+namespace visor {
 
 class HandlerModulePlugin : public AbstractPlugin
 {
 protected:
-    vizer::InputStreamManager *_input_manager;
-    vizer::HandlerManager *_handler_manager;
+    visor::InputStreamManager *_input_manager;
+    visor::HandlerManager *_handler_manager;
 
     virtual void _setup_routes(HttpServer &svr) = 0;
 
 public:
     static std::string pluginInterface()
     {
-        return "dev.vizer.module.handler/1.0";
+        return "dev.visor.module.handler/1.0";
     }
 
     static std::vector<std::string> pluginSearchPaths()

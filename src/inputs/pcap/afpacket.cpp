@@ -19,7 +19,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-namespace vizer::input::pcap {
+namespace visor::input::pcap {
 
 AFPacket::AFPacket(PcapInputStream *stream, pcpp::OnPacketArrivesCallback cb, std::string filter,
     std::string interface_name,

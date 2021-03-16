@@ -6,7 +6,7 @@
 #include <Corrade/Utility/Format.h>
 #include <Corrade/Utility/FormatStl.h>
 
-namespace vizer {
+namespace visor {
 
 void InputModulePlugin::init_module(InputStreamManager *im, HttpServer &svr)
 {

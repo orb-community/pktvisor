@@ -6,7 +6,7 @@
 #include <regex>
 #include <sstream>
 
-namespace vizer {
+namespace visor {
 
 void AbstractPlugin::_check_schema(json obj, SchemaMap &required, SchemaMap &optional)
 {

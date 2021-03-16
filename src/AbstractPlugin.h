@@ -11,7 +11,7 @@
 #include <string>
 #include <unordered_map>
 
-namespace vizer {
+namespace visor {
 
 using json = nlohmann::json;
 

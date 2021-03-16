@@ -7,7 +7,7 @@
 #include "AbstractManager.h"
 #include "InputStream.h"
 
-namespace vizer {
+namespace visor {
 
 /**
  * called from HTTP threads so must be thread safe

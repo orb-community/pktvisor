@@ -9,7 +9,7 @@
 #include <sstream>
 #include <string.h>
 
-namespace vizer::handler::dns {
+namespace visor::handler::dns {
 
 IDnsResource::IDnsResource(DnsLayer *dnsLayer, size_t offsetInLayer)
     : m_DnsLayer(dnsLayer)

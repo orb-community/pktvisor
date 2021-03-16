@@ -6,7 +6,7 @@
 #include <cstring>
 #include <stdexcept>
 
-namespace vizer::geo {
+namespace visor::geo {
 
 MaxmindDB &GeoIP()
 {

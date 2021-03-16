@@ -6,7 +6,7 @@
 
 #include "HandlerModulePlugin.h"
 
-namespace vizer::handler::dns {
+namespace visor::handler::dns {
 
 class DnsHandlerModulePlugin : public HandlerModulePlugin
 {
@@ -16,7 +16,7 @@ protected:
 
 public:
     explicit DnsHandlerModulePlugin(Corrade::PluginManager::AbstractManager &manager, const std::string &plugin)
-        : vizer::HandlerModulePlugin{manager, plugin}
+        : visor::HandlerModulePlugin{manager, plugin}
     {
     }
 

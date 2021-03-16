@@ -6,10 +6,10 @@
 #include <Corrade/PluginManager/AbstractManager.h>
 #include <Corrade/Utility/FormatStl.h>
 
-CORRADE_PLUGIN_REGISTER(VizerInputPcap, vizer::input::pcap::PcapInputModulePlugin,
-    "dev.vizer.module.input/1.0")
+CORRADE_PLUGIN_REGISTER(VisorInputPcap, visor::input::pcap::PcapInputModulePlugin,
+    "dev.visor.module.input/1.0")
 
-namespace vizer::input::pcap {
+namespace visor::input::pcap {
 
 void PcapInputModulePlugin::_setup_routes(HttpServer &svr)
 {

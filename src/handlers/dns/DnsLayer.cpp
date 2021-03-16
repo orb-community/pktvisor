@@ -12,7 +12,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-namespace vizer::handler::dns {
+namespace visor::handler::dns {
 
 DnsLayer::DnsLayer(uint8_t *data, size_t dataLen, Layer *prevLayer, pcpp::Packet *packet)
     : Layer(data, dataLen, prevLayer, packet)
@@ -23,7 +23,7 @@ DnsLayer::DnsLayer(uint8_t *data, size_t dataLen, Layer *prevLayer, pcpp::Packet
     m_FirstQuery = NULL;
     m_FirstAnswer = NULL;
     m_FirstAuthority = NULL;
-	m_FirstAdditional = NULL;
+    m_FirstAdditional = NULL;
 
 }
 
@@ -838,4 +838,4 @@ bool DnsLayer::removeResource(IDnsResource* resourceToRemove)
         return true;
 }
 
-} // namespace vizer
+} // namespace visor

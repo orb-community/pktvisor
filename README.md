@@ -213,9 +213,9 @@ output will contain the JSON summarization output, which you can capture or pipe
 
 $ docker run --rm -v /pktvisor/src/tests/fixtures:/pcaps ns1labs/pktvisor pktvisor-pcap /pcaps/dns_ipv4_udp.pcap | jq .
 
-[2021-03-11 18:45:04.572] [pktvisor] [info] Load input plugin: PcapInputModulePlugin dev.vizer.module.input/1.0
-[2021-03-11 18:45:04.573] [pktvisor] [info] Load handler plugin: DnsHandler dev.vizer.module.handler/1.0
-[2021-03-11 18:45:04.573] [pktvisor] [info] Load handler plugin: NetHandler dev.vizer.module.handler/1.0
+[2021-03-11 18:45:04.572] [pktvisor] [info] Load input plugin: PcapInputModulePlugin dev.visor.module.input/1.0
+[2021-03-11 18:45:04.573] [pktvisor] [info] Load handler plugin: DnsHandler dev.visor.module.handler/1.0
+[2021-03-11 18:45:04.573] [pktvisor] [info] Load handler plugin: NetHandler dev.visor.module.handler/1.0
 ...
 processed 140 packets
 {

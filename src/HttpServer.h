@@ -7,7 +7,7 @@
 #include <httplib.h>
 #include <spdlog/spdlog.h>
 
-namespace vizer {
+namespace visor {
 class HttpServer : public httplib::Server
 {
     bool _read_only = true;

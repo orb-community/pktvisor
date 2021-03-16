@@ -17,10 +17,10 @@
 #include <arpa/inet.h>
 #include <cpc_union.hpp>
 
-namespace vizer::handler::net {
+namespace visor::handler::net {
 
 NetStreamHandler::NetStreamHandler(const std::string &name, PcapInputStream *stream, uint periods, uint deepSampleRate)
-    : vizer::StreamMetricsHandler<NetworkMetricsManager>(name, periods, deepSampleRate)
+    : visor::StreamMetricsHandler<NetworkMetricsManager>(name, periods, deepSampleRate)
     , _stream(stream)
 {
     assert(stream);

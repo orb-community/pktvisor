@@ -12,7 +12,7 @@
 #include <unordered_map>
 #include <variant>
 
-namespace vizer {
+namespace visor {
 
 using json = nlohmann::json;
 

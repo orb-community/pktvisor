@@ -18,10 +18,10 @@
 #include <cpc_union.hpp>
 #include <sstream>
 
-namespace vizer::handler::dns {
+namespace visor::handler::dns {
 
 DnsStreamHandler::DnsStreamHandler(const std::string &name, PcapInputStream *stream, uint periods, int deepSampleRate)
-    : vizer::StreamMetricsHandler<DnsMetricsManager>(name, periods, deepSampleRate)
+    : visor::StreamMetricsHandler<DnsMetricsManager>(name, periods, deepSampleRate)
     , _stream(stream)
 {
     assert(stream);

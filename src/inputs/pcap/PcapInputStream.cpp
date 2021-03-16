@@ -27,7 +27,7 @@
 
 using namespace std::chrono;
 
-namespace vizer::input::pcap {
+namespace visor::input::pcap {
 
 // static callbacks for PcapPlusPlus
 static void _tcp_message_ready_cb(int8_t side, const pcpp::TcpStreamData &tcpData, void *cookie)
@@ -61,7 +61,7 @@ static void _pcap_stats_update([[maybe_unused]] pcap_stat &stats, [[maybe_unused
 }
 
 PcapInputStream::PcapInputStream(const std::string &name)
-    : vizer::InputStream(name)
+    : visor::InputStream(name)
     , _pcapDevice(nullptr)
     , _tcp_reassembly(_tcp_message_ready_cb,
           this,
