@@ -51,7 +51,9 @@ jobs:
       - name: Conan install (osx-workaround)
         if: matrix.os == 'macos-latest'
         working-directory: ${{github.workspace}}/build
-        run: conan install --build=missing ..
+        run: |
+          conan remote add public-conan https://api.bintray.com/conan/bincrafters/public-conan
+          conan install --build=missing ..
 
       - name: linux package install
         if: matrix.os == 'ubuntu-latest'
