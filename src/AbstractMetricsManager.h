@@ -261,6 +261,7 @@ public:
     }
 
     virtual void to_json(json &j) const = 0;
+    virtual void to_prometheus(std::string &out, const std::string &key) const = 0;
 };
 
 template <typename MetricsBucketClass>
@@ -498,6 +499,25 @@ public:
         j[period_str][key]["period"]["length"] = _metric_buckets.at(period)->period_length();
 
         _metric_buckets.at(period)->to_json(j[period_str][key]);
+    }
+
+    void window_single_prometheus(std::string &out, const std::string &key, uint64_t period = 0) const
+    {
+        std::shared_lock rl(_base_mutex);
+        std::shared_lock rbl(_bucket_mutex);
+
+        if (period >= _num_periods) {
+            std::stringstream err;
+            err << "invalid metrics period, specify [0, " << _num_periods - 1 << "]";
+            throw PeriodException(err.str());
+        }
+        if (period >= _metric_buckets.size()) {
+            std::stringstream err;
+            err << "requested metrics period has not yet accumulated, current range is [0, " << _metric_buckets.size() - 1 << "]";
+            throw PeriodException(err.str());
+        }
+
+        _metric_buckets.at(period)->to_prometheus(out, key);
     }
 
     void window_merged_json(json &j, const std::string &key, uint64_t period) const

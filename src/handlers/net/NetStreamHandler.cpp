@@ -82,8 +82,13 @@ void NetStreamHandler::info_json(json &j) const
 {
     _common_info_json(j);
 }
-void NetStreamHandler::window_prometheus(std::string &out, uint64_t period, bool merged)
+void NetStreamHandler::window_prometheus(std::string &out)
 {
+    if (_metrics->current_periods() > 1) {
+        _metrics->window_single_prometheus(out, schema_key(), 1);
+    } else {
+        _metrics->window_single_prometheus(out, schema_key(), 0);
+    }
 }
 
 void NetworkMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
@@ -332,6 +337,9 @@ void NetworkMetricsBucket::process_packet(bool deep, pcpp::Packet &payload, Pack
             }
         }
     }
+}
+void NetworkMetricsBucket::to_prometheus(std::string &out, const std::string &key) const
+{
 }
 
 // the general metrics manager entry point

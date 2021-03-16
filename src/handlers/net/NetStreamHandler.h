@@ -78,6 +78,7 @@ public:
     // visor::AbstractMetricsBucket
     void specialized_merge(const AbstractMetricsBucket &other) override;
     void to_json(json &j) const override;
+    void to_prometheus(std::string &out, const std::string &key) const override;
 
     // must be thread safe as it is called from time window maintenance thread
     void on_set_read_only() override
@@ -140,7 +141,7 @@ public:
 
     // visor::StreamHandler
     void window_json(json &j, uint64_t period, bool merged) override;
-    void window_prometheus(std::string &out, uint64_t period, bool merged) override;
+    void window_prometheus(std::string &out) override;
 };
 
 }

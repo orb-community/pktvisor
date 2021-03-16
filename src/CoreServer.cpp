@@ -168,7 +168,7 @@ void visor::CoreServer::_setup_routes(const std::string &prometheus_path)
                     auto hmod = dynamic_cast<StreamHandler *>(mod.get());
                     if (hmod) {
                         spdlog::stopwatch sw;
-                        hmod->window_prometheus(output, 1, false);
+                        hmod->window_prometheus(output);
                         _logger->debug("{} elapsed time: {}", hmod->name(), sw);
                     }
                 }

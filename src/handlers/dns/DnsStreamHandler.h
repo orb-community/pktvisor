@@ -113,6 +113,7 @@ public:
     // visor::AbstractMetricsBucket
     void specialized_merge(const AbstractMetricsBucket &other) override;
     void to_json(json &j) const override;
+    void to_prometheus(std::string &out, const std::string &key) const override;
 
     void process_dns_layer(bool deep, DnsLayer &payload, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint16_t port);
 
@@ -228,7 +229,7 @@ public:
 
     // visor::StreamHandler
     void window_json(json &j, uint64_t period, bool merged) override;
-    void window_prometheus(std::string &out, uint64_t period, bool merged) override;
+    void window_prometheus(std::string &out) override;
 };
 
 }
