@@ -58,6 +58,10 @@ public:
     virtual void to_prometheus(std::stringstream &out, const std::string &key) const = 0;
 };
 
+/**
+ * A Counter metric class which knows how to render its output
+ * NOTE: intentionally _not_ thread safe; it should be protected by a mutex in the metric bucket
+ */
 class Counter final : Metric
 {
     uint64_t _value = 0;
@@ -79,7 +83,7 @@ public:
         return _value;
     }
 
-    void merge(const Counter &other)
+    void operator+=(const Counter &other)
     {
         _value += other._value;
     }
@@ -168,7 +172,7 @@ public:
         return _rate;
     }
 
-    auto quantile_get_rlocked() const
+    auto quantile_locked() const
     {
         std::shared_lock lock(_sketch_mutex);
         struct retVals {
@@ -180,7 +184,7 @@ public:
 
     void merge(const Rate &other)
     {
-        auto [o_quantile, o_lock] = other.quantile_get_rlocked();
+        auto [o_quantile, o_lock] = other.quantile_locked();
         std::unique_lock w_lock(_sketch_mutex);
         _quantile.merge(*o_quantile);
         // the live rate to simply copied if non zero
@@ -276,15 +280,16 @@ public:
         on_set_read_only();
     }
 
-    auto event_data() const
+    auto event_data_locked() const
     {
-        std::shared_lock lock(_base_mutex);
         struct eventData {
             const Counter *num_events;
             const Counter *num_samples;
             const Rate *event_rate;
+            std::shared_lock<std::shared_mutex> r_lock;
         };
-        return eventData{&_num_events, &_num_samples, &_rate_events};
+        std::shared_lock lock(_base_mutex);
+        return eventData{&_num_events, &_num_samples, &_rate_events, std::move(lock)};
     }
 
     void merge(const AbstractMetricsBucket &other)
@@ -292,8 +297,8 @@ public:
         {
             std::shared_lock r_lock(other._base_mutex);
             std::unique_lock w_lock(_base_mutex);
-            _num_events.merge(other._num_events);
-            _num_samples.merge(other._num_samples);
+            _num_events += other._num_events;
+            _num_samples += other._num_samples;
             _period_length += other.period_length();
             if (other._start_tstamp.tv_sec < _start_tstamp.tv_sec) {
                 _start_tstamp.tv_sec = other._start_tstamp.tv_sec;

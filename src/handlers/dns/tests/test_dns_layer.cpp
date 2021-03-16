@@ -22,7 +22,7 @@ TEST_CASE("Parse DNS UDP IPv4 tests", "[pcap][ipv4][udp][dns]")
     stream.stop();
 
     auto counters = dns_handler.metrics()->bucket(0)->counters();
-    auto event_data = dns_handler.metrics()->bucket(0)->event_data();
+    auto event_data = dns_handler.metrics()->bucket(0)->event_data_locked();
 
     CHECK(dns_handler.metrics()->current_periods() == 1);
     CHECK(dns_handler.metrics()->start_tstamp().tv_sec == 1567706414);
@@ -32,12 +32,12 @@ TEST_CASE("Parse DNS UDP IPv4 tests", "[pcap][ipv4][udp][dns]")
     CHECK(dns_handler.metrics()->end_tstamp().tv_nsec == 602866000);
 
     CHECK(dns_handler.metrics()->bucket(0)->period_length() == 6);
-    
+
     json j;
     dns_handler.metrics()->bucket(0)->to_json(j);
 
     CHECK(dns_handler.metrics()->current_periods() == 1);
-    CHECK(event_data.num_events == 140);
+    CHECK(event_data.num_events->value() == 140);
     CHECK(counters.UDP == 140);
     CHECK(counters.IPv4 == 140);
     CHECK(counters.IPv6 == 0);
@@ -61,11 +61,11 @@ TEST_CASE("Parse DNS TCP IPv4 tests", "[pcap][ipv4][tcp][dns]")
     stream.stop();
 
     auto counters = dns_handler.metrics()->bucket(0)->counters();
-    auto event_data = dns_handler.metrics()->bucket(0)->event_data();
+    auto event_data = dns_handler.metrics()->bucket(0)->event_data_locked();
     json j;
     dns_handler.metrics()->bucket(0)->to_json(j);
 
-    CHECK(event_data.num_events == 420);
+    CHECK(event_data.num_events->value() == 420);
     CHECK(counters.TCP == 420);
     CHECK(counters.IPv4 == 420);
     CHECK(counters.IPv6 == 0);
@@ -90,11 +90,11 @@ TEST_CASE("Parse DNS UDP IPv6 tests", "[pcap][ipv6][udp][dns]")
     dns_handler.stop();
 
     auto counters = dns_handler.metrics()->bucket(0)->counters();
-    auto event_data = dns_handler.metrics()->bucket(0)->event_data();
+    auto event_data = dns_handler.metrics()->bucket(0)->event_data_locked();
     json j;
     dns_handler.metrics()->bucket(0)->to_json(j);
 
-    CHECK(event_data.num_events == 140);
+    CHECK(event_data.num_events->value() == 140);
     CHECK(counters.UDP == 140);
     CHECK(counters.IPv4 == 0);
     CHECK(counters.IPv6 == 140);
@@ -119,11 +119,11 @@ TEST_CASE("Parse DNS TCP IPv6 tests", "[pcap][ipv6][tcp][dns]")
     dns_handler.stop();
 
     auto counters = dns_handler.metrics()->bucket(0)->counters();
-    auto event_data = dns_handler.metrics()->bucket(0)->event_data();
+    auto event_data = dns_handler.metrics()->bucket(0)->event_data_locked();
     json j;
     dns_handler.metrics()->bucket(0)->to_json(j);
 
-    CHECK(event_data.num_events == 360);
+    CHECK(event_data.num_events->value() == 360);
     CHECK(counters.TCP == 360);
     CHECK(counters.IPv4 == 0);
     CHECK(counters.IPv6 == 360);
@@ -150,12 +150,12 @@ TEST_CASE("Parse DNS random UDP/TCP tests", "[pcap][net]")
     dns_handler.stop();
 
     auto counters = dns_handler.metrics()->bucket(0)->counters();
-    auto event_data = dns_handler.metrics()->bucket(0)->event_data();
+    auto event_data = dns_handler.metrics()->bucket(0)->event_data_locked();
 
     // confirmed with wireshark. there are 14 TCP retransmissions which are counted differently in our state machine
     // and account for some minor differences in TCP based stats
-    CHECK(event_data.num_events == 5851); // wireshark: 5838
-    CHECK(event_data.num_samples == 5851);
+    CHECK(event_data.num_events->value() == 5851); // wireshark: 5838
+    CHECK(event_data.num_samples->value() == 5851);
     CHECK(counters.TCP == 2880); // wireshark: 2867
     CHECK(counters.UDP == 2971);
     CHECK(counters.IPv4 == 5851); // wireshark: 5838
@@ -178,7 +178,7 @@ TEST_CASE("Parse DNS random UDP/TCP tests", "[pcap][net]")
     CHECK(j["cardinality"]["qname"] == 2055); // flame was run with 1000 randoms x2 (udp+tcp)
 
     CHECK(j["top_qname2"][0]["name"] == ".test.com");
-    CHECK(j["top_qname2"][0]["estimate"] == event_data.num_events);
+    CHECK(j["top_qname2"][0]["estimate"] == event_data.num_events->value());
 
     CHECK(j["top_rcode"][0]["name"] == "NOERROR");
     CHECK(j["top_rcode"][0]["estimate"] == counters.NOERROR);

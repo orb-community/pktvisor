@@ -132,10 +132,18 @@ void NetworkMetricsBucket::to_prometheus(std::stringstream &out, const std::stri
 
     std::shared_lock r_lock(_mutex);
 
-    auto [num_events, num_samples, event_rate] = event_data(); // thread safe
+    auto [num_events, num_samples, event_rate, event_lock] = event_data_locked(); // thread safe
 
     num_events->to_prometheus(out, key);
     num_samples->to_prometheus(out, key);
+
+    _counters.UDP.to_prometheus(out, key);
+    _counters.TCP.to_prometheus(out, key);
+    _counters.OtherL4.to_prometheus(out, key);
+    _counters.IPv4.to_prometheus(out, key);
+    _counters.IPv6.to_prometheus(out, key);
+    _counters.total_in.to_prometheus(out, key);
+    _counters.total_out.to_prometheus(out, key);
 }
 
 void NetworkMetricsBucket::to_json(json &j) const
@@ -148,7 +156,7 @@ void NetworkMetricsBucket::to_json(json &j) const
         if (!read_only()) {
             j["rates"]["pps_in"]["live"] = _rate_in.rate();
         }
-        auto [rate_quantile, rate_lock] = _rate_in.quantile_get_rlocked();
+        auto [rate_quantile, rate_lock] = _rate_in.quantile_locked();
         auto quantiles = rate_quantile->get_quantiles(fractions, 4);
         if (quantiles.size()) {
             j["rates"]["pps_in"]["p50"] = quantiles[0];
@@ -162,7 +170,7 @@ void NetworkMetricsBucket::to_json(json &j) const
         if (!read_only()) {
             j["rates"]["pps_out"]["live"] = _rate_out.rate();
         }
-        auto [rate_quantile, rate_lock] = _rate_out.quantile_get_rlocked();
+        auto [rate_quantile, rate_lock] = _rate_out.quantile_locked();
         auto quantiles = rate_quantile->get_quantiles(fractions, 4);
         if (quantiles.size()) {
             j["rates"]["pps_out"]["p50"] = quantiles[0];
@@ -172,13 +180,13 @@ void NetworkMetricsBucket::to_json(json &j) const
         }
     }
 
-    auto [num_events, num_samples, event_rate] = event_data(); // thread safe
+    auto [num_events, num_samples, event_rate, event_lock] = event_data_locked(); // thread safe
 
     {
         if (!read_only()) {
             j["rates"]["pps_total"]["live"] = event_rate->rate();
         }
-        auto [rate_quantile, rate_lock] = event_rate->quantile_get_rlocked();
+        auto [rate_quantile, rate_lock] = event_rate->quantile_locked();
         auto quantiles = rate_quantile->get_quantiles(fractions, 4);
         if (quantiles.size()) {
             j["rates"]["pps_total"]["p50"] = quantiles[0];
@@ -192,13 +200,13 @@ void NetworkMetricsBucket::to_json(json &j) const
 
     num_events->to_json(j);
     num_samples->to_json(j);
-    j["udp"] = _counters.UDP;
-    j["tcp"] = _counters.TCP;
-    j["other_l4"] = _counters.OtherL4;
-    j["ipv4"] = _counters.IPv4;
-    j["ipv6"] = _counters.IPv6;
-    j["in"] = _counters.total_in;
-    j["out"] = _counters.total_out;
+    _counters.UDP.to_json(j);
+    _counters.TCP.to_json(j);
+    _counters.OtherL4.to_json(j);
+    _counters.IPv4.to_json(j);
+    _counters.IPv6.to_json(j);
+    _counters.total_in.to_json(j);
+    _counters.total_out.to_json(j);
 
     j["cardinality"]["src_ips_in"] = lround(_srcIPCard.get_estimate());
     j["cardinality"]["dst_ips_out"] = lround(_dstIPCard.get_estimate());

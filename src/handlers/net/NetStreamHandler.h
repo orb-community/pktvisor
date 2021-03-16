@@ -4,7 +4,6 @@
 
 #pragma once
 
-
 #include "AbstractMetricsManager.h"
 #include "PcapInputStream.h"
 #include "StreamHandler.h"
@@ -42,13 +41,23 @@ protected:
 
     // total numPackets is tracked in base class num_events
     struct counters {
-        uint64_t UDP = 0;
-        uint64_t TCP = 0;
-        uint64_t OtherL4 = 0;
-        uint64_t IPv4 = 0;
-        uint64_t IPv6 = 0;
-        uint64_t total_in = 0;
-        uint64_t total_out = 0;
+        Counter UDP;
+        Counter TCP;
+        Counter OtherL4;
+        Counter IPv4;
+        Counter IPv6;
+        Counter total_in;
+        Counter total_out;
+        counters()
+            : UDP("udp", "Count of UDP packets")
+            , TCP("tcp", "Count of TCP packets")
+            , OtherL4("other_l4", "Count of packets which are not UDP or TCP")
+            , IPv4("ipv4", "Count of IPv4 packets")
+            , IPv6("ipv6", "Count of IPv6 packets")
+            , total_in("in", "Count of total ingress packets")
+            , total_out("out", "Count of total egress packets")
+        {
+        }
     };
     counters _counters;
 
@@ -145,4 +154,3 @@ public:
 };
 
 }
-
