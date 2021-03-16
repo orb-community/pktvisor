@@ -134,9 +134,8 @@ void NetworkMetricsBucket::to_prometheus(std::stringstream &out, const std::stri
 
     auto [num_events, num_samples, event_rate] = event_data(); // thread safe
 
-    out << "# TYPE " << key << "_total"
-        << " gauge" << std::endl;
-    out << key << "_total " << num_events << std::endl;
+    num_events->to_prometheus(out, key);
+    num_samples->to_prometheus(out, key);
 }
 
 void NetworkMetricsBucket::to_json(json &j) const
@@ -191,8 +190,8 @@ void NetworkMetricsBucket::to_json(json &j) const
 
     std::shared_lock r_lock(_mutex);
 
-    j["total"] = num_events;
-    j["deep_samples"] = num_samples;
+    num_events->to_json(j);
+    num_samples->to_json(j);
     j["udp"] = _counters.UDP;
     j["tcp"] = _counters.TCP;
     j["other_l4"] = _counters.OtherL4;

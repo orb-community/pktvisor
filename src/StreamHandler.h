@@ -60,8 +60,8 @@ protected:
             j["metrics"]["periods"][i]["read_only"] = _metrics->bucket(i)->read_only();
             j["metrics"]["periods"][i]["length"] = _metrics->bucket(i)->period_length();
             auto [num_events, num_samples, event_rate] = _metrics->bucket(i)->event_data();
-            j["metrics"]["periods"][i]["events"]["total"] = num_events;
-            j["metrics"]["periods"][i]["events"]["deep_samples"] = num_samples;
+            num_events->to_json(j["metrics"]["periods"][i]["events"]);
+            num_samples->to_json(j["metrics"]["periods"][i]["events"]);
             if (!_metrics->bucket(i)->read_only()) {
                 j["metrics"]["periods"][i]["events"]["rates"]["live"] = event_rate->rate();
             }

@@ -290,8 +290,8 @@ void DnsMetricsBucket::to_json(json &j) const
 
     std::shared_lock r_lock(_mutex);
 
-    j["wire_packets"]["total"] = num_events;
-    j["wire_packets"]["deep_samples"] = num_samples;
+    num_events->to_json(j["wire_packets"]);
+    num_samples->to_json(j["wire_packets"]);
     j["wire_packets"]["queries"] = _counters.queries;
     j["wire_packets"]["replies"] = _counters.replies;
     j["wire_packets"]["tcp"] = _counters.TCP;

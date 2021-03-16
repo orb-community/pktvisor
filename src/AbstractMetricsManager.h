@@ -41,6 +41,62 @@ public:
 
 using namespace std::chrono;
 
+class Metric
+{
+protected:
+    std::string _name;
+    std::string _desc;
+
+public:
+    Metric(std::string name, std::string desc)
+        : _name(std::move(name))
+        , _desc(std::move(desc))
+    {
+    }
+
+    virtual void to_json(json &j) const = 0;
+    virtual void to_prometheus(std::stringstream &out, const std::string &key) const = 0;
+};
+
+class Counter final : Metric
+{
+    uint64_t _value = 0;
+
+public:
+    Counter(std::string name, std::string desc)
+        : Metric(std::move(name), std::move(desc))
+    {
+    }
+
+    Counter &operator++()
+    {
+        ++_value;
+        return *this;
+    }
+
+    uint64_t value() const
+    {
+        return _value;
+    }
+
+    void merge(const Counter &other)
+    {
+        _value += other._value;
+    }
+
+    virtual void to_json(json &j) const override
+    {
+        j[_name] = _value;
+    }
+
+    virtual void to_prometheus(std::stringstream &out, const std::string &key) const override
+    {
+        out << "# HELP " << key << "_" << _name << ' ' << _desc << std::endl;
+        out << "# TYPE " << key << "_" << _name << " gauge" << std::endl;
+        out << key << '_' << _name << ' ' << _value << std::endl;
+    }
+};
+
 class Rate
 {
 public:
@@ -142,8 +198,8 @@ class AbstractMetricsBucket
 {
 private:
     mutable std::shared_mutex _base_mutex;
-    uint64_t _num_samples = 0;
-    uint64_t _num_events = 0;
+    Counter _num_samples;
+    Counter _num_events;
 
     Rate _rate_events;
 
@@ -162,7 +218,9 @@ protected:
 
 public:
     AbstractMetricsBucket()
-        : _rate_events()
+        : _num_samples("deep_samples", "Total number of deep samples")
+        , _num_events("total", "Total number of events")
+        , _rate_events()
         , _start_tstamp{0, 0}
         , _end_tstamp{0, 0}
     {
@@ -222,11 +280,11 @@ public:
     {
         std::shared_lock lock(_base_mutex);
         struct eventData {
-            uint64_t num_events;
-            uint64_t num_samples;
+            const Counter *num_events;
+            const Counter *num_samples;
             const Rate *event_rate;
         };
-        return eventData{_num_events, _num_samples, &_rate_events};
+        return eventData{&_num_events, &_num_samples, &_rate_events};
     }
 
     void merge(const AbstractMetricsBucket &other)
@@ -234,8 +292,8 @@ public:
         {
             std::shared_lock r_lock(other._base_mutex);
             std::unique_lock w_lock(_base_mutex);
-            _num_events += other._num_events;
-            _num_samples += other._num_samples;
+            _num_events.merge(other._num_events);
+            _num_samples.merge(other._num_samples);
             _period_length += other.period_length();
             if (other._start_tstamp.tv_sec < _start_tstamp.tv_sec) {
                 _start_tstamp.tv_sec = other._start_tstamp.tv_sec;
@@ -254,9 +312,9 @@ public:
         // note, currently not enforcing _read_only
         ++_rate_events;
         std::unique_lock lock(_base_mutex);
-        _num_events++;
+        ++_num_events;
         if (deep) {
-            _num_samples++;
+            ++_num_samples;
         }
     }
 
@@ -339,7 +397,6 @@ public:
     static const uint MERGE_CACHE_TTL_MS = 1000;
 
 protected:
-
     /**
      * the "base" event method that should be called on every event before specialized event functionality. sampling will be
      * chosen, and the time window will be maintained
