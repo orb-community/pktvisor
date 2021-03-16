@@ -8,7 +8,7 @@
 #include "CoreServer.h"
 #include "handlers/static_plugins.h"
 #include "inputs/static_plugins.h"
-#include "vizer_config.h"
+#include "visor_config.h"
 #include <docopt/docopt.h>
 #include <resolv.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
@@ -63,7 +63,7 @@ void signal_handler(int signal)
 }
 }
 
-using namespace vizer;
+using namespace visor;
 
 void initialize_geo(const docopt::value &city, const docopt::value &asn)
 {

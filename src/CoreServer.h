@@ -14,7 +14,7 @@
 #include <atomic>
 #include <spdlog/spdlog.h>
 
-namespace vizer {
+namespace visor {
 
 class CoreServer
 {
@@ -31,7 +31,7 @@ private:
     HandlerPluginRegistry _handler_registry;
     std::vector<HandlerPluginPtr> _handler_plugins;
 
-    vizer::HttpServer _svr;
+    visor::HttpServer _svr;
 
     std::unique_ptr<InputStreamManager> _input_manager;
     std::unique_ptr<HandlerManager> _handler_manager;

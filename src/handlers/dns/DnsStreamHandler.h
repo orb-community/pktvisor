@@ -20,11 +20,11 @@
 #include <Corrade/Utility/Debug.h>
 #include <string>
 
-namespace vizer::handler::dns {
+namespace visor::handler::dns {
 
-using namespace vizer::input::pcap;
+using namespace visor::input::pcap;
 
-class DnsMetricsBucket final : public vizer::AbstractMetricsBucket
+class DnsMetricsBucket final : public visor::AbstractMetricsBucket
 {
 public:
     const uint8_t START_FI_MAP_SIZE = 7; // 2^7 = 128
@@ -110,7 +110,7 @@ public:
         return _counters;
     }
 
-    // vizer::AbstractMetricsBucket
+    // visor::AbstractMetricsBucket
     void specialized_merge(const AbstractMetricsBucket &other) override;
     void to_json(json &j) const override;
 
@@ -119,7 +119,7 @@ public:
     void new_dns_transaction(bool deep, float to90th, float from90th, DnsLayer &dns, PacketDirection dir, DnsTransaction xact);
 };
 
-class DnsMetricsManager final : public vizer::AbstractMetricsManager<DnsMetricsBucket>
+class DnsMetricsManager final : public visor::AbstractMetricsManager<DnsMetricsBucket>
 {
 
     QueryResponsePairMgr _qr_pair_manager;
@@ -128,7 +128,7 @@ class DnsMetricsManager final : public vizer::AbstractMetricsManager<DnsMetricsB
 
 public:
     DnsMetricsManager(uint periods, int deepSampleRate)
-        : vizer::AbstractMetricsManager<DnsMetricsBucket>(periods, deepSampleRate)
+        : visor::AbstractMetricsManager<DnsMetricsBucket>(periods, deepSampleRate)
     {
     }
 
@@ -190,7 +190,7 @@ struct TcpFlowData {
     }
 };
 
-class DnsStreamHandler final : public vizer::StreamMetricsHandler<DnsMetricsManager>
+class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsManager>
 {
 
     PcapInputStream *_stream;
@@ -217,7 +217,7 @@ public:
     DnsStreamHandler(const std::string &name, PcapInputStream *stream, uint periods, int deepSampleRate);
     ~DnsStreamHandler() override;
 
-    // vizer::AbstractModule
+    // visor::AbstractModule
     std::string schema_key() const override
     {
         return "dns";
@@ -226,7 +226,7 @@ public:
     void stop() override;
     void info_json(json &j) const override;
 
-    // vizer::StreamHandler
+    // visor::StreamHandler
     void window_json(json &j, uint64_t period, bool merged) override;
 };
 

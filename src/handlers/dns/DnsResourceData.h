@@ -10,9 +10,9 @@
 /// @file
 
 /**
- * \namespace vizer
+ * \namespace visor
  */
-namespace vizer::handler::dns {
+namespace visor::handler::dns {
 
 //Visual studio has always been stupid about returning something useful for __cplusplus
 //Only recently was this fixed - and even then it requires a specific hack to the command line during build
@@ -23,7 +23,7 @@ namespace vizer::handler::dns {
 #define PCPP_SMART_PTR(T) std::unique_ptr<T>
 #else
 #define PCPP_SMART_PTR(T) std::auto_ptr<T>
-	#endif
+#endif
 
 	// forward declarations
 	class IDnsResource;

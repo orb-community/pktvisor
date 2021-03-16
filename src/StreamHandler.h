@@ -9,7 +9,7 @@
 #include <nlohmann/json.hpp>
 #include <sstream>
 
-namespace vizer {
+namespace visor {
 
 using json = nlohmann::json;
 

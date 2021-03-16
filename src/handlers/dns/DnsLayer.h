@@ -17,9 +17,9 @@
 /// @file
 
 /**
- * \namespace vizer
+ * \namespace visor
  */
-namespace vizer::handler::dns {
+namespace visor::handler::dns {
 
 /**
 	 * @struct dnshdr
@@ -29,7 +29,7 @@ namespace vizer::handler::dns {
 #pragma pack(push, 1)
 struct dnshdr {
     /** DNS query identification */
-		uint16_t transactionID;
+    uint16_t transactionID;
 #if (BYTE_ORDER == LITTLE_ENDIAN)
 		uint16_t
 		/** Recursion desired flag */
@@ -485,6 +485,6 @@ struct dnshdr {
             }
         }
 
-        } // namespace vizer
+        } // namespace visor
 
 #endif /* PV_PACKETPP_DNS_LAYER */

@@ -8,20 +8,20 @@
 #include "InputStreamManager.h"
 #include <string>
 
-namespace vizer {
+namespace visor {
 
 class InputModulePlugin : public AbstractPlugin
 {
 
 protected:
-    vizer::InputStreamManager *_input_manager;
+    visor::InputStreamManager *_input_manager;
 
     virtual void _setup_routes(HttpServer &svr) = 0;
 
 public:
     static std::string pluginInterface()
     {
-        return "dev.vizer.module.input/1.0";
+        return "dev.visor.module.input/1.0";
     }
 
     static std::vector<std::string> pluginSearchPaths()

@@ -1,27 +1,27 @@
 
-message(STATUS "vizer-core")
+message(STATUS "visor-core")
 
 find_package(Corrade REQUIRED PluginManager)
 
 set_directory_properties(PROPERTIES CORRADE_USE_PEDANTIC_FLAGS ON)
 
-add_library(vizer-core
+add_library(visor-core
         AbstractPlugin.cpp
         InputModulePlugin.cpp
         HandlerModulePlugin.cpp
         GeoDB.cpp
         CoreServer.cpp
         )
-add_library(Vizer::Core ALIAS vizer-core)
+add_library(Vizer::Core ALIAS visor-core)
 
-target_include_directories(vizer-core
+target_include_directories(visor-core
         PRIVATE
         ${CMAKE_BINARY_DIR}/src # Vizer::Core config.h
         INTERFACE
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
         )
 
-target_link_libraries(vizer-core
+target_link_libraries(visor-core
         PUBLIC
         datasketches
         rng
@@ -33,7 +33,7 @@ target_link_libraries(vizer-core
         ${VIZER_STATIC_PLUGINS}
         )
 
-configure_file(vizer_config.h.in vizer_config.h @ONLY)
+configure_file(visor_config.h.in visor_config.h @ONLY)
 
 add_subdirectory(inputs)
 add_subdirectory(handlers)

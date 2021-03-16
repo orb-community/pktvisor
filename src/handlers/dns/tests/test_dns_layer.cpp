@@ -3,8 +3,8 @@
 #include "DnsStreamHandler.h"
 #include "PcapInputStream.h"
 
-using namespace vizer::handler::dns;
-using namespace vizer::input::pcap;
+using namespace visor::handler::dns;
+using namespace visor::input::pcap;
 using namespace nlohmann;
 
 TEST_CASE("Parse DNS UDP IPv4 tests", "[pcap][ipv4][udp][dns]")

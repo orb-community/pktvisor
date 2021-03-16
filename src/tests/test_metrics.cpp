@@ -1,7 +1,7 @@
 #include "AbstractMetricsManager.h"
 #include <catch2/catch.hpp>
 
-using namespace vizer;
+using namespace visor;
 
 class TestMetricsBucket : public AbstractMetricsBucket
 {

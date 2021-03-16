@@ -4,7 +4,7 @@
 
 #include "dns.h"
 
-using namespace vizer::handler::dns;
+using namespace visor::handler::dns;
 
 TEST_CASE("dns", "[dns]")
 {

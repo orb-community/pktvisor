@@ -22,7 +22,7 @@
 #include <sstream>
 #include <sys/time.h>
 #include <unordered_map>
-namespace vizer {
+namespace visor {
 
 using json = nlohmann::json;
 

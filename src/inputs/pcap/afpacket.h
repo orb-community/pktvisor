@@ -17,7 +17,7 @@
 #include <sys/uio.h>
 #include <thread>
 
-namespace vizer::input::pcap {
+namespace visor::input::pcap {
 
 const int physical_offset = TPACKET_ALIGN(sizeof(struct tpacket3_hdr));
 
@@ -82,4 +82,4 @@ public:
 
 void filter_try_compile(const std::string &, struct sock_fprog *, int);
 
-} // namespace vizer
+} // namespace visor

@@ -4,8 +4,8 @@
 #include "NetStreamHandler.h"
 #include "PcapInputStream.h"
 
-using namespace vizer::handler::net;
-using namespace vizer::input::pcap;
+using namespace visor::handler::net;
+using namespace visor::input::pcap;
 
 TEST_CASE("Parse net (dns) UDP IPv4 tests", "[pcap][ipv4][udp][net]")
 {

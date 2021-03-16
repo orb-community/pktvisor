@@ -7,7 +7,7 @@
 #include <maxminddb.h>
 #include <string>
 
-namespace vizer::geo {
+namespace visor::geo {
 
 class MaxmindDB
 {

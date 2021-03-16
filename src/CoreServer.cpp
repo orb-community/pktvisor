@@ -3,12 +3,12 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 #include "CoreServer.h"
-#include "vizer_config.h"
+#include "visor_config.h"
 #include <chrono>
 #include <spdlog/stopwatch.h>
 #include <vector>
 
-vizer::CoreServer::CoreServer(bool read_only, std::shared_ptr<spdlog::logger> logger)
+visor::CoreServer::CoreServer(bool read_only, std::shared_ptr<spdlog::logger> logger)
     : _svr(read_only)
     , _logger(logger)
     , _start_time(std::chrono::system_clock::now())
@@ -38,7 +38,7 @@ vizer::CoreServer::CoreServer(bool read_only, std::shared_ptr<spdlog::logger> lo
 
     _setup_routes();
 }
-void vizer::CoreServer::start(const std::string &host, int port)
+void visor::CoreServer::start(const std::string &host, int port)
 {
     if (!_svr.bind_to_port(host.c_str(), port)) {
         throw std::runtime_error("unable to bind host/port");
@@ -48,7 +48,7 @@ void vizer::CoreServer::start(const std::string &host, int port)
         throw std::runtime_error("error during listen");
     }
 }
-void vizer::CoreServer::stop()
+void visor::CoreServer::stop()
 {
     _svr.stop();
 
@@ -68,11 +68,11 @@ void vizer::CoreServer::stop()
         }
     }
 }
-vizer::CoreServer::~CoreServer()
+visor::CoreServer::~CoreServer()
 {
     stop();
 }
-void vizer::CoreServer::_setup_routes()
+void visor::CoreServer::_setup_routes()
 {
 
     _logger->info("Initialize server control plane");

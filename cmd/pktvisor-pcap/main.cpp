@@ -19,7 +19,7 @@
 
 #include "handlers/static_plugins.h"
 #include "inputs/static_plugins.h"
-#include "vizer_config.h"
+#include "visor_config.h"
 
 #include "GeoDB.h"
 #include "handlers/dns/DnsStreamHandler.h"
@@ -58,7 +58,7 @@ void signal_handler(int signal)
 }
 }
 
-using namespace vizer;
+using namespace visor;
 
 typedef Corrade::PluginManager::Manager<InputModulePlugin> InputPluginRegistry;
 typedef Corrade::PluginManager::Manager<HandlerModulePlugin> HandlerPluginRegistry;
