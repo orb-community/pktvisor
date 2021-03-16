@@ -1,4 +1,4 @@
-package pktvisor
+package main
 
 import (
 	"encoding/json"
