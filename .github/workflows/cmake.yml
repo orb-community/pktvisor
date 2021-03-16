@@ -43,21 +43,23 @@ jobs:
         run: |
           conan profile new --detect default
 
-      - name: Conan profile (linux)
+      - name: Conan profile (linux-workaround)
         if: matrix.os == 'ubuntu-latest'
         run:
           conan profile update settings.compiler.libcxx=libstdc++11 default
+
+      - name: Conan install (osx-workaround)
+        if: matrix.os == 'macos-latest'
+        working-directory: ${{github.workspace}}/build
+        run: |
+          conan remote add public-conan https://api.bintray.com/conan/bincrafters/public-conan
+          conan install --build=missing ..
 
       - name: linux package install
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
           sudo apt-get install --yes --no-install-recommends golang ca-certificates jq
-
-      - name: osx package install
-        if: matrix.os == 'macos-latest'
-        run: |
-          brew update
 
       - name: Configure CMake
         # Use a bash shell so we can use the same syntax for environment variable
