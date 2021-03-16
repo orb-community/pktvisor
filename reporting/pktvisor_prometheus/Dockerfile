@@ -1,9 +1,10 @@
 FROM golang as builder
-
-RUN GIT_TERMINAL_PROMPT=0 git clone --depth 1 -b master --single-branch https://github.com/ns1/pktvisor.git $GOPATH/src/github.com/ns1/pktvisor \
-    && cd $GOPATH/src/github.com/ns1/pktvisor/reporting/pktvisor_prometheus \
-    && go get \
-    && go build -a -installsuffix cgo -ldflags="-w -s" -o /go/bin/pktvisor_exporter
+RUN mkdir -p $GOPATH/src/github.com/ns1/pktvisor
+COPY ./* $GOPATH/src/github.com/ns1/pktvisor/
+RUN rm -rf $GOPATH/src/github.com/ns1/pktvisor/pktvisor
+WORKDIR $GOPATH/src/github.com/ns1/pktvisor
+RUN go get
+RUN go build -v -a -installsuffix cgo -ldflags="-w -s" -o /go/bin/pktvisor_exporter
 
 # --------------------------------------------------------------------------------
 
