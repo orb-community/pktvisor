@@ -82,7 +82,7 @@ void NetStreamHandler::info_json(json &j) const
 {
     _common_info_json(j);
 }
-void NetStreamHandler::window_prometheus(std::string &out)
+void NetStreamHandler::window_prometheus(std::stringstream &out)
 {
     if (_metrics->current_periods() > 1) {
         _metrics->window_single_prometheus(out, schema_key(), 1);
@@ -125,6 +125,18 @@ void NetworkMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
     _topIPv6.merge(other._topIPv6);
     _topGeoLoc.merge(other._topGeoLoc);
     _topASN.merge(other._topASN);
+}
+
+void NetworkMetricsBucket::to_prometheus(std::stringstream &out, const std::string &key) const
+{
+
+    std::shared_lock r_lock(_mutex);
+
+    auto [num_events, num_samples, event_rate] = event_data(); // thread safe
+
+    out << "# TYPE " << key << "_total"
+        << " gauge" << std::endl;
+    out << key << "_total " << num_events << std::endl;
 }
 
 void NetworkMetricsBucket::to_json(json &j) const
@@ -337,9 +349,6 @@ void NetworkMetricsBucket::process_packet(bool deep, pcpp::Packet &payload, Pack
             }
         }
     }
-}
-void NetworkMetricsBucket::to_prometheus(std::string &out, const std::string &key) const
-{
 }
 
 // the general metrics manager entry point

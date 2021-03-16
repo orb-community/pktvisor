@@ -161,7 +161,7 @@ void visor::CoreServer::_setup_routes(const std::string &prometheus_path)
     if (!prometheus_path.empty()) {
         _logger->info("enabling prometheus metrics on: {}", prometheus_path);
         _svr.Get(prometheus_path.c_str(), [&]([[maybe_unused]] const httplib::Request &req, httplib::Response &res) {
-            std::string output;
+            std::stringstream output;
             try {
                 auto [handler_modules, hm_lock] = _handler_manager->module_get_all_locked();
                 for (auto &[name, mod] : handler_modules) {
@@ -172,7 +172,7 @@ void visor::CoreServer::_setup_routes(const std::string &prometheus_path)
                         _logger->debug("{} elapsed time: {}", hmod->name(), sw);
                     }
                 }
-                res.set_content(output, "text/plain");
+                res.set_content(output.str(), "text/plain");
             } catch (const std::exception &e) {
                 res.status = 500;
                 res.set_content(e.what(), "text/plain");

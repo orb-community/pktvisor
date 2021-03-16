@@ -261,7 +261,7 @@ public:
     }
 
     virtual void to_json(json &j) const = 0;
-    virtual void to_prometheus(std::string &out, const std::string &key) const = 0;
+    virtual void to_prometheus(std::stringstream &out, const std::string &key) const = 0;
 };
 
 template <typename MetricsBucketClass>
@@ -501,7 +501,7 @@ public:
         _metric_buckets.at(period)->to_json(j[period_str][key]);
     }
 
-    void window_single_prometheus(std::string &out, const std::string &key, uint64_t period = 0) const
+    void window_single_prometheus(std::stringstream &out, const std::string &key, uint64_t period = 0) const
     {
         std::shared_lock rl(_base_mutex);
         std::shared_lock rbl(_bucket_mutex);
