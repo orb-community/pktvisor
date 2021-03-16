@@ -82,6 +82,9 @@ void NetStreamHandler::info_json(json &j) const
 {
     _common_info_json(j);
 }
+void NetStreamHandler::window_prometheus(std::string &out, uint64_t period, bool merged)
+{
+}
 
 void NetworkMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
 {

@@ -25,6 +25,7 @@ public:
     virtual ~StreamHandler(){};
 
     virtual void window_json(json &j, uint64_t period, bool merged) = 0;
+    virtual void window_prometheus(std::string &out, uint64_t period, bool merged) = 0;
 };
 
 template <class MetricsManagerClass>

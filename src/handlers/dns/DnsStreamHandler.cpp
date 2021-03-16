@@ -200,7 +200,9 @@ void DnsStreamHandler::tcp_connection_end_cb(const pcpp::ConnectionData &connect
     // remove the connection from the connection manager
     _tcp_connections.erase(iter);
 }
-
+void DnsStreamHandler::window_prometheus(std::string &out, uint64_t period, bool merged)
+{
+}
 void DnsStreamHandler::window_json(json &j, uint64_t period, bool merged)
 {
     if (merged) {

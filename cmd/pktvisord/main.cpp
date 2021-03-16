@@ -39,6 +39,7 @@ static const char USAGE[] =
       --admin-api           Enable admin REST API giving complete control plane functionality [default: false]
                             When not specified, the exposed API is read-only access to summarized metrics.
                             When specified, write access is enabled for all modules.
+      --prometheus          Enable native Prometheus metrics at path /metrics
       -h --help             Show this screen
       -v                    Verbose log output
       --no-track            Don't send lightweight, anonymous usage metrics.
@@ -88,7 +89,11 @@ int main(int argc, char *argv[])
         logger->set_level(spdlog::level::debug);
     }
 
-    CoreServer svr(!args["--admin-api"].asBool(), logger);
+    std::string prometheus_path;
+    if (args["--prometheus"].asBool()) {
+        prometheus_path = "/metrics";
+    }
+    CoreServer svr(!args["--admin-api"].asBool(), logger, prometheus_path);
     svr.set_http_logger([&logger](const auto &req, const auto &res) {
         logger->info("REQUEST: {} {} {}", req.method, req.path, res.status);
         if (res.status == 500) {
