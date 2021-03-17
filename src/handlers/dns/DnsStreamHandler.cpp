@@ -200,7 +200,9 @@ void DnsStreamHandler::tcp_connection_end_cb(const pcpp::ConnectionData &connect
     // remove the connection from the connection manager
     _tcp_connections.erase(iter);
 }
-
+void DnsStreamHandler::window_prometheus(std::stringstream &out)
+{
+}
 void DnsStreamHandler::window_json(json &j, uint64_t period, bool merged)
 {
     if (merged) {
@@ -271,12 +273,12 @@ void DnsMetricsBucket::to_json(json &j) const
 
     const double fractions[4]{0.50, 0.90, 0.95, 0.99};
 
-    auto [num_events, num_samples, event_rate] = event_data(); // thread safe
+    auto [num_events, num_samples, event_rate, event_lock] = event_data_locked(); // thread safe
     {
         if (!read_only()) {
             j["wire_packets"]["rates"]["total"]["live"] = event_rate->rate();
         }
-        auto [rate_quantile, rate_lock] = event_rate->quantile_get_rlocked();
+        auto [rate_quantile, rate_lock] = event_rate->quantile_locked();
         auto quantiles = rate_quantile->get_quantiles(fractions, 4);
         if (quantiles.size()) {
             j["wire_packets"]["rates"]["total"]["p50"] = quantiles[0];
@@ -288,8 +290,8 @@ void DnsMetricsBucket::to_json(json &j) const
 
     std::shared_lock r_lock(_mutex);
 
-    j["wire_packets"]["total"] = num_events;
-    j["wire_packets"]["deep_samples"] = num_samples;
+    num_events->to_json(j["wire_packets"]);
+    num_samples->to_json(j["wire_packets"]);
     j["wire_packets"]["queries"] = _counters.queries;
     j["wire_packets"]["replies"] = _counters.replies;
     j["wire_packets"]["tcp"] = _counters.TCP;
@@ -542,6 +544,9 @@ void DnsMetricsBucket::new_dns_transaction(bool deep, float to90th, float from90
             }
         }
     }
+}
+void DnsMetricsBucket::to_prometheus(std::stringstream &out, const std::string &key) const
+{
 }
 
 // the general metrics manager entry point (both UDP and TCP)

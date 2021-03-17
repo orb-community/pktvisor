@@ -41,6 +41,66 @@ public:
 
 using namespace std::chrono;
 
+class Metric
+{
+protected:
+    std::string _name;
+    std::string _desc;
+
+public:
+    Metric(std::string name, std::string desc)
+        : _name(std::move(name))
+        , _desc(std::move(desc))
+    {
+    }
+
+    virtual void to_json(json &j) const = 0;
+    virtual void to_prometheus(std::stringstream &out, const std::string &key) const = 0;
+};
+
+/**
+ * A Counter metric class which knows how to render its output
+ * NOTE: intentionally _not_ thread safe; it should be protected by a mutex in the metric bucket
+ */
+class Counter final : Metric
+{
+    uint64_t _value = 0;
+
+public:
+    Counter(std::string name, std::string desc)
+        : Metric(std::move(name), std::move(desc))
+    {
+    }
+
+    Counter &operator++()
+    {
+        ++_value;
+        return *this;
+    }
+
+    uint64_t value() const
+    {
+        return _value;
+    }
+
+    void operator+=(const Counter &other)
+    {
+        _value += other._value;
+    }
+
+    virtual void to_json(json &j) const override
+    {
+        j[_name] = _value;
+    }
+
+    virtual void to_prometheus(std::stringstream &out, const std::string &key) const override
+    {
+        out << "# HELP " << key << "_" << _name << ' ' << _desc << std::endl;
+        out << "# TYPE " << key << "_" << _name << " gauge" << std::endl;
+        out << key << '_' << _name << ' ' << _value << std::endl;
+    }
+};
+
 class Rate
 {
 public:
@@ -112,7 +172,7 @@ public:
         return _rate;
     }
 
-    auto quantile_get_rlocked() const
+    auto quantile_locked() const
     {
         std::shared_lock lock(_sketch_mutex);
         struct retVals {
@@ -124,7 +184,7 @@ public:
 
     void merge(const Rate &other)
     {
-        auto [o_quantile, o_lock] = other.quantile_get_rlocked();
+        auto [o_quantile, o_lock] = other.quantile_locked();
         std::unique_lock w_lock(_sketch_mutex);
         _quantile.merge(*o_quantile);
         // the live rate to simply copied if non zero
@@ -142,8 +202,8 @@ class AbstractMetricsBucket
 {
 private:
     mutable std::shared_mutex _base_mutex;
-    uint64_t _num_samples = 0;
-    uint64_t _num_events = 0;
+    Counter _num_samples;
+    Counter _num_events;
 
     Rate _rate_events;
 
@@ -162,7 +222,9 @@ protected:
 
 public:
     AbstractMetricsBucket()
-        : _rate_events()
+        : _num_samples("deep_samples", "Total number of deep samples")
+        , _num_events("total", "Total number of events")
+        , _rate_events()
         , _start_tstamp{0, 0}
         , _end_tstamp{0, 0}
     {
@@ -218,15 +280,16 @@ public:
         on_set_read_only();
     }
 
-    auto event_data() const
+    auto event_data_locked() const
     {
-        std::shared_lock lock(_base_mutex);
         struct eventData {
-            uint64_t num_events;
-            uint64_t num_samples;
+            const Counter *num_events;
+            const Counter *num_samples;
             const Rate *event_rate;
+            std::shared_lock<std::shared_mutex> r_lock;
         };
-        return eventData{_num_events, _num_samples, &_rate_events};
+        std::shared_lock lock(_base_mutex);
+        return eventData{&_num_events, &_num_samples, &_rate_events, std::move(lock)};
     }
 
     void merge(const AbstractMetricsBucket &other)
@@ -254,13 +317,14 @@ public:
         // note, currently not enforcing _read_only
         ++_rate_events;
         std::unique_lock lock(_base_mutex);
-        _num_events++;
+        ++_num_events;
         if (deep) {
-            _num_samples++;
+            ++_num_samples;
         }
     }
 
     virtual void to_json(json &j) const = 0;
+    virtual void to_prometheus(std::stringstream &out, const std::string &key) const = 0;
 };
 
 template <typename MetricsBucketClass>
@@ -338,7 +402,6 @@ public:
     static const uint MERGE_CACHE_TTL_MS = 1000;
 
 protected:
-
     /**
      * the "base" event method that should be called on every event before specialized event functionality. sampling will be
      * chosen, and the time window will be maintained
@@ -498,6 +561,25 @@ public:
         j[period_str][key]["period"]["length"] = _metric_buckets.at(period)->period_length();
 
         _metric_buckets.at(period)->to_json(j[period_str][key]);
+    }
+
+    void window_single_prometheus(std::stringstream &out, const std::string &key, uint64_t period = 0) const
+    {
+        std::shared_lock rl(_base_mutex);
+        std::shared_lock rbl(_bucket_mutex);
+
+        if (period >= _num_periods) {
+            std::stringstream err;
+            err << "invalid metrics period, specify [0, " << _num_periods - 1 << "]";
+            throw PeriodException(err.str());
+        }
+        if (period >= _metric_buckets.size()) {
+            std::stringstream err;
+            err << "requested metrics period has not yet accumulated, current range is [0, " << _metric_buckets.size() - 1 << "]";
+            throw PeriodException(err.str());
+        }
+
+        _metric_buckets.at(period)->to_prometheus(out, key);
     }
 
     void window_merged_json(json &j, const std::string &key, uint64_t period) const

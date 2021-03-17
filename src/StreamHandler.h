@@ -25,6 +25,7 @@ public:
     virtual ~StreamHandler(){};
 
     virtual void window_json(json &j, uint64_t period, bool merged) = 0;
+    virtual void window_prometheus(std::stringstream &out) = 0;
 };
 
 template <class MetricsManagerClass>
@@ -58,13 +59,13 @@ protected:
             }
             j["metrics"]["periods"][i]["read_only"] = _metrics->bucket(i)->read_only();
             j["metrics"]["periods"][i]["length"] = _metrics->bucket(i)->period_length();
-            auto [num_events, num_samples, event_rate] = _metrics->bucket(i)->event_data();
-            j["metrics"]["periods"][i]["events"]["total"] = num_events;
-            j["metrics"]["periods"][i]["events"]["deep_samples"] = num_samples;
+            auto [num_events, num_samples, event_rate, event_lock] = _metrics->bucket(i)->event_data_locked();
+            num_events->to_json(j["metrics"]["periods"][i]["events"]);
+            num_samples->to_json(j["metrics"]["periods"][i]["events"]);
             if (!_metrics->bucket(i)->read_only()) {
                 j["metrics"]["periods"][i]["events"]["rates"]["live"] = event_rate->rate();
             }
-            auto [rate_quantile, rate_lock] = event_rate->quantile_get_rlocked();
+            auto [rate_quantile, rate_lock] = event_rate->quantile_locked();
             auto quantiles = rate_quantile->get_quantiles(fractions, 4);
             if (quantiles.size()) {
                 j["metrics"]["periods"][i]["events"]["rates"]["p50"] = quantiles[0];

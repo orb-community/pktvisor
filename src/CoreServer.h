@@ -39,10 +39,10 @@ private:
     std::shared_ptr<spdlog::logger> _logger;
     std::chrono::system_clock::time_point _start_time;
 
-    void _setup_routes();
+    void _setup_routes(const std::string &prometheus_path);
 
 public:
-    CoreServer(bool read_only, std::shared_ptr<spdlog::logger> logger);
+    CoreServer(bool read_only, std::shared_ptr<spdlog::logger> logger, const std::string &prometheus_path);
     ~CoreServer();
 
     void start(const std::string &host, int port);
