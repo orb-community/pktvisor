@@ -39,23 +39,29 @@ handlers.
 ## Example (YAML)
 
 ```yaml
-
 version: "1.0"
 
 policy:
   input:
-    name: anycast
-    type: pcap
+    anycast:
+      type: pcap
+      config:
+        bpf: "host 192.168.0.50"
+        iface: eth0
+  handlers:
     config:
-      bpf: "host 192.168.0.50"
-      iface: eth0
-  handler:
-    default_config:
       periods: 5
       max_deep_sample: 50
     modules:
       default_net:
         type: net
+      udp_traffic:
+        type: net
+        config:
+          protocols: [ udp ]
+        metrics:
+          enable:
+            - top_ips
       default_dns:
         type: dns
         config:
@@ -64,6 +70,10 @@ policy:
         type: dns
         config:
           qname_match: .mydomain.com
+        metrics:
+          disable:
+            - top_qtypes
+            - top_udp_ports
   sinks:
     default_prometheus:
       type: prometheus_exporter
