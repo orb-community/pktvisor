@@ -11,7 +11,7 @@ add_library(visor-core
         HandlerModulePlugin.cpp
         GeoDB.cpp
         CoreServer.cpp
-        )
+        Metrics.cpp Metrics.h)
 add_library(Visor::Core ALIAS visor-core)
 
 target_include_directories(visor-core
