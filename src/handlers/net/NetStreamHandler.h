@@ -7,14 +7,6 @@
 #include "AbstractMetricsManager.h"
 #include "PcapInputStream.h"
 #include "StreamHandler.h"
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wold-style-cast"
-#pragma GCC diagnostic ignored "-Wunused-function"
-#pragma clang diagnostic ignored "-Wrange-loop-analysis"
-#include <cpc_sketch.hpp>
-#include <frequent_items_sketch.hpp>
-#include <kll_sketch.hpp>
-#pragma GCC diagnostic pop
 #include <Corrade/Utility/Debug.h>
 #include <string>
 
@@ -24,20 +16,17 @@ using namespace visor::input::pcap;
 
 class NetworkMetricsBucket final : public visor::AbstractMetricsBucket
 {
-public:
-    const uint8_t START_FI_MAP_SIZE = 7; // 2^7 = 128
-    const uint8_t MAX_FI_MAP_SIZE = 13;  // 2^13 = 8192
 
 protected:
     mutable std::shared_mutex _mutex;
 
-    datasketches::cpc_sketch _srcIPCard;
-    datasketches::cpc_sketch _dstIPCard;
+    Cardinality _srcIPCard;
+    Cardinality _dstIPCard;
 
-    datasketches::frequent_items_sketch<std::string> _topGeoLoc;
-    datasketches::frequent_items_sketch<std::string> _topASN;
-    datasketches::frequent_items_sketch<uint32_t> _topIPv4;
-    datasketches::frequent_items_sketch<std::string> _topIPv6; // TODO OPTIMIZE not very efficient, should switch to 16 byte uint
+    TopN<std::string> _topGeoLoc;
+    TopN<std::string> _topASN;
+    TopN<uint32_t> _topIPv4;
+    TopN<std::string> _topIPv6; // TODO OPTIMIZE not very efficient, should switch to 16 byte uint
 
     // total numPackets is tracked in base class num_events
     struct counters {
@@ -66,12 +55,12 @@ protected:
 
 public:
     NetworkMetricsBucket()
-        : _srcIPCard()
-        , _dstIPCard()
-        , _topGeoLoc(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
-        , _topASN(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
-        , _topIPv4(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
-        , _topIPv6(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
+        : _srcIPCard("src_ips_in", "Source IP cardinality")
+        , _dstIPCard("dst_ips_out", "Destination IP cardinality")
+        , _topGeoLoc("top_geoLoc", "Top GeoIP locations")
+        , _topASN("top_ASN", "Top ASNs by IP")
+        , _topIPv4("top_ipv4", "Top IPv4 IP addresses")
+        , _topIPv6("top_ipv6", "Top IPv6 IP addresses")
         , _rate_in("pps_in", "Rate of ingress in packets per second")
         , _rate_out("pps_out", "Rate of egress in packets per second")
     {

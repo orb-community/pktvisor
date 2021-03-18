@@ -15,7 +15,6 @@
 #include <IPv6Layer.h>
 #pragma GCC diagnostic pop
 #include <arpa/inet.h>
-#include <cpc_union.hpp>
 #include <sstream>
 
 namespace visor::handler::dns {
@@ -274,7 +273,6 @@ void DnsMetricsBucket::to_json(json &j) const
     auto [num_events, num_samples, event_rate, event_lock] = event_data_locked(); // thread safe
 
     event_rate->to_json(j["wire_packets"]["rates"], !read_only());
-    // TODO rename
 
     std::shared_lock r_lock(_mutex);
 

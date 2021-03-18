@@ -9,14 +9,6 @@
 #include "StreamHandler.h"
 #include "dns.h"
 #include "querypairmgr.h"
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wold-style-cast"
-#pragma GCC diagnostic ignored "-Wunused-function"
-#pragma clang diagnostic ignored "-Wrange-loop-analysis"
-#include <cpc_sketch.hpp>
-#include <frequent_items_sketch.hpp>
-#include <kll_sketch.hpp>
-#pragma GCC diagnostic pop
 #include <Corrade/Utility/Debug.h>
 #include <string>
 
@@ -33,37 +25,37 @@ public:
 protected:
     mutable std::shared_mutex _mutex;
 
-    datasketches::kll_sketch<uint64_t> _dnsXactFromTimeUs;
-    datasketches::kll_sketch<uint64_t> _dnsXactToTimeUs;
+    Quantile<uint64_t> _dnsXactFromTimeUs;
+    Quantile<uint64_t> _dnsXactToTimeUs;
 
-    datasketches::cpc_sketch _dns_qnameCard;
+    Cardinality _dns_qnameCard;
 
-    datasketches::frequent_items_sketch<std::string> _dns_topQname2;
-    datasketches::frequent_items_sketch<std::string> _dns_topQname3;
-    datasketches::frequent_items_sketch<std::string> _dns_topNX;
-    datasketches::frequent_items_sketch<std::string> _dns_topREFUSED;
-    datasketches::frequent_items_sketch<std::string> _dns_topSRVFAIL;
-    datasketches::frequent_items_sketch<uint16_t> _dns_topUDPPort;
-    datasketches::frequent_items_sketch<uint16_t> _dns_topQType;
-    datasketches::frequent_items_sketch<uint16_t> _dns_topRCode;
-    datasketches::frequent_items_sketch<std::string> _dns_slowXactIn;
-    datasketches::frequent_items_sketch<std::string> _dns_slowXactOut;
+    TopN<std::string> _dns_topQname2;
+    TopN<std::string> _dns_topQname3;
+    TopN<std::string> _dns_topNX;
+    TopN<std::string> _dns_topREFUSED;
+    TopN<std::string> _dns_topSRVFAIL;
+    TopN<uint16_t> _dns_topUDPPort;
+    TopN<uint16_t> _dns_topQType;
+    TopN<uint16_t> _dns_topRCode;
+    TopN<std::string> _dns_slowXactIn;
+    TopN<std::string> _dns_slowXactOut;
 
     struct counters {
-        uint64_t xacts_total = 0;
-        uint64_t xacts_in = 0;
-        uint64_t xacts_out = 0;
-        uint64_t xacts_timed_out = 0;
-        uint64_t queries = 0;
-        uint64_t replies = 0;
-        uint64_t UDP = 0;
-        uint64_t TCP = 0;
-        uint64_t IPv4 = 0;
-        uint64_t IPv6 = 0;
-        uint64_t NX = 0;
-        uint64_t REFUSED = 0;
-        uint64_t SRVFAIL = 0;
-        uint64_t NOERROR = 0;
+        Counter xacts_total = 0;
+        Counter xacts_in = 0;
+        Counter xacts_out = 0;
+        Counter xacts_timed_out = 0;
+        Counter queries = 0;
+        Counter replies = 0;
+        Counter UDP = 0;
+        Counter TCP = 0;
+        Counter IPv4 = 0;
+        Counter IPv6 = 0;
+        Counter NX = 0;
+        Counter REFUSED = 0;
+        Counter SRVFAIL = 0;
+        Counter NOERROR = 0;
     };
     counters _counters;
 

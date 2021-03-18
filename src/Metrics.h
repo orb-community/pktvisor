@@ -8,7 +8,11 @@
 #include <timer.hpp>
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wold-style-cast"
+#pragma GCC diagnostic ignored "-Wunused-function"
 #pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma clang diagnostic ignored "-Wrange-loop-analysis"
+#include <cpc_sketch.hpp>
+#include <frequent_items_sketch.hpp>
 #include <kll_sketch.hpp>
 #pragma GCC diagnostic pop
 #include <chrono>
@@ -18,8 +22,6 @@ namespace visor {
 
 using json = nlohmann::json;
 using namespace std::chrono;
-
-typedef datasketches::kll_sketch<long> QuantileType;
 
 class Metric
 {
@@ -75,16 +77,170 @@ public:
     }
 
     // Metric
-    virtual void to_json(json &j) const override;
-    virtual void to_prometheus(std::stringstream &out, const std::string &key) const override;
+    void to_json(json &j) const override;
+    void to_prometheus(std::stringstream &out, const std::string &key) const override;
 };
 
+/**
+ * A Quantile metric class which knows how to render its output into p50, p90, p95, p99
+ *
+ * NOTE: intentionally _not_ thread safe; it should be protected by a mutex
+ */
+template <typename T>
+class Quantile final : public Metric
+{
+    datasketches::kll_sketch<T> _quantile;
+
+public:
+    Quantile(std::string name, std::string desc)
+        : Metric(std::move(name), std::move(desc))
+        , _quantile()
+    {
+    }
+
+    void update(const T &value)
+    {
+        _quantile.update(value);
+    }
+
+    void update(T &&value)
+    {
+        _quantile.update(value);
+    }
+
+    void merge(const Quantile &other)
+    {
+        _quantile.merge(other._quantile);
+    }
+
+    // Metric
+    void to_json(json &j) const override
+    {
+        const double fractions[4]{0.50, 0.90, 0.95, 0.99};
+
+        auto quantiles = _quantile.get_quantiles(fractions, 4);
+        if (quantiles.size()) {
+            j[_name]["p50"] = quantiles[0];
+            j[_name]["p90"] = quantiles[1];
+            j[_name]["p95"] = quantiles[2];
+            j[_name]["p99"] = quantiles[3];
+        }
+    }
+
+    void to_prometheus(std::stringstream &out, const std::string &key) const override
+    {
+        // TODO
+    }
+};
+
+/**
+ * A Frequent Item metric class which knows how to render its output into a table of top N
+ *
+ * NOTE: intentionally _not_ thread safe; it should be protected by a mutex
+ */
+template <typename T>
+class TopN final : public Metric
+{
+public:
+    const uint8_t START_FI_MAP_SIZE = 7; // 2^7 = 128
+    const uint8_t MAX_FI_MAP_SIZE = 13;  // 2^13 = 8192
+
+private:
+    datasketches::frequent_items_sketch<T> _fi;
+    uint64_t _top_count = 10;
+
+public:
+    TopN(std::string name, std::string desc)
+        : Metric(std::move(name), std::move(desc))
+        , _fi()
+    {
+    }
+
+    void update(const T &value)
+    {
+        _fi.update(value);
+    }
+
+    void update(T &&value)
+    {
+        _fi.update(value);
+    }
+
+    void merge(const TopN &other)
+    {
+        _fi.merge(other._fi);
+    }
+
+    void to_json(json &j, std::function<std::string(const T &)> formatter) const
+    {
+        j = json::array();
+        auto items = _fi.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
+        for (uint64_t i = 0; i < std::min(_top_count, items.size()); i++) {
+            j[i]["name"] = formatter(items[i].get_item());
+            j[i]["estimate"] = items[i].get_estimate();
+        }
+    }
+
+    // Metric
+    void to_json(json &j) const override
+    {
+        to_json(j, [](const T &val) { return val; });
+    }
+    void to_prometheus(std::stringstream &out, const std::string &key) const override
+    {
+    }
+};
+
+/**
+ * A Cardinality metric class which knows how to render its output
+ *
+ * NOTE: intentionally _not_ thread safe; it should be protected by a mutex
+ */
+class Cardinality final : public Metric
+{
+    datasketches::cpc_sketch _set;
+
+public:
+    Cardinality(std::string name, std::string desc)
+        : Metric(std::move(name), std::move(desc))
+        , _set()
+    {
+    }
+
+    template <typename T>
+    void update(const T &value)
+    {
+        _set.update(value);
+    }
+
+    template <typename T>
+    void update(T &&value)
+    {
+        _set.update(value);
+    }
+
+    void update(const void *value, int size)
+    {
+        _set.update(value, size);
+    }
+
+    void merge(const Cardinality &other);
+
+    // Metric
+    void to_json(json &j) const override;
+    void to_prometheus(std::stringstream &out, const std::string &key) const override;
+};
+
+/**
+ * A Rate metric class which knows how to render its output
+ * NOTE: this class _is_ thread safe, it _does not_ need an additional mutex
+ */
 class Rate final : public Metric
 {
     std::atomic_uint64_t _counter;
     std::atomic_uint64_t _rate;
     mutable std::shared_mutex _sketch_mutex;
-    QuantileType _quantile;
+    datasketches::kll_sketch<int_fast32_t> _quantile;
 
     std::shared_ptr<timer::interval_handle> _timer_handle;
 
@@ -95,7 +251,6 @@ public:
         , _rate(0)
         , _quantile()
     {
-        _quantile = QuantileType();
         // all rates use a single static timer object which holds its own thread
         // the tick argument determines the granularity of job running and canceling
         static timer timer_thread{100ms};
@@ -130,11 +285,6 @@ public:
         return *this;
     }
 
-    uint64_t counter() const
-    {
-        return _counter.load(std::memory_order_relaxed);
-    }
-
     uint64_t rate() const
     {
         return _rate.load(std::memory_order_relaxed);
@@ -154,8 +304,8 @@ public:
     void to_json(json &j, bool include_live) const;
 
     // Metric
-    virtual void to_json(json &j) const override;
-    virtual void to_prometheus(std::stringstream &out, const std::string &key) const override;
+    void to_json(json &j) const override;
+    void to_prometheus(std::stringstream &out, const std::string &key) const override;
 };
 
 }

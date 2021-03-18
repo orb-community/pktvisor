@@ -111,15 +111,8 @@ void NetworkMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
     _counters.total_in += other._counters.total_in;
     _counters.total_out += other._counters.total_out;
 
-    datasketches::cpc_union merge_srcIPCard;
-    merge_srcIPCard.update(_srcIPCard);
-    merge_srcIPCard.update(other._srcIPCard);
-    _srcIPCard = merge_srcIPCard.get_result();
-
-    datasketches::cpc_union merge_dstIPCard;
-    merge_dstIPCard.update(_dstIPCard);
-    merge_dstIPCard.update(other._dstIPCard);
-    _dstIPCard = merge_dstIPCard.get_result();
+    _srcIPCard.merge(other._srcIPCard);
+    _dstIPCard.merge(other._dstIPCard);
 
     _topIPv4.merge(other._topIPv4);
     _topIPv6.merge(other._topIPv6);
@@ -169,44 +162,13 @@ void NetworkMetricsBucket::to_json(json &j) const
     _counters.total_in.to_json(j);
     _counters.total_out.to_json(j);
 
-    j["cardinality"]["src_ips_in"] = lround(_srcIPCard.get_estimate());
-    j["cardinality"]["dst_ips_out"] = lround(_dstIPCard.get_estimate());
+    _srcIPCard.to_json(j["cardinality"]);
+    _dstIPCard.to_json(j["cardinality"]);
 
-    {
-        j["top_ipv4"] = nlohmann::json::array();
-        auto items = _topIPv4.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
-        for (uint64_t i = 0; i < std::min(10UL, items.size()); i++) {
-            j["top_ipv4"][i]["name"] = pcpp::IPv4Address(items[i].get_item()).toString();
-            j["top_ipv4"][i]["estimate"] = items[i].get_estimate();
-        }
-    }
-
-    {
-        j["top_ipv6"] = nlohmann::json::array();
-        auto items = _topIPv6.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
-        for (uint64_t i = 0; i < std::min(10UL, items.size()); i++) {
-            j["top_ipv6"][i]["name"] = items[i].get_item();
-            j["top_ipv6"][i]["estimate"] = items[i].get_estimate();
-        }
-    }
-
-    {
-        j["top_geoLoc"] = nlohmann::json::array();
-        auto items = _topGeoLoc.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
-        for (uint64_t i = 0; i < std::min(10UL, items.size()); i++) {
-            j["top_geoLoc"][i]["name"] = items[i].get_item();
-            j["top_geoLoc"][i]["estimate"] = items[i].get_estimate();
-        }
-    }
-
-    {
-        j["top_ASN"] = nlohmann::json::array();
-        auto items = _topASN.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
-        for (uint64_t i = 0; i < std::min(10UL, items.size()); i++) {
-            j["top_ASN"][i]["name"] = items[i].get_item();
-            j["top_ASN"][i]["estimate"] = items[i].get_estimate();
-        }
-    }
+    _topIPv4.to_json(j, [](const uint32_t &val) { return pcpp::IPv4Address(val).toString(); });
+    _topIPv6.to_json(j);
+    _topGeoLoc.to_json(j);
+    _topASN.to_json(j);
 }
 
 // the main bucket analysis
