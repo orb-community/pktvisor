@@ -46,15 +46,10 @@ policy:
   # input stream
   # only one is supported currently
   input:
-    anycast:
-      # must match the input stream module name from pktvisor
-      type: pcap
-      # specify that the input module requires >= specific version to be successfully applied 
-      require_version: "1.0"
-      config:
-        # must match the available configuration options from this version of the inputs stream
-        bpf: "host 192.168.0.50"
-        iface: eth0
+    type: pcap
+    targets:
+      - anycast
+      - prod0
   # stream handlers 
   handlers:
     # default configuration for the stream handlers

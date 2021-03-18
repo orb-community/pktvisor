@@ -14,11 +14,20 @@ All interfaces and schemas are versioned.
 ```
 /api/v1/inputs
  {
-  pcap: "1.0"
+  pcap: "1.0",
+  "dnstap": "1.0"
  }
 /api/v1/inputs/pcap/interface
  {
   version: "1.0",
+  "info": {
+    "interfaces": {
+      "eth0": {}
+    }
+  },
+  "defaults": {
+    "interface": eth0
+  },
   config: {
    iface: {
      type: "string",
@@ -34,6 +43,25 @@ All interfaces and schemas are versioned.
   metric_groups: {
   }
  }
+/api/v1/inputs/dnstap/interface
+ {
+  version: "1.0",
+  config: {
+   socket: {
+     type: "string",
+     description: "the dnstap socket to listen to"
+   }
+  }
+  filters: {
+    qname_suffix: {
+     type: "string",
+     description: "match the DNS qname sufix given", 
+     regex: "..."
+    }
+  },
+  metric_groups: {
+  }
+ } 
 /api/v1/handlers
  { dns: { version: "1.0" }, 
    net: { version: "1.0" } }
