@@ -72,9 +72,10 @@ public:
         , _topASN(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
         , _topIPv4(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
         , _topIPv6(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
-        , _rate_in()
-        , _rate_out()
+        , _rate_in("pps_in", "Rate of ingress in packets per second")
+        , _rate_out("pps_out", "Rate of egress in packets per second")
     {
+        set_event_rate_info("pps_total", "Rate of all packets in packets per second");
     }
 
     // get a copy of the counters
@@ -107,17 +108,6 @@ public:
         : visor::AbstractMetricsManager<NetworkMetricsBucket>(periods, deepSampleRate)
     {
     }
-
-#if 0
-    void on_period_shift() override
-    {
-        Corrade::Utility::Debug{} << "period shift";
-    }
-    void on_period_evict(const NetworkMetricsBucket *bucket) override
-    {
-        Corrade::Utility::Debug{} << "evict: " << bucket->_numPackets;
-    }
-#endif
 
     void process_packet(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp);
 };

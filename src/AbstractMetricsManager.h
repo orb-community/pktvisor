@@ -68,7 +68,7 @@ public:
     AbstractMetricsBucket()
         : _num_samples("deep_samples", "Total number of deep samples")
         , _num_events("total", "Total number of events")
-        , _rate_events()
+        , _rate_events("event_rate", "Rate of events")
         , _start_tstamp{0, 0}
         , _end_tstamp{0, 0}
     {
@@ -122,6 +122,11 @@ public:
         }
         _rate_events.cancel();
         on_set_read_only();
+    }
+
+    void set_event_rate_info(const std::string &name, const std::string &desc)
+    {
+        _rate_events.set_info(name, desc);
     }
 
     auto event_data_locked() const

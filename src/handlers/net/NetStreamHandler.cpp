@@ -149,52 +149,13 @@ void NetworkMetricsBucket::to_prometheus(std::stringstream &out, const std::stri
 void NetworkMetricsBucket::to_json(json &j) const
 {
 
-    const double fractions[4]{0.50, 0.90, 0.95, 0.99};
-
     // do rates first, which handle their own locking
-    {
-        if (!read_only()) {
-            j["rates"]["pps_in"]["live"] = _rate_in.rate();
-        }
-        auto [rate_quantile, rate_lock] = _rate_in.quantile_locked();
-        auto quantiles = rate_quantile->get_quantiles(fractions, 4);
-        if (quantiles.size()) {
-            j["rates"]["pps_in"]["p50"] = quantiles[0];
-            j["rates"]["pps_in"]["p90"] = quantiles[1];
-            j["rates"]["pps_in"]["p95"] = quantiles[2];
-            j["rates"]["pps_in"]["p99"] = quantiles[3];
-        }
-    }
-
-    {
-        if (!read_only()) {
-            j["rates"]["pps_out"]["live"] = _rate_out.rate();
-        }
-        auto [rate_quantile, rate_lock] = _rate_out.quantile_locked();
-        auto quantiles = rate_quantile->get_quantiles(fractions, 4);
-        if (quantiles.size()) {
-            j["rates"]["pps_out"]["p50"] = quantiles[0];
-            j["rates"]["pps_out"]["p90"] = quantiles[1];
-            j["rates"]["pps_out"]["p95"] = quantiles[2];
-            j["rates"]["pps_out"]["p99"] = quantiles[3];
-        }
-    }
+    _rate_in.to_json(j["rates"], !read_only());
+    _rate_out.to_json(j["rates"], !read_only());
 
     auto [num_events, num_samples, event_rate, event_lock] = event_data_locked(); // thread safe
 
-    {
-        if (!read_only()) {
-            j["rates"]["pps_total"]["live"] = event_rate->rate();
-        }
-        auto [rate_quantile, rate_lock] = event_rate->quantile_locked();
-        auto quantiles = rate_quantile->get_quantiles(fractions, 4);
-        if (quantiles.size()) {
-            j["rates"]["pps_total"]["p50"] = quantiles[0];
-            j["rates"]["pps_total"]["p90"] = quantiles[1];
-            j["rates"]["pps_total"]["p95"] = quantiles[2];
-            j["rates"]["pps_total"]["p99"] = quantiles[3];
-        }
-    }
+    event_rate->to_json(j["rates"], !read_only());
 
     std::shared_lock r_lock(_mutex);
 

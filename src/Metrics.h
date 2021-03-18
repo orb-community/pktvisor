@@ -34,6 +34,12 @@ public:
     {
     }
 
+    void set_info(const std::string &name, const std::string &desc)
+    {
+        _name = name;
+        _desc = desc;
+    }
+
     virtual void to_json(json &j) const = 0;
     virtual void to_prometheus(std::stringstream &out, const std::string &key) const = 0;
 };
