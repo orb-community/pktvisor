@@ -17,6 +17,7 @@
 #pragma GCC diagnostic pop
 #include <chrono>
 #include <shared_mutex>
+#include <vector>
 
 namespace visor {
 
@@ -26,19 +27,26 @@ using namespace std::chrono;
 class Metric
 {
 protected:
-    std::string _name;
+    std::vector<std::string> _name;
     std::string _desc;
 
 public:
     Metric(std::string name, std::string desc)
-        : _name(std::move(name))
+        : _desc(std::move(desc))
+    {
+        _name.emplace_back(std::move(name));
+    }
+
+    Metric(std::initializer_list<std::string> names, std::string desc)
+        : _name(names)
         , _desc(std::move(desc))
     {
     }
 
     void set_info(const std::string &name, const std::string &desc)
     {
-        _name = name;
+        _name.clear();
+        _name.emplace_back(name);
         _desc = desc;
     }
 
@@ -60,13 +68,18 @@ public:
     {
     }
 
+    Counter(std::initializer_list<std::string> names, std::string desc)
+        : Metric(names, std::move(desc))
+    {
+    }
+
     Counter &operator++()
     {
         ++_value;
         return *this;
     }
 
-    uint64_t value() const
+    [[nodiscard]] uint64_t value() const
     {
         return _value;
     }
@@ -95,6 +108,11 @@ public:
     Quantile(std::string name, std::string desc)
         : Metric(std::move(name), std::move(desc))
         , _quantile()
+    {
+    }
+
+    Quantile(std::initializer_list<std::string> names, std::string desc)
+        : Metric(names, std::move(desc))
     {
     }
 
@@ -156,6 +174,11 @@ public:
     {
     }
 
+    TopN(std::initializer_list<std::string> names, std::string desc)
+        : Metric(names, std::move(desc))
+    {
+    }
+
     void update(const T &value)
     {
         _fi.update(value);
@@ -207,6 +230,11 @@ public:
     {
     }
 
+    Cardinality(std::initializer_list<std::string> names, std::string desc)
+        : Metric(names, std::move(desc))
+    {
+    }
+
     template <typename T>
     void update(const T &value)
     {
@@ -244,12 +272,7 @@ class Rate final : public Metric
 
     std::shared_ptr<timer::interval_handle> _timer_handle;
 
-public:
-    Rate(std::string name, std::string desc)
-        : Metric(std::move(name), std::move(desc))
-        , _counter(0)
-        , _rate(0)
-        , _quantile()
+    void _start_timer()
     {
         // all rates use a single static timer object which holds its own thread
         // the tick argument determines the granularity of job running and canceling
@@ -260,6 +283,25 @@ public:
             std::unique_lock lock(_sketch_mutex);
             _quantile.update(_rate);
         });
+    }
+
+public:
+    Rate(std::string name, std::string desc)
+        : Metric(std::move(name), std::move(desc))
+        , _counter(0)
+        , _rate(0)
+        , _quantile()
+    {
+        _start_timer();
+    }
+
+    Rate(std::initializer_list<std::string> names, std::string desc)
+        : Metric(names, std::move(desc))
+        , _counter(0)
+        , _rate(0)
+        , _quantile()
+    {
+        _start_timer();
     }
 
     ~Rate()

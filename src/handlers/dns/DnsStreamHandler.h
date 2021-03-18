@@ -42,39 +42,55 @@ protected:
     TopN<std::string> _dns_slowXactOut;
 
     struct counters {
-        Counter xacts_total = 0;
-        Counter xacts_in = 0;
-        Counter xacts_out = 0;
-        Counter xacts_timed_out = 0;
-        Counter queries = 0;
-        Counter replies = 0;
-        Counter UDP = 0;
-        Counter TCP = 0;
-        Counter IPv4 = 0;
-        Counter IPv6 = 0;
-        Counter NX = 0;
-        Counter REFUSED = 0;
-        Counter SRVFAIL = 0;
-        Counter NOERROR = 0;
+        Counter xacts_total;
+        Counter xacts_in;
+        Counter xacts_out;
+        Counter xacts_timed_out;
+        Counter queries;
+        Counter replies;
+        Counter UDP;
+        Counter TCP;
+        Counter IPv4;
+        Counter IPv6;
+        Counter NX;
+        Counter REFUSED;
+        Counter SRVFAIL;
+        Counter NOERROR;
+        counters()
+            : xacts_total("total", "Total DNS transactions (query/reply pairs)")
+            , xacts_in("in", "Total ingress DNS transactions (host is server)")
+            , xacts_out("out", "Total egress DNS transactions (host is client)")
+            , xacts_timed_out("timed_out", "Total number of DNS transactions that timed out")
+            , queries("queries", "Total DNS wire packets flagged as query (ingress and egress)")
+            , replies("replies", "Total DNS wire packets flagged as reply (ingress and egress)")
+            , UDP("udp", "Total DNS wire packets received over UDP (ingress and egress)")
+            , TCP("tcp", "Total DNS wire packets received over TCP (ingress and egress)")
+            , IPv4("ipv4", "Total DNS wire packets received over IPv4 (ingress and egress)")
+            , IPv6("ipv6", "Total DNS wire packets received over IPv6 (ingress and egress)")
+            , NX("nxdomain", "Total DNS wire packets flagged as reply with return code NXDOMAIN (ingress and egress)")
+            , REFUSED("refused", "Total DNS wire packets flagged as reply with return code REFUSED (ingress and egress)")
+            , SRVFAIL("srvfail", "Total DNS wire packets flagged as reply with return code SRVFAIL (ingress and egress)")
+            , NOERROR("noerror", "Total DNS wire packets flagged as reply with return code NOERROR (ingress and egress)")
+        {
+        }
     };
     counters _counters;
 
 public:
     DnsMetricsBucket()
-        : _dnsXactFromTimeUs()
-        , _dnsXactToTimeUs()
-        , _dns_qnameCard()
-        , _dns_topQname2(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
-        , _dns_topQname3(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
-        , _dns_topNX(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
-        , _dns_topREFUSED(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
-        , _dns_topSRVFAIL(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
-        , _dns_topUDPPort(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
-        , _dns_topQType(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
-        , _dns_topRCode(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
-        , _dns_slowXactIn(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
-        , _dns_slowXactOut(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
-        , _counters()
+        : _dnsXactFromTimeUs({"xact", "out", "quantiles_us"}, "")
+        , _dnsXactToTimeUs("", "")
+        , _dns_qnameCard("", "")
+        , _dns_topQname2("", "")
+        , _dns_topQname3("", "")
+        , _dns_topNX("", "")
+        , _dns_topREFUSED("", "")
+        , _dns_topSRVFAIL("", "")
+        , _dns_topUDPPort("", "")
+        , _dns_topQType("", "")
+        , _dns_topRCode("", "")
+        , _dns_slowXactIn("", "")
+        , _dns_slowXactOut("", "")
     {
     }
 

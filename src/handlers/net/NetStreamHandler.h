@@ -26,7 +26,7 @@ protected:
     TopN<std::string> _topGeoLoc;
     TopN<std::string> _topASN;
     TopN<uint32_t> _topIPv4;
-    TopN<std::string> _topIPv6; // TODO OPTIMIZE not very efficient, should switch to 16 byte uint
+    TopN<std::string> _topIPv6;
 
     // total numPackets is tracked in base class num_events
     struct counters {
