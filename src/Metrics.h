@@ -19,6 +19,8 @@ namespace visor {
 using json = nlohmann::json;
 using namespace std::chrono;
 
+typedef datasketches::kll_sketch<long> QuantileType;
+
 class Metric
 {
 protected:
@@ -38,9 +40,9 @@ public:
 
 /**
  * A Counter metric class which knows how to render its output
- * NOTE: intentionally _not_ thread safe; it should be protected by a mutex in the metric bucket
+ * NOTE: intentionally _not_ thread safe; it should be protected by a mutex
  */
-class Counter final : Metric
+class Counter final : public Metric
 {
     uint64_t _value = 0;
 
@@ -66,41 +68,28 @@ public:
         _value += other._value;
     }
 
-    virtual void to_json(json &j) const override
-    {
-        j[_name] = _value;
-    }
-
-    virtual void to_prometheus(std::stringstream &out, const std::string &key) const override
-    {
-        out << "# HELP " << key << "_" << _name << ' ' << _desc << std::endl;
-        out << "# TYPE " << key << "_" << _name << " gauge" << std::endl;
-        out << key << '_' << _name << ' ' << _value << std::endl;
-    }
+    // Metric
+    virtual void to_json(json &j) const override;
+    virtual void to_prometheus(std::stringstream &out, const std::string &key) const override;
 };
 
-class Rate
+class Rate final : public Metric
 {
-public:
-    typedef datasketches::kll_sketch<long> QuantileType;
-
-private:
     std::atomic_uint64_t _counter;
     std::atomic_uint64_t _rate;
     mutable std::shared_mutex _sketch_mutex;
     QuantileType _quantile;
 
     std::shared_ptr<timer::interval_handle> _timer_handle;
-    high_resolution_clock::time_point _last_ts;
 
 public:
-    Rate()
-        : _counter(0)
-        , _rate(0.0)
+    Rate(std::string name, std::string desc)
+        : Metric(std::move(name), std::move(desc))
+        , _counter(0)
+        , _rate(0)
         , _quantile()
     {
         _quantile = QuantileType();
-        _last_ts = high_resolution_clock::now();
         // all rates use a single static timer object which holds its own thread
         // the tick argument determines the granularity of job running and canceling
         static timer timer_thread{100ms};
@@ -125,51 +114,42 @@ public:
     void cancel()
     {
         _timer_handle->cancel();
-        _rate.store(0);
-        _counter.store(0);
+        _rate.store(0, std::memory_order_relaxed);
+        _counter.store(0, std::memory_order_relaxed);
     }
 
     Rate &operator++()
     {
-        inc_counter();
-        return *this;
-    }
-
-    void inc_counter()
-    {
         _counter.fetch_add(1, std::memory_order_relaxed);
+        return *this;
     }
 
     uint64_t counter() const
     {
-        return _counter;
+        return _counter.load(std::memory_order_relaxed);
     }
 
     uint64_t rate() const
     {
-        return _rate;
-    }
-
-    auto quantile_locked() const
-    {
-        std::shared_lock lock(_sketch_mutex);
-        struct retVals {
-            const QuantileType *quantile;
-            std::shared_lock<std::shared_mutex> lock;
-        };
-        return retVals{&_quantile, std::move(lock)};
+        return _rate.load(std::memory_order_relaxed);
     }
 
     void merge(const Rate &other)
     {
-        auto [o_quantile, o_lock] = other.quantile_locked();
+        std::shared_lock r_lock(other._sketch_mutex);
         std::unique_lock w_lock(_sketch_mutex);
-        _quantile.merge(*o_quantile);
+        _quantile.merge(other._quantile);
         // the live rate to simply copied if non zero
         if (other._rate != 0) {
             _rate.store(other._rate, std::memory_order_relaxed);
         }
     }
+
+    void to_json(json &j, bool include_live) const;
+
+    // Metric
+    virtual void to_json(json &j) const override;
+    virtual void to_prometheus(std::stringstream &out, const std::string &key) const override;
 };
 
 }
