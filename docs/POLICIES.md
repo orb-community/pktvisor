@@ -39,17 +39,45 @@ Examples:
 
 ## Example (YAML)
 
+Taps are named, host specific connections to raw stream data. They represent configuration data only, they do not cause
+any processing to take place. They should be referenced by policies. These may be configured on the command line at
+start up (often using a configuration management system).
+
+```yaml
+version: "1.0"
+
+taps:
+  anycast:
+    type: pcap
+    config:
+      iface: eth0
+  pop_switch:
+    type: sflow
+    config:
+      port: 6343
+      bind: 192.168.1.1
+  trex_tap:
+    type: dnstap
+    config:
+      socket: /var/dns.sock
+```
+
+Policies use taps to create an instance of an input (possibly with a filter), and attach handlers to it. Processing
+takes place, and the data is exposed to sinks.
+
 ```yaml
 version: "1.0"
 
 policy:
+  name: "anycast_dns"
+  description: "anycast DNS policy"
   # input stream
-  # only one is supported currently
+  # only one is supported, but multiple policies may reuse host_inputs
   input:
+    tap: anycast
     type: pcap
-    targets:
-      - anycast
-      - prod0
+    filter:
+      bpf: "port 53"
   # stream handlers 
   handlers:
     # default configuration for the stream handlers
@@ -82,7 +110,14 @@ policy:
           disable:
             - top_qtypes
             - top_udp_ports
-  # the sink configuration is not used by pktvisord; see Orb
+```
+
+Orb: Sinks specify where to send summarized metric data.
+
+```yaml
+version: "1.0"
+
+policy:
   sinks:
     default_prometheus:
       type: prometheus_exporter
@@ -93,6 +128,16 @@ policy:
       bucket: my-bucket
       compression: gzip
       region: us-east-1
+```
+
+Orb: Selectors indicate which agent should apply a policy.
+
+```yaml
+version: "1.0"
+
+policy:
+  selector:
+    - global/EU/ams
 ```
 
 
