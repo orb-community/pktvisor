@@ -185,7 +185,7 @@ $ orb-agent --config orb-agent.yaml
 ### Orb Selectors
 
 Selectors are named configurations of arbitrary key value pairs which can match against the Vitals of the agents
-available in the Orb ecosystem. They may be thought of as groups of agents. These names are referenced in Ord Policies.
+available in the Orb ecosystem. They may be thought of as groups of agents. These names are referenced in Orb Policies.
 pktvisord does not read this configuration or use this data; it is used only by orb-agent. This schema is found only in
 the control plane, not on the command line or in files.
 
