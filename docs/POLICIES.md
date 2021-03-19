@@ -64,7 +64,7 @@ policy:
       description: "base anycast DNS policy"
       # input stream to create based on the given tap and optional filter config
       input:
-        # this most reference a tap name, or application of the policy will fail
+        # this must reference a tap name, or application of the policy will fail
         tap: anycast
         # this must match the type of the matching tap name. or application of the policy will fail
         type: pcap
@@ -112,8 +112,10 @@ policy:
 When running without Orb, the tap and the collection config can be passed directly to pktvisor.
 
 ```shell
-$ pktvisord --tap-config taps.yaml --collection-config collection-policy-anycast.yaml
+$ pktvisord --config taps.yaml --config collection-policy-anycast.yaml
 ```
+
+They may also be combined into a single YAML file (the schemas will merge) and passed in with one `--config` option.
 
 The admin-api (or prometheus output, pktvisor-cli, etc) should then be used to collect the results manually.
 
