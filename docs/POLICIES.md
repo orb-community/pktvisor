@@ -43,6 +43,12 @@ Taps are named, host specific connections to raw stream data. They represent con
 any processing to take place. They should be referenced by policies. These may be configured on the command line at
 start up (often using a configuration management system).
 
+```shell
+$ orb-agent --tap-config taps.yaml --selector-watch global/EU/ami
+```
+
+taps.yaml
+
 ```yaml
 version: "1.0"
 
