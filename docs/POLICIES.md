@@ -60,49 +60,49 @@ version: "1.0"
 policy:
   collection:
     # policy name and description
-    name: anycast_dns
-    description: "base anycast DNS policy"
-    # input stream to create based on the given tap and optional filter config
-    input:
-      # this most reference a tap name, or application of the policy will fail
-      tap: anycast
-      # this must match the type of the matching tap name. or application of the policy will fail
-      type: pcap
-      filter:
-        bpf: "port 53"
-    # stream handlers to attach to this input stream
-    # these decide exactly which data to summarize and expose for collection
-    handlers:
-      # default configuration for the stream handlers
-      config:
-        periods: 5
-        max_deep_sample: 50
-      modules:
-        # the keys at this level are unique identifiers
-        default_net:
-          type: net
-        udp_traffic:
-          type: net
-          config:
-            protocols: [ udp ]
-          metrics:
-            enable:
-              - top_ips
-        default_dns:
-          type: dns
-          config:
-            max_deep_sample: 75
-        special_domain:
-          type: dns
-          # specify that the stream handler module requires >= specific version to be successfully applied 
-          require_version: "1.0"
-          config:
-            # must match the available configuration options for this version of this stream handler
-            qname_suffix: .mydomain.com
-          metrics:
-            disable:
-              - top_qtypes
-              - top_udp_ports
+    anycast_dns:
+      description: "base anycast DNS policy"
+      # input stream to create based on the given tap and optional filter config
+      input:
+        # this most reference a tap name, or application of the policy will fail
+        tap: anycast
+        # this must match the type of the matching tap name. or application of the policy will fail
+        type: pcap
+        filter:
+          bpf: "port 53"
+      # stream handlers to attach to this input stream
+      # these decide exactly which data to summarize and expose for collection
+      handlers:
+        # default configuration for the stream handlers
+        config:
+          periods: 5
+          max_deep_sample: 50
+        modules:
+          # the keys at this level are unique identifiers
+          default_net:
+            type: net
+          udp_traffic:
+            type: net
+            config:
+              protocols: [ udp ]
+            metrics:
+              enable:
+                - top_ips
+          default_dns:
+            type: dns
+            config:
+              max_deep_sample: 75
+          special_domain:
+            type: dns
+            # specify that the stream handler module requires >= specific version to be successfully applied 
+            require_version: "1.0"
+            config:
+              # must match the available configuration options for this version of this stream handler
+              qname_suffix: .mydomain.com
+            metrics:
+              disable:
+                - top_qtypes
+                - top_udp_ports
 ```
 
 ### Standalone Command Line Example
