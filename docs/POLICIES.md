@@ -2,12 +2,12 @@
 
 **_Draft_**
 
-pktvisor and Orb observability configuration is policy driven.
+Orb and pktvisor observability configuration is policy driven.
 
 pktvisor maybe run stand alone, or with the Orb control plane. In the latter configuration, orb-agent controls the
-pktvisord agent and allows centralized configuration via orb-api.
+pktvisord process and allows centralized configuration via orb-api.
 
-## Concepts
+## Base Concepts
 
 ### pktvisor Taps
 
@@ -49,7 +49,8 @@ policy:
 
 Collection policies direct pktvisor to use taps to create an instance of an input stream (possibly with a filter), and
 attach handlers to it. Processing takes place, and the data is exposed for sinks to collect. These policies may be given
-directly to pktvisor (via command line or admin API), or via orb control plane.
+directly to pktvisor (via command line or admin API) in standalone mode, or via Orb control plane (in which case they
+are not stored in a file, but rather in the control plane database).
 
 `collection-policy-anycast.yaml`
 
@@ -104,26 +105,79 @@ policy:
               - top_udp_ports
 ```
 
-### Standalone Command Line Examples for Taps and Collection Policies
+### Standalone Command Line Example
 
 #### Standalone agent start up
 
-When running without Orb, the tap and the collection config can be passed in directly to pktvisor.
+When running without Orb, the tap and the collection config can be passed directly to pktvisor.
 
 ```shell
 $ pktvisord --tap-config taps.yaml --collection-config collection-policy-anycast.yaml
 ```
 
-The admin-api (or prometheus output, pktvisor-cli, etc) should then be used to collect the result manually.
+The admin-api (or prometheus output, pktvisor-cli, etc) should then be used to collect the results manually.
 
-#### orb-agent start up
+## Orb Concepts
 
-When running with Orb, the agent accepts a configuration YAML combining Taps and Selectors. Instead of accepting
-Collection Policies on the command line, these instead would be sent through the central orb-api via Selectors that
-match those for this agent.
+Orb moves most of the configuration to a central control plane. The only configuration that remains at the agent is the
+Tap configuration (because it is host specific), and Vitals configuration (below).
+
+### Vitals and Selector Configurations
+
+Orb needs the ability to address the agents that it is controlling. It does this by matching Selectors with Vitals.
+
+#### Vitals
+
+orb-agent is told on startup what its Vitals are: these are arbitrary key value pairs which typically represent
+information such as region, pop, and node type.
+
+`vitals.yaml`
+
+```yaml
+version: "1.0"
+
+policy:
+  vitals:
+    region: EU
+    pop: ams02
+    node_type: dns
+```
+
+#### vitals on orb-agent start up
 
 ```shell
-$ orb-agent --config orb.yaml
+$ orb-agent --config vitals.yaml
+```
+
+#### combining vitals and taps on orb-agent start up
+
+Since both Taps and Vitals are necessary for orb-agent start up, you can pass both in via two separate config files:
+
+```shell
+$ orb-agent --config taps.yaml --config vitals.yaml
+```
+
+Or instead combine them into a single file:
+
+`orb-agent.yaml`
+
+```yaml
+version: "1.0"
+
+policy:
+  taps:
+    anycast:
+      type: pcap
+      config:
+        iface: eth0
+  vitals:
+    region: EU
+    pop: ams02
+    node_type: dns
+```
+
+```shell
+$ orb-agent --config orb-agent.yaml
 ```
 
 ### Orb Sinks
@@ -146,17 +200,6 @@ policy:
       region: us-east-1
 ```
 
-Orb: Selectors indicate which agent should apply a policy.
-
-```yaml
-version: "1.0"
-
-policy:
-  name: "dns"
-  selector:
-    - global/EU/ams
-```
-
 ```yaml
 version: "1.0"
 policy:
@@ -166,8 +209,6 @@ policy:
     sinks: default_prometheus
 ```
 
-*** sketch in single node usage on CLI with single-config yaml version
-*** move selector-watch cmd line to yaml too
 
 
 
