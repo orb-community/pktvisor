@@ -180,9 +180,30 @@ policy:
 $ orb-agent --config orb-agent.yaml
 ```
 
+### Orb Selectors
+
+Selectors are named configurations of arbitrary key value pairs which can match against the Vitals of the agents
+available in the Orb ecosystem. They may be thought of as groups of agents. These names are referenced in Ord Policies.
+pktvisord does not read this configuration or use this data; it is used only by orb-agent. This schema is found only in
+the control plane, not on the command line or in files.
+
+```yaml
+version: "1.0"
+
+policy:
+  selectors:
+    all_dns:
+      node_type: dns
+    eu_dns:
+      region: EU
+      node_type: dns
+```
+
 ### Orb Sinks
 
-Sinks specify where to send summarized metric data.
+Orb includes a metric collection system. Sinks specify where to send the summarized metric data. pktvisord does not read
+this configuration or use this data; it is used only by orb-agent. This schema is found only in the control plane, not
+on the command line or in files.
 
 ```yaml
 version: "1.0"
@@ -200,13 +221,26 @@ policy:
       region: us-east-1
 ```
 
+### Orb Policies
+
+An Orb policy ties together Selectors, a Collection Policy, and one or more Sinks. pktvisord does not read this
+configuration or use this data; it is used only by orb-agent. This schema is found only in the control plane, not on the
+command line or in files.
+
+orb-agent will be made aware of the collection policy and the sinks if this selector matches its vitals. In case of a
+match, orb-agent will attempt to apply the collection policy to its pktvisord, and update the control plane about
+success or failure. Upon success, the sink will be created.
+
 ```yaml
 version: "1.0"
+
 policy:
   orb:
-    selector: dns
-    pktvisor-policy: anycast_dns
-    sinks: default_prometheus
+    selectors:
+      - eu_dns
+    collection_policy: anycast_dns
+    sinks:
+      - default_prometheus
 ```
 
 
