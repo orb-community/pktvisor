@@ -92,6 +92,11 @@ policy:
             type: dns
             config:
               max_deep_sample: 75
+            # time window analyzers
+            analyzers:
+              modules:
+                nx_attack:
+                  type: dns_random_label
           special_domain:
             type: dns
             # specify that the stream handler module requires >= specific version to be successfully applied 
