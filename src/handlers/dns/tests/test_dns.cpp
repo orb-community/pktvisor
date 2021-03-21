@@ -1,6 +1,4 @@
-#include <ProtocolType.h>
 #include <catch2/catch.hpp>
-#include <sstream>
 
 #include "dns.h"
 
