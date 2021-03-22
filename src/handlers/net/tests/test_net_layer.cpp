@@ -148,6 +148,8 @@ TEST_CASE("Parse net (dns) random UDP/TCP tests", "[pcap][net]")
 
     nlohmann::json j;
     net_handler.metrics()->bucket(0)->to_json(j);
+    WARN(j.dump(4));
+
     CHECK(j["cardinality"]["dst_ips_out"] == 1);
     CHECK(j["cardinality"]["src_ips_in"] == 1);
     CHECK(j["top_ipv4"][0]["estimate"] == 16147);

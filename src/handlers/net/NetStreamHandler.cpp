@@ -85,9 +85,9 @@ void NetStreamHandler::info_json(json &j) const
 void NetStreamHandler::window_prometheus(std::stringstream &out)
 {
     if (_metrics->current_periods() > 1) {
-        _metrics->window_single_prometheus(out, schema_key(), 1);
+        _metrics->window_single_prometheus(out, 1);
     } else {
-        _metrics->window_single_prometheus(out, schema_key(), 0);
+        _metrics->window_single_prometheus(out, 0);
     }
 }
 
@@ -143,12 +143,12 @@ void NetworkMetricsBucket::to_json(json &j) const
 {
 
     // do rates first, which handle their own locking
-    _rate_in.to_json(j["rates"], !read_only());
-    _rate_out.to_json(j["rates"], !read_only());
+    _rate_in.to_json(j, !read_only());
+    _rate_out.to_json(j, !read_only());
 
     auto [num_events, num_samples, event_rate, event_lock] = event_data_locked(); // thread safe
 
-    event_rate->to_json(j["rates"], !read_only());
+    event_rate->to_json(j, !read_only());
 
     std::shared_lock r_lock(_mutex);
 
@@ -162,8 +162,8 @@ void NetworkMetricsBucket::to_json(json &j) const
     _counters.total_in.to_json(j);
     _counters.total_out.to_json(j);
 
-    _srcIPCard.to_json(j["cardinality"]);
-    _dstIPCard.to_json(j["cardinality"]);
+    _srcIPCard.to_json(j);
+    _dstIPCard.to_json(j);
 
     _topIPv4.to_json(j, [](const uint32_t &val) { return pcpp::IPv4Address(val).toString(); });
     _topIPv6.to_json(j);

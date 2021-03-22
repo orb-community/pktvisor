@@ -7,9 +7,9 @@
 
 namespace visor {
 
-void Counter::to_json(visor::json &j) const
+void Counter::to_json(json &j) const
 {
-    name_json(j) = _value;
+    name_json_assign(j, _value);
 }
 
 void Counter::to_prometheus(std::stringstream &out) const
@@ -23,7 +23,7 @@ void Rate::to_json(json &j, bool include_live) const
 {
     to_json(j);
     if (include_live) {
-        name_json(j)["live"] = rate();
+        //        name_json(j)["live"] = rate();
     }
 }
 
@@ -35,10 +35,10 @@ void Rate::to_json(visor::json &j) const
 
     auto quantiles = _quantile.get_quantiles(fractions, 4);
     if (quantiles.size()) {
-        name_json(j)["p50"] = quantiles[0];
-        name_json(j)["p90"] = quantiles[1];
-        name_json(j)["p95"] = quantiles[2];
-        name_json(j)["p99"] = quantiles[3];
+        name_json_assign(j, {"p50"}, quantiles[0]);
+        name_json_assign(j, {"p90"}, quantiles[1]);
+        name_json_assign(j, {"p95"}, quantiles[2]);
+        name_json_assign(j, {"p99"}, quantiles[3]);
     }
 }
 
@@ -60,10 +60,30 @@ void Cardinality::merge(const Cardinality &other)
 }
 void Cardinality::to_json(json &j) const
 {
-    name_json(j) = lround(_set.get_estimate());
+    name_json_assign(j, lround(_set.get_estimate()));
 }
 void Cardinality::to_prometheus(std::stringstream &out) const
 {
+}
+
+void Metric::name_json_assign(json &j, const json &val) const
+{
+    json *j_part = &j;
+    for (const auto &s_part : _name) {
+        j_part = &(*j_part)[s_part];
+    }
+    (*j_part) = val;
+}
+void Metric::name_json_assign(json &j, std::initializer_list<std::string> add_names, const json &val) const
+{
+    json *j_part = &j;
+    for (const auto &s_part : _name) {
+        j_part = &(*j_part)[s_part];
+    }
+    for (const auto &s_part : add_names) {
+        j_part = &(*j_part)[s_part];
+    }
+    (*j_part) = val;
 }
 
 }

@@ -412,7 +412,7 @@ public:
         _metric_buckets.at(period)->to_json(j[period_str][key]);
     }
 
-    void window_single_prometheus(std::stringstream &out, const std::string &key, uint64_t period = 0) const
+    void window_single_prometheus(std::stringstream &out, uint64_t period = 0) const
     {
         std::shared_lock rl(_base_mutex);
         std::shared_lock rbl(_bucket_mutex);
@@ -428,7 +428,7 @@ public:
             throw PeriodException(err.str());
         }
 
-        _metric_buckets.at(period)->to_prometheus(out, key);
+        _metric_buckets.at(period)->to_prometheus(out);
     }
 
     void window_merged_json(json &j, const std::string &key, uint64_t period) const

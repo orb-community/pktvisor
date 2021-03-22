@@ -44,14 +44,8 @@ public:
         _desc = desc;
     }
 
-    json &name_json(json &j) const
-    {
-        json &j_part = j;
-        for (const auto &s_part : _name) {
-            j_part = j_part[s_part];
-        }
-        return j_part;
-    }
+    void name_json_assign(json &j, const json &val) const;
+    void name_json_assign(json &j, std::initializer_list<std::string> add_names, const json &val) const;
 
     [[nodiscard]] std::string name_snake() const
     {
@@ -153,10 +147,10 @@ public:
 
         auto quantiles = _quantile.get_quantiles(fractions, 4);
         if (quantiles.size()) {
-            j[_name]["p50"] = quantiles[0];
-            j[_name]["p90"] = quantiles[1];
-            j[_name]["p95"] = quantiles[2];
-            j[_name]["p99"] = quantiles[3];
+            name_json_assign(j, {"p50"}, quantiles[0]);
+            name_json_assign(j, {"p90"}, quantiles[1]);
+            name_json_assign(j, {"p95"}, quantiles[2]);
+            name_json_assign(j, {"p99"}, quantiles[3]);
         }
     }
 
@@ -175,16 +169,25 @@ template <typename T>
 class TopN final : public Metric
 {
 public:
+    //
+    // https://datasketches.github.io/docs/Frequency/FrequentItemsErrorTable.html
+    //
+    // we need to size for stream length of (essentially) pps within MetricsMgr::PERIOD_SEC
+    // at close to ~1 mil PPS (5.6E+07 per 60s) we can hit being off by ~24000 at max map size of 8192
+    // this number also affects memory usage, by limiting the number of objects tracked
+    // e.g. up to MAX_FI_MAP_SIZE strings (ints, etc) may be stored per sketch
+    // note that the actual storage space for the strings is on the heap and not counted here, though.
     const uint8_t START_FI_MAP_SIZE = 7; // 2^7 = 128
     const uint8_t MAX_FI_MAP_SIZE = 13;  // 2^13 = 8192
 
 private:
     datasketches::frequent_items_sketch<T> _fi;
-    uint64_t _top_count = 10;
+    size_t _top_count = 10;
 
 public:
     TopN(std::initializer_list<std::string> names, std::string desc)
         : Metric(names, std::move(desc))
+        , _fi(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
     {
     }
 
@@ -203,21 +206,34 @@ public:
         _fi.merge(other._fi);
     }
 
+    /**
+     * to_json which takes a formater to format the "name"
+     * @param j json object
+     * @param formatter std::function which takes a T as input (the type store it in top table) it needs to return a std::string
+     */
     void to_json(json &j, std::function<std::string(const T &)> formatter) const
     {
-        j = json::array();
+        auto section = json::array();
         auto items = _fi.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
         for (uint64_t i = 0; i < std::min(_top_count, items.size()); i++) {
-            j[i]["name"] = formatter(items[i].get_item());
-            j[i]["estimate"] = items[i].get_estimate();
+            section[i]["name"] = formatter(items[i].get_item());
+            section[i]["estimate"] = items[i].get_estimate();
         }
+        name_json_assign(j, section);
     }
 
     // Metric
     void to_json(json &j) const override
     {
-        to_json(j, [](const T &val) { return val; });
+        auto section = json::array();
+        auto items = _fi.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
+        for (uint64_t i = 0; i < std::min(_top_count, items.size()); i++) {
+            section[i]["name"] = items[i].get_item();
+            section[i]["estimate"] = items[i].get_estimate();
+        }
+        name_json_assign(j, section);
     }
+
     void to_prometheus(std::stringstream &out) const override
     {
     }
