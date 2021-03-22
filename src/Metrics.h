@@ -31,27 +31,38 @@ protected:
     std::string _desc;
 
 public:
-    Metric(std::string name, std::string desc)
-        : _desc(std::move(desc))
-    {
-        _name.emplace_back(std::move(name));
-    }
-
     Metric(std::initializer_list<std::string> names, std::string desc)
         : _name(names)
         , _desc(std::move(desc))
     {
     }
 
-    void set_info(const std::string &name, const std::string &desc)
+    void set_info(std::initializer_list<std::string> names, const std::string &desc)
     {
         _name.clear();
-        _name.emplace_back(name);
+        _name = names;
         _desc = desc;
     }
 
+    json &name_json(json &j) const
+    {
+        json &j_part = j;
+        for (const auto &s_part : _name) {
+            j_part = j_part[s_part];
+        }
+        return j_part;
+    }
+
+    [[nodiscard]] std::string name_snake() const
+    {
+        return std::accumulate(std::begin(_name), std::end(_name), std::string(),
+            [](const std::string &ss, const std::string &s) {
+                return ss.empty() ? s : ss + "_" + s;
+            });
+    }
+
     virtual void to_json(json &j) const = 0;
-    virtual void to_prometheus(std::stringstream &out, const std::string &key) const = 0;
+    virtual void to_prometheus(std::stringstream &out) const = 0;
 };
 
 /**
@@ -63,11 +74,6 @@ class Counter final : public Metric
     uint64_t _value = 0;
 
 public:
-    Counter(std::string name, std::string desc)
-        : Metric(std::move(name), std::move(desc))
-    {
-    }
-
     Counter(std::initializer_list<std::string> names, std::string desc)
         : Metric(names, std::move(desc))
     {
@@ -91,7 +97,7 @@ public:
 
     // Metric
     void to_json(json &j) const override;
-    void to_prometheus(std::stringstream &out, const std::string &key) const override;
+    void to_prometheus(std::stringstream &out) const override;
 };
 
 /**
@@ -105,12 +111,6 @@ class Quantile final : public Metric
     datasketches::kll_sketch<T> _quantile;
 
 public:
-    Quantile(std::string name, std::string desc)
-        : Metric(std::move(name), std::move(desc))
-        , _quantile()
-    {
-    }
-
     Quantile(std::initializer_list<std::string> names, std::string desc)
         : Metric(names, std::move(desc))
     {
@@ -145,7 +145,7 @@ public:
         }
     }
 
-    void to_prometheus(std::stringstream &out, const std::string &key) const override
+    void to_prometheus(std::stringstream &out) const override
     {
         // TODO
     }
@@ -168,12 +168,6 @@ private:
     uint64_t _top_count = 10;
 
 public:
-    TopN(std::string name, std::string desc)
-        : Metric(std::move(name), std::move(desc))
-        , _fi()
-    {
-    }
-
     TopN(std::initializer_list<std::string> names, std::string desc)
         : Metric(names, std::move(desc))
     {
@@ -209,7 +203,7 @@ public:
     {
         to_json(j, [](const T &val) { return val; });
     }
-    void to_prometheus(std::stringstream &out, const std::string &key) const override
+    void to_prometheus(std::stringstream &out) const override
     {
     }
 };
@@ -224,12 +218,6 @@ class Cardinality final : public Metric
     datasketches::cpc_sketch _set;
 
 public:
-    Cardinality(std::string name, std::string desc)
-        : Metric(std::move(name), std::move(desc))
-        , _set()
-    {
-    }
-
     Cardinality(std::initializer_list<std::string> names, std::string desc)
         : Metric(names, std::move(desc))
     {
@@ -256,7 +244,7 @@ public:
 
     // Metric
     void to_json(json &j) const override;
-    void to_prometheus(std::stringstream &out, const std::string &key) const override;
+    void to_prometheus(std::stringstream &out) const override;
 };
 
 /**
@@ -286,15 +274,6 @@ class Rate final : public Metric
     }
 
 public:
-    Rate(std::string name, std::string desc)
-        : Metric(std::move(name), std::move(desc))
-        , _counter(0)
-        , _rate(0)
-        , _quantile()
-    {
-        _start_timer();
-    }
-
     Rate(std::initializer_list<std::string> names, std::string desc)
         : Metric(names, std::move(desc))
         , _counter(0)
@@ -347,7 +326,7 @@ public:
 
     // Metric
     void to_json(json &j) const override;
-    void to_prometheus(std::stringstream &out, const std::string &key) const override;
+    void to_prometheus(std::stringstream &out) const override;
 };
 
 }

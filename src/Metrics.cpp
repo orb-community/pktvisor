@@ -9,21 +9,21 @@ namespace visor {
 
 void Counter::to_json(visor::json &j) const
 {
-    j[_name] = _value;
+    name_json(j) = _value;
 }
 
-void Counter::to_prometheus(std::stringstream &out, const std::string &key) const
+void Counter::to_prometheus(std::stringstream &out) const
 {
-    out << "# HELP " << key << "_" << _name << ' ' << _desc << std::endl;
-    out << "# TYPE " << key << "_" << _name << " gauge" << std::endl;
-    out << key << '_' << _name << ' ' << _value << std::endl;
+    out << "# HELP " << name_snake() << ' ' << _desc << std::endl;
+    out << "# TYPE " << name_snake() << " gauge" << std::endl;
+    out << name_snake() << ' ' << _value << std::endl;
 }
 
 void Rate::to_json(json &j, bool include_live) const
 {
     to_json(j);
     if (include_live) {
-        j[_name]["live"] = rate();
+        name_json(j)["live"] = rate();
     }
 }
 
@@ -35,14 +35,14 @@ void Rate::to_json(visor::json &j) const
 
     auto quantiles = _quantile.get_quantiles(fractions, 4);
     if (quantiles.size()) {
-        j[_name]["p50"] = quantiles[0];
-        j[_name]["p90"] = quantiles[1];
-        j[_name]["p95"] = quantiles[2];
-        j[_name]["p99"] = quantiles[3];
+        name_json(j)["p50"] = quantiles[0];
+        name_json(j)["p90"] = quantiles[1];
+        name_json(j)["p95"] = quantiles[2];
+        name_json(j)["p99"] = quantiles[3];
     }
 }
 
-void Rate::to_prometheus(std::stringstream &out, const std::string &key) const
+void Rate::to_prometheus(std::stringstream &out) const
 {
     /*
     out << "# HELP " << key << "_" << _name << ' ' << _desc << std::endl;
@@ -60,9 +60,9 @@ void Cardinality::merge(const Cardinality &other)
 }
 void Cardinality::to_json(json &j) const
 {
-    j[_name] = lround(_set.get_estimate());
+    name_json(j) = lround(_set.get_estimate());
 }
-void Cardinality::to_prometheus(std::stringstream &out, const std::string &key) const
+void Cardinality::to_prometheus(std::stringstream &out) const
 {
 }
 

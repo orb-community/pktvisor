@@ -66,9 +66,9 @@ protected:
 
 public:
     AbstractMetricsBucket()
-        : _num_samples("deep_samples", "Total number of deep samples")
-        , _num_events("total", "Total number of events")
-        , _rate_events("event_rate", "Rate of events")
+        : _num_samples({"deep_samples"}, "Total number of deep samples")
+        , _num_events({"total"}, "Total number of events")
+        , _rate_events({"event_rate"}, "Rate of events")
         , _start_tstamp{0, 0}
         , _end_tstamp{0, 0}
     {
@@ -124,9 +124,9 @@ public:
         on_set_read_only();
     }
 
-    void set_event_rate_info(const std::string &name, const std::string &desc)
+    void set_event_rate_info(std::initializer_list<std::string> names, const std::string &desc)
     {
-        _rate_events.set_info(name, desc);
+        _rate_events.set_info(names, desc);
     }
 
     auto event_data_locked() const
@@ -173,7 +173,7 @@ public:
     }
 
     virtual void to_json(json &j) const = 0;
-    virtual void to_prometheus(std::stringstream &out, const std::string &key) const = 0;
+    virtual void to_prometheus(std::stringstream &out) const = 0;
 };
 
 template <typename MetricsBucketClass>

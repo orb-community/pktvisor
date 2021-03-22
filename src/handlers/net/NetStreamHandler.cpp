@@ -120,23 +120,23 @@ void NetworkMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
     _topASN.merge(other._topASN);
 }
 
-void NetworkMetricsBucket::to_prometheus(std::stringstream &out, const std::string &key) const
+void NetworkMetricsBucket::to_prometheus(std::stringstream &out) const
 {
 
     std::shared_lock r_lock(_mutex);
 
     auto [num_events, num_samples, event_rate, event_lock] = event_data_locked(); // thread safe
 
-    num_events->to_prometheus(out, key);
-    num_samples->to_prometheus(out, key);
+    num_events->to_prometheus(out);
+    num_samples->to_prometheus(out);
 
-    _counters.UDP.to_prometheus(out, key);
-    _counters.TCP.to_prometheus(out, key);
-    _counters.OtherL4.to_prometheus(out, key);
-    _counters.IPv4.to_prometheus(out, key);
-    _counters.IPv6.to_prometheus(out, key);
-    _counters.total_in.to_prometheus(out, key);
-    _counters.total_out.to_prometheus(out, key);
+    _counters.UDP.to_prometheus(out);
+    _counters.TCP.to_prometheus(out);
+    _counters.OtherL4.to_prometheus(out);
+    _counters.IPv4.to_prometheus(out);
+    _counters.IPv6.to_prometheus(out);
+    _counters.total_in.to_prometheus(out);
+    _counters.total_out.to_prometheus(out);
 }
 
 void NetworkMetricsBucket::to_json(json &j) const

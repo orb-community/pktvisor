@@ -38,13 +38,13 @@ protected:
         Counter total_in;
         Counter total_out;
         counters()
-            : UDP("udp", "Count of UDP packets")
-            , TCP("tcp", "Count of TCP packets")
-            , OtherL4("other_l4", "Count of packets which are not UDP or TCP")
-            , IPv4("ipv4", "Count of IPv4 packets")
-            , IPv6("ipv6", "Count of IPv6 packets")
-            , total_in("in", "Count of total ingress packets")
-            , total_out("out", "Count of total egress packets")
+            : UDP({"packets", "udp"}, "Count of UDP packets")
+            , TCP({"packets", "tcp"}, "Count of TCP packets")
+            , OtherL4({"packets", "other_l4"}, "Count of packets which are not UDP or TCP")
+            , IPv4({"packets", "ipv4"}, "Count of IPv4 packets")
+            , IPv6({"packets", "ipv6"}, "Count of IPv6 packets")
+            , total_in({"packets", "in"}, "Count of total ingress packets")
+            , total_out({"packets", "out"}, "Count of total egress packets")
         {
         }
     };
@@ -55,16 +55,16 @@ protected:
 
 public:
     NetworkMetricsBucket()
-        : _srcIPCard("src_ips_in", "Source IP cardinality")
-        , _dstIPCard("dst_ips_out", "Destination IP cardinality")
-        , _topGeoLoc("top_geoLoc", "Top GeoIP locations")
-        , _topASN("top_ASN", "Top ASNs by IP")
-        , _topIPv4("top_ipv4", "Top IPv4 IP addresses")
-        , _topIPv6("top_ipv6", "Top IPv6 IP addresses")
-        , _rate_in("pps_in", "Rate of ingress in packets per second")
-        , _rate_out("pps_out", "Rate of egress in packets per second")
+        : _srcIPCard({"packets", "cardinality", "src_ips_in"}, "Source IP cardinality")
+        , _dstIPCard({"packets", "cardinality", "dst_ips_out"}, "Destination IP cardinality")
+        , _topGeoLoc({"packets", "top_geoLoc"}, "Top GeoIP locations")
+        , _topASN({"packets", "top_ASN"}, "Top ASNs by IP")
+        , _topIPv4({"packets", "top_ipv4"}, "Top IPv4 IP addresses")
+        , _topIPv6({"packets", "top_ipv6"}, "Top IPv6 IP addresses")
+        , _rate_in({"packets", "rates", "pps_in"}, "Rate of ingress in packets per second")
+        , _rate_out({"packets", "rates", "pps_out"}, "Rate of egress in packets per second")
     {
-        set_event_rate_info("pps_total", "Rate of all packets in packets per second");
+        set_event_rate_info({"packets", "rates", "pps_total"}, "Rate of all packets (combined ingress and egress) in packets per second");
     }
 
     // get a copy of the counters
@@ -77,7 +77,7 @@ public:
     // visor::AbstractMetricsBucket
     void specialized_merge(const AbstractMetricsBucket &other) override;
     void to_json(json &j) const override;
-    void to_prometheus(std::stringstream &out, const std::string &key) const override;
+    void to_prometheus(std::stringstream &out) const override;
 
     // must be thread safe as it is called from time window maintenance thread
     void on_set_read_only() override

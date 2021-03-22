@@ -57,20 +57,20 @@ protected:
         Counter SRVFAIL;
         Counter NOERROR;
         counters()
-            : xacts_total("total", "Total DNS transactions (query/reply pairs)")
-            , xacts_in("in", "Total ingress DNS transactions (host is server)")
-            , xacts_out("out", "Total egress DNS transactions (host is client)")
-            , xacts_timed_out("timed_out", "Total number of DNS transactions that timed out")
-            , queries("queries", "Total DNS wire packets flagged as query (ingress and egress)")
-            , replies("replies", "Total DNS wire packets flagged as reply (ingress and egress)")
-            , UDP("udp", "Total DNS wire packets received over UDP (ingress and egress)")
-            , TCP("tcp", "Total DNS wire packets received over TCP (ingress and egress)")
-            , IPv4("ipv4", "Total DNS wire packets received over IPv4 (ingress and egress)")
-            , IPv6("ipv6", "Total DNS wire packets received over IPv6 (ingress and egress)")
-            , NX("nxdomain", "Total DNS wire packets flagged as reply with return code NXDOMAIN (ingress and egress)")
-            , REFUSED("refused", "Total DNS wire packets flagged as reply with return code REFUSED (ingress and egress)")
-            , SRVFAIL("srvfail", "Total DNS wire packets flagged as reply with return code SRVFAIL (ingress and egress)")
-            , NOERROR("noerror", "Total DNS wire packets flagged as reply with return code NOERROR (ingress and egress)")
+            : xacts_total({"dns", "xact", "counts", "total"}, "Total DNS transactions (query/reply pairs)")
+            , xacts_in({"dns", "xact", "in", "total"}, "Total ingress DNS transactions (host is server)")
+            , xacts_out({"dns", "xact", "out", "total"}, "Total egress DNS transactions (host is client)")
+            , xacts_timed_out({"dns", "xact", "counts", "timed_out"}, "Total number of DNS transactions that timed out")
+            , queries({"dns", "wire_packets", "queries"}, "Total DNS wire packets flagged as query (ingress and egress)")
+            , replies({"dns", "wire_packets", "replies"}, "Total DNS wire packets flagged as reply (ingress and egress)")
+            , UDP({"dns", "wire_packets", "udp"}, "Total DNS wire packets received over UDP (ingress and egress)")
+            , TCP({"dns", "wire_packets", "tcp"}, "Total DNS wire packets received over TCP (ingress and egress)")
+            , IPv4({"dns", "wire_packets", "ipv4"}, "Total DNS wire packets received over IPv4 (ingress and egress)")
+            , IPv6({"dns", "wire_packets", "ipv6"}, "Total DNS wire packets received over IPv6 (ingress and egress)")
+            , NX({"dns", "wire_packets", "nxdomain"}, "Total DNS wire packets flagged as reply with return code NXDOMAIN (ingress and egress)")
+            , REFUSED({"dns", "wire_packets", "refused"}, "Total DNS wire packets flagged as reply with return code REFUSED (ingress and egress)")
+            , SRVFAIL({"dns", "wire_packets", "srvfail"}, "Total DNS wire packets flagged as reply with return code SRVFAIL (ingress and egress)")
+            , NOERROR({"dns", "wire_packets", "noerror"}, "Total DNS wire packets flagged as reply with return code NOERROR (ingress and egress)")
         {
         }
     };
@@ -121,7 +121,7 @@ public:
     // visor::AbstractMetricsBucket
     void specialized_merge(const AbstractMetricsBucket &other) override;
     void to_json(json &j) const override;
-    void to_prometheus(std::stringstream &out, const std::string &key) const override;
+    void to_prometheus(std::stringstream &out) const override;
 
     void process_dns_layer(bool deep, DnsLayer &payload, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint16_t port);
 
