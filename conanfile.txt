@@ -1,13 +1,15 @@
 [requires]
 spdlog/1.8.2
 sigslot/1.2.0
-catch2/2.13.4
 docopt.cpp/0.6.3
 nlohmann_json/3.9.1
 cpp-httplib/0.8.0
 corrade/2020.06
 pcapplusplus/20.08@bincrafters/stable
+
+[build_requires]
 benchmark/1.5.2
+catch2/2.13.4
 
 [options]
 corrade:with_pluginmanager=True
