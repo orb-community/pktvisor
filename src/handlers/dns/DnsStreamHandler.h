@@ -18,10 +18,6 @@ using namespace visor::input::pcap;
 
 class DnsMetricsBucket final : public visor::AbstractMetricsBucket
 {
-public:
-    const uint8_t START_FI_MAP_SIZE = 7; // 2^7 = 128
-    const uint8_t MAX_FI_MAP_SIZE = 13;  // 2^13 = 8192
-
 protected:
     mutable std::shared_mutex _mutex;
 
@@ -78,19 +74,19 @@ protected:
 
 public:
     DnsMetricsBucket()
-        : _dnsXactFromTimeUs({"xact", "out", "quantiles_us"}, "")
-        , _dnsXactToTimeUs("", "")
-        , _dns_qnameCard("", "")
-        , _dns_topQname2("", "")
-        , _dns_topQname3("", "")
-        , _dns_topNX("", "")
-        , _dns_topREFUSED("", "")
-        , _dns_topSRVFAIL("", "")
-        , _dns_topUDPPort("", "")
-        , _dns_topQType("", "")
-        , _dns_topRCode("", "")
-        , _dns_slowXactIn("", "")
-        , _dns_slowXactOut("", "")
+        : _dnsXactFromTimeUs({"dns", "xact", "out", "quantiles_us"}, "Quantiles of transaction timing (query/reply pairs) when host is client")
+        , _dnsXactToTimeUs({"dns", "xact", "in", "quantiles_us"}, "Quantiles of transaction timing (query/reply pairs) when host is server")
+        , _dns_qnameCard({"dns", "cardinality", "qname"}, "Cardinality of unique QNAMES, both ingress and egress")
+        , _dns_topQname2({"dns", "top_qname2"}, "Top QNAMES, aggregated at a depth of two labels")
+        , _dns_topQname3({"dns", "top_qname3"}, "Top QNAMES, aggregated at a depth of three labels")
+        , _dns_topNX({"dns", "top_nxdomain"}, "Top QNAMES with result code NXDOMAIN")
+        , _dns_topREFUSED({"dns", "top_refused"}, "Top QNAMES with result code REFUSED")
+        , _dns_topSRVFAIL({"dns", "top_srvfail"}, "Top QNAMES with result code SRVFAIL")
+        , _dns_topUDPPort({"dns", "top_udp_ports"}, "Top UDP source port on the query side of a transaction")
+        , _dns_topQType({"dns", "top_qtype"}, "Top query types")
+        , _dns_topRCode({"dns", "top_rcode"}, "Top result codes")
+        , _dns_slowXactIn({"dns", "xact", "in", "top_slow"}, "Top QNAMES in transactions where host is the server and transaction speed is slower than p90")
+        , _dns_slowXactOut({"dns", "xact", "out", "top_slow"}, "Top QNAMES in transactions where host is the client and transaction speed is slower than p90")
     {
     }
 
@@ -98,8 +94,8 @@ public:
     {
         std::shared_lock lock(_mutex);
         struct retVals {
-            const datasketches::kll_sketch<uint64_t> &xact_to;
-            const datasketches::kll_sketch<uint64_t> &xact_from;
+            const Quantile<uint64_t> &xact_to;
+            const Quantile<uint64_t> &xact_from;
             std::shared_lock<std::shared_mutex> lock;
         };
         return retVals{_dnsXactToTimeUs, _dnsXactFromTimeUs, std::move(lock)};

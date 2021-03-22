@@ -90,6 +90,11 @@ public:
         return _value;
     }
 
+    void operator+=(uint64_t i)
+    {
+        _value += i;
+    }
+
     void operator+=(const Counter &other)
     {
         _value += other._value;
@@ -129,6 +134,16 @@ public:
     void merge(const Quantile &other)
     {
         _quantile.merge(other._quantile);
+    }
+
+    auto get_n() const
+    {
+        return _quantile.get_n();
+    }
+
+    auto get_quantile(float p) const
+    {
+        return _quantile.get_quantile(p);
     }
 
     // Metric
