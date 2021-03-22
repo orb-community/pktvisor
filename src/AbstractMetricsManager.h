@@ -129,6 +129,16 @@ public:
         _rate_events.set_info(names, desc);
     }
 
+    void set_num_sample_info(std::initializer_list<std::string> names, const std::string &desc)
+    {
+        _num_samples.set_info(names, desc);
+    }
+
+    void set_num_events_info(std::initializer_list<std::string> names, const std::string &desc)
+    {
+        _num_events.set_info(names, desc);
+    }
+
     auto event_data_locked() const
     {
         struct eventData {
