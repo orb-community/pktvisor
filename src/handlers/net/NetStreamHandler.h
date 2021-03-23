@@ -7,14 +7,6 @@
 #include "AbstractMetricsManager.h"
 #include "PcapInputStream.h"
 #include "StreamHandler.h"
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wold-style-cast"
-#pragma GCC diagnostic ignored "-Wunused-function"
-#pragma clang diagnostic ignored "-Wrange-loop-analysis"
-#include <cpc_sketch.hpp>
-#include <frequent_items_sketch.hpp>
-#include <kll_sketch.hpp>
-#pragma GCC diagnostic pop
 #include <Corrade/Utility/Debug.h>
 #include <string>
 
@@ -24,20 +16,17 @@ using namespace visor::input::pcap;
 
 class NetworkMetricsBucket final : public visor::AbstractMetricsBucket
 {
-public:
-    const uint8_t START_FI_MAP_SIZE = 7; // 2^7 = 128
-    const uint8_t MAX_FI_MAP_SIZE = 13;  // 2^13 = 8192
 
 protected:
     mutable std::shared_mutex _mutex;
 
-    datasketches::cpc_sketch _srcIPCard;
-    datasketches::cpc_sketch _dstIPCard;
+    Cardinality _srcIPCard;
+    Cardinality _dstIPCard;
 
-    datasketches::frequent_items_sketch<std::string> _topGeoLoc;
-    datasketches::frequent_items_sketch<std::string> _topASN;
-    datasketches::frequent_items_sketch<uint32_t> _topIPv4;
-    datasketches::frequent_items_sketch<std::string> _topIPv6; // TODO OPTIMIZE not very efficient, should switch to 16 byte uint
+    TopN<std::string> _topGeoLoc;
+    TopN<std::string> _topASN;
+    TopN<uint32_t> _topIPv4;
+    TopN<std::string> _topIPv6;
 
     // total numPackets is tracked in base class num_events
     struct counters {
@@ -49,13 +38,13 @@ protected:
         Counter total_in;
         Counter total_out;
         counters()
-            : UDP("udp", "Count of UDP packets")
-            , TCP("tcp", "Count of TCP packets")
-            , OtherL4("other_l4", "Count of packets which are not UDP or TCP")
-            , IPv4("ipv4", "Count of IPv4 packets")
-            , IPv6("ipv6", "Count of IPv6 packets")
-            , total_in("in", "Count of total ingress packets")
-            , total_out("out", "Count of total egress packets")
+            : UDP("packets", {"udp"}, "Count of UDP packets")
+            , TCP("packets", {"tcp"}, "Count of TCP packets")
+            , OtherL4("packets", {"other_l4"}, "Count of packets which are not UDP or TCP")
+            , IPv4("packets", {"ipv4"}, "Count of IPv4 packets")
+            , IPv6("packets", {"ipv6"}, "Count of IPv6 packets")
+            , total_in("packets", {"in"}, "Count of total ingress packets")
+            , total_out("packets", {"out"}, "Count of total egress packets")
         {
         }
     };
@@ -66,15 +55,18 @@ protected:
 
 public:
     NetworkMetricsBucket()
-        : _srcIPCard()
-        , _dstIPCard()
-        , _topGeoLoc(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
-        , _topASN(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
-        , _topIPv4(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
-        , _topIPv6(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
-        , _rate_in()
-        , _rate_out()
+        : _srcIPCard("packets", {"cardinality", "src_ips_in"}, "Source IP cardinality")
+        , _dstIPCard("packets", {"cardinality", "dst_ips_out"}, "Destination IP cardinality")
+        , _topGeoLoc("packets", {"top_geoLoc"}, "Top GeoIP locations")
+        , _topASN("packets", {"top_ASN"}, "Top ASNs by IP")
+        , _topIPv4("packets", {"top_ipv4"}, "Top IPv4 IP addresses")
+        , _topIPv6("packets", {"top_ipv6"}, "Top IPv6 IP addresses")
+        , _rate_in("packets", {"rates", "pps_in"}, "Rate of ingress in packets per second")
+        , _rate_out("packets", {"rates", "pps_out"}, "Rate of egress in packets per second")
     {
+        set_event_rate_info("packets", {"rates", "pps_total"}, "Rate of all packets (combined ingress and egress) in packets per second");
+        set_num_events_info("packets", {"total"}, "Total packets processed");
+        set_num_sample_info("packets", {"deep_samples"}, "Total packets that were sampled for deep inspection");
     }
 
     // get a copy of the counters
@@ -87,7 +79,7 @@ public:
     // visor::AbstractMetricsBucket
     void specialized_merge(const AbstractMetricsBucket &other) override;
     void to_json(json &j) const override;
-    void to_prometheus(std::stringstream &out, const std::string &key) const override;
+    void to_prometheus(std::stringstream &out) const override;
 
     // must be thread safe as it is called from time window maintenance thread
     void on_set_read_only() override
@@ -107,17 +99,6 @@ public:
         : visor::AbstractMetricsManager<NetworkMetricsBucket>(periods, deepSampleRate)
     {
     }
-
-#if 0
-    void on_period_shift() override
-    {
-        Corrade::Utility::Debug{} << "period shift";
-    }
-    void on_period_evict(const NetworkMetricsBucket *bucket) override
-    {
-        Corrade::Utility::Debug{} << "evict: " << bucket->_numPackets;
-    }
-#endif
 
     void process_packet(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp);
 };

@@ -37,6 +37,6 @@ target_link_libraries(unit-tests-input-pcap
         )
 
 add_test(NAME unit-tests-input-pcap
-        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/src/tests
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/src
         COMMAND unit-tests-input-pcap
         )

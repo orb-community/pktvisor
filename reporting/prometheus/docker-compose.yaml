@@ -1,0 +1,11 @@
+---
+version: '3.3'
+services:
+  prometheus:
+    image: prom/prometheus
+    network_mode: "host"
+    volumes:
+      - './config/prometheus.yml:/etc/prometheus/prometheus.yml:ro'
+  grafana:
+    image: grafana/grafana:7.3.0
+    network_mode: "host"

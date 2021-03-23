@@ -254,8 +254,9 @@ void PcapInputStream::_open_pcap(const std::string &fileName, const std::string 
     auto reader = pcpp::IFileReaderDevice::getReader(fileName.c_str());
 
     // try to open the file device
-    if (!reader->open())
+    if (!reader->open()) {
         throw PcapException("Cannot open pcap/pcapng file");
+    }
 
     // set BPF filter if set by the user
     if (bpfFilter != "") {

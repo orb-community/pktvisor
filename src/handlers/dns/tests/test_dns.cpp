@@ -1,12 +1,10 @@
-#include <ProtocolType.h>
 #include <catch2/catch.hpp>
-#include <sstream>
 
 #include "dns.h"
 
 using namespace visor::handler::dns;
 
-TEST_CASE("dns", "[dns]")
+TEST_CASE("DNS Utilities", "[dns]")
 {
 
     SECTION("aggregateDomain")
