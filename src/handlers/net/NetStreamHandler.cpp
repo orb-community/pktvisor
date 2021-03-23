@@ -145,7 +145,7 @@ void NetworkMetricsBucket::to_prometheus(std::stringstream &out) const
     _srcIPCard.to_prometheus(out);
     _dstIPCard.to_prometheus(out);
 
-    //_topIPv4.to_prometheus(j, [](const uint32_t &val) { return pcpp::IPv4Address(val).toString(); });
+    _topIPv4.to_prometheus(out, [](const uint32_t &val) { return pcpp::IPv4Address(val).toString(); });
     _topIPv6.to_prometheus(out);
     _topGeoLoc.to_prometheus(out);
     _topASN.to_prometheus(out);

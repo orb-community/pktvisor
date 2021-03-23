@@ -49,14 +49,16 @@ void Rate::to_prometheus(std::stringstream &out) const
     std::shared_lock lock(_sketch_mutex);
     auto quantiles = _quantile.get_quantiles(fractions, 4);
 
-    out << "# HELP " << name_snake() << ' ' << _desc << std::endl;
-    out << "# TYPE " << name_snake() << " summary" << std::endl;
-    out << name_snake() << "{quantile=\"0.5\"} " << quantiles[0] << std::endl;
-    out << name_snake() << "{quantile=\"0.9\"} " << quantiles[1] << std::endl;
-    out << name_snake() << "{quantile=\"0.95\"} " << quantiles[2] << std::endl;
-    out << name_snake() << "{quantile=\"0.99\"} " << quantiles[3] << std::endl;
-    out << name_snake() << "_sum " << _quantile.get_max_value() << std::endl;
-    out << name_snake() << "_count " << _quantile.get_n() << std::endl;
+    if (quantiles.size()) {
+        out << "# HELP " << name_snake() << ' ' << _desc << std::endl;
+        out << "# TYPE " << name_snake() << " summary" << std::endl;
+        out << name_snake() << "{quantile=\"0.5\"} " << quantiles[0] << std::endl;
+        out << name_snake() << "{quantile=\"0.9\"} " << quantiles[1] << std::endl;
+        out << name_snake() << "{quantile=\"0.95\"} " << quantiles[2] << std::endl;
+        out << name_snake() << "{quantile=\"0.99\"} " << quantiles[3] << std::endl;
+        out << name_snake() << "_sum " << _quantile.get_max_value() << std::endl;
+        out << name_snake() << "_count " << _quantile.get_n() << std::endl;
+    }
 }
 
 void Cardinality::merge(const Cardinality &other)
