@@ -123,12 +123,12 @@ void NetworkMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
 void NetworkMetricsBucket::to_prometheus(std::stringstream &out) const
 {
 
-    std::shared_lock r_lock(_mutex);
-
     auto [num_events, num_samples, event_rate, event_lock] = event_data_locked(); // thread safe
 
     num_events->to_prometheus(out);
     num_samples->to_prometheus(out);
+
+    std::shared_lock r_lock(_mutex);
 
     _counters.UDP.to_prometheus(out);
     _counters.TCP.to_prometheus(out);
@@ -137,6 +137,14 @@ void NetworkMetricsBucket::to_prometheus(std::stringstream &out) const
     _counters.IPv6.to_prometheus(out);
     _counters.total_in.to_prometheus(out);
     _counters.total_out.to_prometheus(out);
+
+    _srcIPCard.to_prometheus(out);
+    _dstIPCard.to_prometheus(out);
+
+    //_topIPv4.to_prometheus(j, [](const uint32_t &val) { return pcpp::IPv4Address(val).toString(); });
+    _topIPv6.to_prometheus(out);
+    _topGeoLoc.to_prometheus(out);
+    _topASN.to_prometheus(out);
 }
 
 void NetworkMetricsBucket::to_json(json &j) const
@@ -149,11 +157,11 @@ void NetworkMetricsBucket::to_json(json &j) const
     auto [num_events, num_samples, event_rate, event_lock] = event_data_locked(); // thread safe
 
     event_rate->to_json(j, !read_only());
+    num_events->to_json(j);
+    num_samples->to_json(j);
 
     std::shared_lock r_lock(_mutex);
 
-    num_events->to_json(j);
-    num_samples->to_json(j);
     _counters.UDP.to_json(j);
     _counters.TCP.to_json(j);
     _counters.OtherL4.to_json(j);

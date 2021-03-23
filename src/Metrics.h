@@ -156,7 +156,18 @@ public:
 
     void to_prometheus(std::stringstream &out) const override
     {
-        // TODO
+        const double fractions[4]{0.50, 0.90, 0.95, 0.99};
+
+        auto quantiles = _quantile.get_quantiles(fractions, 4);
+
+        out << "# HELP " << name_snake() << ' ' << _desc << std::endl;
+        out << "# TYPE " << name_snake() << " summary" << std::endl;
+        out << name_snake() << "{quantile=\"0.5\"} " << quantiles[0] << std::endl;
+        out << name_snake() << "{quantile=\"0.9\"} " << quantiles[1] << std::endl;
+        out << name_snake() << "{quantile=\"0.95\"} " << quantiles[2] << std::endl;
+        out << name_snake() << "{quantile=\"0.99\"} " << quantiles[3] << std::endl;
+        out << name_snake() << "_sum " << _quantile.get_max_value() << std::endl;
+        out << name_snake() << "_count " << _quantile.get_n() << std::endl;
     }
 };
 
@@ -236,6 +247,12 @@ public:
 
     void to_prometheus(std::stringstream &out) const override
     {
+        auto items = _fi.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
+        for (uint64_t i = 0; i < std::min(_top_count, items.size()); i++) {
+            out << "# HELP " << name_snake() << ' ' << _desc << std::endl;
+            out << "# TYPE " << name_snake() << " gauge" << std::endl;
+            out << name_snake() << "{name=\"" << items[i].get_item() << "\"} " << items[i].get_estimate() << std::endl;
+        }
     }
 };
 

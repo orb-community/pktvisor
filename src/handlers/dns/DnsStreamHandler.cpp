@@ -201,6 +201,11 @@ void DnsStreamHandler::tcp_connection_end_cb(const pcpp::ConnectionData &connect
 }
 void DnsStreamHandler::window_prometheus(std::stringstream &out)
 {
+    if (_metrics->current_periods() > 1) {
+        _metrics->window_single_prometheus(out, 1);
+    } else {
+        _metrics->window_single_prometheus(out, 0);
+    }
 }
 void DnsStreamHandler::window_json(json &j, uint64_t period, bool merged)
 {

@@ -23,7 +23,7 @@ void Rate::to_json(json &j, bool include_live) const
 {
     to_json(j);
     if (include_live) {
-        //        name_json(j)["live"] = rate();
+        name_json_assign(j, {"live"}, rate());
     }
 }
 
@@ -44,11 +44,19 @@ void Rate::to_json(visor::json &j) const
 
 void Rate::to_prometheus(std::stringstream &out) const
 {
-    /*
-    out << "# HELP " << key << "_" << _name << ' ' << _desc << std::endl;
-    out << "# TYPE " << key << "_" << _name << " gauge" << std::endl;
-    out << key << '_' << _name << ' ' << _value << std::endl;
-     */
+    const double fractions[4]{0.50, 0.90, 0.95, 0.99};
+
+    std::shared_lock lock(_sketch_mutex);
+    auto quantiles = _quantile.get_quantiles(fractions, 4);
+
+    out << "# HELP " << name_snake() << ' ' << _desc << std::endl;
+    out << "# TYPE " << name_snake() << " summary" << std::endl;
+    out << name_snake() << "{quantile=\"0.5\"} " << quantiles[0] << std::endl;
+    out << name_snake() << "{quantile=\"0.9\"} " << quantiles[1] << std::endl;
+    out << name_snake() << "{quantile=\"0.95\"} " << quantiles[2] << std::endl;
+    out << name_snake() << "{quantile=\"0.99\"} " << quantiles[3] << std::endl;
+    out << name_snake() << "_sum " << _quantile.get_max_value() << std::endl;
+    out << name_snake() << "_count " << _quantile.get_n() << std::endl;
 }
 
 void Cardinality::merge(const Cardinality &other)
@@ -64,6 +72,9 @@ void Cardinality::to_json(json &j) const
 }
 void Cardinality::to_prometheus(std::stringstream &out) const
 {
+    out << "# HELP " << name_snake() << ' ' << _desc << std::endl;
+    out << "# TYPE " << name_snake() << " gauge" << std::endl;
+    out << name_snake() << ' ' << lround(_set.get_estimate()) << std::endl;
 }
 
 void Metric::name_json_assign(json &j, const json &val) const
