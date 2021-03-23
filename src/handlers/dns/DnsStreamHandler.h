@@ -74,8 +74,8 @@ protected:
 
 public:
     DnsMetricsBucket()
-        : _dnsXactFromTimeUs({"xact", "out", "quantiles_us"}, "Quantiles of transaction timing (query/reply pairs) when host is client")
-        , _dnsXactToTimeUs({"xact", "in", "quantiles_us"}, "Quantiles of transaction timing (query/reply pairs) when host is server")
+        : _dnsXactFromTimeUs({"xact", "out", "quantiles_us"}, "Quantiles of transaction timing (query/reply pairs) when host is client, in microseconds")
+        , _dnsXactToTimeUs({"xact", "in", "quantiles_us"}, "Quantiles of transaction timing (query/reply pairs) when host is server, in microseconds")
         , _dns_qnameCard({"cardinality", "qname"}, "Cardinality of unique QNAMES, both ingress and egress")
         , _dns_topQname2({"top_qname2"}, "Top QNAMES, aggregated at a depth of two labels")
         , _dns_topQname3({"top_qname3"}, "Top QNAMES, aggregated at a depth of three labels")

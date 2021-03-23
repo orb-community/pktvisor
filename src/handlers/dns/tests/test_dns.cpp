@@ -4,7 +4,7 @@
 
 using namespace visor::handler::dns;
 
-TEST_CASE("dns", "[dns]")
+TEST_CASE("DNS Utilities", "[dns]")
 {
 
     SECTION("aggregateDomain")

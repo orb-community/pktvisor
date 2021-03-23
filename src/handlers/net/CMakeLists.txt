@@ -30,6 +30,6 @@ add_executable(unit-tests-handler-net
 target_link_libraries(unit-tests-handler-net PRIVATE Visor::Handler::Net)
 
 add_test(NAME unit-tests-handler-net
-        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/src/tests
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/src
         COMMAND unit-tests-handler-net
         )

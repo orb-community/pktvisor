@@ -11,7 +11,7 @@ TEST_CASE("Parse DNS UDP IPv4 tests", "[pcap][ipv4][udp][dns]")
 {
 
     PcapInputStream stream{"pcap-test"};
-    stream.config_set("pcap_file", "fixtures/dns_ipv4_udp.pcap");
+    stream.config_set("pcap_file", "tests/fixtures/dns_ipv4_udp.pcap");
     stream.config_set("bpf", "");
 
     DnsStreamHandler dns_handler{"dns-test", &stream, 1, 100};
@@ -50,7 +50,7 @@ TEST_CASE("Parse DNS UDP IPv4 tests", "[pcap][ipv4][udp][dns]")
 TEST_CASE("Parse DNS TCP IPv4 tests", "[pcap][ipv4][tcp][dns]")
 {
     PcapInputStream stream{"pcap-test"};
-    stream.config_set("pcap_file", "fixtures/dns_ipv4_tcp.pcap");
+    stream.config_set("pcap_file", "tests/fixtures/dns_ipv4_tcp.pcap");
     stream.config_set("bpf", "");
 
     DnsStreamHandler dns_handler{"dns-test", &stream, 1, 100};
@@ -79,7 +79,7 @@ TEST_CASE("Parse DNS UDP IPv6 tests", "[pcap][ipv6][udp][dns]")
 {
 
     PcapInputStream stream{"pcap-test"};
-    stream.config_set("pcap_file", "fixtures/dns_ipv6_udp.pcap");
+    stream.config_set("pcap_file", "tests/fixtures/dns_ipv6_udp.pcap");
     stream.config_set("bpf", "");
 
     DnsStreamHandler dns_handler{"dns-test", &stream, 1, 100};
@@ -108,7 +108,7 @@ TEST_CASE("Parse DNS TCP IPv6 tests", "[pcap][ipv6][tcp][dns]")
 {
 
     PcapInputStream stream{"pcap-test"};
-    stream.config_set("pcap_file", "fixtures/dns_ipv6_tcp.pcap");
+    stream.config_set("pcap_file", "tests/fixtures/dns_ipv6_tcp.pcap");
     stream.config_set("bpf", "");
 
     DnsStreamHandler dns_handler{"dns-test", &stream, 1, 100};
@@ -137,7 +137,7 @@ TEST_CASE("Parse DNS random UDP/TCP tests", "[pcap][net]")
 {
 
     PcapInputStream stream{"pcap-test"};
-    stream.config_set("pcap_file", "fixtures/dns_udp_tcp_random.pcap");
+    stream.config_set("pcap_file", "tests/fixtures/dns_udp_tcp_random.pcap");
     stream.config_set("bpf", "");
     stream.config_set("host_spec", "192.168.0.0/24");
     stream.parse_host_spec();
