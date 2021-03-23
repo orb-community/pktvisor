@@ -123,8 +123,12 @@ void NetworkMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
 void NetworkMetricsBucket::to_prometheus(std::stringstream &out) const
 {
 
+    _rate_in.to_prometheus(out);
+    _rate_out.to_prometheus(out);
+
     auto [num_events, num_samples, event_rate, event_lock] = event_data_locked(); // thread safe
 
+    event_rate->to_prometheus(out);
     num_events->to_prometheus(out);
     num_samples->to_prometheus(out);
 

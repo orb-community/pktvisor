@@ -29,19 +29,22 @@ class Metric
 protected:
     std::vector<std::string> _name;
     std::string _desc;
+    std::string _schema_key;
 
 public:
-    Metric(std::initializer_list<std::string> names, std::string desc)
+    Metric(std::string schema_key, std::initializer_list<std::string> names, std::string desc)
         : _name(names)
         , _desc(std::move(desc))
+        , _schema_key(schema_key)
     {
     }
 
-    void set_info(std::initializer_list<std::string> names, const std::string &desc)
+    void set_info(std::string schema_key, std::initializer_list<std::string> names, const std::string &desc)
     {
         _name.clear();
         _name = names;
         _desc = desc;
+        _schema_key = schema_key;
     }
 
     void name_json_assign(json &j, const json &val) const;
@@ -49,10 +52,9 @@ public:
 
     [[nodiscard]] std::string name_snake() const
     {
-        return std::accumulate(std::begin(_name), std::end(_name), std::string(),
-            [](const std::string &ss, const std::string &s) {
-                return ss.empty() ? s : ss + "_" + s;
-            });
+        return _schema_key + "_" + std::accumulate(std::begin(_name), std::end(_name), std::string(), [](const std::string &ss, const std::string &s) {
+            return ss.empty() ? s : ss + "_" + s;
+        });
     }
 
     virtual void to_json(json &j) const = 0;
@@ -68,8 +70,8 @@ class Counter final : public Metric
     uint64_t _value = 0;
 
 public:
-    Counter(std::initializer_list<std::string> names, std::string desc)
-        : Metric(names, std::move(desc))
+    Counter(std::string schema_key, std::initializer_list<std::string> names, std::string desc)
+        : Metric(schema_key, names, std::move(desc))
     {
     }
 
@@ -110,8 +112,8 @@ class Quantile final : public Metric
     datasketches::kll_sketch<T> _quantile;
 
 public:
-    Quantile(std::initializer_list<std::string> names, std::string desc)
-        : Metric(names, std::move(desc))
+    Quantile(std::string schema_key, std::initializer_list<std::string> names, std::string desc)
+        : Metric(schema_key, names, std::move(desc))
     {
     }
 
@@ -196,8 +198,8 @@ private:
     size_t _top_count = 10;
 
 public:
-    TopN(std::initializer_list<std::string> names, std::string desc)
-        : Metric(names, std::move(desc))
+    TopN(std::string schema_key, std::initializer_list<std::string> names, std::string desc)
+        : Metric(schema_key, names, std::move(desc))
         , _fi(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
     {
     }
@@ -266,8 +268,8 @@ class Cardinality final : public Metric
     datasketches::cpc_sketch _set;
 
 public:
-    Cardinality(std::initializer_list<std::string> names, std::string desc)
-        : Metric(names, std::move(desc))
+    Cardinality(std::string schema_key, std::initializer_list<std::string> names, std::string desc)
+        : Metric(schema_key, names, std::move(desc))
     {
     }
 
@@ -322,8 +324,8 @@ class Rate final : public Metric
     }
 
 public:
-    Rate(std::initializer_list<std::string> names, std::string desc)
-        : Metric(names, std::move(desc))
+    Rate(std::string schema_key, std::initializer_list<std::string> names, std::string desc)
+        : Metric(schema_key, names, std::move(desc))
         , _counter(0)
         , _rate(0)
         , _quantile()

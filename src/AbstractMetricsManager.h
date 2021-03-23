@@ -66,9 +66,9 @@ protected:
 
 public:
     AbstractMetricsBucket()
-        : _num_samples({"deep_samples"}, "Total number of deep samples")
-        , _num_events({"total"}, "Total number of events")
-        , _rate_events({"event_rate"}, "Rate of events")
+        : _num_samples("base", {"deep_samples"}, "Total number of deep samples")
+        , _num_events("base", {"total"}, "Total number of events")
+        , _rate_events("base", {"event_rate"}, "Rate of events")
         , _start_tstamp{0, 0}
         , _end_tstamp{0, 0}
     {
@@ -124,19 +124,19 @@ public:
         on_set_read_only();
     }
 
-    void set_event_rate_info(std::initializer_list<std::string> names, const std::string &desc)
+    void set_event_rate_info(std::string schema_key, std::initializer_list<std::string> names, const std::string &desc)
     {
-        _rate_events.set_info(names, desc);
+        _rate_events.set_info(schema_key, names, desc);
     }
 
-    void set_num_sample_info(std::initializer_list<std::string> names, const std::string &desc)
+    void set_num_sample_info(std::string schema_key, std::initializer_list<std::string> names, const std::string &desc)
     {
-        _num_samples.set_info(names, desc);
+        _num_samples.set_info(schema_key, names, desc);
     }
 
-    void set_num_events_info(std::initializer_list<std::string> names, const std::string &desc)
+    void set_num_events_info(std::string schema_key, std::initializer_list<std::string> names, const std::string &desc)
     {
-        _num_events.set_info(names, desc);
+        _num_events.set_info(schema_key, names, desc);
     }
 
     auto event_data_locked() const
