@@ -13,9 +13,9 @@ TEST_CASE("GeoIP", "[geoip]")
         CHECK(!visor::geo::enabled());
         CHECK(visor::geo::GeoIP().getGeoLocString("2a02:dac0::") == "");
         CHECK(visor::geo::GeoASN().getASNString("2a02:dac0::") == "");
-        CHECK_NOTHROW(visor::geo::GeoIP().enable("fixtures/GeoIP2-City-Test.mmdb"));
+        CHECK_NOTHROW(visor::geo::GeoIP().enable("tests/fixtures/GeoIP2-City-Test.mmdb"));
         CHECK(visor::geo::enabled());
-        CHECK_NOTHROW(visor::geo::GeoASN().enable("fixtures/GeoIP2-ISP-Test.mmdb"));
+        CHECK_NOTHROW(visor::geo::GeoASN().enable("tests/fixtures/GeoIP2-ISP-Test.mmdb"));
         CHECK(visor::geo::enabled());
     }
 

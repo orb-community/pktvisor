@@ -1,0 +1,12 @@
+{
+  "name": "elastic-pktvisor",
+  "type": "elasticsearch",
+  "url": "elasticsearch:9200",
+  "access": "proxy",
+  "basicAuth": false,
+  "jsonData": {
+    "esVersion": 70,
+    "maxConcurrentShardRequests": 5,
+    "timeField": "@timestamp"
+  }
+}

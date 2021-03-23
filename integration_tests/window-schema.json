@@ -1,0 +1,2369 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "$id": "http://example.com/example.json",
+  "type": "object",
+  "title": "The root schema",
+  "description": "The root schema comprises the entire JSON document.",
+  "default": {},
+  "required": [
+    "5m"
+  ],
+  "properties": {
+    "5m": {
+      "$id": "#/properties/5m",
+      "type": "object",
+      "title": "The 5m schema",
+      "description": "An explanation about the purpose of this instance.",
+      "default": {},
+      "required": [
+        "dns",
+        "packets"
+      ],
+      "properties": {
+        "dns": {
+          "$id": "#/properties/5m/properties/dns",
+          "type": "object",
+          "title": "The dns schema",
+          "description": "An explanation about the purpose of this instance.",
+          "default": {},
+          "required": [
+            "cardinality",
+            "period",
+            "top_nxdomain",
+            "top_qname2",
+            "top_qname3",
+            "top_qtype",
+            "top_rcode",
+            "top_refused",
+            "top_srvfail",
+            "top_udp_ports",
+            "wire_packets",
+            "xact"
+          ],
+          "properties": {
+            "cardinality": {
+              "$id": "#/properties/5m/properties/dns/properties/cardinality",
+              "type": "object",
+              "title": "The cardinality schema",
+              "description": "An explanation about the purpose of this instance.",
+              "default": {},
+              "examples": [
+                {
+                  "qname": 190550
+                }
+              ],
+              "required": [
+                "qname"
+              ],
+              "properties": {
+                "qname": {
+                  "$id": "#/properties/5m/properties/dns/properties/cardinality/properties/qname",
+                  "type": "integer",
+                  "title": "The qname schema",
+                  "description": "An explanation about the purpose of this instance.",
+                  "default": 0,
+                  "examples": [
+                    190550
+                  ]
+                }
+              },
+              "additionalProperties": false
+            },
+            "period": {
+              "$id": "#/properties/5m/properties/dns/properties/period",
+              "type": "object",
+              "title": "The period schema",
+              "description": "An explanation about the purpose of this instance.",
+              "default": {},
+              "examples": [
+                {
+                  "length": 247,
+                  "start_ts": 1616503565
+                }
+              ],
+              "required": [
+                "length",
+                "start_ts"
+              ],
+              "properties": {
+                "length": {
+                  "$id": "#/properties/5m/properties/dns/properties/period/properties/length",
+                  "type": "integer",
+                  "title": "The length schema",
+                  "description": "An explanation about the purpose of this instance.",
+                  "default": 0,
+                  "examples": [
+                    247
+                  ]
+                },
+                "start_ts": {
+                  "$id": "#/properties/5m/properties/dns/properties/period/properties/start_ts",
+                  "type": "integer",
+                  "title": "The start_ts schema",
+                  "description": "An explanation about the purpose of this instance.",
+                  "default": 0,
+                  "examples": [
+                    1616503565
+                  ]
+                }
+              },
+              "additionalProperties": false
+            },
+            "top_nxdomain": {
+              "$id": "#/properties/5m/properties/dns/properties/top_nxdomain",
+              "type": "array",
+              "title": "The top_nxdomain schema",
+              "description": "An explanation about the purpose of this instance.",
+              "default": [],
+              "examples": [
+                [
+                  {
+                    "estimate": 354,
+                    "name": "domain"
+                  },
+                  {
+                    "estimate": 309,
+                    "name": "domain"
+                  }
+                ]
+              ],
+              "additionalItems": true,
+              "items": {
+                "$id": "#/properties/5m/properties/dns/properties/top_nxdomain/items",
+                "anyOf": [
+                  {
+                    "$id": "#/properties/5m/properties/dns/properties/top_nxdomain/items/anyOf/0",
+                    "type": "object",
+                    "title": "The first anyOf schema",
+                    "description": "An explanation about the purpose of this instance.",
+                    "default": {},
+                    "examples": [
+                      {
+                        "estimate": 354,
+                        "name": "domain"
+                      }
+                    ],
+                    "required": [
+                      "estimate",
+                      "name"
+                    ],
+                    "properties": {
+                      "estimate": {
+                        "$id": "#/properties/5m/properties/dns/properties/top_nxdomain/items/anyOf/0/properties/estimate",
+                        "type": "integer",
+                        "title": "The estimate schema",
+                        "description": "An explanation about the purpose of this instance.",
+                        "default": 0,
+                        "examples": [
+                          354
+                        ]
+                      },
+                      "name": {
+                        "$id": "#/properties/5m/properties/dns/properties/top_nxdomain/items/anyOf/0/properties/name",
+                        "type": "string",
+                        "title": "The name schema",
+                        "description": "An explanation about the purpose of this instance.",
+                        "default": "",
+                        "examples": [
+                          "domain"
+                        ]
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                ]
+              }
+            },
+            "top_qname2": {
+              "$id": "#/properties/5m/properties/dns/properties/top_qname2",
+              "type": "array",
+              "title": "The top_qname2 schema",
+              "description": "An explanation about the purpose of this instance.",
+              "default": [],
+              "examples": [
+                [
+                  {
+                    "estimate": 108037,
+                    "name": "domain"
+                  },
+                  {
+                    "estimate": 90135,
+                    "name": "domain"
+                  }
+                ]
+              ],
+              "additionalItems": true,
+              "items": {
+                "$id": "#/properties/5m/properties/dns/properties/top_qname2/items",
+                "anyOf": [
+                  {
+                    "$id": "#/properties/5m/properties/dns/properties/top_qname2/items/anyOf/0",
+                    "type": "object",
+                    "title": "The first anyOf schema",
+                    "description": "An explanation about the purpose of this instance.",
+                    "default": {},
+                    "examples": [
+                      {
+                        "estimate": 108037,
+                        "name": "domain"
+                      }
+                    ],
+                    "required": [
+                      "estimate",
+                      "name"
+                    ],
+                    "properties": {
+                      "estimate": {
+                        "$id": "#/properties/5m/properties/dns/properties/top_qname2/items/anyOf/0/properties/estimate",
+                        "type": "integer",
+                        "title": "The estimate schema",
+                        "description": "An explanation about the purpose of this instance.",
+                        "default": 0,
+                        "examples": [
+                          108037
+                        ]
+                      },
+                      "name": {
+                        "$id": "#/properties/5m/properties/dns/properties/top_qname2/items/anyOf/0/properties/name",
+                        "type": "string",
+                        "title": "The name schema",
+                        "description": "An explanation about the purpose of this instance.",
+                        "default": "",
+                        "examples": [
+                          "domain"
+                        ]
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                ]
+              }
+            },
+            "top_qname3": {
+              "$id": "#/properties/5m/properties/dns/properties/top_qname3",
+              "type": "array",
+              "title": "The top_qname3 schema",
+              "description": "An explanation about the purpose of this instance.",
+              "default": [],
+              "examples": [
+                [
+                  {
+                    "estimate": 49680,
+                    "name": "domain"
+                  },
+                  {
+                    "estimate": 36165,
+                    "name": "domain"
+                  }
+                ]
+              ],
+              "additionalItems": true,
+              "items": {
+                "$id": "#/properties/5m/properties/dns/properties/top_qname3/items",
+                "anyOf": [
+                  {
+                    "$id": "#/properties/5m/properties/dns/properties/top_qname3/items/anyOf/0",
+                    "type": "object",
+                    "title": "The first anyOf schema",
+                    "description": "An explanation about the purpose of this instance.",
+                    "default": {},
+                    "examples": [
+                      {
+                        "estimate": 49680,
+                        "name": "domain"
+                      }
+                    ],
+                    "required": [
+                      "estimate",
+                      "name"
+                    ],
+                    "properties": {
+                      "estimate": {
+                        "$id": "#/properties/5m/properties/dns/properties/top_qname3/items/anyOf/0/properties/estimate",
+                        "type": "integer",
+                        "title": "The estimate schema",
+                        "description": "An explanation about the purpose of this instance.",
+                        "default": 0,
+                        "examples": [
+                          49680
+                        ]
+                      },
+                      "name": {
+                        "$id": "#/properties/5m/properties/dns/properties/top_qname3/items/anyOf/0/properties/name",
+                        "type": "string",
+                        "title": "The name schema",
+                        "description": "An explanation about the purpose of this instance.",
+                        "default": "",
+                        "examples": [
+                          "domain"
+                        ]
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                ]
+              }
+            },
+            "top_qtype": {
+              "$id": "#/properties/5m/properties/dns/properties/top_qtype",
+              "type": "array",
+              "title": "The top_qtype schema",
+              "description": "An explanation about the purpose of this instance.",
+              "default": [],
+              "examples": [
+                [
+                  {
+                    "estimate": 1205079,
+                    "name": "A"
+                  },
+                  {
+                    "estimate": 442934,
+                    "name": "AAAA"
+                  }
+                ]
+              ],
+              "additionalItems": true,
+              "items": {
+                "$id": "#/properties/5m/properties/dns/properties/top_qtype/items",
+                "anyOf": [
+                  {
+                    "$id": "#/properties/5m/properties/dns/properties/top_qtype/items/anyOf/0",
+                    "type": "object",
+                    "title": "The first anyOf schema",
+                    "description": "An explanation about the purpose of this instance.",
+                    "default": {},
+                    "examples": [
+                      {
+                        "estimate": 1205079,
+                        "name": "A"
+                      }
+                    ],
+                    "required": [
+                      "estimate",
+                      "name"
+                    ],
+                    "properties": {
+                      "estimate": {
+                        "$id": "#/properties/5m/properties/dns/properties/top_qtype/items/anyOf/0/properties/estimate",
+                        "type": "integer",
+                        "title": "The estimate schema",
+                        "description": "An explanation about the purpose of this instance.",
+                        "default": 0,
+                        "examples": [
+                          1205079
+                        ]
+                      },
+                      "name": {
+                        "$id": "#/properties/5m/properties/dns/properties/top_qtype/items/anyOf/0/properties/name",
+                        "type": "string",
+                        "title": "The name schema",
+                        "description": "An explanation about the purpose of this instance.",
+                        "default": "",
+                        "examples": [
+                          "A"
+                        ]
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                ]
+              }
+            },
+            "top_rcode": {
+              "$id": "#/properties/5m/properties/dns/properties/top_rcode",
+              "type": "array",
+              "title": "The top_rcode schema",
+              "description": "An explanation about the purpose of this instance.",
+              "default": [],
+              "examples": [
+                [
+                  {
+                    "estimate": 875401,
+                    "name": "NOERROR"
+                  },
+                  {
+                    "estimate": 51947,
+                    "name": "NXDOMAIN"
+                  }
+                ]
+              ],
+              "additionalItems": true,
+              "items": {
+                "$id": "#/properties/5m/properties/dns/properties/top_rcode/items",
+                "anyOf": [
+                  {
+                    "$id": "#/properties/5m/properties/dns/properties/top_rcode/items/anyOf/0",
+                    "type": "object",
+                    "title": "The first anyOf schema",
+                    "description": "An explanation about the purpose of this instance.",
+                    "default": {},
+                    "examples": [
+                      {
+                        "estimate": 875401,
+                        "name": "NOERROR"
+                      }
+                    ],
+                    "required": [
+                      "estimate",
+                      "name"
+                    ],
+                    "properties": {
+                      "estimate": {
+                        "$id": "#/properties/5m/properties/dns/properties/top_rcode/items/anyOf/0/properties/estimate",
+                        "type": "integer",
+                        "title": "The estimate schema",
+                        "description": "An explanation about the purpose of this instance.",
+                        "default": 0,
+                        "examples": [
+                          875401
+                        ]
+                      },
+                      "name": {
+                        "$id": "#/properties/5m/properties/dns/properties/top_rcode/items/anyOf/0/properties/name",
+                        "type": "string",
+                        "title": "The name schema",
+                        "description": "An explanation about the purpose of this instance.",
+                        "default": "",
+                        "examples": [
+                          "NOERROR"
+                        ]
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                ]
+              }
+            },
+            "top_refused": {
+              "$id": "#/properties/5m/properties/dns/properties/top_refused",
+              "type": "array",
+              "title": "The top_refused schema",
+              "description": "An explanation about the purpose of this instance.",
+              "default": [],
+              "examples": [
+                [
+                  {
+                    "estimate": 2384,
+                    "name": "domain"
+                  },
+                  {
+                    "estimate": 1492,
+                    "name": "domain"
+                  }
+                ]
+              ],
+              "additionalItems": true,
+              "items": {
+                "$id": "#/properties/5m/properties/dns/properties/top_refused/items",
+                "anyOf": [
+                  {
+                    "$id": "#/properties/5m/properties/dns/properties/top_refused/items/anyOf/0",
+                    "type": "object",
+                    "title": "The first anyOf schema",
+                    "description": "An explanation about the purpose of this instance.",
+                    "default": {},
+                    "examples": [
+                      {
+                        "estimate": 2384,
+                        "name": "domain"
+                      }
+                    ],
+                    "required": [
+                      "estimate",
+                      "name"
+                    ],
+                    "properties": {
+                      "estimate": {
+                        "$id": "#/properties/5m/properties/dns/properties/top_refused/items/anyOf/0/properties/estimate",
+                        "type": "integer",
+                        "title": "The estimate schema",
+                        "description": "An explanation about the purpose of this instance.",
+                        "default": 0,
+                        "examples": [
+                          2384
+                        ]
+                      },
+                      "name": {
+                        "$id": "#/properties/5m/properties/dns/properties/top_refused/items/anyOf/0/properties/name",
+                        "type": "string",
+                        "title": "The name schema",
+                        "description": "An explanation about the purpose of this instance.",
+                        "default": "",
+                        "examples": [
+                          "domain"
+                        ]
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                ]
+              }
+            },
+            "top_srvfail": {
+              "$id": "#/properties/5m/properties/dns/properties/top_srvfail",
+              "type": "array",
+              "title": "The top_srvfail schema",
+              "description": "An explanation about the purpose of this instance.",
+              "default": [],
+              "examples": [
+                [
+                  {
+                    "estimate": 36,
+                    "name": "domain"
+                  },
+                  {
+                    "estimate": 14,
+                    "name": "domain"
+                  }
+                ]
+              ],
+              "additionalItems": true,
+              "items": {
+                "$id": "#/properties/5m/properties/dns/properties/top_srvfail/items",
+                "anyOf": [
+                  {
+                    "$id": "#/properties/5m/properties/dns/properties/top_srvfail/items/anyOf/0",
+                    "type": "object",
+                    "title": "The first anyOf schema",
+                    "description": "An explanation about the purpose of this instance.",
+                    "default": {},
+                    "examples": [
+                      {
+                        "estimate": 36,
+                        "name": "domain"
+                      }
+                    ],
+                    "required": [
+                      "estimate",
+                      "name"
+                    ],
+                    "properties": {
+                      "estimate": {
+                        "$id": "#/properties/5m/properties/dns/properties/top_srvfail/items/anyOf/0/properties/estimate",
+                        "type": "integer",
+                        "title": "The estimate schema",
+                        "description": "An explanation about the purpose of this instance.",
+                        "default": 0,
+                        "examples": [
+                          36
+                        ]
+                      },
+                      "name": {
+                        "$id": "#/properties/5m/properties/dns/properties/top_srvfail/items/anyOf/0/properties/name",
+                        "type": "string",
+                        "title": "The name schema",
+                        "description": "An explanation about the purpose of this instance.",
+                        "default": "",
+                        "examples": [
+                          "domain"
+                        ]
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                ]
+              }
+            },
+            "top_udp_ports": {
+              "$id": "#/properties/5m/properties/dns/properties/top_udp_ports",
+              "type": "array",
+              "title": "The top_udp_ports schema",
+              "description": "An explanation about the purpose of this instance.",
+              "default": [],
+              "examples": [
+                [
+                  {
+                    "estimate": 2229,
+                    "name": "35880"
+                  },
+                  {
+                    "estimate": 2209,
+                    "name": "10868"
+                  }
+                ]
+              ],
+              "additionalItems": true,
+              "items": {
+                "$id": "#/properties/5m/properties/dns/properties/top_udp_ports/items",
+                "anyOf": [
+                  {
+                    "$id": "#/properties/5m/properties/dns/properties/top_udp_ports/items/anyOf/0",
+                    "type": "object",
+                    "title": "The first anyOf schema",
+                    "description": "An explanation about the purpose of this instance.",
+                    "default": {},
+                    "examples": [
+                      {
+                        "estimate": 2229,
+                        "name": "35880"
+                      }
+                    ],
+                    "required": [
+                      "estimate",
+                      "name"
+                    ],
+                    "properties": {
+                      "estimate": {
+                        "$id": "#/properties/5m/properties/dns/properties/top_udp_ports/items/anyOf/0/properties/estimate",
+                        "type": "integer",
+                        "title": "The estimate schema",
+                        "description": "An explanation about the purpose of this instance.",
+                        "default": 0,
+                        "examples": [
+                          2229
+                        ]
+                      },
+                      "name": {
+                        "$id": "#/properties/5m/properties/dns/properties/top_udp_ports/items/anyOf/0/properties/name",
+                        "type": "string",
+                        "title": "The name schema",
+                        "description": "An explanation about the purpose of this instance.",
+                        "default": "",
+                        "examples": [
+                          "35880"
+                        ]
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                ]
+              }
+            },
+            "wire_packets": {
+              "$id": "#/properties/5m/properties/dns/properties/wire_packets",
+              "type": "object",
+              "title": "The wire_packets schema",
+              "description": "An explanation about the purpose of this instance.",
+              "default": {},
+              "examples": [
+                {
+                  "deep_samples": 1880774,
+                  "ipv4": 2527127,
+                  "ipv6": 1196818,
+                  "noerror": 1734409,
+                  "nxdomain": 103299,
+                  "queries": 1862389,
+                  "rates": {
+                    "total": {
+                      "p50": 14629,
+                      "p90": 15719,
+                      "p95": 15765,
+                      "p99": 15851
+                    }
+                  },
+                  "refused": 23754,
+                  "replies": 1861556,
+                  "srvfail": 94,
+                  "tcp": 1468,
+                  "total": 3723945,
+                  "udp": 3722477
+                }
+              ],
+              "required": [
+                "deep_samples",
+                "ipv4",
+                "ipv6",
+                "noerror",
+                "nxdomain",
+                "queries",
+                "refused",
+                "replies",
+                "srvfail",
+                "tcp",
+                "total",
+                "udp"
+              ],
+              "properties": {
+                "deep_samples": {
+                  "$id": "#/properties/5m/properties/dns/properties/wire_packets/properties/deep_samples",
+                  "type": "integer",
+                  "title": "The deep_samples schema",
+                  "description": "An explanation about the purpose of this instance.",
+                  "default": 0,
+                  "examples": [
+                    1880774
+                  ]
+                },
+                "ipv4": {
+                  "$id": "#/properties/5m/properties/dns/properties/wire_packets/properties/ipv4",
+                  "type": "integer",
+                  "title": "The ipv4 schema",
+                  "description": "An explanation about the purpose of this instance.",
+                  "default": 0,
+                  "examples": [
+                    2527127
+                  ]
+                },
+                "ipv6": {
+                  "$id": "#/properties/5m/properties/dns/properties/wire_packets/properties/ipv6",
+                  "type": "integer",
+                  "title": "The ipv6 schema",
+                  "description": "An explanation about the purpose of this instance.",
+                  "default": 0,
+                  "examples": [
+                    1196818
+                  ]
+                },
+                "noerror": {
+                  "$id": "#/properties/5m/properties/dns/properties/wire_packets/properties/noerror",
+                  "type": "integer",
+                  "title": "The noerror schema",
+                  "description": "An explanation about the purpose of this instance.",
+                  "default": 0,
+                  "examples": [
+                    1734409
+                  ]
+                },
+                "nxdomain": {
+                  "$id": "#/properties/5m/properties/dns/properties/wire_packets/properties/nxdomain",
+                  "type": "integer",
+                  "title": "The nxdomain schema",
+                  "description": "An explanation about the purpose of this instance.",
+                  "default": 0,
+                  "examples": [
+                    103299
+                  ]
+                },
+                "queries": {
+                  "$id": "#/properties/5m/properties/dns/properties/wire_packets/properties/queries",
+                  "type": "integer",
+                  "title": "The queries schema",
+                  "description": "An explanation about the purpose of this instance.",
+                  "default": 0,
+                  "examples": [
+                    1862389
+                  ]
+                },
+                "rates": {
+                  "$id": "#/properties/5m/properties/dns/properties/wire_packets/properties/rates",
+                  "type": "object",
+                  "title": "The rates schema",
+                  "description": "An explanation about the purpose of this instance.",
+                  "default": {},
+                  "examples": [
+                    {
+                      "total": {
+                        "p50": 14629,
+                        "p90": 15719,
+                        "p95": 15765,
+                        "p99": 15851
+                      }
+                    }
+                  ],
+                  "required": [
+                    "total"
+                  ],
+                  "properties": {
+                    "total": {
+                      "$id": "#/properties/5m/properties/dns/properties/wire_packets/properties/rates/properties/total",
+                      "type": "object",
+                      "title": "The total schema",
+                      "description": "An explanation about the purpose of this instance.",
+                      "default": {},
+                      "examples": [
+                        {
+                          "p50": 14629,
+                          "p90": 15719,
+                          "p95": 15765,
+                          "p99": 15851
+                        }
+                      ],
+                      "required": [
+                        "p50",
+                        "p90",
+                        "p95",
+                        "p99"
+                      ],
+                      "properties": {
+                        "p50": {
+                          "$id": "#/properties/5m/properties/dns/properties/wire_packets/properties/rates/properties/total/properties/p50",
+                          "type": "integer",
+                          "title": "The p50 schema",
+                          "description": "An explanation about the purpose of this instance.",
+                          "default": 0,
+                          "examples": [
+                            14629
+                          ]
+                        },
+                        "p90": {
+                          "$id": "#/properties/5m/properties/dns/properties/wire_packets/properties/rates/properties/total/properties/p90",
+                          "type": "integer",
+                          "title": "The p90 schema",
+                          "description": "An explanation about the purpose of this instance.",
+                          "default": 0,
+                          "examples": [
+                            15719
+                          ]
+                        },
+                        "p95": {
+                          "$id": "#/properties/5m/properties/dns/properties/wire_packets/properties/rates/properties/total/properties/p95",
+                          "type": "integer",
+                          "title": "The p95 schema",
+                          "description": "An explanation about the purpose of this instance.",
+                          "default": 0,
+                          "examples": [
+                            15765
+                          ]
+                        },
+                        "p99": {
+                          "$id": "#/properties/5m/properties/dns/properties/wire_packets/properties/rates/properties/total/properties/p99",
+                          "type": "integer",
+                          "title": "The p99 schema",
+                          "description": "An explanation about the purpose of this instance.",
+                          "default": 0,
+                          "examples": [
+                            15851
+                          ]
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "refused": {
+                  "$id": "#/properties/5m/properties/dns/properties/wire_packets/properties/refused",
+                  "type": "integer",
+                  "title": "The refused schema",
+                  "description": "An explanation about the purpose of this instance.",
+                  "default": 0,
+                  "examples": [
+                    23754
+                  ]
+                },
+                "replies": {
+                  "$id": "#/properties/5m/properties/dns/properties/wire_packets/properties/replies",
+                  "type": "integer",
+                  "title": "The replies schema",
+                  "description": "An explanation about the purpose of this instance.",
+                  "default": 0,
+                  "examples": [
+                    1861556
+                  ]
+                },
+                "srvfail": {
+                  "$id": "#/properties/5m/properties/dns/properties/wire_packets/properties/srvfail",
+                  "type": "integer",
+                  "title": "The srvfail schema",
+                  "description": "An explanation about the purpose of this instance.",
+                  "default": 0,
+                  "examples": [
+                    94
+                  ]
+                },
+                "tcp": {
+                  "$id": "#/properties/5m/properties/dns/properties/wire_packets/properties/tcp",
+                  "type": "integer",
+                  "title": "The tcp schema",
+                  "description": "An explanation about the purpose of this instance.",
+                  "default": 0,
+                  "examples": [
+                    1468
+                  ]
+                },
+                "total": {
+                  "$id": "#/properties/5m/properties/dns/properties/wire_packets/properties/total",
+                  "type": "integer",
+                  "title": "The total schema",
+                  "description": "An explanation about the purpose of this instance.",
+                  "default": 0,
+                  "examples": [
+                    3723945
+                  ]
+                },
+                "udp": {
+                  "$id": "#/properties/5m/properties/dns/properties/wire_packets/properties/udp",
+                  "type": "integer",
+                  "title": "The udp schema",
+                  "description": "An explanation about the purpose of this instance.",
+                  "default": 0,
+                  "examples": [
+                    3722477
+                  ]
+                }
+              },
+              "additionalProperties": false
+            },
+            "xact": {
+              "$id": "#/properties/5m/properties/dns/properties/xact",
+              "type": "object",
+              "title": "The xact schema",
+              "description": "An explanation about the purpose of this instance.",
+              "default": {},
+              "examples": [
+                {
+                  "counts": {
+                    "timed_out": 742,
+                    "total": 1861473
+                  },
+                  "in": {
+                    "quantiles_us": {
+                      "p50": 155,
+                      "p90": 500,
+                      "p95": 826,
+                      "p99": 5853
+                    },
+                    "top_slow": [
+                      {
+                        "estimate": 6590,
+                        "name": "domain"
+                      },
+                      {
+                        "estimate": 3466,
+                        "name": "domain"
+                      },
+                      {
+                        "estimate": 3306,
+                        "name": "domain"
+                      },
+                      {
+                        "estimate": 3074,
+                        "name": "domain"
+                      },
+                      {
+                        "estimate": 2673,
+                        "name": "domain"
+                      },
+                      {
+                        "estimate": 1411,
+                        "name": "domain"
+                      },
+                      {
+                        "estimate": 1344,
+                        "name": "domain"
+                      },
+                      {
+                        "estimate": 1181,
+                        "name": "domain"
+                      },
+                      {
+                        "estimate": 998,
+                        "name": "domain"
+                      },
+                      {
+                        "estimate": 911,
+                        "name": "domain"
+                      }
+                    ],
+                    "total": 1849925
+                  },
+                  "out": {
+                    "quantiles_us": {
+                      "p50": 274,
+                      "p90": 2981,
+                      "p95": 4301,
+                      "p99": 27711
+                    },
+                    "top_slow": [
+                      {
+                        "estimate": 15,
+                        "name": "domain"
+                      },
+                      {
+                        "estimate": 15,
+                        "name": "domain"
+                      },
+                      {
+                        "estimate": 14,
+                        "name": "domain"
+                      },
+                      {
+                        "estimate": 13,
+                        "name": "domain"
+                      },
+                      {
+                        "estimate": 12,
+                        "name": "domain"
+                      },
+                      {
+                        "estimate": 12,
+                        "name": "domain"
+                      },
+                      {
+                        "estimate": 11,
+                        "name": "domain"
+                      },
+                      {
+                        "estimate": 10,
+                        "name": "domain"
+                      },
+                      {
+                        "estimate": 9,
+                        "name": "domain"
+                      },
+                      {
+                        "estimate": 8,
+                        "name": "domain"
+                      }
+                    ],
+                    "total": 11548
+                  }
+                }
+              ],
+              "required": [
+                "counts",
+                "in",
+                "out"
+              ],
+              "properties": {
+                "counts": {
+                  "$id": "#/properties/5m/properties/dns/properties/xact/properties/counts",
+                  "type": "object",
+                  "title": "The counts schema",
+                  "description": "An explanation about the purpose of this instance.",
+                  "default": {},
+                  "examples": [
+                    {
+                      "timed_out": 742,
+                      "total": 1861473
+                    }
+                  ],
+                  "required": [
+                    "timed_out",
+                    "total"
+                  ],
+                  "properties": {
+                    "timed_out": {
+                      "$id": "#/properties/5m/properties/dns/properties/xact/properties/counts/properties/timed_out",
+                      "type": "integer",
+                      "title": "The timed_out schema",
+                      "description": "An explanation about the purpose of this instance.",
+                      "default": 0,
+                      "examples": [
+                        742
+                      ]
+                    },
+                    "total": {
+                      "$id": "#/properties/5m/properties/dns/properties/xact/properties/counts/properties/total",
+                      "type": "integer",
+                      "title": "The total schema",
+                      "description": "An explanation about the purpose of this instance.",
+                      "default": 0,
+                      "examples": [
+                        1861473
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "in": {
+                  "$id": "#/properties/5m/properties/dns/properties/xact/properties/in",
+                  "type": "object",
+                  "title": "The in schema",
+                  "description": "An explanation about the purpose of this instance.",
+                  "default": {},
+                  "examples": [
+                    {
+                      "quantiles_us": {
+                        "p50": 155,
+                        "p90": 500,
+                        "p95": 826,
+                        "p99": 5853
+                      },
+                      "top_slow": [
+                        {
+                          "estimate": 6590,
+                          "name": "domain"
+                        },
+                        {
+                          "estimate": 3466,
+                          "name": "domain"
+                        },
+                        {
+                          "estimate": 3306,
+                          "name": "domain"
+                        },
+                        {
+                          "estimate": 3074,
+                          "name": "domain"
+                        },
+                        {
+                          "estimate": 2673,
+                          "name": "domain"
+                        },
+                        {
+                          "estimate": 1411,
+                          "name": "domain"
+                        },
+                        {
+                          "estimate": 1344,
+                          "name": "domain"
+                        },
+                        {
+                          "estimate": 1181,
+                          "name": "domain"
+                        },
+                        {
+                          "estimate": 998,
+                          "name": "domain"
+                        },
+                        {
+                          "estimate": 911,
+                          "name": "domain"
+                        }
+                      ],
+                      "total": 1849925
+                    }
+                  ],
+                  "required": [
+                    "quantiles_us",
+                    "top_slow",
+                    "total"
+                  ],
+                  "properties": {
+                    "quantiles_us": {
+                      "$id": "#/properties/5m/properties/dns/properties/xact/properties/in/properties/quantiles_us",
+                      "type": "object",
+                      "title": "The quantiles_us schema",
+                      "description": "An explanation about the purpose of this instance.",
+                      "default": {},
+                      "examples": [
+                        {
+                          "p50": 155,
+                          "p90": 500,
+                          "p95": 826,
+                          "p99": 5853
+                        }
+                      ],
+                      "required": [
+                        "p50",
+                        "p90",
+                        "p95",
+                        "p99"
+                      ],
+                      "properties": {
+                        "p50": {
+                          "$id": "#/properties/5m/properties/dns/properties/xact/properties/in/properties/quantiles_us/properties/p50",
+                          "type": "integer",
+                          "title": "The p50 schema",
+                          "description": "An explanation about the purpose of this instance.",
+                          "default": 0,
+                          "examples": [
+                            155
+                          ]
+                        },
+                        "p90": {
+                          "$id": "#/properties/5m/properties/dns/properties/xact/properties/in/properties/quantiles_us/properties/p90",
+                          "type": "integer",
+                          "title": "The p90 schema",
+                          "description": "An explanation about the purpose of this instance.",
+                          "default": 0,
+                          "examples": [
+                            500
+                          ]
+                        },
+                        "p95": {
+                          "$id": "#/properties/5m/properties/dns/properties/xact/properties/in/properties/quantiles_us/properties/p95",
+                          "type": "integer",
+                          "title": "The p95 schema",
+                          "description": "An explanation about the purpose of this instance.",
+                          "default": 0,
+                          "examples": [
+                            826
+                          ]
+                        },
+                        "p99": {
+                          "$id": "#/properties/5m/properties/dns/properties/xact/properties/in/properties/quantiles_us/properties/p99",
+                          "type": "integer",
+                          "title": "The p99 schema",
+                          "description": "An explanation about the purpose of this instance.",
+                          "default": 0,
+                          "examples": [
+                            5853
+                          ]
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "top_slow": {
+                      "$id": "#/properties/5m/properties/dns/properties/xact/properties/in/properties/top_slow",
+                      "type": "array",
+                      "title": "The top_slow schema",
+                      "description": "An explanation about the purpose of this instance.",
+                      "default": [],
+                      "examples": [
+                        [
+                          {
+                            "estimate": 6590,
+                            "name": "domain"
+                          },
+                          {
+                            "estimate": 3466,
+                            "name": "domain"
+                          }
+                        ]
+                      ],
+                      "additionalItems": true,
+                      "items": {
+                        "$id": "#/properties/5m/properties/dns/properties/xact/properties/in/properties/top_slow/items",
+                        "anyOf": [
+                          {
+                            "$id": "#/properties/5m/properties/dns/properties/xact/properties/in/properties/top_slow/items/anyOf/0",
+                            "type": "object",
+                            "title": "The first anyOf schema",
+                            "description": "An explanation about the purpose of this instance.",
+                            "default": {},
+                            "examples": [
+                              {
+                                "estimate": 6590,
+                                "name": "domain"
+                              }
+                            ],
+                            "required": [
+                              "estimate",
+                              "name"
+                            ],
+                            "properties": {
+                              "estimate": {
+                                "$id": "#/properties/5m/properties/dns/properties/xact/properties/in/properties/top_slow/items/anyOf/0/properties/estimate",
+                                "type": "integer",
+                                "title": "The estimate schema",
+                                "description": "An explanation about the purpose of this instance.",
+                                "default": 0,
+                                "examples": [
+                                  6590
+                                ]
+                              },
+                              "name": {
+                                "$id": "#/properties/5m/properties/dns/properties/xact/properties/in/properties/top_slow/items/anyOf/0/properties/name",
+                                "type": "string",
+                                "title": "The name schema",
+                                "description": "An explanation about the purpose of this instance.",
+                                "default": "",
+                                "examples": [
+                                  "domain"
+                                ]
+                              }
+                            },
+                            "additionalProperties": false
+                          }
+                        ]
+                      }
+                    },
+                    "total": {
+                      "$id": "#/properties/5m/properties/dns/properties/xact/properties/in/properties/total",
+                      "type": "integer",
+                      "title": "The total schema",
+                      "description": "An explanation about the purpose of this instance.",
+                      "default": 0,
+                      "examples": [
+                        1849925
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "out": {
+                  "$id": "#/properties/5m/properties/dns/properties/xact/properties/out",
+                  "type": "object",
+                  "title": "The out schema",
+                  "description": "An explanation about the purpose of this instance.",
+                  "default": {},
+                  "examples": [
+                    {
+                      "quantiles_us": {
+                        "p50": 274,
+                        "p90": 2981,
+                        "p95": 4301,
+                        "p99": 27711
+                      },
+                      "top_slow": [
+                        {
+                          "estimate": 15,
+                          "name": "domain"
+                        },
+                        {
+                          "estimate": 15,
+                          "name": "domain"
+                        },
+                        {
+                          "estimate": 14,
+                          "name": "domain"
+                        },
+                        {
+                          "estimate": 13,
+                          "name": "domain"
+                        },
+                        {
+                          "estimate": 12,
+                          "name": "domain"
+                        },
+                        {
+                          "estimate": 12,
+                          "name": "domain"
+                        },
+                        {
+                          "estimate": 11,
+                          "name": "domain"
+                        },
+                        {
+                          "estimate": 10,
+                          "name": "domain"
+                        },
+                        {
+                          "estimate": 9,
+                          "name": "domain"
+                        },
+                        {
+                          "estimate": 8,
+                          "name": "domain"
+                        }
+                      ],
+                      "total": 11548
+                    }
+                  ],
+                  "required": [
+                    "quantiles_us",
+                    "top_slow",
+                    "total"
+                  ],
+                  "properties": {
+                    "quantiles_us": {
+                      "$id": "#/properties/5m/properties/dns/properties/xact/properties/out/properties/quantiles_us",
+                      "type": "object",
+                      "title": "The quantiles_us schema",
+                      "description": "An explanation about the purpose of this instance.",
+                      "default": {},
+                      "examples": [
+                        {
+                          "p50": 274,
+                          "p90": 2981,
+                          "p95": 4301,
+                          "p99": 27711
+                        }
+                      ],
+                      "required": [
+                        "p50",
+                        "p90",
+                        "p95",
+                        "p99"
+                      ],
+                      "properties": {
+                        "p50": {
+                          "$id": "#/properties/5m/properties/dns/properties/xact/properties/out/properties/quantiles_us/properties/p50",
+                          "type": "integer",
+                          "title": "The p50 schema",
+                          "description": "An explanation about the purpose of this instance.",
+                          "default": 0,
+                          "examples": [
+                            274
+                          ]
+                        },
+                        "p90": {
+                          "$id": "#/properties/5m/properties/dns/properties/xact/properties/out/properties/quantiles_us/properties/p90",
+                          "type": "integer",
+                          "title": "The p90 schema",
+                          "description": "An explanation about the purpose of this instance.",
+                          "default": 0,
+                          "examples": [
+                            2981
+                          ]
+                        },
+                        "p95": {
+                          "$id": "#/properties/5m/properties/dns/properties/xact/properties/out/properties/quantiles_us/properties/p95",
+                          "type": "integer",
+                          "title": "The p95 schema",
+                          "description": "An explanation about the purpose of this instance.",
+                          "default": 0,
+                          "examples": [
+                            4301
+                          ]
+                        },
+                        "p99": {
+                          "$id": "#/properties/5m/properties/dns/properties/xact/properties/out/properties/quantiles_us/properties/p99",
+                          "type": "integer",
+                          "title": "The p99 schema",
+                          "description": "An explanation about the purpose of this instance.",
+                          "default": 0,
+                          "examples": [
+                            27711
+                          ]
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "top_slow": {
+                      "$id": "#/properties/5m/properties/dns/properties/xact/properties/out/properties/top_slow",
+                      "type": "array",
+                      "title": "The top_slow schema",
+                      "description": "An explanation about the purpose of this instance.",
+                      "default": [],
+                      "examples": [
+                        [
+                          {
+                            "estimate": 15,
+                            "name": "domain"
+                          },
+                          {
+                            "estimate": 15,
+                            "name": "domain"
+                          }
+                        ]
+                      ],
+                      "additionalItems": true,
+                      "items": {
+                        "$id": "#/properties/5m/properties/dns/properties/xact/properties/out/properties/top_slow/items",
+                        "anyOf": [
+                          {
+                            "$id": "#/properties/5m/properties/dns/properties/xact/properties/out/properties/top_slow/items/anyOf/0",
+                            "type": "object",
+                            "title": "The first anyOf schema",
+                            "description": "An explanation about the purpose of this instance.",
+                            "default": {},
+                            "examples": [
+                              {
+                                "estimate": 15,
+                                "name": "domain"
+                              }
+                            ],
+                            "required": [
+                              "estimate",
+                              "name"
+                            ],
+                            "properties": {
+                              "estimate": {
+                                "$id": "#/properties/5m/properties/dns/properties/xact/properties/out/properties/top_slow/items/anyOf/0/properties/estimate",
+                                "type": "integer",
+                                "title": "The estimate schema",
+                                "description": "An explanation about the purpose of this instance.",
+                                "default": 0,
+                                "examples": [
+                                  15
+                                ]
+                              },
+                              "name": {
+                                "$id": "#/properties/5m/properties/dns/properties/xact/properties/out/properties/top_slow/items/anyOf/0/properties/name",
+                                "type": "string",
+                                "title": "The name schema",
+                                "description": "An explanation about the purpose of this instance.",
+                                "default": "",
+                                "examples": [
+                                  "domain"
+                                ]
+                              }
+                            },
+                            "additionalProperties": false
+                          }
+                        ]
+                      }
+                    },
+                    "total": {
+                      "$id": "#/properties/5m/properties/dns/properties/xact/properties/out/properties/total",
+                      "type": "integer",
+                      "title": "The total schema",
+                      "description": "An explanation about the purpose of this instance.",
+                      "default": 0,
+                      "examples": [
+                        11548
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "packets": {
+          "$id": "#/properties/5m/properties/packets",
+          "type": "object",
+          "title": "The packets schema",
+          "description": "An explanation about the purpose of this instance.",
+          "default": {},
+          "examples": [
+            {
+              "cardinality": {
+                "dst_ips_out": 26319,
+                "src_ips_in": 26373
+              },
+              "deep_samples": 1884688,
+              "in": 1877981,
+              "ipv4": 2531766,
+              "ipv6": 1200127,
+              "other_l4": 25,
+              "out": 1853912,
+              "period": {
+                "length": 247,
+                "start_ts": 1616503565
+              },
+              "rates": {
+                "pps_in": {
+                  "p50": 7383,
+                  "p90": 7929,
+                  "p95": 7945,
+                  "p99": 7983
+                },
+                "pps_out": {
+                  "p50": 7288,
+                  "p90": 7828,
+                  "p95": 7845,
+                  "p99": 7880
+                },
+                "pps_total": {
+                  "p50": 14665,
+                  "p90": 15740,
+                  "p95": 15792,
+                  "p99": 15852
+                }
+              },
+              "tcp": 8268,
+              "top_ASN": [
+                {
+                  "estimate": 245448,
+                  "name": "7018/ATT-INTERNET4"
+                },
+                {
+                  "estimate": 224905,
+                  "name": "15169/GOOGLE"
+                },
+                {
+                  "estimate": 117379,
+                  "name": "7922/COMCAST-7922"
+                },
+                {
+                  "estimate": 113333,
+                  "name": "20057/ATT-MOBILITY-LLC-AS20057"
+                },
+                {
+                  "estimate": 109717,
+                  "name": "36692/OPENDNS"
+                },
+                {
+                  "estimate": 90290,
+                  "name": "20940/Akamai International B.V."
+                },
+                {
+                  "estimate": 83381,
+                  "name": "20115/CHARTER-20115"
+                },
+                {
+                  "estimate": 64620,
+                  "name": "13335/CLOUDFLARENET"
+                },
+                {
+                  "estimate": 51054,
+                  "name": "11426/TWC-11426-CAROLINAS"
+                },
+                {
+                  "estimate": 43789,
+                  "name": "28573/CLARO S.A."
+                }
+              ],
+              "top_geoLoc": [
+                {
+                  "estimate": 589169,
+                  "name": "NA/United States/GA/Atlanta"
+                },
+                {
+                  "estimate": 196890,
+                  "name": "NA/United States"
+                },
+                {
+                  "estimate": 145328,
+                  "name": "NA/United States/FL/Miami"
+                },
+                {
+                  "estimate": 115193,
+                  "name": "NA/United States/GA/Tucker"
+                },
+                {
+                  "estimate": 70181,
+                  "name": "NA/United States/GA/Marietta"
+                },
+                {
+                  "estimate": 52291,
+                  "name": "NA/United States/NC/Charlotte"
+                },
+                {
+                  "estimate": 45892,
+                  "name": "NA/United States/TN/Nashville"
+                },
+                {
+                  "estimate": 41336,
+                  "name": "SA/Brazil"
+                },
+                {
+                  "estimate": 33813,
+                  "name": "NA/United States/FL/Jacksonville"
+                },
+                {
+                  "estimate": 31838,
+                  "name": "SA/Ecuador/G/Guayaquil"
+                }
+              ],
+              "top_ipv4": [
+                {
+                  "estimate": 6172,
+                  "name": "66.32.254.0"
+                },
+                {
+                  "estimate": 5650,
+                  "name": "163.114.202.0"
+                },
+                {
+                  "estimate": 5520,
+                  "name": "163.114.202.0"
+                },
+                {
+                  "estimate": 4425,
+                  "name": "107.127.34.0"
+                },
+                {
+                  "estimate": 4320,
+                  "name": "107.127.34.0"
+                },
+                {
+                  "estimate": 4236,
+                  "name": "141.207.147.0"
+                },
+                {
+                  "estimate": 4207,
+                  "name": "107.127.34.0"
+                },
+                {
+                  "estimate": 4058,
+                  "name": "107.127.34.0"
+                },
+                {
+                  "estimate": 3925,
+                  "name": "68.114.47.0"
+                },
+                {
+                  "estimate": 3787,
+                  "name": "141.207.151.0"
+                }
+              ],
+              "top_ipv6": [
+                {
+                  "estimate": 11769,
+                  "name": "2a04:e4c0:24::67"
+                },
+                {
+                  "estimate": 11189,
+                  "name": "2a04:e4c0:24::69"
+                },
+                {
+                  "estimate": 11146,
+                  "name": "2a04:e4c0:24::68"
+                },
+                {
+                  "estimate": 10984,
+                  "name": "2a04:e4c0:24::64"
+                },
+                {
+                  "estimate": 10975,
+                  "name": "2a04:e4c0:24::65"
+                },
+                {
+                  "estimate": 10846,
+                  "name": "2a04:e4c0:24::66"
+                },
+                {
+                  "estimate": 10644,
+                  "name": "2a04:e4c0:24::71"
+                },
+                {
+                  "estimate": 10402,
+                  "name": "2a04:e4c0:24::72"
+                },
+                {
+                  "estimate": 10297,
+                  "name": "2a04:e4c0:24::70"
+                },
+                {
+                  "estimate": 10162,
+                  "name": "2a04:e4c0:24::73"
+                }
+              ],
+              "total": 3731893,
+              "udp": 3723600
+            }
+          ],
+          "required": [
+            "cardinality",
+            "deep_samples",
+            "in",
+            "ipv4",
+            "ipv6",
+            "other_l4",
+            "out",
+            "period",
+            "tcp",
+            "top_ASN",
+            "top_geoLoc",
+            "top_ipv4",
+            "top_ipv6",
+            "total",
+            "udp"
+          ],
+          "properties": {
+            "cardinality": {
+              "$id": "#/properties/5m/properties/packets/properties/cardinality",
+              "type": "object",
+              "title": "The cardinality schema",
+              "description": "An explanation about the purpose of this instance.",
+              "default": {},
+              "examples": [
+                {
+                  "dst_ips_out": 26319,
+                  "src_ips_in": 26373
+                }
+              ],
+              "required": [
+                "dst_ips_out",
+                "src_ips_in"
+              ],
+              "properties": {
+                "dst_ips_out": {
+                  "$id": "#/properties/5m/properties/packets/properties/cardinality/properties/dst_ips_out",
+                  "type": "integer",
+                  "title": "The dst_ips_out schema",
+                  "description": "An explanation about the purpose of this instance.",
+                  "default": 0,
+                  "examples": [
+                    26319
+                  ]
+                },
+                "src_ips_in": {
+                  "$id": "#/properties/5m/properties/packets/properties/cardinality/properties/src_ips_in",
+                  "type": "integer",
+                  "title": "The src_ips_in schema",
+                  "description": "An explanation about the purpose of this instance.",
+                  "default": 0,
+                  "examples": [
+                    26373
+                  ]
+                }
+              },
+              "additionalProperties": false
+            },
+            "deep_samples": {
+              "$id": "#/properties/5m/properties/packets/properties/deep_samples",
+              "type": "integer",
+              "title": "The deep_samples schema",
+              "description": "An explanation about the purpose of this instance.",
+              "default": 0,
+              "examples": [
+                1884688
+              ]
+            },
+            "in": {
+              "$id": "#/properties/5m/properties/packets/properties/in",
+              "type": "integer",
+              "title": "The in schema",
+              "description": "An explanation about the purpose of this instance.",
+              "default": 0,
+              "examples": [
+                1877981
+              ]
+            },
+            "ipv4": {
+              "$id": "#/properties/5m/properties/packets/properties/ipv4",
+              "type": "integer",
+              "title": "The ipv4 schema",
+              "description": "An explanation about the purpose of this instance.",
+              "default": 0,
+              "examples": [
+                2531766
+              ]
+            },
+            "ipv6": {
+              "$id": "#/properties/5m/properties/packets/properties/ipv6",
+              "type": "integer",
+              "title": "The ipv6 schema",
+              "description": "An explanation about the purpose of this instance.",
+              "default": 0,
+              "examples": [
+                1200127
+              ]
+            },
+            "other_l4": {
+              "$id": "#/properties/5m/properties/packets/properties/other_l4",
+              "type": "integer",
+              "title": "The other_l4 schema",
+              "description": "An explanation about the purpose of this instance.",
+              "default": 0,
+              "examples": [
+                25
+              ]
+            },
+            "out": {
+              "$id": "#/properties/5m/properties/packets/properties/out",
+              "type": "integer",
+              "title": "The out schema",
+              "description": "An explanation about the purpose of this instance.",
+              "default": 0,
+              "examples": [
+                1853912
+              ]
+            },
+            "period": {
+              "$id": "#/properties/5m/properties/packets/properties/period",
+              "type": "object",
+              "title": "The period schema",
+              "description": "An explanation about the purpose of this instance.",
+              "default": {},
+              "examples": [
+                {
+                  "length": 247,
+                  "start_ts": 1616503565
+                }
+              ],
+              "required": [
+                "length",
+                "start_ts"
+              ],
+              "properties": {
+                "length": {
+                  "$id": "#/properties/5m/properties/packets/properties/period/properties/length",
+                  "type": "integer",
+                  "title": "The length schema",
+                  "description": "An explanation about the purpose of this instance.",
+                  "default": 0,
+                  "examples": [
+                    247
+                  ]
+                },
+                "start_ts": {
+                  "$id": "#/properties/5m/properties/packets/properties/period/properties/start_ts",
+                  "type": "integer",
+                  "title": "The start_ts schema",
+                  "description": "An explanation about the purpose of this instance.",
+                  "default": 0,
+                  "examples": [
+                    1616503565
+                  ]
+                }
+              },
+              "additionalProperties": false
+            },
+            "rates": {
+              "$id": "#/properties/5m/properties/packets/properties/rates",
+              "type": "object",
+              "title": "The rates schema",
+              "description": "An explanation about the purpose of this instance.",
+              "default": {},
+              "examples": [
+                {
+                  "pps_in": {
+                    "p50": 7383,
+                    "p90": 7929,
+                    "p95": 7945,
+                    "p99": 7983
+                  },
+                  "pps_out": {
+                    "p50": 7288,
+                    "p90": 7828,
+                    "p95": 7845,
+                    "p99": 7880
+                  },
+                  "pps_total": {
+                    "p50": 14665,
+                    "p90": 15740,
+                    "p95": 15792,
+                    "p99": 15852
+                  }
+                }
+              ],
+              "required": [
+                "pps_in",
+                "pps_out",
+                "pps_total"
+              ],
+              "properties": {
+                "pps_in": {
+                  "$id": "#/properties/5m/properties/packets/properties/rates/properties/pps_in",
+                  "type": "object",
+                  "title": "The pps_in schema",
+                  "description": "An explanation about the purpose of this instance.",
+                  "default": {},
+                  "examples": [
+                    {
+                      "p50": 7383,
+                      "p90": 7929,
+                      "p95": 7945,
+                      "p99": 7983
+                    }
+                  ],
+                  "required": [
+                    "p50",
+                    "p90",
+                    "p95",
+                    "p99"
+                  ],
+                  "properties": {
+                    "p50": {
+                      "$id": "#/properties/5m/properties/packets/properties/rates/properties/pps_in/properties/p50",
+                      "type": "integer",
+                      "title": "The p50 schema",
+                      "description": "An explanation about the purpose of this instance.",
+                      "default": 0,
+                      "examples": [
+                        7383
+                      ]
+                    },
+                    "p90": {
+                      "$id": "#/properties/5m/properties/packets/properties/rates/properties/pps_in/properties/p90",
+                      "type": "integer",
+                      "title": "The p90 schema",
+                      "description": "An explanation about the purpose of this instance.",
+                      "default": 0,
+                      "examples": [
+                        7929
+                      ]
+                    },
+                    "p95": {
+                      "$id": "#/properties/5m/properties/packets/properties/rates/properties/pps_in/properties/p95",
+                      "type": "integer",
+                      "title": "The p95 schema",
+                      "description": "An explanation about the purpose of this instance.",
+                      "default": 0,
+                      "examples": [
+                        7945
+                      ]
+                    },
+                    "p99": {
+                      "$id": "#/properties/5m/properties/packets/properties/rates/properties/pps_in/properties/p99",
+                      "type": "integer",
+                      "title": "The p99 schema",
+                      "description": "An explanation about the purpose of this instance.",
+                      "default": 0,
+                      "examples": [
+                        7983
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "pps_out": {
+                  "$id": "#/properties/5m/properties/packets/properties/rates/properties/pps_out",
+                  "type": "object",
+                  "title": "The pps_out schema",
+                  "description": "An explanation about the purpose of this instance.",
+                  "default": {},
+                  "examples": [
+                    {
+                      "p50": 7288,
+                      "p90": 7828,
+                      "p95": 7845,
+                      "p99": 7880
+                    }
+                  ],
+                  "required": [
+                    "p50",
+                    "p90",
+                    "p95",
+                    "p99"
+                  ],
+                  "properties": {
+                    "p50": {
+                      "$id": "#/properties/5m/properties/packets/properties/rates/properties/pps_out/properties/p50",
+                      "type": "integer",
+                      "title": "The p50 schema",
+                      "description": "An explanation about the purpose of this instance.",
+                      "default": 0,
+                      "examples": [
+                        7288
+                      ]
+                    },
+                    "p90": {
+                      "$id": "#/properties/5m/properties/packets/properties/rates/properties/pps_out/properties/p90",
+                      "type": "integer",
+                      "title": "The p90 schema",
+                      "description": "An explanation about the purpose of this instance.",
+                      "default": 0,
+                      "examples": [
+                        7828
+                      ]
+                    },
+                    "p95": {
+                      "$id": "#/properties/5m/properties/packets/properties/rates/properties/pps_out/properties/p95",
+                      "type": "integer",
+                      "title": "The p95 schema",
+                      "description": "An explanation about the purpose of this instance.",
+                      "default": 0,
+                      "examples": [
+                        7845
+                      ]
+                    },
+                    "p99": {
+                      "$id": "#/properties/5m/properties/packets/properties/rates/properties/pps_out/properties/p99",
+                      "type": "integer",
+                      "title": "The p99 schema",
+                      "description": "An explanation about the purpose of this instance.",
+                      "default": 0,
+                      "examples": [
+                        7880
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "pps_total": {
+                  "$id": "#/properties/5m/properties/packets/properties/rates/properties/pps_total",
+                  "type": "object",
+                  "title": "The pps_total schema",
+                  "description": "An explanation about the purpose of this instance.",
+                  "default": {},
+                  "examples": [
+                    {
+                      "p50": 14665,
+                      "p90": 15740,
+                      "p95": 15792,
+                      "p99": 15852
+                    }
+                  ],
+                  "required": [
+                    "p50",
+                    "p90",
+                    "p95",
+                    "p99"
+                  ],
+                  "properties": {
+                    "p50": {
+                      "$id": "#/properties/5m/properties/packets/properties/rates/properties/pps_total/properties/p50",
+                      "type": "integer",
+                      "title": "The p50 schema",
+                      "description": "An explanation about the purpose of this instance.",
+                      "default": 0,
+                      "examples": [
+                        14665
+                      ]
+                    },
+                    "p90": {
+                      "$id": "#/properties/5m/properties/packets/properties/rates/properties/pps_total/properties/p90",
+                      "type": "integer",
+                      "title": "The p90 schema",
+                      "description": "An explanation about the purpose of this instance.",
+                      "default": 0,
+                      "examples": [
+                        15740
+                      ]
+                    },
+                    "p95": {
+                      "$id": "#/properties/5m/properties/packets/properties/rates/properties/pps_total/properties/p95",
+                      "type": "integer",
+                      "title": "The p95 schema",
+                      "description": "An explanation about the purpose of this instance.",
+                      "default": 0,
+                      "examples": [
+                        15792
+                      ]
+                    },
+                    "p99": {
+                      "$id": "#/properties/5m/properties/packets/properties/rates/properties/pps_total/properties/p99",
+                      "type": "integer",
+                      "title": "The p99 schema",
+                      "description": "An explanation about the purpose of this instance.",
+                      "default": 0,
+                      "examples": [
+                        15852
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            },
+            "tcp": {
+              "$id": "#/properties/5m/properties/packets/properties/tcp",
+              "type": "integer",
+              "title": "The tcp schema",
+              "description": "An explanation about the purpose of this instance.",
+              "default": 0,
+              "examples": [
+                8268
+              ]
+            },
+            "top_ASN": {
+              "$id": "#/properties/5m/properties/packets/properties/top_ASN",
+              "type": "array",
+              "title": "The top_ASN schema",
+              "description": "An explanation about the purpose of this instance.",
+              "default": [],
+              "examples": [
+                [
+                  {
+                    "estimate": 245448,
+                    "name": "7018/ATT-INTERNET4"
+                  },
+                  {
+                    "estimate": 224905,
+                    "name": "15169/GOOGLE"
+                  }
+                ]
+              ],
+              "additionalItems": true,
+              "items": {
+                "$id": "#/properties/5m/properties/packets/properties/top_ASN/items",
+                "anyOf": [
+                  {
+                    "$id": "#/properties/5m/properties/packets/properties/top_ASN/items/anyOf/0",
+                    "type": "object",
+                    "title": "The first anyOf schema",
+                    "description": "An explanation about the purpose of this instance.",
+                    "default": {},
+                    "examples": [
+                      {
+                        "estimate": 245448,
+                        "name": "7018/ATT-INTERNET4"
+                      }
+                    ],
+                    "required": [
+                      "estimate",
+                      "name"
+                    ],
+                    "properties": {
+                      "estimate": {
+                        "$id": "#/properties/5m/properties/packets/properties/top_ASN/items/anyOf/0/properties/estimate",
+                        "type": "integer",
+                        "title": "The estimate schema",
+                        "description": "An explanation about the purpose of this instance.",
+                        "default": 0,
+                        "examples": [
+                          245448
+                        ]
+                      },
+                      "name": {
+                        "$id": "#/properties/5m/properties/packets/properties/top_ASN/items/anyOf/0/properties/name",
+                        "type": "string",
+                        "title": "The name schema",
+                        "description": "An explanation about the purpose of this instance.",
+                        "default": "",
+                        "examples": [
+                          "7018/ATT-INTERNET4"
+                        ]
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                ]
+              }
+            },
+            "top_geoLoc": {
+              "$id": "#/properties/5m/properties/packets/properties/top_geoLoc",
+              "type": "array",
+              "title": "The top_geoLoc schema",
+              "description": "An explanation about the purpose of this instance.",
+              "default": [],
+              "examples": [
+                [
+                  {
+                    "estimate": 589169,
+                    "name": "NA/United States/GA/Atlanta"
+                  },
+                  {
+                    "estimate": 196890,
+                    "name": "NA/United States"
+                  }
+                ]
+              ],
+              "additionalItems": true,
+              "items": {
+                "$id": "#/properties/5m/properties/packets/properties/top_geoLoc/items",
+                "anyOf": [
+                  {
+                    "$id": "#/properties/5m/properties/packets/properties/top_geoLoc/items/anyOf/0",
+                    "type": "object",
+                    "title": "The first anyOf schema",
+                    "description": "An explanation about the purpose of this instance.",
+                    "default": {},
+                    "examples": [
+                      {
+                        "estimate": 589169,
+                        "name": "NA/United States/GA/Atlanta"
+                      }
+                    ],
+                    "required": [
+                      "estimate",
+                      "name"
+                    ],
+                    "properties": {
+                      "estimate": {
+                        "$id": "#/properties/5m/properties/packets/properties/top_geoLoc/items/anyOf/0/properties/estimate",
+                        "type": "integer",
+                        "title": "The estimate schema",
+                        "description": "An explanation about the purpose of this instance.",
+                        "default": 0,
+                        "examples": [
+                          589169
+                        ]
+                      },
+                      "name": {
+                        "$id": "#/properties/5m/properties/packets/properties/top_geoLoc/items/anyOf/0/properties/name",
+                        "type": "string",
+                        "title": "The name schema",
+                        "description": "An explanation about the purpose of this instance.",
+                        "default": "",
+                        "examples": [
+                          "NA/United States/GA/Atlanta"
+                        ]
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                ]
+              }
+            },
+            "top_ipv4": {
+              "$id": "#/properties/5m/properties/packets/properties/top_ipv4",
+              "type": "array",
+              "title": "The top_ipv4 schema",
+              "description": "An explanation about the purpose of this instance.",
+              "default": [],
+              "examples": [
+                [
+                  {
+                    "estimate": 6172,
+                    "name": "66.32.254.0"
+                  },
+                  {
+                    "estimate": 5650,
+                    "name": "163.114.202.0"
+                  }
+                ]
+              ],
+              "additionalItems": true,
+              "items": {
+                "$id": "#/properties/5m/properties/packets/properties/top_ipv4/items",
+                "anyOf": [
+                  {
+                    "$id": "#/properties/5m/properties/packets/properties/top_ipv4/items/anyOf/0",
+                    "type": "object",
+                    "title": "The first anyOf schema",
+                    "description": "An explanation about the purpose of this instance.",
+                    "default": {},
+                    "examples": [
+                      {
+                        "estimate": 6172,
+                        "name": "66.32.254.0"
+                      }
+                    ],
+                    "required": [
+                      "estimate",
+                      "name"
+                    ],
+                    "properties": {
+                      "estimate": {
+                        "$id": "#/properties/5m/properties/packets/properties/top_ipv4/items/anyOf/0/properties/estimate",
+                        "type": "integer",
+                        "title": "The estimate schema",
+                        "description": "An explanation about the purpose of this instance.",
+                        "default": 0,
+                        "examples": [
+                          6172
+                        ]
+                      },
+                      "name": {
+                        "$id": "#/properties/5m/properties/packets/properties/top_ipv4/items/anyOf/0/properties/name",
+                        "type": "string",
+                        "title": "The name schema",
+                        "description": "An explanation about the purpose of this instance.",
+                        "default": "",
+                        "examples": [
+                          "66.32.254.0"
+                        ]
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                ]
+              }
+            },
+            "top_ipv6": {
+              "$id": "#/properties/5m/properties/packets/properties/top_ipv6",
+              "type": "array",
+              "title": "The top_ipv6 schema",
+              "description": "An explanation about the purpose of this instance.",
+              "default": [],
+              "examples": [
+                [
+                  {
+                    "estimate": 11769,
+                    "name": "2a04:e4c0:24::67"
+                  },
+                  {
+                    "estimate": 11189,
+                    "name": "2a04:e4c0:24::69"
+                  }
+                ]
+              ],
+              "additionalItems": true,
+              "items": {
+                "$id": "#/properties/5m/properties/packets/properties/top_ipv6/items",
+                "anyOf": [
+                  {
+                    "$id": "#/properties/5m/properties/packets/properties/top_ipv6/items/anyOf/0",
+                    "type": "object",
+                    "title": "The first anyOf schema",
+                    "description": "An explanation about the purpose of this instance.",
+                    "default": {},
+                    "examples": [
+                      {
+                        "estimate": 11769,
+                        "name": "2a04:e4c0:24::67"
+                      }
+                    ],
+                    "required": [
+                      "estimate",
+                      "name"
+                    ],
+                    "properties": {
+                      "estimate": {
+                        "$id": "#/properties/5m/properties/packets/properties/top_ipv6/items/anyOf/0/properties/estimate",
+                        "type": "integer",
+                        "title": "The estimate schema",
+                        "description": "An explanation about the purpose of this instance.",
+                        "default": 0,
+                        "examples": [
+                          11769
+                        ]
+                      },
+                      "name": {
+                        "$id": "#/properties/5m/properties/packets/properties/top_ipv6/items/anyOf/0/properties/name",
+                        "type": "string",
+                        "title": "The name schema",
+                        "description": "An explanation about the purpose of this instance.",
+                        "default": "",
+                        "examples": [
+                          "2a04:e4c0:24::67"
+                        ]
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                ]
+              }
+            },
+            "total": {
+              "$id": "#/properties/5m/properties/packets/properties/total",
+              "type": "integer",
+              "title": "The total schema",
+              "description": "An explanation about the purpose of this instance.",
+              "default": 0,
+              "examples": [
+                3731893
+              ]
+            },
+            "udp": {
+              "$id": "#/properties/5m/properties/packets/properties/udp",
+              "type": "integer",
+              "title": "The udp schema",
+              "description": "An explanation about the purpose of this instance.",
+              "default": 0,
+              "examples": [
+                3723600
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

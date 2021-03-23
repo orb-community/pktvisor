@@ -16,7 +16,7 @@
 TEST_CASE("Top K Src Ports", "[pcap][ipv4][topk][dns][udp]")
 {
 
-    pcpp::IFileReaderDevice *reader = pcpp::IFileReaderDevice::getReader("fixtures/dns_ipv4_udp.pcap");
+    pcpp::IFileReaderDevice *reader = pcpp::IFileReaderDevice::getReader("tests/fixtures/dns_ipv4_udp.pcap");
 
     CHECK(reader->open());
 

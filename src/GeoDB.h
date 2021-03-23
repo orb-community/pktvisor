@@ -4,7 +4,10 @@
 
 #pragma once
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
 #include <maxminddb.h>
+#pragma GCC diagnostic pop
 #include <string>
 
 namespace visor::geo {

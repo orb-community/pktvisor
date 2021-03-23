@@ -85,9 +85,9 @@ void NetStreamHandler::info_json(json &j) const
 void NetStreamHandler::window_prometheus(std::stringstream &out)
 {
     if (_metrics->current_periods() > 1) {
-        _metrics->window_single_prometheus(out, schema_key(), 1);
+        _metrics->window_single_prometheus(out, 1);
     } else {
-        _metrics->window_single_prometheus(out, schema_key(), 0);
+        _metrics->window_single_prometheus(out, 0);
     }
 }
 
@@ -111,15 +111,8 @@ void NetworkMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
     _counters.total_in += other._counters.total_in;
     _counters.total_out += other._counters.total_out;
 
-    datasketches::cpc_union merge_srcIPCard;
-    merge_srcIPCard.update(_srcIPCard);
-    merge_srcIPCard.update(other._srcIPCard);
-    _srcIPCard = merge_srcIPCard.get_result();
-
-    datasketches::cpc_union merge_dstIPCard;
-    merge_dstIPCard.update(_dstIPCard);
-    merge_dstIPCard.update(other._dstIPCard);
-    _dstIPCard = merge_dstIPCard.get_result();
+    _srcIPCard.merge(other._srcIPCard);
+    _dstIPCard.merge(other._dstIPCard);
 
     _topIPv4.merge(other._topIPv4);
     _topIPv6.merge(other._topIPv6);
@@ -127,79 +120,52 @@ void NetworkMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
     _topASN.merge(other._topASN);
 }
 
-void NetworkMetricsBucket::to_prometheus(std::stringstream &out, const std::string &key) const
+void NetworkMetricsBucket::to_prometheus(std::stringstream &out) const
 {
 
-    std::shared_lock r_lock(_mutex);
+    _rate_in.to_prometheus(out);
+    _rate_out.to_prometheus(out);
 
     auto [num_events, num_samples, event_rate, event_lock] = event_data_locked(); // thread safe
 
-    num_events->to_prometheus(out, key);
-    num_samples->to_prometheus(out, key);
+    event_rate->to_prometheus(out);
+    num_events->to_prometheus(out);
+    num_samples->to_prometheus(out);
 
-    _counters.UDP.to_prometheus(out, key);
-    _counters.TCP.to_prometheus(out, key);
-    _counters.OtherL4.to_prometheus(out, key);
-    _counters.IPv4.to_prometheus(out, key);
-    _counters.IPv6.to_prometheus(out, key);
-    _counters.total_in.to_prometheus(out, key);
-    _counters.total_out.to_prometheus(out, key);
+    std::shared_lock r_lock(_mutex);
+
+    _counters.UDP.to_prometheus(out);
+    _counters.TCP.to_prometheus(out);
+    _counters.OtherL4.to_prometheus(out);
+    _counters.IPv4.to_prometheus(out);
+    _counters.IPv6.to_prometheus(out);
+    _counters.total_in.to_prometheus(out);
+    _counters.total_out.to_prometheus(out);
+
+    _srcIPCard.to_prometheus(out);
+    _dstIPCard.to_prometheus(out);
+
+    _topIPv4.to_prometheus(out, [](const uint32_t &val) { return pcpp::IPv4Address(val).toString(); });
+    _topIPv6.to_prometheus(out);
+    _topGeoLoc.to_prometheus(out);
+    _topASN.to_prometheus(out);
 }
 
 void NetworkMetricsBucket::to_json(json &j) const
 {
 
-    const double fractions[4]{0.50, 0.90, 0.95, 0.99};
-
     // do rates first, which handle their own locking
-    {
-        if (!read_only()) {
-            j["rates"]["pps_in"]["live"] = _rate_in.rate();
-        }
-        auto [rate_quantile, rate_lock] = _rate_in.quantile_locked();
-        auto quantiles = rate_quantile->get_quantiles(fractions, 4);
-        if (quantiles.size()) {
-            j["rates"]["pps_in"]["p50"] = quantiles[0];
-            j["rates"]["pps_in"]["p90"] = quantiles[1];
-            j["rates"]["pps_in"]["p95"] = quantiles[2];
-            j["rates"]["pps_in"]["p99"] = quantiles[3];
-        }
-    }
-
-    {
-        if (!read_only()) {
-            j["rates"]["pps_out"]["live"] = _rate_out.rate();
-        }
-        auto [rate_quantile, rate_lock] = _rate_out.quantile_locked();
-        auto quantiles = rate_quantile->get_quantiles(fractions, 4);
-        if (quantiles.size()) {
-            j["rates"]["pps_out"]["p50"] = quantiles[0];
-            j["rates"]["pps_out"]["p90"] = quantiles[1];
-            j["rates"]["pps_out"]["p95"] = quantiles[2];
-            j["rates"]["pps_out"]["p99"] = quantiles[3];
-        }
-    }
+    _rate_in.to_json(j, !read_only());
+    _rate_out.to_json(j, !read_only());
 
     auto [num_events, num_samples, event_rate, event_lock] = event_data_locked(); // thread safe
 
-    {
-        if (!read_only()) {
-            j["rates"]["pps_total"]["live"] = event_rate->rate();
-        }
-        auto [rate_quantile, rate_lock] = event_rate->quantile_locked();
-        auto quantiles = rate_quantile->get_quantiles(fractions, 4);
-        if (quantiles.size()) {
-            j["rates"]["pps_total"]["p50"] = quantiles[0];
-            j["rates"]["pps_total"]["p90"] = quantiles[1];
-            j["rates"]["pps_total"]["p95"] = quantiles[2];
-            j["rates"]["pps_total"]["p99"] = quantiles[3];
-        }
-    }
+    event_rate->to_json(j, !read_only());
+    num_events->to_json(j);
+    num_samples->to_json(j);
 
     std::shared_lock r_lock(_mutex);
 
-    num_events->to_json(j);
-    num_samples->to_json(j);
     _counters.UDP.to_json(j);
     _counters.TCP.to_json(j);
     _counters.OtherL4.to_json(j);
@@ -208,44 +174,13 @@ void NetworkMetricsBucket::to_json(json &j) const
     _counters.total_in.to_json(j);
     _counters.total_out.to_json(j);
 
-    j["cardinality"]["src_ips_in"] = lround(_srcIPCard.get_estimate());
-    j["cardinality"]["dst_ips_out"] = lround(_dstIPCard.get_estimate());
+    _srcIPCard.to_json(j);
+    _dstIPCard.to_json(j);
 
-    {
-        j["top_ipv4"] = nlohmann::json::array();
-        auto items = _topIPv4.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
-        for (uint64_t i = 0; i < std::min(10UL, items.size()); i++) {
-            j["top_ipv4"][i]["name"] = pcpp::IPv4Address(items[i].get_item()).toString();
-            j["top_ipv4"][i]["estimate"] = items[i].get_estimate();
-        }
-    }
-
-    {
-        j["top_ipv6"] = nlohmann::json::array();
-        auto items = _topIPv6.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
-        for (uint64_t i = 0; i < std::min(10UL, items.size()); i++) {
-            j["top_ipv6"][i]["name"] = items[i].get_item();
-            j["top_ipv6"][i]["estimate"] = items[i].get_estimate();
-        }
-    }
-
-    {
-        j["top_geoLoc"] = nlohmann::json::array();
-        auto items = _topGeoLoc.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
-        for (uint64_t i = 0; i < std::min(10UL, items.size()); i++) {
-            j["top_geoLoc"][i]["name"] = items[i].get_item();
-            j["top_geoLoc"][i]["estimate"] = items[i].get_estimate();
-        }
-    }
-
-    {
-        j["top_ASN"] = nlohmann::json::array();
-        auto items = _topASN.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
-        for (uint64_t i = 0; i < std::min(10UL, items.size()); i++) {
-            j["top_ASN"][i]["name"] = items[i].get_item();
-            j["top_ASN"][i]["estimate"] = items[i].get_estimate();
-        }
-    }
+    _topIPv4.to_json(j, [](const uint32_t &val) { return pcpp::IPv4Address(val).toString(); });
+    _topIPv6.to_json(j);
+    _topGeoLoc.to_json(j);
+    _topASN.to_json(j);
 }
 
 // the main bucket analysis
