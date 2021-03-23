@@ -21,15 +21,4 @@ target_link_libraries(VisorHandlerNet
 
 set(VISOR_STATIC_PLUGINS ${VISOR_STATIC_PLUGINS} Visor::Handler::Net PARENT_SCOPE)
 
-## TEST SUITE
-add_executable(unit-tests-handler-net
-        tests/main.cpp
-        tests/test_net_layer.cpp
-        )
-
-target_link_libraries(unit-tests-handler-net PRIVATE Visor::Handler::Net)
-
-add_test(NAME unit-tests-handler-net
-        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/src
-        COMMAND unit-tests-handler-net
-        )
+add_subdirectory(tests)
