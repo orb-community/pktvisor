@@ -28,3 +28,21 @@ scrape_configs:
     static_configs:
       - targets:
           - localhost:10853
+  - job_name: pktvisor-gw
+    honor_timestamps: true
+    scrape_interval: 1m
+    scrape_timeout: 10s
+    metrics_path: /metrics
+    scheme: http
+    static_configs:
+      - targets:
+          - 192.168.0.1:10853
+  - job_name: pktvisor-dns
+    honor_timestamps: true
+    scrape_interval: 1m
+    scrape_timeout: 10s
+    metrics_path: /metrics
+    scheme: http
+    static_configs:
+      - targets:
+          - 192.168.0.54:10853
