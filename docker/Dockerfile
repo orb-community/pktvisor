@@ -15,7 +15,7 @@ RUN \
     conan profile update settings.compiler.libcxx=libstdc++11 default
 
 RUN \
-    PKG_CONFIG_PATH=/local/lib/pkgconfig cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo /pktvisor-src && \
+    PKG_CONFIG_PATH=/local/lib/pkgconfig cmake -DCMAKE_BUILD_TYPE=Release /pktvisor-src && \
     make all test -j 4
 
 FROM golang:latest AS gobuild
