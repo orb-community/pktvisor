@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 (
-cat <<END
+  cat <<END
 prometheus:
   global:
     scrape_interval: 1m
@@ -23,6 +23,6 @@ prometheus:
             - targets:
                 - localhost:10853
 END
-) > /etc/agent/agent.yaml
+) >/etc/agent/agent.yaml
 
 exec runsvdir /etc/service/

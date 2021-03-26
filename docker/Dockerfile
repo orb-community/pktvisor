@@ -1,9 +1,10 @@
 FROM debian:bullseye-slim AS cppbuild
 
-ENV BUILD_DEPS "g++ cmake make git pkgconf jq python3-pip python3-setuptools"
+ENV BUILD_DEPS "g++ cmake make git pkgconf jq python3-pip python3-setuptools ca-certificates"
 
 RUN \
     apt-get update && \
+    apt-get upgrade && \
     apt-get install --yes --no-install-recommends ${BUILD_DEPS} && \
     pip3 install conan
 
@@ -25,10 +26,11 @@ RUN go build -o pktvisor-cli cmd/pktvisor-cli/main.go
 
 FROM debian:bullseye-slim AS runtime
 
-ENV RUNTIME_DEPS "curl"
+ENV RUNTIME_DEPS "curl ca-certificates"
 
 RUN \
     apt-get update && \
+    apt-get upgrade && \
     apt-get install --yes --no-install-recommends ${RUNTIME_DEPS} && \
     rm -rf /var/lib/apt
 
