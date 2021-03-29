@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+
+(
+  cat <<END
+prometheus:
+  global:
+    scrape_interval: 1m
+  remote_write:
+      - url: $REMOTE_URL
+        basic_auth:
+          username: $USERNAME
+          password: $PASSWORD
+  configs:
+    - name: agent
+      scrape_configs:
+        - job_name: pktvisor
+          honor_timestamps: true
+          scrape_interval: 1m
+          scrape_timeout: 5s
+          metrics_path: /metrics
+          scheme: http
+          static_configs:
+            - targets:
+                - localhost:10853
+END
+) >/etc/agent/agent.yaml
+
+exec runsvdir /etc/service/

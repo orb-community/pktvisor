@@ -50,7 +50,7 @@ Options:
 	flag.Parse()
 
 	if *wantVersion {
-		fmt.Println(client.VizerVersionNum)
+		fmt.Println(client.VisorVersionNum)
 		return
 	}
 	if *wantHelp {
@@ -381,7 +381,7 @@ func layout(g *gocui.Gui) error {
 		if err != gocui.ErrUnknownView {
 			return err
 		}
-		v.Title = fmt.Sprintf("pktvisor-cli (client: %s | server: %s)", client.VizerVersionNum, serverVersion)
+		v.Title = fmt.Sprintf("pktvisor-cli (client: %s | server: %s)", client.VisorVersionNum, serverVersion)
 	}
 
 	//if currentView == "main" {
