@@ -22,7 +22,7 @@ case "$BINARY" in
 	*) BINARY=pktvisord ;;
 esac
 
-# not a terminal
+# not a terminal try to alert the user
 if [ ! -t 1 ] ; then
 	xdg-open "file://${HERE}/TerminalEmulatorRequired.txt"
 	exit 1
