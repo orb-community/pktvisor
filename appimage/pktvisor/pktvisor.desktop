@@ -2,7 +2,6 @@
 Name=pktvisor
 Terminal=true
 Exec=AppRun
-Comment=Test the terminal running a command inside it
 Icon=pktvisor
 Type=Application
 Categories=Utility;

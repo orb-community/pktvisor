@@ -1,13 +1,13 @@
-# in dev mode we just use the latest image
+# in dev mode we just use the latest image as the start point
 ifneq ($(strip $(DEV_MODE)),)
-DEV_MODE := <(echo "FROM ns1labs/pktvisor:latest") appimage/Dockerfile.part
+DOCKERFILE_HEAD = <(echo "FROM ns1labs/pktvisor:latest")
+else
+DOCKERFILE_HEAD = docker/Dockerfile
 endif
 
-BUILD_FILES := docker/Dockerfile appimage/Dockerfile.part
-
-pktvisor-x86_64.AppImage: SHELL:=/bin/bash
+pktvisor-x86_64.AppImage: SHELL:=/bin/bash #needed for the fd when DOCKERFILE_HEAD is in DEV_MODE
 pktvisor-x86_64.AppImage:
-	ID=$$(cd .. && cat $(if $(DEV_MODE),$(DEV_MODE),$(BUILD_FILES)) | docker build -q -f- .) ; \
+	ID=$$(cd .. && cat $(DOCKERFILE_HEAD) appimage/Dockerfile.part | docker build -q -f- .) ; \
 	bash export.sh $$ID
 
 .PHONEY: clean
