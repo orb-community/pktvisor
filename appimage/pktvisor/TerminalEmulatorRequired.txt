@@ -1,0 +1,1 @@
+This app needs to be run from a terminal to function correctly. See the docs at https://github.com/ns1/pktvisor for more details.

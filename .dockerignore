@@ -2,3 +2,8 @@ cmake-build*
 integration_tests/external*
 Dockerfile
 .dockerignore
+.gitignore
+.git
+appimage/Dockerfile.part
+appimage/export.sh
+appimage/Makefile

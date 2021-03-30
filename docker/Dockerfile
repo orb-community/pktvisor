@@ -21,6 +21,7 @@ RUN \
 FROM golang:latest AS gobuild
 COPY golang/ /src/
 WORKDIR /src/
+COPY --from=cppbuild /pktvisor-src/golang/pkg/client/version.go /src/pkg/client/version.go
 RUN go build -o pktvisor-cli cmd/pktvisor-cli/main.go
 
 FROM debian:bullseye-slim AS runtime
