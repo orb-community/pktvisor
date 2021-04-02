@@ -28,6 +28,7 @@ TEST_CASE("DNS JSON Schema", "[dns][iface][json]")
         stream.parse_host_spec();
 
         DnsStreamHandler dns_handler{"dns-test", &stream, 5, 100};
+        dns_handler.config_set("recorded_stream", true);
 
         dns_handler.start();
         stream.start();

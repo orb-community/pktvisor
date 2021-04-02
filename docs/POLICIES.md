@@ -24,7 +24,7 @@ Line Examples below.
 ```yaml
 version: "1.0"
 
-policy:
+visor:
   # each tap has input module specific configuration options
   taps:
     # a pcap tap which uses eth0 and is referenced by the identifier "anycast"
@@ -57,7 +57,7 @@ are not stored in a file, but rather in the control plane database).
 ```yaml
 version: "1.0"
 
-policy:
+visor:
   collection:
     # policy name and description
     anycast_dns:
@@ -143,7 +143,7 @@ information such as region, pop, and node type.
 ```yaml
 version: "1.0"
 
-policy:
+orb:
   vitals:
     region: EU
     pop: ams02
@@ -171,12 +171,13 @@ Or instead combine them into a single file:
 ```yaml
 version: "1.0"
 
-policy:
+pktvisor:
   taps:
     anycast:
       type: pcap
       config:
         iface: eth0
+orb:
   vitals:
     region: EU
     pop: ams02
@@ -197,7 +198,7 @@ the control plane, not on the command line or in files.
 ```yaml
 version: "1.0"
 
-policy:
+orb:
   selectors:
     all_dns:
       node_type: dns
@@ -215,7 +216,7 @@ on the command line or in files.
 ```yaml
 version: "1.0"
 
-policy:
+orb:
   sinks:
     default_prometheus:
       type: prometheus_exporter
@@ -241,11 +242,11 @@ success or failure. Upon success, the sink will be created.
 ```yaml
 version: "1.0"
 
-policy:
-  orb:
+orb:
+  policy:
     selectors:
       - eu_dns
-    collection_policy: anycast_dns
+    collection: anycast_dns
     sinks:
       - default_prometheus
 ```

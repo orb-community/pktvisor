@@ -37,6 +37,7 @@ add_library(maxminddb
   src/data-pool.c
 )
 add_library(maxminddb::maxminddb ALIAS maxminddb)
+target_compile_options(maxminddb PRIVATE -Wno-pedantic)
 
 set_target_properties(maxminddb PROPERTIES VERSION ${MAXMINDDB_SOVERSION})
 
