@@ -55,6 +55,7 @@ private:
     timespec _end_tstamp;
     uint _period_length = 0;
     bool _read_only = false;
+    bool _recorded_stream = false;
 
 protected:
     // merge the metrics of the specialized metric bucket
@@ -92,7 +93,7 @@ public:
     uint period_length() const
     {
         std::shared_lock r_lock(_base_mutex);
-        if (_read_only) {
+        if (_read_only || _recorded_stream) {
             return _period_length;
         }
         timespec now;
@@ -122,6 +123,18 @@ public:
         }
         _rate_events.cancel();
         on_set_read_only();
+    }
+
+    bool recorded_stream() const
+    {
+        std::shared_lock r_lock(_base_mutex);
+        return _recorded_stream;
+    }
+
+    void set_recorded_stream()
+    {
+        std::unique_lock w_lock(_base_mutex);
+        _recorded_stream = true;
     }
 
     void set_event_rate_info(std::string schema_key, std::initializer_list<std::string> names, const std::string &desc)
@@ -165,7 +178,6 @@ public:
             if (other._end_tstamp.tv_sec > _end_tstamp.tv_sec) {
                 _end_tstamp.tv_sec = other._end_tstamp.tv_sec;
             }
-            _read_only = true;
             _rate_events.merge(other._rate_events);
         }
         specialized_merge(other);
@@ -212,6 +224,11 @@ private:
 protected:
     std::atomic_bool _deep_sampling_now; // atomic so we can reference without mutex
 
+    /**
+     * indicates if the stream we are processing was pre recorded, not live
+     */
+    bool _recorded_stream = false;
+
 private:
     /**
      * window maintenance
@@ -238,6 +255,9 @@ private:
         // this changes the live bucket
         _metric_buckets.emplace_front(std::make_unique<MetricsBucketClass>());
         _metric_buckets[0]->set_start_tstamp(stamp);
+        if (_recorded_stream) {
+            _metric_buckets[0]->set_recorded_stream();
+        }
         // notify second most recent bucket that it is now read only, save end time
         _metric_buckets[1]->set_read_only(stamp);
         // if we're at our period history length max, pop the oldest
@@ -383,6 +403,14 @@ public:
         _metric_buckets.front()->set_read_only(stamp);
     }
 
+    void set_recorded_stream()
+    {
+        std::unique_lock wl(_base_mutex);
+        std::shared_lock rl(_bucket_mutex);
+        _recorded_stream = true;
+        _metric_buckets.front()->set_recorded_stream();
+    }
+
     const MetricsBucketClass *bucket(uint64_t period) const
     {
         std::shared_lock rl(_bucket_mutex);
@@ -465,6 +493,9 @@ public:
         }
 
         MetricsBucketClass merged;
+        if (_recorded_stream) {
+            merged.set_recorded_stream();
+        }
 
         auto p = period;
         for (auto &m : _metric_buckets) {

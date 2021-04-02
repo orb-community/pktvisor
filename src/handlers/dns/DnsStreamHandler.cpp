@@ -32,6 +32,10 @@ void DnsStreamHandler::start()
         return;
     }
 
+    if (config_exists("recorded_stream")) {
+        _metrics->set_recorded_stream();
+    }
+
     _pkt_udp_connection = _stream->udp_signal.connect(&DnsStreamHandler::process_udp_packet_cb, this);
     _start_tstamp_connection = _stream->start_tstamp_signal.connect(&DnsStreamHandler::set_start_tstamp, this);
     _end_tstamp_connection = _stream->end_tstamp_signal.connect(&DnsStreamHandler::set_end_tstamp, this);
@@ -272,9 +276,10 @@ void DnsMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
 void DnsMetricsBucket::to_json(json &j) const
 {
 
+    bool live_rates = !read_only() && !recorded_stream();
     auto [num_events, num_samples, event_rate, event_lock] = event_data_locked(); // thread safe
 
-    event_rate->to_json(j, !read_only());
+    event_rate->to_json(j, live_rates);
     num_events->to_json(j);
     num_samples->to_json(j);
 

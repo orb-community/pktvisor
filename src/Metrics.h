@@ -310,7 +310,9 @@ public:
 };
 
 /**
- * A Rate metric class which knows how to render its output
+ * A Rate metric class which knows how to render its output. Note that this is only useful for "live" rates,
+ * that is, calculating rates in real time and not from pre recorded streams
+ *
  * NOTE: this class _is_ thread safe, it _does not_ need an additional mutex
  */
 class Rate final : public Metric
@@ -378,7 +380,7 @@ public:
         std::shared_lock r_lock(other._sketch_mutex);
         std::unique_lock w_lock(_sketch_mutex);
         _quantile.merge(other._quantile);
-        // the live rate to simply copied if non zero
+        // the live rate is simply copied if non zero
         if (other._rate != 0) {
             _rate.store(other._rate, std::memory_order_relaxed);
         }
