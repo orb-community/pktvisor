@@ -32,6 +32,10 @@ void NetStreamHandler::start()
         return;
     }
 
+    if (config_exists("recorded_stream")) {
+        _metrics->set_recorded_stream();
+    }
+
     _pkt_connection = _stream->packet_signal.connect(&NetStreamHandler::process_packet_cb, this);
     _start_tstamp_connection = _stream->start_tstamp_signal.connect(&NetStreamHandler::set_start_tstamp, this);
     _end_tstamp_connection = _stream->end_tstamp_signal.connect(&NetStreamHandler::set_end_tstamp, this);
@@ -155,12 +159,13 @@ void NetworkMetricsBucket::to_json(json &j) const
 {
 
     // do rates first, which handle their own locking
-    _rate_in.to_json(j, !read_only());
-    _rate_out.to_json(j, !read_only());
+    bool live_rates = !read_only() && !recorded_stream();
+    _rate_in.to_json(j, live_rates);
+    _rate_out.to_json(j, live_rates);
 
     auto [num_events, num_samples, event_rate, event_lock] = event_data_locked(); // thread safe
 
-    event_rate->to_json(j, !read_only());
+    event_rate->to_json(j, live_rates);
     num_events->to_json(j);
     num_samples->to_json(j);
 

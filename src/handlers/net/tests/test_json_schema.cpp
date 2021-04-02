@@ -29,6 +29,7 @@ TEST_CASE("Net JSON Schema", "[net][iface][json]")
         stream.parse_host_spec();
 
         NetStreamHandler net_handler{"net-test", &stream, 5, 100};
+        net_handler.config_set("recorded_stream", true);
 
         net_handler.start();
         stream.start();
