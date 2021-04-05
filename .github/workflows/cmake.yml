@@ -39,9 +39,10 @@ jobs:
         # uses: turtlebrowser/get-conan@4dc7e6dd45c8b1e02e909979d7cfc5ebba6ddbe2
         uses: turtlebrowser/get-conan@v1.0
 
-      - name: Conan profile
+      - name: Conan profile and settings
         run: |
           conan profile new --detect default
+          conan config set general.revisions_enabled=1
 
       - name: Conan profile (linux-workaround)
         if: matrix.os == 'ubuntu-latest'
