@@ -54,7 +54,7 @@ static void _packet_arrives_cb(pcpp::RawPacket *rawPacket, [[maybe_unused]] pcpp
     stream->process_raw_packet(rawPacket);
 }
 
-static void _pcap_stats_update([[maybe_unused]] pcap_stat &stats, [[maybe_unused]] void *cookie)
+static void _pcap_stats_update([[maybe_unused]] pcpp::IPcapDevice::PcapStats& stats, [[maybe_unused]] void *cookie)
 {
     // auto stream = static_cast<PcapInputStream *>(cookie);
     // TODO expose this
@@ -213,20 +213,20 @@ void PcapInputStream::process_raw_packet(pcpp::RawPacket *rawPacket)
     auto IP6layer = packet.getLayerOfType<pcpp::IPv6Layer>();
     if (IP4layer) {
         for (auto &i : _hostIPv4) {
-            if (IP4layer->getDstIpAddress().matchSubnet(i.address, i.mask)) {
+            if (IP4layer->getDstIPv4Address().matchSubnet(i.address, i.mask)) {
                 dir = PacketDirection::toHost;
                 break;
-            } else if (IP4layer->getSrcIpAddress().matchSubnet(i.address, i.mask)) {
+            } else if (IP4layer->getSrcIPv4Address().matchSubnet(i.address, i.mask)) {
                 dir = PacketDirection::fromHost;
                 break;
             }
         }
     } else if (IP6layer) {
         for (auto &i : _hostIPv6) {
-            if (IP6layer->getDstIpAddress().matchSubnet(i.address, i.mask)) {
+            if (IP6layer->getDstIPv6Address().matchSubnet(i.address, i.mask)) {
                 dir = PacketDirection::toHost;
                 break;
-            } else if (IP6layer->getSrcIpAddress().matchSubnet(i.address, i.mask)) {
+            } else if (IP6layer->getSrcIPv6Address().matchSubnet(i.address, i.mask)) {
                 dir = PacketDirection::fromHost;
                 break;
             }
@@ -346,19 +346,19 @@ void PcapInputStream::_get_hosts_from_libpcap_iface()
             continue;
         }
         if (i.addr->sa_family == AF_INET) {
-            auto adrcvt = pcpp::sockaddr2in_addr(i.addr);
+            auto adrcvt = pcpp::internal::sockaddr2in_addr(i.addr);
             if (!adrcvt) {
                 throw PcapException("couldn't parse IPv4 address on device");
             }
-            auto nmcvt = pcpp::sockaddr2in_addr(i.netmask);
+            auto nmcvt = pcpp::internal::sockaddr2in_addr(i.netmask);
             if (!nmcvt) {
                 throw PcapException("couldn't parse IPv4 netmask address on device");
             }
-            _hostIPv4.emplace_back(IPv4subnet(pcpp::IPv4Address(pcpp::in_addr2int(*adrcvt)), pcpp::IPv4Address(pcpp::in_addr2int(*nmcvt))));
+            _hostIPv4.emplace_back(IPv4subnet(pcpp::IPv4Address(pcpp::internal::in_addr2int(*adrcvt)), pcpp::IPv4Address(pcpp::internal::in_addr2int(*nmcvt))));
         } else if (i.addr->sa_family == AF_INET6) {
             char buf1[INET6_ADDRSTRLEN];
-            pcpp::sockaddr2string(i.addr, buf1);
-            auto nmcvt = pcpp::sockaddr2in6_addr(i.netmask);
+            pcpp::internal::sockaddr2string(i.addr, buf1);
+            auto nmcvt = pcpp::internal::sockaddr2in6_addr(i.netmask);
             if (!nmcvt) {
                 throw PcapException("couldn't parse IPv4 netmask address on device");
             }
