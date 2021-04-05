@@ -5,7 +5,7 @@ docopt.cpp/0.6.3
 nlohmann_json/3.9.1
 cpp-httplib/0.8.0
 corrade/2020.06
-pcapplusplus/20.08@bincrafters/stable
+pcapplusplus/ns1-dev
 json-schema-validator/2.1.0
 
 [build_requires]

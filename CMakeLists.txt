@@ -17,8 +17,8 @@ add_compile_options(-Wall -pedantic -W -Wextra -Wno-unknown-pragmas)
 
 include(conan)
 
-conan_add_remote(NAME bincrafters INDEX 1
-        URL https://api.bintray.com/conan/bincrafters/public-conan
+conan_add_remote(NAME ns1labs INDEX 1
+        URL https://ns1labs.jfrog.io/artifactory/api/conan/ns1labs-conan
         VERIFY_SSL True)
 
 conan_cmake_autodetect(settings)
