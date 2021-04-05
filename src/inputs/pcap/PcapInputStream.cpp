@@ -66,7 +66,8 @@ PcapInputStream::PcapInputStream(const std::string &name)
     , _tcp_reassembly(_tcp_message_ready_cb,
           this,
           _tcp_connection_start_cb,
-          _tcp_connection_end_cb)
+          _tcp_connection_end_cb,
+          {true, 5, 100, 100})
 {
 }
 
