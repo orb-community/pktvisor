@@ -2,17 +2,18 @@
 
 (
   cat <<END
+server:
+  log_level: info
+  http_listen_port: 20853
 prometheus:
   global:
     scrape_interval: 1m
-  remote_write:
-      - url: $REMOTE_URL
-        basic_auth:
-          username: $USERNAME
-          password: $PASSWORD
   configs:
-    - name: agent
+    - name: pktvisor
       scrape_configs:
+        - job_name: grafana_agent
+          static_configs:
+            - targets: ['127.0.0.1:20853']
         - job_name: pktvisor
           honor_timestamps: true
           scrape_interval: 1m
@@ -22,6 +23,11 @@ prometheus:
           static_configs:
             - targets:
                 - localhost:10853
+      remote_write:
+          - url: $REMOTE_URL
+            basic_auth:
+              username: $USERNAME
+              password: $PASSWORD
 END
 ) >/etc/agent/agent.yaml
 
