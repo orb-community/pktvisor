@@ -15,6 +15,7 @@
 #include <PacketUtils.h>
 #include <PcapFileDevice.h>
 #include <SystemUtils.h>
+#include <Logger.h>
 #pragma GCC diagnostic pop
 #include <Corrade/Utility/Debug.h>
 #include <IpUtils.h>
@@ -66,7 +67,8 @@ PcapInputStream::PcapInputStream(const std::string &name)
     , _tcp_reassembly(_tcp_message_ready_cb,
           this,
           _tcp_connection_start_cb,
-          _tcp_connection_end_cb)
+          _tcp_connection_end_cb,
+          {true, 5, 500, 50})
 {
 }
 
@@ -89,6 +91,10 @@ void PcapInputStream::start()
         _running = true;
         _open_pcap(config_get<std::string>("pcap_file"), config_get<std::string>("bpf"));
         return;
+    }
+
+    if (config_exists("debug")) {
+        pcpp::LoggerPP::getInstance().setAllModlesToLogLevel(pcpp::LoggerPP::LogLevel::Debug);
     }
 
     // live capture
@@ -320,7 +326,14 @@ void PcapInputStream::_open_libpcap_iface(const std::string &bpfFilter)
         NOTE: the packet buffer timeout cannot be used to cause calls that read packets to return within a limited period of time, because, on some platforms, the packet buffer timeout isn't supported, and, on other platforms, the timer doesn't start until at least one packet arrives. This means that the packet buffer timeout should NOT be used, for example, in an interactive application to allow the packet capture loop to ``poll'' for user input periodically, as there's no guarantee that a call reading packets will return after the timeout expires even if no packets have arrived.
         The packet buffer timeout is set with pcap_set_timeout().
      */
-    config.packetBufferTimeoutMs = 100;
+    config.packetBufferTimeoutMs = 10;
+    /*
+     * @param[in] snapshotLength Snapshot length for capturing packets. Default value is 0 which means use the default value.
+     * A snapshot length of 262144 should be big enough for maximum-size Linux loopback packets (65549) and some USB packets
+     * captured with USBPcap (> 131072, < 262144). A snapshot length of 65535 should be sufficient, on most if not all networks,
+     * to capture all the data available from the packet.
+     */
+    config.snapshotLength = 1000;
 
     // try to open device
     if (!_pcapDevice->open(config)) {
