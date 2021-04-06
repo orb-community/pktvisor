@@ -15,6 +15,7 @@
 #include <PacketUtils.h>
 #include <PcapFileDevice.h>
 #include <SystemUtils.h>
+#include <Logger.h>
 #pragma GCC diagnostic pop
 #include <Corrade/Utility/Debug.h>
 #include <IpUtils.h>
@@ -67,7 +68,7 @@ PcapInputStream::PcapInputStream(const std::string &name)
           this,
           _tcp_connection_start_cb,
           _tcp_connection_end_cb,
-          {true, 5, 500, 1})
+          {true, 5, 500, 50})
 {
 }
 
@@ -90,6 +91,10 @@ void PcapInputStream::start()
         _running = true;
         _open_pcap(config_get<std::string>("pcap_file"), config_get<std::string>("bpf"));
         return;
+    }
+
+    if (config_exists("debug")) {
+        pcpp::LoggerPP::getInstance().setAllModlesToLogLevel(pcpp::LoggerPP::LogLevel::Debug);
     }
 
     // live capture
