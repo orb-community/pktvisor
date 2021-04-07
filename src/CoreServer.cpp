@@ -3,12 +3,13 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 #include "CoreServer.h"
+#include "Metrics.h"
 #include "visor_config.h"
 #include <chrono>
 #include <spdlog/stopwatch.h>
 #include <vector>
 
-visor::CoreServer::CoreServer(bool read_only, std::shared_ptr<spdlog::logger> logger, const std::string &prometheus_path)
+visor::CoreServer::CoreServer(bool read_only, std::shared_ptr<spdlog::logger> logger, const PrometheusConfig &prom_config)
     : _svr(read_only)
     , _logger(logger)
     , _start_time(std::chrono::system_clock::now())
@@ -36,7 +37,10 @@ visor::CoreServer::CoreServer(bool read_only, std::shared_ptr<spdlog::logger> lo
         _handler_plugins.emplace_back(std::move(mod));
     }
 
-    _setup_routes(prometheus_path);
+    _setup_routes(prom_config);
+    if (!prom_config.instance.empty()) {
+        Metric::add_base_label("instance", prom_config.instance);
+    }
 }
 void visor::CoreServer::start(const std::string &host, int port)
 {
@@ -72,7 +76,7 @@ visor::CoreServer::~CoreServer()
 {
     stop();
 }
-void visor::CoreServer::_setup_routes(const std::string &prometheus_path)
+void visor::CoreServer::_setup_routes(const PrometheusConfig &prom_config)
 {
 
     _logger->info("Initialize server control plane");
@@ -158,9 +162,9 @@ void visor::CoreServer::_setup_routes(const std::string &prometheus_path)
             res.set_content(e.what(), "text/plain");
         }
     });
-    if (!prometheus_path.empty()) {
-        _logger->info("enabling prometheus metrics on: {}", prometheus_path);
-        _svr.Get(prometheus_path.c_str(), [&]([[maybe_unused]] const httplib::Request &req, httplib::Response &res) {
+    if (!prom_config.path.empty()) {
+        _logger->info("enabling prometheus metrics on: {}", prom_config.path);
+        _svr.Get(prom_config.path.c_str(), [&]([[maybe_unused]] const httplib::Request &req, httplib::Response &res) {
             std::stringstream output;
             try {
                 auto [handler_modules, hm_lock] = _handler_manager->module_get_all_locked();

@@ -31,7 +31,6 @@ static const char USAGE[] =
 
     IFACE, if specified, is either a network interface or an IP address (4 or 6). If this is specified,
     a "pcap" input stream will be automatically created, with "net" and "dns" handler modules attached.
-    ** Note that this is deprecated; you should instead use --admin-api and create the pcap input stream via API.
 
     Base Options:
       -l HOST               Run webserver on the given host or IP [default: localhost]
@@ -39,17 +38,19 @@ static const char USAGE[] =
       --admin-api           Enable admin REST API giving complete control plane functionality [default: false]
                             When not specified, the exposed API is read-only access to summarized metrics.
                             When specified, write access is enabled for all modules.
-      --prometheus          Enable native Prometheus metrics at path /metrics
       -h --help             Show this screen
       -v                    Verbose log output
       --no-track            Don't send lightweight, anonymous usage metrics.
       --version             Show version
       --geo-city FILE       GeoLite2 City database to use for IP to Geo mapping (if enabled)
       --geo-asn FILE        GeoLite2 ASN database to use for IP to ASN mapping (if enabled)
+    Prometheus Options:
+      --prometheus          Enable native Prometheus metrics at path /metrics
+      --prom-instance ID    Optionally set the 'instance' tag to ID
     Handler Module Defaults:
       --max-deep-sample N   Never deep sample more than N% of streams (an int between 0 and 100) [default: 100]
       --periods P           Hold this many 60 second time periods of history in memory [default: 5]
-    pcap Input Module Options (deprecated, use admin-api instead):
+    pcap Input Module Options:
       -b BPF                Filter packets using the given BPF string
       -H HOSTSPEC           Specify subnets (comma separated) to consider HOST, in CIDR form. In live capture this /may/ be detected automatically
                             from capture device but /must/ be specified for pcaps. Example: "10.0.1.0/24,10.0.2.1/32,2001:db8::/64"
@@ -89,11 +90,14 @@ int main(int argc, char *argv[])
         logger->set_level(spdlog::level::debug);
     }
 
-    std::string prometheus_path;
+    PrometheusConfig prom_config;
     if (args["--prometheus"].asBool()) {
-        prometheus_path = "/metrics";
+        prom_config.path = "/metrics";
+        if (args["--prom-instance"]) {
+            prom_config.instance = args["--prom-instance"].asString();
+        }
     }
-    CoreServer svr(!args["--admin-api"].asBool(), logger, prometheus_path);
+    CoreServer svr(!args["--admin-api"].asBool(), logger, prom_config);
     svr.set_http_logger([&logger](const auto &req, const auto &res) {
         logger->info("REQUEST: {} {} {}", req.method, req.path, res.status);
         if (res.status == 500) {
