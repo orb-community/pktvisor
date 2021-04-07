@@ -16,6 +16,7 @@ prometheus:
             - targets: ['127.0.0.1:20853']
         - job_name: pktvisor
           honor_timestamps: true
+          honor_labels: true
           scrape_interval: 1m
           scrape_timeout: 5s
           metrics_path: /metrics

@@ -16,6 +16,11 @@
 
 namespace visor {
 
+struct PrometheusConfig {
+    std::string path;
+    std::string instance;
+};
+
 class CoreServer
 {
 public:
@@ -39,10 +44,10 @@ private:
     std::shared_ptr<spdlog::logger> _logger;
     std::chrono::system_clock::time_point _start_time;
 
-    void _setup_routes(const std::string &prometheus_path);
+    void _setup_routes(const PrometheusConfig &prom_config);
 
 public:
-    CoreServer(bool read_only, std::shared_ptr<spdlog::logger> logger, const std::string &prometheus_path);
+    CoreServer(bool read_only, std::shared_ptr<spdlog::logger> logger, const PrometheusConfig &prom_config);
     ~CoreServer();
 
     void start(const std::string &host, int port);
