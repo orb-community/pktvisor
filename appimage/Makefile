@@ -1,6 +1,8 @@
+DEV_IMAGE ?= ns1labs/pktvisor:latest
+
 # in dev mode we just use the latest image as the start point
 ifneq ($(strip $(DEV_MODE)),)
-DOCKERFILE_HEAD = <(echo "FROM ns1labs/pktvisor:latest")
+DOCKERFILE_HEAD = <(echo "FROM $(DEV_IMAGE)")
 else
 DOCKERFILE_HEAD = docker/Dockerfile
 endif
