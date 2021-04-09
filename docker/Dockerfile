@@ -4,8 +4,8 @@ ENV BUILD_DEPS "g++ cmake make git pkgconf jq python3-pip python3-setuptools ca-
 
 RUN \
     apt-get update && \
-    apt-get upgrade && \
-    apt-get install --yes --no-install-recommends ${BUILD_DEPS} && \
+    apt-get upgrade --yes --force-yes && \
+    apt-get install --yes --force-yes --no-install-recommends ${BUILD_DEPS} && \
     pip3 install conan
 
 COPY . /pktvisor-src/
@@ -13,7 +13,8 @@ COPY . /pktvisor-src/
 WORKDIR /tmp/build
 RUN \
     conan profile new --detect default && \
-    conan profile update settings.compiler.libcxx=libstdc++11 default
+    conan profile update settings.compiler.libcxx=libstdc++11 default && \
+    conan config set general.revisions_enabled=1
 
 RUN \
     PKG_CONFIG_PATH=/local/lib/pkgconfig cmake -DCMAKE_BUILD_TYPE=Release /pktvisor-src && \
@@ -31,8 +32,8 @@ ENV RUNTIME_DEPS "curl ca-certificates"
 
 RUN \
     apt-get update && \
-    apt-get upgrade && \
-    apt-get install --yes --no-install-recommends ${RUNTIME_DEPS} && \
+    apt-get upgrade --yes --force-yes && \
+    apt-get install --yes --force-yes --no-install-recommends ${RUNTIME_DEPS} && \
     rm -rf /var/lib/apt
 
 COPY --from=cppbuild /tmp/build/bin/pktvisord /usr/local/sbin/pktvisord

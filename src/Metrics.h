@@ -26,6 +26,15 @@ using namespace std::chrono;
 
 class Metric
 {
+public:
+    typedef std::map<std::string, std::string> LabelMap;
+
+private:
+    /**
+     * labels which will be applied to all metrics
+     */
+    static LabelMap _base_labels;
+
 protected:
     std::vector<std::string> _name;
     std::string _desc;
@@ -47,15 +56,16 @@ public:
         _schema_key = schema_key;
     }
 
+    static void add_base_label(const std::string &label, const std::string &value)
+    {
+        _base_labels.emplace(label, value);
+    }
+
     void name_json_assign(json &j, const json &val) const;
     void name_json_assign(json &j, std::initializer_list<std::string> add_names, const json &val) const;
 
-    [[nodiscard]] std::string name_snake() const
-    {
-        return _schema_key + "_" + std::accumulate(std::begin(_name), std::end(_name), std::string(), [](const std::string &ss, const std::string &s) {
-            return ss.empty() ? s : ss + "_" + s;
-        });
-    }
+    [[nodiscard]] std::string base_name_snake() const;
+    [[nodiscard]] std::string name_snake(std::initializer_list<std::string> add_names = {}, LabelMap add_labels = {}) const;
 
     virtual void to_json(json &j) const = 0;
     virtual void to_prometheus(std::stringstream &out) const = 0;
@@ -163,14 +173,14 @@ public:
         auto quantiles = _quantile.get_quantiles(fractions, 4);
 
         if (quantiles.size()) {
-            out << "# HELP " << name_snake() << ' ' << _desc << std::endl;
-            out << "# TYPE " << name_snake() << " summary" << std::endl;
-            out << name_snake() << "{quantile=\"0.5\"} " << quantiles[0] << std::endl;
-            out << name_snake() << "{quantile=\"0.9\"} " << quantiles[1] << std::endl;
-            out << name_snake() << "{quantile=\"0.95\"} " << quantiles[2] << std::endl;
-            out << name_snake() << "{quantile=\"0.99\"} " << quantiles[3] << std::endl;
-            out << name_snake() << "_sum " << _quantile.get_max_value() << std::endl;
-            out << name_snake() << "_count " << _quantile.get_n() << std::endl;
+            out << "# HELP " << base_name_snake() << ' ' << _desc << std::endl;
+            out << "# TYPE " << base_name_snake() << " summary" << std::endl;
+            out << name_snake({}, {{"quantile", "0.5"}}) << ' ' << quantiles[0] << std::endl;
+            out << name_snake({}, {{"quantile", "0.9"}}) << ' ' << quantiles[1] << std::endl;
+            out << name_snake({}, {{"quantile", "0.95"}}) << ' ' << quantiles[2] << std::endl;
+            out << name_snake({}, {{"quantile", "0.99"}}) << ' ' << quantiles[3] << std::endl;
+            out << name_snake({"sum"}) << ' ' << _quantile.get_max_value() << std::endl;
+            out << name_snake({"count"}) << ' ' << _quantile.get_n() << std::endl;
         }
     }
 };
@@ -241,9 +251,9 @@ public:
     {
         auto items = _fi.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
         for (uint64_t i = 0; i < std::min(_top_count, items.size()); i++) {
-            out << "# HELP " << name_snake() << ' ' << _desc << std::endl;
-            out << "# TYPE " << name_snake() << " gauge" << std::endl;
-            out << name_snake() << "{name=\"" << formatter(items[i].get_item()) << "\"} " << items[i].get_estimate() << std::endl;
+            out << "# HELP " << base_name_snake() << ' ' << _desc << std::endl;
+            out << "# TYPE " << base_name_snake() << " gauge" << std::endl;
+            out << name_snake({}, {{"name", formatter(items[i].get_item())}}) << ' ' << items[i].get_estimate() << std::endl;
         }
     }
 
@@ -263,9 +273,11 @@ public:
     {
         auto items = _fi.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
         for (uint64_t i = 0; i < std::min(_top_count, items.size()); i++) {
-            out << "# HELP " << name_snake() << ' ' << _desc << std::endl;
-            out << "# TYPE " << name_snake() << " gauge" << std::endl;
-            out << name_snake() << "{name=\"" << items[i].get_item() << "\"} " << items[i].get_estimate() << std::endl;
+            out << "# HELP " << base_name_snake() << ' ' << _desc << std::endl;
+            out << "# TYPE " << base_name_snake() << " gauge" << std::endl;
+            std::stringstream name_text;
+            name_text << items[i].get_item();
+            out << name_snake({}, {{"name", name_text.str()}}) << ' ' << items[i].get_estimate() << std::endl;
         }
     }
 };

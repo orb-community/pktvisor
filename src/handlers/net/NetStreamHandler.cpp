@@ -241,10 +241,10 @@ void NetworkMetricsBucket::process_packet(bool deep, pcpp::Packet &payload, Pack
     auto IP6layer = payload.getLayerOfType<pcpp::IPv6Layer>();
     if (IP4layer) {
         if (dir == PacketDirection::toHost) {
-            _srcIPCard.update(IP4layer->getSrcIpAddress().toInt());
-            _topIPv4.update(IP4layer->getSrcIpAddress().toInt());
+            _srcIPCard.update(IP4layer->getSrcIPv4Address().toInt());
+            _topIPv4.update(IP4layer->getSrcIPv4Address().toInt());
             if (geo::enabled()) {
-                if (IPv4tosockaddr(IP4layer->getSrcIpAddress(), &sa4)) {
+                if (IPv4tosockaddr(IP4layer->getSrcIPv4Address(), &sa4)) {
                     if (geo::GeoIP().enabled()) {
                         _topGeoLoc.update(geo::GeoIP().getGeoLocString(reinterpret_cast<struct sockaddr *>(&sa4)));
                     }
@@ -254,10 +254,10 @@ void NetworkMetricsBucket::process_packet(bool deep, pcpp::Packet &payload, Pack
                 }
             }
         } else if (dir == PacketDirection::fromHost) {
-            _dstIPCard.update(IP4layer->getDstIpAddress().toInt());
-            _topIPv4.update(IP4layer->getDstIpAddress().toInt());
+            _dstIPCard.update(IP4layer->getDstIPv4Address().toInt());
+            _topIPv4.update(IP4layer->getDstIPv4Address().toInt());
             if (geo::enabled()) {
-                if (IPv4tosockaddr(IP4layer->getDstIpAddress(), &sa4)) {
+                if (IPv4tosockaddr(IP4layer->getDstIPv4Address(), &sa4)) {
                     if (geo::GeoIP().enabled()) {
                         _topGeoLoc.update(geo::GeoIP().getGeoLocString(reinterpret_cast<struct sockaddr *>(&sa4)));
                     }
@@ -269,10 +269,10 @@ void NetworkMetricsBucket::process_packet(bool deep, pcpp::Packet &payload, Pack
         }
     } else if (IP6layer) {
         if (dir == PacketDirection::toHost) {
-            _srcIPCard.update(reinterpret_cast<const void *>(IP6layer->getSrcIpAddress().toBytes()), 16);
-            _topIPv6.update(IP6layer->getSrcIpAddress().toString());
+            _srcIPCard.update(reinterpret_cast<const void *>(IP6layer->getSrcIPv6Address().toBytes()), 16);
+            _topIPv6.update(IP6layer->getSrcIPv6Address().toString());
             if (geo::enabled()) {
-                if (IPv6tosockaddr(IP6layer->getSrcIpAddress(), &sa6)) {
+                if (IPv6tosockaddr(IP6layer->getSrcIPv6Address(), &sa6)) {
                     if (geo::GeoIP().enabled()) {
                         _topGeoLoc.update(geo::GeoIP().getGeoLocString(reinterpret_cast<struct sockaddr *>(&sa6)));
                     }
@@ -282,10 +282,10 @@ void NetworkMetricsBucket::process_packet(bool deep, pcpp::Packet &payload, Pack
                 }
             }
         } else if (dir == PacketDirection::fromHost) {
-            _dstIPCard.update(reinterpret_cast<const void *>(IP6layer->getDstIpAddress().toBytes()), 16);
-            _topIPv6.update(IP6layer->getDstIpAddress().toString());
+            _dstIPCard.update(reinterpret_cast<const void *>(IP6layer->getDstIPv6Address().toBytes()), 16);
+            _topIPv6.update(IP6layer->getDstIPv6Address().toString());
             if (geo::enabled()) {
-                if (IPv6tosockaddr(IP6layer->getDstIpAddress(), &sa6)) {
+                if (IPv6tosockaddr(IP6layer->getDstIPv6Address(), &sa6)) {
                     if (geo::GeoIP().enabled()) {
                         _topGeoLoc.update(geo::GeoIP().getGeoLocString(reinterpret_cast<struct sockaddr *>(&sa6)));
                     }
