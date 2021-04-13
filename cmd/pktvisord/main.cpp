@@ -11,7 +11,9 @@
 #include "visor_config.h"
 #include <docopt/docopt.h>
 #include <resolv.h>
+#include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
+#include <spdlog/sinks/syslog_sink.h>
 #include <spdlog/spdlog.h>
 
 #include "GeoDB.h"
@@ -38,12 +40,16 @@ static const char USAGE[] =
       --admin-api           Enable admin REST API giving complete control plane functionality [default: false]
                             When not specified, the exposed API is read-only access to summarized metrics.
                             When specified, write access is enabled for all modules.
+      -d                    Daemonize; fork and continue running in the background [default: false]
       -h --help             Show this screen
       -v                    Verbose log output
       --no-track            Don't send lightweight, anonymous usage metrics.
       --version             Show version
-      --geo-city FILE       GeoLite2 City database to use for IP to Geo mapping (if enabled)
-      --geo-asn FILE        GeoLite2 ASN database to use for IP to ASN mapping (if enabled)
+      --geo-city FILE       GeoLite2 City database to use for IP to Geo mapping
+      --geo-asn FILE        GeoLite2 ASN database to use for IP to ASN mapping
+    Logging Options:
+      --log-file FILE       Log to the given output file name
+      --syslog              Log to syslog
     Prometheus Options:
       --prometheus          Enable native Prometheus metrics at path /metrics
       --prom-instance ID    Optionally set the 'instance' tag to ID
@@ -77,6 +83,70 @@ void initialize_geo(const docopt::value &city, const docopt::value &asn)
     }
 }
 
+// adapted from LPI becomeDaemon()
+int daemonize()
+{
+    switch (fork()) {
+    case -1:
+        return -1;
+    case 0:
+        // Child falls through...
+        break;
+    default:
+        // while parent terminates
+        _exit(EXIT_SUCCESS);
+    }
+
+    // Become leader of new session
+    if (setsid() == -1) {
+        return -1;
+    }
+
+    // Ensure we are not session leader
+    switch (auto pid = fork()) {
+    case -1:
+        return -1;
+    case 0:
+        break;
+    default:
+        std::cerr << "pktvisord running at PID " << pid << std::endl;
+        _exit(EXIT_SUCCESS);
+    }
+
+    // Clear file mode creation mask
+    umask(0);
+
+    // Change to root directory
+    chdir("/");
+    int maxfd, fd;
+    maxfd = sysconf(_SC_OPEN_MAX);
+    // Limit is indeterminate...
+    if (maxfd == -1) {
+        maxfd = 8192; // so take a guess
+    }
+
+    for (fd = 0; fd < maxfd; fd++) {
+        close(fd);
+    }
+
+    // Reopen standard fd's to /dev/null
+    close(STDIN_FILENO);
+
+    fd = open("/dev/null", O_RDWR);
+
+    if (fd != STDIN_FILENO) {
+        return -1;
+    }
+    if (dup2(STDIN_FILENO, STDOUT_FILENO) != STDOUT_FILENO) {
+        return -1;
+    }
+    if (dup2(STDIN_FILENO, STDERR_FILENO) != STDERR_FILENO) {
+        return -1;
+    }
+
+    return 0;
+}
+
 int main(int argc, char *argv[])
 {
 
@@ -85,7 +155,26 @@ int main(int argc, char *argv[])
         true,           // show help if requested
         VISOR_VERSION); // version string
 
-    auto logger = spdlog::stdout_color_mt("pktvisor");
+    if (args["-d"].asBool()) {
+        if (daemonize()) {
+            std::cerr << "failed to daemonize" << std::endl;
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    std::shared_ptr<spdlog::logger> logger;
+    if (args["--log-file"]) {
+        try {
+            logger = spdlog::basic_logger_mt("pktvisor", args["--log-file"].asString());
+        } catch (const spdlog::spdlog_ex &ex) {
+            std::cerr << "Log init failed: " << ex.what() << std::endl;
+            exit(EXIT_FAILURE);
+        }
+    } else if (args["--syslog"].asBool()) {
+        logger = spdlog::syslog_logger_mt("pktvisor", "pktvisord", LOG_PID);
+    } else {
+        logger = spdlog::stdout_color_mt("pktvisor");
+    }
     if (args["-v"].asBool()) {
         logger->set_level(spdlog::level::debug);
     }
@@ -151,7 +240,7 @@ int main(int argc, char *argv[])
         initialize_geo(args["--geo-city"], args["--geo-asn"]);
     } catch (const std::exception &e) {
         logger->error("Fatal error: {}", e.what());
-        exit(-1);
+        exit(EXIT_FAILURE);
     }
 
     if (args["IFACE"]) {
@@ -195,21 +284,21 @@ int main(int argc, char *argv[])
 
         } catch (const std::exception &e) {
             logger->error(e.what());
-            exit(-1);
+            exit(EXIT_FAILURE);
         }
     } else if (!args["--admin-api"].asBool()) {
         // if they didn't specify pcap target, or config file, or admin api then there is nothing to do
         logger->error("Nothing to do: specify --admin-api or IFACE.");
         std::cerr << USAGE << std::endl;
-        exit(-1);
+        exit(EXIT_FAILURE);
     }
 
     try {
         svr.start(host.c_str(), port);
     } catch (const std::exception &e) {
         logger->error(e.what());
-        exit(-1);
+        exit(EXIT_FAILURE);
     }
 
-    return 0;
+    exit(EXIT_SUCCESS);
 }
