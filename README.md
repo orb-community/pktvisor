@@ -21,17 +21,17 @@
 data streams down to lightweight, immediately actionable observability data directly at the edge. Its goal is to extract
 the signal from the noise; to separate the needles from the haystacks as close to the source as possible.
 
-It is a resource efficient, side-car style agent built from the ground up to be dynamically controlled in real time via
-API. Its output is useful both on-node via command line (for a localized, hyper real-time view) as well as centrally
-collected into industry standard observability stacks like Prometheus and Grafana.
+It is a resource efficient, side-car style agent built from the ground up to be modular and dynamically controlled in
+real time via API. Its output can be visualized both on-node via command line UI (for a localized, hyper real-time view)
+as well as centrally collected into industry standard observability stacks like Prometheus and Grafana.
 
-The modular [input stream system](src/inputs) is designed to _tap into_ data streams, and currently focuses
+The [input stream system](src/inputs) is designed to _tap into_ data streams, and currently focuses
 on [packet capture](https://en.wikipedia.org/wiki/Packet_analyzer) but will soon support additional taps such
 as [sFlow](https://en.wikipedia.org/wiki/SFlow) / [Netflow](https://en.wikipedia.org/wiki/NetFlow)
 , [dnstap](https://dnstap.info/), [envoy taps](https://www.envoyproxy.io/docs/envoy/latest/operations/traffic_tapping),
 and [eBPF](https://ebpf.io/).
 
-The modular [stream processor system](src/handlers) includes full application level analysis,
+The [stream processor system](src/handlers) includes full application level analysis,
 and [efficiently](https://en.wikipedia.org/wiki/Streaming_algorithm) summarizes to one minute buckets of:
 
 * Counters
@@ -41,8 +41,8 @@ and [efficiently](https://en.wikipedia.org/wiki/Streaming_algorithm) summarizes 
 * Set Cardinality
 * GeoIP
 
-pktvisor has its origins in observability of critical internet infrastructure in support of DDoS protection and traffic
-engineering.
+pktvisor has its origins in observability of critical internet infrastructure in support of DDoS protection, traffic
+engineering, and ongoing operations.
 
 These screenshots display both the [command line](golang/) and [centralized views](centralized_collection/) of
 the [Network](src/handlers/net)
@@ -96,7 +96,7 @@ Linux distributions and does not require installing any other dependencies.
 ```shell
 wget https://github.com/ns1labs/pktvisor/releases/download/vVERSION/pktvisor-x86_64-VERSION.AppImage
 chmod +x pktvisor-x86_64-VERSION.AppImage
-./pktvisor-x86_64-VERSION.AppImage -h
+./pktvisor-x86_64-VERSION.AppImage pktvisord -h
 ```
 
 For example (substituting e.g. "3.2.0" for VERSION):
@@ -104,12 +104,11 @@ For example (substituting e.g. "3.2.0" for VERSION):
 ```shell
 wget https://github.com/ns1labs/pktvisor/releases/download/v3.2.0/pktvisor-x86_64-3.2.0.AppImage
 chmod +x pktvisor-x86_64-3.2.0.AppImage
-./pktvisor-x86_64-3.2.0.AppImage -h
+./pktvisor-x86_64-3.2.0.AppImage pktvisord -h
 ```
 
 The AppImage contains the collector agent (`pktvisord`), the command line UI (`pktvisor-cli`), and the pcap file
-analyzer (`pktvisor-pcap`). By default it runs `pktvisord`, but you can specify which tool to run by passing it as the
-first argument:
+analyzer (`pktvisor-pcap`). You can specify which tool to run by passing it as the first argument:
 
 ```shell
 ./pktvisor-x86_64-VERSION.AppImage pktvisor-pcap -h
@@ -120,7 +119,7 @@ first argument:
 ```
 
 Note that when running the AppImage version of the agent, you may want to use the `-d` argument to deamonize (run in the
-background), and the `--log-file` or `--syslog` arguments to record logs.
+background), and either the `--log-file` or `--syslog` argument to record logs.
 
 ### Other Platforms
 

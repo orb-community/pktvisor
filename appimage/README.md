@@ -18,11 +18,11 @@ You may also specify a custom image in dev mode by setting the env file `DEV_IMA
 
 
 ## Usage:
-To use the AppImage from the command line you can specify the binary you want to run as the first argument following the pattern:
+To use the AppImage from the command line you specify the binary you want to run as the first argument following the
+pattern:
 
 `
-./pktvisor-x86_64.AppImage [pktvisord|pktvisor-pcap|pktvisor-cli] <args>
+./pktvisor-x86_64.AppImage pktvisord|pktvisor-pcap|pktvisor-cli <args>
 `
 
-If you don't specify a binary, all args are passed to pktvisord by default.
 

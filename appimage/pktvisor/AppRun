@@ -11,20 +11,26 @@ export PERLLIB="${HERE}/usr/share/perl5/:${HERE}/usr/lib/perl5/${PERLLIB:+:$PERL
 export GSETTINGS_SCHEMA_DIR="${HERE}/usr/share/glib-2.0/schemas/${GSETTINGS_SCHEMA_DIR:+:$GSETTINGS_SCHEMA_DIR}"
 export QT_PLUGIN_PATH="${HERE}/usr/lib/qt4/plugins/:${HERE}/usr/lib/i386-linux-gnu/qt4/plugins/:${HERE}/usr/lib/x86_64-linux-gnu/qt4/plugins/:${HERE}/usr/lib32/qt4/plugins/:${HERE}/usr/lib64/qt4/plugins/:${HERE}/usr/lib/qt5/plugins/:${HERE}/usr/lib/i386-linux-gnu/qt5/plugins/:${HERE}/usr/lib/x86_64-linux-gnu/qt5/plugins/:${HERE}/usr/lib32/qt5/plugins/:${HERE}/usr/lib64/qt5/plugins/${QT_PLUGIN_PATH:+:$QT_PLUGIN_PATH}"
 
+if [ $# -eq 0 ]; then
+  echo "No arguments provided: specify either 'pktvisor-cli', 'pktvisor-pcap' or 'pktvisord'. Try:"
+  echo "pktvisor-cli -h"
+  echo "pktvisor-pcap --help"
+  echo "pktvisord --help"
+  exit 1
+fi
+
 # begin entrypoint
-# default to pktvisord but allow first arg to specify binary
 BINARY="$1"
 case "$BINARY" in
-	pktvisor-cli) shift ;;
-	pktvisor-pcap) shift ;;
-	pktvisord) shift ;;
-	*) BINARY=pktvisord ;;
+pktvisor-cli) shift ;;
+pktvisor-pcap) shift ;;
+pktvisord) shift ;;
 esac
 
 # not a terminal try to alert the user
-if [ ! -t 1 ] ; then
-	xdg-open "file://${HERE}/TerminalEmulatorRequired.txt"
-	exit 1
+if [ ! -t 1 ]; then
+  xdg-open "file://${HERE}/TerminalEmulatorRequired.txt"
+  exit 1
 else
-	exec "${HERE}/bin/${BINARY}" "$@"
+  exec "${HERE}/bin/${BINARY}" "$@"
 fi
