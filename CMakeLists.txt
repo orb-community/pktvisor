@@ -2,11 +2,22 @@ cmake_minimum_required(VERSION 3.13)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
-# this is the source of truth for version, which will be written to config.h include file.
+# VERSION
+# this is the source of truth for semver version
 project(visor VERSION 3.2.0)
+
+# for main line release, this is empty
+# for development release, this is "-develop"
+# for release candidate, this is "-rc"
 set(VISOR_PRERELEASE "-develop")
+
+# these are computed
 set(VISOR_VERSION_NUM "${PROJECT_VERSION}${VISOR_PRERELEASE}")
-set(VISOR_VERSION " pktvisor ${PROJECT_VERSION}${VISOR_PRERELEASE}")
+set(VISOR_VERSION "pktvisor ${PROJECT_VERSION}${VISOR_PRERELEASE}")
+
+# used in CI
+file(WRITE ${CMAKE_BINARY_DIR}/VERSION ${VISOR_VERSION_NUM})
+######
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
