@@ -9,7 +9,7 @@ project(visor VERSION 3.2.0)
 # for main line release, this is empty
 # for development release, this is "-develop"
 # for release candidate, this is "-rc"
-set(VISOR_PRERELEASE "-develop")
+set(VISOR_PRERELEASE "-rc")
 
 # these are computed
 set(VISOR_VERSION_NUM "${PROJECT_VERSION}${VISOR_PRERELEASE}")
