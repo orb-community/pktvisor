@@ -99,6 +99,15 @@ jobs:
       - name: Create Build Environment
         run: cmake -E make_directory ${{github.workspace}}/build
 
+      - name: Get Conan
+        uses: turtlebrowser/get-conan@v1.0
+
+      - name: Conan profile and settings
+        run: |
+          conan profile new --detect default
+          conan config set general.revisions_enabled=1
+          conan profile update settings.compiler.libcxx=libstdc++11 default
+
       - name: Configure CMake to generate VERSION
         shell: bash
         working-directory: ${{github.workspace}}/build
