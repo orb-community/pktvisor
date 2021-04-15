@@ -52,7 +52,7 @@ static const char USAGE[] =
       --syslog              Log to syslog
     Prometheus Options:
       --prometheus          Enable native Prometheus metrics at path /metrics
-      --prom-instance ID    Optionally set the 'instance' tag to ID
+      --prom-instance ID    Optionally set the 'instance' label to ID
     Handler Module Defaults:
       --max-deep-sample N   Never deep sample more than N% of streams (an int between 0 and 100) [default: 100]
       --periods P           Hold this many 60 second time periods of history in memory [default: 5]
