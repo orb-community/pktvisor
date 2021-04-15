@@ -119,12 +119,15 @@ first argument:
 ./pktvisor-x86_64-VERSION.AppImage pktvisor-cli -h
 ```
 
+Note that when running the AppImage version of the agent, you may want to use the `-d` argument to deamonize (run in the
+background), and the `--log-file` or `--syslog` arguments to record logs.
+
 ### Other Platforms
 
 If you are unable to use the Docker container or the Linux binary, then you will have to build your own executable,
 please see the [Build](#build) section below.
 
-If you have a preferred installation method you would like to see support
+If you have a preferred installation method that you would like to see support
 for, [please create an issue](https://github.com/ns1/pktvisor/issues/new).
 
 ## Docs
@@ -175,7 +178,7 @@ or
       --syslog              Log to syslog
     Prometheus Options:
       --prometheus          Enable native Prometheus metrics at path /metrics
-      --prom-instance ID    Optionally set the 'instance' tag to ID
+      --prom-instance ID    Optionally set the 'instance' label to ID
     Handler Module Defaults:
       --max-deep-sample N   Never deep sample more than N% of streams (an int between 0 and 100) [default: 100]
       --periods P           Hold this many 60 second time periods of history in memory [default: 5]
@@ -319,6 +322,8 @@ processed 140 packets
 
 ### Metrics Collection
 
+#### Metrics from the REST API
+
 The metrics are available from the agent in JSON format via the [REST API](#rest-api).
 
 For most use cases, you will want to collect the most recent full 1-minute bucket, once per minute:
@@ -352,11 +357,31 @@ interval = "60"
 
 ```
 
-#### Prometheus
+#### Prometheus Metrics
 
-`pktvisord` will have native Prometheus support in version 3.2.0. Until
-then, [an adapter is available](https://github.com/ns1labs/pktvisor/tree/master/reporting/pktvisor_prometheus) in the
-repository.
+`pktvisord` also has native Prometheus support, which you can enable by passing `--prometheus`. The metrics are
+available for collection at the standard `/metrics` endpoint.
+
+```shell
+$ ./pktvisor-x86_64-VERSION.AppImage -d --prometheus eth0
+$ curl localhost:10853/metrics
+# HELP dns_wire_packets_udp Total DNS wire packets received over UDP (ingress and egress)
+# TYPE dns_wire_packets_udp gauge
+dns_wire_packets_udp{instance="node"} 28
+# HELP dns_rates_total Rate of all DNS wire packets (combined ingress and egress) per second
+# TYPE dns_rates_total summary
+dns_rates_total{instance="node",quantile="0.5"} 0
+dns_rates_total{instance="node",quantile="0.9"} 4
+dns_rates_total{instance="node",quantile="0.95"} 4
+...
+```
+
+You can set the `instance` label by passing `--prom-instance ID`
+
+If you are interested in centralized collection
+using [remote write](https://prometheus.io/docs/operating/integrations/#remote-endpoints-and-storage), including to
+cloud providers, there is a [docker image available](https://hub.docker.com/r/ns1labs/pktvisor-prom-write) to make this
+easy. See [centralized_collection/prometheus](centralized_collection/prometheus) for more.
 
 ### REST API
 
@@ -383,7 +408,10 @@ docker run --rm --net=host -d \
 
 ### Further Documentation
 
-We recognize the value of first class documentation, and this section is being expanded.
+We recognize the value of first class documentation, and we are working on further documentation including expanded and
+updated REST API documentation, internal documentation for developers of input and handler modules (and those who want
+to contribute to pktvisor), and a user manual.
+
 Please [contact us](#contact-us) if you have any questions on installation, use, or development.
 
 ## Contact Us
@@ -391,7 +419,8 @@ Please [contact us](#contact-us) if you have any questions on installation, use,
 We are _very_ interested in hearing about your use cases, feature requests, and other feedback!
 
 * [File an issue](https://github.com/ns1labs/pktvisor/issues/new)
-* Use our [public feature board](https://github.com/ns1labs/pktvisor/projects/1)
+* Use our [public work board](https://github.com/ns1labs/pktvisor/projects/1)
+* Use our [public backlog board](https://github.com/ns1labs/pktvisor/projects/2)
 * Start a [Discussion](https://github.com/ns1labs/pktvisor/discussions)
 * [Join us on Slack](https://join.slack.com/t/ns1labs/shared_invite/zt-p0uzy9zq-ZgD~QkKQ9cWMSiI4DgJSaA)
 * Send mail to [info@pktvisor.dev](mailto:info@pktvisor.dev)
