@@ -5,7 +5,8 @@ the [Grafana Agent](https://github.com/grafana/agent) for collecting and sending
 [remote write](https://prometheus.io/docs/operating/integrations/#remote-endpoints-and-storage), including cloud
 providers.
 
-There is also a sample [Grafana dashboard](grafana-dashboard-prometheus.json).
+There is a sample [Grafana dashboard](grafana-dashboard-prometheus.json), which you can also find online in
+the [Grafana community dashboards](https://grafana.com/grafana/dashboards/14221) with ID 14221.
 
 Example:
 

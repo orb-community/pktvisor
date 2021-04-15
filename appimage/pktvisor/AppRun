@@ -1,5 +1,4 @@
 #!/bin/sh
-set -x
 
 # borrowed from appimage directly
 SELF=$(readlink -f "$0")
