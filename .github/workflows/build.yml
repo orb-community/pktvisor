@@ -198,7 +198,7 @@ jobs:
           IMAGE_NAME: ns1labs/pktvisor-prom-write
         working-directory: ${{github.workspace}}/centralized_collection/prometheus/docker-grafana-agent
         run: |
-          docker build . --file docker/Dockerfile --tag ${{ env.IMAGE_NAME }}:${{ env.VERSION }}
+          docker build . --file Dockerfile --tag ${{ env.IMAGE_NAME }}:${{ env.VERSION }}
           docker push ${{ env.IMAGE_NAME }}:${{ env.VERSION }}
 
       - name: Tag + push docker image with ref tag (cached build) - pktvisor-prom-write
@@ -206,7 +206,7 @@ jobs:
           IMAGE_NAME: ns1labs/pktvisor-prom-write
         working-directory: ${{github.workspace}}/centralized_collection/prometheus/docker-grafana-agent
         run: |
-          docker build . --file docker/Dockerfile --tag ${{ env.IMAGE_NAME }}:${{ env.REF_TAG }}
+          docker build . --file Dockerfile --tag ${{ env.IMAGE_NAME }}:${{ env.REF_TAG }}
           docker push ${{ env.IMAGE_NAME }}:${{ env.REF_TAG }}
 
       - name: Generate AppImage
