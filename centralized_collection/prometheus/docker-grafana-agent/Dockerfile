@@ -1,6 +1,7 @@
+ARG PKTVISOR_TAG=latest
 FROM grafana/agent:latest as agent
 
-FROM ns1labs/pktvisor:develop
+FROM ns1labs/pktvisor:${PKTVISOR_TAG}
 
 COPY --from=agent /bin/agent /usr/local/bin/agent
 
