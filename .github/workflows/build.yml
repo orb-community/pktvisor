@@ -220,6 +220,6 @@ jobs:
       - name: Upload AppImage artifact
         uses: actions/upload-artifact@v2
         with:
-          name: pktvisor-AppImage
+          name: pktvisor-x86_64-${{ env.VERSION }}.AppImage
           path: ${{github.workspace}}/appimage/pktvisor-x86_64-${{ env.VERSION }}.AppImage
 
