@@ -432,7 +432,7 @@ build system requires CMake and the [Conan](https://conan.io/) package manager s
 
 pktvisor adheres to [semantic versioning](https://semver.org/).
 
-pktvisor is developed and tested on Linux and OSX. Windows is not yet officially supported, but the dependencies and
+pktvisor is developed and tested on Linux and OSX. Windows is not yet officially supported, though the dependencies and
 code base do not preclude a Windows build. If you are interested in developing a Windows version,
 please [contact us](#contact-us).
 
@@ -444,7 +444,7 @@ please [contact us](#contact-us).
 
 For the list of packages included by conan, see [conanfile.txt](conanfile.txt)
 
-In addition, debugging integration tests requires:
+In addition, debugging integration tests make use of:
 
 * [jq](https://stedolan.github.io/jq/)
 * [graphtage](https://github.com/trailofbits/graphtage)
@@ -454,14 +454,23 @@ In addition, debugging integration tests requires:
 The general build steps are:
 
 ```
-$ git clone https://github.com/ns1labs/pktvisor.git
-$ cd pktvisor
-$ mkdir build && cd build
-$ conan remote add public-conan https://api.bintray.com/conan/bincrafters/public-conan
-$ conan install --build=missing ..
-$ cmake ..
-$ make all test
-$ bin/pktvisord --help
+# clone the repository
+git clone https://github.com/ns1labs/pktvisor.git
+cd pktvisor
+mkdir build && cd build
+
+# set up conan
+conan profile update settings.compiler.libcxx=libstdc++11 default
+conan config set general.revisions_enabled=1
+
+# configure and handle dependencies 
+cmake -DCMAKE_BUILD_TYPE=Release ..
+
+# build
+make all test
+
+# the binaries will be in the build/bin directory
+bin/pktvisord --help
 ```
 
 As development environments can vary widely, please see
