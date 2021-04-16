@@ -6,5 +6,5 @@ important information.
 
 See the individual READMEs for more information:
 
-* [Packet Capture](pcap/README.md)
+* [Packet Capture](pcap/)
 

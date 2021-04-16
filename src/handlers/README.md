@@ -5,5 +5,5 @@ summarize them, typically using a time window of efficient sketch algorithms and
 
 See the individual READMEs for more information:
 
-* [Network](net/README.md)
-* [DNS](dns/README.md)
+* [Network](net/)
+* [DNS](dns/)
