@@ -11,7 +11,7 @@
 #include <sys/socket.h>
 #include <vector>
 
-namespace vizer::input::pcap {
+namespace visor::input::pcap {
 
 class PcapException : public std::runtime_error
 {

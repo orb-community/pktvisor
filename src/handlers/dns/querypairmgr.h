@@ -8,7 +8,7 @@
 #include <memory>
 #include <unordered_map>
 
-namespace vizer::handler::dns {
+namespace visor::handler::dns {
 
 using hr_clock = std::chrono::high_resolution_clock;
 

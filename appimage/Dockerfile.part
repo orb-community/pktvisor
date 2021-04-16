@@ -1,0 +1,18 @@
+# file is needed for appimagetool when its run with --appimage-extract-and-run
+# binutil is needed for strip
+RUN apt-get update && apt-get install -yqq --no-install-recommends python3-pip binutils file dietlibc-dev gcc musl musl-tools \
+	&& pip3 install --user exodus-bundler --no-warn-script-location \
+	&& /root/.local/bin/exodus --verbose --tarball --output=/tmp/pktvisor.tgz $(which pktvisord) $(which pktvisor-pcap) \
+	&& mkdir pktvisor \
+	&& tar --strip=1 -xf /tmp/pktvisor.tgz -C pktvisor/ \
+	&& strip --verbose --strip-debug pktvisor/data/* \
+	&& cp $(which pktvisor-cli) /pktvisor/bin/pktvisor-cli
+
+# get latest appimagetool
+ADD https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage /bin/appimage-tool
+
+# add entrypoints and desktop things
+COPY appimage/pktvisor /pktvisor
+
+# create appimage without fuse
+RUN chmod +x /bin/appimage-tool /pktvisor/AppRun && appimage-tool --appimage-extract-and-run /pktvisor/

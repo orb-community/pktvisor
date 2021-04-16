@@ -5,8 +5,8 @@ set -e
 export PATH=$PATH:/usr/local/bin/:/usr/local/sbin/
 
 if [ $# -eq 0 ]; then
-  echo "No arguments provided: specify either 'pktvisor-cli','pktvisor-pcap' or 'pktvisord'. Try:"
-  echo "docker run ns1labs/pktvisor pktvisor-cli --help"
+  echo "No arguments provided: specify either 'pktvisor-cli', 'pktvisor-pcap' or 'pktvisord'. Try:"
+  echo "docker run ns1labs/pktvisor pktvisor-cli -h"
   echo "docker run ns1labs/pktvisor pktvisor-pcap --help"
   echo "docker run ns1labs/pktvisor pktvisord --help"
   exit 1

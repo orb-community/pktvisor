@@ -15,13 +15,12 @@
 #include <IPv6Layer.h>
 #pragma GCC diagnostic pop
 #include <arpa/inet.h>
-#include <cpc_union.hpp>
 #include <sstream>
 
-namespace vizer::handler::dns {
+namespace visor::handler::dns {
 
 DnsStreamHandler::DnsStreamHandler(const std::string &name, PcapInputStream *stream, uint periods, int deepSampleRate)
-    : vizer::StreamMetricsHandler<DnsMetricsManager>(name, periods, deepSampleRate)
+    : visor::StreamMetricsHandler<DnsMetricsManager>(name, periods, deepSampleRate)
     , _stream(stream)
 {
     assert(stream);
@@ -31,6 +30,10 @@ void DnsStreamHandler::start()
 {
     if (_running) {
         return;
+    }
+
+    if (config_exists("recorded_stream")) {
+        _metrics->set_recorded_stream();
     }
 
     _pkt_udp_connection = _stream->udp_signal.connect(&DnsStreamHandler::process_udp_packet_cb, this);
@@ -200,7 +203,14 @@ void DnsStreamHandler::tcp_connection_end_cb(const pcpp::ConnectionData &connect
     // remove the connection from the connection manager
     _tcp_connections.erase(iter);
 }
-
+void DnsStreamHandler::window_prometheus(std::stringstream &out)
+{
+    if (_metrics->current_periods() > 1) {
+        _metrics->window_single_prometheus(out, 1);
+    } else {
+        _metrics->window_single_prometheus(out, 0);
+    }
+}
 void DnsStreamHandler::window_json(json &j, uint64_t period, bool merged)
 {
     if (merged) {
@@ -249,10 +259,7 @@ void DnsMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
     _dnsXactFromTimeUs.merge(other._dnsXactFromTimeUs);
     _dnsXactToTimeUs.merge(other._dnsXactToTimeUs);
 
-    datasketches::cpc_union merge_qnameCard;
-    merge_qnameCard.update(_dns_qnameCard);
-    merge_qnameCard.update(other._dns_qnameCard);
-    _dns_qnameCard = merge_qnameCard.get_result();
+    _dns_qnameCard.merge(other._dns_qnameCard);
 
     _dns_topQname2.merge(other._dns_topQname2);
     _dns_topQname3.merge(other._dns_topQname3);
@@ -269,161 +276,59 @@ void DnsMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
 void DnsMetricsBucket::to_json(json &j) const
 {
 
-    const double fractions[4]{0.50, 0.90, 0.95, 0.99};
+    bool live_rates = !read_only() && !recorded_stream();
+    auto [num_events, num_samples, event_rate, event_lock] = event_data_locked(); // thread safe
 
-    auto [num_events, num_samples, event_rate] = event_data(); // thread safe
-    {
-        if (!read_only()) {
-            j["wire_packets"]["rates"]["total"]["live"] = event_rate->rate();
-        }
-        auto [rate_quantile, rate_lock] = event_rate->quantile_get_rlocked();
-        auto quantiles = rate_quantile->get_quantiles(fractions, 4);
-        if (quantiles.size()) {
-            j["wire_packets"]["rates"]["total"]["p50"] = quantiles[0];
-            j["wire_packets"]["rates"]["total"]["p90"] = quantiles[1];
-            j["wire_packets"]["rates"]["total"]["p95"] = quantiles[2];
-            j["wire_packets"]["rates"]["total"]["p99"] = quantiles[3];
-        }
-    }
+    event_rate->to_json(j, live_rates);
+    num_events->to_json(j);
+    num_samples->to_json(j);
 
     std::shared_lock r_lock(_mutex);
 
-    j["wire_packets"]["total"] = num_events;
-    j["wire_packets"]["deep_samples"] = num_samples;
-    j["wire_packets"]["queries"] = _counters.queries;
-    j["wire_packets"]["replies"] = _counters.replies;
-    j["wire_packets"]["tcp"] = _counters.TCP;
-    j["wire_packets"]["udp"] = _counters.UDP;
-    j["wire_packets"]["ipv4"] = _counters.IPv4;
-    j["wire_packets"]["ipv6"] = _counters.IPv6;
-    j["wire_packets"]["nxdomain"] = _counters.NX;
-    j["wire_packets"]["refused"] = _counters.REFUSED;
-    j["wire_packets"]["srvfail"] = _counters.SRVFAIL;
-    j["wire_packets"]["noerror"] = _counters.NOERROR;
+    _counters.queries.to_json(j);
+    _counters.replies.to_json(j);
+    _counters.TCP.to_json(j);
+    _counters.UDP.to_json(j);
+    _counters.IPv4.to_json(j);
+    _counters.IPv6.to_json(j);
+    _counters.NX.to_json(j);
+    _counters.REFUSED.to_json(j);
+    _counters.SRVFAIL.to_json(j);
+    _counters.NOERROR.to_json(j);
 
-    j["cardinality"]["qname"] = lround(_dns_qnameCard.get_estimate());
-    j["xact"]["counts"]["total"] = _counters.xacts_total;
-    j["xact"]["counts"]["timed_out"] = _counters.xacts_timed_out;
+    _dns_qnameCard.to_json(j);
+    _counters.xacts_total.to_json(j);
+    _counters.xacts_timed_out.to_json(j);
 
-    {
-        j["xact"]["in"]["total"] = _counters.xacts_in;
-        j["xact"]["in"]["top_slow"] = nlohmann::json::array();
-        auto items = _dns_slowXactIn.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
-        for (uint64_t i = 0; i < std::min(10UL, items.size()); i++) {
-            j["xact"]["in"]["top_slow"][i]["name"] = items[i].get_item();
-            j["xact"]["in"]["top_slow"][i]["estimate"] = items[i].get_estimate();
+    _counters.xacts_in.to_json(j);
+    _dns_slowXactIn.to_json(j);
+
+    _dnsXactFromTimeUs.to_json(j);
+    _dnsXactToTimeUs.to_json(j);
+
+    _counters.xacts_out.to_json(j);
+    _dns_slowXactOut.to_json(j);
+
+    _dns_topUDPPort.to_json(j, [](const uint16_t &val) { return std::to_string(val); });
+    _dns_topQname2.to_json(j);
+    _dns_topQname3.to_json(j);
+    _dns_topNX.to_json(j);
+    _dns_topREFUSED.to_json(j);
+    _dns_topSRVFAIL.to_json(j);
+    _dns_topRCode.to_json(j, [](const uint16_t &val) {
+        if (RCodeNames.find(val) != RCodeNames.end()) {
+            return RCodeNames[val];
+        } else {
+            return std::to_string(val);
         }
-    }
-
-    auto d_quantiles = _dnsXactFromTimeUs.get_quantiles(fractions, 4);
-    if (d_quantiles.size()) {
-        j["xact"]["out"]["quantiles_us"]["p50"] = d_quantiles[0];
-        j["xact"]["out"]["quantiles_us"]["p90"] = d_quantiles[1];
-        j["xact"]["out"]["quantiles_us"]["p95"] = d_quantiles[2];
-        j["xact"]["out"]["quantiles_us"]["p99"] = d_quantiles[3];
-    }
-
-    d_quantiles = _dnsXactToTimeUs.get_quantiles(fractions, 4);
-    if (d_quantiles.size()) {
-        j["xact"]["in"]["quantiles_us"]["p50"] = d_quantiles[0];
-        j["xact"]["in"]["quantiles_us"]["p90"] = d_quantiles[1];
-        j["xact"]["in"]["quantiles_us"]["p95"] = d_quantiles[2];
-        j["xact"]["in"]["quantiles_us"]["p99"] = d_quantiles[3];
-    }
-
-    {
-        j["xact"]["out"]["total"] = _counters.xacts_out;
-        j["xact"]["out"]["top_slow"] = nlohmann::json::array();
-        auto items = _dns_slowXactOut.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
-        for (uint64_t i = 0; i < std::min(10UL, items.size()); i++) {
-            j["xact"]["out"]["top_slow"][i]["name"] = items[i].get_item();
-            j["xact"]["out"]["top_slow"][i]["estimate"] = items[i].get_estimate();
+    });
+    _dns_topQType.to_json(j, [](const uint16_t &val) {
+        if (QTypeNames.find(val) != QTypeNames.end()) {
+            return QTypeNames[val];
+        } else {
+            return std::to_string(val);
         }
-    }
-
-    {
-        j["top_udp_ports"] = nlohmann::json::array();
-        auto items = _dns_topUDPPort.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
-        for (uint64_t i = 0; i < std::min(10UL, items.size()); i++) {
-            j["top_udp_ports"][i]["name"] = std::to_string(items[i].get_item());
-            j["top_udp_ports"][i]["estimate"] = items[i].get_estimate();
-        }
-    }
-
-    {
-        j["top_qname2"] = nlohmann::json::array();
-        auto items = _dns_topQname2.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
-        for (uint64_t i = 0; i < std::min(10UL, items.size()); i++) {
-            j["top_qname2"][i]["name"] = items[i].get_item();
-            j["top_qname2"][i]["estimate"] = items[i].get_estimate();
-        }
-    }
-
-    {
-        j["top_qname3"] = nlohmann::json::array();
-        auto items = _dns_topQname3.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
-        for (uint64_t i = 0; i < std::min(10UL, items.size()); i++) {
-            j["top_qname3"][i]["name"] = items[i].get_item();
-            j["top_qname3"][i]["estimate"] = items[i].get_estimate();
-        }
-    }
-
-    {
-        j["top_nxdomain"] = nlohmann::json::array();
-        auto items = _dns_topNX.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
-        for (uint64_t i = 0; i < std::min(10UL, items.size()); i++) {
-            j["top_nxdomain"][i]["name"] = items[i].get_item();
-            j["top_nxdomain"][i]["estimate"] = items[i].get_estimate();
-        }
-    }
-
-    {
-        j["top_refused"] = nlohmann::json::array();
-        auto items = _dns_topREFUSED.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
-        for (uint64_t i = 0; i < std::min(10UL, items.size()); i++) {
-            j["top_refused"][i]["name"] = items[i].get_item();
-            j["top_refused"][i]["estimate"] = items[i].get_estimate();
-        }
-    }
-
-    {
-        j["top_srvfail"] = nlohmann::json::array();
-        auto items = _dns_topSRVFAIL.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
-        for (uint64_t i = 0; i < std::min(10UL, items.size()); i++) {
-            j["top_srvfail"][i]["name"] = items[i].get_item();
-            j["top_srvfail"][i]["estimate"] = items[i].get_estimate();
-        }
-    }
-
-    {
-        j["top_rcode"] = nlohmann::json::array();
-        auto items = _dns_topRCode.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
-        for (uint64_t i = 0; i < std::min(10UL, items.size()); i++) {
-            if (RCodeNames.find(items[i].get_item()) != RCodeNames.end()) {
-                j["top_rcode"][i]["name"] = RCodeNames[items[i].get_item()];
-            } else {
-                std::stringstream keyBuf;
-                keyBuf << items[i].get_item();
-                j["top_rcode"][i]["name"] = keyBuf.str();
-            }
-            j["top_rcode"][i]["estimate"] = items[i].get_estimate();
-        }
-    }
-
-    {
-        j["top_qtype"] = nlohmann::json::array();
-        auto items = _dns_topQType.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
-        for (uint64_t i = 0; i < std::min(10UL, items.size()); i++) {
-            if (QTypeNames.find(items[i].get_item()) != QTypeNames.end()) {
-                j["top_qtype"][i]["name"] = QTypeNames[items[i].get_item()];
-            } else {
-                std::stringstream keyBuf;
-                keyBuf << items[i].get_item();
-                j["top_qtype"][i]["name"] = keyBuf.str();
-            }
-            j["top_qtype"][i]["estimate"] = items[i].get_estimate();
-        }
-    }
+    });
 }
 
 // the main bucket analysis
@@ -542,6 +447,61 @@ void DnsMetricsBucket::new_dns_transaction(bool deep, float to90th, float from90
             }
         }
     }
+}
+void DnsMetricsBucket::to_prometheus(std::stringstream &out) const
+{
+    auto [num_events, num_samples, event_rate, event_lock] = event_data_locked(); // thread safe
+
+    event_rate->to_prometheus(out);
+    num_events->to_prometheus(out);
+    num_samples->to_prometheus(out);
+
+    std::shared_lock r_lock(_mutex);
+
+    _counters.queries.to_prometheus(out);
+    _counters.replies.to_prometheus(out);
+    _counters.TCP.to_prometheus(out);
+    _counters.UDP.to_prometheus(out);
+    _counters.IPv4.to_prometheus(out);
+    _counters.IPv6.to_prometheus(out);
+    _counters.NX.to_prometheus(out);
+    _counters.REFUSED.to_prometheus(out);
+    _counters.SRVFAIL.to_prometheus(out);
+    _counters.NOERROR.to_prometheus(out);
+
+    _dns_qnameCard.to_prometheus(out);
+    _counters.xacts_total.to_prometheus(out);
+    _counters.xacts_timed_out.to_prometheus(out);
+
+    _counters.xacts_in.to_prometheus(out);
+    _dns_slowXactIn.to_prometheus(out);
+
+    _dnsXactFromTimeUs.to_prometheus(out);
+    _dnsXactToTimeUs.to_prometheus(out);
+
+    _counters.xacts_out.to_prometheus(out);
+    _dns_slowXactOut.to_prometheus(out);
+
+    _dns_topUDPPort.to_prometheus(out, [](const uint16_t &val) { return std::to_string(val); });
+    _dns_topQname2.to_prometheus(out);
+    _dns_topQname3.to_prometheus(out);
+    _dns_topNX.to_prometheus(out);
+    _dns_topREFUSED.to_prometheus(out);
+    _dns_topSRVFAIL.to_prometheus(out);
+    _dns_topRCode.to_prometheus(out, [](const uint16_t &val) {
+        if (RCodeNames.find(val) != RCodeNames.end()) {
+            return RCodeNames[val];
+        } else {
+            return std::to_string(val);
+        }
+    });
+    _dns_topQType.to_prometheus(out, [](const uint16_t &val) {
+        if (QTypeNames.find(val) != QTypeNames.end()) {
+            return QTypeNames[val];
+        } else {
+            return std::to_string(val);
+        }
+    });
 }
 
 // the general metrics manager entry point (both UDP and TCP)

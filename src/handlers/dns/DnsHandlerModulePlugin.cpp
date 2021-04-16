@@ -8,12 +8,12 @@
 #include <Corrade/PluginManager/AbstractManager.h>
 #include <nlohmann/json.hpp>
 
-CORRADE_PLUGIN_REGISTER(VizerHandlerDns, vizer::handler::dns::DnsHandlerModulePlugin,
-    "dev.vizer.module.handler/1.0")
+CORRADE_PLUGIN_REGISTER(VisorHandlerDns, visor::handler::dns::DnsHandlerModulePlugin,
+    "dev.visor.module.handler/1.0")
 
-namespace vizer::handler::dns {
+namespace visor::handler::dns {
 
-using namespace vizer::input::pcap;
+using namespace visor::input::pcap;
 using json = nlohmann::json;
 
 void DnsHandlerModulePlugin::_setup_routes(HttpServer &svr)

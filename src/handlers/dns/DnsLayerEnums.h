@@ -4,9 +4,9 @@
 /// @file
 
 /**
- * \namespace vizer
+ * \namespace visor
  */
-namespace vizer::handler::dns {
+namespace visor::handler::dns {
 /**
 	 * An enum for all possible DNS record types
 	 */
@@ -16,8 +16,8 @@ enum DnsType {
     /** Name Server record */
     DNS_TYPE_NS,
     /** Obsolete, replaced by MX */
-		DNS_TYPE_MD,
-		/** Obsolete, replaced by MX */
+    DNS_TYPE_MD,
+    /** Obsolete, replaced by MX */
 		DNS_TYPE_MF,
 		/** Canonical name record */
 		DNS_TYPE_CNAME,

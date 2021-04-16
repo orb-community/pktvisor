@@ -7,7 +7,7 @@
 
 #include "HandlerModulePlugin.h"
 
-namespace vizer::handler::net {
+namespace visor::handler::net {
 
 class NetHandlerModulePlugin : public HandlerModulePlugin
 {
@@ -17,7 +17,7 @@ protected:
 
 public:
     explicit NetHandlerModulePlugin(Corrade::PluginManager::AbstractManager &manager, const std::string &plugin)
-        : vizer::HandlerModulePlugin{manager, plugin}
+        : visor::HandlerModulePlugin{manager, plugin}
     {
     }
 

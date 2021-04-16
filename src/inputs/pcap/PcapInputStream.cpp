@@ -15,6 +15,7 @@
 #include <PacketUtils.h>
 #include <PcapFileDevice.h>
 #include <SystemUtils.h>
+#include <Logger.h>
 #pragma GCC diagnostic pop
 #include <Corrade/Utility/Debug.h>
 #include <IpUtils.h>
@@ -27,7 +28,7 @@
 
 using namespace std::chrono;
 
-namespace vizer::input::pcap {
+namespace visor::input::pcap {
 
 // static callbacks for PcapPlusPlus
 static void _tcp_message_ready_cb(int8_t side, const pcpp::TcpStreamData &tcpData, void *cookie)
@@ -54,19 +55,20 @@ static void _packet_arrives_cb(pcpp::RawPacket *rawPacket, [[maybe_unused]] pcpp
     stream->process_raw_packet(rawPacket);
 }
 
-static void _pcap_stats_update([[maybe_unused]] pcpp::IPcapDevice::PcapStats &stats, [[maybe_unused]] void *cookie)
+static void _pcap_stats_update([[maybe_unused]] pcpp::IPcapDevice::PcapStats& stats, [[maybe_unused]] void *cookie)
 {
     // auto stream = static_cast<PcapInputStream *>(cookie);
     // TODO expose this
 }
 
 PcapInputStream::PcapInputStream(const std::string &name)
-    : vizer::InputStream(name)
+    : visor::InputStream(name)
     , _pcapDevice(nullptr)
     , _tcp_reassembly(_tcp_message_ready_cb,
           this,
           _tcp_connection_start_cb,
-          _tcp_connection_end_cb)
+          _tcp_connection_end_cb,
+          {true, 5, 500, 50})
 {
 }
 
@@ -89,6 +91,10 @@ void PcapInputStream::start()
         _running = true;
         _open_pcap(config_get<std::string>("pcap_file"), config_get<std::string>("bpf"));
         return;
+    }
+
+    if (config_exists("debug")) {
+        pcpp::LoggerPP::getInstance().setAllModlesToLogLevel(pcpp::LoggerPP::LogLevel::Debug);
     }
 
     // live capture
@@ -213,20 +219,20 @@ void PcapInputStream::process_raw_packet(pcpp::RawPacket *rawPacket)
     auto IP6layer = packet.getLayerOfType<pcpp::IPv6Layer>();
     if (IP4layer) {
         for (auto &i : _hostIPv4) {
-            if (IP4layer->getDstIpAddress().matchSubnet(i.address, i.mask)) {
+            if (IP4layer->getDstIPv4Address().matchSubnet(i.address, i.mask)) {
                 dir = PacketDirection::toHost;
                 break;
-            } else if (IP4layer->getSrcIpAddress().matchSubnet(i.address, i.mask)) {
+            } else if (IP4layer->getSrcIPv4Address().matchSubnet(i.address, i.mask)) {
                 dir = PacketDirection::fromHost;
                 break;
             }
         }
     } else if (IP6layer) {
         for (auto &i : _hostIPv6) {
-            if (IP6layer->getDstIpAddress().matchSubnet(i.address, i.mask)) {
+            if (IP6layer->getDstIPv6Address().matchSubnet(i.address, i.mask)) {
                 dir = PacketDirection::toHost;
                 break;
-            } else if (IP6layer->getSrcIpAddress().matchSubnet(i.address, i.mask)) {
+            } else if (IP6layer->getSrcIPv6Address().matchSubnet(i.address, i.mask)) {
                 dir = PacketDirection::fromHost;
                 break;
             }
@@ -254,8 +260,9 @@ void PcapInputStream::_open_pcap(const std::string &fileName, const std::string 
     auto reader = pcpp::IFileReaderDevice::getReader(fileName.c_str());
 
     // try to open the file device
-    if (!reader->open())
+    if (!reader->open()) {
         throw PcapException("Cannot open pcap/pcapng file");
+    }
 
     // set BPF filter if set by the user
     if (bpfFilter != "") {
@@ -319,7 +326,14 @@ void PcapInputStream::_open_libpcap_iface(const std::string &bpfFilter)
         NOTE: the packet buffer timeout cannot be used to cause calls that read packets to return within a limited period of time, because, on some platforms, the packet buffer timeout isn't supported, and, on other platforms, the timer doesn't start until at least one packet arrives. This means that the packet buffer timeout should NOT be used, for example, in an interactive application to allow the packet capture loop to ``poll'' for user input periodically, as there's no guarantee that a call reading packets will return after the timeout expires even if no packets have arrived.
         The packet buffer timeout is set with pcap_set_timeout().
      */
-    config.packetBufferTimeoutMs = 100;
+    config.packetBufferTimeoutMs = 10;
+    /*
+     * @param[in] snapshotLength Snapshot length for capturing packets. Default value is 0 which means use the default value.
+     * A snapshot length of 262144 should be big enough for maximum-size Linux loopback packets (65549) and some USB packets
+     * captured with USBPcap (> 131072, < 262144). A snapshot length of 65535 should be sufficient, on most if not all networks,
+     * to capture all the data available from the packet.
+     */
+    config.snapshotLength = 1000;
 
     // try to open device
     if (!_pcapDevice->open(config)) {

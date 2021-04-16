@@ -23,7 +23,7 @@
 #include "afpacket.h"
 #endif
 
-namespace vizer::input::pcap {
+namespace visor::input::pcap {
 
 enum class PcapSource {
     unknown,
@@ -37,7 +37,7 @@ enum class PacketDirection {
     unknown
 };
 
-class PcapInputStream : public vizer::InputStream
+class PcapInputStream : public visor::InputStream
 {
 
 private:
@@ -72,7 +72,7 @@ public:
     PcapInputStream(const std::string &name);
     ~PcapInputStream();
 
-    // vizer::AbstractModule
+    // visor::AbstractModule
     std::string schema_key() const override
     {
         return "pcap";

@@ -7,7 +7,7 @@
 #include "AbstractModule.h"
 #include "StreamHandler.h"
 
-namespace vizer {
+namespace visor {
 
 class InputStream : public AbstractModule
 {

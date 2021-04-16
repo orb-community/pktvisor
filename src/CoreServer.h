@@ -14,7 +14,12 @@
 #include <atomic>
 #include <spdlog/spdlog.h>
 
-namespace vizer {
+namespace visor {
+
+struct PrometheusConfig {
+    std::string path;
+    std::string instance;
+};
 
 class CoreServer
 {
@@ -31,7 +36,7 @@ private:
     HandlerPluginRegistry _handler_registry;
     std::vector<HandlerPluginPtr> _handler_plugins;
 
-    vizer::HttpServer _svr;
+    visor::HttpServer _svr;
 
     std::unique_ptr<InputStreamManager> _input_manager;
     std::unique_ptr<HandlerManager> _handler_manager;
@@ -39,10 +44,10 @@ private:
     std::shared_ptr<spdlog::logger> _logger;
     std::chrono::system_clock::time_point _start_time;
 
-    void _setup_routes();
+    void _setup_routes(const PrometheusConfig &prom_config);
 
 public:
-    CoreServer(bool read_only, std::shared_ptr<spdlog::logger> logger);
+    CoreServer(bool read_only, std::shared_ptr<spdlog::logger> logger, const PrometheusConfig &prom_config);
     ~CoreServer();
 
     void start(const std::string &host, int port);

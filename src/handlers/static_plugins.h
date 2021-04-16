@@ -1,8 +1,8 @@
 
 int import_handler_plugins()
 {
-    CORRADE_PLUGIN_IMPORT(VizerHandlerNet);
-    CORRADE_PLUGIN_IMPORT(VizerHandlerDns);
+    CORRADE_PLUGIN_IMPORT(VisorHandlerNet);
+    CORRADE_PLUGIN_IMPORT(VisorHandlerDns);
     return 0;
 }
 

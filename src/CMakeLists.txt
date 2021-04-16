@@ -1,48 +1,44 @@
 
-message(STATUS "vizer-core")
+message(STATUS "visor-core")
 
 find_package(Corrade REQUIRED PluginManager)
-pkg_check_modules(LIBMMDB REQUIRED libmaxminddb)
 
 set_directory_properties(PROPERTIES CORRADE_USE_PEDANTIC_FLAGS ON)
 
-add_library(vizer-core
+add_library(visor-core
         AbstractPlugin.cpp
         InputModulePlugin.cpp
         HandlerModulePlugin.cpp
         GeoDB.cpp
         CoreServer.cpp
-        )
-add_library(Vizer::Core ALIAS vizer-core)
+        Metrics.cpp Metrics.h)
+add_library(Visor::Core ALIAS visor-core)
 
-target_include_directories(vizer-core
+target_include_directories(visor-core
         PRIVATE
-        ${CMAKE_BINARY_DIR}/src # Vizer::Core config.h
-        PUBLIC
-        ${LIBMMDB_INCLUDE_DIRS}
+        ${CMAKE_BINARY_DIR}/src # Visor::Core config.h
         INTERFACE
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
         )
 
-target_link_libraries(vizer-core
+target_link_libraries(visor-core
         PUBLIC
         datasketches
         rng
         timer
+        maxminddb
         ${CONAN_LIBS_CORRADE}
         ${CONAN_LIBS_SPDLOG}
         ${CONAN_LIBS_FMT}
-        ${LIBMMDB_LDFLAGS}
-        ${LIBMMDB_LIBRARIES}
-        ${VIZER_STATIC_PLUGINS}
+        ${VISOR_STATIC_PLUGINS}
         )
 
-configure_file(vizer_config.h.in vizer_config.h @ONLY)
+configure_file(visor_config.h.in visor_config.h @ONLY)
 
 add_subdirectory(inputs)
 add_subdirectory(handlers)
 
-set(VIZER_STATIC_PLUGINS ${VIZER_STATIC_PLUGINS} PARENT_SCOPE)
+set(VISOR_STATIC_PLUGINS ${VISOR_STATIC_PLUGINS} PARENT_SCOPE)
 
 ## TEST SUITE
 add_executable(unit-tests-vizor-core
@@ -56,9 +52,9 @@ target_include_directories(unit-tests-vizor-core
         PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
         )
 
-target_link_libraries(unit-tests-vizor-core PRIVATE Vizer::Core)
+target_link_libraries(unit-tests-vizor-core PRIVATE Visor::Core)
 
 add_test(NAME unit-tests-vizor-core
-        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/src/tests
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/src
         COMMAND unit-tests-vizor-core
         )

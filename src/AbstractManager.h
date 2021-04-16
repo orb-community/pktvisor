@@ -11,7 +11,7 @@
 #include <string>
 #include <unordered_map>
 
-namespace vizer {
+namespace visor {
 
 /**
  * called from HTTP threads so must be thread safe

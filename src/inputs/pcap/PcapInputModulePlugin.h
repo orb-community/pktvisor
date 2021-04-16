@@ -8,9 +8,9 @@
 #include "InputModulePlugin.h"
 #include "PcapInputStream.h"
 
-namespace vizer::input::pcap {
+namespace visor::input::pcap {
 
-class PcapInputModulePlugin : public vizer::InputModulePlugin
+class PcapInputModulePlugin : public visor::InputModulePlugin
 {
 
 protected:
@@ -22,7 +22,7 @@ protected:
 
 public:
     explicit PcapInputModulePlugin(Corrade::PluginManager::AbstractManager &manager, const std::string &plugin)
-        : vizer::InputModulePlugin{manager, plugin}
+        : visor::InputModulePlugin{manager, plugin}
     {
     }
 

@@ -19,7 +19,7 @@
 
 #include "handlers/static_plugins.h"
 #include "inputs/static_plugins.h"
-#include "vizer_config.h"
+#include "visor_config.h"
 
 #include "GeoDB.h"
 #include "handlers/dns/DnsStreamHandler.h"
@@ -58,7 +58,7 @@ void signal_handler(int signal)
 }
 }
 
-using namespace vizer;
+using namespace visor;
 
 typedef Corrade::PluginManager::Manager<InputModulePlugin> InputPluginRegistry;
 typedef Corrade::PluginManager::Manager<HandlerModulePlugin> HandlerPluginRegistry;
@@ -82,7 +82,7 @@ int main(int argc, char *argv[])
     std::map<std::string, docopt::value> args = docopt::docopt(USAGE,
         {argv + 1, argv + argc},
         true,           // show help if requested
-        VIZER_VERSION); // version string
+        VISOR_VERSION); // version string
 
     auto logger = spdlog::stderr_color_mt("pktvisor");
     if (args["-v"].asBool()) {
@@ -172,6 +172,7 @@ int main(int argc, char *argv[])
         handler::net::NetStreamHandler *net_handler{nullptr};
         {
             auto handler_module = std::make_unique<handler::net::NetStreamHandler>("net", pcap_stream, periods, sample_rate);
+            handler_module->config_set("recorded_stream", true);
             handler_manager->module_add(std::move(handler_module));
             auto [handler, handler_mgr_lock] = handler_manager->module_get_locked("net");
             handler_mgr_lock.unlock();
@@ -180,6 +181,7 @@ int main(int argc, char *argv[])
         handler::dns::DnsStreamHandler *dns_handler{nullptr};
         {
             auto handler_module = std::make_unique<handler::dns::DnsStreamHandler>("dns", pcap_stream, periods, sample_rate);
+            handler_module->config_set("recorded_stream", true);
             handler_manager->module_add(std::move(handler_module));
             auto [handler, handler_mgr_lock] = handler_manager->module_get_locked("dns");
             handler_mgr_lock.unlock();

@@ -2,8 +2,8 @@
 #include <catch2/catch.hpp>
 #include <netinet/in.h>
 
-using namespace vizer;
-using namespace vizer::input::pcap;
+using namespace visor;
+using namespace visor::input::pcap;
 
 TEST_CASE("parseHostSpec", "[utils]")
 {

@@ -3,12 +3,13 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 #include "CoreServer.h"
-#include "vizer_config.h"
+#include "Metrics.h"
+#include "visor_config.h"
 #include <chrono>
 #include <spdlog/stopwatch.h>
 #include <vector>
 
-vizer::CoreServer::CoreServer(bool read_only, std::shared_ptr<spdlog::logger> logger)
+visor::CoreServer::CoreServer(bool read_only, std::shared_ptr<spdlog::logger> logger, const PrometheusConfig &prom_config)
     : _svr(read_only)
     , _logger(logger)
     , _start_time(std::chrono::system_clock::now())
@@ -36,9 +37,12 @@ vizer::CoreServer::CoreServer(bool read_only, std::shared_ptr<spdlog::logger> lo
         _handler_plugins.emplace_back(std::move(mod));
     }
 
-    _setup_routes();
+    _setup_routes(prom_config);
+    if (!prom_config.instance.empty()) {
+        Metric::add_base_label("instance", prom_config.instance);
+    }
 }
-void vizer::CoreServer::start(const std::string &host, int port)
+void visor::CoreServer::start(const std::string &host, int port)
 {
     if (!_svr.bind_to_port(host.c_str(), port)) {
         throw std::runtime_error("unable to bind host/port");
@@ -48,7 +52,7 @@ void vizer::CoreServer::start(const std::string &host, int port)
         throw std::runtime_error("error during listen");
     }
 }
-void vizer::CoreServer::stop()
+void visor::CoreServer::stop()
 {
     _svr.stop();
 
@@ -68,11 +72,11 @@ void vizer::CoreServer::stop()
         }
     }
 }
-vizer::CoreServer::~CoreServer()
+visor::CoreServer::~CoreServer()
 {
     stop();
 }
-void vizer::CoreServer::_setup_routes()
+void visor::CoreServer::_setup_routes(const PrometheusConfig &prom_config)
 {
 
     _logger->info("Initialize server control plane");
@@ -87,7 +91,7 @@ void vizer::CoreServer::_setup_routes()
     _svr.Get("/api/v1/metrics/app", [&]([[maybe_unused]] const httplib::Request &req, httplib::Response &res) {
         json j;
         try {
-            j["app"]["version"] = VIZER_VERSION_NUM;
+            j["app"]["version"] = VISOR_VERSION_NUM;
             j["app"]["up_time_min"] = float(std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now() - _start_time).count()) / 60;
             res.set_content(j.dump(), "text/json");
         } catch (const std::exception &e) {
@@ -158,4 +162,25 @@ void vizer::CoreServer::_setup_routes()
             res.set_content(e.what(), "text/plain");
         }
     });
+    if (!prom_config.path.empty()) {
+        _logger->info("enabling prometheus metrics on: {}", prom_config.path);
+        _svr.Get(prom_config.path.c_str(), [&]([[maybe_unused]] const httplib::Request &req, httplib::Response &res) {
+            std::stringstream output;
+            try {
+                auto [handler_modules, hm_lock] = _handler_manager->module_get_all_locked();
+                for (auto &[name, mod] : handler_modules) {
+                    auto hmod = dynamic_cast<StreamHandler *>(mod.get());
+                    if (hmod) {
+                        spdlog::stopwatch sw;
+                        hmod->window_prometheus(output);
+                        _logger->debug("{} elapsed time: {}", hmod->name(), sw);
+                    }
+                }
+                res.set_content(output.str(), "text/plain");
+            } catch (const std::exception &e) {
+                res.status = 500;
+                res.set_content(e.what(), "text/plain");
+            }
+        });
+    }
 }

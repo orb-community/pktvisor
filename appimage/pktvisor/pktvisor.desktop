@@ -1,0 +1,7 @@
+[Desktop Entry]
+Name=pktvisor
+Terminal=true
+Exec=AppRun
+Icon=pktvisor
+Type=Application
+Categories=Utility;

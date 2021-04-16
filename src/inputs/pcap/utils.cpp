@@ -9,7 +9,7 @@
 #include <netinet/in.h>
 #include <sstream>
 
-namespace vizer::input::pcap {
+namespace visor::input::pcap {
 
 template <typename Out>
 static void split(const std::string &s, char delim, Out result)

@@ -11,9 +11,9 @@
 /// @file
 
 /**
- * \namespace vizer
+ * \namespace visor
  */
-namespace vizer::handler::dns {
+namespace visor::handler::dns {
 // forward declarations
 class DnsLayer;
 class IDnsResourceData;
@@ -24,7 +24,7 @@ class DnsResourceDataPtr;
 	 * An abstract class for representing all types of DNS records. This class gives access to all available record data such as DNS type, class,
 	 * name, type of record, etc. The DnsLayer holds an instance of (inherited type of) this class for each DNS record in the DNS packet
 	 */
-	class IDnsResource
+class IDnsResource
 	{
 	protected:
 		friend class DnsLayer;

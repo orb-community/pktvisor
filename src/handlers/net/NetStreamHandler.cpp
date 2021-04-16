@@ -17,10 +17,10 @@
 #include <arpa/inet.h>
 #include <cpc_union.hpp>
 
-namespace vizer::handler::net {
+namespace visor::handler::net {
 
 NetStreamHandler::NetStreamHandler(const std::string &name, PcapInputStream *stream, uint periods, uint deepSampleRate)
-    : vizer::StreamMetricsHandler<NetworkMetricsManager>(name, periods, deepSampleRate)
+    : visor::StreamMetricsHandler<NetworkMetricsManager>(name, periods, deepSampleRate)
     , _stream(stream)
 {
     assert(stream);
@@ -30,6 +30,10 @@ void NetStreamHandler::start()
 {
     if (_running) {
         return;
+    }
+
+    if (config_exists("recorded_stream")) {
+        _metrics->set_recorded_stream();
     }
 
     _pkt_connection = _stream->packet_signal.connect(&NetStreamHandler::process_packet_cb, this);
@@ -82,6 +86,14 @@ void NetStreamHandler::info_json(json &j) const
 {
     _common_info_json(j);
 }
+void NetStreamHandler::window_prometheus(std::stringstream &out)
+{
+    if (_metrics->current_periods() > 1) {
+        _metrics->window_single_prometheus(out, 1);
+    } else {
+        _metrics->window_single_prometheus(out, 0);
+    }
+}
 
 void NetworkMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
 {
@@ -103,15 +115,8 @@ void NetworkMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
     _counters.total_in += other._counters.total_in;
     _counters.total_out += other._counters.total_out;
 
-    datasketches::cpc_union merge_srcIPCard;
-    merge_srcIPCard.update(_srcIPCard);
-    merge_srcIPCard.update(other._srcIPCard);
-    _srcIPCard = merge_srcIPCard.get_result();
-
-    datasketches::cpc_union merge_dstIPCard;
-    merge_dstIPCard.update(_dstIPCard);
-    merge_dstIPCard.update(other._dstIPCard);
-    _dstIPCard = merge_dstIPCard.get_result();
+    _srcIPCard.merge(other._srcIPCard);
+    _dstIPCard.merge(other._dstIPCard);
 
     _topIPv4.merge(other._topIPv4);
     _topIPv6.merge(other._topIPv6);
@@ -119,106 +124,68 @@ void NetworkMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
     _topASN.merge(other._topASN);
 }
 
-void NetworkMetricsBucket::to_json(json &j) const
+void NetworkMetricsBucket::to_prometheus(std::stringstream &out) const
 {
 
-    const double fractions[4]{0.50, 0.90, 0.95, 0.99};
+    _rate_in.to_prometheus(out);
+    _rate_out.to_prometheus(out);
 
-    // do rates first, which handle their own locking
-    {
-        if (!read_only()) {
-            j["rates"]["pps_in"]["live"] = _rate_in.rate();
-        }
-        auto [rate_quantile, rate_lock] = _rate_in.quantile_get_rlocked();
-        auto quantiles = rate_quantile->get_quantiles(fractions, 4);
-        if (quantiles.size()) {
-            j["rates"]["pps_in"]["p50"] = quantiles[0];
-            j["rates"]["pps_in"]["p90"] = quantiles[1];
-            j["rates"]["pps_in"]["p95"] = quantiles[2];
-            j["rates"]["pps_in"]["p99"] = quantiles[3];
-        }
-    }
+    auto [num_events, num_samples, event_rate, event_lock] = event_data_locked(); // thread safe
 
-    {
-        if (!read_only()) {
-            j["rates"]["pps_out"]["live"] = _rate_out.rate();
-        }
-        auto [rate_quantile, rate_lock] = _rate_out.quantile_get_rlocked();
-        auto quantiles = rate_quantile->get_quantiles(fractions, 4);
-        if (quantiles.size()) {
-            j["rates"]["pps_out"]["p50"] = quantiles[0];
-            j["rates"]["pps_out"]["p90"] = quantiles[1];
-            j["rates"]["pps_out"]["p95"] = quantiles[2];
-            j["rates"]["pps_out"]["p99"] = quantiles[3];
-        }
-    }
-
-    auto [num_events, num_samples, event_rate] = event_data(); // thread safe
-
-    {
-        if (!read_only()) {
-            j["rates"]["pps_total"]["live"] = event_rate->rate();
-        }
-        auto [rate_quantile, rate_lock] = event_rate->quantile_get_rlocked();
-        auto quantiles = rate_quantile->get_quantiles(fractions, 4);
-        if (quantiles.size()) {
-            j["rates"]["pps_total"]["p50"] = quantiles[0];
-            j["rates"]["pps_total"]["p90"] = quantiles[1];
-            j["rates"]["pps_total"]["p95"] = quantiles[2];
-            j["rates"]["pps_total"]["p99"] = quantiles[3];
-        }
-    }
+    event_rate->to_prometheus(out);
+    num_events->to_prometheus(out);
+    num_samples->to_prometheus(out);
 
     std::shared_lock r_lock(_mutex);
 
-    j["total"] = num_events;
-    j["deep_samples"] = num_samples;
-    j["udp"] = _counters.UDP;
-    j["tcp"] = _counters.TCP;
-    j["other_l4"] = _counters.OtherL4;
-    j["ipv4"] = _counters.IPv4;
-    j["ipv6"] = _counters.IPv6;
-    j["in"] = _counters.total_in;
-    j["out"] = _counters.total_out;
+    _counters.UDP.to_prometheus(out);
+    _counters.TCP.to_prometheus(out);
+    _counters.OtherL4.to_prometheus(out);
+    _counters.IPv4.to_prometheus(out);
+    _counters.IPv6.to_prometheus(out);
+    _counters.total_in.to_prometheus(out);
+    _counters.total_out.to_prometheus(out);
 
-    j["cardinality"]["src_ips_in"] = lround(_srcIPCard.get_estimate());
-    j["cardinality"]["dst_ips_out"] = lround(_dstIPCard.get_estimate());
+    _srcIPCard.to_prometheus(out);
+    _dstIPCard.to_prometheus(out);
 
-    {
-        j["top_ipv4"] = nlohmann::json::array();
-        auto items = _topIPv4.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
-        for (uint64_t i = 0; i < std::min(10UL, items.size()); i++) {
-            j["top_ipv4"][i]["name"] = pcpp::IPv4Address(items[i].get_item()).toString();
-            j["top_ipv4"][i]["estimate"] = items[i].get_estimate();
-        }
-    }
+    _topIPv4.to_prometheus(out, [](const uint32_t &val) { return pcpp::IPv4Address(val).toString(); });
+    _topIPv6.to_prometheus(out);
+    _topGeoLoc.to_prometheus(out);
+    _topASN.to_prometheus(out);
+}
 
-    {
-        j["top_ipv6"] = nlohmann::json::array();
-        auto items = _topIPv6.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
-        for (uint64_t i = 0; i < std::min(10UL, items.size()); i++) {
-            j["top_ipv6"][i]["name"] = items[i].get_item();
-            j["top_ipv6"][i]["estimate"] = items[i].get_estimate();
-        }
-    }
+void NetworkMetricsBucket::to_json(json &j) const
+{
 
-    {
-        j["top_geoLoc"] = nlohmann::json::array();
-        auto items = _topGeoLoc.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
-        for (uint64_t i = 0; i < std::min(10UL, items.size()); i++) {
-            j["top_geoLoc"][i]["name"] = items[i].get_item();
-            j["top_geoLoc"][i]["estimate"] = items[i].get_estimate();
-        }
-    }
+    // do rates first, which handle their own locking
+    bool live_rates = !read_only() && !recorded_stream();
+    _rate_in.to_json(j, live_rates);
+    _rate_out.to_json(j, live_rates);
 
-    {
-        j["top_ASN"] = nlohmann::json::array();
-        auto items = _topASN.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
-        for (uint64_t i = 0; i < std::min(10UL, items.size()); i++) {
-            j["top_ASN"][i]["name"] = items[i].get_item();
-            j["top_ASN"][i]["estimate"] = items[i].get_estimate();
-        }
-    }
+    auto [num_events, num_samples, event_rate, event_lock] = event_data_locked(); // thread safe
+
+    event_rate->to_json(j, live_rates);
+    num_events->to_json(j);
+    num_samples->to_json(j);
+
+    std::shared_lock r_lock(_mutex);
+
+    _counters.UDP.to_json(j);
+    _counters.TCP.to_json(j);
+    _counters.OtherL4.to_json(j);
+    _counters.IPv4.to_json(j);
+    _counters.IPv6.to_json(j);
+    _counters.total_in.to_json(j);
+    _counters.total_out.to_json(j);
+
+    _srcIPCard.to_json(j);
+    _dstIPCard.to_json(j);
+
+    _topIPv4.to_json(j, [](const uint32_t &val) { return pcpp::IPv4Address(val).toString(); });
+    _topIPv6.to_json(j);
+    _topGeoLoc.to_json(j);
+    _topASN.to_json(j);
 }
 
 // the main bucket analysis
@@ -274,10 +241,10 @@ void NetworkMetricsBucket::process_packet(bool deep, pcpp::Packet &payload, Pack
     auto IP6layer = payload.getLayerOfType<pcpp::IPv6Layer>();
     if (IP4layer) {
         if (dir == PacketDirection::toHost) {
-            _srcIPCard.update(IP4layer->getSrcIpAddress().toInt());
-            _topIPv4.update(IP4layer->getSrcIpAddress().toInt());
+            _srcIPCard.update(IP4layer->getSrcIPv4Address().toInt());
+            _topIPv4.update(IP4layer->getSrcIPv4Address().toInt());
             if (geo::enabled()) {
-                if (IPv4tosockaddr(IP4layer->getSrcIpAddress(), &sa4)) {
+                if (IPv4tosockaddr(IP4layer->getSrcIPv4Address(), &sa4)) {
                     if (geo::GeoIP().enabled()) {
                         _topGeoLoc.update(geo::GeoIP().getGeoLocString(reinterpret_cast<struct sockaddr *>(&sa4)));
                     }
@@ -287,10 +254,10 @@ void NetworkMetricsBucket::process_packet(bool deep, pcpp::Packet &payload, Pack
                 }
             }
         } else if (dir == PacketDirection::fromHost) {
-            _dstIPCard.update(IP4layer->getDstIpAddress().toInt());
-            _topIPv4.update(IP4layer->getDstIpAddress().toInt());
+            _dstIPCard.update(IP4layer->getDstIPv4Address().toInt());
+            _topIPv4.update(IP4layer->getDstIPv4Address().toInt());
             if (geo::enabled()) {
-                if (IPv4tosockaddr(IP4layer->getDstIpAddress(), &sa4)) {
+                if (IPv4tosockaddr(IP4layer->getDstIPv4Address(), &sa4)) {
                     if (geo::GeoIP().enabled()) {
                         _topGeoLoc.update(geo::GeoIP().getGeoLocString(reinterpret_cast<struct sockaddr *>(&sa4)));
                     }
@@ -302,10 +269,10 @@ void NetworkMetricsBucket::process_packet(bool deep, pcpp::Packet &payload, Pack
         }
     } else if (IP6layer) {
         if (dir == PacketDirection::toHost) {
-            _srcIPCard.update(reinterpret_cast<const void *>(IP6layer->getSrcIpAddress().toBytes()), 16);
-            _topIPv6.update(IP6layer->getSrcIpAddress().toString());
+            _srcIPCard.update(reinterpret_cast<const void *>(IP6layer->getSrcIPv6Address().toBytes()), 16);
+            _topIPv6.update(IP6layer->getSrcIPv6Address().toString());
             if (geo::enabled()) {
-                if (IPv6tosockaddr(IP6layer->getSrcIpAddress(), &sa6)) {
+                if (IPv6tosockaddr(IP6layer->getSrcIPv6Address(), &sa6)) {
                     if (geo::GeoIP().enabled()) {
                         _topGeoLoc.update(geo::GeoIP().getGeoLocString(reinterpret_cast<struct sockaddr *>(&sa6)));
                     }
@@ -315,10 +282,10 @@ void NetworkMetricsBucket::process_packet(bool deep, pcpp::Packet &payload, Pack
                 }
             }
         } else if (dir == PacketDirection::fromHost) {
-            _dstIPCard.update(reinterpret_cast<const void *>(IP6layer->getDstIpAddress().toBytes()), 16);
-            _topIPv6.update(IP6layer->getDstIpAddress().toString());
+            _dstIPCard.update(reinterpret_cast<const void *>(IP6layer->getDstIPv6Address().toBytes()), 16);
+            _topIPv6.update(IP6layer->getDstIPv6Address().toString());
             if (geo::enabled()) {
-                if (IPv6tosockaddr(IP6layer->getDstIpAddress(), &sa6)) {
+                if (IPv6tosockaddr(IP6layer->getDstIPv6Address(), &sa6)) {
                     if (geo::GeoIP().enabled()) {
                         _topGeoLoc.update(geo::GeoIP().getGeoLocString(reinterpret_cast<struct sockaddr *>(&sa6)));
                     }

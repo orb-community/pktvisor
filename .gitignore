@@ -4,3 +4,5 @@ cmake-build-*/
 docs/html-documentation-generated*
 integration_tests/external
 golang/pkg/client/version.go
+docs/internals/html
+appimage/*.AppImage

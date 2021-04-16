@@ -8,10 +8,12 @@
 #include "CoreServer.h"
 #include "handlers/static_plugins.h"
 #include "inputs/static_plugins.h"
-#include "vizer_config.h"
+#include "visor_config.h"
 #include <docopt/docopt.h>
 #include <resolv.h>
+#include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
+#include <spdlog/sinks/syslog_sink.h>
 #include <spdlog/spdlog.h>
 
 #include "GeoDB.h"
@@ -31,7 +33,6 @@ static const char USAGE[] =
 
     IFACE, if specified, is either a network interface or an IP address (4 or 6). If this is specified,
     a "pcap" input stream will be automatically created, with "net" and "dns" handler modules attached.
-    ** Note that this is deprecated; you should instead use --admin-api and create the pcap input stream via API.
 
     Base Options:
       -l HOST               Run webserver on the given host or IP [default: localhost]
@@ -39,16 +40,23 @@ static const char USAGE[] =
       --admin-api           Enable admin REST API giving complete control plane functionality [default: false]
                             When not specified, the exposed API is read-only access to summarized metrics.
                             When specified, write access is enabled for all modules.
+      -d                    Daemonize; fork and continue running in the background [default: false]
       -h --help             Show this screen
       -v                    Verbose log output
       --no-track            Don't send lightweight, anonymous usage metrics.
       --version             Show version
-      --geo-city FILE       GeoLite2 City database to use for IP to Geo mapping (if enabled)
-      --geo-asn FILE        GeoLite2 ASN database to use for IP to ASN mapping (if enabled)
+      --geo-city FILE       GeoLite2 City database to use for IP to Geo mapping
+      --geo-asn FILE        GeoLite2 ASN database to use for IP to ASN mapping
+    Logging Options:
+      --log-file FILE       Log to the given output file name
+      --syslog              Log to syslog
+    Prometheus Options:
+      --prometheus          Enable native Prometheus metrics at path /metrics
+      --prom-instance ID    Optionally set the 'instance' label to ID
     Handler Module Defaults:
       --max-deep-sample N   Never deep sample more than N% of streams (an int between 0 and 100) [default: 100]
       --periods P           Hold this many 60 second time periods of history in memory [default: 5]
-    pcap Input Module Options (deprecated, use admin-api instead):
+    pcap Input Module Options:
       -b BPF                Filter packets using the given BPF string
       -H HOSTSPEC           Specify subnets (comma separated) to consider HOST, in CIDR form. In live capture this /may/ be detected automatically
                             from capture device but /must/ be specified for pcaps. Example: "10.0.1.0/24,10.0.2.1/32,2001:db8::/64"
@@ -63,7 +71,7 @@ void signal_handler(int signal)
 }
 }
 
-using namespace vizer;
+using namespace visor;
 
 void initialize_geo(const docopt::value &city, const docopt::value &asn)
 {
@@ -75,20 +83,110 @@ void initialize_geo(const docopt::value &city, const docopt::value &asn)
     }
 }
 
+// adapted from LPI becomeDaemon()
+int daemonize()
+{
+    switch (fork()) {
+    case -1:
+        return -1;
+    case 0:
+        // Child falls through...
+        break;
+    default:
+        // while parent terminates
+        _exit(EXIT_SUCCESS);
+    }
+
+    // Become leader of new session
+    if (setsid() == -1) {
+        return -1;
+    }
+
+    // Ensure we are not session leader
+    switch (auto pid = fork()) {
+    case -1:
+        return -1;
+    case 0:
+        break;
+    default:
+        std::cerr << "pktvisord running at PID " << pid << std::endl;
+        _exit(EXIT_SUCCESS);
+    }
+
+    // Clear file mode creation mask
+    umask(0);
+
+    // Change to root directory
+    chdir("/");
+    int maxfd, fd;
+    maxfd = sysconf(_SC_OPEN_MAX);
+    // Limit is indeterminate...
+    if (maxfd == -1) {
+        maxfd = 8192; // so take a guess
+    }
+
+    for (fd = 0; fd < maxfd; fd++) {
+        close(fd);
+    }
+
+    // Reopen standard fd's to /dev/null
+    close(STDIN_FILENO);
+
+    fd = open("/dev/null", O_RDWR);
+
+    if (fd != STDIN_FILENO) {
+        return -1;
+    }
+    if (dup2(STDIN_FILENO, STDOUT_FILENO) != STDOUT_FILENO) {
+        return -1;
+    }
+    if (dup2(STDIN_FILENO, STDERR_FILENO) != STDERR_FILENO) {
+        return -1;
+    }
+
+    return 0;
+}
+
 int main(int argc, char *argv[])
 {
 
     std::map<std::string, docopt::value> args = docopt::docopt(USAGE,
         {argv + 1, argv + argc},
         true,           // show help if requested
-        VIZER_VERSION); // version string
+        VISOR_VERSION); // version string
 
-    auto logger = spdlog::stdout_color_mt("pktvisor");
+    if (args["-d"].asBool()) {
+        if (daemonize()) {
+            std::cerr << "failed to daemonize" << std::endl;
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    std::shared_ptr<spdlog::logger> logger;
+    if (args["--log-file"]) {
+        try {
+            logger = spdlog::basic_logger_mt("pktvisor", args["--log-file"].asString());
+        } catch (const spdlog::spdlog_ex &ex) {
+            std::cerr << "Log init failed: " << ex.what() << std::endl;
+            exit(EXIT_FAILURE);
+        }
+    } else if (args["--syslog"].asBool()) {
+        logger = spdlog::syslog_logger_mt("pktvisor", "pktvisord", LOG_PID);
+    } else {
+        logger = spdlog::stdout_color_mt("pktvisor");
+    }
     if (args["-v"].asBool()) {
         logger->set_level(spdlog::level::debug);
     }
 
-    CoreServer svr(!args["--admin-api"].asBool(), logger);
+    PrometheusConfig prom_config;
+    if (args["--prometheus"].asBool()) {
+        prom_config.path = "/metrics";
+        if (args["--prom-instance"]) {
+            prom_config.instance = args["--prom-instance"].asString();
+        }
+    }
+    CoreServer svr(!args["--admin-api"].asBool(), logger, prom_config);
     svr.set_http_logger([&logger](const auto &req, const auto &res) {
         logger->info("REQUEST: {} {} {}", req.method, req.path, res.status);
         if (res.status == 500) {
@@ -120,7 +218,7 @@ int main(int argc, char *argv[])
     std::shared_ptr<timer::interval_handle> timer_handle;
     auto usage_metrics = [&logger] {
         u_char buf[1024];
-        std::string version_str{VIZER_VERSION_NUM};
+        std::string version_str{VISOR_VERSION_NUM};
         std::reverse(version_str.begin(), version_str.end());
         std::string target = version_str + ".pktvisord.metrics.pktvisor.dev.";
         logger->info("sending anonymous usage metrics (once/day, use --no-track to disable): {}", target);
@@ -142,7 +240,7 @@ int main(int argc, char *argv[])
         initialize_geo(args["--geo-city"], args["--geo-asn"]);
     } catch (const std::exception &e) {
         logger->error("Fatal error: {}", e.what());
-        exit(-1);
+        exit(EXIT_FAILURE);
     }
 
     if (args["IFACE"]) {
@@ -186,21 +284,21 @@ int main(int argc, char *argv[])
 
         } catch (const std::exception &e) {
             logger->error(e.what());
-            exit(-1);
+            exit(EXIT_FAILURE);
         }
     } else if (!args["--admin-api"].asBool()) {
         // if they didn't specify pcap target, or config file, or admin api then there is nothing to do
         logger->error("Nothing to do: specify --admin-api or IFACE.");
         std::cerr << USAGE << std::endl;
-        exit(-1);
+        exit(EXIT_FAILURE);
     }
 
     try {
         svr.start(host.c_str(), port);
     } catch (const std::exception &e) {
         logger->error(e.what());
-        exit(-1);
+        exit(EXIT_FAILURE);
     }
 
-    return 0;
+    exit(EXIT_SUCCESS);
 }

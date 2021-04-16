@@ -1,20 +1,12 @@
 FROM debian:bullseye-slim AS cppbuild
 
-ENV BUILD_DEPS "g++ cmake make git libpcap-dev pkgconf libmaxminddb-dev jq python3-pip python3-setuptools"
+ENV BUILD_DEPS "g++ cmake make git pkgconf jq python3-pip python3-setuptools ca-certificates"
 
 RUN \
     apt-get update && \
-    apt-get install --yes --no-install-recommends ${BUILD_DEPS} && \
+    apt-get upgrade --yes --force-yes && \
+    apt-get install --yes --force-yes --no-install-recommends ${BUILD_DEPS} && \
     pip3 install conan
-
-RUN \
-    mkdir /local && \
-    cd /tmp && \
-    git clone https://github.com/ns1/PcapPlusPlus.git && \
-    cd /tmp/PcapPlusPlus && \
-    ./configure-linux.sh --install-dir /local && \
-    make libs -j 4 && \
-    make install
 
 COPY . /pktvisor-src/
 
@@ -22,23 +14,26 @@ WORKDIR /tmp/build
 RUN \
     conan profile new --detect default && \
     conan profile update settings.compiler.libcxx=libstdc++11 default && \
-    conan install /pktvisor-src
+    conan config set general.revisions_enabled=1
+
 RUN \
-    PKG_CONFIG_PATH=/local/lib/pkgconfig cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo /pktvisor-src && \
+    PKG_CONFIG_PATH=/local/lib/pkgconfig cmake -DCMAKE_BUILD_TYPE=Release /pktvisor-src && \
     make all test -j 4
 
 FROM golang:latest AS gobuild
 COPY golang/ /src/
 WORKDIR /src/
+COPY --from=cppbuild /pktvisor-src/golang/pkg/client/version.go /src/pkg/client/version.go
 RUN go build -o pktvisor-cli cmd/pktvisor-cli/main.go
 
 FROM debian:bullseye-slim AS runtime
 
-ENV RUNTIME_DEPS "curl libpcap0.8 libmaxminddb0"
+ENV RUNTIME_DEPS "curl ca-certificates"
 
 RUN \
     apt-get update && \
-    apt-get install --yes --no-install-recommends ${RUNTIME_DEPS} && \
+    apt-get upgrade --yes --force-yes && \
+    apt-get install --yes --force-yes --no-install-recommends ${RUNTIME_DEPS} && \
     rm -rf /var/lib/apt
 
 COPY --from=cppbuild /tmp/build/bin/pktvisord /usr/local/sbin/pktvisord
