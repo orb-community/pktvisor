@@ -81,7 +81,7 @@ docker run --rm --net=host -d ns1labs/pktvisor pktvisord any
 
 After the agent is running, you can observe results locally with the included command line UI. This command will run the
 UI (`pktvisor-cli`) in the foreground, and exit when Ctrl-C is pressed. It connects to the running agent locally using
-the built in [REST API](https://app.swaggerhub.com/apis/ns1labs/pktvisor/3.1.0#/).
+the built in [REST API](https://app.swaggerhub.com/apis/ns1labs/pktvisor/3.0.0-oas3).
 
 ```
 docker run -it --rm --net=host ns1labs/pktvisor pktvisor-cli
@@ -94,32 +94,26 @@ download [on the Releases page](https://github.com/ns1labs/pktvisor/releases). I
 Linux distributions and does not require installing any other dependencies.
 
 ```shell
-wget https://github.com/ns1labs/pktvisor/releases/download/vVERSION/pktvisor-x86_64-VERSION.AppImage
-chmod +x pktvisor-x86_64-VERSION.AppImage
-./pktvisor-x86_64-VERSION.AppImage pktvisord -h
-```
-
-For example (substituting e.g. "3.2.0" for VERSION):
-
-```shell
-wget https://github.com/ns1labs/pktvisor/releases/download/v3.2.0/pktvisor-x86_64-3.2.0.AppImage
-chmod +x pktvisor-x86_64-3.2.0.AppImage
-./pktvisor-x86_64-3.2.0.AppImage pktvisord -h
+curl https://github.com/ns1labs/pktvisor/releases/download/v3.2.0/pktvisor-x86_64-3.2.0.AppImage --output pktvisor-x86_64.AppImage
+chmod +x pktvisor-x86_64.AppImage
+./pktvisor-x86_64.AppImage pktvisord -h
 ```
 
 The AppImage contains the collector agent (`pktvisord`), the command line UI (`pktvisor-cli`), and the pcap file
 analyzer (`pktvisor-pcap`). You can specify which tool to run by passing it as the first argument:
 
 ```shell
-./pktvisor-x86_64-VERSION.AppImage pktvisor-pcap -h
+./pktvisor-x86_64.AppImage pktvisor-pcap -h
 ```
 
 ```shell
-./pktvisor-x86_64-VERSION.AppImage pktvisor-cli -h
+./pktvisor-x86_64.AppImage pktvisor-cli -h
 ```
 
 Note that when running the AppImage version of the agent, you may want to use the `-d` argument to deamonize (run in the
 background), and either the `--log-file` or `--syslog` argument to record logs.
+
+Also see [Advanced Agent Example](#advanced-agent-example).
 
 ### Other Platforms
 
@@ -144,7 +138,7 @@ docker run --rm ns1labs/pktvisor pktvisord --help
 or
 
 ```
-./pktvisor-x86_64-VERSION.AppImage --help
+./pktvisor-x86_64.AppImage --help
 ```
 
 ```
@@ -199,7 +193,7 @@ docker run --rm ns1labs/pktvisor pktvisor-cli -h
 ```
 
 ```shell
-./pktvisor-x86_64-VERSION.AppImage pktvisor-cli -h
+./pktvisor-x86_64.AppImage pktvisor-cli -h
 ```
 
 ```
@@ -229,7 +223,7 @@ docker run --rm ns1labs/pktvisor pktvisor-pcap --help
 ```
 
 ```shell
-./pktvisor-x86_64-VERSION.AppImage pktvisor-pcap --help
+./pktvisor-x86_64.AppImage pktvisor-pcap --help
 ```
 
 ```
@@ -292,7 +286,7 @@ The AppImage can access local files as any normal binary:
 
 ```
 
-$ ./pktvisor-x86_64-VERSION.AppImage pktvisor-pcap /pcaps/dns_ipv4_udp.pcap | jq .
+$ ./pktvisor-x86_64.AppImage pktvisor-pcap /pcaps/dns_ipv4_udp.pcap | jq .
 
 [2021-03-11 18:45:04.572] [pktvisor] [info] Load input plugin: PcapInputModulePlugin dev.visor.module.input/1.0
 [2021-03-11 18:45:04.573] [pktvisor] [info] Load handler plugin: DnsHandler dev.visor.module.handler/1.0
@@ -362,7 +356,7 @@ interval = "60"
 available for collection at the standard `/metrics` endpoint.
 
 ```shell
-$ ./pktvisor-x86_64-VERSION.AppImage -d --prometheus eth0
+$ ./pktvisor-x86_64.AppImage -d --prometheus eth0
 $ curl localhost:10853/metrics
 # HELP dns_wire_packets_udp Total DNS wire packets received over UDP (ingress and egress)
 # TYPE dns_wire_packets_udp gauge
@@ -385,7 +379,7 @@ easy. See [centralized_collection/prometheus](centralized_collection/prometheus)
 ### REST API
 
 REST API documentation, including a description of the metrics that are available, is available
-in [OpenAPI Format](https://app.swaggerhub.com/apis/ns1labs/pktvisor/3.1.0#/)
+in [OpenAPI Format](https://app.swaggerhub.com/apis/ns1labs/pktvisor/3.0.0-oas3)
 
 Please note that the administration control plane API is currently undergoing heavy iteration and so is not yet
 documented. If you have a use case that requires the administration API, please [contact us](#contact-us) to discuss.
@@ -399,6 +393,16 @@ ingress and egress traffic:
 docker run --rm --net=host -d \
     --mount type=bind,source=/opt/geo,target=/geo \
     ns1labs/pktvisor pktvisord \
+    --geo-city /geo/GeoIP2-City.mmdb \
+    --geo-asn /geo/GeoIP2-ISP.mmdb \
+    -H 192.168.0.54/32,127.0.0.1/32 \
+    eth0
+```
+
+The same command with AppImage and logging to syslog:
+
+```
+./pktvisor-x86_64.AppImage pktvisord -d --syslog \     
     --geo-city /geo/GeoIP2-City.mmdb \
     --geo-asn /geo/GeoIP2-ISP.mmdb \
     -H 192.168.0.54/32,127.0.0.1/32 \
