@@ -1,6 +1,4 @@
-# Control Plane
-
-**_Draft_**
+# Module Reflection
 
 pktvisord exposes a control plane over REST API.
 
