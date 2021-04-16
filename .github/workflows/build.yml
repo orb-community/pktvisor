@@ -4,12 +4,10 @@ on:
   workflow_dispatch:
   pull_request:
     branches:
-      - master
       - develop
       - release
   push:
     branches:
-      - master
       - develop
       - release
 
