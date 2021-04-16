@@ -22,7 +22,8 @@ data streams down to lightweight, immediately actionable observability data dire
 the signal from the noise; to separate the needles from the haystacks as close to the source as possible.
 
 It is a resource efficient, side-car style agent built from the ground up to be modular and dynamically controlled in
-real time via API. Its output can be visualized both on-node via command line UI (for a localized, hyper real-time view)
+real time via API. Input and processor modules may be dynamically loaded at runtime. Metric output can be visualized
+both on-node via command line UI (for a localized, hyper real-time view)
 as well as centrally collected into industry standard observability stacks like Prometheus and Grafana.
 
 The [input stream system](src/inputs) is designed to _tap into_ data streams, and currently focuses
@@ -56,7 +57,8 @@ and [DNS](src/handlers/dns) stream processors, and the types of summary informat
 
 ### Docker
 
-One of the easiest way to get started with pktvisor is to use the [public docker image](https://hub.docker.com/r/ns1labs/pktvisor). The image contains the collector
+One of the easiest ways to get started with pktvisor is to use
+the [public docker image](https://hub.docker.com/r/ns1labs/pktvisor). The image contains the collector
 agent (`pktvisord`), the command line UI (`pktvisor-cli`), and the pcap file analyzer (`pktvisor-pcap`). When running
 the container, you specify which tool to run.
 
@@ -91,7 +93,7 @@ docker run -it --rm --net=host ns1labs/pktvisor pktvisor-cli
 
 You may also use the Linux static binary, built with [AppImage](https://appimage.org/), which is available for
 download [on the Releases page](https://github.com/ns1labs/pktvisor/releases). It is designed to work on all modern
-Linux distributions and does not require installing any other dependencies.
+Linux distributions and does not require installation or any other dependencies.
 
 ```shell
 curl https://github.com/ns1labs/pktvisor/releases/download/v3.2.0/pktvisor-x86_64-3.2.0.AppImage --output pktvisor-x86_64.AppImage
@@ -138,7 +140,7 @@ docker run --rm ns1labs/pktvisor pktvisord --help
 or
 
 ```
-./pktvisor-x86_64.AppImage --help
+./pktvisor-x86_64.AppImage pktvisord --help
 ```
 
 ```
@@ -186,7 +188,8 @@ or
 ### Command Line UI Usage
 
 The command line UI (`pktvisor-cli`) connects directly to a pktvisord agent to visualize the real time stream
-summarization, which is by default a sliding 5 minute time window. It can also connect to a remote agent.
+summarization, which is by default a sliding 5 minute time window. It can also connect to an agent running on a remote
+host.
 
 ```
 docker run --rm ns1labs/pktvisor pktvisor-cli -h
@@ -378,11 +381,11 @@ easy. See [centralized_collection/prometheus](centralized_collection/prometheus)
 
 ### REST API
 
-REST API documentation, including a description of the metrics that are available, is available
-in [OpenAPI Format](https://app.swaggerhub.com/apis/ns1labs/pktvisor/3.0.0-oas3)
+REST API documentation is available in [OpenAPI Format](https://app.swaggerhub.com/apis/ns1labs/pktvisor/3.0.0-oas3)
 
-Please note that the administration control plane API is currently undergoing heavy iteration and so is not yet
-documented. If you have a use case that requires the administration API, please [contact us](#contact-us) to discuss.
+Please note that the administration control plane API (`--admin-api`) is currently undergoing heavy iteration and so is
+not yet documented. If you have a use case that requires the administration API, please [contact us](#contact-us) to
+discuss.
 
 ### Advanced Agent Example
 
@@ -469,7 +472,7 @@ conan config set general.revisions_enabled=1
 # configure and handle dependencies 
 cmake -DCMAKE_BUILD_TYPE=Release ..
 
-# build
+# build and run tests
 make all test
 
 # the binaries will be in the build/bin directory
