@@ -96,7 +96,7 @@ download [on the Releases page](https://github.com/ns1labs/pktvisor/releases). I
 Linux distributions and does not require installation or any other dependencies.
 
 ```shell
-curl https://github.com/ns1labs/pktvisor/releases/download/v3.2.0/pktvisor-x86_64-3.2.0.AppImage --output pktvisor-x86_64.AppImage
+curl -L https://github.com/ns1labs/pktvisor/releases/download/v3.2.0/pktvisor-x86_64-3.2.0.AppImage --output pktvisor-x86_64.AppImage
 chmod +x pktvisor-x86_64.AppImage
 ./pktvisor-x86_64.AppImage pktvisord -h
 ```
