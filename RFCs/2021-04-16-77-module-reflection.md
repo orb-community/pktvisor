@@ -1,8 +1,6 @@
 # Module Reflection
 
-pktvisord exposes a control plane over REST API.
-
-## Discovery
+## Summary
 
 pktvisord exposes a method for discovering the available modules, their configurable properties, and their associated
 metrics schema.

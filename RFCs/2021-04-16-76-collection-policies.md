@@ -1,9 +1,10 @@
 ### pktvisor Collection Policies
 
-Collection policies direct pktvisor to use taps to create an instance of an input stream (possibly with a filter), and
-attach handlers to it. Processing takes place, and the data is exposed for sinks to collect. These policies may be given
-directly to pktvisor (via command line or admin API) in standalone mode, or via Orb control plane (in which case they
-are not stored in a file, but rather in the control plane database).
+## Summary
+
+Collection policies direct pktvisor to use Taps (#75) to create an instance of an input stream (possibly with a filter),
+and attach handlers to it. Processing takes place, and the data is exposed for sinks to collect. These policies may be
+given directly to pktvisor via command line or through the Admin API if available.
 
 `collection-policy-anycast.yaml`
 
@@ -63,6 +64,14 @@ visor:
                 - top_udp_ports
 ```
 
+## REST API
+
+CRUD on Collection Policies for a running pktvisord instance is possible if the Admin API is active.
+
+`/api/v1/collection`
+
+`/api/v1/collection/:id:`
+
 ## Standalone Command Line Example
 
 ```shell
@@ -71,5 +80,5 @@ $ pktvisord --config taps.yaml --config collection-policy-anycast.yaml
 
 They may also be combined into a single YAML file (the schemas will merge) and passed in with one `--config` option.
 
-The admin-api (or prometheus output, pktvisor-cli, etc) should then be used to collect the results manually.
+The REST API (or prometheus output, pktvisor-cli, etc) should then be used to collect the results manually.
 
