@@ -359,7 +359,7 @@ interval = "60"
 available for collection at the standard `/metrics` endpoint.
 
 ```shell
-$ ./pktvisor-x86_64.AppImage -d --prometheus eth0
+$ ./pktvisor-x86_64.AppImage pktvisord -d --prometheus eth0
 $ curl localhost:10853/metrics
 # HELP dns_wire_packets_udp Total DNS wire packets received over UDP (ingress and egress)
 # TYPE dns_wire_packets_udp gauge
@@ -405,7 +405,7 @@ docker run --rm --net=host -d \
 The same command with AppImage and logging to syslog:
 
 ```
-./pktvisor-x86_64.AppImage pktvisord -d --syslog \     
+./pktvisor-x86_64.AppImage pktvisord -d --syslog \
     --geo-city /geo/GeoIP2-City.mmdb \
     --geo-asn /geo/GeoIP2-ISP.mmdb \
     -H 192.168.0.54/32,127.0.0.1/32 \
