@@ -184,3 +184,7 @@ void visor::CoreServer::_setup_routes(const PrometheusConfig &prom_config)
         });
     }
 }
+void visor::CoreServer::configure_from_file(const std::string &filename)
+{
+    YAML::Node config = YAML::LoadFile(filename);
+}

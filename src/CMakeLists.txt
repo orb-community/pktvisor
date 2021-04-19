@@ -30,6 +30,7 @@ target_link_libraries(visor-core
         ${CONAN_LIBS_CORRADE}
         ${CONAN_LIBS_SPDLOG}
         ${CONAN_LIBS_FMT}
+        ${CONAN_LIBS_YAML-CPP}
         ${VISOR_STATIC_PLUGINS}
         )
 

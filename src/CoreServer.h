@@ -13,6 +13,7 @@
 #include <Corrade/PluginManager/PluginMetadata.h>
 #include <atomic>
 #include <spdlog/spdlog.h>
+#include <yaml-cpp/yaml.h>
 
 namespace visor {
 
@@ -52,6 +53,8 @@ public:
 
     void start(const std::string &host, int port);
     void stop();
+
+    void configure_from_file(const std::string &filename);
 
     void set_http_logger(httplib::Logger logger)
     {

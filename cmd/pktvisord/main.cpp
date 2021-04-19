@@ -15,6 +15,7 @@
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/sinks/syslog_sink.h>
 #include <spdlog/spdlog.h>
+#include <yaml-cpp/yaml.h>
 
 #include "GeoDB.h"
 #include "handlers/dns/DnsStreamHandler.h"
@@ -47,6 +48,8 @@ static const char USAGE[] =
       --version             Show version
       --geo-city FILE       GeoLite2 City database to use for IP to Geo mapping
       --geo-asn FILE        GeoLite2 ASN database to use for IP to ASN mapping
+    Configuration:
+      --config FILE         Use specified YAML configuration to configure options, Taps, and Collection Policies
     Logging Options:
       --log-file FILE       Log to the given output file name
       --syslog              Log to syslog
@@ -193,6 +196,28 @@ int main(int argc, char *argv[])
             logger->error(res.body);
         }
     });
+
+    if (args["--config"]) {
+        logger->info("using config file: {}", args["--config"].asString());
+        YAML::Node config_file;
+        // look for local options
+        try {
+            config_file = YAML::LoadFile(args["--config"].asString());
+            if (!config_file.IsMap() || !config_file["visor"]) {
+                throw std::runtime_error("invalid schema");
+            }
+        } catch (std::runtime_error &e) {
+            logger->error("configuration error: {}", e.what());
+            exit(EXIT_FAILURE);
+        }
+
+        if (config_file.IsMap() && config_file["visor"] && config_file["visor"]["config"]) {
+            std::cerr << config_file << std::endl;
+        }
+
+        // then pass to CoreServer
+        svr.configure_from_file(args["--config"].asString());
+    }
 
     shutdown_handler = [&]([[maybe_unused]] int signal) {
         logger->info("Shutting down");

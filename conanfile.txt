@@ -7,6 +7,7 @@ cpp-httplib/0.8.0
 corrade/2020.06
 pcapplusplus/ns1-dev
 json-schema-validator/2.1.0
+yaml-cpp/0.6.3
 
 [build_requires]
 benchmark/1.5.2
