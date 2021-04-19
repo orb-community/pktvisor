@@ -71,13 +71,15 @@ docker pull ns1labs/pktvisor
 2. *Start the collector agent*
 
 This will start in the background and stay running. Note that the final two arguments select `pktvisord` agent and
-the `any` ethernet interface for packet capture. You may substitute `any` for a known interface on your device, such
-as `eth0`. _Note that this step requires docker host networking_ to observe traffic outside the container, and
+the `eth0` ethernet interface for packet capture. You may substitute `eth0` for any known interface on your device.
+_Note that this step requires docker host networking_ to observe traffic outside the container, and
 that [currently only Linux supports host networking](https://docs.docker.com/network/host/):
 
 ```
-docker run --rm --net=host -d ns1labs/pktvisor pktvisord any
+docker run --net=host -d ns1labs/pktvisor pktvisord eth0
 ```
+
+If the container does not stay running, check the `docker logs` output.
 
 3. *Run the command line UI*
 
@@ -101,18 +103,22 @@ chmod +x pktvisor-x86_64.AppImage
 ./pktvisor-x86_64.AppImage pktvisord -h
 ```
 
+For example, to run the agent on ethernet interface `eth0`:
+
+```
+./pktvisor-x86_64.AppImage pktvisord eth0
+```
+
 The AppImage contains the collector agent (`pktvisord`), the command line UI (`pktvisor-cli`), and the pcap file
 analyzer (`pktvisor-pcap`). You can specify which tool to run by passing it as the first argument:
 
-```shell
-./pktvisor-x86_64.AppImage pktvisor-pcap -h
-```
+For example, to visualize the running agent started above with the pktvisor command line UI:
 
 ```shell
-./pktvisor-x86_64.AppImage pktvisor-cli -h
+./pktvisor-x86_64.AppImage pktvisor-cli
 ```
 
-Note that when running the AppImage version of the agent, you may want to use the `-d` argument to deamonize (run in the
+Note that when running the AppImage version of the agent, you may want to use the `-d` argument to daemonize (run in the
 background), and either the `--log-file` or `--syslog` argument to record logs.
 
 Also see [Advanced Agent Example](#advanced-agent-example).
