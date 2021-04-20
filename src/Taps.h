@@ -37,7 +37,7 @@ public:
     {
     }
 
-    void load(const YAML::Node &tap_yaml);
+    void load(const YAML::Node &tap_yaml, bool strict);
 };
 
 }

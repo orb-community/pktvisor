@@ -217,6 +217,6 @@ void visor::CoreServer::configure_from_file(const std::string &filename)
 
     // taps
     if (config_file["visor"]["taps"] && config_file["visor"]["taps"].IsMap()) {
-        _tap_manager->load(config_file["visor"]["taps"]);
+        _tap_manager->load(config_file["visor"]["taps"], true);
     }
 }

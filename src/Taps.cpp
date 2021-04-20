@@ -4,9 +4,10 @@
 
 #include "Taps.h"
 #include <algorithm>
+#include <fmt/core.h>
 #include <spdlog/spdlog.h>
 
-void visor::TapManager::load(const YAML::Node &tap_yaml)
+void visor::TapManager::load(const YAML::Node &tap_yaml, bool strict)
 {
     assert(tap_yaml.IsMap());
 
@@ -26,8 +27,12 @@ void visor::TapManager::load(const YAML::Node &tap_yaml)
         }
         auto tap_type = it->second["type"].as<std::string>();
         if (std::find(input_plugins.begin(), input_plugins.end(), tap_type) == input_plugins.end()) {
-            spdlog::get("pktvisor")->warn("Tap '{}' requires input stream type '{}' which is not available; skipping", tap_name, tap_type);
-            continue;
+            if (strict) {
+                throw ConfigException(fmt::format("Tap '{}' requires input stream type '{}' which is not available", tap_name, tap_type));
+            } else {
+                spdlog::get("pktvisor")->warn("Tap '{}' requires input stream type '{}' which is not available; skipping", tap_name, tap_type);
+                continue;
+            }
         }
     }
 }
