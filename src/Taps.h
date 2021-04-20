@@ -20,6 +20,10 @@ public:
         : AbstractModule(name)
     {
     }
+
+    void info_json(json &j) const override {
+        AbstractModule::_common_info_json(j);
+    }
 };
 
 class TapManager : public AbstractManager<Tap>

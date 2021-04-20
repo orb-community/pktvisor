@@ -199,7 +199,7 @@ int main(int argc, char *argv[])
 
     // local config file
     if (args["--config"]) {
-        logger->info("using config file: {}", args["--config"].asString());
+        logger->info("loading config file: {}", args["--config"].asString());
         YAML::Node config_file;
         // look for local options
         try {

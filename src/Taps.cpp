@@ -34,5 +34,16 @@ void visor::TapManager::load(const YAML::Node &tap_yaml, bool strict)
                 continue;
             }
         }
+
+        auto tap_module = std::make_unique<Tap>(tap_name);
+
+        if (it->second["config"]) {
+            if (!it->second["config"].IsMap()) {
+                throw ConfigException("tap configuration is not a map");
+            }
+            tap_module->config_set_yaml(it->second["config"]);
+        }
+
+        module_add(std::move(tap_module));
     }
 }
