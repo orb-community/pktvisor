@@ -7,6 +7,8 @@
 #include "AbstractPlugin.h"
 #include "HandlerManager.h"
 #include "InputStreamManager.h"
+#include <Corrade/PluginManager/Manager.h>
+#include <Corrade/PluginManager/PluginMetadata.h>
 #include <string>
 
 namespace visor {
@@ -35,8 +37,6 @@ public:
     {
     }
 
-    virtual std::string name() const = 0;
-
     void init_module(InputStreamManager *im,
         HandlerManager *hm,
         HttpServer &svr);
@@ -45,5 +45,7 @@ public:
         HandlerManager *hm);
 };
 
-}
+typedef Corrade::PluginManager::Manager<HandlerModulePlugin> HandlerPluginRegistry;
+typedef Corrade::Containers::Pointer<HandlerModulePlugin> HandlerPluginPtr;
 
+}

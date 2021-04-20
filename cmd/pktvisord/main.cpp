@@ -189,7 +189,7 @@ int main(int argc, char *argv[])
             prom_config.instance = args["--prom-instance"].asString();
         }
     }
-    CoreServer svr(!args["--admin-api"].asBool(), logger, prom_config);
+    CoreServer svr(!args["--admin-api"].asBool(), prom_config);
     svr.set_http_logger([&logger](const auto &req, const auto &res) {
         logger->info("REQUEST: {} {} {}", req.method, req.path, res.status);
         if (res.status == 500) {

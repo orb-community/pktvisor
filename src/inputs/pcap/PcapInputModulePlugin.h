@@ -25,11 +25,6 @@ public:
         : visor::InputModulePlugin{manager, plugin}
     {
     }
-
-    std::string name() const override
-    {
-        return "pcap";
-    }
 };
 
 }

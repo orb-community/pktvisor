@@ -3,11 +3,15 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 #include "Taps.h"
+#include <algorithm>
 #include <spdlog/spdlog.h>
 
 void visor::TapManager::load(const YAML::Node &tap_yaml)
 {
     assert(tap_yaml.IsMap());
+
+    auto input_plugins = _input_plugin_registry->aliasList();
+
     for (YAML::const_iterator it = tap_yaml.begin(); it != tap_yaml.end(); ++it) {
         if (!it->first.IsScalar()) {
             throw ConfigException("expecting tap identifier");
@@ -21,7 +25,7 @@ void visor::TapManager::load(const YAML::Node &tap_yaml)
             throw ConfigException("missing or invalid tap input stream 'type'");
         }
         auto tap_type = it->second["type"].as<std::string>();
-        if (!_input_manager->module_exists(tap_type)) {
+        if (std::find(input_plugins.begin(), input_plugins.end(), tap_type) == input_plugins.end()) {
             spdlog::get("pktvisor")->warn("Tap '{}' requires input stream type '{}' which is not available; skipping", tap_name, tap_type);
             continue;
         }

@@ -10,8 +10,6 @@
 #include "InputModulePlugin.h"
 #include "InputStreamManager.h"
 #include "Taps.h"
-#include <Corrade/PluginManager/Manager.h>
-#include <Corrade/PluginManager/PluginMetadata.h>
 #include <atomic>
 #include <map>
 #include <spdlog/spdlog.h>
@@ -26,10 +24,6 @@ struct PrometheusConfig {
 
 class CoreServer
 {
-    typedef Corrade::PluginManager::Manager<InputModulePlugin> InputPluginRegistry;
-    typedef Corrade::PluginManager::Manager<HandlerModulePlugin> HandlerPluginRegistry;
-    typedef Corrade::Containers::Pointer<InputModulePlugin> InputPluginPtr;
-    typedef Corrade::Containers::Pointer<HandlerModulePlugin> HandlerPluginPtr;
 
     // these hold plugin instances: these are the types of modules available for instantiation
     InputPluginRegistry _input_registry;
@@ -52,7 +46,7 @@ class CoreServer
     void _setup_routes(const PrometheusConfig &prom_config);
 
 public:
-    CoreServer(bool read_only, std::shared_ptr<spdlog::logger> logger, const PrometheusConfig &prom_config);
+    CoreServer(bool read_only, const PrometheusConfig &prom_config);
     ~CoreServer();
 
     void start(const std::string &host, int port);
@@ -76,6 +70,10 @@ public:
     const TapManager *tap_manager() const
     {
         return _tap_manager.get();
+    }
+    const InputPluginRegistry *input_plugin_registry() const
+    {
+        return &_input_registry;
     }
 
     InputStreamManager *input_manager()

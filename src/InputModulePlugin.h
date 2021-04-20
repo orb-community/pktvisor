@@ -6,6 +6,8 @@
 
 #include "AbstractPlugin.h"
 #include "InputStreamManager.h"
+#include <Corrade/PluginManager/Manager.h>
+#include <Corrade/PluginManager/PluginMetadata.h>
 #include <string>
 
 namespace visor {
@@ -34,11 +36,11 @@ public:
     {
     }
 
-    virtual std::string name() const = 0;
-
     void init_module(InputStreamManager *im, HttpServer &svr);
     void init_module(InputStreamManager *im);
 };
 
-}
+typedef Corrade::PluginManager::Manager<InputModulePlugin> InputPluginRegistry;
+typedef Corrade::Containers::Pointer<InputModulePlugin> InputPluginPtr;
 
+}

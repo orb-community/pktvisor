@@ -9,36 +9,52 @@
 #include <spdlog/stopwatch.h>
 #include <vector>
 
-visor::CoreServer::CoreServer(bool read_only, std::shared_ptr<spdlog::logger> logger, const PrometheusConfig &prom_config)
+visor::CoreServer::CoreServer(bool read_only, const PrometheusConfig &prom_config)
     : _svr(read_only)
-    , _logger(logger)
     , _start_time(std::chrono::system_clock::now())
 {
+
+    _logger = spdlog::get("pktvisor");
+    assert(_logger);
 
     // inputs
     _input_manager = std::make_unique<InputStreamManager>();
 
     // initialize input plugins
-    for (auto &s : _input_registry.pluginList()) {
-        InputPluginPtr mod = _input_registry.instantiate(s);
-        _logger->info("Load input stream plugin: {} {}", mod->name(), mod->pluginInterface());
-        mod->init_module(_input_manager.get(), _svr);
-        _input_plugins.emplace_back(std::move(mod));
+    {
+        auto alias_list = _input_registry.aliasList();
+        auto plugin_list = _input_registry.pluginList();
+        std::vector<std::string> by_alias;
+        std::set_difference(alias_list.begin(), alias_list.end(),
+            plugin_list.begin(), plugin_list.end(), std::inserter(by_alias, by_alias.begin()));
+        for (auto &s : by_alias) {
+            InputPluginPtr mod = _input_registry.instantiate(s);
+            _logger->info("Load input stream plugin: {} {}", s, mod->pluginInterface());
+            mod->init_module(_input_manager.get(), _svr);
+            _input_plugins.emplace_back(std::move(mod));
+        }
     }
 
     // handlers
     _handler_manager = std::make_unique<HandlerManager>();
 
     // initialize handler plugins
-    for (auto &s : _handler_registry.pluginList()) {
-        HandlerPluginPtr mod = _handler_registry.instantiate(s);
-        _logger->info("Load stream handler plugin: {} {}", mod->name(), mod->pluginInterface());
-        mod->init_module(_input_manager.get(), _handler_manager.get(), _svr);
-        _handler_plugins.emplace_back(std::move(mod));
+    {
+        auto alias_list = _handler_registry.aliasList();
+        auto plugin_list = _handler_registry.pluginList();
+        std::vector<std::string> by_alias;
+        std::set_difference(alias_list.begin(), alias_list.end(),
+            plugin_list.begin(), plugin_list.end(), std::inserter(by_alias, by_alias.begin()));
+        for (auto &s : by_alias) {
+            HandlerPluginPtr mod = _handler_registry.instantiate(s);
+            _logger->info("Load stream handler plugin: {} {}", s, mod->pluginInterface());
+            mod->init_module(_input_manager.get(), _handler_manager.get(), _svr);
+            _handler_plugins.emplace_back(std::move(mod));
+        }
     }
 
     // taps
-    _tap_manager = std::make_unique<TapManager>(_input_manager.get());
+    _tap_manager = std::make_unique<TapManager>(&_input_registry);
 
     _setup_routes(prom_config);
 

@@ -19,11 +19,6 @@ public:
         : visor::HandlerModulePlugin{manager, plugin}
     {
     }
-
-    std::string name() const override
-    {
-        return "dns";
-    }
 };
 }
 

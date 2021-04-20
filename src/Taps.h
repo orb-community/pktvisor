@@ -7,7 +7,7 @@
 #include "AbstractManager.h"
 #include "AbstractModule.h"
 #include "Configurable.h"
-#include "InputStreamManager.h"
+#include "InputModulePlugin.h"
 #include <yaml-cpp/yaml.h>
 
 namespace visor {
@@ -25,11 +25,11 @@ public:
 class TapManager : public AbstractManager<Tap>
 {
 
-    const InputStreamManager *_input_manager;
+    const InputPluginRegistry *_input_plugin_registry;
 
 public:
-    TapManager(const InputStreamManager *inputManager)
-        : _input_manager(inputManager)
+    TapManager(const InputPluginRegistry *inputManager)
+        : _input_plugin_registry(inputManager)
     {
     }
 
