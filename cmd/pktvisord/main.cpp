@@ -197,26 +197,37 @@ int main(int argc, char *argv[])
         }
     });
 
+    // local config file
     if (args["--config"]) {
         logger->info("using config file: {}", args["--config"].asString());
         YAML::Node config_file;
         // look for local options
         try {
             config_file = YAML::LoadFile(args["--config"].asString());
+
             if (!config_file.IsMap() || !config_file["visor"]) {
                 throw std::runtime_error("invalid schema");
             }
+            if (!config_file["version"] || !config_file["version"].IsScalar() || config_file["version"].as<std::string>() != "1.0") {
+                throw std::runtime_error("missing or unsupported version");
+            }
+
+            if (config_file["visor"]["config"] && config_file["visor"]["config"].IsMap()) {
+                // todo more config items
+                auto config = config_file["visor"]["config"];
+                if (config["verbose"] && config["verbose"].as<bool>()) {
+                    logger->set_level(spdlog::level::debug);
+                }
+            }
+
+            // then pass to CoreServer
+            svr.configure_from_file(args["--config"].asString());
+
         } catch (std::runtime_error &e) {
             logger->error("configuration error: {}", e.what());
             exit(EXIT_FAILURE);
         }
 
-        if (config_file.IsMap() && config_file["visor"] && config_file["visor"]["config"]) {
-            std::cerr << config_file << std::endl;
-        }
-
-        // then pass to CoreServer
-        svr.configure_from_file(args["--config"].asString());
     }
 
     shutdown_handler = [&]([[maybe_unused]] int signal) {

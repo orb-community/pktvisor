@@ -186,5 +186,14 @@ void visor::CoreServer::_setup_routes(const PrometheusConfig &prom_config)
 }
 void visor::CoreServer::configure_from_file(const std::string &filename)
 {
-    YAML::Node config = YAML::LoadFile(filename);
+    YAML::Node config_file = YAML::LoadFile(filename);
+
+    if (!config_file.IsMap() || !config_file["visor"]) {
+        throw std::runtime_error("invalid schema");
+    }
+    if (!config_file["version"] || !config_file["version"].IsScalar() || config_file["version"].as<std::string>() != "1.0") {
+        throw std::runtime_error("missing or unsupported version");
+    }
+
+    // taps
 }
