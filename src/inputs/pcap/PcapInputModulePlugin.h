@@ -28,7 +28,7 @@ public:
 
     std::string name() const override
     {
-        return "PcapInputModulePlugin";
+        return "pcap";
     }
 };
 

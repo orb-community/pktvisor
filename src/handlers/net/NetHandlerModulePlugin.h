@@ -23,7 +23,7 @@ public:
 
     std::string name() const override
     {
-        return "NetHandler";
+        return "net";
     }
 };
 }

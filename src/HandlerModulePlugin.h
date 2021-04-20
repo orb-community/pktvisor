@@ -22,7 +22,7 @@ protected:
 public:
     static std::string pluginInterface()
     {
-        return "dev.visor.module.handler/1.0";
+        return "visor.module.handler/1.0";
     }
 
     static std::vector<std::string> pluginSearchPaths()

@@ -14,14 +14,14 @@ class InputModulePlugin : public AbstractPlugin
 {
 
 protected:
-    visor::InputStreamManager *_input_manager;
+    InputStreamManager *_input_manager;
 
     virtual void _setup_routes(HttpServer &svr) = 0;
 
 public:
     static std::string pluginInterface()
     {
-        return "dev.visor.module.input/1.0";
+        return "visor.module.input/1.0";
     }
 
     static std::vector<std::string> pluginSearchPaths()

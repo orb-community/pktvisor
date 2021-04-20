@@ -21,7 +21,7 @@ visor::CoreServer::CoreServer(bool read_only, std::shared_ptr<spdlog::logger> lo
     // initialize input plugins
     for (auto &s : _input_registry.pluginList()) {
         InputPluginPtr mod = _input_registry.instantiate(s);
-        _logger->info("Load input plugin: {} {}", mod->name(), mod->pluginInterface());
+        _logger->info("Load input stream plugin: {} {}", mod->name(), mod->pluginInterface());
         mod->init_module(_input_manager.get(), _svr);
         _input_plugins.emplace_back(std::move(mod));
     }
@@ -32,15 +32,16 @@ visor::CoreServer::CoreServer(bool read_only, std::shared_ptr<spdlog::logger> lo
     // initialize handler plugins
     for (auto &s : _handler_registry.pluginList()) {
         HandlerPluginPtr mod = _handler_registry.instantiate(s);
-        _logger->info("Load handler plugin: {} {}", mod->name(), mod->pluginInterface());
+        _logger->info("Load stream handler plugin: {} {}", mod->name(), mod->pluginInterface());
         mod->init_module(_input_manager.get(), _handler_manager.get(), _svr);
         _handler_plugins.emplace_back(std::move(mod));
     }
 
     // taps
-    _tap_manager = std::make_unique<TapManager>();
+    _tap_manager = std::make_unique<TapManager>(_input_manager.get());
 
     _setup_routes(prom_config);
+
     if (!prom_config.instance.empty()) {
         Metric::add_base_label("instance", prom_config.instance);
     }
@@ -192,14 +193,14 @@ void visor::CoreServer::configure_from_file(const std::string &filename)
     YAML::Node config_file = YAML::LoadFile(filename);
 
     if (!config_file.IsMap() || !config_file["visor"]) {
-        throw std::runtime_error("invalid schema");
+        throw ConfigException("invalid schema");
     }
     if (!config_file["version"] || !config_file["version"].IsScalar() || config_file["version"].as<std::string>() != "1.0") {
-        throw std::runtime_error("missing or unsupported version");
+        throw ConfigException("missing or unsupported version");
     }
 
     // taps
     if (config_file["visor"]["taps"] && config_file["visor"]["taps"].IsMap()) {
-        auto taps = config_file["visor"]["taps"];
+        _tap_manager->load(config_file["visor"]["taps"]);
     }
 }

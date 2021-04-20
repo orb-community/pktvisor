@@ -22,7 +22,7 @@ public:
 
     std::string name() const override
     {
-        return "DnsHandler";
+        return "dns";
     }
 };
 }

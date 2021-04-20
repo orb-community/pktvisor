@@ -13,6 +13,7 @@
 #include <Corrade/PluginManager/Manager.h>
 #include <Corrade/PluginManager/PluginMetadata.h>
 #include <atomic>
+#include <map>
 #include <spdlog/spdlog.h>
 #include <yaml-cpp/yaml.h>
 
@@ -25,13 +26,12 @@ struct PrometheusConfig {
 
 class CoreServer
 {
-public:
-private:
     typedef Corrade::PluginManager::Manager<InputModulePlugin> InputPluginRegistry;
     typedef Corrade::PluginManager::Manager<HandlerModulePlugin> HandlerPluginRegistry;
     typedef Corrade::Containers::Pointer<InputModulePlugin> InputPluginPtr;
     typedef Corrade::Containers::Pointer<HandlerModulePlugin> HandlerPluginPtr;
 
+    // these hold plugin instances: these are the types of modules available for instantiation
     InputPluginRegistry _input_registry;
     std::vector<InputPluginPtr> _input_plugins;
 
@@ -40,8 +40,10 @@ private:
 
     visor::HttpServer _svr;
 
+    // these hold instances of active modules
     std::unique_ptr<InputStreamManager> _input_manager;
     std::unique_ptr<HandlerManager> _handler_manager;
+
     std::unique_ptr<TapManager> _tap_manager;
 
     std::shared_ptr<spdlog::logger> _logger;
@@ -63,6 +65,19 @@ public:
         _svr.set_logger(logger);
     }
 
+    const InputStreamManager *input_manager() const
+    {
+        return _input_manager.get();
+    }
+    const HandlerManager *handler_manager() const
+    {
+        return _handler_manager.get();
+    }
+    const TapManager *tap_manager() const
+    {
+        return _tap_manager.get();
+    }
+
     InputStreamManager *input_manager()
     {
         return _input_manager.get();
@@ -70,6 +85,10 @@ public:
     HandlerManager *handler_manager()
     {
         return _handler_manager.get();
+    }
+    TapManager *tap_manager()
+    {
+        return _tap_manager.get();
     }
 };
 

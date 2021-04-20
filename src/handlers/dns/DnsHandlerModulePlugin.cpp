@@ -9,7 +9,7 @@
 #include <nlohmann/json.hpp>
 
 CORRADE_PLUGIN_REGISTER(VisorHandlerDns, visor::handler::dns::DnsHandlerModulePlugin,
-    "dev.visor.module.handler/1.0")
+    "visor.module.handler/1.0")
 
 namespace visor::handler::dns {
 
