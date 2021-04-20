@@ -60,8 +60,8 @@ void PcapInputModulePlugin::_create(const httplib::Request &req, httplib::Respon
             if (body.contains("pcap_source")) {
                 input_stream->config_set("pcap_source", body["pcap_source"].get<std::string>());
             }
+            input_stream->start();
             _input_manager->module_add(std::move(input_stream));
-            // the module is now started and owned by the manager
         }
 
         auto [input_stream, stream_mgr_lock] = _input_manager->module_get_locked(body["name"]);

@@ -4,24 +4,28 @@
 
 #pragma once
 
+#include "AbstractManager.h"
+#include "AbstractModule.h"
 #include "Configurable.h"
 
 namespace visor {
 
-class Tap : public Configurable
+class Tap : public AbstractModule
 {
-protected:
-    /**
-     * the tap identifier: unique name associated with this Tap
-     */
-    std::string _name;
 
 public:
-    Tap(const std::string &name);
+    Tap(const std::string &name)
+        : AbstractModule(name)
+    {
+    }
 };
 
-class TapManager
+class TapManager : public AbstractManager<Tap>
 {
+public:
+    virtual ~TapManager()
+    {
+    }
 };
 
 }

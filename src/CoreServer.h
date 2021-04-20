@@ -9,6 +9,7 @@
 #include "HttpServer.h"
 #include "InputModulePlugin.h"
 #include "InputStreamManager.h"
+#include "Taps.h"
 #include <Corrade/PluginManager/Manager.h>
 #include <Corrade/PluginManager/PluginMetadata.h>
 #include <atomic>
@@ -41,6 +42,7 @@ private:
 
     std::unique_ptr<InputStreamManager> _input_manager;
     std::unique_ptr<HandlerManager> _handler_manager;
+    std::unique_ptr<TapManager> _tap_manager;
 
     std::shared_ptr<spdlog::logger> _logger;
     std::chrono::system_clock::time_point _start_time;

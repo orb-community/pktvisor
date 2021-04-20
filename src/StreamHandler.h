@@ -13,12 +13,12 @@ namespace visor {
 
 using json = nlohmann::json;
 
-class StreamHandler : public AbstractModule
+class StreamHandler : public AbstractRunnableModule
 {
 
 public:
     StreamHandler(const std::string &name)
-        : AbstractModule(name)
+        : AbstractRunnableModule(name)
     {
     }
 

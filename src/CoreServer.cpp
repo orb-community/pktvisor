@@ -37,6 +37,9 @@ visor::CoreServer::CoreServer(bool read_only, std::shared_ptr<spdlog::logger> lo
         _handler_plugins.emplace_back(std::move(mod));
     }
 
+    // taps
+    _tap_manager = std::make_unique<TapManager>();
+
     _setup_routes(prom_config);
     if (!prom_config.instance.empty()) {
         Metric::add_base_label("instance", prom_config.instance);

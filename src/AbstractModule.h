@@ -22,7 +22,6 @@ class AbstractModule : public Configurable
 {
 
 protected:
-    std::atomic_bool _running = false;
 
     /**
      * the module instance identifier: unique name associated with this instance
@@ -32,7 +31,6 @@ protected:
     void _common_info_json(json &j) const
     {
         j["module"]["name"] = _name;
-        j["module"]["running"] = _running.load();
         config_json(j["module"]["config"]);
     }
 
@@ -40,15 +38,12 @@ public:
     AbstractModule(const std::string &name)
         : _name(name)
     {
-        if (!std::regex_match(name, std::regex("[a-zA-Z_][a-zA-Z0-9_]*"))) {
+        if (!std::regex_match(name, std::regex("[a-zA-Z_][a-zA-Z0-9_-]*"))) {
             throw std::runtime_error("invalid module name: " + name);
         }
     }
 
     virtual ~AbstractModule(){};
-
-    virtual void start() = 0;
-    virtual void stop() = 0;
 
     virtual void info_json(json &j) const = 0;
 
@@ -56,6 +51,31 @@ public:
     {
         return _name;
     }
+};
+
+class AbstractRunnableModule : public AbstractModule
+{
+
+protected:
+    std::atomic_bool _running = false;
+
+    void _common_info_json(json &j) const
+    {
+        j["module"]["name"] = _name;
+        j["module"]["running"] = _running.load();
+        config_json(j["module"]["config"]);
+    }
+
+public:
+    AbstractRunnableModule(const std::string &name)
+        : AbstractModule(name)
+    {
+    }
+
+    virtual ~AbstractRunnableModule(){};
+
+    virtual void start() = 0;
+    virtual void stop() = 0;
 
     /**
      * the module schema key: the same for all instances of this module

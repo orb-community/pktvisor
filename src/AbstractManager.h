@@ -32,6 +32,10 @@ public:
     {
     }
 
+    virtual ~AbstractManager()
+    {
+    }
+
     auto module_get_all_locked()
     {
         struct retVals {
@@ -42,15 +46,11 @@ public:
         return retVals{_map, std::move(lock)};
     }
 
-    // atomically ensure module starts before arriving in registry, if requested
-    virtual void module_add(std::unique_ptr<ModuleType> &&m, bool start = true)
+    virtual void module_add(std::unique_ptr<ModuleType> &&m)
     {
         std::unique_lock lock(_map_mutex);
         if (_map.count(m->name())) {
             throw std::runtime_error("module name already exists");
-        }
-        if (start) {
-            m->start();
         }
         _map.emplace(m->name(), std::move(m));
     }
@@ -64,7 +64,7 @@ public:
             throw std::runtime_error("module name does not exist");
         }
         struct retVals {
-            ModuleType *map;
+            ModuleType *module;
             std::unique_lock<std::shared_mutex> lock;
         };
         return retVals{_map[name].get(), std::move(lock)};
@@ -76,7 +76,6 @@ public:
         if (_map.count(name) == 0) {
             throw std::runtime_error("module name does not exist");
         }
-        _map[name]->stop();
         _map.erase(name);
     }
 

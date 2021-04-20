@@ -72,6 +72,7 @@ void DnsHandlerModulePlugin::_setup_routes(HttpServer &svr)
                 deep_sample_rate = body["deep_sample_rate"];
             }
             auto handler_module = std::make_unique<DnsStreamHandler>(body["name"], pcap_stream, periods, deep_sample_rate);
+            handler_module->start();
             _handler_manager->module_add(std::move(handler_module));
             result["name"] = body["name"];
             result["periods"] = periods;
@@ -167,6 +168,9 @@ void DnsHandlerModulePlugin::_setup_routes(HttpServer &svr)
                 res.set_content(result.dump(), "text/json");
                 return;
             }
+            auto [handler, handler_mgr_lock] = _handler_manager->module_get_locked(handler_name);
+            handler->stop();
+            handler_mgr_lock.unlock();
             _handler_manager->module_remove(handler_name);
             res.set_content(result.dump(), "text/json");
         } catch (const std::exception &e) {

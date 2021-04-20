@@ -164,7 +164,7 @@ int main(int argc, char *argv[])
         input_stream->info_json(j["info"]);
         logger->info("{}", j.dump(4));
 
-        input_manager->module_add(std::move(input_stream), false);
+        input_manager->module_add(std::move(input_stream));
         auto [input_stream_, stream_mgr_lock] = input_manager->module_get_locked("pcap");
         stream_mgr_lock.unlock();
         auto pcap_stream = dynamic_cast<input::pcap::PcapInputStream *>(input_stream_);
@@ -173,6 +173,7 @@ int main(int argc, char *argv[])
         {
             auto handler_module = std::make_unique<handler::net::NetStreamHandler>("net", pcap_stream, periods, sample_rate);
             handler_module->config_set("recorded_stream", true);
+            handler_module->start();
             handler_manager->module_add(std::move(handler_module));
             auto [handler, handler_mgr_lock] = handler_manager->module_get_locked("net");
             handler_mgr_lock.unlock();
@@ -182,6 +183,7 @@ int main(int argc, char *argv[])
         {
             auto handler_module = std::make_unique<handler::dns::DnsStreamHandler>("dns", pcap_stream, periods, sample_rate);
             handler_module->config_set("recorded_stream", true);
+            handler_module->start();
             handler_manager->module_add(std::move(handler_module));
             auto [handler, handler_mgr_lock] = handler_manager->module_get_locked("dns");
             handler_mgr_lock.unlock();

@@ -300,6 +300,7 @@ int main(int argc, char *argv[])
             auto input_manager = svr.input_manager();
             auto handler_manager = svr.handler_manager();
 
+            input_stream->start();
             input_manager->module_add(std::move(input_stream));
             auto [input_stream_, stream_mgr_lock] = input_manager->module_get_locked("pcap");
             stream_mgr_lock.unlock();
@@ -307,10 +308,12 @@ int main(int argc, char *argv[])
 
             {
                 auto handler_module = std::make_unique<handler::net::NetStreamHandler>("net", pcap_stream, periods, sample_rate);
+                handler_module->start();
                 handler_manager->module_add(std::move(handler_module));
             }
             {
                 auto handler_module = std::make_unique<handler::dns::DnsStreamHandler>("dns", pcap_stream, periods, sample_rate);
+                handler_module->start();
                 handler_manager->module_add(std::move(handler_module));
             }
 
