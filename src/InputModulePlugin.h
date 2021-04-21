@@ -5,7 +5,6 @@
 #pragma once
 
 #include "AbstractPlugin.h"
-#include "InputStreamManager.h"
 #include <Corrade/PluginManager/Manager.h>
 #include <Corrade/PluginManager/PluginMetadata.h>
 #include <string>
@@ -14,11 +13,6 @@ namespace visor {
 
 class InputModulePlugin : public AbstractPlugin
 {
-
-protected:
-    InputStreamManager *_input_manager;
-
-    virtual void _setup_routes(HttpServer *svr) = 0;
 
 public:
     static std::string pluginInterface()
@@ -36,7 +30,6 @@ public:
     {
     }
 
-    void init_module(InputStreamManager *im, HttpServer *svr);
 };
 
 typedef Corrade::PluginManager::Manager<InputModulePlugin> InputPluginRegistry;

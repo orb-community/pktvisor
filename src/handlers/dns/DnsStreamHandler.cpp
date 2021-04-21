@@ -229,7 +229,7 @@ void DnsStreamHandler::set_end_tstamp(timespec stamp)
 }
 void DnsStreamHandler::info_json(json &j) const
 {
-    _common_info_json(j);
+    common_info_json(j);
     j[schema_key()]["xact"]["open"] = _metrics->num_open_transactions();
 }
 

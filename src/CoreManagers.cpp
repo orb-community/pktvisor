@@ -3,6 +3,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 #include "CoreManagers.h"
+#include "HandlerManager.h"
+#include "InputStreamManager.h"
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
 
@@ -34,7 +36,7 @@ CoreManagers::CoreManagers(HttpServer *svr)
         for (auto &s : by_alias) {
             InputPluginPtr mod = _input_registry.instantiate(s);
             _logger->info("Load input stream plugin: {} {}", s, mod->pluginInterface());
-            mod->init_module(_input_manager.get(), _svr);
+            mod->init_plugin(this, _svr);
             _input_plugins.emplace_back(std::move(mod));
         }
     }
@@ -52,7 +54,7 @@ CoreManagers::CoreManagers(HttpServer *svr)
         for (auto &s : by_alias) {
             HandlerPluginPtr mod = _handler_registry.instantiate(s);
             _logger->info("Load stream handler plugin: {} {}", s, mod->pluginInterface());
-            mod->init_module(_input_manager.get(), _handler_manager.get(), _svr);
+            mod->init_plugin(this, _svr);
             _handler_plugins.emplace_back(std::move(mod));
         }
     }

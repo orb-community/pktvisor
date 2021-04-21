@@ -28,7 +28,7 @@ protected:
      */
     std::string _name;
 
-    void _common_info_json(json &j) const
+    void common_info_json(json &j) const
     {
         j["module"]["name"] = _name;
         config_json(j["module"]["config"]);
@@ -59,7 +59,7 @@ class AbstractRunnableModule : public AbstractModule
 protected:
     std::atomic_bool _running = false;
 
-    void _common_info_json(json &j) const
+    void common_info_json(json &j) const
     {
         j["module"]["name"] = _name;
         j["module"]["running"] = _running.load();

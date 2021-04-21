@@ -3,6 +3,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 #include "PcapInputModulePlugin.h"
+#include "CoreManagers.h"
+#include "InputStreamManager.h"
 #include <Corrade/PluginManager/AbstractManager.h>
 #include <Corrade/Utility/FormatStl.h>
 
@@ -11,7 +13,7 @@ CORRADE_PLUGIN_REGISTER(VisorInputPcap, visor::input::pcap::PcapInputModulePlugi
 
 namespace visor::input::pcap {
 
-void PcapInputModulePlugin::_setup_routes(HttpServer *svr)
+void PcapInputModulePlugin::setup_routes(HttpServer *svr)
 {
 
     // CREATE
@@ -35,14 +37,14 @@ void PcapInputModulePlugin::_create(const httplib::Request &req, httplib::Respon
         std::unordered_map<std::string, std::string> opt_schema = {
             {"pcap_source", "[_a-z]+"}};
         try {
-            _check_schema(body, schema, opt_schema);
+            check_schema(body, schema, opt_schema);
         } catch (const SchemaException &e) {
             res.status = 400;
             result["error"] = e.what();
             res.set_content(result.dump(), "text/json");
             return;
         }
-        if (_input_manager->module_exists(body["name"])) {
+        if (mgrs()->input_manager()->module_exists(body["name"])) {
             res.status = 400;
             result["error"] = "input name already exists";
             res.set_content(result.dump(), "text/json");
@@ -61,10 +63,10 @@ void PcapInputModulePlugin::_create(const httplib::Request &req, httplib::Respon
                 input_stream->config_set("pcap_source", body["pcap_source"].get<std::string>());
             }
             input_stream->start();
-            _input_manager->module_add(std::move(input_stream));
+            mgrs()->input_manager()->module_add(std::move(input_stream));
         }
 
-        auto [input_stream, stream_mgr_lock] = _input_manager->module_get_locked(body["name"]);
+        auto [input_stream, stream_mgr_lock] = mgrs()->input_manager()->module_get_locked(body["name"]);
         assert(input_stream);
         input_stream->info_json(result);
         res.set_content(result.dump(), "text/json");
@@ -79,13 +81,13 @@ void PcapInputModulePlugin::_read(const httplib::Request &req, httplib::Response
     json result;
     try {
         auto name = req.matches[1];
-        if (!_input_manager->module_exists(name)) {
+        if (!mgrs()->input_manager()->module_exists(name)) {
             res.status = 404;
             result["error"] = "input name does not exist";
             res.set_content(result.dump(), "text/json");
             return;
         }
-        auto [input_stream, stream_mgr_lock] = _input_manager->module_get_locked(name);
+        auto [input_stream, stream_mgr_lock] = mgrs()->input_manager()->module_get_locked(name);
         assert(input_stream);
         input_stream->info_json(result);
         res.set_content(result.dump(), "text/json");
@@ -100,13 +102,13 @@ void PcapInputModulePlugin::_delete(const httplib::Request &req, httplib::Respon
     json result;
     try {
         auto name = req.matches[1];
-        if (!_input_manager->module_exists(name)) {
+        if (!mgrs()->input_manager()->module_exists(name)) {
             res.status = 404;
             result["error"] = "input name does not exist";
             res.set_content(result.dump(), "text/json");
             return;
         }
-        auto [input_stream, stream_mgr_lock] = _input_manager->module_get_locked(name);
+        auto [input_stream, stream_mgr_lock] = mgrs()->input_manager()->module_get_locked(name);
         assert(input_stream);
         auto count = input_stream->consumer_count();
         if (count) {
@@ -117,7 +119,7 @@ void PcapInputModulePlugin::_delete(const httplib::Request &req, httplib::Respon
         }
         // manually unlock so we can remove
         stream_mgr_lock.unlock();
-        _input_manager->module_remove(name);
+        mgrs()->input_manager()->module_remove(name);
         res.set_content(result.dump(), "text/json");
     } catch (const std::exception &e) {
         res.status = 500;

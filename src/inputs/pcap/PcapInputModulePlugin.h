@@ -14,7 +14,7 @@ class PcapInputModulePlugin : public visor::InputModulePlugin
 {
 
 protected:
-    void _setup_routes(HttpServer *svr) override;
+    void setup_routes(HttpServer *svr) override;
 
     void _create(const httplib::Request &req, httplib::Response &res);
     void _read(const httplib::Request &req, httplib::Response &res);

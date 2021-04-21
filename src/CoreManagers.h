@@ -12,6 +12,9 @@
 
 namespace visor {
 
+class InputStreamManager;
+class HandlerManager;
+
 class CoreManagers
 {
 

@@ -8,7 +8,7 @@
 
 namespace visor {
 
-void AbstractPlugin::_check_schema(json obj, SchemaMap &required, SchemaMap &optional)
+void AbstractPlugin::check_schema(json obj, SchemaMap &required, SchemaMap &optional)
 {
     for (const auto &[key, value] : required) {
         if (!obj.contains(key)) {
@@ -31,7 +31,7 @@ void AbstractPlugin::_check_schema(json obj, SchemaMap &required, SchemaMap &opt
     }
 }
 
-void AbstractPlugin::_check_schema(json obj, SchemaMap &required)
+void AbstractPlugin::check_schema(json obj, SchemaMap &required)
 {
     for (const auto &[key, value] : required) {
         if (!obj.contains(key)) {

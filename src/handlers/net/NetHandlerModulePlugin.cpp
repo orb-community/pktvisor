@@ -3,6 +3,9 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 #include "NetHandlerModulePlugin.h"
+#include "CoreManagers.h"
+#include "HandlerManager.h"
+#include "InputStreamManager.h"
 #include "NetStreamHandler.h"
 #include "PcapInputStream.h"
 #include <Corrade/PluginManager/AbstractManager.h>
@@ -16,7 +19,7 @@ namespace visor::handler::net {
 using namespace visor::input::pcap;
 using json = nlohmann::json;
 
-void NetHandlerModulePlugin::_setup_routes(HttpServer *svr)
+void NetHandlerModulePlugin::setup_routes(HttpServer *svr)
 {
     // CREATE
     svr->Post("/api/v1/inputs/pcap/(\\w+)/handlers/net", [this](const httplib::Request &req, httplib::Response &res) {
@@ -26,7 +29,7 @@ void NetHandlerModulePlugin::_setup_routes(HttpServer *svr)
             SchemaMap req_schema = {{"name", "\\w+"}};
             SchemaMap opt_schema = {{"periods", "\\d{1,3}"}, {"deep_sample_rate", "\\d{1,3}"}};
             try {
-                _check_schema(body, req_schema, opt_schema);
+                check_schema(body, req_schema, opt_schema);
             } catch (const SchemaException &e) {
                 res.status = 400;
                 result["error"] = e.what();
@@ -34,20 +37,20 @@ void NetHandlerModulePlugin::_setup_routes(HttpServer *svr)
                 return;
             }
             auto input_name = req.matches[1];
-            if (!_input_manager->module_exists(input_name)) {
+            if (!mgrs()->input_manager()->module_exists(input_name)) {
                 res.status = 404;
                 result["error"] = "input name does not exist";
                 res.set_content(result.dump(), "text/json");
                 return;
             }
-            if (_handler_manager->module_exists(body["name"])) {
+            if (mgrs()->handler_manager()->module_exists(body["name"])) {
                 res.status = 400;
                 result["error"] = "handler name already exists";
                 res.set_content(result.dump(), "text/json");
                 return;
             }
             // note, may be a race on exists() above, this may fail. if so we will catch and 500.
-            auto [input_stream, stream_mgr_lock] = _input_manager->module_get_locked(input_name);
+            auto [input_stream, stream_mgr_lock] = mgrs()->input_manager()->module_get_locked(input_name);
             assert(input_stream);
             auto pcap_stream = dynamic_cast<PcapInputStream *>(input_stream);
             if (!pcap_stream) {
@@ -73,7 +76,7 @@ void NetHandlerModulePlugin::_setup_routes(HttpServer *svr)
             }
             auto handler_module = std::make_unique<NetStreamHandler>(body["name"], pcap_stream, periods, deep_sample_rate);
             handler_module->start();
-            _handler_manager->module_add(std::move(handler_module));
+            mgrs()->handler_manager()->module_add(std::move(handler_module));
             result["name"] = body["name"];
             result["periods"] = periods;
             result["deep_sample_rate"] = deep_sample_rate;
@@ -89,20 +92,20 @@ void NetHandlerModulePlugin::_setup_routes(HttpServer *svr)
         json result;
         try {
             auto input_name = req.matches[1];
-            if (!_input_manager->module_exists(input_name)) {
+            if (!mgrs()->input_manager()->module_exists(input_name)) {
                 res.status = 404;
                 result["error"] = "input name does not exist";
                 res.set_content(result.dump(), "text/json");
                 return;
             }
             auto handler_name = req.matches[2];
-            if (!_handler_manager->module_exists(handler_name)) {
+            if (!mgrs()->handler_manager()->module_exists(handler_name)) {
                 res.status = 404;
                 result["error"] = "handler name does not exist";
                 res.set_content(result.dump(), "text/json");
                 return;
             }
-            auto [handler, handler_mgr_lock] = _handler_manager->module_get_locked(handler_name);
+            auto [handler, handler_mgr_lock] = mgrs()->handler_manager()->module_get_locked(handler_name);
             auto net_handler = dynamic_cast<NetStreamHandler *>(handler);
             if (!net_handler) {
                 res.status = 400;
@@ -123,20 +126,20 @@ void NetHandlerModulePlugin::_setup_routes(HttpServer *svr)
         json result;
         try {
             auto input_name = req.matches[1];
-            if (!_input_manager->module_exists(input_name)) {
+            if (!mgrs()->input_manager()->module_exists(input_name)) {
                 res.status = 404;
                 result["error"] = "input name does not exist";
                 res.set_content(result.dump(), "text/json");
                 return;
             }
             auto handler_name = req.matches[2];
-            if (!_handler_manager->module_exists(handler_name)) {
+            if (!mgrs()->handler_manager()->module_exists(handler_name)) {
                 res.status = 404;
                 result["error"] = "handler name does not exist";
                 res.set_content(result.dump(), "text/json");
                 return;
             }
-            auto [handler, handler_mgr_lock] = _handler_manager->module_get_locked(handler_name);
+            auto [handler, handler_mgr_lock] = mgrs()->handler_manager()->module_get_locked(handler_name);
             auto net_handler = dynamic_cast<NetStreamHandler *>(handler);
             if (!net_handler) {
                 res.status = 400;
@@ -158,23 +161,23 @@ void NetHandlerModulePlugin::_setup_routes(HttpServer *svr)
         json result;
         try {
             auto input_name = req.matches[1];
-            if (!_input_manager->module_exists(input_name)) {
+            if (!mgrs()->input_manager()->module_exists(input_name)) {
                 res.status = 404;
                 result["error"] = "input name does not exist";
                 res.set_content(result.dump(), "text/json");
                 return;
             }
             auto handler_name = req.matches[2];
-            if (!_handler_manager->module_exists(handler_name)) {
+            if (!mgrs()->handler_manager()->module_exists(handler_name)) {
                 res.status = 404;
                 result["error"] = "handler name does not exist";
                 res.set_content(result.dump(), "text/json");
                 return;
             }
-            auto [handler, handler_mgr_lock] = _handler_manager->module_get_locked(handler_name);
+            auto [handler, handler_mgr_lock] = mgrs()->handler_manager()->module_get_locked(handler_name);
             handler->stop();
             handler_mgr_lock.unlock();
-            _handler_manager->module_remove(handler_name);
+            mgrs()->handler_manager()->module_remove(handler_name);
             res.set_content(result.dump(), "text/json");
         } catch (const std::exception &e) {
             res.status = 500;

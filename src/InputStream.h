@@ -22,9 +22,9 @@ public:
 
     virtual size_t consumer_count() const = 0;
 
-    void _common_info_json(json &j) const
+    void common_info_json(json &j) const
     {
-        AbstractModule::_common_info_json(j);
+        AbstractModule::common_info_json(j);
         j["input"]["consumers"] = consumer_count();
     }
 };

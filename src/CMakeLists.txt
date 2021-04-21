@@ -52,7 +52,6 @@ add_executable(unit-tests-vizor-core
         tests/test_geoip.cpp
         tests/test_taps.cpp
         tests/test_policies.cpp
-        inputs/static_plugins.h
         )
 
 target_include_directories(unit-tests-vizor-core

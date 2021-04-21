@@ -6,16 +6,5 @@
 
 namespace visor {
 
-void HandlerModulePlugin::init_module(InputStreamManager *im,
-    HandlerManager *hm, HttpServer *svr)
-{
-    assert(hm);
-    assert(im);
-    _input_manager = im;
-    _handler_manager = hm;
-    if (svr) {
-        _setup_routes(svr);
-    }
-}
 
 }

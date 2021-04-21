@@ -5,11 +5,12 @@
 #include <csignal>
 #include <functional>
 #include <map>
-#include <vector>
 
 #include <docopt/docopt.h>
 
 #include "CoreManagers.h"
+#include "HandlerManager.h"
+#include "InputStreamManager.h"
 #include <spdlog/sinks/stdout_color_sinks.h>
 
 #include "handlers/static_plugins.h"

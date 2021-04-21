@@ -84,7 +84,7 @@ void NetStreamHandler::set_end_tstamp(timespec stamp)
 }
 void NetStreamHandler::info_json(json &j) const
 {
-    _common_info_json(j);
+    common_info_json(j);
 }
 void NetStreamHandler::window_prometheus(std::stringstream &out)
 {

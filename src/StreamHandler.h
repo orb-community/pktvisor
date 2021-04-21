@@ -35,9 +35,9 @@ class StreamMetricsHandler : public StreamHandler
 protected:
     std::unique_ptr<MetricsManagerClass> _metrics;
 
-    void _common_info_json(json &j) const
+    void common_info_json(json &j) const
     {
-        AbstractModule::_common_info_json(j);
+        AbstractModule::common_info_json(j);
 
         j["metrics"]["deep_sample_rate"] = _metrics->deep_sample_rate();
         j["metrics"]["periods_configured"] = _metrics->num_periods();

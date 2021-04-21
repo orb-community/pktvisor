@@ -6,6 +6,8 @@
 #include <functional>
 
 #include "CoreServer.h"
+#include "HandlerManager.h"
+#include "InputStreamManager.h"
 #include "handlers/static_plugins.h"
 #include "inputs/static_plugins.h"
 #include "visor_config.h"

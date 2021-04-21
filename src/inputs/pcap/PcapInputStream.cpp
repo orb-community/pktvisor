@@ -389,7 +389,7 @@ void PcapInputStream::_get_hosts_from_libpcap_iface()
 
 void PcapInputStream::info_json(json& j) const
 {
-    _common_info_json(j);
+    common_info_json(j);
     json info;
     info["host_ips"] = json::object();
     for (auto &i : _hostIPv4) {
