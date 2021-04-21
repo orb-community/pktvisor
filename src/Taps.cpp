@@ -22,20 +22,20 @@ void visor::TapManager::load(const YAML::Node &tap_yaml, bool strict)
         if (!it->second.IsMap()) {
             throw ConfigException("expecting tap configuration map");
         }
-        if (!it->second["type"] || !it->second["type"].IsScalar()) {
-            throw ConfigException("missing or invalid tap input stream 'type'");
+        if (!it->second["input_type"] || !it->second["input_type"].IsScalar()) {
+            throw ConfigException("missing or invalid tap type key 'input_type'");
         }
-        auto tap_type = it->second["type"].as<std::string>();
-        if (std::find(input_plugins.begin(), input_plugins.end(), tap_type) == input_plugins.end()) {
+        auto input_type = it->second["input_type"].as<std::string>();
+        if (std::find(input_plugins.begin(), input_plugins.end(), input_type) == input_plugins.end()) {
             if (strict) {
-                throw ConfigException(fmt::format("Tap '{}' requires input stream type '{}' which is not available", tap_name, tap_type));
+                throw ConfigException(fmt::format("Tap '{}' requires input stream type '{}' which is not available", tap_name, input_type));
             } else {
-                spdlog::get("pktvisor")->warn("Tap '{}' requires input stream type '{}' which is not available; skipping", tap_name, tap_type);
+                spdlog::get("pktvisor")->warn("Tap '{}' requires input stream type '{}' which is not available; skipping", tap_name, input_type);
                 continue;
             }
         }
 
-        auto tap_module = std::make_unique<Tap>(tap_name);
+        auto tap_module = std::make_unique<Tap>(tap_name, input_type);
 
         if (it->second["config"]) {
             if (!it->second["config"].IsMap()) {

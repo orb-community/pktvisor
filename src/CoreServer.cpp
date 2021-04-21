@@ -182,6 +182,22 @@ void visor::CoreServer::_setup_routes(const PrometheusConfig &prom_config)
             res.set_content(e.what(), "text/plain");
         }
     });
+    _svr.Get(R"(/api/v1/taps)", [&](const httplib::Request &req, httplib::Response &res) {
+        json j;
+        try {
+            auto [handler_modules, hm_lock] = _tap_manager->module_get_all_locked();
+            for (auto &[name, mod] : handler_modules) {
+                auto tmod = dynamic_cast<Tap *>(mod.get());
+                if (tmod) {
+                    tmod->info_json(j[tmod->name()]);
+                }
+            }
+            res.set_content(j.dump(), "text/json");
+        } catch (const std::exception &e) {
+            res.status = 500;
+            res.set_content(e.what(), "text/plain");
+        }
+    });
     if (!prom_config.path.empty()) {
         _logger->info("enabling prometheus metrics on: {}", prom_config.path);
         _svr.Get(prom_config.path.c_str(), [&]([[maybe_unused]] const httplib::Request &req, httplib::Response &res) {

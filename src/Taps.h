@@ -15,14 +15,19 @@ namespace visor {
 class Tap : public AbstractModule
 {
 
+    std::string _input_type;
+
 public:
-    Tap(const std::string &name)
+    Tap(const std::string &name, const std::string &input_type)
         : AbstractModule(name)
+        , _input_type(input_type)
     {
     }
 
-    void info_json(json &j) const override {
-        AbstractModule::_common_info_json(j);
+    void info_json(json &j) const override
+    {
+        j["input_type"] = _input_type;
+        config_json(j["config"]);
     }
 };
 
