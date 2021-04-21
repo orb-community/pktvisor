@@ -18,7 +18,7 @@ class InputModulePlugin : public AbstractPlugin
 protected:
     InputStreamManager *_input_manager;
 
-    virtual void _setup_routes(HttpServer &svr) = 0;
+    virtual void _setup_routes(HttpServer *svr) = 0;
 
 public:
     static std::string pluginInterface()
@@ -36,8 +36,7 @@ public:
     {
     }
 
-    void init_module(InputStreamManager *im, HttpServer &svr);
-    void init_module(InputStreamManager *im);
+    void init_module(InputStreamManager *im, HttpServer *svr);
 };
 
 typedef Corrade::PluginManager::Manager<InputModulePlugin> InputPluginRegistry;

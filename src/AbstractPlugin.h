@@ -32,7 +32,7 @@ public:
 protected:
     void _check_schema(json obj, SchemaMap &required);
     void _check_schema(json obj, SchemaMap &required, SchemaMap &optional);
-    virtual void _setup_routes(HttpServer &svr) = 0;
+    virtual void _setup_routes(HttpServer *svr) = 0;
 
 public:
     static std::vector<std::string> pluginSearchPaths()

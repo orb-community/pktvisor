@@ -16,10 +16,10 @@ namespace visor::handler::dns {
 using namespace visor::input::pcap;
 using json = nlohmann::json;
 
-void DnsHandlerModulePlugin::_setup_routes(HttpServer &svr)
+void DnsHandlerModulePlugin::_setup_routes(HttpServer *svr)
 {
     // CREATE
-    svr.Post("/api/v1/inputs/pcap/(\\w+)/handlers/dns", [this](const httplib::Request &req, httplib::Response &res) {
+    svr->Post("/api/v1/inputs/pcap/(\\w+)/handlers/dns", [this](const httplib::Request &req, httplib::Response &res) {
         json result;
         try {
             auto body = json::parse(req.body);
@@ -84,7 +84,7 @@ void DnsHandlerModulePlugin::_setup_routes(HttpServer &svr)
             res.set_content(result.dump(), "text/json");
         }
     });
-    svr.Get("/api/v1/inputs/pcap/(\\w+)/handlers/dns/(\\w+)", [this](const httplib::Request &req, httplib::Response &res) {
+    svr->Get("/api/v1/inputs/pcap/(\\w+)/handlers/dns/(\\w+)", [this](const httplib::Request &req, httplib::Response &res) {
         json result;
         try {
             auto input_name = req.matches[1];
@@ -117,7 +117,7 @@ void DnsHandlerModulePlugin::_setup_routes(HttpServer &svr)
             res.set_content(result.dump(), "text/json");
         }
     });
-    svr.Get("/api/v1/inputs/pcap/(\\w+)/handlers/dns/(\\w+)/bucket/(\\d+)", [this](const httplib::Request &req, httplib::Response &res) {
+    svr->Get("/api/v1/inputs/pcap/(\\w+)/handlers/dns/(\\w+)/bucket/(\\d+)", [this](const httplib::Request &req, httplib::Response &res) {
         json result;
         try {
             auto input_name = req.matches[1];
@@ -151,7 +151,7 @@ void DnsHandlerModulePlugin::_setup_routes(HttpServer &svr)
         }
     });
     // DELETE
-    svr.Delete("/api/v1/inputs/pcap/(\\w+)/handlers/dns/(\\w+)", [this](const httplib::Request &req, httplib::Response &res) {
+    svr->Delete("/api/v1/inputs/pcap/(\\w+)/handlers/dns/(\\w+)", [this](const httplib::Request &req, httplib::Response &res) {
         json result;
         try {
             auto input_name = req.matches[1];

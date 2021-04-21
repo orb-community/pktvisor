@@ -11,6 +11,7 @@ add_library(visor-core
         HandlerModulePlugin.cpp
         GeoDB.cpp
         CoreServer.cpp
+        CoreManagers.cpp
         Metrics.cpp
         Taps.cpp)
 add_library(Visor::Core ALIAS visor-core)
@@ -48,13 +49,14 @@ add_executable(unit-tests-vizor-core
         tests/test_sketches.cpp
         tests/test_metrics.cpp
         tests/test_geoip.cpp
+        tests/test_taps.cpp
         )
 
 target_include_directories(unit-tests-vizor-core
         PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
         )
 
-target_link_libraries(unit-tests-vizor-core PRIVATE Visor::Core)
+target_link_libraries(unit-tests-vizor-core PRIVATE Visor::Core ${VISOR_STATIC_PLUGINS})
 
 add_test(NAME unit-tests-vizor-core
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/src

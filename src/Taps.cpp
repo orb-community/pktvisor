@@ -10,6 +10,7 @@
 void visor::TapManager::load(const YAML::Node &tap_yaml, bool strict)
 {
     assert(tap_yaml.IsMap());
+    assert(spdlog::get("visor"));
 
     auto input_plugins = _input_plugin_registry->aliasList();
 
@@ -18,7 +19,7 @@ void visor::TapManager::load(const YAML::Node &tap_yaml, bool strict)
             throw ConfigException("expecting tap identifier");
         }
         auto tap_name = it->first.as<std::string>();
-        spdlog::get("pktvisor")->info("loading Tap: {}", tap_name);
+        spdlog::get("visor")->info("loading Tap: {}", tap_name);
         if (!it->second.IsMap()) {
             throw ConfigException("expecting tap configuration map");
         }
@@ -30,7 +31,7 @@ void visor::TapManager::load(const YAML::Node &tap_yaml, bool strict)
             if (strict) {
                 throw ConfigException(fmt::format("Tap '{}' requires input stream type '{}' which is not available", tap_name, input_type));
             } else {
-                spdlog::get("pktvisor")->warn("Tap '{}' requires input stream type '{}' which is not available; skipping", tap_name, input_type);
+                spdlog::get("visor")->warn("Tap '{}' requires input stream type '{}' which is not available; skipping", tap_name, input_type);
                 continue;
             }
         }

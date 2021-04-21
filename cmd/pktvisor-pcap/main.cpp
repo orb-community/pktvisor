@@ -9,12 +9,7 @@
 
 #include <docopt/docopt.h>
 
-#include "HandlerManager.h"
-#include "HandlerModulePlugin.h"
-#include "InputModulePlugin.h"
-#include "InputStreamManager.h"
-#include <Corrade/PluginManager/Manager.h>
-#include <Corrade/PluginManager/PluginMetadata.h>
+#include "CoreManagers.h"
 #include <spdlog/sinks/stdout_color_sinks.h>
 
 #include "handlers/static_plugins.h"
@@ -60,10 +55,6 @@ void signal_handler(int signal)
 
 using namespace visor;
 
-typedef Corrade::PluginManager::Manager<InputModulePlugin> InputPluginRegistry;
-typedef Corrade::PluginManager::Manager<HandlerModulePlugin> HandlerPluginRegistry;
-typedef Corrade::Containers::Pointer<InputModulePlugin> InputPluginPtr;
-typedef Corrade::Containers::Pointer<HandlerModulePlugin> HandlerPluginPtr;
 
 void initialize_geo(const docopt::value &city, const docopt::value &asn)
 {
@@ -84,48 +75,12 @@ int main(int argc, char *argv[])
         true,           // show help if requested
         VISOR_VERSION); // version string
 
-    auto logger = spdlog::stderr_color_mt("pktvisor");
+    auto logger = spdlog::stderr_color_mt("visor");
     if (args["-v"].asBool()) {
         logger->set_level(spdlog::level::debug);
     }
 
-    // inputs
-    InputPluginRegistry input_registry;
-    auto input_manager = std::make_unique<InputStreamManager>();
-    std::vector<InputPluginPtr> input_plugins;
-
-    // initialize input plugins
-    for (auto &s : input_registry.pluginList()) {
-        InputPluginPtr mod = input_registry.instantiate(s);
-        logger->info("Load input plugin: {} {}", mod->name(), mod->pluginInterface());
-        mod->init_module(input_manager.get());
-        input_plugins.emplace_back(std::move(mod));
-    }
-
-    // handlers
-    HandlerPluginRegistry handler_registry;
-    auto handler_manager = std::make_unique<HandlerManager>();
-    std::vector<HandlerPluginPtr> handler_plugins;
-
-    // initialize handler plugins
-    for (auto &s : handler_registry.pluginList()) {
-        HandlerPluginPtr mod = handler_registry.instantiate(s);
-        logger->info("Load handler plugin: {} {}", mod->name(), mod->pluginInterface());
-        mod->init_module(input_manager.get(), handler_manager.get());
-        handler_plugins.emplace_back(std::move(mod));
-    }
-
-    shutdown_handler = [&]([[maybe_unused]] int signal) {
-        // gracefully close all inputs and handlers
-        auto [input_modules, im_lock] = input_manager->module_get_all_locked();
-        for (auto &[name, mod] : input_modules) {
-            mod->stop();
-        }
-        auto [handler_modules, hm_lock] = handler_manager->module_get_all_locked();
-        for (auto &[name, mod] : handler_modules) {
-            mod->stop();
-        }
-    };
+    CoreManagers mgrs(nullptr);
 
     std::signal(SIGINT, signal_handler);
     std::signal(SIGTERM, signal_handler);
@@ -164,8 +119,8 @@ int main(int argc, char *argv[])
         input_stream->info_json(j["info"]);
         logger->info("{}", j.dump(4));
 
-        input_manager->module_add(std::move(input_stream));
-        auto [input_stream_, stream_mgr_lock] = input_manager->module_get_locked("pcap");
+        mgrs.input_manager()->module_add(std::move(input_stream));
+        auto [input_stream_, stream_mgr_lock] = mgrs.input_manager()->module_get_locked("pcap");
         stream_mgr_lock.unlock();
         auto pcap_stream = dynamic_cast<input::pcap::PcapInputStream *>(input_stream_);
 
@@ -174,8 +129,8 @@ int main(int argc, char *argv[])
             auto handler_module = std::make_unique<handler::net::NetStreamHandler>("net", pcap_stream, periods, sample_rate);
             handler_module->config_set("recorded_stream", true);
             handler_module->start();
-            handler_manager->module_add(std::move(handler_module));
-            auto [handler, handler_mgr_lock] = handler_manager->module_get_locked("net");
+            mgrs.handler_manager()->module_add(std::move(handler_module));
+            auto [handler, handler_mgr_lock] = mgrs.handler_manager()->module_get_locked("net");
             handler_mgr_lock.unlock();
             net_handler = dynamic_cast<handler::net::NetStreamHandler *>(handler);
         }
@@ -184,8 +139,8 @@ int main(int argc, char *argv[])
             auto handler_module = std::make_unique<handler::dns::DnsStreamHandler>("dns", pcap_stream, periods, sample_rate);
             handler_module->config_set("recorded_stream", true);
             handler_module->start();
-            handler_manager->module_add(std::move(handler_module));
-            auto [handler, handler_mgr_lock] = handler_manager->module_get_locked("dns");
+            mgrs.handler_manager()->module_add(std::move(handler_module));
+            auto [handler, handler_mgr_lock] = mgrs.handler_manager()->module_get_locked("dns");
             handler_mgr_lock.unlock();
             dns_handler = dynamic_cast<handler::dns::DnsStreamHandler *>(handler);
         }

@@ -11,17 +11,17 @@ CORRADE_PLUGIN_REGISTER(VisorInputPcap, visor::input::pcap::PcapInputModulePlugi
 
 namespace visor::input::pcap {
 
-void PcapInputModulePlugin::_setup_routes(HttpServer &svr)
+void PcapInputModulePlugin::_setup_routes(HttpServer *svr)
 {
 
     // CREATE
-    svr.Post("/api/v1/inputs/pcap", std::bind(&PcapInputModulePlugin::_create, this, std::placeholders::_1, std::placeholders::_2));
+    svr->Post("/api/v1/inputs/pcap", std::bind(&PcapInputModulePlugin::_create, this, std::placeholders::_1, std::placeholders::_2));
 
     // DELETE
-    svr.Delete("/api/v1/inputs/pcap/(\\w+)", std::bind(&PcapInputModulePlugin::_delete, this, std::placeholders::_1, std::placeholders::_2));
+    svr->Delete("/api/v1/inputs/pcap/(\\w+)", std::bind(&PcapInputModulePlugin::_delete, this, std::placeholders::_1, std::placeholders::_2));
 
     // GET
-    svr.Get("/api/v1/inputs/pcap/(\\w+)", std::bind(&PcapInputModulePlugin::_read, this, std::placeholders::_1, std::placeholders::_2));
+    svr->Get("/api/v1/inputs/pcap/(\\w+)", std::bind(&PcapInputModulePlugin::_read, this, std::placeholders::_1, std::placeholders::_2));
 }
 
 void PcapInputModulePlugin::_create(const httplib::Request &req, httplib::Response &res)

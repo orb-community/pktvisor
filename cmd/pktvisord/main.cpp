@@ -168,15 +168,15 @@ int main(int argc, char *argv[])
     std::shared_ptr<spdlog::logger> logger;
     if (args["--log-file"]) {
         try {
-            logger = spdlog::basic_logger_mt("pktvisor", args["--log-file"].asString());
+            logger = spdlog::basic_logger_mt("visor", args["--log-file"].asString());
         } catch (const spdlog::spdlog_ex &ex) {
             std::cerr << "Log init failed: " << ex.what() << std::endl;
             exit(EXIT_FAILURE);
         }
     } else if (args["--syslog"].asBool()) {
-        logger = spdlog::syslog_logger_mt("pktvisor", "pktvisord", LOG_PID);
+        logger = spdlog::syslog_logger_mt("visor", "pktvisord", LOG_PID);
     } else {
-        logger = spdlog::stdout_color_mt("pktvisor");
+        logger = spdlog::stdout_color_mt("visor");
     }
     if (args["-v"].asBool()) {
         logger->set_level(spdlog::level::debug);
@@ -220,8 +220,8 @@ int main(int argc, char *argv[])
                 }
             }
 
-            // then pass to CoreServer
-            svr.configure_from_file(args["--config"].asString());
+            // then pass to CoreManagers
+            svr.mgrs()->configure_from_file(args["--config"].asString());
 
         } catch (std::runtime_error &e) {
             logger->error("configuration error: {}", e.what());
@@ -297,8 +297,8 @@ int main(int argc, char *argv[])
             input_stream->config_set("bpf", bpf);
             input_stream->config_set("host_spec", host_spec);
 
-            auto input_manager = svr.input_manager();
-            auto handler_manager = svr.handler_manager();
+            auto input_manager = svr.mgrs()->input_manager();
+            auto handler_manager = svr.mgrs()->handler_manager();
 
             input_stream->start();
             input_manager->module_add(std::move(input_stream));

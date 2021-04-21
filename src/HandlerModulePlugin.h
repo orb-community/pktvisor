@@ -19,7 +19,7 @@ protected:
     visor::InputStreamManager *_input_manager;
     visor::HandlerManager *_handler_manager;
 
-    virtual void _setup_routes(HttpServer &svr) = 0;
+    virtual void _setup_routes(HttpServer *svr) = 0;
 
 public:
     static std::string pluginInterface()
@@ -39,10 +39,7 @@ public:
 
     void init_module(InputStreamManager *im,
         HandlerManager *hm,
-        HttpServer &svr);
-
-    void init_module(InputStreamManager *im,
-        HandlerManager *hm);
+        HttpServer *svr);
 };
 
 typedef Corrade::PluginManager::Manager<HandlerModulePlugin> HandlerPluginRegistry;
