@@ -8,7 +8,7 @@
 
 #include <docopt/docopt.h>
 
-#include "CoreManagers.h"
+#include "CoreRegistry.h"
 #include "HandlerManager.h"
 #include "InputStreamManager.h"
 #include <spdlog/sinks/stdout_color_sinks.h>
@@ -81,7 +81,7 @@ int main(int argc, char *argv[])
         logger->set_level(spdlog::level::debug);
     }
 
-    CoreManagers mgrs(nullptr);
+    CoreRegistry mgrs(nullptr);
 
     std::signal(SIGINT, signal_handler);
     std::signal(SIGTERM, signal_handler);

@@ -1,4 +1,4 @@
-#include "CoreManagers.h"
+#include "CoreRegistry.h"
 #include "InputModulePlugin.h"
 #include <catch2/catch.hpp>
 #include <spdlog/sinks/stdout_color_sinks.h>
@@ -70,7 +70,7 @@ TEST_CASE("Policies", "[policies]")
 
     SECTION("Good Config")
     {
-        CoreManagers mgrs(nullptr);
+        CoreRegistry mgrs(nullptr);
         YAML::Node config_file = YAML::Load(collection_config);
 
         CHECK(config_file["visor"]["collection"]);
@@ -83,7 +83,7 @@ TEST_CASE("Policies", "[policies]")
 
     SECTION("Bad Config")
     {
-        CoreManagers mgrs(nullptr);
+        CoreRegistry mgrs(nullptr);
         YAML::Node config_file = YAML::Load(collection_config_bad);
 
         CHECK(config_file["visor"]["collection"]);

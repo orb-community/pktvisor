@@ -16,7 +16,7 @@ namespace visor {
 
 CoreServer::CoreServer(bool read_only, const PrometheusConfig &prom_config)
     : _svr(read_only)
-    , _mgrs(&_svr)
+    , _registry(&_svr)
     , _start_time(std::chrono::system_clock::now())
 {
 
@@ -97,7 +97,7 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
         bool bc_period{false};
         try {
             uint64_t period(std::stol(req.matches[1]));
-            auto [handler_modules, hm_lock] = _mgrs.handler_manager()->module_get_all_locked();
+            auto [handler_modules, hm_lock] = _registry.handler_manager()->module_get_all_locked();
             for (auto &[name, mod] : handler_modules) {
                 auto hmod = dynamic_cast<StreamHandler *>(mod.get());
                 // TODO need to add policy name, break backwards compatible since multiple otherwise policies will overwrite
@@ -123,7 +123,7 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
         json j;
         try {
             uint64_t period(std::stol(req.matches[1]));
-            auto [handler_modules, hm_lock] = _mgrs.handler_manager()->module_get_all_locked();
+            auto [handler_modules, hm_lock] = _registry.handler_manager()->module_get_all_locked();
             for (auto &[name, mod] : handler_modules) {
                 auto hmod = dynamic_cast<StreamHandler *>(mod.get());
                 // TODO need to add policy name, break backwards compatible since multiple otherwise policies will overwrite
@@ -142,7 +142,7 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
     _svr.Get(R"(/api/v1/taps)", [&]([[maybe_unused]] const httplib::Request &req, httplib::Response &res) {
         json j;
         try {
-            auto [handler_modules, hm_lock] = _mgrs.tap_manager()->module_get_all_locked();
+            auto [handler_modules, hm_lock] = _registry.tap_manager()->module_get_all_locked();
             for (auto &[name, mod] : handler_modules) {
                 auto tmod = dynamic_cast<Tap *>(mod.get());
                 if (tmod) {
@@ -160,7 +160,7 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
         _svr.Get(prom_config.path.c_str(), [&]([[maybe_unused]] const httplib::Request &req, httplib::Response &res) {
             std::stringstream output;
             try {
-                auto [handler_modules, hm_lock] = _mgrs.handler_manager()->module_get_all_locked();
+                auto [handler_modules, hm_lock] = _registry.handler_manager()->module_get_all_locked();
                 for (auto &[name, mod] : handler_modules) {
                     auto hmod = dynamic_cast<StreamHandler *>(mod.get());
                     if (hmod) {

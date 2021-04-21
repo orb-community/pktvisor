@@ -11,7 +11,7 @@ add_library(visor-core
         HandlerModulePlugin.cpp
         GeoDB.cpp
         CoreServer.cpp
-        CoreManagers.cpp
+        CoreRegistry.cpp
         Metrics.cpp
         Policies.cpp
         Taps.cpp)

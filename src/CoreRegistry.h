@@ -15,7 +15,7 @@ namespace visor {
 class InputStreamManager;
 class HandlerManager;
 
-class CoreManagers
+class CoreRegistry
 {
 
     // these hold plugin instances: these are the types of modules available for instantiation
@@ -36,8 +36,8 @@ class CoreManagers
     HttpServer *_svr;
 
 public:
-    CoreManagers(HttpServer *svr);
-    ~CoreManagers();
+    CoreRegistry(HttpServer *svr);
+    ~CoreRegistry();
 
     void configure_from_file(const std::string &filename);
 

@@ -3,7 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 #include "DnsHandlerModulePlugin.h"
-#include "CoreManagers.h"
+#include "CoreRegistry.h"
 #include "DnsStreamHandler.h"
 #include "HandlerManager.h"
 #include "InputStreamManager.h"
@@ -37,20 +37,20 @@ void DnsHandlerModulePlugin::setup_routes(HttpServer *svr)
                 return;
             }
             auto input_name = req.matches[1];
-            if (!mgrs()->input_manager()->module_exists(input_name)) {
+            if (!registry()->input_manager()->module_exists(input_name)) {
                 res.status = 404;
                 result["error"] = "input name does not exist";
                 res.set_content(result.dump(), "text/json");
                 return;
             }
-            if (mgrs()->handler_manager()->module_exists(body["name"])) {
+            if (registry()->handler_manager()->module_exists(body["name"])) {
                 res.status = 400;
                 result["error"] = "handler name already exists";
                 res.set_content(result.dump(), "text/json");
                 return;
             }
             // note, may be a race on exists() above, this may fail. if so we will catch and 500.
-            auto [input_stream, stream_mgr_lock] = mgrs()->input_manager()->module_get_locked(input_name);
+            auto [input_stream, stream_mgr_lock] = registry()->input_manager()->module_get_locked(input_name);
             assert(input_stream);
             auto pcap_stream = dynamic_cast<PcapInputStream *>(input_stream);
             if (!pcap_stream) {
@@ -76,7 +76,7 @@ void DnsHandlerModulePlugin::setup_routes(HttpServer *svr)
             }
             auto handler_module = std::make_unique<DnsStreamHandler>(body["name"], pcap_stream, periods, deep_sample_rate);
             handler_module->start();
-            mgrs()->handler_manager()->module_add(std::move(handler_module));
+            registry()->handler_manager()->module_add(std::move(handler_module));
             result["name"] = body["name"];
             result["periods"] = periods;
             result["deep_sample_rate"] = deep_sample_rate;
@@ -91,20 +91,20 @@ void DnsHandlerModulePlugin::setup_routes(HttpServer *svr)
         json result;
         try {
             auto input_name = req.matches[1];
-            if (!mgrs()->input_manager()->module_exists(input_name)) {
+            if (!registry()->input_manager()->module_exists(input_name)) {
                 res.status = 404;
                 result["error"] = "input name does not exist";
                 res.set_content(result.dump(), "text/json");
                 return;
             }
             auto handler_name = req.matches[2];
-            if (!mgrs()->handler_manager()->module_exists(handler_name)) {
+            if (!registry()->handler_manager()->module_exists(handler_name)) {
                 res.status = 404;
                 result["error"] = "handler name does not exist";
                 res.set_content(result.dump(), "text/json");
                 return;
             }
-            auto [handler, handler_mgr_lock] = mgrs()->handler_manager()->module_get_locked(handler_name);
+            auto [handler, handler_mgr_lock] = registry()->handler_manager()->module_get_locked(handler_name);
             auto dns_handler = dynamic_cast<DnsStreamHandler *>(handler);
             if (!dns_handler) {
                 res.status = 400;
@@ -124,20 +124,20 @@ void DnsHandlerModulePlugin::setup_routes(HttpServer *svr)
         json result;
         try {
             auto input_name = req.matches[1];
-            if (!mgrs()->input_manager()->module_exists(input_name)) {
+            if (!registry()->input_manager()->module_exists(input_name)) {
                 res.status = 404;
                 result["error"] = "input name does not exist";
                 res.set_content(result.dump(), "text/json");
                 return;
             }
             auto handler_name = req.matches[2];
-            if (!mgrs()->handler_manager()->module_exists(handler_name)) {
+            if (!registry()->handler_manager()->module_exists(handler_name)) {
                 res.status = 404;
                 result["error"] = "handler name does not exist";
                 res.set_content(result.dump(), "text/json");
                 return;
             }
-            auto [handler, handler_mgr_lock] = mgrs()->handler_manager()->module_get_locked(handler_name);
+            auto [handler, handler_mgr_lock] = registry()->handler_manager()->module_get_locked(handler_name);
             auto dns_handler = dynamic_cast<DnsStreamHandler *>(handler);
             if (!dns_handler) {
                 res.status = 400;
@@ -158,23 +158,23 @@ void DnsHandlerModulePlugin::setup_routes(HttpServer *svr)
         json result;
         try {
             auto input_name = req.matches[1];
-            if (!mgrs()->input_manager()->module_exists(input_name)) {
+            if (!registry()->input_manager()->module_exists(input_name)) {
                 res.status = 404;
                 result["error"] = "input name does not exist";
                 res.set_content(result.dump(), "text/json");
                 return;
             }
             auto handler_name = req.matches[2];
-            if (!mgrs()->handler_manager()->module_exists(handler_name)) {
+            if (!registry()->handler_manager()->module_exists(handler_name)) {
                 res.status = 404;
                 result["error"] = "handler name does not exist";
                 res.set_content(result.dump(), "text/json");
                 return;
             }
-            auto [handler, handler_mgr_lock] = mgrs()->handler_manager()->module_get_locked(handler_name);
+            auto [handler, handler_mgr_lock] = registry()->handler_manager()->module_get_locked(handler_name);
             handler->stop();
             handler_mgr_lock.unlock();
-            mgrs()->handler_manager()->module_remove(handler_name);
+            registry()->handler_manager()->module_remove(handler_name);
             res.set_content(result.dump(), "text/json");
         } catch (const std::exception &e) {
             res.status = 500;

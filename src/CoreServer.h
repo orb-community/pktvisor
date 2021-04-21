@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "CoreManagers.h"
+#include "CoreRegistry.h"
 #include "HttpServer.h"
 #include <chrono>
 #include <spdlog/spdlog.h>
@@ -20,7 +20,7 @@ class CoreServer
 {
 
     HttpServer _svr;
-    CoreManagers _mgrs;
+    CoreRegistry _registry;
 
     std::shared_ptr<spdlog::logger> _logger;
     std::chrono::system_clock::time_point _start_time;
@@ -34,14 +34,14 @@ public:
     void start(const std::string &host, int port);
     void stop();
 
-    const CoreManagers *mgrs() const
+    const CoreRegistry *registry() const
     {
-        return &_mgrs;
+        return &_registry;
     }
 
-    CoreManagers *mgrs()
+    CoreRegistry *registry()
     {
-        return &_mgrs;
+        return &_registry;
     }
 
     void set_http_logger(httplib::Logger logger)

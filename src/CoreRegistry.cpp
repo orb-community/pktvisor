@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-#include "CoreManagers.h"
+#include "CoreRegistry.h"
 #include "HandlerManager.h"
 #include "InputStreamManager.h"
 #include <spdlog/sinks/stdout_color_sinks.h>
@@ -10,7 +10,7 @@
 
 namespace visor {
 
-CoreManagers::CoreManagers(HttpServer *svr)
+CoreRegistry::CoreRegistry(HttpServer *svr)
     : _svr(svr)
 {
 
@@ -65,7 +65,7 @@ CoreManagers::CoreManagers(HttpServer *svr)
     _policy_manager = std::make_unique<PolicyManager>(&_input_registry);
 }
 
-visor::CoreManagers::~CoreManagers()
+visor::CoreRegistry::~CoreRegistry()
 {
     // gracefully close all inputs and handlers
     auto [input_modules, im_lock] = _input_manager->module_get_all_locked();
@@ -84,7 +84,7 @@ visor::CoreManagers::~CoreManagers()
     }
 }
 
-void visor::CoreManagers::configure_from_file(const std::string &filename)
+void visor::CoreRegistry::configure_from_file(const std::string &filename)
 {
     YAML::Node config_file = YAML::LoadFile(filename);
 

@@ -15,7 +15,7 @@ namespace visor {
 
 using json = nlohmann::json;
 
-class CoreManagers;
+class CoreRegistry;
 
 class SchemaException : public std::runtime_error
 {
@@ -37,7 +37,7 @@ public:
     typedef const std::unordered_map<std::string, std::string> SchemaMap;
 
 private:
-    CoreManagers *_mgrs;
+    CoreRegistry *_registry;
 
 protected:
     /**
@@ -56,14 +56,14 @@ protected:
     {
     }
 
-    const CoreManagers *mgrs() const
+    const CoreRegistry *registry() const
     {
-        return _mgrs;
+        return _registry;
     }
 
-    CoreManagers *mgrs()
+    CoreRegistry *registry()
     {
-        return _mgrs;
+        return _registry;
     }
 
 public:
@@ -77,9 +77,9 @@ public:
     {
     }
 
-    void init_plugin(CoreManagers *mgrs, HttpServer *svr)
+    void init_plugin(CoreRegistry *mgrs, HttpServer *svr)
     {
-        _mgrs = mgrs;
+        _registry = mgrs;
         if (svr) {
             setup_routes(svr);
         }

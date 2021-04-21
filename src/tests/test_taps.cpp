@@ -1,4 +1,4 @@
-#include "CoreManagers.h"
+#include "CoreRegistry.h"
 #include <catch2/catch.hpp>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
@@ -42,7 +42,7 @@ TEST_CASE("Taps", "[taps]")
 
     SECTION("Good Config")
     {
-        CoreManagers mgrs(nullptr);
+        CoreRegistry mgrs(nullptr);
         YAML::Node config_file = YAML::Load(tap_config);
 
         CHECK(config_file["visor"]["taps"]);
@@ -58,7 +58,7 @@ TEST_CASE("Taps", "[taps]")
 
     SECTION("Bad Config")
     {
-        CoreManagers mgrs(nullptr);
+        CoreRegistry mgrs(nullptr);
         YAML::Node config_file = YAML::Load(tap_config_bad);
 
         CHECK(config_file["visor"]["taps"]);
