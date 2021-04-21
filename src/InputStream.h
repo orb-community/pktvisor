@@ -9,12 +9,12 @@
 
 namespace visor {
 
-class InputStream : public AbstractModule
+class InputStream : public AbstractRunnableModule
 {
 
 public:
     InputStream(const std::string &name)
-        : AbstractModule(name)
+        : AbstractRunnableModule(name)
     {
     }
 

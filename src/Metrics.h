@@ -16,6 +16,7 @@
 #include <kll_sketch.hpp>
 #pragma GCC diagnostic pop
 #include <chrono>
+#include <regex>
 #include <shared_mutex>
 #include <vector>
 
@@ -40,12 +41,25 @@ protected:
     std::string _desc;
     std::string _schema_key;
 
+    void _check_names()
+    {
+        for (const auto &name : _name) {
+            if (!std::regex_match(name, std::regex("[a-zA-Z_][a-zA-Z0-9_]*"))) {
+                throw std::runtime_error("invalid metric name: " + name);
+            }
+        }
+        if (!std::regex_match(_schema_key, std::regex("[a-zA-Z_][a-zA-Z0-9_]*"))) {
+            throw std::runtime_error("invalid schema name: " + _schema_key);
+        }
+    }
+
 public:
     Metric(std::string schema_key, std::initializer_list<std::string> names, std::string desc)
         : _name(names)
         , _desc(std::move(desc))
         , _schema_key(schema_key)
     {
+        _check_names();
     }
 
     void set_info(std::string schema_key, std::initializer_list<std::string> names, const std::string &desc)
@@ -54,6 +68,7 @@ public:
         _name = names;
         _desc = desc;
         _schema_key = schema_key;
+        _check_names();
     }
 
     static void add_base_label(const std::string &label, const std::string &value)

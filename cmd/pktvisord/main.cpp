@@ -15,6 +15,7 @@
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/sinks/syslog_sink.h>
 #include <spdlog/spdlog.h>
+#include <yaml-cpp/yaml.h>
 
 #include "GeoDB.h"
 #include "handlers/dns/DnsStreamHandler.h"
@@ -47,6 +48,8 @@ static const char USAGE[] =
       --version             Show version
       --geo-city FILE       GeoLite2 City database to use for IP to Geo mapping
       --geo-asn FILE        GeoLite2 ASN database to use for IP to ASN mapping
+    Configuration:
+      --config FILE         Use specified YAML configuration to configure options, Taps, and Collection Policies
     Logging Options:
       --log-file FILE       Log to the given output file name
       --syslog              Log to syslog
@@ -165,15 +168,15 @@ int main(int argc, char *argv[])
     std::shared_ptr<spdlog::logger> logger;
     if (args["--log-file"]) {
         try {
-            logger = spdlog::basic_logger_mt("pktvisor", args["--log-file"].asString());
+            logger = spdlog::basic_logger_mt("visor", args["--log-file"].asString());
         } catch (const spdlog::spdlog_ex &ex) {
             std::cerr << "Log init failed: " << ex.what() << std::endl;
             exit(EXIT_FAILURE);
         }
     } else if (args["--syslog"].asBool()) {
-        logger = spdlog::syslog_logger_mt("pktvisor", "pktvisord", LOG_PID);
+        logger = spdlog::syslog_logger_mt("visor", "pktvisord", LOG_PID);
     } else {
-        logger = spdlog::stdout_color_mt("pktvisor");
+        logger = spdlog::stdout_color_mt("visor");
     }
     if (args["-v"].asBool()) {
         logger->set_level(spdlog::level::debug);
@@ -186,13 +189,46 @@ int main(int argc, char *argv[])
             prom_config.instance = args["--prom-instance"].asString();
         }
     }
-    CoreServer svr(!args["--admin-api"].asBool(), logger, prom_config);
+    CoreServer svr(!args["--admin-api"].asBool(), prom_config);
     svr.set_http_logger([&logger](const auto &req, const auto &res) {
         logger->info("REQUEST: {} {} {}", req.method, req.path, res.status);
         if (res.status == 500) {
             logger->error(res.body);
         }
     });
+
+    // local config file
+    if (args["--config"]) {
+        logger->info("loading config file: {}", args["--config"].asString());
+        YAML::Node config_file;
+        // look for local options
+        try {
+            config_file = YAML::LoadFile(args["--config"].asString());
+
+            if (!config_file.IsMap() || !config_file["visor"]) {
+                throw std::runtime_error("invalid schema");
+            }
+            if (!config_file["version"] || !config_file["version"].IsScalar() || config_file["version"].as<std::string>() != "1.0") {
+                throw std::runtime_error("missing or unsupported version");
+            }
+
+            if (config_file["visor"]["config"] && config_file["visor"]["config"].IsMap()) {
+                // todo more config items
+                auto config = config_file["visor"]["config"];
+                if (config["verbose"] && config["verbose"].as<bool>()) {
+                    logger->set_level(spdlog::level::debug);
+                }
+            }
+
+            // then pass to CoreManagers
+            svr.mgrs()->configure_from_file(args["--config"].asString());
+
+        } catch (std::runtime_error &e) {
+            logger->error("configuration error: {}", e.what());
+            exit(EXIT_FAILURE);
+        }
+
+    }
 
     shutdown_handler = [&]([[maybe_unused]] int signal) {
         logger->info("Shutting down");
@@ -261,9 +297,10 @@ int main(int argc, char *argv[])
             input_stream->config_set("bpf", bpf);
             input_stream->config_set("host_spec", host_spec);
 
-            auto input_manager = svr.input_manager();
-            auto handler_manager = svr.handler_manager();
+            auto input_manager = svr.mgrs()->input_manager();
+            auto handler_manager = svr.mgrs()->handler_manager();
 
+            input_stream->start();
             input_manager->module_add(std::move(input_stream));
             auto [input_stream_, stream_mgr_lock] = input_manager->module_get_locked("pcap");
             stream_mgr_lock.unlock();
@@ -271,10 +308,12 @@ int main(int argc, char *argv[])
 
             {
                 auto handler_module = std::make_unique<handler::net::NetStreamHandler>("net", pcap_stream, periods, sample_rate);
+                handler_module->start();
                 handler_manager->module_add(std::move(handler_module));
             }
             {
                 auto handler_module = std::make_unique<handler::dns::DnsStreamHandler>("dns", pcap_stream, periods, sample_rate);
+                handler_module->start();
                 handler_manager->module_add(std::move(handler_module));
             }
 

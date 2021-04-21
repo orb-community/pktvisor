@@ -4,14 +4,9 @@
 
 #pragma once
 
-#include "HandlerManager.h"
-#include "HandlerModulePlugin.h"
+#include "CoreManagers.h"
 #include "HttpServer.h"
-#include "InputModulePlugin.h"
-#include "InputStreamManager.h"
-#include <Corrade/PluginManager/Manager.h>
-#include <Corrade/PluginManager/PluginMetadata.h>
-#include <atomic>
+#include <chrono>
 #include <spdlog/spdlog.h>
 
 namespace visor {
@@ -23,23 +18,9 @@ struct PrometheusConfig {
 
 class CoreServer
 {
-public:
-private:
-    typedef Corrade::PluginManager::Manager<InputModulePlugin> InputPluginRegistry;
-    typedef Corrade::PluginManager::Manager<HandlerModulePlugin> HandlerPluginRegistry;
-    typedef Corrade::Containers::Pointer<InputModulePlugin> InputPluginPtr;
-    typedef Corrade::Containers::Pointer<HandlerModulePlugin> HandlerPluginPtr;
 
-    InputPluginRegistry _input_registry;
-    std::vector<InputPluginPtr> _input_plugins;
-
-    HandlerPluginRegistry _handler_registry;
-    std::vector<HandlerPluginPtr> _handler_plugins;
-
-    visor::HttpServer _svr;
-
-    std::unique_ptr<InputStreamManager> _input_manager;
-    std::unique_ptr<HandlerManager> _handler_manager;
+    HttpServer _svr;
+    CoreManagers _mgrs;
 
     std::shared_ptr<spdlog::logger> _logger;
     std::chrono::system_clock::time_point _start_time;
@@ -47,24 +28,25 @@ private:
     void _setup_routes(const PrometheusConfig &prom_config);
 
 public:
-    CoreServer(bool read_only, std::shared_ptr<spdlog::logger> logger, const PrometheusConfig &prom_config);
+    CoreServer(bool read_only, const PrometheusConfig &prom_config);
     ~CoreServer();
 
     void start(const std::string &host, int port);
     void stop();
 
+    const CoreManagers *mgrs() const
+    {
+        return &_mgrs;
+    }
+
+    CoreManagers *mgrs()
+    {
+        return &_mgrs;
+    }
+
     void set_http_logger(httplib::Logger logger)
     {
         _svr.set_logger(logger);
-    }
-
-    InputStreamManager *input_manager()
-    {
-        return _input_manager.get();
-    }
-    HandlerManager *handler_manager()
-    {
-        return _handler_manager.get();
     }
 };
 

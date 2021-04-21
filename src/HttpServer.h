@@ -20,7 +20,7 @@ public:
 
     Server &Get(const char *pattern, Handler handler)
     {
-        spdlog::get("pktvisor")->info("Registering GET {}", pattern);
+        spdlog::get("visor")->info("Registering GET {}", pattern);
         return httplib::Server::Get(pattern, handler);
     }
     Server &Post(const char *pattern, Handler handler)
@@ -28,7 +28,7 @@ public:
         if (_read_only) {
             return *this;
         }
-        spdlog::get("pktvisor")->info("Registering POST {}", pattern);
+        spdlog::get("visor")->info("Registering POST {}", pattern);
         return httplib::Server::Post(pattern, handler);
     }
     Server &Put(const char *pattern, Handler handler)
@@ -36,7 +36,7 @@ public:
         if (_read_only) {
             return *this;
         }
-        spdlog::get("pktvisor")->info("Registering PUT {}", pattern);
+        spdlog::get("visor")->info("Registering PUT {}", pattern);
         return httplib::Server::Put(pattern, handler);
     }
     Server &Delete(const char *pattern, Handler handler)
@@ -44,7 +44,7 @@ public:
         if (_read_only) {
             return *this;
         }
-        spdlog::get("pktvisor")->info("Registering DELETE {}", pattern);
+        spdlog::get("visor")->info("Registering DELETE {}", pattern);
         return httplib::Server::Delete(pattern, handler);
     }
 };

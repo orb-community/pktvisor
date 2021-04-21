@@ -6,43 +6,32 @@
 #include "Metrics.h"
 #include "visor_config.h"
 #include <chrono>
+#include <spdlog/sinks/stdout_color_sinks.h>
+#include <spdlog/spdlog.h>
 #include <spdlog/stopwatch.h>
 #include <vector>
 
-visor::CoreServer::CoreServer(bool read_only, std::shared_ptr<spdlog::logger> logger, const PrometheusConfig &prom_config)
+namespace visor {
+
+CoreServer::CoreServer(bool read_only, const PrometheusConfig &prom_config)
     : _svr(read_only)
-    , _logger(logger)
+    , _mgrs(&_svr)
     , _start_time(std::chrono::system_clock::now())
 {
 
-    // inputs
-    _input_manager = std::make_unique<InputStreamManager>();
-
-    // initialize input plugins
-    for (auto &s : _input_registry.pluginList()) {
-        InputPluginPtr mod = _input_registry.instantiate(s);
-        _logger->info("Load input plugin: {} {}", mod->name(), mod->pluginInterface());
-        mod->init_module(_input_manager.get(), _svr);
-        _input_plugins.emplace_back(std::move(mod));
-    }
-
-    // handlers
-    _handler_manager = std::make_unique<HandlerManager>();
-
-    // initialize handler plugins
-    for (auto &s : _handler_registry.pluginList()) {
-        HandlerPluginPtr mod = _handler_registry.instantiate(s);
-        _logger->info("Load handler plugin: {} {}", mod->name(), mod->pluginInterface());
-        mod->init_module(_input_manager.get(), _handler_manager.get(), _svr);
-        _handler_plugins.emplace_back(std::move(mod));
+    _logger = spdlog::get("visor");
+    if (!_logger) {
+        _logger = spdlog::stderr_color_mt("visor");
     }
 
     _setup_routes(prom_config);
+
     if (!prom_config.instance.empty()) {
         Metric::add_base_label("instance", prom_config.instance);
     }
 }
-void visor::CoreServer::start(const std::string &host, int port)
+
+void CoreServer::start(const std::string &host, int port)
 {
     if (!_svr.bind_to_port(host.c_str(), port)) {
         throw std::runtime_error("unable to bind host/port");
@@ -52,31 +41,18 @@ void visor::CoreServer::start(const std::string &host, int port)
         throw std::runtime_error("error during listen");
     }
 }
-void visor::CoreServer::stop()
+
+void CoreServer::stop()
 {
     _svr.stop();
-
-    // gracefully close all inputs and handlers
-    auto [input_modules, im_lock] = _input_manager->module_get_all_locked();
-    for (auto &[name, mod] : input_modules) {
-        if (mod->running()) {
-            _logger->info("Stopping input instance: {}", mod->name());
-            mod->stop();
-        }
-    }
-    auto [handler_modules, hm_lock] = _handler_manager->module_get_all_locked();
-    for (auto &[name, mod] : handler_modules) {
-        if (mod->running()) {
-            _logger->info("Stopping handler instance: {}", mod->name());
-            mod->stop();
-        }
-    }
 }
-visor::CoreServer::~CoreServer()
+
+CoreServer::~CoreServer()
 {
     stop();
 }
-void visor::CoreServer::_setup_routes(const PrometheusConfig &prom_config)
+
+void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
 {
 
     _logger->info("Initialize server control plane");
@@ -120,7 +96,7 @@ void visor::CoreServer::_setup_routes(const PrometheusConfig &prom_config)
         bool bc_period{false};
         try {
             uint64_t period(std::stol(req.matches[1]));
-            auto [handler_modules, hm_lock] = _handler_manager->module_get_all_locked();
+            auto [handler_modules, hm_lock] = _mgrs.handler_manager()->module_get_all_locked();
             for (auto &[name, mod] : handler_modules) {
                 auto hmod = dynamic_cast<StreamHandler *>(mod.get());
                 // TODO need to add policy name, break backwards compatible since multiple otherwise policies will overwrite
@@ -146,7 +122,7 @@ void visor::CoreServer::_setup_routes(const PrometheusConfig &prom_config)
         json j;
         try {
             uint64_t period(std::stol(req.matches[1]));
-            auto [handler_modules, hm_lock] = _handler_manager->module_get_all_locked();
+            auto [handler_modules, hm_lock] = _mgrs.handler_manager()->module_get_all_locked();
             for (auto &[name, mod] : handler_modules) {
                 auto hmod = dynamic_cast<StreamHandler *>(mod.get());
                 // TODO need to add policy name, break backwards compatible since multiple otherwise policies will overwrite
@@ -162,12 +138,28 @@ void visor::CoreServer::_setup_routes(const PrometheusConfig &prom_config)
             res.set_content(e.what(), "text/plain");
         }
     });
+    _svr.Get(R"(/api/v1/taps)", [&]([[maybe_unused]] const httplib::Request &req, httplib::Response &res) {
+        json j;
+        try {
+            auto [handler_modules, hm_lock] = _mgrs.tap_manager()->module_get_all_locked();
+            for (auto &[name, mod] : handler_modules) {
+                auto tmod = dynamic_cast<Tap *>(mod.get());
+                if (tmod) {
+                    tmod->info_json(j[tmod->name()]);
+                }
+            }
+            res.set_content(j.dump(), "text/json");
+        } catch (const std::exception &e) {
+            res.status = 500;
+            res.set_content(e.what(), "text/plain");
+        }
+    });
     if (!prom_config.path.empty()) {
         _logger->info("enabling prometheus metrics on: {}", prom_config.path);
         _svr.Get(prom_config.path.c_str(), [&]([[maybe_unused]] const httplib::Request &req, httplib::Response &res) {
             std::stringstream output;
             try {
-                auto [handler_modules, hm_lock] = _handler_manager->module_get_all_locked();
+                auto [handler_modules, hm_lock] = _mgrs.handler_manager()->module_get_all_locked();
                 for (auto &[name, mod] : handler_modules) {
                     auto hmod = dynamic_cast<StreamHandler *>(mod.get());
                     if (hmod) {
@@ -183,4 +175,6 @@ void visor::CoreServer::_setup_routes(const PrometheusConfig &prom_config)
             }
         });
     }
+}
+
 }
