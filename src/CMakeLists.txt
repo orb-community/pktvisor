@@ -13,6 +13,7 @@ add_library(visor-core
         CoreServer.cpp
         CoreManagers.cpp
         Metrics.cpp
+        Policies.cpp
         Taps.cpp)
 add_library(Visor::Core ALIAS visor-core)
 
@@ -50,6 +51,8 @@ add_executable(unit-tests-vizor-core
         tests/test_metrics.cpp
         tests/test_geoip.cpp
         tests/test_taps.cpp
+        tests/test_policies.cpp
+        inputs/static_plugins.h
         )
 
 target_include_directories(unit-tests-vizor-core

@@ -44,7 +44,6 @@ public:
         : Corrade::PluginManager::AbstractPlugin{manager, plugin}
     {
     }
-
 };
 
 }

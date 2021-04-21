@@ -1,13 +1,12 @@
 #include "CoreManagers.h"
 #include "InputModulePlugin.h"
-#include "inputs/static_plugins.h"
 #include <catch2/catch.hpp>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
 
 using namespace visor;
 
-auto sample_config = R"(
+auto tap_config = R"(
 version: "1.0"
 
 visor:
@@ -26,7 +25,7 @@ visor:
         iface: en0
 )";
 
-auto sample_config_bad = R"(
+auto tap_config_bad = R"(
 version: "1.0"
 
 visor:
@@ -45,7 +44,7 @@ TEST_CASE("Taps", "[taps]")
     SECTION("Good Config")
     {
         CoreManagers mgrs(nullptr);
-        YAML::Node config_file = YAML::Load(sample_config);
+        YAML::Node config_file = YAML::Load(tap_config);
 
         CHECK(config_file["visor"]["taps"]);
         CHECK(config_file["visor"]["taps"].IsMap());
@@ -61,7 +60,7 @@ TEST_CASE("Taps", "[taps]")
     SECTION("Bad Config")
     {
         CoreManagers mgrs(nullptr);
-        YAML::Node config_file = YAML::Load(sample_config_bad);
+        YAML::Node config_file = YAML::Load(tap_config_bad);
 
         CHECK(config_file["visor"]["taps"]);
         CHECK(config_file["visor"]["taps"].IsMap());

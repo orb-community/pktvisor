@@ -6,6 +6,7 @@
 
 #include "HandlerModulePlugin.h"
 #include "InputModulePlugin.h"
+#include "Policies.h"
 #include "Taps.h"
 #include <vector>
 
@@ -26,6 +27,7 @@ class CoreManagers
     std::unique_ptr<HandlerManager> _handler_manager;
 
     std::unique_ptr<TapManager> _tap_manager;
+    std::unique_ptr<PolicyManager> _policy_manager;
 
     std::shared_ptr<spdlog::logger> _logger;
     HttpServer *_svr;
@@ -48,6 +50,10 @@ public:
     {
         return _tap_manager.get();
     }
+    [[nodiscard]] const PolicyManager *policy_manager() const
+    {
+        return _policy_manager.get();
+    }
     [[nodiscard]] const InputPluginRegistry *input_plugin_registry() const
     {
         return &_input_registry;
@@ -67,7 +73,10 @@ public:
     {
         return _tap_manager.get();
     }
-
+    [[nodiscard]] PolicyManager *policy_manager()
+    {
+        return _policy_manager.get();
+    }
 };
 
 }
