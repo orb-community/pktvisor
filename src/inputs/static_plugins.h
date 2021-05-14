@@ -5,4 +5,4 @@ int import_input_plugins()
     return 0;
 }
 
-CORRADE_AUTOMATIC_INITIALIZER(import_input_plugins);
+CORRADE_AUTOMATIC_INITIALIZER(import_input_plugins)

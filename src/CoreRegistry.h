@@ -8,27 +8,33 @@
 #include "InputModulePlugin.h"
 #include "Policies.h"
 #include "Taps.h"
-#include <vector>
+#include <map>
 
 namespace visor {
 
 class InputStreamManager;
 class HandlerManager;
 
+/**
+ * The "registry" of core data structures such as plugins, modules, taps and policies
+ */
 class CoreRegistry
 {
 
-    // these hold plugin instances: these are the types of modules available for instantiation
+    // this is the interface to load/instantiate/unload Corrade plugins
     InputPluginRegistry _input_registry;
-    std::vector<InputPluginPtr> _input_plugins;
-
     HandlerPluginRegistry _handler_registry;
-    std::vector<HandlerPluginPtr> _handler_plugins;
 
-    // these hold instances of active modules
+    // these hold instantiated Corrade plugin instances: they know how to instantiate visor::AbstractModule derived instances
+    // keyed by plugin alias name
+    std::map<std::string, InputPluginPtr> _input_plugins;
+    std::map<std::string, HandlerPluginPtr> _handler_plugins;
+
+    // these hold instances of active visor::AbstractModule derived modules (the main event processors)
     std::unique_ptr<InputStreamManager> _input_manager;
     std::unique_ptr<HandlerManager> _handler_manager;
 
+    // taps and policies
     std::unique_ptr<TapManager> _tap_manager;
     std::unique_ptr<PolicyManager> _policy_manager;
 

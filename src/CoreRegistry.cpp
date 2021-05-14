@@ -37,7 +37,7 @@ CoreRegistry::CoreRegistry(HttpServer *svr)
             InputPluginPtr mod = _input_registry.instantiate(s);
             _logger->info("Load input stream plugin: {} {}", s, mod->pluginInterface());
             mod->init_plugin(this, _svr);
-            _input_plugins.emplace_back(std::move(mod));
+            _input_plugins.insert({s, std::move(mod)});
         }
     }
 
@@ -55,7 +55,7 @@ CoreRegistry::CoreRegistry(HttpServer *svr)
             HandlerPluginPtr mod = _handler_registry.instantiate(s);
             _logger->info("Load stream handler plugin: {} {}", s, mod->pluginInterface());
             mod->init_plugin(this, _svr);
-            _handler_plugins.emplace_back(std::move(mod));
+            _handler_plugins.insert({s, std::move(mod)});
         }
     }
 
