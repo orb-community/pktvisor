@@ -201,7 +201,7 @@ void PcapInputStream::process_raw_packet(pcpp::RawPacket *rawPacket)
 {
 
     pcpp::ProtocolType l3(pcpp::UnknownProtocol), l4(pcpp::UnknownProtocol);
-    pcpp::Packet packet(rawPacket, pcpp::OsiModelTransportLayer);
+    pcpp::Packet packet(rawPacket, pcpp::TCP | pcpp::UDP);
     if (packet.isPacketOfType(pcpp::IPv4)) {
         l3 = pcpp::IPv4;
     } else if (packet.isPacketOfType(pcpp::IPv6)) {

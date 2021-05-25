@@ -3,9 +3,50 @@
 #include "DnsStreamHandler.h"
 #include "PcapInputStream.h"
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wold-style-cast"
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma clang diagnostic ignored "-Wc99-extensions"
+#pragma clang diagnostic ignored "-Wrange-loop-analysis"
+#include <DnsLayer.h>
+#include <Packet.h>
+#include <PcapFileDevice.h>
+#include <ProtocolType.h>
+#include <TcpLayer.h>
+#include <UdpLayer.h>
+#include <arpa/inet.h>
+#pragma GCC diagnostic pop
+#pragma GCC diagnostic ignored "-Wold-style-cast"
+
 using namespace visor::handler::dns;
 using namespace visor::input::pcap;
 using namespace nlohmann;
+
+TEST_CASE("Ensure we use only pktvisor DnsLayer", "[pcap][ipv4][dns]")
+{
+
+    pcpp::IFileReaderDevice *reader = pcpp::IFileReaderDevice::getReader("tests/fixtures/dns_udp_tcp_random.pcap");
+
+    CHECK(reader->open());
+
+    pcpp::RawPacket rawPacket;
+
+    while (reader->getNextPacket(rawPacket)) {
+        pcpp::Packet dnsRequest(&rawPacket, pcpp::TCP | pcpp::UDP);
+        if (dnsRequest.isPacketOfType(pcpp::UDP)) {
+            CHECK(dnsRequest.getLayerOfType<pcpp::UdpLayer>() != nullptr);
+        } else {
+            CHECK(dnsRequest.getLayerOfType<pcpp::TcpLayer>() != nullptr);
+        }
+        // we do NOT expect to see pcpp::DnsLayer or DNS protocol yet
+        CHECK(dnsRequest.getLayerOfType<pcpp::DnsLayer>() == nullptr);
+        CHECK(dnsRequest.getLayerOfType<pcpp::DnsOverTcpLayer>() == nullptr);
+        CHECK(dnsRequest.isPacketOfType(pcpp::DNS) == false);
+    }
+
+    reader->close();
+    delete reader;
+}
 
 TEST_CASE("Parse DNS UDP IPv4 tests", "[pcap][ipv4][udp][dns]")
 {
