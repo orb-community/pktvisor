@@ -9,8 +9,8 @@
 #include <spdlog/stopwatch.h>
 #include <vector>
 
-visor::CoreServer::CoreServer(bool read_only, std::shared_ptr<spdlog::logger> logger, const PrometheusConfig &prom_config)
-    : _svr(read_only)
+visor::CoreServer::CoreServer(std::shared_ptr<spdlog::logger> logger, const HttpConfig &http_config, const PrometheusConfig &prom_config)
+    : _svr(http_config)
     , _logger(logger)
     , _start_time(std::chrono::system_clock::now())
 {

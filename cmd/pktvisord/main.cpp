@@ -36,15 +36,18 @@ static const char USAGE[] =
     a "pcap" input stream will be automatically created, with "net" and "dns" handler modules attached.
 
     Base Options:
-      -l HOST               Run webserver on the given host or IP [default: localhost]
-      -p PORT               Run webserver on the given port [default: 10853]
+      -l HOST               Run web server on the given host or IP [default: localhost]
+      -p PORT               Run web server on the given port [default: 10853]
+      --tls                 Enable TLS on the web server
+      --tls-cert FILE       Use given TLS cert. Required if --tls is enabled.
+      --tls-key FILE        Use given TLS private key. Required if --tls is enabled.
       --admin-api           Enable admin REST API giving complete control plane functionality [default: false]
                             When not specified, the exposed API is read-only access to summarized metrics.
                             When specified, write access is enabled for all modules.
       -d                    Daemonize; fork and continue running in the background [default: false]
       -h --help             Show this screen
       -v                    Verbose log output
-      --no-track            Don't send lightweight, anonymous usage metrics.
+      --no-track            Don't send lightweight, anonymous usage metrics
       --version             Show version
       --geo-city FILE       GeoLite2 City database to use for IP to Geo mapping
       --geo-asn FILE        GeoLite2 ASN database to use for IP to ASN mapping
@@ -187,7 +190,20 @@ int main(int argc, char *argv[])
             prom_config.instance = args["--prom-instance"].asString();
         }
     }
-    CoreServer svr(!args["--admin-api"].asBool(), logger, prom_config);
+
+    HttpConfig http_config;
+    http_config.read_only = !args["--admin-api"].asBool();
+    if (args["--tls"].asBool()) {
+        http_config.tls_enabled = true;
+        if (!args["--tls-key"] || !args["--tls-cert"]) {
+            logger->error("you must specify --tls-key and --tls-cert to use --tls");
+            exit(EXIT_FAILURE);
+        }
+        http_config.key = args["--tls-key"].asString();
+        http_config.cert = args["--tls-cert"].asString();
+    }
+
+    CoreServer svr(logger, http_config, prom_config);
     svr.set_http_logger([&logger](const auto &req, const auto &res) {
         logger->info("REQUEST: {} {} {}", req.method, req.path, res.status);
         if (res.status == 500) {

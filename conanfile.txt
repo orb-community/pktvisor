@@ -7,6 +7,7 @@ cpp-httplib/0.8.0
 corrade/2020.06
 pcapplusplus/21.05
 json-schema-validator/2.1.0
+openssl/1.1.1k
 
 [build_requires]
 benchmark/1.5.2
