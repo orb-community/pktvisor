@@ -19,6 +19,7 @@
 #include "GeoDB.h"
 #include "handlers/dns/DnsStreamHandler.h"
 #include "handlers/net/NetStreamHandler.h"
+#include "handlers/pcap/PcapStreamHandler.h"
 #include "inputs/pcap/PcapInputStream.h"
 #include "timer.hpp"
 
@@ -269,6 +270,10 @@ int main(int argc, char *argv[])
             stream_mgr_lock.unlock();
             auto pcap_stream = dynamic_cast<input::pcap::PcapInputStream *>(input_stream_);
 
+            {
+                auto pcap_module = std::make_unique<handler::pcap::PcapStreamHandler>("pcap", pcap_stream, periods, sample_rate);
+                handler_manager->module_add(std::move(pcap_module));
+            }
             {
                 auto handler_module = std::make_unique<handler::net::NetStreamHandler>("net", pcap_stream, periods, sample_rate);
                 handler_manager->module_add(std::move(handler_module));
