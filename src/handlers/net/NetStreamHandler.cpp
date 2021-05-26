@@ -39,6 +39,7 @@ void NetStreamHandler::start()
     _pkt_connection = _stream->packet_signal.connect(&NetStreamHandler::process_packet_cb, this);
     _start_tstamp_connection = _stream->start_tstamp_signal.connect(&NetStreamHandler::set_start_tstamp, this);
     _end_tstamp_connection = _stream->end_tstamp_signal.connect(&NetStreamHandler::set_end_tstamp, this);
+    _tcp_reassembly_errors_connection = _stream->tcp_reassembly_error_signal.connect(&NetStreamHandler::process_tcp_reassembly_error, this);
 
     _running = true;
 }
@@ -52,6 +53,7 @@ void NetStreamHandler::stop()
     _pkt_connection.disconnect();
     _start_tstamp_connection.disconnect();
     _end_tstamp_connection.disconnect();
+    _tcp_reassembly_errors_connection.disconnect();
 
     _running = false;
 }
@@ -64,6 +66,10 @@ NetStreamHandler::~NetStreamHandler()
 void NetStreamHandler::process_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp)
 {
     _metrics->process_packet(payload, dir, l3, l4, stamp);
+}
+void NetStreamHandler::process_tcp_reassembly_error(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, timespec stamp)
+{
+    _metrics->process_tcp_reassembly_error(payload, dir, l3, stamp);
 }
 
 void NetStreamHandler::window_json(json &j, uint64_t period, bool merged)
@@ -109,6 +115,7 @@ void NetworkMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
 
     _counters.UDP += other._counters.UDP;
     _counters.TCP += other._counters.TCP;
+    _counters.TCP_reassembly_errors += other._counters.TCP_reassembly_errors;
     _counters.OtherL4 += other._counters.OtherL4;
     _counters.IPv4 += other._counters.IPv4;
     _counters.IPv6 += other._counters.IPv6;
@@ -140,6 +147,7 @@ void NetworkMetricsBucket::to_prometheus(std::stringstream &out) const
 
     _counters.UDP.to_prometheus(out);
     _counters.TCP.to_prometheus(out);
+    _counters.TCP_reassembly_errors.to_prometheus(out);
     _counters.OtherL4.to_prometheus(out);
     _counters.IPv4.to_prometheus(out);
     _counters.IPv6.to_prometheus(out);
@@ -173,6 +181,7 @@ void NetworkMetricsBucket::to_json(json &j) const
 
     _counters.UDP.to_json(j);
     _counters.TCP.to_json(j);
+    _counters.TCP_reassembly_errors.to_json(j);
     _counters.OtherL4.to_json(j);
     _counters.IPv4.to_json(j);
     _counters.IPv6.to_json(j);
@@ -297,6 +306,12 @@ void NetworkMetricsBucket::process_packet(bool deep, pcpp::Packet &payload, Pack
         }
     }
 }
+void NetworkMetricsBucket::process_tcp_reassembly_error([[maybe_unused]] bool deep, [[maybe_unused]] pcpp::Packet &payload, [[maybe_unused]] PacketDirection dir, [[maybe_unused]] pcpp::ProtocolType l3)
+{
+
+    std::unique_lock lock(_mutex);
+    ++_counters.TCP_reassembly_errors;
+}
 
 // the general metrics manager entry point
 void NetworkMetricsManager::process_packet(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp)
@@ -305,6 +320,12 @@ void NetworkMetricsManager::process_packet(pcpp::Packet &payload, PacketDirectio
     new_event(stamp);
     // process in the "live" bucket
     live_bucket()->process_packet(_deep_sampling_now, payload, dir, l3, l4);
+}
+void NetworkMetricsManager::process_tcp_reassembly_error(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, [[maybe_unused]] timespec stamp)
+{
+    // note we do not call base event since that should be called at the packet level above, and would duplicate
+    // process in the "live" bucket
+    live_bucket()->process_tcp_reassembly_error(_deep_sampling_now, payload, dir, l3);
 }
 
 }

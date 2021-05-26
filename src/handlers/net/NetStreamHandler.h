@@ -32,6 +32,7 @@ protected:
     struct counters {
         Counter UDP;
         Counter TCP;
+        Counter TCP_reassembly_errors;
         Counter OtherL4;
         Counter IPv4;
         Counter IPv6;
@@ -40,6 +41,7 @@ protected:
         counters()
             : UDP("packets", {"udp"}, "Count of UDP packets")
             , TCP("packets", {"tcp"}, "Count of TCP packets")
+            , TCP_reassembly_errors("packets", {"tcp_reassembly_errors"}, "Count of TCP reassembly errors")
             , OtherL4("packets", {"other_l4"}, "Count of packets which are not UDP or TCP")
             , IPv4("packets", {"ipv4"}, "Count of IPv4 packets")
             , IPv6("packets", {"ipv6"}, "Count of IPv6 packets")
@@ -90,6 +92,8 @@ public:
     }
 
     void process_packet(bool deep, pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4);
+    void process_tcp_reassembly_error(bool deep, pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3);
+
 };
 
 class NetworkMetricsManager final : public visor::AbstractMetricsManager<NetworkMetricsBucket>
@@ -101,6 +105,8 @@ public:
     }
 
     void process_packet(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp);
+    void process_tcp_reassembly_error(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, timespec stamp);
+
 };
 
 class NetStreamHandler final : public visor::StreamMetricsHandler<NetworkMetricsManager>
@@ -111,10 +117,12 @@ class NetStreamHandler final : public visor::StreamMetricsHandler<NetworkMetrics
     sigslot::connection _pkt_connection;
     sigslot::connection _start_tstamp_connection;
     sigslot::connection _end_tstamp_connection;
+    sigslot::connection _tcp_reassembly_errors_connection;
 
     void process_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp);
     void set_start_tstamp(timespec stamp);
     void set_end_tstamp(timespec stamp);
+    void process_tcp_reassembly_error(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, timespec stamp);
 
 public:
     NetStreamHandler(const std::string &name, PcapInputStream *stream, uint periods, uint deepSampleRate);

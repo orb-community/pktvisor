@@ -3,8 +3,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 #include "PcapInputStream.h"
-#include <timer.hpp>
 #include <pcap.h>
+#include <timer.hpp>
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 #pragma GCC diagnostic ignored "-Wunused-parameter"
@@ -12,10 +12,10 @@
 #pragma GCC diagnostic ignored "-Wpedantic"
 #include <IPv4Layer.h>
 #include <IPv6Layer.h>
+#include <Logger.h>
 #include <PacketUtils.h>
 #include <PcapFileDevice.h>
 #include <SystemUtils.h>
-#include <Logger.h>
 #pragma GCC diagnostic pop
 #include <Corrade/Utility/Debug.h>
 #include <IpUtils.h>
@@ -55,7 +55,7 @@ static void _packet_arrives_cb(pcpp::RawPacket *rawPacket, [[maybe_unused]] pcpp
     stream->process_raw_packet(rawPacket);
 }
 
-static void _pcap_stats_update([[maybe_unused]] pcpp::IPcapDevice::PcapStats& stats, [[maybe_unused]] void *cookie)
+static void _pcap_stats_update([[maybe_unused]] pcpp::IPcapDevice::PcapStats &stats, [[maybe_unused]] void *cookie)
 {
     // auto stream = static_cast<PcapInputStream *>(cookie);
     // TODO expose this
@@ -70,6 +70,7 @@ PcapInputStream::PcapInputStream(const std::string &name)
           _tcp_connection_end_cb,
           {true, 5, 500, 50})
 {
+    pcpp::LoggerPP::getInstance().suppressErrors();
 }
 
 PcapInputStream::~PcapInputStream()
@@ -111,15 +112,13 @@ void PcapInputStream::start()
         auto req_source = config_get<std::string>("pcap_source");
         if (req_source == "libpcap") {
             _cur_pcap_source = PcapSource::libpcap;
-        }
-        else if (req_source == "af_packet") {
+        } else if (req_source == "af_packet") {
 #ifndef __linux__
             throw PcapException("af_packet is only available on linux");
 #else
             _cur_pcap_source = PcapSource::af_packet;
 #endif
-        }
-        else {
+        } else {
             throw PcapException("unknown pcap source");
         }
     }
@@ -143,15 +142,13 @@ void PcapInputStream::start()
         }
         _get_hosts_from_libpcap_iface();
         _open_libpcap_iface(config_get<std::string>("bpf"));
-    }
-    else if (_cur_pcap_source == PcapSource::af_packet) {
+    } else if (_cur_pcap_source == PcapSource::af_packet) {
 #ifndef __linux__
         assert(true);
 #else
         _open_af_packet_iface(TARGET, config_get<std::string>("bpf"));
 #endif
-    }
-    else {
+    } else {
         assert(true);
     }
 
@@ -245,7 +242,20 @@ void PcapInputStream::process_raw_packet(pcpp::RawPacket *rawPacket)
     if (l4 == pcpp::UDP) {
         udp_signal(packet, dir, l3, pcpp::hash5Tuple(&packet), rawPacket->getPacketTimeStamp());
     } else if (l4 == pcpp::TCP) {
-        _tcp_reassembly.reassemblePacket(rawPacket);
+        auto result = _tcp_reassembly.reassemblePacket(packet);
+        switch (result) {
+        case pcpp::TcpReassembly::Error_PacketDoesNotMatchFlow:
+        case pcpp::TcpReassembly::NonTcpPacket:
+        case pcpp::TcpReassembly::NonIpPacket:
+            tcp_reassembly_error_signal(packet, dir, l3, rawPacket->getPacketTimeStamp());
+        case pcpp::TcpReassembly::TcpMessageHandled:
+        case pcpp::TcpReassembly::OutOfOrderTcpMessageBuffered:
+        case pcpp::TcpReassembly::FIN_RSTWithNoData:
+        case pcpp::TcpReassembly::Ignore_PacketWithNoData:
+        case pcpp::TcpReassembly::Ignore_PacketOfClosedFlow:
+        case pcpp::TcpReassembly::Ignore_Retransimission:
+            break;
+        }
     } else {
         // unsupported layer3 protocol
     }
@@ -304,11 +314,11 @@ void PcapInputStream::_open_pcap(const std::string &fileName, const std::string 
 }
 
 #ifdef __linux__
-void PcapInputStream::_open_af_packet_iface(const std::string &iface, const std::string &bpfFilter) {
+void PcapInputStream::_open_af_packet_iface(const std::string &iface, const std::string &bpfFilter)
+{
 
     _af_device = std::make_unique<AFPacket>(this, _packet_arrives_cb, bpfFilter, iface);
     _af_device->start_capture();
-
 }
 #endif
 
@@ -387,7 +397,7 @@ void PcapInputStream::_get_hosts_from_libpcap_iface()
     }
 }
 
-void PcapInputStream::info_json(json& j) const
+void PcapInputStream::info_json(json &j) const
 {
     _common_info_json(j);
     json info;
