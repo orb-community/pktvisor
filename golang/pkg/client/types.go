@@ -127,6 +127,13 @@ type PacketPayload struct {
 	Period    PeriodPayload `json:"period"`
 }
 
+// PcapPayload contains information about pcap input stream
+type PcapPayload struct {
+	TcpReassemblyErrors int64 `json:"tcp_reassembly_errors"`
+	IfDrops             int64 `json:"if_drops"`
+	OsDrops             int64 `json:"os_drops"`
+}
+
 // PeriodPayload indicates the period of time for which a snapshot refers to
 type PeriodPayload struct {
 	StartTS int64 `json:"start_ts"`
@@ -137,4 +144,5 @@ type PeriodPayload struct {
 type StatSnapshot struct {
 	DNS     DNSPayload    `json:"dns"`
 	Packets PacketPayload `json:"packets"`
+	Pcap    PcapPayload   `json:"pcap"`
 }
