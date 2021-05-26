@@ -55,10 +55,10 @@ static void _packet_arrives_cb(pcpp::RawPacket *rawPacket, [[maybe_unused]] pcpp
     stream->process_raw_packet(rawPacket);
 }
 
-static void _pcap_stats_update([[maybe_unused]] pcpp::IPcapDevice::PcapStats &stats, [[maybe_unused]] void *cookie)
+static void _pcap_stats_update(pcpp::IPcapDevice::PcapStats &stats, void *cookie)
 {
-    // auto stream = static_cast<PcapInputStream *>(cookie);
-    // TODO expose this
+    auto stream = static_cast<PcapInputStream *>(cookie);
+    stream->process_pcap_stats(stats);
 }
 
 PcapInputStream::PcapInputStream(const std::string &name)
@@ -192,6 +192,11 @@ void PcapInputStream::tcp_connection_start(const pcpp::ConnectionData &connectio
 void PcapInputStream::tcp_connection_end(const pcpp::ConnectionData &connectionData, pcpp::TcpReassembly::ConnectionEndReason reason)
 {
     tcp_connection_end_signal(connectionData, reason);
+}
+
+void PcapInputStream::process_pcap_stats(const pcpp::IPcapDevice::PcapStats &stats)
+{
+    pcap_stats_signal(stats);
 }
 
 void PcapInputStream::process_raw_packet(pcpp::RawPacket *rawPacket)
