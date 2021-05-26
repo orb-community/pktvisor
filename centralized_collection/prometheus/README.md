@@ -22,7 +22,7 @@ docker run -d --net=host --env PKTVISORD_ARGS="--prom-instance <INSTANCE> <INTER
 --env PASSWORD="<PASSWORD>" ns1labs/pktvisor-prom-write
 ```
 
-Example with Geo tls_enabled (assuming files are located in `/usr/local/geo`):
+Example with Geo enabled (assuming files are located in `/usr/local/geo`):
 
 ```shell
 docker pull ns1labs/pktvisor-prom-write

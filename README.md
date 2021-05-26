@@ -160,7 +160,7 @@ or
       -p PORT               Run webserver on the given port [default: 10853]
       --admin-api           Enable admin REST API giving complete control plane functionality [default: false]
                             When not specified, the exposed API is read-only access to summarized metrics.
-                            When specified, write access is tls_enabled for all modules.
+                            When specified, write access is enabled for all modules.
       -d                    Daemonize; fork and continue running in the background [default: false]
       -h --help             Show this screen
       -v                    Verbose log output
@@ -246,8 +246,8 @@ docker run --rm ns1labs/pktvisor pktvisor-pcap --help
       --version             Show version
       -v                    Verbose log output
       -b BPF                Filter packets using the given BPF string
-      --geo-city FILE       GeoLite2 City database to use for IP to Geo mapping (if tls_enabled)
-      --geo-asn FILE        GeoLite2 ASN database to use for IP to ASN mapping (if tls_enabled)
+      --geo-city FILE       GeoLite2 City database to use for IP to Geo mapping (if enabled)
+      --geo-asn FILE        GeoLite2 ASN database to use for IP to ASN mapping (if enabled)
       -H HOSTSPEC           Specify subnets (comma separated) to consider HOST, in CIDR form. In live capture this /may/ be detected automatically
                             from capture device but /must/ be specified for pcaps. Example: "10.0.1.0/24,10.0.2.1/32,2001:db8::/64"
                             Specifying this for live capture will append to any automatic detection.
