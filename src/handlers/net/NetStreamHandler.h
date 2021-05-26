@@ -19,7 +19,6 @@ class NetworkMetricsBucket final : public visor::AbstractMetricsBucket
 
 protected:
     mutable std::shared_mutex _mutex;
-    mutable std::shared_mutex _pcap_mutex;
 
     Cardinality _srcIPCard;
     Cardinality _dstIPCard;
@@ -38,14 +37,6 @@ protected:
         Counter IPv6;
         Counter total_in;
         Counter total_out;
-
-        // pcap specific
-        Counter pcap_TCP_reassembly_errors;
-        Counter pcap_os_drop;
-        uint64_t pcap_last_os_drop{0};
-        Counter pcap_if_drop;
-        uint64_t pcap_last_if_drop{0};
-
         counters()
             : UDP("packets", {"udp"}, "Count of UDP packets")
             , TCP("packets", {"tcp"}, "Count of TCP packets")
@@ -54,10 +45,6 @@ protected:
             , IPv6("packets", {"ipv6"}, "Count of IPv6 packets")
             , total_in("packets", {"in"}, "Count of total ingress packets")
             , total_out("packets", {"out"}, "Count of total egress packets")
-            // NOTE: these might move to a separate pcap handler
-            , pcap_TCP_reassembly_errors("pcap", {"tcp_reassembly_errors"}, "Count of TCP reassembly errors")
-            , pcap_os_drop("pcap", {"os_drop"}, "Count of packets dropped by the operating system (if supported)")
-            , pcap_if_drop("pcap", {"if_drop"}, "Count of packets dropped by the interface (if supported)")
         {
         }
     };
@@ -103,9 +90,6 @@ public:
     }
 
     void process_packet(bool deep, pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4);
-
-    void process_pcap_tcp_reassembly_error(bool deep, pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3);
-    void process_pcap_stats(const pcpp::IPcapDevice::PcapStats &stats);
 };
 
 class NetworkMetricsManager final : public visor::AbstractMetricsManager<NetworkMetricsBucket>
@@ -117,9 +101,6 @@ public:
     }
 
     void process_packet(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp);
-
-    void process_pcap_tcp_reassembly_error(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, timespec stamp);
-    void process_pcap_stats(const pcpp::IPcapDevice::PcapStats &stats);
 };
 
 class NetStreamHandler final : public visor::StreamMetricsHandler<NetworkMetricsManager>
@@ -130,12 +111,6 @@ class NetStreamHandler final : public visor::StreamMetricsHandler<NetworkMetrics
     sigslot::connection _pkt_connection;
     sigslot::connection _start_tstamp_connection;
     sigslot::connection _end_tstamp_connection;
-
-    sigslot::connection _pcap_tcp_reassembly_errors_connection;
-    sigslot::connection _pcap_stats_connection;
-
-    void process_pcap_tcp_reassembly_error(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, timespec stamp);
-    void process_pcap_stats(const pcpp::IPcapDevice::PcapStats &stats);
 
     void process_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp);
     void set_start_tstamp(timespec stamp);

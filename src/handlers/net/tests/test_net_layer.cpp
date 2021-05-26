@@ -59,7 +59,6 @@ TEST_CASE("Parse net (dns) TCP IPv4 tests", "[pcap][ipv4][tcp][net]")
     CHECK(net_handler.metrics()->start_tstamp().tv_nsec == 56403000);
     CHECK(event_data.num_events->value() == 2100);
     CHECK(counters.TCP.value() == 2100);
-    CHECK(counters.pcap_TCP_reassembly_errors.value() == 0);
     CHECK(counters.IPv4.value() == 2100);
     CHECK(counters.IPv6.value() == 0);
 }
@@ -110,7 +109,6 @@ TEST_CASE("Parse net (dns) TCP IPv6 tests", "[pcap][ipv6][tcp][net]")
     CHECK(net_handler.metrics()->start_tstamp().tv_nsec == 958184000);
     CHECK(event_data.num_events->value() == 1800);
     CHECK(counters.TCP.value() == 1800);
-    CHECK(counters.pcap_TCP_reassembly_errors.value() == 0);
     CHECK(counters.IPv4.value() == 0);
     CHECK(counters.IPv6.value() == 1800);
 }
@@ -141,7 +139,6 @@ TEST_CASE("Parse net (dns) random UDP/TCP tests", "[pcap][net]")
     CHECK(event_data.num_events->value() == 16147);
     CHECK(event_data.num_samples->value() == 16147);
     CHECK(counters.TCP.value() == 13176);
-    CHECK(counters.pcap_TCP_reassembly_errors.value() == 0);
     CHECK(counters.UDP.value() == 2971);
     CHECK(counters.IPv4.value() == 16147);
     CHECK(counters.IPv6.value() == 0);

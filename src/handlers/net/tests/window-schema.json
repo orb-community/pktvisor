@@ -289,16 +289,6 @@
                 13176
               ]
             },
-            "tcp_reassembly_errors": {
-              "$id": "#/properties/5m/properties/packets/properties/tcp_reassembly_errors",
-              "type": "integer",
-              "title": "The tcp_reassembly_errors schema",
-              "description": "An explanation about the purpose of this instance.",
-              "default": 0,
-              "examples": [
-                13176
-              ]
-            },
             "top_ASN": {
               "$id": "#/properties/5m/properties/packets/properties/top_ASN",
               "type": "array",
