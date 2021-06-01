@@ -170,12 +170,13 @@ int main(int argc, char *argv[])
     if (args["--log-file"]) {
         try {
             logger = spdlog::basic_logger_mt("pktvisor", args["--log-file"].asString());
+            spdlog::flush_every(std::chrono::seconds(3));
         } catch (const spdlog::spdlog_ex &ex) {
             std::cerr << "Log init failed: " << ex.what() << std::endl;
             exit(EXIT_FAILURE);
         }
     } else if (args["--syslog"].asBool()) {
-        logger = spdlog::syslog_logger_mt("pktvisor", "pktvisord", LOG_PID);
+        logger = spdlog::syslog_logger_mt("pktvisor", "pktvisord", LOG_PID, LOG_DAEMON);
     } else {
         logger = spdlog::stdout_color_mt("pktvisor");
     }
@@ -213,7 +214,9 @@ int main(int argc, char *argv[])
 
     shutdown_handler = [&]([[maybe_unused]] int signal) {
         logger->info("Shutting down");
+        logger->flush();
         svr.stop();
+        logger->flush();
     };
     std::signal(SIGINT, signal_handler);
     std::signal(SIGTERM, signal_handler);

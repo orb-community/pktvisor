@@ -45,7 +45,7 @@ visor::CoreServer::CoreServer(std::shared_ptr<spdlog::logger> logger, const Http
 void visor::CoreServer::start(const std::string &host, int port)
 {
     if (!_svr.bind_to_port(host.c_str(), port)) {
-        throw std::runtime_error("unable to bind host/port");
+        throw std::runtime_error("unable to bind to " + host + ":" + std::to_string(port));
     }
     _logger->info("web server listening on {}:{}", host, port);
     if (!_svr.listen_after_bind()) {
