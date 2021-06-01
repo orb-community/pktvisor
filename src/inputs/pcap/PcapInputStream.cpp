@@ -352,7 +352,7 @@ void PcapInputStream::_open_libpcap_iface(const std::string &bpfFilter)
 
     // try to open device
     if (!_pcapDevice->open(config)) {
-        throw PcapException("Cannot open interface for packing capture");
+        throw PcapException("Cannot open interface for packet capture");
     }
 
     // set BPF filter if set by the user
