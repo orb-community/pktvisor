@@ -112,9 +112,6 @@ int daemonize()
     // Clear file mode creation mask
     umask(0);
 
-    // Change to root directory
-    chdir("/");
-
     // Reopen standard fd's to /dev/null
     close(STDIN_FILENO);
 
@@ -144,7 +141,18 @@ int main(int argc, char *argv[])
         true,           // show help if requested
         VISOR_VERSION); // version string
 
-    if (args["-d"].asBool()) {
+    bool daemon{args["-d"].asBool()};
+    if (daemon) {
+        // before we daemonize, if they are using a log file, ensure it can be opened
+        if (args["--log-file"]) {
+            try {
+                auto logger_probe = spdlog::basic_logger_mt("pktvisor-log-probe", args["--log-file"].asString());
+            } catch (const spdlog::spdlog_ex &ex) {
+                // note in daemon mode, this may get swallowed because stdout is already closed
+                std::cerr << "Log init failed: " << ex.what() << std::endl;
+                exit(EXIT_FAILURE);
+            }
+        }
         auto dlogger = spdlog::stderr_color_st("pktvisor-daemon");
         dlogger->flush_on(spdlog::level::info);
         if (daemonize()) {
@@ -170,6 +178,11 @@ int main(int argc, char *argv[])
     }
     if (args["-v"].asBool()) {
         logger->set_level(spdlog::level::debug);
+    }
+
+    // if we are demonized, change to root directory now that (potentially) logs are open
+    if (daemon) {
+        chdir("/");
     }
 
     PrometheusConfig prom_config;
