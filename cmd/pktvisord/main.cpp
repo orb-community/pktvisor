@@ -90,7 +90,8 @@ void initialize_geo(const docopt::value &city, const docopt::value &asn)
 // adapted from LPI becomeDaemon()
 int daemonize()
 {
-    switch (fork()) {
+
+    switch (auto pid = fork()) {
     case -1:
         return -1;
     case 0:
@@ -98,23 +99,14 @@ int daemonize()
         break;
     default:
         // while parent terminates
+        spdlog::get("pktvisor-daemon")->info("daemonized to PID {}", pid);
         _exit(EXIT_SUCCESS);
     }
 
     // Become leader of new session
     if (setsid() == -1) {
+        spdlog::get("pktvisor-daemon")->error("setsid() fail");
         return -1;
-    }
-
-    // Ensure we are not session leader
-    switch (auto pid = fork()) {
-    case -1:
-        return -1;
-    case 0:
-        break;
-    default:
-        std::cerr << "pktvisord running at PID " << pid << std::endl;
-        _exit(EXIT_SUCCESS);
     }
 
     // Clear file mode creation mask
@@ -122,29 +114,22 @@ int daemonize()
 
     // Change to root directory
     chdir("/");
-    int maxfd, fd;
-    maxfd = sysconf(_SC_OPEN_MAX);
-    // Limit is indeterminate...
-    if (maxfd == -1) {
-        maxfd = 8192; // so take a guess
-    }
-
-    for (fd = 0; fd < maxfd; fd++) {
-        close(fd);
-    }
 
     // Reopen standard fd's to /dev/null
     close(STDIN_FILENO);
 
-    fd = open("/dev/null", O_RDWR);
+    int fd = open("/dev/null", O_RDWR);
 
     if (fd != STDIN_FILENO) {
+        spdlog::get("pktvisor-daemon")->error("open() fail");
         return -1;
     }
     if (dup2(STDIN_FILENO, STDOUT_FILENO) != STDOUT_FILENO) {
+        spdlog::get("pktvisor-daemon")->error("dup2 fail (STDOUT)");
         return -1;
     }
     if (dup2(STDIN_FILENO, STDERR_FILENO) != STDERR_FILENO) {
+        spdlog::get("pktvisor-daemon")->error("dup2 fail (STDERR)");
         return -1;
     }
 
@@ -160,13 +145,16 @@ int main(int argc, char *argv[])
         VISOR_VERSION); // version string
 
     if (args["-d"].asBool()) {
+        auto dlogger = spdlog::stderr_color_st("pktvisor-daemon");
+        dlogger->flush_on(spdlog::level::info);
         if (daemonize()) {
-            std::cerr << "failed to daemonize" << std::endl;
+            dlogger->error("failed to daemonize");
             exit(EXIT_FAILURE);
         }
     }
 
     std::shared_ptr<spdlog::logger> logger;
+    spdlog::flush_on(spdlog::level::err);
     if (args["--log-file"]) {
         try {
             logger = spdlog::basic_logger_mt("pktvisor", args["--log-file"].asString());
