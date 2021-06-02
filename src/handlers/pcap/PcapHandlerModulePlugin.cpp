@@ -16,10 +16,10 @@ namespace visor::handler::pcap {
 using namespace visor::input::pcap;
 using json = nlohmann::json;
 
-void PcapHandlerModulePlugin::_setup_routes(HttpServer &svr)
+void PcapHandlerModulePlugin::_setup_routes(HttpServer *svr)
 {
     // CREATE
-    svr.Post("/api/v1/inputs/pcap/(\\w+)/handlers/pcap", [this](const httplib::Request &req, httplib::Response &res) {
+    svr->Post("/api/v1/inputs/pcap/(\\w+)/handlers/pcap", [this](const httplib::Request &req, httplib::Response &res) {
         json result;
         try {
             auto body = json::parse(req.body);
@@ -84,7 +84,7 @@ void PcapHandlerModulePlugin::_setup_routes(HttpServer &svr)
             res.set_content(result.dump(), "text/json");
         }
     });
-    svr.Get("/api/v1/inputs/pcap/(\\w+)/handlers/pcap/(\\w+)", [this](const httplib::Request &req, httplib::Response &res) {
+    svr->Get("/api/v1/inputs/pcap/(\\w+)/handlers/pcap/(\\w+)", [this](const httplib::Request &req, httplib::Response &res) {
         json result;
         try {
             auto input_name = req.matches[1];
@@ -118,7 +118,7 @@ void PcapHandlerModulePlugin::_setup_routes(HttpServer &svr)
             res.set_content(result.dump(), "text/json");
         }
     });
-    svr.Get("/api/v1/inputs/pcap/(\\w+)/handlers/pcap/(\\w+)/bucket/(\\d+)", [this](const httplib::Request &req, httplib::Response &res) {
+    svr->Get("/api/v1/inputs/pcap/(\\w+)/handlers/pcap/(\\w+)/bucket/(\\d+)", [this](const httplib::Request &req, httplib::Response &res) {
         json result;
         try {
             auto input_name = req.matches[1];
@@ -153,7 +153,7 @@ void PcapHandlerModulePlugin::_setup_routes(HttpServer &svr)
         }
     });
     // DELETE
-    svr.Delete("/api/v1/inputs/pcap/(\\w+)/handlers/pcap/(\\w+)", [this](const httplib::Request &req, httplib::Response &res) {
+    svr->Delete("/api/v1/inputs/pcap/(\\w+)/handlers/pcap/(\\w+)", [this](const httplib::Request &req, httplib::Response &res) {
         json result;
         try {
             auto input_name = req.matches[1];

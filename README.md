@@ -179,6 +179,8 @@ or
     Geo Options:
       --geo-city FILE       GeoLite2 City database to use for IP to Geo mapping
       --geo-asn FILE        GeoLite2 ASN database to use for IP to ASN mapping
+    Configuration:
+      --config FILE         Use specified YAML configuration to configure options, Taps, and Collection Policies      
     Logging Options:
       --log-file FILE       Log to the given output file name
       --syslog              Log to syslog

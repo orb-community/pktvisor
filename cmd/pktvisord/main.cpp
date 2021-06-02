@@ -252,7 +252,7 @@ int main(int argc, char *argv[])
             }
 
             // then pass to CoreManagers
-            svr.mgrs()->configure_from_file(args["--config"].asString());
+            svr->mgrs()->configure_from_file(args["--config"].asString());
 
         } catch (std::runtime_error &e) {
             logger->error("configuration error: {}", e.what());
