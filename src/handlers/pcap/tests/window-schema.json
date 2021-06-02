@@ -1,0 +1,152 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "$id": "http://example.com/example.json",
+  "type": "object",
+  "title": "The root schema",
+  "description": "The root schema comprises the entire JSON document.",
+  "default": {},
+  "examples": [
+    {
+      "5m": {
+        "pcap": {
+          "if_drops": 0,
+          "os_drops": 0,
+          "period": {
+            "length": 31,
+            "start_ts": 1614874231
+          },
+          "tcp_reassembly_errors": 0
+        }
+      }
+    }
+  ],
+  "required": [
+    "5m"
+  ],
+  "properties": {
+    "5m": {
+      "$id": "#/properties/5m",
+      "type": "object",
+      "title": "The 5m schema",
+      "description": "An explanation about the purpose of this instance.",
+      "default": {},
+      "examples": [
+        {
+          "pcap": {
+            "if_drops": 0,
+            "os_drops": 0,
+            "period": {
+              "length": 31,
+              "start_ts": 1614874231
+            },
+            "tcp_reassembly_errors": 0
+          }
+        }
+      ],
+      "required": [
+        "pcap"
+      ],
+      "properties": {
+        "pcap": {
+          "$id": "#/properties/5m/properties/pcap",
+          "type": "object",
+          "title": "The pcap schema",
+          "description": "An explanation about the purpose of this instance.",
+          "default": {},
+          "examples": [
+            {
+              "if_drops": 0,
+              "os_drops": 0,
+              "period": {
+                "length": 31,
+                "start_ts": 1614874231
+              },
+              "tcp_reassembly_errors": 0
+            }
+          ],
+          "required": [
+            "if_drops",
+            "os_drops",
+            "period",
+            "tcp_reassembly_errors"
+          ],
+          "properties": {
+            "if_drops": {
+              "$id": "#/properties/5m/properties/pcap/properties/if_drops",
+              "type": "integer",
+              "title": "The if_drops schema",
+              "description": "An explanation about the purpose of this instance.",
+              "default": 0,
+              "examples": [
+                0
+              ]
+            },
+            "os_drops": {
+              "$id": "#/properties/5m/properties/pcap/properties/os_drops",
+              "type": "integer",
+              "title": "The os_drops schema",
+              "description": "An explanation about the purpose of this instance.",
+              "default": 0,
+              "examples": [
+                0
+              ]
+            },
+            "period": {
+              "$id": "#/properties/5m/properties/pcap/properties/period",
+              "type": "object",
+              "title": "The period schema",
+              "description": "An explanation about the purpose of this instance.",
+              "default": {},
+              "examples": [
+                {
+                  "length": 31,
+                  "start_ts": 1614874231
+                }
+              ],
+              "required": [
+                "length",
+                "start_ts"
+              ],
+              "properties": {
+                "length": {
+                  "$id": "#/properties/5m/properties/pcap/properties/period/properties/length",
+                  "type": "integer",
+                  "title": "The length schema",
+                  "description": "An explanation about the purpose of this instance.",
+                  "default": 0,
+                  "examples": [
+                    31
+                  ]
+                },
+                "start_ts": {
+                  "$id": "#/properties/5m/properties/pcap/properties/period/properties/start_ts",
+                  "type": "integer",
+                  "title": "The start_ts schema",
+                  "description": "An explanation about the purpose of this instance.",
+                  "default": 0,
+                  "examples": [
+                    1614874231
+                  ]
+                }
+              },
+              "additionalProperties": true
+            },
+            "tcp_reassembly_errors": {
+              "$id": "#/properties/5m/properties/pcap/properties/tcp_reassembly_errors",
+              "type": "integer",
+              "title": "The tcp_reassembly_errors schema",
+              "description": "An explanation about the purpose of this instance.",
+              "default": 0,
+              "examples": [
+                0
+              ]
+            }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

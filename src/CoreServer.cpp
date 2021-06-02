@@ -13,9 +13,10 @@
 
 namespace visor {
 
-CoreServer::CoreServer(bool read_only, const PrometheusConfig &prom_config)
-    : _svr(read_only)
+visor::CoreServer::CoreServer(std::shared_ptr<spdlog::logger> logger, const HttpConfig &http_config, const PrometheusConfig &prom_config)
+    : _svr(http_config)
     , _mgrs(&_svr)
+    , _logger(logger)
     , _start_time(std::chrono::system_clock::now())
 {
 
@@ -34,7 +35,7 @@ CoreServer::CoreServer(bool read_only, const PrometheusConfig &prom_config)
 void CoreServer::start(const std::string &host, int port)
 {
     if (!_svr.bind_to_port(host.c_str(), port)) {
-        throw std::runtime_error("unable to bind host/port");
+        throw std::runtime_error("unable to bind to " + host + ":" + std::to_string(port));
     }
     _logger->info("web server listening on {}:{}", host, port);
     if (!_svr.listen_after_bind()) {
