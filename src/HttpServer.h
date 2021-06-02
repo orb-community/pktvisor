@@ -33,6 +33,9 @@ public:
     {
         if (config.tls_enabled) {
             _svr = std::make_unique<httplib::SSLServer>(config.cert.c_str(), config.key.c_str());
+            if (!_svr->is_valid()) {
+                throw std::runtime_error("invalid TLS configuration");
+            }
         } else {
             _svr = std::make_unique<httplib::Server>();
         }

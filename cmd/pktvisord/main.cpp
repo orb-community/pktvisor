@@ -33,9 +33,15 @@ static const char USAGE[] =
     pktvisord summarizes data streams and exposes a REST API control plane for configuration and metrics.
 
     IFACE, if specified, is either a network interface or an IP address (4 or 6). If this is specified,
-    a "pcap" input stream will be automatically created, with "net" and "dns" handler modules attached.
+    a "pcap" input stream will be automatically created, with "net", "dns", and "pcap" handler modules attached.
 
     Base Options:
+      -d                    Daemonize; fork and continue running in the background [default: false]
+      -h --help             Show this screen
+      -v                    Verbose log output
+      --no-track            Don't send lightweight, anonymous usage metrics
+      --version             Show version
+    Web Server Options:
       -l HOST               Run web server on the given host or IP [default: localhost]
       -p PORT               Run web server on the given port [default: 10853]
       --tls                 Enable TLS on the web server
@@ -44,11 +50,7 @@ static const char USAGE[] =
       --admin-api           Enable admin REST API giving complete control plane functionality [default: false]
                             When not specified, the exposed API is read-only access to summarized metrics.
                             When specified, write access is enabled for all modules.
-      -d                    Daemonize; fork and continue running in the background [default: false]
-      -h --help             Show this screen
-      -v                    Verbose log output
-      --no-track            Don't send lightweight, anonymous usage metrics
-      --version             Show version
+    Geo Options:
       --geo-city FILE       GeoLite2 City database to use for IP to Geo mapping
       --geo-asn FILE        GeoLite2 ASN database to use for IP to ASN mapping
     Logging Options:
@@ -56,12 +58,12 @@ static const char USAGE[] =
       --syslog              Log to syslog
     Prometheus Options:
       --prometheus          Enable native Prometheus metrics at path /metrics
-      --prom-instance ID    Optionally set the 'instance' label to ID
+      --prom-instance ID    Optionally set the 'instance' label to given ID
     Handler Module Defaults:
       --max-deep-sample N   Never deep sample more than N% of streams (an int between 0 and 100) [default: 100]
       --periods P           Hold this many 60 second time periods of history in memory [default: 5]
     pcap Input Module Options:
-      -b BPF                Filter packets using the given BPF string
+      -b BPF                Filter packets using the given tcpdump compatible filter expression. Example: "port 53"
       -H HOSTSPEC           Specify subnets (comma separated) to consider HOST, in CIDR form. In live capture this /may/ be detected automatically
                             from capture device but /must/ be specified for pcaps. Example: "10.0.1.0/24,10.0.2.1/32,2001:db8::/64"
                             Specifying this for live capture will append to any automatic detection.
@@ -180,6 +182,8 @@ int main(int argc, char *argv[])
         logger->set_level(spdlog::level::debug);
     }
 
+    logger->info("{} starting up", VISOR_VERSION);
+
     // if we are demonized, change to root directory now that (potentially) logs are open
     if (daemon) {
         chdir("/");
@@ -203,10 +207,18 @@ int main(int argc, char *argv[])
         }
         http_config.key = args["--tls-key"].asString();
         http_config.cert = args["--tls-cert"].asString();
+        logger->info("Enabling TLS with cert {} and key {}", http_config.key, http_config.cert);
     }
 
-    CoreServer svr(logger, http_config, prom_config);
-    svr.set_http_logger([&logger](const auto &req, const auto &res) {
+    std::unique_ptr<CoreServer> svr;
+    try {
+        svr = std::make_unique<CoreServer>(logger, http_config, prom_config);
+    } catch (const std::exception &e) {
+        logger->error(e.what());
+        logger->info("exit with failure");
+        exit(EXIT_FAILURE);
+    }
+    svr->set_http_logger([&logger](const auto &req, const auto &res) {
         logger->info("REQUEST: {} {} {}", req.method, req.path, res.status);
         if (res.status == 500) {
             logger->error(res.body);
@@ -216,7 +228,7 @@ int main(int argc, char *argv[])
     shutdown_handler = [&]([[maybe_unused]] int signal) {
         logger->info("Shutting down");
         logger->flush();
-        svr.stop();
+        svr->stop();
         logger->flush();
     };
     std::signal(SIGINT, signal_handler);
@@ -282,8 +294,8 @@ int main(int argc, char *argv[])
             input_stream->config_set("bpf", bpf);
             input_stream->config_set("host_spec", host_spec);
 
-            auto input_manager = svr.input_manager();
-            auto handler_manager = svr.handler_manager();
+            auto input_manager = svr->input_manager();
+            auto handler_manager = svr->handler_manager();
 
             input_manager->module_add(std::move(input_stream));
             auto [input_stream_, stream_mgr_lock] = input_manager->module_get_locked("pcap");
@@ -309,6 +321,7 @@ int main(int argc, char *argv[])
 
         } catch (const std::exception &e) {
             logger->error(e.what());
+            logger->info("exit with failure");
             exit(EXIT_FAILURE);
         }
     } else if (!args["--admin-api"].asBool()) {
@@ -319,11 +332,13 @@ int main(int argc, char *argv[])
     }
 
     try {
-        svr.start(host.c_str(), port);
+        svr->start(host.c_str(), port);
     } catch (const std::exception &e) {
         logger->error(e.what());
+        logger->info("exit with failure");
         exit(EXIT_FAILURE);
     }
 
+    logger->info("exit with success");
     exit(EXIT_SUCCESS);
 }
