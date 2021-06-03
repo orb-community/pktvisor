@@ -5,8 +5,9 @@ docopt.cpp/0.6.3
 nlohmann_json/3.9.1
 cpp-httplib/0.8.0
 corrade/2020.06
-pcapplusplus/ns1-dev
+pcapplusplus/21.05
 json-schema-validator/2.1.0
+openssl/1.1.1k
 yaml-cpp/0.6.3
 fmt/7.1.3
 

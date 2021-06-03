@@ -28,7 +28,7 @@ class CoreServer
     void _setup_routes(const PrometheusConfig &prom_config);
 
 public:
-    CoreServer(bool read_only, const PrometheusConfig &prom_config);
+    CoreServer(std::shared_ptr<spdlog::logger> logger, const HttpConfig &http_config, const PrometheusConfig &prom_config);
     ~CoreServer();
 
     void start(const std::string &host, int port);

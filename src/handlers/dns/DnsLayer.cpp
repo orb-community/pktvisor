@@ -118,38 +118,31 @@ bool DnsLayer::shortenLayer(int offsetInLayer, size_t numOfBytesToShorten, IDnsR
 	return true;
 }
 
-
-void DnsLayer::parseResources(bool queryOnly)
+bool DnsLayer::parseResources(bool queryOnly)
 {
-	size_t offsetInPacket = sizeof(dnshdr);
-	IDnsResource* curResource = m_ResourceList;
+    size_t offsetInPacket = sizeof(dnshdr);
+    IDnsResource *curResource = m_ResourceList;
 
-	uint16_t numOfQuestions = be16toh(getDnsHeader()->numberOfQuestions);
-	uint16_t numOfAnswers = be16toh(getDnsHeader()->numberOfAnswers);
-	uint16_t numOfAuthority = be16toh(getDnsHeader()->numberOfAuthority);
-	uint16_t numOfAdditional = be16toh(getDnsHeader()->numberOfAdditional);
+    uint16_t numOfQuestions = be16toh(getDnsHeader()->numberOfQuestions);
+    uint16_t numOfAnswers = be16toh(getDnsHeader()->numberOfAnswers);
+    uint16_t numOfAuthority = be16toh(getDnsHeader()->numberOfAuthority);
+    uint16_t numOfAdditional = be16toh(getDnsHeader()->numberOfAdditional);
 
-	uint32_t numOfOtherResources = numOfQuestions + numOfAnswers + numOfAuthority + numOfAdditional;
+    uint32_t numOfOtherResources = numOfQuestions + numOfAnswers + numOfAuthority + numOfAdditional;
 
-	if (numOfOtherResources > 300)
-	{
-		LOG_ERROR("DNS layer contains more than 300 resources, probably a bad packet. "
-				"Skipping parsing DNS resources");
-		return;
-	}
+    if (numOfOtherResources > 100) {
+        // probably bad packet
+        return false;
+    }
 
-	for (uint32_t i = 0; i < numOfOtherResources; i++)
-	{
-		DnsResourceType resType;
-		if (numOfQuestions > 0)
-		{
-			resType = DnsQueryType;
-			numOfQuestions--;
-		}
-		else if (numOfAnswers > 0)
-		{
-			resType = DnsAnswerType;
-			numOfAnswers--;
+    for (uint32_t i = 0; i < numOfOtherResources; i++) {
+        DnsResourceType resType;
+        if (numOfQuestions > 0) {
+            resType = DnsQueryType;
+            numOfQuestions--;
+        } else if (numOfAnswers > 0) {
+            resType = DnsAnswerType;
+            numOfAnswers--;
 		}
 		else if (numOfAuthority > 0)
 		{
@@ -178,14 +171,13 @@ void DnsLayer::parseResources(bool queryOnly)
 			offsetInPacket += newResource->getSize();
 		}
 
-		if (offsetInPacket > m_DataLen)
-		{
-			//Parse packet failed, DNS resource is out of bounds. Probably a bad packet
-			delete newGenResource;
-			return;
-		}
+		if (offsetInPacket > m_DataLen) {
+                    //Parse packet failed, DNS resource is out of bounds. Probably a bad packet
+                    delete newGenResource;
+                    return false;
+                }
 
-		// this resource is the first resource
+                // this resource is the first resource
 		if (m_ResourceList == NULL)
 		{
 			m_ResourceList = newGenResource;
@@ -201,15 +193,15 @@ void DnsLayer::parseResources(bool queryOnly)
                     m_FirstQuery = newQuery;
                     if (queryOnly)
                         break;
-                }
-		else if (resType == DnsAnswerType && m_FirstAnswer == NULL)
-			m_FirstAnswer = newResource;
-		else if (resType == DnsAuthorityType && m_FirstAuthority == NULL)
-			m_FirstAuthority = newResource;
-		else if (resType == DnsAdditionalType && m_FirstAdditional == NULL)
-			m_FirstAdditional = newResource;
-	}
+                } else if (resType == DnsAnswerType && m_FirstAnswer == NULL)
+                    m_FirstAnswer = newResource;
+                else if (resType == DnsAuthorityType && m_FirstAuthority == NULL)
+                    m_FirstAuthority = newResource;
+                else if (resType == DnsAdditionalType && m_FirstAdditional == NULL)
+                    m_FirstAdditional = newResource;
+    }
 
+    return true;
 }
 
 IDnsResource* DnsLayer::getResourceByName(IDnsResource* startFrom, size_t resourceCount, const std::string& name, bool exactMatch) const

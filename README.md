@@ -98,7 +98,7 @@ download [on the Releases page](https://github.com/ns1labs/pktvisor/releases). I
 Linux distributions and does not require installation or any other dependencies.
 
 ```shell
-curl -L https://github.com/ns1labs/pktvisor/releases/download/v3.2.0/pktvisor-x86_64-3.2.0.AppImage --output pktvisor-x86_64.AppImage
+curl -L http://pktvisor.com/download -o pktvisor-x86_64.AppImage
 chmod +x pktvisor-x86_64.AppImage
 ./pktvisor-x86_64.AppImage pktvisord -h
 ```
@@ -159,32 +159,39 @@ or
     pktvisord summarizes data streams and exposes a REST API control plane for configuration and metrics.
 
     IFACE, if specified, is either a network interface or an IP address (4 or 6). If this is specified,
-    a "pcap" input stream will be automatically created, with "net" and "dns" handler modules attached.
+    a "pcap" input stream will be automatically created, with "net", "dns", and "pcap" handler modules attached.
 
     Base Options:
-      -l HOST               Run webserver on the given host or IP [default: localhost]
-      -p PORT               Run webserver on the given port [default: 10853]
-      --admin-api           Enable admin REST API giving complete control plane functionality [default: false]
-                            When not specified, the exposed API is read-only access to summarized metrics.
-                            When specified, write access is enabled for all modules.
       -d                    Daemonize; fork and continue running in the background [default: false]
       -h --help             Show this screen
       -v                    Verbose log output
-      --no-track            Don't send lightweight, anonymous usage metrics.
+      --no-track            Don't send lightweight, anonymous usage metrics
       --version             Show version
+    Web Server Options:
+      -l HOST               Run web server on the given host or IP [default: localhost]
+      -p PORT               Run web server on the given port [default: 10853]
+      --tls                 Enable TLS on the web server
+      --tls-cert FILE       Use given TLS cert. Required if --tls is enabled.
+      --tls-key FILE        Use given TLS private key. Required if --tls is enabled.
+      --admin-api           Enable admin REST API giving complete control plane functionality [default: false]
+                            When not specified, the exposed API is read-only access to summarized metrics.
+                            When specified, write access is enabled for all modules.
+    Geo Options:
       --geo-city FILE       GeoLite2 City database to use for IP to Geo mapping
       --geo-asn FILE        GeoLite2 ASN database to use for IP to ASN mapping
+    Configuration:
+      --config FILE         Use specified YAML configuration to configure options, Taps, and Collection Policies      
     Logging Options:
       --log-file FILE       Log to the given output file name
       --syslog              Log to syslog
     Prometheus Options:
       --prometheus          Enable native Prometheus metrics at path /metrics
-      --prom-instance ID    Optionally set the 'instance' label to ID
+      --prom-instance ID    Optionally set the 'instance' label to given ID
     Handler Module Defaults:
       --max-deep-sample N   Never deep sample more than N% of streams (an int between 0 and 100) [default: 100]
       --periods P           Hold this many 60 second time periods of history in memory [default: 5]
     pcap Input Module Options:
-      -b BPF                Filter packets using the given BPF string
+      -b BPF                Filter packets using the given tcpdump compatible filter expression. Example: "port 53"
       -H HOSTSPEC           Specify subnets (comma separated) to consider HOST, in CIDR form. In live capture this /may/ be detected automatically
                             from capture device but /must/ be specified for pcaps. Example: "10.0.1.0/24,10.0.2.1/32,2001:db8::/64"
                             Specifying this for live capture will append to any automatic detection.
@@ -434,7 +441,7 @@ We are _very_ interested in hearing about your use cases, feature requests, and 
 * Use our [public work board](https://github.com/ns1labs/pktvisor/projects/1)
 * Use our [public backlog board](https://github.com/ns1labs/pktvisor/projects/2)
 * Start a [Discussion](https://github.com/ns1labs/pktvisor/discussions)
-* [Join us on Slack](https://join.slack.com/t/ns1labs/shared_invite/zt-qqsm5cb4-9fsq1xa~R3h~nX6W0sJzmA)
+* [Join us on Slack](https://join.slack.com/t/ns1labs/shared_invite/zt-p0uzy9zq-ZgD~QkKQ9cWMSiI4DgJSaA)
 * Send mail to [info@pktvisor.dev](mailto:info@pktvisor.dev)
 
 ## Build
