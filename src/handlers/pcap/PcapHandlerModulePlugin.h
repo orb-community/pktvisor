@@ -13,7 +13,7 @@ class PcapHandlerModulePlugin : public HandlerModulePlugin
 {
 
 protected:
-    void _setup_routes(HttpServer *svr) override;
+    void setup_routes(HttpServer *svr) override;
 
 public:
     explicit PcapHandlerModulePlugin(Corrade::PluginManager::AbstractManager &manager, const std::string &plugin)

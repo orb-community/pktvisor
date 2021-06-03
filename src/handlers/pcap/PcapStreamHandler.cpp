@@ -90,7 +90,7 @@ void PcapStreamHandler::set_end_tstamp(timespec stamp)
 }
 void PcapStreamHandler::info_json(json &j) const
 {
-    _common_info_json(j);
+    common_info_json(j);
 }
 void PcapStreamHandler::window_prometheus(std::stringstream &out)
 {
