@@ -4,7 +4,6 @@
 
 #pragma once
 
-
 #include "InputStream.h"
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wold-style-cast"
@@ -82,7 +81,7 @@ public:
     void info_json(json &j) const override;
     size_t consumer_count() const override
     {
-        return packet_signal.slot_count() + udp_signal.slot_count() + start_tstamp_signal.slot_count() + tcp_message_ready_signal.slot_count() + tcp_connection_start_signal.slot_count() + tcp_connection_end_signal.slot_count();
+        return packet_signal.slot_count() + udp_signal.slot_count() + start_tstamp_signal.slot_count() + tcp_message_ready_signal.slot_count() + tcp_connection_start_signal.slot_count() + tcp_connection_end_signal.slot_count() + tcp_reassembly_error_signal.slot_count() + pcap_stats_signal.slot_count();
     }
 
     // utilities
@@ -90,6 +89,7 @@ public:
 
     // public methods that can be called from a static callback method via cookie, required by PcapPlusPlus
     void process_raw_packet(pcpp::RawPacket *rawPacket);
+    void process_pcap_stats(const pcpp::IPcapDevice::PcapStats &stats);
     void tcp_message_ready(int8_t side, const pcpp::TcpStreamData &tcpData);
     void tcp_connection_start(const pcpp::ConnectionData &connectionData);
     void tcp_connection_end(const pcpp::ConnectionData &connectionData, pcpp::TcpReassembly::ConnectionEndReason reason);
@@ -104,7 +104,8 @@ public:
     mutable sigslot::signal<int8_t, const pcpp::TcpStreamData &> tcp_message_ready_signal;
     mutable sigslot::signal<const pcpp::ConnectionData &> tcp_connection_start_signal;
     mutable sigslot::signal<const pcpp::ConnectionData &, pcpp::TcpReassembly::ConnectionEndReason> tcp_connection_end_signal;
+    mutable sigslot::signal<pcpp::Packet &, PacketDirection, pcpp::ProtocolType, timespec> tcp_reassembly_error_signal;
+    mutable sigslot::signal<const pcpp::IPcapDevice::PcapStats &> pcap_stats_signal;
 };
 
 }
-
