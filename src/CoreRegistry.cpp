@@ -62,7 +62,7 @@ CoreRegistry::CoreRegistry(HttpServer *svr)
     // taps
     _tap_manager = std::make_unique<TapManager>(&_input_registry);
     // collection policies
-    _policy_manager = std::make_unique<PolicyManager>(&_input_registry);
+    _policy_manager = std::make_unique<PolicyManager>(&_input_registry, &_handler_registry);
 }
 
 visor::CoreRegistry::~CoreRegistry()

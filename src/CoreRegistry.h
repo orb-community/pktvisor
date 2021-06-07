@@ -21,16 +21,19 @@ class HandlerManager;
 class CoreRegistry
 {
 
-    // this is the interface to load/instantiate/unload Corrade plugins
+    // this is the interface to load/instantiate/unload Corrade plugins (Corrade::PluginManager::Manager)
     InputPluginRegistry _input_registry;
     HandlerPluginRegistry _handler_registry;
 
-    // these hold instantiated Corrade plugin instances: they know how to instantiate visor::AbstractModule derived instances
+    // these hold instantiated Corrade plugin instances (Corrade::PluginManager::AbstractPlugin->visor::AbstractPlugin instances)
+    // they know how to instantiate visor::AbstractModule derived instances (stored in managers below) via HTTP admin API (through setup_routes) or Tap instantiation
+    // *only one* per plugin type exists at a time, but they can instantiate many visor::AbstractModules
     // keyed by plugin alias name
     std::map<std::string, InputPluginPtr> _input_plugins;
     std::map<std::string, HandlerPluginPtr> _handler_plugins;
 
-    // these hold instances of active visor::AbstractModule derived modules (the main event processors)
+    // these hold instances of active visor::AbstractModule derived modules (the main event processors) which are created from the plugins above
+    // any number can exist per plugin type can exist at a time, each with their own life cycle
     std::unique_ptr<InputStreamManager> _input_manager;
     std::unique_ptr<HandlerManager> _handler_manager;
 

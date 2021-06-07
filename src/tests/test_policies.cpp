@@ -23,8 +23,6 @@ visor:
       input:
         # this must reference a tap name, or application of the policy will fail
         tap: wired
-        # this must match the type of the matching tap name. or application of the policy will fail
-        type: pcap
         filter:
           bpf: "tcp or udp"
       # stream handlers to attach to this input stream
@@ -62,7 +60,9 @@ visor:
 )";
 
 auto collection_config_bad = R"(
-badness
+visor:
+  collection:
+    missing:
 )";
 
 TEST_CASE("Policies", "[policies]")
@@ -77,8 +77,9 @@ TEST_CASE("Policies", "[policies]")
         CHECK(config_file["visor"]["collection"].IsMap());
         CHECK_NOTHROW(mgrs.policy_manager()->load(config_file["visor"]["collection"], true));
 
-        auto [tap, lock] = mgrs.policy_manager()->module_get_locked("wired_view");
-        CHECK(tap->name() == "wired_view");
+        auto [policy, lock] = mgrs.policy_manager()->module_get_locked("wired_view");
+        CHECK(policy->name() == "wired_view");
+        CHECK(policy->tap_filter()["bpf"].as<std::string>() == "tcp or udp");
     }
 
     SECTION("Bad Config")
@@ -89,5 +90,16 @@ TEST_CASE("Policies", "[policies]")
         CHECK(config_file["visor"]["collection"]);
         CHECK(config_file["visor"]["collection"].IsMap());
         CHECK_THROWS(mgrs.policy_manager()->load(config_file["visor"]["collection"], true));
+    }
+
+    SECTION("Policy Apply")
+    {
+        CoreRegistry mgrs(nullptr);
+        YAML::Node config_file = YAML::Load(collection_config);
+
+        CHECK_NOTHROW(mgrs.policy_manager()->load(config_file["visor"]["collection"], true));
+
+        auto [policy, lock] = mgrs.policy_manager()->module_get_locked("wired_view");
+        CHECK_NOTHROW(policy->apply(mgrs.tap_manager()));
     }
 }

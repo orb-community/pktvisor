@@ -12,6 +12,8 @@
 
 namespace visor {
 
+class InputStream;
+
 class Tap : public AbstractModule
 {
 
@@ -23,6 +25,8 @@ public:
         , _input_type(input_type)
     {
     }
+
+    InputStream *instantiate(CoreRegistry *registry, const Configurable *filter_config);
 
     void info_json(json &j) const override
     {

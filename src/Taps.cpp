@@ -7,7 +7,9 @@
 #include <fmt/core.h>
 #include <spdlog/spdlog.h>
 
-void visor::TapManager::load(const YAML::Node &tap_yaml, bool strict)
+namespace visor {
+
+void TapManager::load(const YAML::Node &tap_yaml, bool strict)
 {
     assert(tap_yaml.IsMap());
     assert(spdlog::get("visor"));
@@ -47,4 +49,12 @@ void visor::TapManager::load(const YAML::Node &tap_yaml, bool strict)
 
         module_add(std::move(tap_module));
     }
+}
+
+InputStream *Tap::instantiate(const Configurable *filter_config)
+{
+
+    return nullptr;
+}
+
 }

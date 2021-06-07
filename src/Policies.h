@@ -8,25 +8,50 @@
 #include "AbstractModule.h"
 #include "Configurable.h"
 #include "InputModulePlugin.h"
+#include "Taps.h"
 #include <yaml-cpp/yaml.h>
 
 namespace visor {
 
+class PolicyException : public std::runtime_error
+{
+public:
+    explicit PolicyException(const std::string &msg)
+        : std::runtime_error(msg)
+    {
+    }
+};
+
 class Policy : public AbstractModule
 {
 
-    std::string _input_type;
+    std::string _tap_name;
+
+    YAML::Node _tap_filter;
 
 public:
-    Policy(const std::string &name, const std::string &input_type)
+    Policy(const std::string &name, const std::string &tap_name)
         : AbstractModule(name)
-        , _input_type(input_type)
+        , _tap_name(tap_name)
+        , _tap_filter(YAML::NodeType::Map)
     {
     }
 
+    const YAML::Node &tap_filter() const
+    {
+        return _tap_filter;
+    }
+
+    void set_tap_filter(const YAML::Node &n)
+    {
+        _tap_filter = n;
+    }
+
+    void apply(CoreRegistry *registry);
+
     void info_json(json &j) const override
     {
-        j["input_type"] = _input_type;
+        j["tap_name"] = _tap_name;
         config_json(j["config"]);
     }
 };
@@ -35,10 +60,12 @@ class PolicyManager : public AbstractManager<Policy>
 {
 
     const InputPluginRegistry *_input_plugin_registry;
+    const HandlerPluginRegistry *_handler_plugin_registry;
 
 public:
-    PolicyManager(const InputPluginRegistry *inputManager)
+    PolicyManager(const InputPluginRegistry *inputManager, const HandlerPluginRegistry *handlerManager)
         : _input_plugin_registry(inputManager)
+        , _handler_plugin_registry(handlerManager)
     {
     }
 
