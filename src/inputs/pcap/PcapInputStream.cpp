@@ -57,6 +57,8 @@ static void _packet_arrives_cb(pcpp::RawPacket *rawPacket, [[maybe_unused]] pcpp
 
 static void _pcap_stats_update(pcpp::IPcapDevice::PcapStats &stats, void *cookie)
 {
+    // NOTE this is called from a different thread than the packet and tcp callbacks!
+    // We could avoid this by retrieving the stats manually ourselves in the same thread
     auto stream = static_cast<PcapInputStream *>(cookie);
     stream->process_pcap_stats(stats);
 }
