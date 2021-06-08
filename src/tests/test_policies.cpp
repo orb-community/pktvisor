@@ -1,5 +1,6 @@
 #include "CoreRegistry.h"
 #include "InputModulePlugin.h"
+#include "InputStream.h"
 #include "Policies.h"
 #include <catch2/catch.hpp>
 #include <spdlog/sinks/stdout_color_sinks.h>
@@ -77,11 +78,13 @@ TEST_CASE("Policies", "[policies]")
 
         CHECK(config_file["visor"]["collection"]);
         CHECK(config_file["visor"]["collection"].IsMap());
+
+        CHECK_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
         CHECK_NOTHROW(registry.policy_manager()->load(config_file["visor"]["collection"]));
 
         auto [policy, lock] = registry.policy_manager()->module_get_locked("wired_view");
         CHECK(policy->name() == "wired_view");
-        CHECK(policy->tap_filter().config_get<std::string>("bpf") == "tcp or udp");
+        CHECK(policy->input_stream()->config_get<std::string>("bpf") == "tcp or udp");
     }
 
     SECTION("Bad Config")
@@ -94,15 +97,4 @@ TEST_CASE("Policies", "[policies]")
         CHECK_THROWS(registry.policy_manager()->load(config_file["visor"]["collection"]));
     }
 
-    SECTION("Policy Apply")
-    {
-        CoreRegistry registry(nullptr);
-        YAML::Node config_file = YAML::Load(collection_config);
-
-        CHECK_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
-        CHECK_NOTHROW(registry.policy_manager()->load(config_file["visor"]["collection"]));
-
-        auto [policy, lock] = registry.policy_manager()->module_get_locked("wired_view");
-        CHECK_NOTHROW(policy->apply(&registry));
-    }
 }

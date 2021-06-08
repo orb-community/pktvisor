@@ -58,6 +58,15 @@ TEST_CASE("Taps", "[taps]")
         CHECK(tap->config_get<bool>("boolean") == true);
     }
 
+    SECTION("Duplicate")
+    {
+        CoreRegistry registry(nullptr);
+        YAML::Node config_file = YAML::Load(tap_config);
+
+        CHECK_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
+        CHECK_THROWS(registry.tap_manager()->load(config_file["visor"]["taps"], true));
+    }
+
     SECTION("Bad Config")
     {
         CoreRegistry registry(nullptr);

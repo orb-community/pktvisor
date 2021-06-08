@@ -12,6 +12,7 @@
 
 namespace visor {
 
+// needs to be thread safe and transactional: any errors mean resources get cleaned up with no side effects
 void TapManager::load(const YAML::Node &tap_yaml, bool strict)
 {
     assert(tap_yaml.IsMap());
@@ -50,17 +51,20 @@ void TapManager::load(const YAML::Node &tap_yaml, bool strict)
             tap_module->config_set_yaml(it->second["config"]);
         }
 
+        // will throw if it already exists. nothing else to clean up
         module_add(std::move(tap_module));
     }
 }
 
-std::unique_ptr<InputStream> Tap::instantiate(const Policy *policy, const Configurable *filter_config)
+std::unique_ptr<InputStream> Tap::instantiate(Policy *policy, const Configurable *filter_config)
 {
     Config c;
     c.config_merge(dynamic_cast<const Configurable &>(*this));
     c.config_merge(*filter_config);
     c.config_set("name", _name + "_" + policy->name());
-    return _input_plugin->instantiate(&c);
+    auto module = _input_plugin->instantiate(&c);
+    module->set_policy(policy);
+    return module;
 }
 
 }

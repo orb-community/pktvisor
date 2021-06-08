@@ -6,6 +6,7 @@ find_package(Corrade REQUIRED PluginManager)
 set_directory_properties(PROPERTIES CORRADE_USE_PEDANTIC_FLAGS ON)
 
 add_library(visor-core
+        AbstractModule.cpp
         AbstractPlugin.cpp
         InputModulePlugin.cpp
         HandlerModulePlugin.cpp

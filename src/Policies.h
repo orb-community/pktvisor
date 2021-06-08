@@ -10,9 +10,12 @@
 #include "HandlerModulePlugin.h"
 #include "InputModulePlugin.h"
 #include "Taps.h"
+#include <vector>
 #include <yaml-cpp/yaml.h>
 
 namespace visor {
+
+class CoreRegistry;
 
 class PolicyException : public std::runtime_error
 {
@@ -26,47 +29,44 @@ public:
 class Policy : public AbstractModule
 {
 
-    std::string _tap_name;
-
-    Config _tap_filter;
+    Tap *_tap;
+    InputStream *_input_stream;
+    std::vector<AbstractRunnableModule *> _modules;
 
 public:
-    Policy(const std::string &name, const std::string &tap_name)
+    Policy(const std::string &name, Tap *tap)
         : AbstractModule(name)
-        , _tap_name(tap_name)
-        , _tap_filter()
+        , _tap(tap)
+        , _input_stream(nullptr)
     {
     }
 
-    const Config &tap_filter() const
+    void set_input_stream(InputStream *input_stream)
     {
-        return _tap_filter;
+        _input_stream = input_stream;
     }
 
-    void set_tap_filter(const YAML::Node &n)
+    const InputStream *input_stream() const
     {
-        _tap_filter.config_set_yaml(n);
+        return _input_stream;
     }
 
-    void apply(CoreRegistry *registry);
+    // life cycle
+    void start();
+    void stop();
 
-    void info_json(json &j) const override
-    {
-        j["tap_name"] = _tap_name;
-        config_json(j["config"]);
-    }
+    void info_json(json &j) const override;
 };
 
 class PolicyManager : public AbstractManager<Policy>
 {
+    mutable std::mutex _load_mutex;
 
-    const InputPluginRegistry *_input_plugin_registry;
-    const HandlerPluginRegistry *_handler_plugin_registry;
+    CoreRegistry *_registry;
 
 public:
-    PolicyManager(const InputPluginRegistry *inputManager, const HandlerPluginRegistry *handlerManager)
-        : _input_plugin_registry(inputManager)
-        , _handler_plugin_registry(handlerManager)
+    PolicyManager(CoreRegistry *registry)
+        : _registry(registry)
     {
     }
 

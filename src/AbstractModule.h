@@ -16,13 +16,13 @@
 
 namespace visor {
 
+class Policy;
 using json = nlohmann::json;
 
 class AbstractModule : public Configurable
 {
 
 protected:
-
     /**
      * the module instance identifier: unique name associated with this instance
      */
@@ -59,17 +59,24 @@ class AbstractRunnableModule : public AbstractModule
 protected:
     std::atomic_bool _running = false;
 
-    void common_info_json(json &j) const
-    {
-        j["module"]["name"] = _name;
-        j["module"]["running"] = _running.load();
-        config_json(j["module"]["config"]);
-    }
+    Policy *_policy = nullptr;
+
+    void common_info_json(json &j) const;
 
 public:
     AbstractRunnableModule(const std::string &name)
         : AbstractModule(name)
     {
+    }
+
+    void set_policy(Policy *policy)
+    {
+        _policy = policy;
+    }
+
+    const Policy *policy() const
+    {
+        return _policy;
     }
 
     virtual ~AbstractRunnableModule(){};

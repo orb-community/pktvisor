@@ -6,12 +6,22 @@
 
 #include "AbstractModule.h"
 #include <assert.h>
+#include <fmt/format.h>
 #include <memory>
 #include <shared_mutex>
 #include <string>
 #include <unordered_map>
 
 namespace visor {
+
+class ModuleException : public std::runtime_error
+{
+public:
+    explicit ModuleException(const std::string &msg)
+        : std::runtime_error(msg)
+    {
+    }
+};
 
 /**
  * called from HTTP threads so must be thread safe
@@ -50,7 +60,7 @@ public:
     {
         std::unique_lock lock(_map_mutex);
         if (_map.count(m->name())) {
-            throw std::runtime_error("module name already exists");
+            throw ModuleException(fmt::format("module name '{}' already exists", m->name()));
         }
         _map.emplace(m->name(), std::move(m));
     }
@@ -61,7 +71,7 @@ public:
     {
         std::unique_lock lock(_map_mutex);
         if (_map.count(name) == 0) {
-            throw std::runtime_error("module name does not exist");
+            throw ModuleException(fmt::format("module name '{}' does not exist", name));
         }
         struct retVals {
             ModuleType *module;
@@ -74,7 +84,7 @@ public:
     {
         std::unique_lock lock(_map_mutex);
         if (_map.count(name) == 0) {
-            throw std::runtime_error("module name does not exist");
+            throw ModuleException(fmt::format("module name '{}' does not exist", name));
         }
         _map.erase(name);
     }
