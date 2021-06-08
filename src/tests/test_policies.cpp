@@ -15,7 +15,7 @@ version: "1.0"
 visor:
   taps:
     wired:
-      input_type: pcap
+      input_type: mock
       config:
         iface: en7
   collection:
@@ -85,6 +85,7 @@ TEST_CASE("Policies", "[policies]")
         auto [policy, lock] = registry.policy_manager()->module_get_locked("wired_view");
         CHECK(policy->name() == "wired_view");
         CHECK(policy->input_stream()->config_get<std::string>("bpf") == "tcp or udp");
+        CHECK_NOTHROW(policy->start());
     }
 
     SECTION("Bad Config")

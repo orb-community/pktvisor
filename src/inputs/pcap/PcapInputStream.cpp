@@ -17,7 +17,6 @@
 #include <PcapFileDevice.h>
 #include <SystemUtils.h>
 #pragma GCC diagnostic pop
-#include <Corrade/Utility/Debug.h>
 #include <IpUtils.h>
 #include <arpa/inet.h>
 #include <assert.h>
