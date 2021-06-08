@@ -11,6 +11,9 @@
 
 namespace visor {
 
+class InputStream;
+class Configurable;
+
 class InputModulePlugin : public AbstractPlugin
 {
 
@@ -30,6 +33,11 @@ public:
     {
     }
 
+    /**
+     * Instantiate a new InputStream
+     * @param svr
+     */
+    virtual std::unique_ptr<InputStream> instantiate(const Configurable *config) = 0;
 };
 
 typedef Corrade::PluginManager::Manager<InputModulePlugin> InputPluginRegistry;

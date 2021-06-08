@@ -1,8 +1,10 @@
 #include "CoreRegistry.h"
 #include "InputModulePlugin.h"
+#include "Policies.h"
 #include <catch2/catch.hpp>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
+#include <yaml-cpp/yaml.h>
 
 using namespace visor;
 
@@ -70,36 +72,37 @@ TEST_CASE("Policies", "[policies]")
 
     SECTION("Good Config")
     {
-        CoreRegistry mgrs(nullptr);
+        CoreRegistry registry(nullptr);
         YAML::Node config_file = YAML::Load(collection_config);
 
         CHECK(config_file["visor"]["collection"]);
         CHECK(config_file["visor"]["collection"].IsMap());
-        CHECK_NOTHROW(mgrs.policy_manager()->load(config_file["visor"]["collection"], true));
+        CHECK_NOTHROW(registry.policy_manager()->load(config_file["visor"]["collection"]));
 
-        auto [policy, lock] = mgrs.policy_manager()->module_get_locked("wired_view");
+        auto [policy, lock] = registry.policy_manager()->module_get_locked("wired_view");
         CHECK(policy->name() == "wired_view");
-        CHECK(policy->tap_filter()["bpf"].as<std::string>() == "tcp or udp");
+        CHECK(policy->tap_filter().config_get<std::string>("bpf") == "tcp or udp");
     }
 
     SECTION("Bad Config")
     {
-        CoreRegistry mgrs(nullptr);
+        CoreRegistry registry(nullptr);
         YAML::Node config_file = YAML::Load(collection_config_bad);
 
         CHECK(config_file["visor"]["collection"]);
         CHECK(config_file["visor"]["collection"].IsMap());
-        CHECK_THROWS(mgrs.policy_manager()->load(config_file["visor"]["collection"], true));
+        CHECK_THROWS(registry.policy_manager()->load(config_file["visor"]["collection"]));
     }
 
     SECTION("Policy Apply")
     {
-        CoreRegistry mgrs(nullptr);
+        CoreRegistry registry(nullptr);
         YAML::Node config_file = YAML::Load(collection_config);
 
-        CHECK_NOTHROW(mgrs.policy_manager()->load(config_file["visor"]["collection"], true));
+        CHECK_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
+        CHECK_NOTHROW(registry.policy_manager()->load(config_file["visor"]["collection"]));
 
-        auto [policy, lock] = mgrs.policy_manager()->module_get_locked("wired_view");
-        CHECK_NOTHROW(policy->apply(mgrs.tap_manager()));
+        auto [policy, lock] = registry.policy_manager()->module_get_locked("wired_view");
+        CHECK_NOTHROW(policy->apply(&registry));
     }
 }

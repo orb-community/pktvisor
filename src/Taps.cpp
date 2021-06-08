@@ -3,6 +3,9 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 #include "Taps.h"
+#include "CoreRegistry.h"
+#include "InputStream.h"
+#include "Policies.h"
 #include <algorithm>
 #include <fmt/core.h>
 #include <spdlog/spdlog.h>
@@ -13,8 +16,6 @@ void TapManager::load(const YAML::Node &tap_yaml, bool strict)
 {
     assert(tap_yaml.IsMap());
     assert(spdlog::get("visor"));
-
-    auto input_plugins = _input_plugin_registry->aliasList();
 
     for (YAML::const_iterator it = tap_yaml.begin(); it != tap_yaml.end(); ++it) {
         if (!it->first.IsScalar()) {
@@ -29,7 +30,9 @@ void TapManager::load(const YAML::Node &tap_yaml, bool strict)
             throw ConfigException("missing or invalid tap type key 'input_type'");
         }
         auto input_type = it->second["input_type"].as<std::string>();
-        if (std::find(input_plugins.begin(), input_plugins.end(), input_type) == input_plugins.end()) {
+
+        auto input_plugin = _registry->input_plugins().find(input_type);
+        if (input_plugin == _registry->input_plugins().end()) {
             if (strict) {
                 throw ConfigException(fmt::format("Tap '{}' requires input stream type '{}' which is not available", tap_name, input_type));
             } else {
@@ -38,7 +41,7 @@ void TapManager::load(const YAML::Node &tap_yaml, bool strict)
             }
         }
 
-        auto tap_module = std::make_unique<Tap>(tap_name, input_type);
+        auto tap_module = std::make_unique<Tap>(tap_name, input_plugin->second.get());
 
         if (it->second["config"]) {
             if (!it->second["config"].IsMap()) {
@@ -51,10 +54,13 @@ void TapManager::load(const YAML::Node &tap_yaml, bool strict)
     }
 }
 
-InputStream *Tap::instantiate(const Configurable *filter_config)
+std::unique_ptr<InputStream> Tap::instantiate(const Policy *policy, const Configurable *filter_config)
 {
-
-    return nullptr;
+    Config c;
+    c.config_merge(dynamic_cast<const Configurable &>(*this));
+    c.config_merge(*filter_config);
+    c.config_set("name", _name + "_" + policy->name());
+    return _input_plugin->instantiate(&c);
 }
 
 }

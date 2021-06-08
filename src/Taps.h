@@ -13,24 +13,27 @@
 namespace visor {
 
 class InputStream;
+class Policy;
 
 class Tap : public AbstractModule
 {
 
-    std::string _input_type;
+    InputModulePlugin *_input_plugin;
 
 public:
-    Tap(const std::string &name, const std::string &input_type)
+    Tap(const std::string &name, InputModulePlugin *input_plugin)
         : AbstractModule(name)
-        , _input_type(input_type)
+        , _input_plugin(input_plugin)
     {
+        assert(input_plugin);
     }
 
-    InputStream *instantiate(CoreRegistry *registry, const Configurable *filter_config);
+    std::unique_ptr<InputStream> instantiate(const Policy *policy, const Configurable *filter_config);
 
     void info_json(json &j) const override
     {
-        j["input_type"] = _input_type;
+        j["input_type"] = _input_plugin->plugin();
+        j["interface"] = _input_plugin->pluginInterface();
         config_json(j["config"]);
     }
 };
@@ -38,11 +41,11 @@ public:
 class TapManager : public AbstractManager<Tap>
 {
 
-    const InputPluginRegistry *_input_plugin_registry;
+    const CoreRegistry *_registry;
 
 public:
-    TapManager(const InputPluginRegistry *inputManager)
-        : _input_plugin_registry(inputManager)
+    TapManager(const CoreRegistry *registry)
+        : _registry(registry)
     {
     }
 

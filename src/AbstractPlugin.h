@@ -43,7 +43,6 @@ protected:
     /**
      * Utility functions for checking json schema
      */
-    void check_schema(json obj, SchemaMap &required);
     void check_schema(json obj, SchemaMap &required, SchemaMap &optional);
 
     /**

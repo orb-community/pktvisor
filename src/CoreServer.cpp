@@ -5,6 +5,7 @@
 #include "CoreServer.h"
 #include "HandlerManager.h"
 #include "Metrics.h"
+#include "Taps.h"
 #include "visor_config.h"
 #include <chrono>
 #include <spdlog/sinks/stdout_color_sinks.h>

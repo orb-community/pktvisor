@@ -31,6 +31,7 @@ void PcapInputModulePlugin::_create(const httplib::Request &req, httplib::Respon
     json result;
     try {
         auto body = json::parse(req.body);
+        // TODO refactor to use instantiate() below
         std::unordered_map<std::string, std::string> schema = {
             {"name", "\\w+"},
             {"iface", "\\w+"}};
@@ -126,6 +127,30 @@ void PcapInputModulePlugin::_delete(const httplib::Request &req, httplib::Respon
         result["error"] = e.what();
         res.set_content(result.dump(), "text/json");
     }
+}
+
+std::unique_ptr<InputStream> PcapInputModulePlugin::instantiate(const Configurable *config)
+{
+    json body;
+    config->config_json(body);
+    std::unordered_map<std::string, std::string> schema = {
+        {"name", "\\w+"},
+        {"iface", "\\w+"}};
+    std::unordered_map<std::string, std::string> opt_schema = {
+        {"pcap_source", "[_a-z]+"}};
+    // will throw on error
+    check_schema(body, schema, opt_schema);
+    auto input_stream = std::make_unique<PcapInputStream>(body["name"]);
+    std::string bpf;
+    if (body.contains("bpf")) {
+        bpf = body["bpf"];
+    }
+    input_stream->config_set("iface", body["iface"].get<std::string>());
+    input_stream->config_set("bpf", bpf);
+    if (body.contains("pcap_source")) {
+        input_stream->config_set("pcap_source", body["pcap_source"].get<std::string>());
+    }
+    return input_stream;
 }
 
 }

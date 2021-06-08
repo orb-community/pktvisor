@@ -6,31 +6,35 @@
 
 #include "HandlerModulePlugin.h"
 #include "InputModulePlugin.h"
-#include "Policies.h"
-#include "Taps.h"
 #include <map>
 
 namespace visor {
 
 class InputStreamManager;
 class HandlerManager;
+class TapManager;
+class PolicyManager;
 
 /**
  * The "registry" of core data structures such as plugins, modules, taps and policies
  */
 class CoreRegistry
 {
+public:
+    typedef std::map<std::string, std::unique_ptr<InputModulePlugin>> InputPluginMap;
+    typedef std::map<std::string, std::unique_ptr<HandlerModulePlugin>> HandlerPluginMap;
 
+private:
     // this is the interface to load/instantiate/unload Corrade plugins (Corrade::PluginManager::Manager)
     InputPluginRegistry _input_registry;
     HandlerPluginRegistry _handler_registry;
 
     // these hold instantiated Corrade plugin instances (Corrade::PluginManager::AbstractPlugin->visor::AbstractPlugin instances)
     // they know how to instantiate visor::AbstractModule derived instances (stored in managers below) via HTTP admin API (through setup_routes) or Tap instantiation
-    // *only one* per plugin type exists at a time, but they can instantiate many visor::AbstractModules
+    // *only one* per plugin type exists at a time, but they can instantiate many visor::AbstractModules (see managers below)
     // keyed by plugin alias name
-    std::map<std::string, InputPluginPtr> _input_plugins;
-    std::map<std::string, HandlerPluginPtr> _handler_plugins;
+    InputPluginMap _input_plugins;
+    HandlerPluginMap _handler_plugins;
 
     // these hold instances of active visor::AbstractModule derived modules (the main event processors) which are created from the plugins above
     // any number can exist per plugin type can exist at a time, each with their own life cycle
@@ -49,6 +53,11 @@ public:
     ~CoreRegistry();
 
     void configure_from_file(const std::string &filename);
+
+    [[nodiscard]] const InputPluginMap &input_plugins() const
+    {
+        return _input_plugins;
+    }
 
     [[nodiscard]] const InputStreamManager *input_manager() const
     {
@@ -69,6 +78,11 @@ public:
     [[nodiscard]] const InputPluginRegistry *input_plugin_registry() const
     {
         return &_input_registry;
+    }
+
+    [[nodiscard]] InputPluginMap &input_plugins()
+    {
+        return _input_plugins;
     }
 
     [[nodiscard]] InputStreamManager *input_manager()

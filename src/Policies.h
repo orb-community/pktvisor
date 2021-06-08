@@ -7,6 +7,7 @@
 #include "AbstractManager.h"
 #include "AbstractModule.h"
 #include "Configurable.h"
+#include "HandlerModulePlugin.h"
 #include "InputModulePlugin.h"
 #include "Taps.h"
 #include <yaml-cpp/yaml.h>
@@ -27,24 +28,24 @@ class Policy : public AbstractModule
 
     std::string _tap_name;
 
-    YAML::Node _tap_filter;
+    Config _tap_filter;
 
 public:
     Policy(const std::string &name, const std::string &tap_name)
         : AbstractModule(name)
         , _tap_name(tap_name)
-        , _tap_filter(YAML::NodeType::Map)
+        , _tap_filter()
     {
     }
 
-    const YAML::Node &tap_filter() const
+    const Config &tap_filter() const
     {
         return _tap_filter;
     }
 
     void set_tap_filter(const YAML::Node &n)
     {
-        _tap_filter = n;
+        _tap_filter.config_set_yaml(n);
     }
 
     void apply(CoreRegistry *registry);
@@ -73,7 +74,7 @@ public:
     {
     }
 
-    void load(const YAML::Node &tap_yaml, bool strict);
+    void load(const YAML::Node &tap_yaml);
 };
 
 }

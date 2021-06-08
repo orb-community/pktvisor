@@ -11,7 +11,7 @@
 
 namespace visor {
 
-void PolicyManager::load(const YAML::Node &policy_yaml, bool strict)
+void PolicyManager::load(const YAML::Node &policy_yaml)
 {
     assert(policy_yaml.IsMap());
     assert(spdlog::get("visor"));
@@ -52,9 +52,8 @@ void PolicyManager::load(const YAML::Node &policy_yaml, bool strict)
 
 void Policy::apply(CoreRegistry *registry)
 {
-    // get Tap* by name
-    // call the instantiate method on it which returns InputStream*, pass argument tap_filter
-    //
+    auto [tap, stream_mgr_lock] = registry->tap_manager()->module_get_locked(_tap_name);
+    tap->instantiate(this, &_tap_filter);
 }
 
 }
