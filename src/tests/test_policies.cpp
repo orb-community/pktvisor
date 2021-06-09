@@ -2,6 +2,7 @@
 #include "InputModulePlugin.h"
 #include "InputStream.h"
 #include "Policies.h"
+#include "handlers/static_plugins.h"
 #include <catch2/catch.hpp>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>

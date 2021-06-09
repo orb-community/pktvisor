@@ -58,7 +58,10 @@ public:
     {
         return _input_plugins;
     }
-
+    [[nodiscard]] const HandlerPluginMap &handler_plugins() const
+    {
+        return _handler_plugins;
+    }
     [[nodiscard]] const InputStreamManager *input_manager() const
     {
         return _input_manager.get();
@@ -83,6 +86,10 @@ public:
     [[nodiscard]] InputPluginMap &input_plugins()
     {
         return _input_plugins;
+    }
+    [[nodiscard]] HandlerPluginMap &handler_plugins()
+    {
+        return _handler_plugins;
     }
 
     [[nodiscard]] InputStreamManager *input_manager()

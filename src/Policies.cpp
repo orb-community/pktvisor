@@ -32,7 +32,7 @@ void PolicyManager::load(const YAML::Node &policy_yaml)
             throw PolicyException("expecting policy identifier");
         }
         auto policy_name = it->first.as<std::string>();
-        spdlog::get("visor")->info("loading Policy: {}", policy_name);
+        spdlog::get("visor")->info("{}: loading Policy", policy_name);
         if (!it->second.IsMap()) {
             throw PolicyException("expecting policy configuration map");
         }
@@ -81,7 +81,7 @@ void PolicyManager::load(const YAML::Node &policy_yaml)
         std::unique_ptr<InputStream> input_stream;
         std::string input_stream_module_name;
         try {
-            spdlog::get("visor")->info("instantiating Tap: {}", tap_name);
+            spdlog::get("visor")->info("{}: instantiating Tap: {}", policy_name, tap_name);
             input_stream = tap->instantiate(policy.get(), &tap_filter);
             input_stream_module_name = input_stream->name();
         } catch (std::runtime_error &e) {
@@ -104,10 +104,30 @@ void PolicyManager::load(const YAML::Node &policy_yaml)
                 throw PolicyException("expecting handler module identifier");
             }
             auto handler_module_name = h_it->first.as<std::string>();
-            spdlog::get("visor")->info("loading Handler: {}", handler_module_name);
             if (!h_it->second.IsMap()) {
                 throw PolicyException("expecting Handler configuration map");
             }
+            if (!h_it->second["type"] || !h_it->second["type"].IsScalar()) {
+                throw PolicyException("missing or invalid stream handler type at key 'type'");
+            }
+            auto handler_module_type = h_it->second["type"].as<std::string>();
+            auto handler_plugin = _registry->handler_plugins().find(handler_module_type);
+            if (handler_plugin == _registry->handler_plugins().end()) {
+                throw PolicyException(fmt::format("Policy '{}' requires stream handler type '{}' which is not available", policy_name, handler_module_type));
+            }
+            Config handler_config;
+            if (h_it->second["config"]) {
+                if (!h_it->second["config"].IsMap()) {
+                    throw PolicyException("stream handler configuration is not a map");
+                }
+                try {
+                    handler_config.config_set_yaml(h_it->second["config"]);
+                } catch (ConfigException &e) {
+                    throw PolicyException(fmt::format("invalid stream handler config for handler '{}': {}", handler_module_name, e.what()));
+                }
+            }
+            spdlog::get("visor")->info("{}: instantiating Handler {} of type {}", policy_name, handler_module_name, handler_module_type);
+            handler_modules.emplace_back(handler_plugin->second->instantiate(handler_module_name, input_stream.get(), &handler_config));
         }
 
         // Make modules visible in registry
@@ -150,14 +170,16 @@ void PolicyManager::load(const YAML::Node &policy_yaml)
 void Policy::info_json(json &j) const
 {
     config_json(j["config"]);
+    /*
     for (auto &mod : _modules) {
     }
+     */
 }
 void Policy::start()
 {
     assert(_tap);
     assert(_input_stream);
-    spdlog::get("visor")->info("starting Policy: {}", _name);
+    spdlog::get("visor")->info("{}: starting", _name);
     _input_stream->start();
 }
 void Policy::stop()

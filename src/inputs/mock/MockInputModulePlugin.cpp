@@ -13,10 +13,8 @@ CORRADE_PLUGIN_REGISTER(VisorInputMock, visor::input::mock::MockInputModulePlugi
 
 namespace visor::input::mock {
 
-void MockInputModulePlugin::setup_routes(HttpServer *svr)
+void MockInputModulePlugin::setup_routes([[maybe_unused]] HttpServer *svr)
 {
-
-
 }
 
 std::unique_ptr<InputStream> MockInputModulePlugin::instantiate(const std::string name, const Configurable *config)
