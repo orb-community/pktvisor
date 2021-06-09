@@ -131,6 +131,7 @@ void PcapInputModulePlugin::_delete(const httplib::Request &req, httplib::Respon
 
 std::unique_ptr<InputStream> PcapInputModulePlugin::instantiate(const std::string name, const Configurable *config)
 {
+    // TODO this was taken from http version, ruthlessly refactor
     json body;
     config->config_json(body);
     std::unordered_map<std::string, std::string> schema = {

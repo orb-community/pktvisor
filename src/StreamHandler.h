@@ -13,6 +13,15 @@ namespace visor {
 
 using json = nlohmann::json;
 
+class StreamHandlerException : public std::runtime_error
+{
+public:
+    explicit StreamHandlerException(const std::string &msg)
+        : std::runtime_error(msg)
+    {
+    }
+};
+
 class StreamHandler : public AbstractRunnableModule
 {
 
@@ -66,10 +75,10 @@ protected:
     }
 
 public:
-    StreamMetricsHandler(const std::string &name, uint periods, int deepSampleRate)
+    StreamMetricsHandler(const std::string &name, const Configurable *window_config)
         : StreamHandler(name)
     {
-        _metrics = std::make_unique<MetricsManagerClass>(periods, deepSampleRate);
+        _metrics = std::make_unique<MetricsManagerClass>(window_config);
     }
 
     const MetricsManagerClass *metrics() const

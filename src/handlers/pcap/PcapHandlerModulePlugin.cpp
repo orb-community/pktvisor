@@ -22,6 +22,7 @@ using json = nlohmann::json;
 void PcapHandlerModulePlugin::setup_routes(HttpServer *svr)
 {
     // CREATE
+    /*
     svr->Post("/api/v1/inputs/pcap/(\\w+)/handlers/pcap", [this](const httplib::Request &req, httplib::Response &res) {
         json result;
         try {
@@ -87,6 +88,7 @@ void PcapHandlerModulePlugin::setup_routes(HttpServer *svr)
             res.set_content(result.dump(), "text/json");
         }
     });
+     */
     svr->Get("/api/v1/inputs/pcap/(\\w+)/handlers/pcap/(\\w+)", [this](const httplib::Request &req, httplib::Response &res) {
         json result;
         try {
@@ -156,6 +158,7 @@ void PcapHandlerModulePlugin::setup_routes(HttpServer *svr)
         }
     });
     // DELETE
+    /*
     svr->Delete("/api/v1/inputs/pcap/(\\w+)/handlers/pcap/(\\w+)", [this](const httplib::Request &req, httplib::Response &res) {
         json result;
         try {
@@ -182,6 +185,13 @@ void PcapHandlerModulePlugin::setup_routes(HttpServer *svr)
             res.set_content(result.dump(), "text/json");
         }
     });
+     */
+}
+std::unique_ptr<StreamHandler> PcapHandlerModulePlugin::instantiate(const std::string &name, InputStream *input_stream, const Configurable *config)
+{
+    // TODO using config as both window config and module config
+    auto handler_module = std::make_unique<PcapStreamHandler>(name, input_stream, config);
+    return handler_module;
 }
 
 }

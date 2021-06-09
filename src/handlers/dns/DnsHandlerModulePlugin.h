@@ -19,6 +19,7 @@ public:
         : visor::HandlerModulePlugin{manager, plugin}
     {
     }
+    std::unique_ptr<StreamHandler> instantiate(const std::string &name, InputStream *input_stream, const Configurable *config) override;
 };
 }
 

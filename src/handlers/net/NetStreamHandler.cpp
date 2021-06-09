@@ -16,14 +16,20 @@
 #pragma GCC diagnostic pop
 #include <arpa/inet.h>
 #include <cpc_union.hpp>
+#include <fmt/format.h>
 
 namespace visor::handler::net {
 
-NetStreamHandler::NetStreamHandler(const std::string &name, PcapInputStream *stream, uint periods, uint deepSampleRate)
-    : visor::StreamMetricsHandler<NetworkMetricsManager>(name, periods, deepSampleRate)
-    , _stream(stream)
+NetStreamHandler::NetStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config)
+    : visor::StreamMetricsHandler<NetworkMetricsManager>(name, window_config)
 {
     assert(stream);
+    // figure out which input stream we have
+    _pcap_stream = dynamic_cast<PcapInputStream *>(stream);
+    _mock_stream = dynamic_cast<MockInputStream *>(stream);
+    if (!_pcap_stream && !_mock_stream) {
+        throw StreamHandlerException(fmt::format("NetStreamHandler: unsupported input stream {}", stream->name()));
+    }
 }
 
 void NetStreamHandler::start()
@@ -36,9 +42,11 @@ void NetStreamHandler::start()
         _metrics->set_recorded_stream();
     }
 
-    _pkt_connection = _stream->packet_signal.connect(&NetStreamHandler::process_packet_cb, this);
-    _start_tstamp_connection = _stream->start_tstamp_signal.connect(&NetStreamHandler::set_start_tstamp, this);
-    _end_tstamp_connection = _stream->end_tstamp_signal.connect(&NetStreamHandler::set_end_tstamp, this);
+    if (_pcap_stream) {
+        _pkt_connection = _pcap_stream->packet_signal.connect(&NetStreamHandler::process_packet_cb, this);
+        _start_tstamp_connection = _pcap_stream->start_tstamp_signal.connect(&NetStreamHandler::set_start_tstamp, this);
+        _end_tstamp_connection = _pcap_stream->end_tstamp_signal.connect(&NetStreamHandler::set_end_tstamp, this);
+    }
 
     _running = true;
 }
@@ -49,9 +57,11 @@ void NetStreamHandler::stop()
         return;
     }
 
-    _pkt_connection.disconnect();
-    _start_tstamp_connection.disconnect();
-    _end_tstamp_connection.disconnect();
+    if (_pcap_stream) {
+        _pkt_connection.disconnect();
+        _start_tstamp_connection.disconnect();
+        _end_tstamp_connection.disconnect();
+    }
 
     _running = false;
 }

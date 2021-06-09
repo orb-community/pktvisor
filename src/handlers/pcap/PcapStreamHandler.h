@@ -64,8 +64,8 @@ public:
 class PcapMetricsManager final : public visor::AbstractMetricsManager<PcapMetricsBucket>
 {
 public:
-    PcapMetricsManager(uint periods, int deepSampleRate)
-        : visor::AbstractMetricsManager<PcapMetricsBucket>(periods, deepSampleRate)
+    PcapMetricsManager(const Configurable *window_config)
+        : visor::AbstractMetricsManager<PcapMetricsBucket>(window_config)
     {
     }
 
@@ -76,7 +76,7 @@ public:
 class PcapStreamHandler final : public visor::StreamMetricsHandler<PcapMetricsManager>
 {
 
-    PcapInputStream *_stream;
+    PcapInputStream *_pcap_stream;
 
     sigslot::connection _start_tstamp_connection;
     sigslot::connection _end_tstamp_connection;
@@ -91,7 +91,7 @@ class PcapStreamHandler final : public visor::StreamMetricsHandler<PcapMetricsMa
     void set_end_tstamp(timespec stamp);
 
 public:
-    PcapStreamHandler(const std::string &name, PcapInputStream *stream, uint periods, uint deepSampleRate);
+    PcapStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config);
     ~PcapStreamHandler() override;
 
     // visor::AbstractModule

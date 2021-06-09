@@ -13,6 +13,7 @@
 #pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
 #include <randutils.hpp>
 #pragma GCC diagnostic pop
+#include "Configurable.h"
 #include "Metrics.h"
 #include <shared_mutex>
 #include <sstream>
@@ -213,13 +214,13 @@ private:
     /**
      * the total number of periods we will maintain in the window
      */
-    uint _num_periods;
+    uint _num_periods{5};
 
     /**
      * sampling
      */
     randutils::default_rng _rng;
-    uint _deep_sample_rate;
+    uint _deep_sample_rate{100};
 
 protected:
     std::atomic_bool _deep_sampling_now; // atomic so we can reference without mutex
@@ -316,14 +317,16 @@ protected:
     }
 
 public:
-    AbstractMetricsManager(uint periods, int deepSampleRate)
+    AbstractMetricsManager(const Configurable *window_config)
         : _metric_buckets{}
-        , _num_periods{periods}
-        , _deep_sample_rate(deepSampleRate)
         , _deep_sampling_now{true}
         , _last_shift_tstamp{0, 0}
         , _next_shift_tstamp{0, 0}
     {
+
+        if (window_config->config_exists("deep_sample_rate")) {
+            _deep_sample_rate = window_config->config_get<uint64_t>("deep_sample_rate");
+        }
         if (_deep_sample_rate > 100) {
             _deep_sample_rate = 100;
         }
@@ -331,6 +334,9 @@ public:
             _deep_sample_rate = 1;
         }
 
+        if (window_config->config_exists("num_periods")) {
+            _num_periods = window_config->config_get<uint64_t>("num_periods");
+        }
         _num_periods = std::min(_num_periods, 10U);
         _num_periods = std::max(_num_periods, 1U);
         timespec_get(&_last_shift_tstamp, TIME_UTC);

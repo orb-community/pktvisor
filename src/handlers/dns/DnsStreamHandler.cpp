@@ -19,11 +19,16 @@
 
 namespace visor::handler::dns {
 
-DnsStreamHandler::DnsStreamHandler(const std::string &name, PcapInputStream *stream, uint periods, int deepSampleRate)
-    : visor::StreamMetricsHandler<DnsMetricsManager>(name, periods, deepSampleRate)
-    , _stream(stream)
+DnsStreamHandler::DnsStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config)
+    : visor::StreamMetricsHandler<DnsMetricsManager>(name, window_config)
 {
     assert(stream);
+    // figure out which input stream we have
+    _pcap_stream = dynamic_cast<PcapInputStream *>(stream);
+    _mock_stream = dynamic_cast<MockInputStream *>(stream);
+    if (!_pcap_stream && !_mock_stream) {
+        throw StreamHandlerException(fmt::format("NetStreamHandler: unsupported input stream {}", stream->name()));
+    }
 }
 
 void DnsStreamHandler::start()
@@ -36,12 +41,14 @@ void DnsStreamHandler::start()
         _metrics->set_recorded_stream();
     }
 
-    _pkt_udp_connection = _stream->udp_signal.connect(&DnsStreamHandler::process_udp_packet_cb, this);
-    _start_tstamp_connection = _stream->start_tstamp_signal.connect(&DnsStreamHandler::set_start_tstamp, this);
-    _end_tstamp_connection = _stream->end_tstamp_signal.connect(&DnsStreamHandler::set_end_tstamp, this);
-    _tcp_start_connection = _stream->tcp_connection_start_signal.connect(&DnsStreamHandler::tcp_connection_start_cb, this);
-    _tcp_end_connection = _stream->tcp_connection_end_signal.connect(&DnsStreamHandler::tcp_connection_end_cb, this);
-    _tcp_message_connection = _stream->tcp_message_ready_signal.connect(&DnsStreamHandler::tcp_message_ready_cb, this);
+    if (_pcap_stream) {
+        _pkt_udp_connection = _pcap_stream->udp_signal.connect(&DnsStreamHandler::process_udp_packet_cb, this);
+        _start_tstamp_connection = _pcap_stream->start_tstamp_signal.connect(&DnsStreamHandler::set_start_tstamp, this);
+        _end_tstamp_connection = _pcap_stream->end_tstamp_signal.connect(&DnsStreamHandler::set_end_tstamp, this);
+        _tcp_start_connection = _pcap_stream->tcp_connection_start_signal.connect(&DnsStreamHandler::tcp_connection_start_cb, this);
+        _tcp_end_connection = _pcap_stream->tcp_connection_end_signal.connect(&DnsStreamHandler::tcp_connection_end_cb, this);
+        _tcp_message_connection = _pcap_stream->tcp_message_ready_signal.connect(&DnsStreamHandler::tcp_message_ready_cb, this);
+    }
 
     _running = true;
 }
@@ -52,12 +59,14 @@ void DnsStreamHandler::stop()
         return;
     }
 
-    _pkt_udp_connection.disconnect();
-    _start_tstamp_connection.disconnect();
-    _end_tstamp_connection.disconnect();
-    _tcp_start_connection.disconnect();
-    _tcp_end_connection.disconnect();
-    _tcp_message_connection.disconnect();
+    if (_pcap_stream) {
+        _pkt_udp_connection.disconnect();
+        _start_tstamp_connection.disconnect();
+        _end_tstamp_connection.disconnect();
+        _tcp_start_connection.disconnect();
+        _tcp_end_connection.disconnect();
+        _tcp_message_connection.disconnect();
+    }
 
     _running = false;
 }

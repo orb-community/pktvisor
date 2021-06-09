@@ -19,11 +19,15 @@
 
 namespace visor::handler::pcap {
 
-PcapStreamHandler::PcapStreamHandler(const std::string &name, PcapInputStream *stream, uint periods, uint deepSampleRate)
-    : visor::StreamMetricsHandler<PcapMetricsManager>(name, periods, deepSampleRate)
-    , _stream(stream)
+PcapStreamHandler::PcapStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config)
+    : visor::StreamMetricsHandler<PcapMetricsManager>(name, window_config)
 {
     assert(stream);
+    // figure out which input stream we have
+    _pcap_stream = dynamic_cast<PcapInputStream *>(stream);
+    if (!_pcap_stream) {
+        throw StreamHandlerException(fmt::format("PcapStreamHandler: unsupported input stream {}", stream->name()));
+    }
 }
 
 void PcapStreamHandler::start()
@@ -36,11 +40,11 @@ void PcapStreamHandler::start()
         _metrics->set_recorded_stream();
     }
 
-    _start_tstamp_connection = _stream->start_tstamp_signal.connect(&PcapStreamHandler::set_start_tstamp, this);
-    _end_tstamp_connection = _stream->end_tstamp_signal.connect(&PcapStreamHandler::set_end_tstamp, this);
+    _start_tstamp_connection = _pcap_stream->start_tstamp_signal.connect(&PcapStreamHandler::set_start_tstamp, this);
+    _end_tstamp_connection = _pcap_stream->end_tstamp_signal.connect(&PcapStreamHandler::set_end_tstamp, this);
 
-    _pcap_tcp_reassembly_errors_connection = _stream->tcp_reassembly_error_signal.connect(&PcapStreamHandler::process_pcap_tcp_reassembly_error, this);
-    _pcap_stats_connection = _stream->pcap_stats_signal.connect(&PcapStreamHandler::process_pcap_stats, this);
+    _pcap_tcp_reassembly_errors_connection = _pcap_stream->tcp_reassembly_error_signal.connect(&PcapStreamHandler::process_pcap_tcp_reassembly_error, this);
+    _pcap_stats_connection = _pcap_stream->pcap_stats_signal.connect(&PcapStreamHandler::process_pcap_stats, this);
 
     _running = true;
 }

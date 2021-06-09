@@ -11,6 +11,10 @@
 
 namespace visor {
 
+class Configurable;
+class StreamHandler;
+class InputStream;
+
 class HandlerModulePlugin : public AbstractPlugin
 {
 
@@ -30,6 +34,10 @@ public:
     {
     }
 
+    /**
+     * Instantiate a new StreamHandler
+     */
+    virtual std::unique_ptr<StreamHandler> instantiate(const std::string &name, InputStream *input_stream, const Configurable *config) = 0;
 };
 
 typedef Corrade::PluginManager::Manager<HandlerModulePlugin> HandlerPluginRegistry;
