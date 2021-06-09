@@ -16,9 +16,7 @@ class PcapInputModulePlugin : public visor::InputModulePlugin
 protected:
     void setup_routes(HttpServer *svr) override;
 
-    void _create(const httplib::Request &req, httplib::Response &res);
     void _read(const httplib::Request &req, httplib::Response &res);
-    void _delete(const httplib::Request &req, httplib::Response &res);
 
 public:
     explicit PcapInputModulePlugin(Corrade::PluginManager::AbstractManager &manager, const std::string &plugin)
