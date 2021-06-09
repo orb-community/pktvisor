@@ -19,9 +19,6 @@ void PolicyManager::load(const YAML::Node &policy_yaml)
     assert(policy_yaml.IsMap());
     assert(spdlog::get("visor"));
 
-    auto input_plugins = _registry->input_plugin_registry()->aliasList();
-    //auto handler_plugins = _handler_plugin_registry->aliasList();
-
     for (YAML::const_iterator it = policy_yaml.begin(); it != policy_yaml.end(); ++it) {
 
         // serialized policy loads
@@ -127,7 +124,9 @@ void PolicyManager::load(const YAML::Node &policy_yaml)
                 }
             }
             spdlog::get("visor")->info("{}: instantiating Handler {} of type {}", policy_name, handler_module_name, handler_module_type);
-            handler_modules.emplace_back(handler_plugin->second->instantiate(handler_module_name, input_stream.get(), &handler_config));
+            auto handler_module = handler_plugin->second->instantiate(policy_name + "_" + handler_module_name, input_stream.get(), &handler_config);
+            policy->add_module(handler_module.get());
+            handler_modules.emplace_back(std::move(handler_module));
         }
 
         // Make modules visible in registry
@@ -181,6 +180,9 @@ void Policy::start()
     assert(_input_stream);
     spdlog::get("visor")->info("{}: starting", _name);
     _input_stream->start();
+    for (auto &mod : _modules) {
+        mod->start();
+    }
 }
 void Policy::stop()
 {

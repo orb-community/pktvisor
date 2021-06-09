@@ -58,7 +58,7 @@ visor:
 TEST_CASE("Policies", "[policies]")
 {
 
-    SECTION("Good Config")
+    SECTION("Good Config happy path")
     {
         CoreRegistry registry(nullptr);
         YAML::Node config_file = YAML::Load(collection_config);
@@ -66,14 +66,27 @@ TEST_CASE("Policies", "[policies]")
         CHECK(config_file["visor"]["collection"]);
         CHECK(config_file["visor"]["collection"].IsMap());
 
-        CHECK_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
-        CHECK_NOTHROW(registry.policy_manager()->load(config_file["visor"]["collection"]));
+        REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
+        REQUIRE_NOTHROW(registry.policy_manager()->load(config_file["visor"]["collection"]));
 
+        REQUIRE(registry.policy_manager()->module_exists("default_view"));
         auto [policy, lock] = registry.policy_manager()->module_get_locked("default_view");
         CHECK(policy->name() == "default_view");
         CHECK(policy->input_stream()->name() == "anycast_default_view");
         CHECK(policy->input_stream()->config_get<std::string>("bpf") == "tcp or udp");
+        CHECK(policy->modules()[0]->name() == "default_view_default_net");
+        CHECK(policy->modules()[1]->name() == "default_view_default_dns");
+        CHECK(policy->modules()[2]->name() == "default_view_special_domain");
+        CHECK(policy->modules()[2]->config_get<std::string>("qname_suffix") == ".mydomain.com");
+        CHECK(!policy->input_stream()->running());
+        CHECK(!policy->modules()[0]->running());
+        CHECK(!policy->modules()[1]->running());
+        CHECK(!policy->modules()[2]->running());
         CHECK_NOTHROW(policy->start());
+        CHECK(policy->input_stream()->running());
+        CHECK(policy->modules()[0]->running());
+        CHECK(policy->modules()[1]->running());
+        CHECK(policy->modules()[2]->running());
     }
 
     SECTION("Bad Config")
@@ -85,5 +98,4 @@ TEST_CASE("Policies", "[policies]")
         CHECK(config_file["visor"]["collection"].IsMap());
         CHECK_THROWS(registry.policy_manager()->load(config_file["visor"]["collection"]));
     }
-
 }

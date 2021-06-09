@@ -51,6 +51,16 @@ public:
         return _input_stream;
     }
 
+    void add_module(AbstractRunnableModule *m)
+    {
+        _modules.push_back(m);
+    }
+
+    const std::vector<AbstractRunnableModule *> &modules()
+    {
+        return _modules;
+    }
+
     // life cycle
     void start();
     void stop();
