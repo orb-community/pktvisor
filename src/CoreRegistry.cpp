@@ -101,6 +101,10 @@ void visor::CoreRegistry::configure_from_file(const std::string &filename)
     if (config_file["visor"]["taps"] && config_file["visor"]["taps"].IsMap()) {
         _tap_manager->load(config_file["visor"]["taps"], true);
     }
+    // collection policies
+    if (config_file["visor"]["collection"] && config_file["visor"]["collection"].IsMap()) {
+        _policy_manager->load(config_file["visor"]["collection"]);
+    }
 }
 
 }

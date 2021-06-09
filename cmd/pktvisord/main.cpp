@@ -35,8 +35,19 @@ static const char USAGE[] =
 
     pktvisord summarizes data streams and exposes a REST API control plane for configuration and metrics.
 
-    IFACE, if specified, is either a network interface or an IP address (4 or 6). If this is specified,
-    a "pcap" input stream will be automatically created, with "net", "dns", and "pcap" handler modules attached.
+    pktvisord operation is configured via Taps and Collection Policies. The former set up the available
+    input streams while the latter instantiate Taps and Stream Handlers to analyze and summarize
+    the stream data.
+
+    Taps and Collection Policies may be created by passing the appropriate YAML configuration file to
+    --config, and/or by enabling the admin REST API with --admin-api and using the appropriate endpoints.
+
+    Alternatively, for simple use cases you may specify IFACE, which is either a network interface or an
+    IP address (4 or 6). If this is specified, "default" Tap and Collection Policies will be created with
+    a "pcap" input stream on the specified interfaced, along with the built in "net", "dns", and "pcap"
+    Stream Handler modules attached. Note that this feature may be deprecated in the future.
+
+    For more documentation, see https://pktvisor.dev
 
     Base Options:
       -d                    Daemonize; fork and continue running in the background [default: false]
@@ -51,13 +62,14 @@ static const char USAGE[] =
       --tls-cert FILE       Use given TLS cert. Required if --tls is enabled.
       --tls-key FILE        Use given TLS private key. Required if --tls is enabled.
       --admin-api           Enable admin REST API giving complete control plane functionality [default: false]
-                            When not specified, the exposed API is read-only access to summarized metrics.
+                            When not specified, the exposed API is read-only access to module status and metrics.
                             When specified, write access is enabled for all modules.
     Geo Options:
       --geo-city FILE       GeoLite2 City database to use for IP to Geo mapping
       --geo-asn FILE        GeoLite2 ASN database to use for IP to ASN mapping
     Configuration:
       --config FILE         Use specified YAML configuration to configure options, Taps, and Collection Policies
+                            Please see https://pktvisor.dev for more information
     Logging Options:
       --log-file FILE       Log to the given output file name
       --syslog              Log to syslog
@@ -67,7 +79,7 @@ static const char USAGE[] =
     Handler Module Defaults:
       --max-deep-sample N   Never deep sample more than N% of streams (an int between 0 and 100) [default: 100]
       --periods P           Hold this many 60 second time periods of history in memory [default: 5]
-    pcap Input Module Options:
+    pcap Input Module Options: (applicable to default policy when IFACE is specified only)
       -b BPF                Filter packets using the given tcpdump compatible filter expression. Example: "port 53"
       -H HOSTSPEC           Specify subnets (comma separated) to consider HOST, in CIDR form. In live capture this /may/ be detected automatically
                             from capture device but /must/ be specified for pcaps. Example: "10.0.1.0/24,10.0.2.1/32,2001:db8::/64"
@@ -314,7 +326,7 @@ int main(int argc, char *argv[])
     }
 
     if (args["IFACE"]) {
-        // pcap command line functionality (deprecated)
+        // pcap command line functionality
         try {
             std::string bpf;
             if (args["-b"]) {
