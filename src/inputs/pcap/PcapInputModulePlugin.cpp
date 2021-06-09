@@ -129,18 +129,17 @@ void PcapInputModulePlugin::_delete(const httplib::Request &req, httplib::Respon
     }
 }
 
-std::unique_ptr<InputStream> PcapInputModulePlugin::instantiate(const Configurable *config)
+std::unique_ptr<InputStream> PcapInputModulePlugin::instantiate(const std::string name, const Configurable *config)
 {
     json body;
     config->config_json(body);
     std::unordered_map<std::string, std::string> schema = {
-        {"name", "\\w+"},
         {"iface", "\\w+"}};
     std::unordered_map<std::string, std::string> opt_schema = {
         {"pcap_source", "[_a-z]+"}};
     // will throw on error
     check_schema(body, schema, opt_schema);
-    auto input_stream = std::make_unique<PcapInputStream>(body["name"]);
+    auto input_stream = std::make_unique<PcapInputStream>(name);
     std::string bpf;
     if (body.contains("bpf")) {
         bpf = body["bpf"];

@@ -4,6 +4,7 @@
 
 #include "Policies.h"
 #include "CoreRegistry.h"
+#include "HandlerManager.h"
 #include "InputStreamManager.h"
 #include "Taps.h"
 #include <algorithm>
@@ -78,19 +79,70 @@ void PolicyManager::load(const YAML::Node &policy_yaml)
 
         // Instantiate stream from tap
         std::unique_ptr<InputStream> input_stream;
+        std::string input_stream_module_name;
         try {
+            spdlog::get("visor")->info("instantiating Tap: {}", tap_name);
             input_stream = tap->instantiate(policy.get(), &tap_filter);
+            input_stream_module_name = input_stream->name();
         } catch (std::runtime_error &e) {
             throw PolicyException(fmt::format("unable to instantiate tap {}: {}", tap_name, e.what()));
         }
         policy->set_input_stream(input_stream.get());
 
+        // Handler Section
+        if (!it->second["handlers"] || !it->second["handlers"].IsMap()) {
+            throw PolicyException("missing or invalid handler configuration at key 'handlers'");
+        }
+        auto handler_node = it->second["handlers"];
+        if (!handler_node["modules"] || !handler_node["modules"].IsMap()) {
+            throw PolicyException("missing or invalid handler modules at key 'modules'");
+        }
+        std::vector<std::unique_ptr<StreamHandler>> handler_modules;
+        for (YAML::const_iterator h_it = handler_node["modules"].begin(); h_it != handler_node["modules"].end(); ++h_it) {
+            // Per handler
+            if (!h_it->first.IsScalar()) {
+                throw PolicyException("expecting handler module identifier");
+            }
+            auto handler_module_name = h_it->first.as<std::string>();
+            spdlog::get("visor")->info("loading Handler: {}", handler_module_name);
+            if (!h_it->second.IsMap()) {
+                throw PolicyException("expecting Handler configuration map");
+            }
+        }
+
         // Make modules visible in registry
+        // If the modules created above go out of scope before this step, they will destruct so the key is to make sure
+        // roll back during exception ensures no modules have been added to any of the managers
         try {
             module_add(std::move(policy));
+        } catch (ModuleException &e) {
+            throw PolicyException(fmt::format("policy creation failed (policy) {}: {}", policy_name, e.what()));
+        }
+        try {
             _registry->input_manager()->module_add(std::move(input_stream));
         } catch (ModuleException &e) {
-            throw PolicyException(fmt::format("unable to add policy {}: {}", policy_name, e.what()));
+            // note that if this call excepts, we are in an unknown state and the exception will propagate
+            module_remove(policy_name);
+            throw PolicyException(fmt::format("policy creation failed (input) {}: {}", policy_name, e.what()));
+        }
+        std::vector<std::string> added_handlers;
+        try {
+            for (auto &m : handler_modules) {
+                auto hname = m->name();
+                _registry->handler_manager()->module_add(std::move(m));
+                // if it did not except, add it to the list for rollback upon exception
+                added_handlers.push_back(hname);
+            }
+        } catch (ModuleException &e) {
+            // note that if any of these calls except, we are in an unknown state and the exception will propagate
+            // nothing needs to be stopped because it was not started
+            module_remove(policy_name);
+            _registry->input_manager()->module_remove(input_stream_module_name);
+            for (auto &m : added_handlers) {
+                _registry->handler_manager()->module_remove(m);
+            }
+            // at this point no outside reference is held to the modules so they will destruct
+            throw PolicyException(fmt::format("policy creation failed (handler: {}) {}: {}", e.name(), policy_name, e.what()));
         }
     }
 }
@@ -105,6 +157,7 @@ void Policy::start()
 {
     assert(_tap);
     assert(_input_stream);
+    spdlog::get("visor")->info("starting Policy: {}", _name);
     _input_stream->start();
 }
 void Policy::stop()

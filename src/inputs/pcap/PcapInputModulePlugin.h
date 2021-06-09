@@ -25,7 +25,7 @@ public:
         : visor::InputModulePlugin{manager, plugin}
     {
     }
-    std::unique_ptr<InputStream> instantiate(const Configurable *config) override;
+    std::unique_ptr<InputStream> instantiate(const std::string name, const Configurable *config) override;
 };
 
 }

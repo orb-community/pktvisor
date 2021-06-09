@@ -155,7 +155,6 @@ int main(int argc, char *argv[])
             try {
                 auto logger_probe = spdlog::basic_logger_mt("pktvisor-log-probe", args["--log-file"].asString());
             } catch (const spdlog::spdlog_ex &ex) {
-                // note in daemon mode, this may get swallowed because stdout is already closed
                 std::cerr << "Log init failed: " << ex.what() << std::endl;
                 exit(EXIT_FAILURE);
             }

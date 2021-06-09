@@ -16,10 +16,18 @@ namespace visor {
 
 class ModuleException : public std::runtime_error
 {
+    std::string _name;
+
 public:
-    explicit ModuleException(const std::string &msg)
+    explicit ModuleException(const std::string &name, const std::string &msg)
         : std::runtime_error(msg)
+        , _name(name)
     {
+    }
+
+    const std::string &name()
+    {
+        return _name;
     }
 };
 
@@ -60,7 +68,7 @@ public:
     {
         std::unique_lock lock(_map_mutex);
         if (_map.count(m->name())) {
-            throw ModuleException(fmt::format("module name '{}' already exists", m->name()));
+            throw ModuleException(m->name(), fmt::format("module name '{}' already exists", m->name()));
         }
         _map.emplace(m->name(), std::move(m));
     }
@@ -71,7 +79,7 @@ public:
     {
         std::unique_lock lock(_map_mutex);
         if (_map.count(name) == 0) {
-            throw ModuleException(fmt::format("module name '{}' does not exist", name));
+            throw ModuleException(name, fmt::format("module name '{}' does not exist", name));
         }
         struct retVals {
             ModuleType *module;
@@ -84,7 +92,7 @@ public:
     {
         std::unique_lock lock(_map_mutex);
         if (_map.count(name) == 0) {
-            throw ModuleException(fmt::format("module name '{}' does not exist", name));
+            throw ModuleException(name, fmt::format("module name '{}' does not exist", name));
         }
         _map.erase(name);
     }

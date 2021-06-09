@@ -6,15 +6,20 @@
 
 #include "InputStream.h"
 #include <sigslot/signal.hpp>
+#include <spdlog/spdlog.h>
+#include <timer.hpp>
 
 namespace visor::input::mock {
 
 class MockInputStream : public visor::InputStream
 {
 
+    std::shared_ptr<timer::interval_handle> _mock_work;
+    std::shared_ptr<spdlog::logger> _logger;
+
 public:
     MockInputStream(const std::string &name);
-    ~MockInputStream() = default;
+    ~MockInputStream();
 
     // visor::AbstractModule
     std::string schema_key() const override
