@@ -106,6 +106,10 @@ int main(int argc, char *argv[])
 
     long periods = args["--periods"].asLong();
 
+    visor::Config window_config;
+    window_config.config_set<uint64_t>("num_periods", periods);
+    window_config.config_set<uint64_t>("deep_sample_rate", sample_rate);
+
     try {
 
         initialize_geo(args["--geo-city"], args["--geo-asn"]);
@@ -127,7 +131,7 @@ int main(int argc, char *argv[])
 
         handler::net::NetStreamHandler *net_handler{nullptr};
         {
-            auto handler_module = std::make_unique<handler::net::NetStreamHandler>("net", pcap_stream, periods, sample_rate);
+            auto handler_module = std::make_unique<handler::net::NetStreamHandler>("net", pcap_stream, &window_config);
             handler_module->config_set("recorded_stream", true);
             handler_module->start();
             mgrs.handler_manager()->module_add(std::move(handler_module));
@@ -137,7 +141,7 @@ int main(int argc, char *argv[])
         }
         handler::dns::DnsStreamHandler *dns_handler{nullptr};
         {
-            auto handler_module = std::make_unique<handler::dns::DnsStreamHandler>("dns", pcap_stream, periods, sample_rate);
+            auto handler_module = std::make_unique<handler::dns::DnsStreamHandler>("dns", pcap_stream, &window_config);
             handler_module->config_set("recorded_stream", true);
             handler_module->start();
             mgrs.handler_manager()->module_add(std::move(handler_module));

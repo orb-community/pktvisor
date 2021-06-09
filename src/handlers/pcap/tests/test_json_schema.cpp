@@ -28,7 +28,8 @@ TEST_CASE("Pcap JSON Schema", "[pcap][iface][json]")
         stream.config_set("host_spec", "192.168.0.0/24");
         stream.parse_host_spec();
 
-        PcapStreamHandler pcap_handler{"pcap-test", &stream, 5, 100};
+        visor::Config c;
+        PcapStreamHandler pcap_handler{"pcap-test", &stream, &c};
         pcap_handler.config_set("recorded_stream", true);
 
         pcap_handler.start();

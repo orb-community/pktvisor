@@ -28,7 +28,8 @@ TEST_CASE("Net JSON Schema", "[net][iface][json]")
         stream.config_set("host_spec", "192.168.0.0/24");
         stream.parse_host_spec();
 
-        NetStreamHandler net_handler{"net-test", &stream, 5, 100};
+        visor::Config c;
+        NetStreamHandler net_handler{"net-test", &stream, &c};
         net_handler.config_set("recorded_stream", true);
 
         net_handler.start();

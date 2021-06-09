@@ -16,7 +16,9 @@ TEST_CASE("Parse net (dns) random UDP/TCP tests", "[pcap][net]")
     stream.config_set("host_spec", "192.168.0.0/24");
     stream.parse_host_spec();
 
-    PcapStreamHandler pcap_handler{"pcap-handler-test", &stream, 1, 100};
+    visor::Config c;
+    c.config_set<uint64_t>("num_periods", 1);
+    PcapStreamHandler pcap_handler{"pcap-handler-test", &stream, &c};
 
     pcap_handler.start();
     stream.start();

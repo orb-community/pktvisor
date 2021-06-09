@@ -61,7 +61,7 @@ std::unique_ptr<InputStream> Tap::instantiate(Policy *policy, const Configurable
     Config c;
     c.config_merge(dynamic_cast<const Configurable &>(*this));
     c.config_merge(*filter_config);
-    auto module = _input_plugin->instantiate(_name + "_" + policy->name(), &c);
+    auto module = _input_plugin->instantiate(_name + "-" + policy->name(), &c);
     module->set_policy(policy);
     return module;
 }

@@ -1,6 +1,9 @@
 #include "CoreRegistry.h"
+#include "HandlerManager.h"
 #include "InputModulePlugin.h"
 #include "InputStream.h"
+#include "InputStreamManager.h"
+#include "MockInputStream.h"
 #include "Policies.h"
 #include "handlers/static_plugins.h"
 #include <catch2/catch.hpp>
@@ -33,7 +36,7 @@ visor:
       # these decide exactly which data to summarize and expose for collection
       handlers:
         # default configuration for the stream handlers
-#        config:
+#        window_config:
 #          max_deep_sample: 95
         modules:
           # the keys at this level are unique identifiers
@@ -41,7 +44,7 @@ visor:
             type: net
           default_dns:
             type: dns
-#            config:
+#            window_config:
 #              max_deep_sample: 75
           special_domain:
             type: dns
@@ -49,10 +52,64 @@ visor:
               qname_suffix: .mydomain.com
 )";
 
-auto collection_config_bad = R"(
+auto collection_config_bad1 = R"(
 visor:
   collection:
     missing:
+)";
+
+auto collection_config_bad2 = R"(
+version: "1.0"
+
+visor:
+  taps:
+    anycast:
+      input_type: mock
+      config:
+        iface: eth0
+  collection:
+    default_view:
+      input:
+        tap: nonexist
+)";
+
+auto collection_config_bad3 = R"(
+version: "1.0"
+
+visor:
+  taps:
+    anycast:
+      input_type: mock
+      config:
+        iface: eth0
+  collection:
+    default_view:
+      input:
+        tap: anycast
+        filter:
+          bpf:
+            badmap: "bad value"
+)";
+
+auto collection_config_bad4 = R"(
+version: "1.0"
+
+visor:
+  taps:
+    anycast:
+      input_type: mock
+      config:
+        iface: eth0
+  collection:
+    default_view:
+      input:
+        tap: anycast
+        filter:
+          except_on_start: true
+      handlers:
+        modules:
+          default_net:
+            type: net
 )";
 
 TEST_CASE("Policies", "[policies]")
@@ -72,30 +129,93 @@ TEST_CASE("Policies", "[policies]")
         REQUIRE(registry.policy_manager()->module_exists("default_view"));
         auto [policy, lock] = registry.policy_manager()->module_get_locked("default_view");
         CHECK(policy->name() == "default_view");
-        CHECK(policy->input_stream()->name() == "anycast_default_view");
+        CHECK(policy->input_stream()->name() == "anycast-default_view");
         CHECK(policy->input_stream()->config_get<std::string>("bpf") == "tcp or udp");
-        CHECK(policy->modules()[0]->name() == "default_view_default_net");
-        CHECK(policy->modules()[1]->name() == "default_view_default_dns");
-        CHECK(policy->modules()[2]->name() == "default_view_special_domain");
+        CHECK(policy->modules()[0]->name() == "default_view-default_net");
+        CHECK(policy->modules()[1]->name() == "default_view-default_dns");
+        CHECK(policy->modules()[2]->name() == "default_view-special_domain");
         CHECK(policy->modules()[2]->config_get<std::string>("qname_suffix") == ".mydomain.com");
         CHECK(!policy->input_stream()->running());
         CHECK(!policy->modules()[0]->running());
         CHECK(!policy->modules()[1]->running());
         CHECK(!policy->modules()[2]->running());
-        CHECK_NOTHROW(policy->start());
+        REQUIRE_NOTHROW(policy->start());
         CHECK(policy->input_stream()->running());
         CHECK(policy->modules()[0]->running());
         CHECK(policy->modules()[1]->running());
         CHECK(policy->modules()[2]->running());
     }
 
+    SECTION("Duplicate")
+    {
+        CoreRegistry registry(nullptr);
+        YAML::Node config_file = YAML::Load(collection_config);
+
+        REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
+        REQUIRE_NOTHROW(registry.policy_manager()->load(config_file["visor"]["collection"]));
+        REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["collection"]), "policy creation failed (policy) default_view: module name 'default_view' already exists");
+
+        REQUIRE(registry.policy_manager()->module_exists("default_view"));
+        auto [policy, lock] = registry.policy_manager()->module_get_locked("default_view");
+        CHECK(policy->name() == "default_view");
+    }
+
     SECTION("Bad Config")
     {
         CoreRegistry registry(nullptr);
-        YAML::Node config_file = YAML::Load(collection_config_bad);
+        YAML::Node config_file = YAML::Load(collection_config_bad1);
+
+        REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["collection"]), "expecting policy configuration map");
+    }
+
+    SECTION("Bad Config: invalid tap")
+    {
+        CoreRegistry registry(nullptr);
+        YAML::Node config_file = YAML::Load(collection_config_bad2);
+
+        REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["collection"]), "tap 'nonexist' does not exist");
+    }
+
+    SECTION("Bad Config: invalid tap config")
+    {
+        CoreRegistry registry(nullptr);
+        YAML::Node config_file = YAML::Load(collection_config_bad3);
+
+        REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
+        REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["collection"]), "invalid input filter config for tap 'anycast': invalid value for key: bpf");
+    }
+
+    SECTION("Bad Config: exception on input start")
+    {
+        CoreRegistry registry(nullptr);
+        YAML::Node config_file = YAML::Load(collection_config_bad4);
+
+        REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
+        REQUIRE_NOTHROW(registry.policy_manager()->load(config_file["visor"]["collection"]));
+        REQUIRE(registry.policy_manager()->module_exists("default_view"));
+        auto [policy, lock] = registry.policy_manager()->module_get_locked("default_view");
+        REQUIRE_THROWS_WITH(policy->start(), "mock error on start");
+    }
+
+    SECTION("Roll Back")
+    {
+        CoreRegistry registry(nullptr);
+        YAML::Node config_file = YAML::Load(collection_config);
 
         CHECK(config_file["visor"]["collection"]);
         CHECK(config_file["visor"]["collection"].IsMap());
-        CHECK_THROWS(registry.policy_manager()->load(config_file["visor"]["collection"]));
+
+        REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
+
+        // force a roll back by creating a conflict with a handler module name that already exists
+        Config config;
+        auto input_stream = registry.input_plugins()["mock"]->instantiate("mymock", &config);
+        auto mod = registry.handler_plugins()["net"]->instantiate("default_view-default_net", input_stream.get(), &config);
+        registry.handler_manager()->module_add(std::move(mod));
+        REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["collection"]), "policy creation failed (handler: default_view-default_net) default_view: module name 'default_view-default_net' already exists");
+
+        // ensure the modules were rolled back
+        REQUIRE(!registry.policy_manager()->module_exists("default_view"));
+        REQUIRE(!registry.input_manager()->module_exists("anycast-default_view"));
     }
 }

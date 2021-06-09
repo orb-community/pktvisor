@@ -27,6 +27,11 @@ void MockInputStream::start()
 
     _logger->info("mock input start()");
 
+    // for unit testing purposes
+    if (config_exists("except_on_start")) {
+        throw std::runtime_error("mock error on start");
+    }
+
     static timer timer_thread{500ms};
     std::srand(std::time(nullptr));
     _mock_work = timer_thread.set_interval(1s, [this] {

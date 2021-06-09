@@ -340,18 +340,22 @@ int main(int argc, char *argv[])
             stream_mgr_lock.unlock();
             auto pcap_stream = dynamic_cast<input::pcap::PcapInputStream *>(input_stream_);
 
+            visor::Config window_config;
+            window_config.config_set<uint64_t>("num_periods", periods);
+            window_config.config_set<uint64_t>("deep_sample_rate", sample_rate);
+
             {
-                auto handler_module = std::make_unique<handler::pcap::PcapStreamHandler>("pcap", pcap_stream, periods, sample_rate);
+                auto handler_module = std::make_unique<handler::pcap::PcapStreamHandler>("pcap", pcap_stream, &window_config);
                 handler_module->start();
                 handler_manager->module_add(std::move(handler_module));
             }
             {
-                auto handler_module = std::make_unique<handler::net::NetStreamHandler>("net", pcap_stream, periods, sample_rate);
+                auto handler_module = std::make_unique<handler::net::NetStreamHandler>("net", pcap_stream, &window_config);
                 handler_module->start();
                 handler_manager->module_add(std::move(handler_module));
             }
             {
-                auto handler_module = std::make_unique<handler::dns::DnsStreamHandler>("dns", pcap_stream, periods, sample_rate);
+                auto handler_module = std::make_unique<handler::dns::DnsStreamHandler>("dns", pcap_stream, &window_config);
                 handler_module->start();
                 handler_manager->module_add(std::move(handler_module));
             }

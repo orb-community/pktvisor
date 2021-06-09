@@ -14,7 +14,9 @@ TEST_CASE("Parse net (dns) UDP IPv4 tests", "[pcap][ipv4][udp][net]")
     stream.config_set("pcap_file", "tests/fixtures/dns_ipv4_udp.pcap");
     stream.config_set("bpf", std::string());
 
-    NetStreamHandler net_handler{"net-test", &stream, 1, 100};
+    visor::Config c;
+    c.config_set<uint64_t>("num_periods", 1);
+    NetStreamHandler net_handler{"net-test", &stream, &c};
 
     net_handler.start();
     stream.start();
@@ -45,7 +47,9 @@ TEST_CASE("Parse net (dns) TCP IPv4 tests", "[pcap][ipv4][tcp][net]")
     stream.config_set("pcap_file", "tests/fixtures/dns_ipv4_tcp.pcap");
     stream.config_set("bpf", "");
 
-    NetStreamHandler net_handler{"net-test", &stream, 1, 100};
+    visor::Config c;
+    c.config_set<uint64_t>("num_periods", 1);
+    NetStreamHandler net_handler{"net-test", &stream, &c};
 
     net_handler.start();
     stream.start();
@@ -70,7 +74,9 @@ TEST_CASE("Parse net (dns) UDP IPv6 tests", "[pcap][ipv6][udp][net]")
     stream.config_set("pcap_file", "tests/fixtures/dns_ipv6_udp.pcap");
     stream.config_set("bpf", "");
 
-    NetStreamHandler net_handler{"net-test", &stream, 1, 100};
+    visor::Config c;
+    c.config_set<uint64_t>("num_periods", 1);
+    NetStreamHandler net_handler{"net-test", &stream, &c};
 
     net_handler.start();
     stream.start();
@@ -95,7 +101,9 @@ TEST_CASE("Parse net (dns) TCP IPv6 tests", "[pcap][ipv6][tcp][net]")
     stream.config_set("pcap_file", "tests/fixtures/dns_ipv6_tcp.pcap");
     stream.config_set("bpf", "");
 
-    NetStreamHandler net_handler{"net-test", &stream, 1, 100};
+    visor::Config c;
+    c.config_set<uint64_t>("num_periods", 1);
+    NetStreamHandler net_handler{"net-test", &stream, &c};
 
     net_handler.start();
     stream.start();
@@ -122,7 +130,9 @@ TEST_CASE("Parse net (dns) random UDP/TCP tests", "[pcap][net]")
     stream.config_set("host_spec", "192.168.0.0/24");
     stream.parse_host_spec();
 
-    NetStreamHandler net_handler{"net-test", &stream, 1, 100};
+    visor::Config c;
+    c.config_set<uint64_t>("num_periods", 1);
+    NetStreamHandler net_handler{"net-test", &stream, &c};
 
     net_handler.start();
     stream.start();
