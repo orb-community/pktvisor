@@ -8,6 +8,7 @@
 #include "CoreServer.h"
 #include "HandlerManager.h"
 #include "InputStreamManager.h"
+#include "Policies.h"
 #include "handlers/static_plugins.h"
 #include "inputs/static_plugins.h"
 #include "visor_config.h"
@@ -20,10 +21,6 @@
 #include <yaml-cpp/yaml.h>
 
 #include "GeoDB.h"
-#include "handlers/dns/DnsStreamHandler.h"
-#include "handlers/net/NetStreamHandler.h"
-#include "handlers/pcap/PcapStreamHandler.h"
-#include "inputs/pcap/PcapInputStream.h"
 #include "timer.hpp"
 
 static const char USAGE[] =
@@ -160,14 +157,14 @@ visor:
     default:
       input_type: pcap
       config:
-        iface: {}
-        host_spec: {}
+        iface: "{}"
+        host_spec: "{}"
   collection:
     default:
       input:
         tap: default
         config:
-          bpf: {}
+          bpf: "{}"
       handlers:
         window_config:
           num_periods: {}
@@ -177,7 +174,7 @@ visor:
             type: net
           default_dns:
             type: dns
-          default_pcap:
+          default_pcap_stats:
             type: pcap
 )";
 
@@ -294,7 +291,7 @@ int main(int argc, char *argv[])
             }
 
             // then pass to CoreManagers
-            svr->registry()->configure_from_file(args["--config"].asString());
+            svr->registry()->configure_from_yaml(config_file);
 
         } catch (std::runtime_error &e) {
             logger->error("configuration error: {}", e.what());
@@ -355,7 +352,7 @@ int main(int argc, char *argv[])
     }
 
     if (args["IFACE"]) {
-        // pcap command line functionality
+        // pcap command line functionality, create default policy
         try {
             std::string bpf;
             if (args["-b"]) {
@@ -367,12 +364,11 @@ int main(int argc, char *argv[])
                 host_spec = args["-H"].asString();
             }
 
-            input_stream->config_set("iface", args["IFACE"].asString());
-            input_stream->config_set("bpf", bpf);
-            input_stream->config_set("host_spec", host_spec);
-
-            window_config.config_set<uint64_t>("num_periods", periods);
-            window_config.config_set<uint64_t>("deep_sample_rate", sample_rate);
+            auto policy_str = fmt::format(default_tap_policy, args["IFACE"].asString(), host_spec, bpf, periods, sample_rate);
+            logger->debug(policy_str);
+            svr->registry()->configure_from_str(policy_str);
+            auto [policy, lock] = svr->registry()->policy_manager()->module_get_locked("default");
+            policy->start();
 
         } catch (const std::exception &e) {
             logger->error(e.what());
@@ -395,5 +391,5 @@ int main(int argc, char *argv[])
     }
 
     logger->info("exit with success");
-    exit(EXIT_SUCCESS);
+    return EXIT_SUCCESS;
 }

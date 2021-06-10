@@ -12,7 +12,7 @@
 #include <nlohmann/json.hpp>
 
 CORRADE_PLUGIN_REGISTER(VisorHandlerPcap, visor::handler::pcap::PcapHandlerModulePlugin,
-    "dev.visor.module.handler/1.0")
+    "visor.module.handler/1.0")
 
 namespace visor::handler::pcap {
 

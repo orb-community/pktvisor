@@ -7,6 +7,7 @@
 #include "HandlerModulePlugin.h"
 #include "InputModulePlugin.h"
 #include <map>
+#include <yaml-cpp/yaml.h>
 
 namespace visor {
 
@@ -52,7 +53,12 @@ public:
     CoreRegistry(HttpServer *svr);
     ~CoreRegistry();
 
+    void stop();
+
+    // yaml based configuration
     void configure_from_file(const std::string &filename);
+    void configure_from_str(const std::string &str);
+    void configure_from_yaml(YAML::Node &node);
 
     [[nodiscard]] const InputPluginMap &input_plugins() const
     {

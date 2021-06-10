@@ -48,6 +48,7 @@ void CoreServer::start(const std::string &host, int port)
 void CoreServer::stop()
 {
     _svr.stop();
+    _registry.stop();
 }
 
 CoreServer::~CoreServer()

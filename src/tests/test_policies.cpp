@@ -148,6 +148,8 @@ TEST_CASE("Policies", "[policies]")
         CHECK(policy->modules()[2]->running());
     }
 
+    // TODO multiple collection policies in the same yaml
+
     SECTION("Duplicate")
     {
         CoreRegistry registry(nullptr);
@@ -184,7 +186,7 @@ TEST_CASE("Policies", "[policies]")
         YAML::Node config_file = YAML::Load(collection_config_bad3);
 
         REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
-        REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["collection"]), "invalid input filter config for tap 'anycast': invalid value for key: bpf");
+        REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["collection"]), "invalid input config for tap 'anycast': invalid value for key: bpf");
     }
 
     SECTION("Bad Config: exception on input start")
