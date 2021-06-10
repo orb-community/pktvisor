@@ -60,14 +60,14 @@ void PolicyManager::load(const YAML::Node &policy_yaml)
 
         // Tap Input Filter
         Config tap_filter;
-        if (input_node["filter"]) {
-            if (!input_node["filter"].IsMap()) {
+        if (input_node["config"]) {
+            if (!input_node["config"].IsMap()) {
                 throw PolicyException("input filter configuration is not a map");
             }
             try {
-                tap_filter.config_set_yaml(input_node["filter"]);
+                tap_filter.config_set_yaml(input_node["config"]);
             } catch (ConfigException &e) {
-                throw PolicyException(fmt::format("invalid input filter config for tap '{}': {}", tap_name, e.what()));
+                throw PolicyException(fmt::format("invalid input config for tap '{}': {}", tap_name, e.what()));
             }
         }
 
@@ -94,6 +94,15 @@ void PolicyManager::load(const YAML::Node &policy_yaml)
         if (!handler_node["modules"] || !handler_node["modules"].IsMap()) {
             throw PolicyException("missing or invalid handler modules at key 'modules'");
         }
+        Config window_config;
+        if (handler_node["window_config"] && handler_node["window_config"].IsMap()) {
+            try {
+                window_config.config_set_yaml(handler_node["window_config"]);
+            } catch (ConfigException &e) {
+                throw PolicyException(fmt::format("invalid stream handler window config: {}", e.what()));
+            }
+        }
+
         std::vector<std::unique_ptr<StreamHandler>> handler_modules;
         for (YAML::const_iterator h_it = handler_node["modules"].begin(); h_it != handler_node["modules"].end(); ++h_it) {
             // Per handler
@@ -124,6 +133,8 @@ void PolicyManager::load(const YAML::Node &policy_yaml)
                 }
             }
             spdlog::get("visor")->info("{}: instantiating Handler {} of type {}", policy_name, handler_module_name, handler_module_type);
+            // note, currently merging the handler config with the window config. do they need to be separate?
+            handler_config.config_merge(window_config);
             auto handler_module = handler_plugin->second->instantiate(policy_name + "-" + handler_module_name, input_stream.get(), &handler_config);
             policy->add_module(handler_module.get());
             handler_modules.emplace_back(std::move(handler_module));

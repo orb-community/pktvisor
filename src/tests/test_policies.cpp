@@ -30,14 +30,15 @@ visor:
       input:
         # this must reference a tap name, or application of the policy will fail
         tap: anycast
-        filter:
+        config:
           bpf: "tcp or udp"
       # stream handlers to attach to this input stream
       # these decide exactly which data to summarize and expose for collection
       handlers:
         # default configuration for the stream handlers
-#        window_config:
-#          max_deep_sample: 95
+        window_config:
+          num_periods: 5
+          deep_sample_rate: 100
         modules:
           # the keys at this level are unique identifiers
           default_net:
@@ -86,7 +87,7 @@ visor:
     default_view:
       input:
         tap: anycast
-        filter:
+        config:
           bpf:
             badmap: "bad value"
 )";
@@ -104,7 +105,7 @@ visor:
     default_view:
       input:
         tap: anycast
-        filter:
+        config:
           except_on_start: true
       handlers:
         modules:
@@ -137,6 +138,7 @@ TEST_CASE("Policies", "[policies]")
         CHECK(policy->modules()[2]->config_get<std::string>("qname_suffix") == ".mydomain.com");
         CHECK(!policy->input_stream()->running());
         CHECK(!policy->modules()[0]->running());
+        // TODO check window config settings made it through
         CHECK(!policy->modules()[1]->running());
         CHECK(!policy->modules()[2]->running());
         REQUIRE_NOTHROW(policy->start());

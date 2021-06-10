@@ -152,6 +152,35 @@ int daemonize()
     return 0;
 }
 
+auto default_tap_policy = R"(
+version: "1.0"
+
+visor:
+  taps:
+    default:
+      input_type: pcap
+      config:
+        iface: {}
+        host_spec: {}
+  collection:
+    default:
+      input:
+        tap: default
+        config:
+          bpf: {}
+      handlers:
+        window_config:
+          num_periods: {}
+          deep_sample_rate: {}
+        modules:
+          default_net:
+            type: net
+          default_dns:
+            type: dns
+          default_pcap:
+            type: pcap
+)";
+
 int main(int argc, char *argv[])
 {
 
@@ -338,43 +367,12 @@ int main(int argc, char *argv[])
                 host_spec = args["-H"].asString();
             }
 
-            auto input_stream = std::make_unique<input::pcap::PcapInputStream>("pcap");
             input_stream->config_set("iface", args["IFACE"].asString());
             input_stream->config_set("bpf", bpf);
             input_stream->config_set("host_spec", host_spec);
 
-            auto input_manager = svr->registry()->input_manager();
-            auto handler_manager = svr->registry()->handler_manager();
-
-            input_stream->start();
-            input_manager->module_add(std::move(input_stream));
-            auto [input_stream_, stream_mgr_lock] = input_manager->module_get_locked("pcap");
-            stream_mgr_lock.unlock();
-            auto pcap_stream = dynamic_cast<input::pcap::PcapInputStream *>(input_stream_);
-
-            visor::Config window_config;
             window_config.config_set<uint64_t>("num_periods", periods);
             window_config.config_set<uint64_t>("deep_sample_rate", sample_rate);
-
-            {
-                auto handler_module = std::make_unique<handler::pcap::PcapStreamHandler>("pcap", pcap_stream, &window_config);
-                handler_module->start();
-                handler_manager->module_add(std::move(handler_module));
-            }
-            {
-                auto handler_module = std::make_unique<handler::net::NetStreamHandler>("net", pcap_stream, &window_config);
-                handler_module->start();
-                handler_manager->module_add(std::move(handler_module));
-            }
-            {
-                auto handler_module = std::make_unique<handler::dns::DnsStreamHandler>("dns", pcap_stream, &window_config);
-                handler_module->start();
-                handler_manager->module_add(std::move(handler_module));
-            }
-
-            json j;
-            input_stream_->info_json(j["info"]);
-            logger->info("{}", j.dump(4));
 
         } catch (const std::exception &e) {
             logger->error(e.what());
