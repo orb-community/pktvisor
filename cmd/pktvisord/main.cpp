@@ -364,8 +364,6 @@ int main(int argc, char *argv[])
             auto policy_str = fmt::format(default_tap_policy, args["IFACE"].asString(), host_spec, bpf, periods, sample_rate);
             logger->debug(policy_str);
             svr->registry()->configure_from_str(policy_str);
-            auto [policy, lock] = svr->registry()->policy_manager()->module_get_locked("default");
-            policy->start();
 
         } catch (const std::exception &e) {
             logger->error(e.what());

@@ -97,7 +97,7 @@ void CoreRegistry::configure_from_yaml(YAML::Node &node)
     }
     // policies
     if (node["visor"]["policies"] && node["visor"]["policies"].IsMap()) {
-        _policy_manager->load(node["visor"]["policies"]);
+        auto policies = _policy_manager->load(node["visor"]["policies"]);
     }
 }
 

@@ -25,6 +25,7 @@ public:
     void common_info_json(json &j) const
     {
         AbstractModule::common_info_json(j);
+        j["input"]["running"] = running();
         j["input"]["consumers"] = consumer_count();
     }
 };

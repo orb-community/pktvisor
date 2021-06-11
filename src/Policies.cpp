@@ -13,7 +13,7 @@
 
 namespace visor {
 
-void PolicyManager::load_from_str(const std::string &str)
+std::vector<Policy *> PolicyManager::load_from_str(const std::string &str)
 {
     YAML::Node node = YAML::Load(str);
     if (!node.IsMap() || !node["visor"]) {
@@ -23,18 +23,19 @@ void PolicyManager::load_from_str(const std::string &str)
         throw PolicyException("missing or unsupported version");
     }
     if (node["visor"]["policies"] && node["visor"]["policies"].IsMap()) {
-        load(node["visor"]["policies"]);
+        return load(node["visor"]["policies"]);
     } else {
         throw PolicyException("no policies found in schema");
     }
 }
 
 // needs to be thread safe and transactional: any errors mean resources get cleaned up with no side effects
-void PolicyManager::load(const YAML::Node &policy_yaml)
+std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
 {
     assert(policy_yaml.IsMap());
     assert(spdlog::get("visor"));
 
+    std::vector<Policy *> result;
     for (YAML::const_iterator it = policy_yaml.begin(); it != policy_yaml.end(); ++it) {
 
         // serialized policy loads
@@ -89,6 +90,8 @@ void PolicyManager::load(const YAML::Node &policy_yaml)
 
         // Create Policy
         auto policy = std::make_unique<Policy>(policy_name, tap);
+        // if and only if policy succeeds, we will return this in result set
+        Policy *policy_ptr = policy.get();
 
         // Instantiate stream from tap
         std::unique_ptr<InputStream> input_stream;
@@ -156,20 +159,27 @@ void PolicyManager::load(const YAML::Node &policy_yaml)
             handler_modules.emplace_back(std::move(handler_module));
         }
 
+        // make sure policy starts before committing
+        try {
+            policy->start();
+        } catch (std::runtime_error &e) {
+            throw PolicyException(fmt::format("policy [{}] failed to start: {}", policy_name, e.what()));
+        }
+
         // Make modules visible in registry
         // If the modules created above go out of scope before this step, they will destruct so the key is to make sure
         // roll back during exception ensures no modules have been added to any of the managers
         try {
             module_add(std::move(policy));
         } catch (ModuleException &e) {
-            throw PolicyException(fmt::format("policy creation failed (policy) {}: {}", policy_name, e.what()));
+            throw PolicyException(fmt::format("policy [{}] creation failed (policy): {}", policy_name, e.what()));
         }
         try {
             _registry->input_manager()->module_add(std::move(input_stream));
         } catch (ModuleException &e) {
             // note that if this call excepts, we are in an unknown state and the exception will propagate
             module_remove(policy_name);
-            throw PolicyException(fmt::format("policy creation failed (input) {}: {}", policy_name, e.what()));
+            throw PolicyException(fmt::format("policy [{}] creation failed (input): {}", policy_name, e.what()));
         }
         std::vector<std::string> added_handlers;
         try {
@@ -188,9 +198,13 @@ void PolicyManager::load(const YAML::Node &policy_yaml)
                 _registry->handler_manager()->module_remove(m);
             }
             // at this point no outside reference is held to the modules so they will destruct
-            throw PolicyException(fmt::format("policy creation failed (handler: {}) {}: {}", e.name(), policy_name, e.what()));
+            throw PolicyException(fmt::format("policy [{}] creation failed (handler: {}): {}", e.name(), policy_name, e.what()));
         }
+
+        // success
+        result.push_back(policy_ptr);
     }
+    return result;
 }
 
 void Policy::info_json(json &j) const

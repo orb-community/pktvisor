@@ -88,8 +88,9 @@ public:
     virtual ~PolicyManager()
     {
     }
-    void load_from_str(const std::string &str);
-    void load(const YAML::Node &tap_yaml);
+
+    std::vector<Policy *> load_from_str(const std::string &str);
+    std::vector<Policy *> load(const YAML::Node &tap_yaml);
 };
 
 }

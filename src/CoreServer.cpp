@@ -235,7 +235,10 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
             return;
         }
         try {
-            _registry.policy_manager()->load_from_str(req.body);
+            auto policies = _registry.policy_manager()->load_from_str(req.body);
+            for (auto &mod : policies) {
+                mod->info_json(j[mod->name()]);
+            }
             res.set_content(j.dump(), "text/json");
         } catch (const std::exception &e) {
             res.status = 500;
