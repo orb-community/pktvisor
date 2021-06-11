@@ -86,6 +86,24 @@ public:
         return _metrics.get();
     }
 
+    void window_json(json &j, uint64_t period, bool merged) override
+    {
+        if (merged) {
+            _metrics->window_merged_json(j, schema_key(), period);
+        } else {
+            _metrics->window_single_json(j, schema_key(), period);
+        }
+    }
+
+    void window_prometheus(std::stringstream &out) override
+    {
+        if (_metrics->current_periods() > 1) {
+            _metrics->window_single_prometheus(out, 1);
+        } else {
+            _metrics->window_single_prometheus(out, 0);
+        }
+    }
+
     virtual ~StreamMetricsHandler(){};
 };
 

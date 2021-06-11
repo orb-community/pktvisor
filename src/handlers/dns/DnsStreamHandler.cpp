@@ -212,22 +212,6 @@ void DnsStreamHandler::tcp_connection_end_cb(const pcpp::ConnectionData &connect
     // remove the connection from the connection manager
     _tcp_connections.erase(iter);
 }
-void DnsStreamHandler::window_prometheus(std::stringstream &out)
-{
-    if (_metrics->current_periods() > 1) {
-        _metrics->window_single_prometheus(out, 1);
-    } else {
-        _metrics->window_single_prometheus(out, 0);
-    }
-}
-void DnsStreamHandler::window_json(json &j, uint64_t period, bool merged)
-{
-    if (merged) {
-        _metrics->window_merged_json(j, schema_key(), period);
-    } else {
-        _metrics->window_single_json(j, schema_key(), period);
-    }
-}
 void DnsStreamHandler::set_start_tstamp(timespec stamp)
 {
     _metrics->set_start_tstamp(stamp);

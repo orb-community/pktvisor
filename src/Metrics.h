@@ -44,16 +44,18 @@ protected:
     void _check_names()
     {
         for (const auto &name : _name) {
-            if (!std::regex_match(name, std::regex("[a-zA-Z_][a-zA-Z0-9_]*"))) {
+            if (!std::regex_match(name, std::regex(LABEL_REGEX))) {
                 throw std::runtime_error("invalid metric name: " + name);
             }
         }
-        if (!std::regex_match(_schema_key, std::regex("[a-zA-Z_][a-zA-Z0-9_]*"))) {
+        if (!std::regex_match(_schema_key, std::regex(LABEL_REGEX))) {
             throw std::runtime_error("invalid schema name: " + _schema_key);
         }
     }
 
 public:
+    inline static const std::string LABEL_REGEX = "[a-zA-Z_][a-zA-Z0-9_]*";
+
     Metric(std::string schema_key, std::initializer_list<std::string> names, std::string desc)
         : _name(names)
         , _desc(std::move(desc))

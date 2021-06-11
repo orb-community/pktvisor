@@ -131,11 +131,6 @@ public:
     }
     void start() override;
     void stop() override;
-    void info_json(json &j) const override;
-
-    // visor::StreamHandler
-    void window_json(json &j, uint64_t period, bool merged) override;
-    void window_prometheus(std::stringstream &out) override;
 };
 
 }

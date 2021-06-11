@@ -75,15 +75,6 @@ void NetStreamHandler::process_packet_cb(pcpp::Packet &payload, PacketDirection 
 {
     _metrics->process_packet(payload, dir, l3, l4, stamp);
 }
-
-void NetStreamHandler::window_json(json &j, uint64_t period, bool merged)
-{
-    if (merged) {
-        _metrics->window_merged_json(j, schema_key(), period);
-    } else {
-        _metrics->window_single_json(j, schema_key(), period);
-    }
-}
 void NetStreamHandler::set_start_tstamp(timespec stamp)
 {
     _metrics->set_start_tstamp(stamp);
@@ -91,18 +82,6 @@ void NetStreamHandler::set_start_tstamp(timespec stamp)
 void NetStreamHandler::set_end_tstamp(timespec stamp)
 {
     _metrics->set_end_tstamp(stamp);
-}
-void NetStreamHandler::info_json(json &j) const
-{
-    common_info_json(j);
-}
-void NetStreamHandler::window_prometheus(std::stringstream &out)
-{
-    if (_metrics->current_periods() > 1) {
-        _metrics->window_single_prometheus(out, 1);
-    } else {
-        _metrics->window_single_prometheus(out, 0);
-    }
 }
 
 void NetworkMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)

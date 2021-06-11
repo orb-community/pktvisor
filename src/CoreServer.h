@@ -12,8 +12,8 @@
 namespace visor {
 
 struct PrometheusConfig {
-    std::string path;
-    std::string instance;
+    std::string default_path;
+    std::string instance_label;
 };
 
 class CoreServer

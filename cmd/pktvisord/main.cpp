@@ -71,7 +71,7 @@ static const char USAGE[] =
       --log-file FILE       Log to the given output file name
       --syslog              Log to syslog
     Prometheus Options:
-      --prometheus          Enable native Prometheus metrics at path /metrics
+      --prometheus          Ignored, Prometheus output always enabled (left for backwards compatibility)
       --prom-instance ID    Optionally set the 'instance' label to given ID
     Handler Module Defaults:
       --max-deep-sample N   Never deep sample more than N% of streams (an int between 0 and 100) [default: 100]
@@ -232,11 +232,9 @@ int main(int argc, char *argv[])
     }
 
     PrometheusConfig prom_config;
-    if (args["--prometheus"].asBool()) {
-        prom_config.path = "/metrics";
-        if (args["--prom-instance"]) {
-            prom_config.instance = args["--prom-instance"].asString();
-        }
+    prom_config.default_path = "/metrics";
+    if (args["--prom-instance"]) {
+        prom_config.instance_label = args["--prom-instance"].asString();
     }
 
     HttpConfig http_config;
@@ -297,7 +295,6 @@ int main(int argc, char *argv[])
             logger->error("configuration error: {}", e.what());
             exit(EXIT_FAILURE);
         }
-
     }
 
     shutdown_handler = [&]([[maybe_unused]] int signal) {

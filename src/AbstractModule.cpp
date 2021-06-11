@@ -7,6 +7,11 @@
 
 namespace visor {
 
+void AbstractRunnableModule::info_json(json &j) const
+{
+    common_info_json(j);
+}
+
 void AbstractRunnableModule::common_info_json(json &j) const
 {
     j["module"]["name"] = _name;

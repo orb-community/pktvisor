@@ -30,8 +30,8 @@ visor::CoreServer::CoreServer(std::shared_ptr<spdlog::logger> logger, const Http
 
     _setup_routes(prom_config);
 
-    if (!prom_config.instance.empty()) {
-        Metric::add_base_label("instance", prom_config.instance);
+    if (!prom_config.instance_label.empty()) {
+        Metric::add_base_label("instance", prom_config.instance_label);
     }
 }
 
@@ -119,7 +119,7 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
                         j["1m"]["period"] = j["1m"][hmod->schema_key()]["period"];
                         bc_period = true;
                     }
-                    _logger->debug("{} elapsed time: {}", hmod->name(), sw);
+                    _logger->debug("{} window_json elapsed time: {}", hmod->name(), sw);
                 }
             }
             res.set_content(j.dump(), "text/json");
@@ -146,7 +146,7 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
                 if (hmod) {
                     spdlog::stopwatch sw;
                     hmod->window_json(j, period, true);
-                    _logger->debug("{} elapsed time: {}", hmod->name(), sw);
+                    _logger->debug("{} window_json elapsed time: {}", hmod->name(), sw);
                 }
             }
             res.set_content(j.dump(), "text/json");
@@ -156,9 +156,9 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
         }
     });
     // "default" policy prometheus
-    if (!prom_config.path.empty()) {
-        _logger->info("enabling prometheus metrics for \"default\" policy on: {}", prom_config.path);
-        _svr.Get(prom_config.path.c_str(), [&]([[maybe_unused]] const httplib::Request &req, httplib::Response &res) {
+    if (!prom_config.default_path.empty()) {
+        _logger->info("enabling prometheus metrics for \"default\" policy on: {}", prom_config.default_path);
+        _svr.Get(prom_config.default_path.c_str(), [&]([[maybe_unused]] const httplib::Request &req, httplib::Response &res) {
             std::stringstream output;
             if (!_registry.policy_manager()->module_exists("default")) {
                 res.status = 404;
@@ -171,7 +171,7 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
                     if (hmod) {
                         spdlog::stopwatch sw;
                         hmod->window_prometheus(output);
-                        _logger->debug("{} elapsed time: {}", hmod->name(), sw);
+                        _logger->debug("{} window_prometheus elapsed time: {}", hmod->name(), sw);
                     }
                 }
                 res.set_content(output.str(), "text/plain");
@@ -215,7 +215,7 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
             res.set_content(e.what(), "text/plain");
         }
     });
-    _svr.Get(R"(/api/v1/policies/(\w+))", [&]([[maybe_unused]] const httplib::Request &req, httplib::Response &res) {
+    _svr.Get(fmt::format("/api/v1/policies/({})", AbstractModule::MODULE_ID_REGEX).c_str(), [&](const httplib::Request &req, httplib::Response &res) {
         json j;
         auto name = req.matches[1];
         if (!_registry.policy_manager()->module_exists(name)) {
@@ -225,9 +225,33 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
             return;
         }
         try {
-            auto [policy, lock] = _registry.policy_manager()->module_get_locked("default");
+            auto [policy, lock] = _registry.policy_manager()->module_get_locked(name);
             policy->info_json(j);
             res.set_content(j.dump(), "text/json");
+        } catch (const std::exception &e) {
+            res.status = 500;
+            res.set_content(e.what(), "text/plain");
+        }
+    });
+    _svr.Get(fmt::format("/api/v1/policies/({})/metrics/prometheus", AbstractModule::MODULE_ID_REGEX).c_str(), [&](const httplib::Request &req, httplib::Response &res) {
+        auto name = req.matches[1];
+        if (!_registry.policy_manager()->module_exists(name)) {
+            res.status = 404;
+            res.set_content("policy does not exists", "text/plain");
+            return;
+        }
+        try {
+            std::stringstream output;
+            auto [policy, lock] = _registry.policy_manager()->module_get_locked(name);
+            for (auto &mod : policy->modules()) {
+                auto hmod = dynamic_cast<StreamHandler *>(mod);
+                if (hmod) {
+                    spdlog::stopwatch sw;
+                    hmod->window_prometheus(output);
+                    _logger->debug("{} window_prometheus elapsed time: {}", hmod->name(), sw);
+                }
+            }
+            res.set_content(output.str(), "text/plain");
         } catch (const std::exception &e) {
             res.status = 500;
             res.set_content(e.what(), "text/plain");

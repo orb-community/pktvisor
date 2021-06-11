@@ -35,10 +35,12 @@ protected:
     }
 
 public:
+    inline static const std::string MODULE_ID_REGEX = "[a-zA-Z_][a-zA-Z0-9_-]*";
+
     AbstractModule(const std::string &name)
         : _name(name)
     {
-        if (!std::regex_match(name, std::regex("[a-zA-Z_][a-zA-Z0-9_-]*"))) {
+        if (!std::regex_match(name, std::regex(MODULE_ID_REGEX))) {
             throw std::runtime_error("invalid module name: " + name);
         }
     }
@@ -83,6 +85,8 @@ public:
 
     virtual void start() = 0;
     virtual void stop() = 0;
+
+    void info_json(json &j) const override;
 
     /**
      * the module schema key: the same for all instances of this module

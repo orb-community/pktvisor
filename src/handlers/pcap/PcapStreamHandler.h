@@ -92,7 +92,7 @@ class PcapStreamHandler final : public visor::StreamMetricsHandler<PcapMetricsMa
 
 public:
     PcapStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config);
-    ~PcapStreamHandler() override;
+    ~PcapStreamHandler() = default;
 
     // visor::AbstractModule
     std::string schema_key() const override
@@ -101,11 +101,6 @@ public:
     }
     void start() override;
     void stop() override;
-    void info_json(json &j) const override;
-
-    // visor::StreamHandler
-    void window_json(json &j, uint64_t period, bool merged) override;
-    void window_prometheus(std::stringstream &out) override;
 };
 
 }
