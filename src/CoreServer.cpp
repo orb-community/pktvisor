@@ -81,7 +81,7 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
             res.set_content(j.dump(), "text/json");
         }
     });
-    // DEPRECATED
+    // rates, DEPRECATED
     _svr.Get("/api/v1/metrics/rates", [&]([[maybe_unused]] const httplib::Request &req, httplib::Response &res) {
         json j;
         try {
@@ -209,6 +209,24 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
                     tmod->info_json(j[tmod->name()]);
                 }
             }
+            res.set_content(j.dump(), "text/json");
+        } catch (const std::exception &e) {
+            res.status = 500;
+            res.set_content(e.what(), "text/plain");
+        }
+    });
+    _svr.Get(R"(/api/v1/policies/(\w+))", [&]([[maybe_unused]] const httplib::Request &req, httplib::Response &res) {
+        json j;
+        auto name = req.matches[1];
+        if (!_registry.policy_manager()->module_exists(name)) {
+            res.status = 404;
+            j["error"] = "policy does not exists";
+            res.set_content(j.dump(), "text/json");
+            return;
+        }
+        try {
+            auto [policy, lock] = _registry.policy_manager()->module_get_locked("default");
+            policy->info_json(j);
             res.set_content(j.dump(), "text/json");
         } catch (const std::exception &e) {
             res.status = 500;
