@@ -156,12 +156,13 @@ int main(int argc, char *argv[])
         json result;
         if (periods == 1) {
             // in summary mode we output a single summary of stats
-            net_handler->window_json(result, 0, false);
-            dns_handler->window_json(result, 0, false);
+            net_handler->window_json(result["1m"], 0, false);
+            dns_handler->window_json(result["1m"], 0, false);
         } else {
             // otherwise, merge the max time window available
-            net_handler->window_json(result, periods, true);
-            dns_handler->window_json(result, periods, true);
+            auto key = fmt::format("{}m", periods);
+            net_handler->window_json(result[key], periods, true);
+            dns_handler->window_json(result[key], periods, true);
         }
         std::cout << result.dump() << std::endl;
 

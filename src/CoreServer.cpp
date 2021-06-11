@@ -113,7 +113,7 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
                 auto hmod = dynamic_cast<StreamHandler *>(mod);
                 if (hmod) {
                     spdlog::stopwatch sw;
-                    hmod->window_json(j, period, false);
+                    hmod->window_json(j["1m"], period, false);
                     // hoist up the first "period" we see for backwards compatibility with 3.0.x
                     if (!bc_period && j["1m"][hmod->schema_key()].contains("period")) {
                         j["1m"]["period"] = j["1m"][hmod->schema_key()]["period"];
@@ -145,7 +145,8 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
                 auto hmod = dynamic_cast<StreamHandler *>(mod);
                 if (hmod) {
                     spdlog::stopwatch sw;
-                    hmod->window_json(j, period, true);
+                    auto key = fmt::format("{}m", period);
+                    hmod->window_json(j[key], period, true);
                     _logger->debug("{} window_json {} elapsed time: {}", hmod->name(), period, sw);
                 }
             }
@@ -277,7 +278,7 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
                 auto hmod = dynamic_cast<StreamHandler *>(mod);
                 if (hmod) {
                     spdlog::stopwatch sw;
-                    hmod->window_json(j, period, false);
+                    hmod->window_json(j[hmod->name()], period, false);
                     _logger->debug("{} bucket window_json elapsed time: {}", hmod->name(), sw);
                 }
             }
@@ -304,7 +305,7 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
                 auto hmod = dynamic_cast<StreamHandler *>(mod);
                 if (hmod) {
                     spdlog::stopwatch sw;
-                    hmod->window_json(j, period, true);
+                    hmod->window_json(j[hmod->name()], period, true);
                     _logger->debug("{} bucket window_json elapsed time: {}", hmod->name(), sw);
                 }
             }

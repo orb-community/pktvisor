@@ -448,12 +448,10 @@ public:
             throw PeriodException(err.str());
         }
 
-        std::string period_str = "1m";
+        j[key]["period"]["start_ts"] = _metric_buckets.at(period)->start_tstamp().tv_sec;
+        j[key]["period"]["length"] = _metric_buckets.at(period)->period_length();
 
-        j[period_str][key]["period"]["start_ts"] = _metric_buckets.at(period)->start_tstamp().tv_sec;
-        j[period_str][key]["period"]["length"] = _metric_buckets.at(period)->period_length();
-
-        _metric_buckets.at(period)->to_json(j[period_str][key]);
+        _metric_buckets.at(period)->to_json(j[key]);
     }
 
     void window_single_prometheus(std::stringstream &out, uint64_t period = 0, Metric::LabelMap add_labels = {}) const
@@ -513,10 +511,10 @@ public:
 
         std::string period_str = std::to_string(period) + "m";
 
-        j[period_str][key]["period"]["start_ts"] = merged.start_tstamp().tv_sec;
-        j[period_str][key]["period"]["length"] = merged.period_length();
+        j[key]["period"]["start_ts"] = merged.start_tstamp().tv_sec;
+        j[key]["period"]["length"] = merged.period_length();
 
-        merged.to_json(j[period_str][key]);
+        merged.to_json(j[key]);
 
         _mergeResultCache[period] = std::pair<std::chrono::high_resolution_clock::time_point, json>(std::chrono::high_resolution_clock::now(), j);
     }
