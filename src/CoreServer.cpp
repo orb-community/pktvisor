@@ -106,8 +106,8 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
             res.set_content(j.dump(), "text/json");
             return;
         }
-        auto [policy, lock] = _registry.policy_manager()->module_get_locked("default");
         try {
+            auto [policy, lock] = _registry.policy_manager()->module_get_locked("default");
             uint64_t period(std::stol(req.matches[1]));
             for (auto &mod : policy->modules()) {
                 auto hmod = dynamic_cast<StreamHandler *>(mod);
@@ -119,7 +119,7 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
                         j["1m"]["period"] = j["1m"][hmod->schema_key()]["period"];
                         bc_period = true;
                     }
-                    _logger->debug("{} window_json elapsed time: {}", hmod->name(), sw);
+                    _logger->debug("{} bucket window_json elapsed time: {}", hmod->name(), sw);
                 }
             }
             res.set_content(j.dump(), "text/json");
@@ -138,34 +138,35 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
             res.set_content(j.dump(), "text/json");
             return;
         }
-        auto [policy, lock] = _registry.policy_manager()->module_get_locked("default");
         try {
+            auto [policy, lock] = _registry.policy_manager()->module_get_locked("default");
             uint64_t period(std::stol(req.matches[1]));
             for (auto &mod : policy->modules()) {
                 auto hmod = dynamic_cast<StreamHandler *>(mod);
                 if (hmod) {
                     spdlog::stopwatch sw;
                     hmod->window_json(j, period, true);
-                    _logger->debug("{} window_json elapsed time: {}", hmod->name(), sw);
+                    _logger->debug("{} window_json {} elapsed time: {}", hmod->name(), period, sw);
                 }
             }
             res.set_content(j.dump(), "text/json");
         } catch (const std::exception &e) {
             res.status = 500;
-            res.set_content(e.what(), "text/plain");
+            j["error"] = e.what();
+            res.set_content(j.dump(), "text/json");
         }
     });
     // "default" policy prometheus
     if (!prom_config.default_path.empty()) {
         _logger->info("enabling prometheus metrics for \"default\" policy on: {}", prom_config.default_path);
         _svr.Get(prom_config.default_path.c_str(), [&]([[maybe_unused]] const httplib::Request &req, httplib::Response &res) {
-            std::stringstream output;
             if (!_registry.policy_manager()->module_exists("default")) {
                 res.status = 404;
                 return;
             }
-            auto [policy, lock] = _registry.policy_manager()->module_get_locked("default");
             try {
+                std::stringstream output;
+                auto [policy, lock] = _registry.policy_manager()->module_get_locked("default");
                 for (auto &mod : policy->modules()) {
                     auto hmod = dynamic_cast<StreamHandler *>(mod);
                     if (hmod) {
@@ -195,7 +196,8 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
             res.set_content(j.dump(), "text/json");
         } catch (const std::exception &e) {
             res.status = 500;
-            res.set_content(e.what(), "text/plain");
+            j["error"] = e.what();
+            res.set_content(j.dump(), "text/json");
         }
     });
     // Policies
@@ -212,8 +214,12 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
             res.set_content(j.dump(), "text/json");
         } catch (const std::exception &e) {
             res.status = 500;
-            res.set_content(e.what(), "text/plain");
+            j["error"] = e.what();
+            res.set_content(j.dump(), "text/json");
         }
+    });
+    _svr.Post(R"(/api/v1/policies)", [&](const httplib::Request &req, httplib::Response &res) {
+
     });
     _svr.Get(fmt::format("/api/v1/policies/({})", AbstractModule::MODULE_ID_REGEX).c_str(), [&](const httplib::Request &req, httplib::Response &res) {
         json j;
@@ -230,7 +236,62 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
             res.set_content(j.dump(), "text/json");
         } catch (const std::exception &e) {
             res.status = 500;
-            res.set_content(e.what(), "text/plain");
+            j["error"] = e.what();
+            res.set_content(j.dump(), "text/json");
+        }
+    });
+    _svr.Get(fmt::format("/api/v1/policies/({})/metrics/bucket/(\\d+)", AbstractModule::MODULE_ID_REGEX).c_str(), [&](const httplib::Request &req, httplib::Response &res) {
+        json j;
+        auto name = req.matches[1];
+        if (!_registry.policy_manager()->module_exists(name)) {
+            res.status = 404;
+            j["error"] = "policy does not exist";
+            res.set_content(j.dump(), "text/json");
+            return;
+        }
+        try {
+            auto [policy, lock] = _registry.policy_manager()->module_get_locked(name);
+            uint64_t period(std::stol(req.matches[2]));
+            for (auto &mod : policy->modules()) {
+                auto hmod = dynamic_cast<StreamHandler *>(mod);
+                if (hmod) {
+                    spdlog::stopwatch sw;
+                    hmod->window_json(j, period, false);
+                    _logger->debug("{} bucket window_json elapsed time: {}", hmod->name(), sw);
+                }
+            }
+            res.set_content(j.dump(), "text/json");
+        } catch (const std::exception &e) {
+            res.status = 500;
+            j["error"] = e.what();
+            res.set_content(j.dump(), "text/json");
+        }
+    });
+    _svr.Get(fmt::format("/api/v1/policies/({})/metrics/window/(\\d+)", AbstractModule::MODULE_ID_REGEX).c_str(), [&](const httplib::Request &req, httplib::Response &res) {
+        json j;
+        auto name = req.matches[1];
+        if (!_registry.policy_manager()->module_exists(name)) {
+            res.status = 404;
+            j["error"] = "policy does not exist";
+            res.set_content(j.dump(), "text/json");
+            return;
+        }
+        try {
+            auto [policy, lock] = _registry.policy_manager()->module_get_locked(name);
+            uint64_t period(std::stol(req.matches[2]));
+            for (auto &mod : policy->modules()) {
+                auto hmod = dynamic_cast<StreamHandler *>(mod);
+                if (hmod) {
+                    spdlog::stopwatch sw;
+                    hmod->window_json(j, period, true);
+                    _logger->debug("{} bucket window_json elapsed time: {}", hmod->name(), sw);
+                }
+            }
+            res.set_content(j.dump(), "text/json");
+        } catch (const std::exception &e) {
+            res.status = 500;
+            j["error"] = e.what();
+            res.set_content(j.dump(), "text/json");
         }
     });
     _svr.Get(fmt::format("/api/v1/policies/({})/metrics/prometheus", AbstractModule::MODULE_ID_REGEX).c_str(), [&](const httplib::Request &req, httplib::Response &res) {
