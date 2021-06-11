@@ -13,7 +13,7 @@
 
 using namespace visor;
 
-auto collection_config = R"(
+auto policies_config = R"(
 version: "1.0"
 
 visor:
@@ -22,7 +22,7 @@ visor:
       input_type: mock
       config:
         iface: eth0
-  collection:
+  policies:
     # policy name and description
     default_view:
 #      description: "a mock view of anycast traffic"
@@ -53,13 +53,13 @@ visor:
               qname_suffix: .mydomain.com
 )";
 
-auto collection_config_bad1 = R"(
+auto policies_config_bad1 = R"(
 visor:
-  collection:
+  policies:
     missing:
 )";
 
-auto collection_config_bad2 = R"(
+auto policies_config_bad2 = R"(
 version: "1.0"
 
 visor:
@@ -68,13 +68,13 @@ visor:
       input_type: mock
       config:
         iface: eth0
-  collection:
+  policies:
     default_view:
       input:
         tap: nonexist
 )";
 
-auto collection_config_bad3 = R"(
+auto policies_config_bad3 = R"(
 version: "1.0"
 
 visor:
@@ -83,7 +83,7 @@ visor:
       input_type: mock
       config:
         iface: eth0
-  collection:
+  policies:
     default_view:
       input:
         tap: anycast
@@ -92,7 +92,7 @@ visor:
             badmap: "bad value"
 )";
 
-auto collection_config_bad4 = R"(
+auto policies_config_bad4 = R"(
 version: "1.0"
 
 visor:
@@ -101,7 +101,7 @@ visor:
       input_type: mock
       config:
         iface: eth0
-  collection:
+  policies:
     default_view:
       input:
         tap: anycast
@@ -119,13 +119,13 @@ TEST_CASE("Policies", "[policies]")
     SECTION("Good Config happy path")
     {
         CoreRegistry registry(nullptr);
-        YAML::Node config_file = YAML::Load(collection_config);
+        YAML::Node config_file = YAML::Load(policies_config);
 
-        CHECK(config_file["visor"]["collection"]);
-        CHECK(config_file["visor"]["collection"].IsMap());
+        CHECK(config_file["visor"]["policies"]);
+        CHECK(config_file["visor"]["policies"].IsMap());
 
         REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
-        REQUIRE_NOTHROW(registry.policy_manager()->load(config_file["visor"]["collection"]));
+        REQUIRE_NOTHROW(registry.policy_manager()->load(config_file["visor"]["policies"]));
 
         REQUIRE(registry.policy_manager()->module_exists("default_view"));
         auto [policy, lock] = registry.policy_manager()->module_get_locked("default_view");
@@ -153,11 +153,11 @@ TEST_CASE("Policies", "[policies]")
     SECTION("Duplicate")
     {
         CoreRegistry registry(nullptr);
-        YAML::Node config_file = YAML::Load(collection_config);
+        YAML::Node config_file = YAML::Load(policies_config);
 
         REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
-        REQUIRE_NOTHROW(registry.policy_manager()->load(config_file["visor"]["collection"]));
-        REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["collection"]), "policy creation failed (policy) default_view: module name 'default_view' already exists");
+        REQUIRE_NOTHROW(registry.policy_manager()->load(config_file["visor"]["policies"]));
+        REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["policies"]), "policy creation failed (policy) default_view: module name 'default_view' already exists");
 
         REQUIRE(registry.policy_manager()->module_exists("default_view"));
         auto [policy, lock] = registry.policy_manager()->module_get_locked("default_view");
@@ -167,35 +167,35 @@ TEST_CASE("Policies", "[policies]")
     SECTION("Bad Config")
     {
         CoreRegistry registry(nullptr);
-        YAML::Node config_file = YAML::Load(collection_config_bad1);
+        YAML::Node config_file = YAML::Load(policies_config_bad1);
 
-        REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["collection"]), "expecting policy configuration map");
+        REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["policies"]), "expecting policy configuration map");
     }
 
     SECTION("Bad Config: invalid tap")
     {
         CoreRegistry registry(nullptr);
-        YAML::Node config_file = YAML::Load(collection_config_bad2);
+        YAML::Node config_file = YAML::Load(policies_config_bad2);
 
-        REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["collection"]), "tap 'nonexist' does not exist");
+        REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["policies"]), "tap 'nonexist' does not exist");
     }
 
     SECTION("Bad Config: invalid tap config")
     {
         CoreRegistry registry(nullptr);
-        YAML::Node config_file = YAML::Load(collection_config_bad3);
+        YAML::Node config_file = YAML::Load(policies_config_bad3);
 
         REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
-        REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["collection"]), "invalid input config for tap 'anycast': invalid value for key: bpf");
+        REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["policies"]), "invalid input config for tap 'anycast': invalid value for key: bpf");
     }
 
     SECTION("Bad Config: exception on input start")
     {
         CoreRegistry registry(nullptr);
-        YAML::Node config_file = YAML::Load(collection_config_bad4);
+        YAML::Node config_file = YAML::Load(policies_config_bad4);
 
         REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
-        REQUIRE_NOTHROW(registry.policy_manager()->load(config_file["visor"]["collection"]));
+        REQUIRE_NOTHROW(registry.policy_manager()->load(config_file["visor"]["policies"]));
         REQUIRE(registry.policy_manager()->module_exists("default_view"));
         auto [policy, lock] = registry.policy_manager()->module_get_locked("default_view");
         REQUIRE_THROWS_WITH(policy->start(), "mock error on start");
@@ -204,10 +204,10 @@ TEST_CASE("Policies", "[policies]")
     SECTION("Roll Back")
     {
         CoreRegistry registry(nullptr);
-        YAML::Node config_file = YAML::Load(collection_config);
+        YAML::Node config_file = YAML::Load(policies_config);
 
-        CHECK(config_file["visor"]["collection"]);
-        CHECK(config_file["visor"]["collection"].IsMap());
+        CHECK(config_file["visor"]["policies"]);
+        CHECK(config_file["visor"]["policies"].IsMap());
 
         REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
 
@@ -216,7 +216,7 @@ TEST_CASE("Policies", "[policies]")
         auto input_stream = registry.input_plugins()["mock"]->instantiate("mymock", &config);
         auto mod = registry.handler_plugins()["net"]->instantiate("default_view-default_net", input_stream.get(), &config);
         registry.handler_manager()->module_add(std::move(mod));
-        REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["collection"]), "policy creation failed (handler: default_view-default_net) default_view: module name 'default_view-default_net' already exists");
+        REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["policies"]), "policy creation failed (handler: default_view-default_net) default_view: module name 'default_view-default_net' already exists");
 
         // ensure the modules were rolled back
         REQUIRE(!registry.policy_manager()->module_exists("default_view"));

@@ -219,7 +219,28 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
         }
     });
     _svr.Post(R"(/api/v1/policies)", [&](const httplib::Request &req, httplib::Response &res) {
-
+        json j;
+        if (!req.has_header("Content-Type")) {
+            res.status = 400;
+            j["error"] = "must include Content-Type header";
+            res.set_content(j.dump(), "text/json");
+            return;
+        }
+        auto content_type = req.get_header_value("Content-Type");
+        if (content_type != "application/x-yaml") {
+            res.status = 400;
+            j["error"] = "Content-Type not supported";
+            res.set_content(j.dump(), "text/json");
+            return;
+        }
+        try {
+            _registry.policy_manager()->load_from_str(req.body);
+            res.set_content(j.dump(), "text/json");
+        } catch (const std::exception &e) {
+            res.status = 500;
+            j["error"] = e.what();
+            res.set_content(j.dump(), "text/json");
+        }
     });
     _svr.Get(fmt::format("/api/v1/policies/({})", AbstractModule::MODULE_ID_REGEX).c_str(), [&](const httplib::Request &req, httplib::Response &res) {
         json j;

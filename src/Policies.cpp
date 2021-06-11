@@ -13,6 +13,22 @@
 
 namespace visor {
 
+void PolicyManager::load_from_str(const std::string &str)
+{
+    YAML::Node node = YAML::Load(str);
+    if (!node.IsMap() || !node["visor"]) {
+        throw PolicyException("invalid schema");
+    }
+    if (!node["version"] || !node["version"].IsScalar() || node["version"].as<std::string>() != "1.0") {
+        throw PolicyException("missing or unsupported version");
+    }
+    if (node["visor"]["policies"] && node["visor"]["policies"].IsMap()) {
+        load(node["visor"]["policies"]);
+    } else {
+        throw PolicyException("no policies found in schema");
+    }
+}
+
 // needs to be thread safe and transactional: any errors mean resources get cleaned up with no side effects
 void PolicyManager::load(const YAML::Node &policy_yaml)
 {

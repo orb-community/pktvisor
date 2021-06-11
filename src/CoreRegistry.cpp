@@ -63,7 +63,7 @@ CoreRegistry::CoreRegistry(HttpServer *svr)
 
     // taps
     _tap_manager = std::make_unique<TapManager>(this);
-    // collection policies
+    // policies policies
     _policy_manager = std::make_unique<PolicyManager>(this);
 }
 
@@ -95,9 +95,9 @@ void CoreRegistry::configure_from_yaml(YAML::Node &node)
     if (node["visor"]["taps"] && node["visor"]["taps"].IsMap()) {
         _tap_manager->load(node["visor"]["taps"], true);
     }
-    // collection policies
-    if (node["visor"]["collection"] && node["visor"]["collection"].IsMap()) {
-        _policy_manager->load(node["visor"]["collection"]);
+    // policies
+    if (node["visor"]["policies"] && node["visor"]["policies"].IsMap()) {
+        _policy_manager->load(node["visor"]["policies"]);
     }
 }
 

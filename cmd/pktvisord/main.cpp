@@ -159,7 +159,7 @@ visor:
       config:
         iface: "{}"
         host_spec: "{}"
-  collection:
+  policies:
     default:
       input:
         tap: default
