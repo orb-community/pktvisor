@@ -330,7 +330,7 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
                 auto hmod = dynamic_cast<StreamHandler *>(mod);
                 if (hmod) {
                     spdlog::stopwatch sw;
-                    hmod->window_prometheus(output, {{"policy", name}});
+                    hmod->window_prometheus(output, {{"policy", name}, {"module", hmod->name()}});
                     _logger->debug("{} window_prometheus elapsed time: {}", hmod->name(), sw);
                 }
             }
