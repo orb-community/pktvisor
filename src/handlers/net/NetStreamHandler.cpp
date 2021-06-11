@@ -113,35 +113,35 @@ void NetworkMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
     _topASN.merge(other._topASN);
 }
 
-void NetworkMetricsBucket::to_prometheus(std::stringstream &out) const
+void NetworkMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap add_labels) const
 {
 
-    _rate_in.to_prometheus(out);
-    _rate_out.to_prometheus(out);
+    _rate_in.to_prometheus(out, add_labels);
+    _rate_out.to_prometheus(out, add_labels);
 
     auto [num_events, num_samples, event_rate, event_lock] = event_data_locked(); // thread safe
 
-    event_rate->to_prometheus(out);
-    num_events->to_prometheus(out);
-    num_samples->to_prometheus(out);
+    event_rate->to_prometheus(out, add_labels);
+    num_events->to_prometheus(out, add_labels);
+    num_samples->to_prometheus(out, add_labels);
 
     std::shared_lock r_lock(_mutex);
 
-    _counters.UDP.to_prometheus(out);
-    _counters.TCP.to_prometheus(out);
-    _counters.OtherL4.to_prometheus(out);
-    _counters.IPv4.to_prometheus(out);
-    _counters.IPv6.to_prometheus(out);
-    _counters.total_in.to_prometheus(out);
-    _counters.total_out.to_prometheus(out);
+    _counters.UDP.to_prometheus(out, add_labels);
+    _counters.TCP.to_prometheus(out, add_labels);
+    _counters.OtherL4.to_prometheus(out, add_labels);
+    _counters.IPv4.to_prometheus(out, add_labels);
+    _counters.IPv6.to_prometheus(out, add_labels);
+    _counters.total_in.to_prometheus(out, add_labels);
+    _counters.total_out.to_prometheus(out, add_labels);
 
-    _srcIPCard.to_prometheus(out);
-    _dstIPCard.to_prometheus(out);
+    _srcIPCard.to_prometheus(out, add_labels);
+    _dstIPCard.to_prometheus(out, add_labels);
 
-    _topIPv4.to_prometheus(out, [](const uint32_t &val) { return pcpp::IPv4Address(val).toString(); });
-    _topIPv6.to_prometheus(out);
-    _topGeoLoc.to_prometheus(out);
-    _topASN.to_prometheus(out);
+    _topIPv4.to_prometheus(out, add_labels, [](const uint32_t &val) { return pcpp::IPv4Address(val).toString(); });
+    _topIPv6.to_prometheus(out, add_labels);
+    _topGeoLoc.to_prometheus(out, add_labels);
+    _topASN.to_prometheus(out, add_labels);
 }
 
 void NetworkMetricsBucket::to_json(json &j) const

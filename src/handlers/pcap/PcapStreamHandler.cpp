@@ -80,13 +80,13 @@ void PcapMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
     _counters.pcap_if_drop += other._counters.pcap_if_drop;
 }
 
-void PcapMetricsBucket::to_prometheus(std::stringstream &out) const
+void PcapMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap add_labels) const
 {
     std::shared_lock r_lock(_mutex);
 
-    _counters.pcap_TCP_reassembly_errors.to_prometheus(out);
-    _counters.pcap_os_drop.to_prometheus(out);
-    _counters.pcap_if_drop.to_prometheus(out);
+    _counters.pcap_TCP_reassembly_errors.to_prometheus(out, add_labels);
+    _counters.pcap_os_drop.to_prometheus(out, add_labels);
+    _counters.pcap_if_drop.to_prometheus(out, add_labels);
 }
 
 void PcapMetricsBucket::to_json(json &j) const

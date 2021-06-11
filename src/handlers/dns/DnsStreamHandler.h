@@ -122,7 +122,7 @@ public:
     // visor::AbstractMetricsBucket
     void specialized_merge(const AbstractMetricsBucket &other) override;
     void to_json(json &j) const override;
-    void to_prometheus(std::stringstream &out) const override;
+    void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override;
 
     void process_dns_layer(bool deep, DnsLayer &payload, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint16_t port);
 

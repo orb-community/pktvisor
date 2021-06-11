@@ -31,7 +31,7 @@ visor::CoreServer::CoreServer(std::shared_ptr<spdlog::logger> logger, const Http
     _setup_routes(prom_config);
 
     if (!prom_config.instance_label.empty()) {
-        Metric::add_base_label("instance", prom_config.instance_label);
+        Metric::add_static_label("instance", prom_config.instance_label);
     }
 }
 
@@ -170,7 +170,7 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
                     auto hmod = dynamic_cast<StreamHandler *>(mod);
                     if (hmod) {
                         spdlog::stopwatch sw;
-                        hmod->window_prometheus(output);
+                        hmod->window_prometheus(output, {{"policy", "default"}});
                         _logger->debug("{} window_prometheus elapsed time: {}", hmod->name(), sw);
                     }
                 }
@@ -247,7 +247,7 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
                 auto hmod = dynamic_cast<StreamHandler *>(mod);
                 if (hmod) {
                     spdlog::stopwatch sw;
-                    hmod->window_prometheus(output);
+                    hmod->window_prometheus(output, {{"policy", name}});
                     _logger->debug("{} window_prometheus elapsed time: {}", hmod->name(), sw);
                 }
             }

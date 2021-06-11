@@ -196,7 +196,7 @@ public:
     }
 
     virtual void to_json(json &j) const = 0;
-    virtual void to_prometheus(std::stringstream &out) const = 0;
+    virtual void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const = 0;
 };
 
 template <typename MetricsBucketClass>
@@ -456,7 +456,7 @@ public:
         _metric_buckets.at(period)->to_json(j[period_str][key]);
     }
 
-    void window_single_prometheus(std::stringstream &out, uint64_t period = 0) const
+    void window_single_prometheus(std::stringstream &out, uint64_t period = 0, Metric::LabelMap add_labels = {}) const
     {
         std::shared_lock rl(_base_mutex);
         std::shared_lock rbl(_bucket_mutex);
@@ -472,7 +472,7 @@ public:
             throw PeriodException(err.str());
         }
 
-        _metric_buckets.at(period)->to_prometheus(out);
+        _metric_buckets.at(period)->to_prometheus(out, add_labels);
     }
 
     void window_merged_json(json &j, const std::string &key, uint64_t period) const

@@ -32,9 +32,9 @@ public:
 
 private:
     /**
-     * labels which will be applied to all metrics
+     * static labels which will be applied to all metrics
      */
-    static LabelMap _base_labels;
+    static LabelMap _static_labels;
 
 protected:
     std::vector<std::string> _name;
@@ -73,9 +73,9 @@ public:
         _check_names();
     }
 
-    static void add_base_label(const std::string &label, const std::string &value)
+    static void add_static_label(const std::string &label, const std::string &value)
     {
-        _base_labels.emplace(label, value);
+        _static_labels.emplace(label, value);
     }
 
     void name_json_assign(json &j, const json &val) const;
@@ -85,7 +85,7 @@ public:
     [[nodiscard]] std::string name_snake(std::initializer_list<std::string> add_names = {}, LabelMap add_labels = {}) const;
 
     virtual void to_json(json &j) const = 0;
-    virtual void to_prometheus(std::stringstream &out) const = 0;
+    virtual void to_prometheus(std::stringstream &out, LabelMap add_labels = {}) const = 0;
 };
 
 /**
@@ -125,7 +125,7 @@ public:
 
     // Metric
     void to_json(json &j) const override;
-    void to_prometheus(std::stringstream &out) const override;
+    void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override;
 };
 
 /**
@@ -183,21 +183,30 @@ public:
         }
     }
 
-    void to_prometheus(std::stringstream &out) const override
+    void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override
     {
         const double fractions[4]{0.50, 0.90, 0.95, 0.99};
 
         auto quantiles = _quantile.get_quantiles(fractions, 4);
 
+        LabelMap l5(add_labels);
+        l5["quantile"] = "0.5";
+        LabelMap l9(add_labels);
+        l9["quantile"] = "0.9";
+        LabelMap l95(add_labels);
+        l95["quantile"] = "0.95";
+        LabelMap l99(add_labels);
+        l99["quantile"] = "0.99";
+
         if (quantiles.size()) {
             out << "# HELP " << base_name_snake() << ' ' << _desc << std::endl;
             out << "# TYPE " << base_name_snake() << " summary" << std::endl;
-            out << name_snake({}, {{"quantile", "0.5"}}) << ' ' << quantiles[0] << std::endl;
-            out << name_snake({}, {{"quantile", "0.9"}}) << ' ' << quantiles[1] << std::endl;
-            out << name_snake({}, {{"quantile", "0.95"}}) << ' ' << quantiles[2] << std::endl;
-            out << name_snake({}, {{"quantile", "0.99"}}) << ' ' << quantiles[3] << std::endl;
-            out << name_snake({"sum"}) << ' ' << _quantile.get_max_value() << std::endl;
-            out << name_snake({"count"}) << ' ' << _quantile.get_n() << std::endl;
+            out << name_snake({}, l5) << ' ' << quantiles[0] << std::endl;
+            out << name_snake({}, l9) << ' ' << quantiles[1] << std::endl;
+            out << name_snake({}, l95) << ' ' << quantiles[2] << std::endl;
+            out << name_snake({}, l99) << ' ' << quantiles[3] << std::endl;
+            out << name_snake({"sum"}, add_labels) << ' ' << _quantile.get_max_value() << std::endl;
+            out << name_snake({"count"}, add_labels) << ' ' << _quantile.get_n() << std::endl;
         }
     }
 };
@@ -264,13 +273,15 @@ public:
         name_json_assign(j, section);
     }
 
-    void to_prometheus(std::stringstream &out, std::function<std::string(const T &)> formatter) const
+    void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels, std::function<std::string(const T &)> formatter) const
     {
+        LabelMap l(add_labels);
         auto items = _fi.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
         for (uint64_t i = 0; i < std::min(_top_count, items.size()); i++) {
             out << "# HELP " << base_name_snake() << ' ' << _desc << std::endl;
             out << "# TYPE " << base_name_snake() << " gauge" << std::endl;
-            out << name_snake({}, {{"name", formatter(items[i].get_item())}}) << ' ' << items[i].get_estimate() << std::endl;
+            l["name"] = formatter(items[i].get_item());
+            out << name_snake({}, l) << ' ' << items[i].get_estimate() << std::endl;
         }
     }
 
@@ -286,15 +297,17 @@ public:
         name_json_assign(j, section);
     }
 
-    void to_prometheus(std::stringstream &out) const override
+    void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override
     {
+        LabelMap l(add_labels);
         auto items = _fi.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
         for (uint64_t i = 0; i < std::min(_top_count, items.size()); i++) {
             out << "# HELP " << base_name_snake() << ' ' << _desc << std::endl;
             out << "# TYPE " << base_name_snake() << " gauge" << std::endl;
             std::stringstream name_text;
             name_text << items[i].get_item();
-            out << name_snake({}, {{"name", name_text.str()}}) << ' ' << items[i].get_estimate() << std::endl;
+            l["name"] = name_text.str();
+            out << name_snake({}, l) << ' ' << items[i].get_estimate() << std::endl;
         }
     }
 };
@@ -335,7 +348,7 @@ public:
 
     // Metric
     void to_json(json &j) const override;
-    void to_prometheus(std::stringstream &out) const override;
+    void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override;
 };
 
 /**
@@ -419,7 +432,7 @@ public:
 
     // Metric
     void to_json(json &j) const override;
-    void to_prometheus(std::stringstream &out) const override;
+    void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override;
 };
 
 }

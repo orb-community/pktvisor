@@ -81,7 +81,7 @@ public:
     // visor::AbstractMetricsBucket
     void specialized_merge(const AbstractMetricsBucket &other) override;
     void to_json(json &j) const override;
-    void to_prometheus(std::stringstream &out) const override;
+    void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override;
 
     // must be thread safe as it is called from time window maintenance thread
     void on_set_read_only() override

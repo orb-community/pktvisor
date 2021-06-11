@@ -34,7 +34,7 @@ public:
     virtual ~StreamHandler(){};
 
     virtual void window_json(json &j, uint64_t period, bool merged) = 0;
-    virtual void window_prometheus(std::stringstream &out) = 0;
+    virtual void window_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) = 0;
 };
 
 template <class MetricsManagerClass>
@@ -95,12 +95,12 @@ public:
         }
     }
 
-    void window_prometheus(std::stringstream &out) override
+    void window_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) override
     {
         if (_metrics->current_periods() > 1) {
-            _metrics->window_single_prometheus(out, 1);
+            _metrics->window_single_prometheus(out, 1, add_labels);
         } else {
-            _metrics->window_single_prometheus(out, 0);
+            _metrics->window_single_prometheus(out, 0, add_labels);
         }
     }
 
