@@ -13,6 +13,15 @@ namespace visor {
 
 using json = nlohmann::json;
 
+class StreamHandlerException : public std::runtime_error
+{
+public:
+    explicit StreamHandlerException(const std::string &msg)
+        : std::runtime_error(msg)
+    {
+    }
+};
+
 class StreamHandler : public AbstractRunnableModule
 {
 
@@ -25,7 +34,7 @@ public:
     virtual ~StreamHandler(){};
 
     virtual void window_json(json &j, uint64_t period, bool merged) = 0;
-    virtual void window_prometheus(std::stringstream &out) = 0;
+    virtual void window_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) = 0;
 };
 
 template <class MetricsManagerClass>
@@ -35,9 +44,9 @@ class StreamMetricsHandler : public StreamHandler
 protected:
     std::unique_ptr<MetricsManagerClass> _metrics;
 
-    void _common_info_json(json &j) const
+    void common_info_json(json &j) const
     {
-        AbstractModule::_common_info_json(j);
+        AbstractModule::common_info_json(j);
 
         j["metrics"]["deep_sample_rate"] = _metrics->deep_sample_rate();
         j["metrics"]["periods_configured"] = _metrics->num_periods();
@@ -66,15 +75,33 @@ protected:
     }
 
 public:
-    StreamMetricsHandler(const std::string &name, uint periods, int deepSampleRate)
+    StreamMetricsHandler(const std::string &name, const Configurable *window_config)
         : StreamHandler(name)
     {
-        _metrics = std::make_unique<MetricsManagerClass>(periods, deepSampleRate);
+        _metrics = std::make_unique<MetricsManagerClass>(window_config);
     }
 
     const MetricsManagerClass *metrics() const
     {
         return _metrics.get();
+    }
+
+    void window_json(json &j, uint64_t period, bool merged) override
+    {
+        if (merged) {
+            _metrics->window_merged_json(j, schema_key(), period);
+        } else {
+            _metrics->window_single_json(j, schema_key(), period);
+        }
+    }
+
+    void window_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) override
+    {
+        if (_metrics->current_periods() > 1) {
+            _metrics->window_single_prometheus(out, 1, add_labels);
+        } else {
+            _metrics->window_single_prometheus(out, 0, add_labels);
+        }
     }
 
     virtual ~StreamMetricsHandler(){};

@@ -5,6 +5,7 @@
 #pragma once
 
 #include "AbstractMetricsManager.h"
+#include "MockInputStream.h"
 #include "PcapInputStream.h"
 #include "StreamHandler.h"
 #include "dns.h"
@@ -15,6 +16,7 @@
 namespace visor::handler::dns {
 
 using namespace visor::input::pcap;
+using namespace visor::input::mock;
 
 class DnsMetricsBucket final : public visor::AbstractMetricsBucket
 {
@@ -120,7 +122,7 @@ public:
     // visor::AbstractMetricsBucket
     void specialized_merge(const AbstractMetricsBucket &other) override;
     void to_json(json &j) const override;
-    void to_prometheus(std::stringstream &out) const override;
+    void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override;
 
     void process_dns_layer(bool deep, DnsLayer &payload, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint16_t port);
 
@@ -135,8 +137,8 @@ class DnsMetricsManager final : public visor::AbstractMetricsManager<DnsMetricsB
     float _from90th = 0.0;
 
 public:
-    DnsMetricsManager(uint periods, int deepSampleRate)
-        : visor::AbstractMetricsManager<DnsMetricsBucket>(periods, deepSampleRate)
+    DnsMetricsManager(const Configurable *window_config)
+        : visor::AbstractMetricsManager<DnsMetricsBucket>(window_config)
     {
     }
 
@@ -201,7 +203,9 @@ struct TcpFlowData {
 class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsManager>
 {
 
-    PcapInputStream *_stream;
+    // the input stream sources we support (only one will be in use at a time)
+    PcapInputStream *_pcap_stream{nullptr};
+    MockInputStream *_mock_stream{nullptr};
 
     typedef uint32_t flowKey;
     std::unordered_map<flowKey, TcpFlowData> _tcp_connections;
@@ -222,7 +226,7 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
     void set_end_tstamp(timespec stamp);
 
 public:
-    DnsStreamHandler(const std::string &name, PcapInputStream *stream, uint periods, int deepSampleRate);
+    DnsStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config);
     ~DnsStreamHandler() override;
 
     // visor::AbstractModule
@@ -233,10 +237,6 @@ public:
     void start() override;
     void stop() override;
     void info_json(json &j) const override;
-
-    // visor::StreamHandler
-    void window_json(json &j, uint64_t period, bool merged) override;
-    void window_prometheus(std::stringstream &out) override;
 };
 
 }

@@ -16,29 +16,31 @@
 
 namespace visor {
 
+class Policy;
 using json = nlohmann::json;
 
 class AbstractModule : public Configurable
 {
 
 protected:
-
     /**
      * the module instance identifier: unique name associated with this instance
      */
     std::string _name;
 
-    void _common_info_json(json &j) const
+    void common_info_json(json &j) const
     {
         j["module"]["name"] = _name;
         config_json(j["module"]["config"]);
     }
 
 public:
+    inline static const std::string MODULE_ID_REGEX = "[a-zA-Z_][a-zA-Z0-9_-]*";
+
     AbstractModule(const std::string &name)
         : _name(name)
     {
-        if (!std::regex_match(name, std::regex("[a-zA-Z_][a-zA-Z0-9_-]*"))) {
+        if (!std::regex_match(name, std::regex(MODULE_ID_REGEX))) {
             throw std::runtime_error("invalid module name: " + name);
         }
     }
@@ -59,12 +61,9 @@ class AbstractRunnableModule : public AbstractModule
 protected:
     std::atomic_bool _running = false;
 
-    void _common_info_json(json &j) const
-    {
-        j["module"]["name"] = _name;
-        j["module"]["running"] = _running.load();
-        config_json(j["module"]["config"]);
-    }
+    Policy *_policy = nullptr;
+
+    void common_info_json(json &j) const;
 
 public:
     AbstractRunnableModule(const std::string &name)
@@ -72,10 +71,22 @@ public:
     {
     }
 
+    void set_policy(Policy *policy)
+    {
+        _policy = policy;
+    }
+
+    const Policy *policy() const
+    {
+        return _policy;
+    }
+
     virtual ~AbstractRunnableModule(){};
 
     virtual void start() = 0;
     virtual void stop() = 0;
+
+    void info_json(json &j) const override;
 
     /**
      * the module schema key: the same for all instances of this module

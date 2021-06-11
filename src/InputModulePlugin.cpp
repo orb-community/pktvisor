@@ -6,13 +6,5 @@
 
 namespace visor {
 
-void InputModulePlugin::init_module(InputStreamManager *im, HttpServer *svr)
-{
-    assert(im);
-    _input_manager = im;
-    if (svr) {
-        _setup_routes(svr);
-    }
-}
 
 }

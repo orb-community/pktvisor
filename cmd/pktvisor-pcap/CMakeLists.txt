@@ -11,4 +11,5 @@ target_link_libraries(pktvisor-pcap
         Visor::Handler::Net
         Visor::Handler::Dns
         Visor::Handler::Pcap
+        Visor::Input::Mock
         )

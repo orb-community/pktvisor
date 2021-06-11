@@ -5,21 +5,18 @@
 #pragma once
 
 #include "AbstractPlugin.h"
-#include "HandlerManager.h"
-#include "InputStreamManager.h"
 #include <Corrade/PluginManager/Manager.h>
 #include <Corrade/PluginManager/PluginMetadata.h>
 #include <string>
 
 namespace visor {
 
+class Configurable;
+class StreamHandler;
+class InputStream;
+
 class HandlerModulePlugin : public AbstractPlugin
 {
-protected:
-    visor::InputStreamManager *_input_manager;
-    visor::HandlerManager *_handler_manager;
-
-    virtual void _setup_routes(HttpServer *svr) = 0;
 
 public:
     static std::string pluginInterface()
@@ -37,9 +34,10 @@ public:
     {
     }
 
-    void init_module(InputStreamManager *im,
-        HandlerManager *hm,
-        HttpServer *svr);
+    /**
+     * Instantiate a new StreamHandler
+     */
+    virtual std::unique_ptr<StreamHandler> instantiate(const std::string &name, InputStream *input_stream, const Configurable *config) = 0;
 };
 
 typedef Corrade::PluginManager::Manager<HandlerModulePlugin> HandlerPluginRegistry;

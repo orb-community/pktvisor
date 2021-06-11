@@ -1,6 +1,4 @@
 #define CATCH_CONFIG_RUNNER
-#include <Corrade/PluginManager/AbstractManager.h>
-#include "inputs/static_plugins.h"
 #include <catch2/catch.hpp>
 #include <cstdlib>
 

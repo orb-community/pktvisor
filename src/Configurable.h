@@ -35,14 +35,54 @@ private:
     mutable std::shared_mutex _config_mutex;
 
 public:
+    Configurable() = default;
+    ~Configurable() = default;
+
+    Configurable(const Configurable &other)
+    {
+        std::shared_lock rlock(other._config_mutex);
+        std::unique_lock wlock(_config_mutex);
+        _config = other._config;
+    }
+    Configurable(Configurable &&other)
+    {
+        std::unique_lock lock1(other._config_mutex);
+        std::unique_lock lock2(_config_mutex);
+        _config = std::move(other._config);
+    }
+    Configurable &operator=(const Configurable &other)
+    {
+        std::shared_lock rlock(other._config_mutex);
+        std::unique_lock wlock(_config_mutex);
+        _config = other._config;
+        return *this;
+    }
+    Configurable &operator=(Configurable &&other)
+    {
+        std::unique_lock lock1(other._config_mutex);
+        std::unique_lock lock2(_config_mutex);
+        _config = std::move(other._config);
+        return *this;
+    }
+
+    void config_merge(const Configurable &other)
+    {
+        std::shared_lock rlock(other._config_mutex);
+        std::unique_lock wlock(_config_mutex);
+        for (const auto &[key, value] : other._config) {
+            _config[key] = value;
+        }
+    }
+
     template <class T>
-    auto config_get(const std::string &key)
+    auto config_get(const std::string &key) const
     {
         std::shared_lock lock(_config_mutex);
         if (_config.count(key) == 0) {
             throw ConfigException(fmt::format("missing key: {}", key));
         }
-        auto val = std::get_if<T>(&_config[key]);
+        auto entry = _config.find(key);
+        auto val = std::get_if<T>(&entry->second);
         if (!val) {
             throw ConfigException(fmt::format("wrong type for key: {}", key));
         }
@@ -103,6 +143,10 @@ public:
             }
         }
     }
+};
+
+class Config : public Configurable
+{
 };
 
 }

@@ -6,18 +6,18 @@
 
 
 #include "InputModulePlugin.h"
-#include "PcapInputStream.h"
+#include "MockInputStream.h"
 
-namespace visor::input::pcap {
+namespace visor::input::mock {
 
-class PcapInputModulePlugin : public visor::InputModulePlugin
+class MockInputModulePlugin : public visor::InputModulePlugin
 {
 
 protected:
     void setup_routes(HttpServer *svr) override;
 
 public:
-    explicit PcapInputModulePlugin(Corrade::PluginManager::AbstractManager &manager, const std::string &plugin)
+    explicit MockInputModulePlugin(Corrade::PluginManager::AbstractManager &manager, const std::string &plugin)
         : visor::InputModulePlugin{manager, plugin}
     {
     }

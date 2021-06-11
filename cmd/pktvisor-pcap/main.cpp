@@ -5,11 +5,12 @@
 #include <csignal>
 #include <functional>
 #include <map>
-#include <vector>
 
 #include <docopt/docopt.h>
 
-#include "CoreManagers.h"
+#include "CoreRegistry.h"
+#include "HandlerManager.h"
+#include "InputStreamManager.h"
 #include <spdlog/sinks/stdout_color_sinks.h>
 
 #include "handlers/static_plugins.h"
@@ -80,7 +81,7 @@ int main(int argc, char *argv[])
         logger->set_level(spdlog::level::debug);
     }
 
-    CoreManagers mgrs(nullptr);
+    CoreRegistry mgrs(nullptr);
 
     std::signal(SIGINT, signal_handler);
     std::signal(SIGTERM, signal_handler);
@@ -105,6 +106,10 @@ int main(int argc, char *argv[])
 
     long periods = args["--periods"].asLong();
 
+    visor::Config window_config;
+    window_config.config_set<uint64_t>("num_periods", periods);
+    window_config.config_set<uint64_t>("deep_sample_rate", sample_rate);
+
     try {
 
         initialize_geo(args["--geo-city"], args["--geo-asn"]);
@@ -126,7 +131,7 @@ int main(int argc, char *argv[])
 
         handler::net::NetStreamHandler *net_handler{nullptr};
         {
-            auto handler_module = std::make_unique<handler::net::NetStreamHandler>("net", pcap_stream, periods, sample_rate);
+            auto handler_module = std::make_unique<handler::net::NetStreamHandler>("net", pcap_stream, &window_config);
             handler_module->config_set("recorded_stream", true);
             handler_module->start();
             mgrs.handler_manager()->module_add(std::move(handler_module));
@@ -136,7 +141,7 @@ int main(int argc, char *argv[])
         }
         handler::dns::DnsStreamHandler *dns_handler{nullptr};
         {
-            auto handler_module = std::make_unique<handler::dns::DnsStreamHandler>("dns", pcap_stream, periods, sample_rate);
+            auto handler_module = std::make_unique<handler::dns::DnsStreamHandler>("dns", pcap_stream, &window_config);
             handler_module->config_set("recorded_stream", true);
             handler_module->start();
             mgrs.handler_manager()->module_add(std::move(handler_module));
@@ -151,12 +156,13 @@ int main(int argc, char *argv[])
         json result;
         if (periods == 1) {
             // in summary mode we output a single summary of stats
-            net_handler->window_json(result, 0, false);
-            dns_handler->window_json(result, 0, false);
+            net_handler->window_json(result["1m"], 0, false);
+            dns_handler->window_json(result["1m"], 0, false);
         } else {
             // otherwise, merge the max time window available
-            net_handler->window_json(result, periods, true);
-            dns_handler->window_json(result, periods, true);
+            auto key = fmt::format("{}m", periods);
+            net_handler->window_json(result[key], periods, true);
+            dns_handler->window_json(result[key], periods, true);
         }
         std::cout << result.dump() << std::endl;
 

@@ -3,7 +3,10 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 #include "CoreServer.h"
+#include "HandlerManager.h"
 #include "Metrics.h"
+#include "Policies.h"
+#include "Taps.h"
 #include "visor_config.h"
 #include <chrono>
 #include <spdlog/sinks/stdout_color_sinks.h>
@@ -15,7 +18,7 @@ namespace visor {
 
 visor::CoreServer::CoreServer(std::shared_ptr<spdlog::logger> logger, const HttpConfig &http_config, const PrometheusConfig &prom_config)
     : _svr(http_config)
-    , _mgrs(&_svr)
+    , _registry(&_svr)
     , _logger(logger)
     , _start_time(std::chrono::system_clock::now())
 {
@@ -27,8 +30,8 @@ visor::CoreServer::CoreServer(std::shared_ptr<spdlog::logger> logger, const Http
 
     _setup_routes(prom_config);
 
-    if (!prom_config.instance.empty()) {
-        Metric::add_base_label("instance", prom_config.instance);
+    if (!prom_config.instance_label.empty()) {
+        Metric::add_static_label("instance", prom_config.instance_label);
     }
 }
 
@@ -46,6 +49,7 @@ void CoreServer::start(const std::string &host, int port)
 void CoreServer::stop()
 {
     _svr.stop();
+    _registry.stop();
 }
 
 CoreServer::~CoreServer()
@@ -77,7 +81,7 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
             res.set_content(j.dump(), "text/json");
         }
     });
-    // DEPRECATED
+    // rates, DEPRECATED
     _svr.Get("/api/v1/metrics/rates", [&]([[maybe_unused]] const httplib::Request &req, httplib::Response &res) {
         json j;
         try {
@@ -92,24 +96,30 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
             res.set_content(j.dump(), "text/json");
         }
     });
+    // 3.0.x compatible: reference "default" policy
     _svr.Get(R"(/api/v1/metrics/bucket/(\d+))", [&](const httplib::Request &req, httplib::Response &res) {
         json j;
         bool bc_period{false};
+        if (!_registry.policy_manager()->module_exists("default")) {
+            res.status = 404;
+            j["error"] = "no \"default\" policy exists";
+            res.set_content(j.dump(), "text/json");
+            return;
+        }
         try {
+            auto [policy, lock] = _registry.policy_manager()->module_get_locked("default");
             uint64_t period(std::stol(req.matches[1]));
-            auto [handler_modules, hm_lock] = _mgrs.handler_manager()->module_get_all_locked();
-            for (auto &[name, mod] : handler_modules) {
-                auto hmod = dynamic_cast<StreamHandler *>(mod.get());
-                // TODO need to add policy name, break backwards compatible since multiple otherwise policies will overwrite
+            for (auto &mod : policy->modules()) {
+                auto hmod = dynamic_cast<StreamHandler *>(mod);
                 if (hmod) {
                     spdlog::stopwatch sw;
-                    hmod->window_json(j, period, false);
+                    hmod->window_json(j["1m"], period, false);
                     // hoist up the first "period" we see for backwards compatibility with 3.0.x
                     if (!bc_period && j["1m"][hmod->schema_key()].contains("period")) {
                         j["1m"]["period"] = j["1m"][hmod->schema_key()]["period"];
                         bc_period = true;
                     }
-                    _logger->debug("{} elapsed time: {}", hmod->name(), sw);
+                    _logger->debug("{} bucket window_json elapsed time: {}", hmod->name(), sw);
                 }
             }
             res.set_content(j.dump(), "text/json");
@@ -119,54 +129,51 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
             res.set_content(j.dump(), "text/json");
         }
     });
+    // 3.0.x compatible: reference "default" policy
     _svr.Get(R"(/api/v1/metrics/window/(\d+))", [&](const httplib::Request &req, httplib::Response &res) {
         json j;
+        if (!_registry.policy_manager()->module_exists("default")) {
+            res.status = 404;
+            j["error"] = "no \"default\" policy exists";
+            res.set_content(j.dump(), "text/json");
+            return;
+        }
         try {
+            auto [policy, lock] = _registry.policy_manager()->module_get_locked("default");
             uint64_t period(std::stol(req.matches[1]));
-            auto [handler_modules, hm_lock] = _mgrs.handler_manager()->module_get_all_locked();
-            for (auto &[name, mod] : handler_modules) {
-                auto hmod = dynamic_cast<StreamHandler *>(mod.get());
-                // TODO need to add policy name, break backwards compatible since multiple otherwise policies will overwrite
+            for (auto &mod : policy->modules()) {
+                auto hmod = dynamic_cast<StreamHandler *>(mod);
                 if (hmod) {
                     spdlog::stopwatch sw;
-                    hmod->window_json(j, period, true);
-                    _logger->debug("{} elapsed time: {}", hmod->name(), sw);
+                    auto key = fmt::format("{}m", period);
+                    hmod->window_json(j[key], period, true);
+                    _logger->debug("{} window_json {} elapsed time: {}", hmod->name(), period, sw);
                 }
             }
             res.set_content(j.dump(), "text/json");
         } catch (const std::exception &e) {
             res.status = 500;
-            res.set_content(e.what(), "text/plain");
-        }
-    });
-    _svr.Get(R"(/api/v1/taps)", [&]([[maybe_unused]] const httplib::Request &req, httplib::Response &res) {
-        json j;
-        try {
-            auto [handler_modules, hm_lock] = _mgrs.tap_manager()->module_get_all_locked();
-            for (auto &[name, mod] : handler_modules) {
-                auto tmod = dynamic_cast<Tap *>(mod.get());
-                if (tmod) {
-                    tmod->info_json(j[tmod->name()]);
-                }
-            }
+            j["error"] = e.what();
             res.set_content(j.dump(), "text/json");
-        } catch (const std::exception &e) {
-            res.status = 500;
-            res.set_content(e.what(), "text/plain");
         }
     });
-    if (!prom_config.path.empty()) {
-        _logger->info("enabling prometheus metrics on: {}", prom_config.path);
-        _svr.Get(prom_config.path.c_str(), [&]([[maybe_unused]] const httplib::Request &req, httplib::Response &res) {
-            std::stringstream output;
+    // "default" policy prometheus
+    if (!prom_config.default_path.empty()) {
+        _logger->info("enabling prometheus metrics for \"default\" policy on: {}", prom_config.default_path);
+        _svr.Get(prom_config.default_path.c_str(), [&]([[maybe_unused]] const httplib::Request &req, httplib::Response &res) {
+            if (!_registry.policy_manager()->module_exists("default")) {
+                res.status = 404;
+                return;
+            }
             try {
-                auto [handler_modules, hm_lock] = _mgrs.handler_manager()->module_get_all_locked();
-                for (auto &[name, mod] : handler_modules) {
-                    auto hmod = dynamic_cast<StreamHandler *>(mod.get());
+                std::stringstream output;
+                auto [policy, lock] = _registry.policy_manager()->module_get_locked("default");
+                for (auto &mod : policy->modules()) {
+                    auto hmod = dynamic_cast<StreamHandler *>(mod);
                     if (hmod) {
                         spdlog::stopwatch sw;
-                        hmod->window_prometheus(output);
-                        _logger->debug("{} elapsed time: {}", hmod->name(), sw);
+                        hmod->window_prometheus(output, {{"policy", "default"}});
+                        _logger->debug("{} window_prometheus elapsed time: {}", hmod->name(), sw);
                     }
                 }
                 res.set_content(output.str(), "text/plain");
@@ -176,6 +183,166 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
             }
         });
     }
+    // Taps
+    _svr.Get(R"(/api/v1/taps)", [&]([[maybe_unused]] const httplib::Request &req, httplib::Response &res) {
+        json j;
+        try {
+            auto [tap_modules, hm_lock] = _registry.tap_manager()->module_get_all_locked();
+            for (auto &[name, mod] : tap_modules) {
+                auto tmod = dynamic_cast<Tap *>(mod.get());
+                if (tmod) {
+                    tmod->info_json(j[tmod->name()]);
+                }
+            }
+            res.set_content(j.dump(), "text/json");
+        } catch (const std::exception &e) {
+            res.status = 500;
+            j["error"] = e.what();
+            res.set_content(j.dump(), "text/json");
+        }
+    });
+    // Policies
+    _svr.Get(R"(/api/v1/policies)", [&]([[maybe_unused]] const httplib::Request &req, httplib::Response &res) {
+        json j;
+        try {
+            auto [policy_modules, hm_lock] = _registry.policy_manager()->module_get_all_locked();
+            for (auto &[name, mod] : policy_modules) {
+                auto tmod = dynamic_cast<Policy *>(mod.get());
+                if (tmod) {
+                    tmod->info_json(j[tmod->name()]);
+                }
+            }
+            res.set_content(j.dump(), "text/json");
+        } catch (const std::exception &e) {
+            res.status = 500;
+            j["error"] = e.what();
+            res.set_content(j.dump(), "text/json");
+        }
+    });
+    _svr.Post(R"(/api/v1/policies)", [&](const httplib::Request &req, httplib::Response &res) {
+        json j;
+        if (!req.has_header("Content-Type")) {
+            res.status = 400;
+            j["error"] = "must include Content-Type header";
+            res.set_content(j.dump(), "text/json");
+            return;
+        }
+        auto content_type = req.get_header_value("Content-Type");
+        if (content_type != "application/x-yaml") {
+            res.status = 400;
+            j["error"] = "Content-Type not supported";
+            res.set_content(j.dump(), "text/json");
+            return;
+        }
+        try {
+            auto policies = _registry.policy_manager()->load_from_str(req.body);
+            for (auto &mod : policies) {
+                mod->info_json(j[mod->name()]);
+            }
+            res.set_content(j.dump(), "text/json");
+        } catch (const std::exception &e) {
+            res.status = 500;
+            j["error"] = e.what();
+            res.set_content(j.dump(), "text/json");
+        }
+    });
+    _svr.Get(fmt::format("/api/v1/policies/({})", AbstractModule::MODULE_ID_REGEX).c_str(), [&](const httplib::Request &req, httplib::Response &res) {
+        json j;
+        auto name = req.matches[1];
+        if (!_registry.policy_manager()->module_exists(name)) {
+            res.status = 404;
+            j["error"] = "policy does not exists";
+            res.set_content(j.dump(), "text/json");
+            return;
+        }
+        try {
+            auto [policy, lock] = _registry.policy_manager()->module_get_locked(name);
+            policy->info_json(j);
+            res.set_content(j.dump(), "text/json");
+        } catch (const std::exception &e) {
+            res.status = 500;
+            j["error"] = e.what();
+            res.set_content(j.dump(), "text/json");
+        }
+    });
+    _svr.Get(fmt::format("/api/v1/policies/({})/metrics/bucket/(\\d+)", AbstractModule::MODULE_ID_REGEX).c_str(), [&](const httplib::Request &req, httplib::Response &res) {
+        json j;
+        auto name = req.matches[1];
+        if (!_registry.policy_manager()->module_exists(name)) {
+            res.status = 404;
+            j["error"] = "policy does not exist";
+            res.set_content(j.dump(), "text/json");
+            return;
+        }
+        try {
+            auto [policy, lock] = _registry.policy_manager()->module_get_locked(name);
+            uint64_t period(std::stol(req.matches[2]));
+            for (auto &mod : policy->modules()) {
+                auto hmod = dynamic_cast<StreamHandler *>(mod);
+                if (hmod) {
+                    spdlog::stopwatch sw;
+                    hmod->window_json(j[hmod->name()], period, false);
+                    _logger->debug("{} bucket window_json elapsed time: {}", hmod->name(), sw);
+                }
+            }
+            res.set_content(j.dump(), "text/json");
+        } catch (const std::exception &e) {
+            res.status = 500;
+            j["error"] = e.what();
+            res.set_content(j.dump(), "text/json");
+        }
+    });
+    _svr.Get(fmt::format("/api/v1/policies/({})/metrics/window/(\\d+)", AbstractModule::MODULE_ID_REGEX).c_str(), [&](const httplib::Request &req, httplib::Response &res) {
+        json j;
+        auto name = req.matches[1];
+        if (!_registry.policy_manager()->module_exists(name)) {
+            res.status = 404;
+            j["error"] = "policy does not exist";
+            res.set_content(j.dump(), "text/json");
+            return;
+        }
+        try {
+            auto [policy, lock] = _registry.policy_manager()->module_get_locked(name);
+            uint64_t period(std::stol(req.matches[2]));
+            for (auto &mod : policy->modules()) {
+                auto hmod = dynamic_cast<StreamHandler *>(mod);
+                if (hmod) {
+                    spdlog::stopwatch sw;
+                    hmod->window_json(j[hmod->name()], period, true);
+                    _logger->debug("{} bucket window_json elapsed time: {}", hmod->name(), sw);
+                }
+            }
+            res.set_content(j.dump(), "text/json");
+        } catch (const std::exception &e) {
+            res.status = 500;
+            j["error"] = e.what();
+            res.set_content(j.dump(), "text/json");
+        }
+    });
+    _svr.Get(fmt::format("/api/v1/policies/({})/metrics/prometheus", AbstractModule::MODULE_ID_REGEX).c_str(), [&](const httplib::Request &req, httplib::Response &res) {
+        auto name = req.matches[1];
+        if (!_registry.policy_manager()->module_exists(name)) {
+            res.status = 404;
+            res.set_content("policy does not exists", "text/plain");
+            return;
+        }
+        try {
+            std::stringstream output;
+            auto [policy, lock] = _registry.policy_manager()->module_get_locked(name);
+            for (auto &mod : policy->modules()) {
+                auto hmod = dynamic_cast<StreamHandler *>(mod);
+                if (hmod) {
+                    spdlog::stopwatch sw;
+                    hmod->window_prometheus(output, {{"policy", name}, {"module", hmod->name()}});
+                    _logger->debug("{} window_prometheus elapsed time: {}", hmod->name(), sw);
+                }
+            }
+            res.set_content(output.str(), "text/plain");
+        } catch (const std::exception &e) {
+            res.status = 500;
+            res.set_content(e.what(), "text/plain");
+        }
+    });
 }
 
 }

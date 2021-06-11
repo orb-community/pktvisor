@@ -6,5 +6,6 @@ important information.
 
 See the individual READMEs for more information:
 
+* [Mock](mock/)
 * [Packet Capture](pcap/)
 

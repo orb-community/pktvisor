@@ -27,7 +27,8 @@ TEST_CASE("DNS JSON Schema", "[dns][iface][json]")
         stream.config_set("host_spec", "192.168.0.0/24");
         stream.parse_host_spec();
 
-        DnsStreamHandler dns_handler{"dns-test", &stream, 5, 100};
+        visor::Config c;
+        DnsStreamHandler dns_handler{"dns-test", &stream, &c};
         dns_handler.config_set("recorded_stream", true);
 
         dns_handler.start();

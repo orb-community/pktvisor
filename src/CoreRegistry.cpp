@@ -2,13 +2,17 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-#include "CoreManagers.h"
+#include "CoreRegistry.h"
+#include "HandlerManager.h"
+#include "InputStreamManager.h"
+#include "Policies.h"
+#include "Taps.h"
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
 
 namespace visor {
 
-CoreManagers::CoreManagers(HttpServer *svr)
+CoreRegistry::CoreRegistry(HttpServer *svr)
     : _svr(svr)
 {
 
@@ -34,8 +38,8 @@ CoreManagers::CoreManagers(HttpServer *svr)
         for (auto &s : by_alias) {
             InputPluginPtr mod = _input_registry.instantiate(s);
             _logger->info("Load input stream plugin: {} {}", s, mod->pluginInterface());
-            mod->init_module(_input_manager.get(), _svr);
-            _input_plugins.emplace_back(std::move(mod));
+            mod->init_plugin(this, _svr);
+            _input_plugins.insert({s, std::move(mod)});
         }
     }
 
@@ -52,49 +56,60 @@ CoreManagers::CoreManagers(HttpServer *svr)
         for (auto &s : by_alias) {
             HandlerPluginPtr mod = _handler_registry.instantiate(s);
             _logger->info("Load stream handler plugin: {} {}", s, mod->pluginInterface());
-            mod->init_module(_input_manager.get(), _handler_manager.get(), _svr);
-            _handler_plugins.emplace_back(std::move(mod));
+            mod->init_plugin(this, _svr);
+            _handler_plugins.insert({s, std::move(mod)});
         }
     }
 
     // taps
-    _tap_manager = std::make_unique<TapManager>(&_input_registry);
+    _tap_manager = std::make_unique<TapManager>(this);
+    // policies policies
+    _policy_manager = std::make_unique<PolicyManager>(this);
 }
 
-visor::CoreManagers::~CoreManagers()
+void CoreRegistry::stop()
 {
-    // gracefully close all inputs and handlers
-    auto [input_modules, im_lock] = _input_manager->module_get_all_locked();
-    for (auto &[name, mod] : input_modules) {
-        if (mod->running()) {
-            _logger->info("Stopping input instance: {}", mod->name());
-            mod->stop();
-        }
-    }
-    auto [handler_modules, hm_lock] = _handler_manager->module_get_all_locked();
-    for (auto &[name, mod] : handler_modules) {
-        if (mod->running()) {
-            _logger->info("Stopping handler instance: {}", mod->name());
-            mod->stop();
-        }
+    // gracefully stop all policies
+    auto [policies, lock] = _policy_manager->module_get_all_locked();
+    for (auto &[name, policy] : policies) {
+        policy->stop();
     }
 }
 
-void visor::CoreManagers::configure_from_file(const std::string &filename)
+CoreRegistry::~CoreRegistry()
 {
-    YAML::Node config_file = YAML::LoadFile(filename);
+    stop();
+}
 
-    if (!config_file.IsMap() || !config_file["visor"]) {
+void CoreRegistry::configure_from_yaml(YAML::Node &node)
+{
+
+    if (!node.IsMap() || !node["visor"]) {
         throw ConfigException("invalid schema");
     }
-    if (!config_file["version"] || !config_file["version"].IsScalar() || config_file["version"].as<std::string>() != "1.0") {
+    if (!node["version"] || !node["version"].IsScalar() || node["version"].as<std::string>() != "1.0") {
         throw ConfigException("missing or unsupported version");
     }
 
     // taps
-    if (config_file["visor"]["taps"] && config_file["visor"]["taps"].IsMap()) {
-        _tap_manager->load(config_file["visor"]["taps"], true);
+    if (node["visor"]["taps"] && node["visor"]["taps"].IsMap()) {
+        _tap_manager->load(node["visor"]["taps"], true);
     }
+    // policies
+    if (node["visor"]["policies"] && node["visor"]["policies"].IsMap()) {
+        auto policies = _policy_manager->load(node["visor"]["policies"]);
+    }
+}
+
+void CoreRegistry::configure_from_file(const std::string &filename)
+{
+    YAML::Node config = YAML::LoadFile(filename);
+    configure_from_yaml(config);
+}
+void CoreRegistry::configure_from_str(const std::string &str)
+{
+    YAML::Node config = YAML::Load(str);
+    configure_from_yaml(config);
 }
 
 }

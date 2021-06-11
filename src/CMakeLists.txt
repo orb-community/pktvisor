@@ -6,13 +6,15 @@ find_package(Corrade REQUIRED PluginManager)
 set_directory_properties(PROPERTIES CORRADE_USE_PEDANTIC_FLAGS ON)
 
 add_library(visor-core
+        AbstractModule.cpp
         AbstractPlugin.cpp
         InputModulePlugin.cpp
         HandlerModulePlugin.cpp
         GeoDB.cpp
         CoreServer.cpp
-        CoreManagers.cpp
+        CoreRegistry.cpp
         Metrics.cpp
+        Policies.cpp
         Taps.cpp)
 add_library(Visor::Core ALIAS visor-core)
 
@@ -51,6 +53,7 @@ add_executable(unit-tests-vizor-core
         tests/test_metrics.cpp
         tests/test_geoip.cpp
         tests/test_taps.cpp
+        tests/test_policies.cpp
         )
 
 target_include_directories(unit-tests-vizor-core

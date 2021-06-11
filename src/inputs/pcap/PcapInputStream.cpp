@@ -17,7 +17,6 @@
 #include <PcapFileDevice.h>
 #include <SystemUtils.h>
 #pragma GCC diagnostic pop
-#include <Corrade/Utility/Debug.h>
 #include <IpUtils.h>
 #include <arpa/inet.h>
 #include <assert.h>
@@ -57,6 +56,8 @@ static void _packet_arrives_cb(pcpp::RawPacket *rawPacket, [[maybe_unused]] pcpp
 
 static void _pcap_stats_update(pcpp::IPcapDevice::PcapStats &stats, void *cookie)
 {
+    // NOTE this is called from a different thread than the packet and tcp callbacks!
+    // We could avoid this by retrieving the stats manually ourselves in the same thread
     auto stream = static_cast<PcapInputStream *>(cookie);
     stream->process_pcap_stats(stats);
 }
@@ -404,7 +405,7 @@ void PcapInputStream::_get_hosts_from_libpcap_iface()
 
 void PcapInputStream::info_json(json &j) const
 {
-    _common_info_json(j);
+    common_info_json(j);
     json info;
     info["host_ips"] = json::object();
     for (auto &i : _hostIPv4) {

@@ -17,7 +17,7 @@
 
 ## What is pktvisor?
 
-**pktvisor** (pronounced "packet visor") is an **observability tool** for _summarizing_ high volume, information dense
+**pktvisor** (pronounced "packet visor") is an **observability agent** for _summarizing_ high volume, information dense
 data streams down to lightweight, immediately actionable observability data directly at the edge. Its goal is to extract
 the signal from the noise; to separate the needles from the haystacks as close to the source as possible.
 

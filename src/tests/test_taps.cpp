@@ -1,13 +1,13 @@
-#include "CoreManagers.h"
-#include "InputModulePlugin.h"
-#include "inputs/static_plugins.h"
+#include "CoreRegistry.h"
+#include "Taps.h"
 #include <catch2/catch.hpp>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
+#include <yaml-cpp/yaml.h>
 
 using namespace visor;
 
-auto sample_config = R"(
+auto tap_config = R"(
 version: "1.0"
 
 visor:
@@ -26,7 +26,7 @@ visor:
         iface: en0
 )";
 
-auto sample_config_bad = R"(
+auto tap_config_bad = R"(
 version: "1.0"
 
 visor:
@@ -44,27 +44,36 @@ TEST_CASE("Taps", "[taps]")
 
     SECTION("Good Config")
     {
-        CoreManagers mgrs(nullptr);
-        YAML::Node config_file = YAML::Load(sample_config);
+        CoreRegistry registry(nullptr);
+        YAML::Node config_file = YAML::Load(tap_config);
 
         CHECK(config_file["visor"]["taps"]);
         CHECK(config_file["visor"]["taps"].IsMap());
-        CHECK_NOTHROW(mgrs.tap_manager()->load(config_file["visor"]["taps"], true));
+        CHECK_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
 
-        auto [tap, lock] = mgrs.tap_manager()->module_get_locked("wired");
+        auto [tap, lock] = registry.tap_manager()->module_get_locked("wired");
         CHECK(tap->name() == "wired");
         CHECK(tap->config_get<std::string>("iface") == "en7");
         CHECK(tap->config_get<uint64_t>("number") == 123);
         CHECK(tap->config_get<bool>("boolean") == true);
     }
 
+    SECTION("Duplicate")
+    {
+        CoreRegistry registry(nullptr);
+        YAML::Node config_file = YAML::Load(tap_config);
+
+        CHECK_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
+        CHECK_THROWS(registry.tap_manager()->load(config_file["visor"]["taps"], true));
+    }
+
     SECTION("Bad Config")
     {
-        CoreManagers mgrs(nullptr);
-        YAML::Node config_file = YAML::Load(sample_config_bad);
+        CoreRegistry registry(nullptr);
+        YAML::Node config_file = YAML::Load(tap_config_bad);
 
         CHECK(config_file["visor"]["taps"]);
         CHECK(config_file["visor"]["taps"].IsMap());
-        CHECK_THROWS(mgrs.tap_manager()->load(config_file["visor"]["taps"], true));
+        CHECK_THROWS(registry.tap_manager()->load(config_file["visor"]["taps"], true));
     }
 }

@@ -12,7 +12,7 @@ given directly to pktvisor via command line or through the Admin API if availabl
 version: "1.0"
 
 visor:
-  collection:
+  policies:
     # policy name and description
     anycast_dns:
       description: "base anycast DNS policy"
@@ -22,7 +22,7 @@ visor:
         tap: anycast
         # this must match the type of the matching tap name. or application of the policy will fail
         type: pcap
-        filter:
+        config:
           bpf: "port 53"
       # stream handlers to attach to this input stream
       # these decide exactly which data to summarize and expose for collection
@@ -68,9 +68,9 @@ visor:
 
 CRUD on Collection Policies for a running pktvisord instance is possible if the Admin API is active.
 
-`/api/v1/collection`
+`/api/v1/policies`
 
-`/api/v1/collection/:id:`
+`/api/v1/policies/:id:`
 
 ## Standalone Command Line Example
 

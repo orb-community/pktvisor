@@ -4,7 +4,6 @@
 
 #pragma once
 
-
 #include "HandlerModulePlugin.h"
 
 namespace visor::handler::net {
@@ -13,7 +12,7 @@ class NetHandlerModulePlugin : public HandlerModulePlugin
 {
 
 protected:
-    void _setup_routes(HttpServer *svr) override;
+    void setup_routes(HttpServer *svr) override;
 
 public:
     explicit NetHandlerModulePlugin(Corrade::PluginManager::AbstractManager &manager, const std::string &plugin)
@@ -21,6 +20,6 @@ public:
     {
     }
 
+    std::unique_ptr<StreamHandler> instantiate(const std::string &name, InputStream *input_stream, const Configurable *config) override;
 };
 }
-

@@ -5,6 +5,7 @@
 #pragma once
 
 #include "AbstractMetricsManager.h"
+#include "MockInputStream.h"
 #include "PcapInputStream.h"
 #include "StreamHandler.h"
 #include <Corrade/Utility/Debug.h>
@@ -13,6 +14,7 @@
 namespace visor::handler::net {
 
 using namespace visor::input::pcap;
+using namespace visor::input::mock;
 
 class NetworkMetricsBucket final : public visor::AbstractMetricsBucket
 {
@@ -79,7 +81,7 @@ public:
     // visor::AbstractMetricsBucket
     void specialized_merge(const AbstractMetricsBucket &other) override;
     void to_json(json &j) const override;
-    void to_prometheus(std::stringstream &out) const override;
+    void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override;
 
     // must be thread safe as it is called from time window maintenance thread
     void on_set_read_only() override
@@ -95,8 +97,8 @@ public:
 class NetworkMetricsManager final : public visor::AbstractMetricsManager<NetworkMetricsBucket>
 {
 public:
-    NetworkMetricsManager(uint periods, int deepSampleRate)
-        : visor::AbstractMetricsManager<NetworkMetricsBucket>(periods, deepSampleRate)
+    NetworkMetricsManager(const Configurable *window_config)
+        : visor::AbstractMetricsManager<NetworkMetricsBucket>(window_config)
     {
     }
 
@@ -106,7 +108,9 @@ public:
 class NetStreamHandler final : public visor::StreamMetricsHandler<NetworkMetricsManager>
 {
 
-    PcapInputStream *_stream;
+    // the input stream sources we support (only one will be in use at a time)
+    PcapInputStream *_pcap_stream{nullptr};
+    MockInputStream *_mock_stream{nullptr};
 
     sigslot::connection _pkt_connection;
     sigslot::connection _start_tstamp_connection;
@@ -117,7 +121,7 @@ class NetStreamHandler final : public visor::StreamMetricsHandler<NetworkMetrics
     void set_end_tstamp(timespec stamp);
 
 public:
-    NetStreamHandler(const std::string &name, PcapInputStream *stream, uint periods, uint deepSampleRate);
+    NetStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config);
     ~NetStreamHandler() override;
 
     // visor::AbstractModule
@@ -127,11 +131,6 @@ public:
     }
     void start() override;
     void stop() override;
-    void info_json(json &j) const override;
-
-    // visor::StreamHandler
-    void window_json(json &j, uint64_t period, bool merged) override;
-    void window_prometheus(std::stringstream &out) override;
 };
 
 }
