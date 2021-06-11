@@ -136,12 +136,7 @@ TEST_CASE("Policies", "[policies]")
         CHECK(policy->modules()[1]->name() == "default_view-default_dns");
         CHECK(policy->modules()[2]->name() == "default_view-special_domain");
         CHECK(policy->modules()[2]->config_get<std::string>("qname_suffix") == ".mydomain.com");
-        CHECK(!policy->input_stream()->running());
-        CHECK(!policy->modules()[0]->running());
         // TODO check window config settings made it through
-        CHECK(!policy->modules()[1]->running());
-        CHECK(!policy->modules()[2]->running());
-        REQUIRE_NOTHROW(policy->start());
         CHECK(policy->input_stream()->running());
         CHECK(policy->modules()[0]->running());
         CHECK(policy->modules()[1]->running());
@@ -157,7 +152,7 @@ TEST_CASE("Policies", "[policies]")
 
         REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
         REQUIRE_NOTHROW(registry.policy_manager()->load(config_file["visor"]["policies"]));
-        REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["policies"]), "policy creation failed (policy) default_view: module name 'default_view' already exists");
+        REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["policies"]), "policy [default_view] creation failed (policy): module name 'default_view' already exists");
 
         REQUIRE(registry.policy_manager()->module_exists("default_view"));
         auto [policy, lock] = registry.policy_manager()->module_get_locked("default_view");
@@ -195,10 +190,7 @@ TEST_CASE("Policies", "[policies]")
         YAML::Node config_file = YAML::Load(policies_config_bad4);
 
         REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
-        REQUIRE_NOTHROW(registry.policy_manager()->load(config_file["visor"]["policies"]));
-        REQUIRE(registry.policy_manager()->module_exists("default_view"));
-        auto [policy, lock] = registry.policy_manager()->module_get_locked("default_view");
-        REQUIRE_THROWS_WITH(policy->start(), "mock error on start");
+        REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["policies"]), "policy [default_view] failed to start: mock error on start");
     }
 
     SECTION("Roll Back")
@@ -216,7 +208,7 @@ TEST_CASE("Policies", "[policies]")
         auto input_stream = registry.input_plugins()["mock"]->instantiate("mymock", &config);
         auto mod = registry.handler_plugins()["net"]->instantiate("default_view-default_net", input_stream.get(), &config);
         registry.handler_manager()->module_add(std::move(mod));
-        REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["policies"]), "policy creation failed (handler: default_view-default_net) default_view: module name 'default_view-default_net' already exists");
+        REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["policies"]), "policy [default_view-default_net] creation failed (handler: default_view): module name 'default_view-default_net' already exists");
 
         // ensure the modules were rolled back
         REQUIRE(!registry.policy_manager()->module_exists("default_view"));
