@@ -16,9 +16,10 @@ namespace visor::input::pcap {
 void PcapInputModulePlugin::setup_routes(HttpServer *svr)
 {
     // GET
-    svr->Get("/api/v1/inputs/pcap/(\\w+)", std::bind(&PcapInputModulePlugin::_read, this, std::placeholders::_1, std::placeholders::_2));
+    //svr->Get("/api/v1/inputs/pcap/(\\w+)", std::bind(&PcapInputModulePlugin::_read, this, std::placeholders::_1, std::placeholders::_2));
 }
 
+/*
 void PcapInputModulePlugin::_read(const httplib::Request &req, httplib::Response &res)
 {
     json result;
@@ -40,6 +41,7 @@ void PcapInputModulePlugin::_read(const httplib::Request &req, httplib::Response
         res.set_content(result.dump(), "text/json");
     }
 }
+*/
 
 std::unique_ptr<InputStream> PcapInputModulePlugin::instantiate(const std::string name, const Configurable *config)
 {
