@@ -26,7 +26,7 @@ public:
     }
 };
 
-class Policy : public AbstractModule
+class Policy : public AbstractRunnableModule
 {
 
     Tap *_tap;
@@ -35,10 +35,15 @@ class Policy : public AbstractModule
 
 public:
     Policy(const std::string &name, Tap *tap)
-        : AbstractModule(name)
+        : AbstractRunnableModule(name)
         , _tap(tap)
         , _input_stream(nullptr)
     {
+    }
+
+    std::string schema_key() const override
+    {
+        return "policy";
     }
 
     void set_input_stream(InputStream *input_stream)
@@ -62,8 +67,8 @@ public:
     }
 
     // life cycle
-    void start();
-    void stop();
+    void start() override;
+    void stop() override;
 
     void info_json(json &j) const override;
 };

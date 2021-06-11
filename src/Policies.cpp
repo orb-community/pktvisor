@@ -29,7 +29,7 @@ void PolicyManager::load(const YAML::Node &policy_yaml)
             throw PolicyException("expecting policy identifier");
         }
         auto policy_name = it->first.as<std::string>();
-        spdlog::get("visor")->info("policy {}: parsing", policy_name);
+        spdlog::get("visor")->info("policy [{}]: parsing", policy_name);
         if (!it->second.IsMap()) {
             throw PolicyException("expecting policy configuration map");
         }
@@ -78,7 +78,7 @@ void PolicyManager::load(const YAML::Node &policy_yaml)
         std::unique_ptr<InputStream> input_stream;
         std::string input_stream_module_name;
         try {
-            spdlog::get("visor")->info("policy {}: instantiating Tap: {}", policy_name, tap_name);
+            spdlog::get("visor")->info("policy [{}]: instantiating Tap: {}", policy_name, tap_name);
             input_stream = tap->instantiate(policy.get(), &tap_filter);
             input_stream_module_name = input_stream->name();
         } catch (std::runtime_error &e) {
@@ -132,7 +132,7 @@ void PolicyManager::load(const YAML::Node &policy_yaml)
                     throw PolicyException(fmt::format("invalid stream handler config for handler '{}': {}", handler_module_name, e.what()));
                 }
             }
-            spdlog::get("visor")->info("policy {}: instantiating Handler {} of type {}", policy_name, handler_module_name, handler_module_type);
+            spdlog::get("visor")->info("policy [{}]: instantiating Handler {} of type {}", policy_name, handler_module_name, handler_module_type);
             // note, currently merging the handler config with the window config. do they need to be separate?
             handler_config.config_merge(window_config);
             auto handler_module = handler_plugin->second->instantiate(policy_name + "-" + handler_module_name, input_stream.get(), &handler_config);
@@ -179,36 +179,44 @@ void PolicyManager::load(const YAML::Node &policy_yaml)
 
 void Policy::info_json(json &j) const
 {
-    config_json(j["config"]);
-    /*
+    _input_stream->info_json(j["input"][_input_stream->name()]);
     for (auto &mod : _modules) {
+        mod->info_json(j["modules"][mod->name()]);
     }
-     */
 }
 void Policy::start()
 {
+    if (_running) {
+        return;
+    }
     assert(_tap);
     assert(_input_stream);
-    spdlog::get("visor")->info("policy {}: starting", _name);
-    spdlog::get("visor")->info("policy {}: starting input instance: {}", _name, _input_stream->name());
+    spdlog::get("visor")->info("policy [{}]: starting", _name);
+    spdlog::get("visor")->info("policy [{}]: starting input instance: {}", _name, _input_stream->name());
     _input_stream->start();
     for (auto &mod : _modules) {
-        spdlog::get("visor")->info("policy {}: starting handler instance: {}", _name, mod->name());
+        spdlog::get("visor")->info("policy [{}]: starting handler instance: {}", _name, mod->name());
         mod->start();
     }
+    _running = true;
 }
 void Policy::stop()
 {
+    if (!_running) {
+        return;
+    }
+    spdlog::get("visor")->info("policy [{}]: stopping", _name);
     if (_input_stream->running()) {
-        spdlog::get("visor")->info("policy {}: stopping input instance: {}", _name, _input_stream->name());
+        spdlog::get("visor")->info("policy [{}]: stopping input instance: {}", _name, _input_stream->name());
         _input_stream->stop();
     }
     for (auto &mod : _modules) {
         if (mod->running()) {
-            spdlog::get("visor")->info("policy {}: stopping handler instance: {}", _name, mod->name());
+            spdlog::get("visor")->info("policy [{}]: stopping handler instance: {}", _name, mod->name());
             mod->stop();
         }
     }
+    _running = false;
 }
 
 }

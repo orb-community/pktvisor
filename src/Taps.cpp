@@ -23,7 +23,7 @@ void TapManager::load(const YAML::Node &tap_yaml, bool strict)
             throw ConfigException("expecting tap identifier");
         }
         auto tap_name = it->first.as<std::string>();
-        spdlog::get("visor")->info("tap {}: parsing", tap_name);
+        spdlog::get("visor")->info("tap [{}]: parsing", tap_name);
         if (!it->second.IsMap()) {
             throw ConfigException("expecting tap configuration map");
         }

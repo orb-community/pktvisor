@@ -157,7 +157,7 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
     });
     // "default" policy prometheus
     if (!prom_config.path.empty()) {
-        _logger->info("enabling prometheus metrics on: {}", prom_config.path);
+        _logger->info("enabling prometheus metrics for \"default\" policy on: {}", prom_config.path);
         _svr.Get(prom_config.path.c_str(), [&]([[maybe_unused]] const httplib::Request &req, httplib::Response &res) {
             std::stringstream output;
             if (!_registry.policy_manager()->module_exists("default")) {
@@ -185,9 +185,26 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
     _svr.Get(R"(/api/v1/taps)", [&]([[maybe_unused]] const httplib::Request &req, httplib::Response &res) {
         json j;
         try {
-            auto [handler_modules, hm_lock] = _registry.tap_manager()->module_get_all_locked();
-            for (auto &[name, mod] : handler_modules) {
+            auto [tap_modules, hm_lock] = _registry.tap_manager()->module_get_all_locked();
+            for (auto &[name, mod] : tap_modules) {
                 auto tmod = dynamic_cast<Tap *>(mod.get());
+                if (tmod) {
+                    tmod->info_json(j[tmod->name()]);
+                }
+            }
+            res.set_content(j.dump(), "text/json");
+        } catch (const std::exception &e) {
+            res.status = 500;
+            res.set_content(e.what(), "text/plain");
+        }
+    });
+    // Policies
+    _svr.Get(R"(/api/v1/policies)", [&]([[maybe_unused]] const httplib::Request &req, httplib::Response &res) {
+        json j;
+        try {
+            auto [policy_modules, hm_lock] = _registry.policy_manager()->module_get_all_locked();
+            for (auto &[name, mod] : policy_modules) {
+                auto tmod = dynamic_cast<Policy *>(mod.get());
                 if (tmod) {
                     tmod->info_json(j[tmod->name()]);
                 }
