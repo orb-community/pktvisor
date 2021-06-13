@@ -7,3 +7,4 @@ Dockerfile
 appimage/Dockerfile.part
 appimage/export.sh
 appimage/Makefile
+localconfig/*

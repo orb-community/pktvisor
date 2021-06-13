@@ -6,6 +6,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -27,6 +28,7 @@ var (
 	refreshPeriod = 1 // seconds
 	currentView   = "main"
 	serverVersion = ""
+	protocol      = "http"
 )
 
 func main() {
@@ -40,9 +42,13 @@ Usage:
 Options:
   -p PORT               Query pktvisord metrics webserver on the given port [default: 10853]
   -H HOST               Query pktvisord metrics webserver on the given host [default: localhost]
+  --tls					Use TLS to communicate with pktvisord metrics webserver
+  --tls-noverify		Do not verify TLS certificate
   -h                    Show this screen
   --version             Show client version`
 
+	wantTLS := flag.Bool("tls", false, "Use TLS to communicate with pktvisord metrics webserver")
+	wantTLSNoVerify := flag.Bool("tls-noverify", false, "Use TLS to communicate with pktvisord metrics webserver, do not verify TLS certificate")
 	wantVersion := flag.Bool("version", false, "Show client version")
 	wantHelp := flag.Bool("h", false, "Show help")
 	fPort := flag.Int("p", 10853, "Query pktvisord metrics webserver on the given port")
@@ -61,7 +67,15 @@ Options:
 	statHost = *fHost
 
 	var appMetrics client.AppMetrics
-	err := getMetrics(fmt.Sprintf("http://%s:%d/api/v1/metrics/app", statHost, statPort), &appMetrics)
+
+	if *wantTLS || *wantTLSNoVerify {
+		protocol = "https"
+		if *wantTLSNoVerify {
+			http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+		}
+	}
+	URL := fmt.Sprintf("%s://%s:%d/api/v1/metrics/app", protocol, statHost, statPort)
+	err := getMetrics(URL, &appMetrics)
 	if err != nil {
 		log.Panicln(err)
 	}
@@ -114,7 +128,7 @@ func updateHeader(v *gocui.View, window5m *client.StatSnapshot) {
 		pcounts.DeepSamples,
 		(float64(pcounts.DeepSamples)/float64(pcounts.Total))*100,
 	)
-	_, _ = fmt.Fprintf(v, "Pkt Rates Total %d/s %d/%d/%d/%d pps | In %d/s %d/%d/%d/%d pps | Out %d/s %d/%d/%d/%d pps | IP Card. In: %d | Out: %d\n\n",
+	_, _ = fmt.Fprintf(v, "Pkt Rates Total %d/s %d/%d/%d/%d pps | In %d/s %d/%d/%d/%d pps | Out %d/s %d/%d/%d/%d pps | IP Card. In: %d | Out: %d | TCP Errors %d | OS Drops %d | IF Drops %d\n\n",
 		pcounts.Rates.Pps_total.Live,
 		pcounts.Rates.Pps_total.P50,
 		pcounts.Rates.Pps_total.P90,
@@ -132,6 +146,10 @@ func updateHeader(v *gocui.View, window5m *client.StatSnapshot) {
 		pcounts.Rates.Pps_out.P99,
 		pcounts.Cardinality.SrcIpsIn,
 		pcounts.Cardinality.DstIpsOut,
+		window5m.Pcap.TcpReassemblyErrors,
+		window5m.Pcap.OsDrops,
+		window5m.Pcap.IfDrops,
+
 	)
 	dnsc := window5m.DNS.WirePackets
 	_, _ = fmt.Fprintf(v, "DNS Wire Pkts %d (%3.1f%%) | Rates Total %d/s %d/%d/%d/%d | UDP %d (%3.1f%%) | TCP %d (%3.1f%%) | IPv4 %d (%3.1f%%) | IPv6 %d (%3.1f%%) | Query %d (%3.1f%%) | Response %d (%3.1f%%)\n",
@@ -452,7 +470,7 @@ func quit(g *gocui.Gui, v *gocui.View) error {
 
 func getMetrics(url string, payload interface{}) error {
 	spaceClient := http.Client{
-		Timeout: time.Second * 2, // Maximum of 2 secs
+		Timeout: time.Second * 30,
 	}
 
 	req, err := http.NewRequest(http.MethodGet, url, nil)
@@ -477,7 +495,7 @@ func getMetrics(url string, payload interface{}) error {
 
 func getStats() (*client.StatSnapshot, error) {
 	var rawStats map[string]client.StatSnapshot
-	err := getMetrics(fmt.Sprintf("http://%s:%d/api/v1/metrics/window/5", statHost, statPort), &rawStats)
+	err := getMetrics(fmt.Sprintf("%s://%s:%d/api/v1/metrics/window/5", protocol, statHost, statPort), &rawStats)
 	if err != nil {
 		return nil, err
 	}

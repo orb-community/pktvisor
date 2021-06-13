@@ -4,48 +4,91 @@
 
 #pragma once
 
+#define CPPHTTPLIB_OPENSSL_SUPPORT
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wold-style-cast"
 #include <httplib.h>
+#pragma GCC diagnostic pop
 #include <spdlog/spdlog.h>
 
 namespace visor {
-class HttpServer : public httplib::Server
+
+using namespace httplib;
+
+struct HttpConfig {
+    bool read_only{true};
+    bool tls_enabled{false};
+    std::string cert;
+    std::string key;
+};
+
+class HttpServer
 {
-    bool _read_only = true;
+    HttpConfig _config;
+    std::unique_ptr<httplib::Server> _svr;
 
 public:
-    HttpServer(bool read_only)
-        : _read_only(read_only)
+    HttpServer(const HttpConfig &config)
+        : _config(config)
     {
+        if (config.tls_enabled) {
+            _svr = std::make_unique<httplib::SSLServer>(config.cert.c_str(), config.key.c_str());
+            if (!_svr->is_valid()) {
+                throw std::runtime_error("invalid TLS configuration");
+            }
+        } else {
+            _svr = std::make_unique<httplib::Server>();
+        }
     }
 
-    Server &Get(const char *pattern, Handler handler)
+    void set_logger(Logger logger)
+    {
+        _svr->set_logger(std::move(logger));
+    }
+
+    bool bind_to_port(const char *host, int port, int socket_flags = 0)
+    {
+        return _svr->bind_to_port(host, port, socket_flags);
+    }
+
+    bool listen_after_bind()
+    {
+        return _svr->listen_after_bind();
+    }
+
+    void stop()
+    {
+        _svr->stop();
+    }
+
+    Server &Get(const char *pattern, Server::Handler handler)
     {
         spdlog::get("pktvisor")->info("Registering GET {}", pattern);
-        return httplib::Server::Get(pattern, handler);
+        return _svr->Get(pattern, handler);
     }
-    Server &Post(const char *pattern, Handler handler)
+    Server &Post(const char *pattern, Server::Handler handler)
     {
-        if (_read_only) {
-            return *this;
+        if (_config.read_only) {
+            return *_svr;
         }
         spdlog::get("pktvisor")->info("Registering POST {}", pattern);
-        return httplib::Server::Post(pattern, handler);
+        return _svr->Post(pattern, handler);
     }
-    Server &Put(const char *pattern, Handler handler)
+    Server &Put(const char *pattern, Server::Handler handler)
     {
-        if (_read_only) {
-            return *this;
+        if (_config.read_only) {
+            return *_svr;
         }
         spdlog::get("pktvisor")->info("Registering PUT {}", pattern);
-        return httplib::Server::Put(pattern, handler);
+        return _svr->Put(pattern, handler);
     }
-    Server &Delete(const char *pattern, Handler handler)
+    Server &Delete(const char *pattern, Server::Handler handler)
     {
-        if (_read_only) {
-            return *this;
+        if (_config.read_only) {
+            return *_svr;
         }
         spdlog::get("pktvisor")->info("Registering DELETE {}", pattern);
-        return httplib::Server::Delete(pattern, handler);
+        return _svr->Delete(pattern, handler);
     }
 };
 }

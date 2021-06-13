@@ -374,7 +374,12 @@ void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, pcpp::Pro
         return;
     }
 
-    payload.parseResources(true);
+    _dns_topUDPPort.update(port);
+
+    auto success = payload.parseResources(true);
+    if (!success) {
+        return;
+    }
 
     if (payload.getDnsHeader()->queryOrResponse == response) {
         _dns_topRCode.update(payload.getDnsHeader()->responseCode);
@@ -409,7 +414,6 @@ void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, pcpp::Pro
         }
     }
 
-    _dns_topUDPPort.update(port);
 }
 
 void DnsMetricsBucket::new_dns_transaction(bool deep, float to90th, float from90th, DnsLayer &dns, PacketDirection dir, DnsTransaction xact)
