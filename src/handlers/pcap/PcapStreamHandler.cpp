@@ -106,6 +106,14 @@ void PcapMetricsBucket::process_pcap_tcp_reassembly_error([[maybe_unused]] bool 
 void PcapMetricsBucket::process_pcap_stats(const pcpp::IPcapDevice::PcapStats &stats)
 {
     std::unique_lock lock(_mutex);
+
+    // pcap keeps monotonic counters, so at the start of every new bucket we have to record
+    // the current pcap value and then keep track of differences.
+    if (_counters.pcap_last_os_drop == std::numeric_limits<uint64_t>::max() || _counters.pcap_last_if_drop == std::numeric_limits<uint64_t>::max()) {
+        _counters.pcap_last_os_drop = stats.packetsDrop;
+        _counters.pcap_last_if_drop = stats.packetsDropByInterface;
+        return;
+    }
     if (stats.packetsDrop > _counters.pcap_last_os_drop) {
         _counters.pcap_os_drop += stats.packetsDrop - _counters.pcap_last_os_drop;
         _counters.pcap_last_os_drop = stats.packetsDrop;

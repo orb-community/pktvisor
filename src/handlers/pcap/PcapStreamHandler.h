@@ -8,6 +8,7 @@
 #include "PcapInputStream.h"
 #include "StreamHandler.h"
 #include <Corrade/Utility/Debug.h>
+#include <limits>
 #include <string>
 
 namespace visor::handler::pcap {
@@ -26,10 +27,10 @@ protected:
         Counter pcap_TCP_reassembly_errors;
 
         Counter pcap_os_drop;
-        uint64_t pcap_last_os_drop{0};
+        uint64_t pcap_last_os_drop{std::numeric_limits<uint64_t>::max()};
 
         Counter pcap_if_drop;
-        uint64_t pcap_last_if_drop{0};
+        uint64_t pcap_last_if_drop{std::numeric_limits<uint64_t>::max()};
 
         counters()
             : pcap_TCP_reassembly_errors("pcap", {"tcp_reassembly_errors"}, "Count of TCP reassembly errors")
