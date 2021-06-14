@@ -37,6 +37,25 @@ void DnsStreamHandler::start()
         return;
     }
 
+    // Setup Filters
+    if (config_exists("filter_exclude_noerror") && config_get<bool>("filter_exclude_noerror")) {
+        _f_excluding_rcode = true;
+        _f_rcode = NoError;
+    } else if (config_exists("filter_only_rcode")) {
+        auto want_code = config_get<uint64_t>("filter_only_rcode");
+        switch (want_code) {
+        case NoError:
+        case NXDomain:
+        case SrvFail:
+        case Refused:
+            _f_only_rcode = true;
+            _f_rcode = want_code;
+            break;
+        default:
+            throw ConfigException("filter_only_rcode contained an invalid/unsupported rcode");
+        }
+    }
+
     if (config_exists("recorded_stream")) {
         _metrics->set_recorded_stream();
     }
@@ -71,10 +90,6 @@ void DnsStreamHandler::stop()
     _running = false;
 }
 
-DnsStreamHandler::~DnsStreamHandler()
-{
-}
-
 // callback from input module
 void DnsStreamHandler::process_udp_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp)
 {
@@ -93,7 +108,9 @@ void DnsStreamHandler::process_udp_packet_cb(pcpp::Packet &payload, PacketDirect
     }
     if (metric_port) {
         DnsLayer dnsLayer(udpLayer, &payload);
-        _metrics->process_dns_layer(dnsLayer, dir, l3, pcpp::UDP, flowkey, metric_port, stamp);
+        if (!_filtering(dnsLayer, dir, l3, pcpp::UDP, metric_port, stamp)) {
+            _metrics->process_dns_layer(dnsLayer, dir, l3, pcpp::UDP, flowkey, metric_port, stamp);
+        }
     }
 }
 
@@ -169,7 +186,9 @@ void DnsStreamHandler::tcp_message_ready_cb(int8_t side, const pcpp::TcpStreamDa
         // instead using the packet meta data we pass in
         pcpp::Packet dummy_packet;
         DnsLayer dnsLayer(data.get(), size, nullptr, &dummy_packet);
-        _metrics->process_dns_layer(dnsLayer, dir, l3Type, pcpp::TCP, flowKey, port, stamp);
+        if (!_filtering(dnsLayer, dir, l3Type, pcpp::UDP, port, stamp)) {
+            _metrics->process_dns_layer(dnsLayer, dir, l3Type, pcpp::TCP, flowKey, port, stamp);
+        }
         // data is freed upon return
     };
 
@@ -225,6 +244,18 @@ void DnsStreamHandler::info_json(json &j) const
     common_info_json(j);
     j[schema_key()]["xact"]["open"] = _metrics->num_open_transactions();
 }
+bool DnsStreamHandler::_filtering(DnsLayer &payload, [[maybe_unused]] PacketDirection dir, [[maybe_unused]] pcpp::ProtocolType l3, [[maybe_unused]] pcpp::ProtocolType l4, [[maybe_unused]] uint16_t port, timespec stamp)
+{
+    if (_f_excluding_rcode && payload.getDnsHeader()->responseCode == _f_rcode) {
+        goto will_filter;
+    } else if (_f_only_rcode && payload.getDnsHeader()->responseCode != _f_rcode) {
+        goto will_filter;
+    }
+    return false;
+will_filter:
+    _metrics->process_filtered(stamp);
+    return true;
+}
 
 void DnsMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
 {
@@ -248,6 +279,8 @@ void DnsMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
     _counters.REFUSED += other._counters.REFUSED;
     _counters.SRVFAIL += other._counters.SRVFAIL;
     _counters.NOERROR += other._counters.NOERROR;
+
+    _counters.filtered += other._counters.filtered;
 
     _dnsXactFromTimeUs.merge(other._dnsXactFromTimeUs);
     _dnsXactToTimeUs.merge(other._dnsXactToTimeUs);
@@ -288,6 +321,8 @@ void DnsMetricsBucket::to_json(json &j) const
     _counters.REFUSED.to_json(j);
     _counters.SRVFAIL.to_json(j);
     _counters.NOERROR.to_json(j);
+
+    _counters.filtered.to_json(j);
 
     _dns_qnameCard.to_json(j);
     _counters.xacts_total.to_json(j);
@@ -406,7 +441,6 @@ void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, pcpp::Pro
             _dns_topQname3.update(std::string(aggDomain.second));
         }
     }
-
 }
 
 void DnsMetricsBucket::new_dns_transaction(bool deep, float to90th, float from90th, DnsLayer &dns, PacketDirection dir, DnsTransaction xact)
@@ -466,6 +500,8 @@ void DnsMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap ad
     _counters.SRVFAIL.to_prometheus(out, add_labels);
     _counters.NOERROR.to_prometheus(out, add_labels);
 
+    _counters.filtered.to_prometheus(out, add_labels);
+
     _dns_qnameCard.to_prometheus(out, add_labels);
     _counters.xacts_total.to_prometheus(out, add_labels);
     _counters.xacts_timed_out.to_prometheus(out, add_labels);
@@ -500,6 +536,11 @@ void DnsMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap ad
         }
     });
 }
+void DnsMetricsBucket::process_filtered()
+{
+    std::unique_lock lock(_mutex);
+    ++_counters.filtered;
+}
 
 // the general metrics manager entry point (both UDP and TCP)
 void DnsMetricsManager::process_dns_layer(DnsLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowkey, uint16_t port, timespec stamp)
@@ -517,6 +558,12 @@ void DnsMetricsManager::process_dns_layer(DnsLayer &payload, PacketDirection dir
     } else {
         _qr_pair_manager.start_transaction(flowkey, payload.getDnsHeader()->transactionID, stamp);
     }
+}
+void DnsMetricsManager::process_filtered(timespec stamp)
+{
+    // base event
+    new_event(stamp);
+    live_bucket()->process_filtered();
 }
 
 }

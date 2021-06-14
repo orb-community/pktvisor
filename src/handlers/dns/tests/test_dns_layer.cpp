@@ -252,3 +252,30 @@ TEST_CASE("Parse DNS random UDP/TCP tests", "[pcap][net]")
     CHECK(j["top_qtype"][6]["name"] == "TXT");
     CHECK(j["top_qtype"][6]["estimate"] == 620);
 }
+
+TEST_CASE("DNS Filters: filter_exclude_noerror", "[pcap][net]")
+{
+
+    PcapInputStream stream{"pcap-test"};
+    stream.config_set("pcap_file", "tests/fixtures/dns_udp_tcp_random.pcap");
+    stream.config_set("bpf", "");
+    stream.config_set("host_spec", "192.168.0.0/24");
+    stream.parse_host_spec();
+
+    visor::Config c;
+    c.config_set<uint64_t>("num_periods", 1);
+    DnsStreamHandler dns_handler{"dns-test", &stream, &c};
+
+    dns_handler.config_set<bool>("filter_exclude_noerror", true);
+
+    dns_handler.start();
+    stream.start();
+    stream.stop();
+    dns_handler.stop();
+
+    auto counters = dns_handler.metrics()->bucket(0)->counters();
+    REQUIRE(counters.filtered.value() == 5851);
+    nlohmann::json j;
+    dns_handler.metrics()->bucket(0)->to_json(j);
+    REQUIRE(j["wire_packets"]["filtered"] == 5851);
+}

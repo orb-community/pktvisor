@@ -841,7 +841,8 @@
             "srvfail",
             "tcp",
             "total",
-            "udp"
+            "udp",
+            "filtered"
           ],
           "properties": {
             "deep_samples": {
@@ -958,6 +959,16 @@
               "$id": "#/properties/dns/properties/wire_packets/properties/udp",
               "type": "integer",
               "title": "The udp schema",
+              "description": "An explanation about the purpose of this instance.",
+              "default": 0,
+              "examples": [
+                2971
+              ]
+            },
+            "filtered": {
+              "$id": "#/properties/dns/properties/wire_packets/properties/filtered",
+              "type": "integer",
+              "title": "The filtered schema",
               "description": "An explanation about the purpose of this instance.",
               "default": 0,
               "examples": [
