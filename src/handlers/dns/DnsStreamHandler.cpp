@@ -561,8 +561,8 @@ void DnsMetricsManager::process_dns_layer(DnsLayer &payload, PacketDirection dir
 }
 void DnsMetricsManager::process_filtered(timespec stamp)
 {
-    // base event
-    new_event(stamp);
+    // base event, no sample
+    new_event(stamp, false);
     live_bucket()->process_filtered();
 }
 

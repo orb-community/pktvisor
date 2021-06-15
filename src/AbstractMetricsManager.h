@@ -284,16 +284,18 @@ public:
 protected:
     /**
      * the "base" event method that should be called on every event before specialized event functionality. sampling will be
-     * chosen, and the time window will be maintained
+     * (optionally) chosen, and the time window will be maintained
      *
      * @param stamp time stamp of the event
      */
-    void new_event(timespec stamp)
+    void new_event(timespec stamp, bool sample = true)
     {
         // CRITICAL EVENT PATH
-        _deep_sampling_now.store(true, std::memory_order_relaxed);
-        if (_deep_sample_rate != 100) {
-            _deep_sampling_now.store((_rng.uniform(0U, 100U) <= _deep_sample_rate), std::memory_order_relaxed);
+        if (sample) {
+            _deep_sampling_now.store(true, std::memory_order_relaxed);
+            if (_deep_sample_rate != 100) {
+                _deep_sampling_now.store((_rng.uniform(0U, 100U) <= _deep_sample_rate), std::memory_order_relaxed);
+            }
         }
         std::shared_lock rlb(_base_mutex);
         bool will_shift = _num_periods > 1 && stamp.tv_sec >= _next_shift_tstamp.tv_sec;
