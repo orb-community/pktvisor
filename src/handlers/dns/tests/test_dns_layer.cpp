@@ -361,7 +361,7 @@ TEST_CASE("DNS Filters: filter_only_qname_suffix", "[pcap][net]")
 
     // notice, case insensitive
     dns_handler.config_set<visor::Configurable::StringList>("filter_only_qname_suffix", {"GooGle.com"});
-    / dns_handler.start();
+    dns_handler.start();
     stream.start();
     stream.stop();
     dns_handler.stop();
