@@ -39,7 +39,7 @@ void DnsStreamHandler::start()
 
     // Setup Filters
     if (config_exists("filter_exclude_noerror") && config_get<bool>("filter_exclude_noerror")) {
-        _f_excluding_rcode = true;
+        _f_enabled.set(Filters::ExcludingRCode);
         _f_rcode = NoError;
     } else if (config_exists("filter_only_rcode")) {
         auto want_code = config_get<uint64_t>("filter_only_rcode");
@@ -48,11 +48,23 @@ void DnsStreamHandler::start()
         case NXDomain:
         case SrvFail:
         case Refused:
-            _f_only_rcode = true;
+            _f_enabled.set(Filters::OnlyRCode);
             _f_rcode = want_code;
             break;
         default:
             throw ConfigException("filter_only_rcode contained an invalid/unsupported rcode");
+        }
+    }
+    if (config_exists("filter_only_qname_suffix")) {
+        _f_enabled.set(Filters::OnlyQNameSuffix);
+        for (const auto &qname : config_get<StringList>("filter_only_qname_suffix")) {
+            // note, this currently copies the strings, meaning there could be a big list that is duplicated
+            // we can work on trying to make this a string_view instead
+            // we copy it out so that we don't have to hit the config mutex
+            std::string qname_ci{qname};
+            std::transform(qname_ci.begin(), qname_ci.end(), qname_ci.begin(),
+                [](unsigned char c) { return std::tolower(c); });
+            _f_qnames.emplace_back(std::move(qname_ci));
         }
     }
 
@@ -244,13 +256,35 @@ void DnsStreamHandler::info_json(json &j) const
     common_info_json(j);
     j[schema_key()]["xact"]["open"] = _metrics->num_open_transactions();
 }
+static inline bool endsWith(std::string_view str, std::string_view suffix)
+{
+    return str.size() >= suffix.size() && 0 == str.compare(str.size() - suffix.size(), suffix.size(), suffix);
+}
 bool DnsStreamHandler::_filtering(DnsLayer &payload, [[maybe_unused]] PacketDirection dir, [[maybe_unused]] pcpp::ProtocolType l3, [[maybe_unused]] pcpp::ProtocolType l4, [[maybe_unused]] uint16_t port, timespec stamp)
 {
-    if (_f_excluding_rcode && payload.getDnsHeader()->responseCode == _f_rcode) {
+    if (_f_enabled.test(Filters::ExcludingRCode) && payload.getDnsHeader()->responseCode == _f_rcode) {
         goto will_filter;
-    } else if (_f_only_rcode && payload.getDnsHeader()->responseCode != _f_rcode) {
+    } else if (_f_enabled.test(Filters::OnlyRCode) && payload.getDnsHeader()->responseCode != _f_rcode) {
         goto will_filter;
     }
+    if (_f_enabled.test(Filters::OnlyQNameSuffix)) {
+        if (!payload.parseResources(true) || payload.getFirstQuery() == nullptr) {
+            goto will_filter;
+        }
+        // we need an all lower case version of this, we can't get away without making a copy
+        std::string qname_ci{payload.getFirstQuery()->getName()};
+        std::transform(qname_ci.begin(), qname_ci.end(), qname_ci.begin(),
+            [](unsigned char c) { return std::tolower(c); });
+        for (auto fqn : _f_qnames) {
+            // if it matched, we know we are not filtering
+            if (endsWith(qname_ci, fqn)) {
+                goto will_not_filter;
+            }
+        }
+        // checked the whole list and none of them matched: filter
+        goto will_filter;
+    }
+will_not_filter:
     return false;
 will_filter:
     _metrics->process_filtered(stamp);
@@ -565,5 +599,4 @@ void DnsMetricsManager::process_filtered(timespec stamp)
     new_event(stamp, false);
     live_bucket()->process_filtered();
 }
-
 }

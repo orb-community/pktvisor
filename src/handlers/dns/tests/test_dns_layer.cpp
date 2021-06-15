@@ -345,3 +345,31 @@ TEST_CASE("DNS Filters: filter_only_rcode refused", "[pcap][net]")
     dns_handler.metrics()->bucket(0)->to_json(j);
     REQUIRE(j["wire_packets"]["filtered"] == 23);
 }
+
+TEST_CASE("DNS Filters: filter_only_qname_suffix", "[pcap][net]")
+{
+
+    PcapInputStream stream{"pcap-test"};
+    stream.config_set("pcap_file", "tests/fixtures/dns_udp_mixed_rcode.pcap");
+    stream.config_set("bpf", "");
+    stream.config_set("host_spec", "192.168.0.0/24");
+    stream.parse_host_spec();
+
+    visor::Config c;
+    c.config_set<uint64_t>("num_periods", 1);
+    DnsStreamHandler dns_handler{"dns-test", &stream, &c};
+
+    // notice, case insensitive
+    dns_handler.config_set<visor::Configurable::StringList>("filter_only_qname_suffix", {"GooGle.com"});
+    / dns_handler.start();
+    stream.start();
+    stream.stop();
+    dns_handler.stop();
+
+    auto counters = dns_handler.metrics()->bucket(0)->counters();
+    CHECK(counters.NOERROR.value() == 4);
+    CHECK(counters.SRVFAIL.value() == 0);
+    CHECK(counters.REFUSED.value() == 0);
+    CHECK(counters.NX.value() == 1);
+    CHECK(counters.filtered.value() == 14);
+}

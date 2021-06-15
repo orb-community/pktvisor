@@ -11,6 +11,7 @@
 #include "dns.h"
 #include "querypairmgr.h"
 #include <Corrade/Utility/Debug.h>
+#include <bitset>
 #include <limits>
 #include <string>
 
@@ -231,9 +232,15 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
     void set_end_tstamp(timespec stamp);
 
     // DNS Filters
-    bool _f_excluding_rcode{false};
-    bool _f_only_rcode{false};
+    enum Filters {
+        ExcludingRCode,
+        OnlyRCode,
+        OnlyQNameSuffix
+    };
+    std::bitset<sizeof(Filters)> _f_enabled;
     uint16_t _f_rcode{0};
+    std::vector<std::string> _f_qnames;
+
     bool _filtering(DnsLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint16_t port, timespec stamp);
 
 public:
