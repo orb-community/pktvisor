@@ -11,6 +11,8 @@
 #include "dns.h"
 #include "querypairmgr.h"
 #include <Corrade/Utility/Debug.h>
+#include <bitset>
+#include <limits>
 #include <string>
 
 namespace visor::handler::dns {
@@ -54,6 +56,7 @@ protected:
         Counter REFUSED;
         Counter SRVFAIL;
         Counter NOERROR;
+        Counter filtered;
         counters()
             : xacts_total("dns", {"xact", "counts", "total"}, "Total DNS transactions (query/reply pairs)")
             , xacts_in("dns", {"xact", "in", "total"}, "Total ingress DNS transactions (host is server)")
@@ -69,6 +72,7 @@ protected:
             , REFUSED("dns", {"wire_packets", "refused"}, "Total DNS wire packets flagged as reply with return code REFUSED (ingress and egress)")
             , SRVFAIL("dns", {"wire_packets", "srvfail"}, "Total DNS wire packets flagged as reply with return code SRVFAIL (ingress and egress)")
             , NOERROR("dns", {"wire_packets", "noerror"}, "Total DNS wire packets flagged as reply with return code NOERROR (ingress and egress)")
+            , filtered("dns", {"wire_packets", "filtered"}, "Total DNS wire packets seen that did not match the configured filter(s) (if any)")
         {
         }
     };
@@ -124,6 +128,7 @@ public:
     void to_json(json &j) const override;
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override;
 
+    void process_filtered();
     void process_dns_layer(bool deep, DnsLayer &payload, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint16_t port);
 
     void new_dns_transaction(bool deep, float to90th, float from90th, DnsLayer &dns, PacketDirection dir, DnsTransaction xact);
@@ -133,8 +138,8 @@ class DnsMetricsManager final : public visor::AbstractMetricsManager<DnsMetricsB
 {
 
     QueryResponsePairMgr _qr_pair_manager;
-    float _to90th = 0.0;
-    float _from90th = 0.0;
+    float _to90th{0.0};
+    float _from90th{0.0};
 
 public:
     DnsMetricsManager(const Configurable *window_config)
@@ -164,6 +169,7 @@ public:
         return _qr_pair_manager.open_transaction_count();
     }
 
+    void process_filtered(timespec stamp);
     void process_dns_layer(DnsLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowkey, uint16_t port, timespec stamp);
 };
 
@@ -225,9 +231,21 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
     void set_start_tstamp(timespec stamp);
     void set_end_tstamp(timespec stamp);
 
+    // DNS Filters
+    enum Filters {
+        ExcludingRCode,
+        OnlyRCode,
+        OnlyQNameSuffix
+    };
+    std::bitset<sizeof(Filters)> _f_enabled;
+    uint16_t _f_rcode{0};
+    std::vector<std::string> _f_qnames;
+
+    bool _filtering(DnsLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint16_t port, timespec stamp);
+
 public:
     DnsStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config);
-    ~DnsStreamHandler() override;
+    ~DnsStreamHandler() = default;
 
     // visor::AbstractModule
     std::string schema_key() const override

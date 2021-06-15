@@ -13,6 +13,7 @@
 #include <string>
 #include <unordered_map>
 #include <variant>
+#include <vector>
 #include <yaml-cpp/yaml.h>
 
 namespace visor {
@@ -30,8 +31,11 @@ public:
 
 class Configurable
 {
+public:
+    typedef std::vector<std::string> StringList;
+
 private:
-    std::unordered_map<std::string, std::variant<std::string, uint64_t, bool>> _config;
+    std::unordered_map<std::string, std::variant<std::string, uint64_t, bool, StringList>> _config;
     mutable std::shared_mutex _config_mutex;
 
 public:
