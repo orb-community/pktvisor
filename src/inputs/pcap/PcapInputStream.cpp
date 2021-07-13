@@ -101,7 +101,9 @@ void PcapInputStream::start()
 
     // live capture
     assert(config_exists("iface"));
-    assert(config_exists("bpf"));
+    if (!config_exists("bpf")) {
+        config_set("bpf", "");
+    }
     parse_host_spec();
     std::string TARGET(config_get<std::string>("iface"));
     pcpp::IPv4Address interfaceIP4(TARGET);
@@ -363,7 +365,7 @@ void PcapInputStream::_open_libpcap_iface(const std::string &bpfFilter)
 
     // start capturing packets with stats info
     if (!_pcapDevice->startCapture(_packet_arrives_cb, this, 1, _pcap_stats_update, this)) {
-        throw PcapException("Cannot a start packet capture");
+        throw PcapException("Packet capture failed to start");
     }
 }
 
