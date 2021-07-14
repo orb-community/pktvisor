@@ -129,6 +129,11 @@ int main(int argc, char *argv[])
         stream_mgr_lock.unlock();
         auto pcap_stream = dynamic_cast<input::pcap::PcapInputStream *>(input_stream_);
 
+        shutdown_handler = [&]([[maybe_unused]] int signal) {
+            pcap_stream->stop();
+            logger->flush();
+        };
+
         handler::net::NetStreamHandler *net_handler{nullptr};
         {
             auto handler_module = std::make_unique<handler::net::NetStreamHandler>("net", pcap_stream, &window_config);
