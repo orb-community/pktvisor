@@ -15,7 +15,6 @@ Grafana installation (ID 14221).
 
 Example:
 
-**PKTVISORD_ARGS requires a semicolon delimited list of arguments*
 ```shell
 docker pull ns1labs/pktvisor-prom-write
 docker run -d --net=host --env PKTVISORD_ARGS="--prom-instance <INSTANCE> <INTERFACE>" \
@@ -29,6 +28,17 @@ Example with Geo enabled (assuming files are located in `/usr/local/geo`):
 docker pull ns1labs/pktvisor-prom-write
 docker run -d --mount type=bind,source=/usr/local/geo,target=/geo --net=host --env \
 PKTVISORD_ARGS="--prom-instance <INSTANCE> --geo-city /geo/GeoIP2-City.mmdb --geo-asn /geo/GeoIP2-ISP.mmdb <INTERFACE>" \
+--env REMOTE_URL="https://<REMOTEHOST>/api/prom/push" --env USERNAME="<USERNAME>" --env PASSWORD="<PASSWORD>" ns1labs/pktvisor-prom-write
+```
+
+**PKTVISORD_ARGS optionally allows a semicolon delimited list of arguments to handle arguments such as bpf filters that may contain whitespace*
+
+Example with Geo enabled with bpf filter (assuming files are located in `/usr/local/geo`):
+
+```shell
+docker pull ns1labs/pktvisor-prom-write
+docker run -d --mount type=bind,source=/usr/local/geo,target=/geo --net=host --env \
+PKTVISORD_ARGS="-b; port 53; --prom-instance; <INSTANCE>; --geo-city; /geo/GeoIP2-City.mmdb; --geo-asn; /geo/GeoIP2-ISP.mmdb; <INTERFACE>" \
 --env REMOTE_URL="https://<REMOTEHOST>/api/prom/push" --env USERNAME="<USERNAME>" --env PASSWORD="<PASSWORD>" ns1labs/pktvisor-prom-write
 ```
 
