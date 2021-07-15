@@ -18,7 +18,7 @@ Example:
 **PKTVISORD_ARGS requires a semicolon delimited list of arguments*
 ```shell
 docker pull ns1labs/pktvisor-prom-write
-docker run -d --net=host --env PKTVISORD_ARGS="--prom-instance; <INSTANCE>; <INTERFACE>" \
+docker run -d --net=host --env PKTVISORD_ARGS="--prom-instance <INSTANCE> <INTERFACE>" \
 --env REMOTE_URL="https://<REMOTEHOST>/api/prom/push" --env USERNAME="<USERNAME>" \
 --env PASSWORD="<PASSWORD>" ns1labs/pktvisor-prom-write
 ```
@@ -28,7 +28,7 @@ Example with Geo enabled (assuming files are located in `/usr/local/geo`):
 ```shell
 docker pull ns1labs/pktvisor-prom-write
 docker run -d --mount type=bind,source=/usr/local/geo,target=/geo --net=host --env \
-PKTVISORD_ARGS="--prom-instance; <INSTANCE>; --geo-city; /geo/GeoIP2-City.mmdb; --geo-asn; /geo/GeoIP2-ISP.mmdb; <INTERFACE>" \
+PKTVISORD_ARGS="--prom-instance <INSTANCE> --geo-city /geo/GeoIP2-City.mmdb --geo-asn /geo/GeoIP2-ISP.mmdb <INTERFACE>" \
 --env REMOTE_URL="https://<REMOTEHOST>/api/prom/push" --env USERNAME="<USERNAME>" --env PASSWORD="<PASSWORD>" ns1labs/pktvisor-prom-write
 ```
 
