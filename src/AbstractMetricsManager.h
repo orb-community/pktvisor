@@ -11,7 +11,7 @@
 #include <nlohmann/json.hpp>
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
-#include <randutils.hpp>
+#include <jsf.h>
 #pragma GCC diagnostic pop
 #include "Configurable.h"
 #include "Metrics.h"
@@ -219,8 +219,8 @@ private:
     /**
      * sampling
      */
-    randutils::default_rng _rng;
-    uint _deep_sample_rate{100};
+    jsf32 _rng;
+    uint32_t _deep_sample_rate{100};
 
 protected:
     std::atomic_bool _deep_sampling_now; // atomic so we can reference without mutex
@@ -291,11 +291,8 @@ protected:
     void new_event(timespec stamp, bool sample = true)
     {
         // CRITICAL EVENT PATH
-        if (sample) {
-            _deep_sampling_now.store(true, std::memory_order_relaxed);
-            if (_deep_sample_rate != 100) {
-                _deep_sampling_now.store((_rng.uniform(0U, 100U) <= _deep_sample_rate), std::memory_order_relaxed);
-            }
+        if (sample && _deep_sample_rate != 100) {
+            _deep_sampling_now.store((_rng() % 100U < _deep_sample_rate), std::memory_order_relaxed);
         }
         std::shared_lock rlb(_base_mutex);
         bool will_shift = _num_periods > 1 && stamp.tv_sec >= _next_shift_tstamp.tv_sec;
