@@ -99,9 +99,53 @@ All interfaces and schemas are versioned.
     }
   },
   "metric_groups": {
-    "qname_cardinality": {
+    "cardinality": {
+      "name": "Cardinality",
+      "description": "Metrics counting the unique number of items in the stream",
+      "metrics": {
+        "cardinality_qname": {
+          "type": "integer",
+          "description": "..."
+        }
+      }
     },
     "dns_transactions": {
+      "name": "DNS Transactions (Query/Reply pairs)",
+      "description": "Metrics based on tracking queries and their associated replies",
+      "metrics": {
+        "xact_counts_timed_out": {
+          "type": "integer",
+          "description": "..."
+        },
+        "xact_counts_total": {
+          "type": "integer",
+          "description": "..."
+        },
+        "xact_in_top_slow": {
+          "type": "top_n",
+          "description": "..."
+        },
+        "xact_in_total": {
+          "type": "integer",
+          "description": "..."
+        },
+        "xact_in_quantiles_us": {
+          "type": "quantiles",
+          "description": "..."
+        },
+        "xact_out_quantiles_us": {
+          "type": "quantiles",
+          "description": "..."
+        },
+        "xact_out_total": {
+          "type": "integer",
+          "description": "..."
+        },
+        "xact_out_top_slow": {
+          "type": "top_n",
+          "description": "..."
+        }
+      }
     },
     "top_dns_wire": {
       "name": "Top N Metrics (Various)",
@@ -161,6 +205,23 @@ All interfaces and schemas are versioned.
 
 ```json
 {
+  "version": "1.0",
+  "config": {
+  },
+  "metric_groups": {
+    "qname_cardinality": {
+      "name": "",
+      "description": "",
+      "metrics": {
+      }
+    },
+    "dns_transactions": {
+      "name": "",
+      "description": "",
+      "metrics": {
+      }
+    }
+  }
 }
 ```
 
