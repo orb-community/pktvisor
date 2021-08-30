@@ -208,18 +208,52 @@ All interfaces and schemas are versioned.
   "version": "1.0",
   "config": {
   },
+  "metrics": {
+    "cardinality.dst_ips_out": {
+      "type": "cardinality",
+      "description": "..."
+      "cardinality.src_ips_in": {
+        "type": "cardinality",
+        "description": "..."
+      },
+      "in": {
+        "type": "counter",
+        "description": "..."
+      },
+      "rates.pps_in": {
+        "type": "rate",
+        "description": "..."
+      },
+      "top_ASN": {
+        "type": "top_k",
+        "description": "..."
+      }
+    }
+  }
   "metric_groups": {
-    "qname_cardinality": {
-      "name": "",
-      "description": "",
-      "metrics": {
-      }
+    "ip_cardinality": {
+      "name": "IP Address Cardinality",
+      "description": "Unique IP addresses seen in the stream",
+      "metrics": [
+        "cardinality.dst_ips_out",
+        "cardinality.src_ips_in"
+      ]
     },
-    "dns_transactions": {
-      "name": "",
-      "description": "",
-      "metrics": {
-      }
+    "top_geo": {
+      "name": "Top Geo",
+      "description": "Top Geo IP and ASN in the stream",
+      "metrics": [
+        "top_ASN",
+        "top_geoLoc"
+      ]
+    }
+    "top_ips": {
+      "name": "Top IPs",
+      "description": "Top IP addresses in the stream",
+      "metrics": [
+        "top_ipv4",
+        "top_ipv6"
+      ]
     }
   }
 }
