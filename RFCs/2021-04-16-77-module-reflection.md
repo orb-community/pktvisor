@@ -8,102 +8,98 @@ metrics schema.
 All interfaces and schemas are versioned.
 
 ```
-/api/v1/inputs
+GET /api/v1/inputs
  {
-  pcap: "1.0",
-  "dnstap": "1.0"
+  "pcap": {"version", "1.0"},
+  "dnstap": {"version", "1.0"}
  }
-/api/v1/inputs/pcap/interface
+GET /api/v1/inputs/pcap/features
  {
-  version: "1.0",
+  "version": "1.0",
   "info": {
-    "interfaces": {
+    "available_interfaces": {
       "eth0": {}
     }
   },
-  "defaults": {
-    "interface": eth0
-  },
-  config: {
-   iface: {
-     type: "string",
-     description: "the ethernet interface to capture on"
+ "config": {
+  "iface": {
+    "type": "string",
+    "description": "the ethernet interface to capture on"
    }
   }
-  filters: {
-    bpf: {
-     type: "string",
-     description: "tcpdump compatible bpf filter expression"
+ "filters": {
+   "bpf": {
+    "type": "string",
+    "description": "tcpdump compatible filter expression"
     }
-  },
-  metric_groups: {
   }
  }
-/api/v1/inputs/dnstap/interface
+GET /api/v1/inputs/dnstap/features
  {
-  version: "1.0",
-  config: {
-   socket: {
-     type: "string",
-     description: "the dnstap socket to listen to"
+ "version": "1.0",
+ "config": {
+  "socket": {
+    "type": "string",
+    "description": "the dnstap socket to listen to"
    }
   }
-  filters: {
-    qname_suffix: {
-     type: "string",
-     description: "match the DNS qname sufix given", 
-     regex: "..."
+ "filters": {
+   "qname_suffix": {
+    "type": "string",
+    "description": "match the DNS qname sufix given", 
+    "regex": "..."
     }
   },
-  metric_groups: {
+ "metric_groups": {
   }
  } 
-/api/v1/handlers
- { dns: { version: "1.0" }, 
-   net: { version: "1.0" } }
-/api/v1/handlers/dns/interface
+GET /api/v1/handlers
+ {"dns": {"version": "1.0" }, 
+  "net": {"version": "1.0" },
+  "pcap": {"version": "1.0"}}
+GET /api/v1/handlers/dns/features
  {
-  version: "1.0",
-  config: {
-    periods: {
-     type: "int",
-     description: "number of metric periods to keep"
+ "version": "1.0",
+ "config": {
+   "periods": {
+    "type": "int",
+    "description": "number of metric periods to keep"
     }
   }
-  filters: {
-    qname_suffix: {
-     type: "string",
-     description: "match the DNS qname sufix given", 
-     regex: "..."
+ "filters": {
+   "qname_suffix": {
+    "type": "string",
+    "description": "match the DNS qname sufix given", 
+    "regex": "..."
     }
   },
-  metric_groups: {
-    top_error_qnames: {
-      description: "top N qnames with error result codes", 
-      metrics: {,
-       top_refused: {
+ "metric_groups": {
+   "top_error_qnames": {
+     "description": "top N qnames with error result codes", 
+     "metrics": {,
+      "top_refused": {
         "type": "top_n",
          "description": "..."
        },
-       top_srvfail: {
+      "top_srvfail": {
         "type": "top_n",
          "description": "..."
        }, 
-       top_nxdomain: {
+      "top_nxdomain": {
         "type": "top_n",
          "description": "..."
        },
       }
     }, 
-    transactions: {
-      description: "information on query/reply pairs", 
-      metrics: {
+   "transactions": {
+     "description": "information on query/reply pairs", 
+     "metrics": {
       ...
       }
     }
   }
  }
-/api/v1/handlers/net/interface
+GET /api/v1/handlers/net/features
  {
  }
 ```
