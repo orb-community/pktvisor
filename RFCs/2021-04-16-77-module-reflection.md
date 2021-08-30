@@ -98,104 +98,65 @@ All interfaces and schemas are versioned.
       "description": "Filter out any queries whose QName does not end in a suffix on the list"
     }
   },
+  "metrics": {
+    "cardinality.qname": {
+      "type": "cardinality",
+      "description": "..."
+    },
+    "in": {
+      "type": "counter",
+      "description": "..."
+    },
+    "xact.counts.timed_out": {
+      "type": "integer",
+      "description": "..."
+    },
+    "xact.counts.total": {
+      "type": "integer",
+      "description": "..."
+    },
+    "xact.in.top_slow": {
+      "type": "top_n",
+      "description": "..."
+    }
+  },
   "metric_groups": {
     "cardinality": {
       "name": "Cardinality",
       "description": "Metrics counting the unique number of items in the stream",
-      "metrics": {
-        "cardinality_qname": {
-          "type": "integer",
-          "description": "..."
-        }
-      }
+      "metrics": [
+        "cardinality.qname"
+      ]
     },
     "dns_transactions": {
       "name": "DNS Transactions (Query/Reply pairs)",
       "description": "Metrics based on tracking queries and their associated replies",
-      "metrics": {
-        "xact_counts_timed_out": {
-          "type": "integer",
-          "description": "..."
-        },
-        "xact_counts_total": {
-          "type": "integer",
-          "description": "..."
-        },
-        "xact_in_top_slow": {
-          "type": "top_n",
-          "description": "..."
-        },
-        "xact_in_total": {
-          "type": "integer",
-          "description": "..."
-        },
-        "xact_in_quantiles_us": {
-          "type": "quantiles",
-          "description": "..."
-        },
-        "xact_out_quantiles_us": {
-          "type": "quantiles",
-          "description": "..."
-        },
-        "xact_out_total": {
-          "type": "integer",
-          "description": "..."
-        },
-        "xact_out_top_slow": {
-          "type": "top_n",
-          "description": "..."
-        }
-      }
+      "metrics": [
+        "xact.counts.timed_out",
+        "xact.counts.total",
+        "xact.in.top_slow"
+      ]
     },
     "top_dns_wire": {
       "name": "Top N Metrics (Various)",
       "description": "Top N metrics across various details from the DNS wire packets",
-      "metrics": {
-        "top_udp_ports": {
-          "type": "top_n",
-          "description": "..."
-        },
-        "top_qtype": {
-          "type": "top_n",
-          "description": "..."
-        },
-        "top_rcode": {
-          "type": "top_n",
-          "description": "..."
-        }
-      }
+      "metrics": [
+        "..."
+      ]
     },
     "top_qnames": {
       "name": "Top N QNames (All)",
       "description": "Top QNames across all DNS queries in stream",
-      "metrics": {
-        "top_qname2": {
-          "type": "top_n",
-          "description": "..."
-        },
-        "top_qname3": {
-          "type": "top_n",
-          "description": "..."
-        }
-      }
+      "metrics": [
+        "..."
+      ]
     },
     "top_qnames_by_rcode": {
       "name": "Top N QNames (Failing RCodes) ",
       "description": "Top QNames across failing result codes",
-      "metrics": {
-        "top_refused": {
-          "type": "top_n",
-          "description": "..."
-        },
-        "top_srvfail": {
-          "type": "top_n",
-          "description": "..."
-        },
-        "top_nxdomain": {
-          "type": "top_n",
-          "description": "..."
-        }
-      }
+      "metrics": [
+        "..."
+      ]
     }
   }
 }
@@ -212,24 +173,24 @@ All interfaces and schemas are versioned.
     "cardinality.dst_ips_out": {
       "type": "cardinality",
       "description": "..."
-      "cardinality.src_ips_in": {
-        "type": "cardinality",
-        "description": "..."
-      },
-      "in": {
-        "type": "counter",
-        "description": "..."
-      },
-      "rates.pps_in": {
-        "type": "rate",
-        "description": "..."
-      },
-      "top_ASN": {
-        "type": "top_k",
-        "description": "..."
-      }
+    },
+    "cardinality.src_ips_in": {
+      "type": "cardinality",
+      "description": "..."
+    },
+    "in": {
+      "type": "counter",
+      "description": "..."
+    },
+    "rates.pps_in": {
+      "type": "rate",
+      "description": "..."
+    },
+    "top_ASN": {
+      "type": "top_k",
+      "description": "..."
     }
-  }
+  },
   "metric_groups": {
     "ip_cardinality": {
       "name": "IP Address Cardinality",
@@ -246,7 +207,7 @@ All interfaces and schemas are versioned.
         "top_ASN",
         "top_geoLoc"
       ]
-    }
+    },
     "top_ips": {
       "name": "Top IPs",
       "description": "Top IP addresses in the stream",
