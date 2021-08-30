@@ -60,29 +60,6 @@ All interfaces and schemas are versioned.
 }
 ```
 
-`GET /api/v1/inputs/dnstap/features`
-
-```json
- {
-  "version": "1.0",
-  "config": {
-    "socket": {
-      "type": "string",
-      "description": "the dnstap socket to listen to"
-    }
-  }
-  "filters": {
-    "qname_suffix": {
-      "type": "string",
-      "description": "match the DNS qname sufix given",
-      "regex": "..."
-    }
-  },
-  "metric_groups": {
-  }
-}
-```
-
 `GET /api/v1/handlers`
 
 ```json
@@ -105,43 +82,78 @@ All interfaces and schemas are versioned.
 {
   "version": "1.0",
   "config": {
-    "periods": {
-      "type": "int",
-      "description": "number of metric periods to keep"
-    }
-  }
-  "filters": {
-    "qname_suffix": {
-      "type": "string",
-      "description": "match the DNS qname sufix given",
-      "regex": "..."
+    "filter_exclude_noerror": {
+      "name": "Filter: Exclude NOERROR",
+      "type": "bool",
+      "description": "Filter out all NOERROR responses"
+    },
+    "filter_only_rcode": {
+      "name": "Filter: Include Only RCode",
+      "type": "integer",
+      "description": "Filter out any queries which are not the given RCODE"
+    },
+    "filter_only_qname_suffix": {
+      "name": "Filter: Include Only QName With Suffix",
+      "type": "array[string]",
+      "description": "Filter out any queries whose QName does not end in a suffix on the list"
     }
   },
   "metric_groups": {
-    "top_error_qnames": {
-      "description": "top N qnames with error result codes",
+    "qname_cardinality": {
+    },
+    "dns_transactions": {
+    },
+    "top_dns_wire": {
+      "name": "Top N Metrics (Various)",
+      "description": "Top N metrics across various details from the DNS wire packets",
       "metrics": {
-        ,
-      "top_refused": {
-        "type": "top_n",
-        "description": "..."
-      },
-      "top_srvfail": {
-        "type": "top_n",
-        "description": "..."
-      },
-      "top_nxdomain": {
-        "type": "top_n",
-        "description": "..."
+        "top_udp_ports": {
+          "type": "top_n",
+          "description": "..."
+        },
+        "top_qtype": {
+          "type": "top_n",
+          "description": "..."
+        },
+        "top_rcode": {
+          "type": "top_n",
+          "description": "..."
+        }
+      }
+    },
+    "top_qnames": {
+      "name": "Top N QNames (All)",
+      "description": "Top QNames across all DNS queries in stream",
+      "metrics": {
+        "top_qname2": {
+          "type": "top_n",
+          "description": "..."
+        },
+        "top_qname3": {
+          "type": "top_n",
+          "description": "..."
+        }
+      }
+    },
+    "top_qnames_by_rcode": {
+      "name": "Top N QNames (Failing RCodes) ",
+      "description": "Top QNames across failing result codes",
+      "metrics": {
+        "top_refused": {
+          "type": "top_n",
+          "description": "..."
+        },
+        "top_srvfail": {
+          "type": "top_n",
+          "description": "..."
+        },
+        "top_nxdomain": {
+          "type": "top_n",
+          "description": "..."
+        }
       }
     }
-  },
-  "transactions": {
-    "description": "information on query/reply pairs",
-    "metrics": {
-    }
   }
-}
 }
 ```
 
