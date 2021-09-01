@@ -35,25 +35,25 @@ All interfaces and schemas are versioned.
     "iface": {
       "required": true,
       "type": "string",
-      "name": "Interface",
+      "title": "Interface",
       "description": "The ethernet interface to capture on"
     },
     "bpf": {
       "required": false,
       "type": "string",
-      "name": "Filter Expression",
+      "title": "Filter Expression",
       "description": "tcpdump compatible filter expression for limiting the traffic examined (with BPF). Example: \"port 53\""
     },
     "host_spec": {
       "required": false,
       "type": "string",
-      "name": "Host Specification",
+      "title": "Host Specification",
       "description": "Subnets (comma separated) to consider this HOST, in CIDR form. Example: \"10.0.1.0/24,10.0.2.1/32,2001:db8::/64\""
     },
     "pcap_source": {
       "required": false,
       "type": "string",
-      "name": "pcap Engine",
+      "title": "pcap Engine",
       "description": "pcap backend engine to use. Defaults to best for platform."
     }
   }
@@ -83,17 +83,17 @@ All interfaces and schemas are versioned.
   "version": "1.0",
   "config": {
     "filter_exclude_noerror": {
-      "name": "Filter: Exclude NOERROR",
+      "title": "Filter: Exclude NOERROR",
       "type": "bool",
       "description": "Filter out all NOERROR responses"
     },
     "filter_only_rcode": {
-      "name": "Filter: Include Only RCode",
+      "title": "Filter: Include Only RCode",
       "type": "integer",
       "description": "Filter out any queries which are not the given RCODE"
     },
     "filter_only_qname_suffix": {
-      "name": "Filter: Include Only QName With Suffix",
+      "title": "Filter: Include Only QName With Suffix",
       "type": "array[string]",
       "description": "Filter out any queries whose QName does not end in a suffix on the list"
     }
@@ -122,14 +122,14 @@ All interfaces and schemas are versioned.
   },
   "metric_groups": {
     "cardinality": {
-      "name": "Cardinality",
+      "title": "Cardinality",
       "description": "Metrics counting the unique number of items in the stream",
       "metrics": [
         "cardinality.qname"
       ]
     },
     "dns_transactions": {
-      "name": "DNS Transactions (Query/Reply pairs)",
+      "title": "DNS Transactions (Query/Reply pairs)",
       "description": "Metrics based on tracking queries and their associated replies",
       "metrics": [
         "xact.counts.timed_out",
@@ -138,21 +138,21 @@ All interfaces and schemas are versioned.
       ]
     },
     "top_dns_wire": {
-      "name": "Top N Metrics (Various)",
+      "title": "Top N Metrics (Various)",
       "description": "Top N metrics across various details from the DNS wire packets",
       "metrics": [
         "..."
       ]
     },
     "top_qnames": {
-      "name": "Top N QNames (All)",
+      "title": "Top N QNames (All)",
       "description": "Top QNames across all DNS queries in stream",
       "metrics": [
         "..."
       ]
     },
     "top_qnames_by_rcode": {
-      "name": "Top N QNames (Failing RCodes) ",
+      "title": "Top N QNames (Failing RCodes) ",
       "description": "Top QNames across failing result codes",
       "metrics": [
         "..."
@@ -193,7 +193,7 @@ All interfaces and schemas are versioned.
   },
   "metric_groups": {
     "ip_cardinality": {
-      "name": "IP Address Cardinality",
+      "title": "IP Address Cardinality",
       "description": "Unique IP addresses seen in the stream",
       "metrics": [
         "cardinality.dst_ips_out",
@@ -201,7 +201,7 @@ All interfaces and schemas are versioned.
       ]
     },
     "top_geo": {
-      "name": "Top Geo",
+      "title": "Top Geo",
       "description": "Top Geo IP and ASN in the stream",
       "metrics": [
         "top_ASN",
@@ -209,7 +209,7 @@ All interfaces and schemas are versioned.
       ]
     },
     "top_ips": {
-      "name": "Top IPs",
+      "title": "Top IPs",
       "description": "Top IP addresses in the stream",
       "metrics": [
         "top_ipv4",
