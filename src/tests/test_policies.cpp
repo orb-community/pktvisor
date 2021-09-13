@@ -30,6 +30,7 @@ visor:
       input:
         # this must reference a tap name, or application of the policy will fail
         tap: anycast
+        input_type: mock
         config:
           bpf: "tcp or udp"
       # stream handlers to attach to this input stream
@@ -72,6 +73,7 @@ visor:
     default_view:
       input:
         tap: nonexist
+        input_type: mock
 )";
 
 auto policies_config_bad3 = R"(
@@ -87,6 +89,7 @@ visor:
     default_view:
       input:
         tap: anycast
+        input_type: mock
         config:
           bpf:
             badmap: "bad value"
@@ -105,12 +108,28 @@ visor:
     default_view:
       input:
         tap: anycast
+        input_type: mock
         config:
           except_on_start: true
       handlers:
         modules:
           default_net:
             type: net
+)";
+auto policies_config_bad5 = R"(
+version: "1.0"
+
+visor:
+  taps:
+    anycast:
+      input_type: mock
+      config:
+        iface: eth0
+  policies:
+    default_view:
+      input:
+        tap: anycast
+        input_type: wrong_type
 )";
 
 TEST_CASE("Policies", "[policies]")
@@ -191,6 +210,15 @@ TEST_CASE("Policies", "[policies]")
 
         REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
         REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["policies"]), "policy [default_view] failed to start: mock error on start");
+    }
+
+    SECTION("Bad Config: mis-matched input_type on tap")
+    {
+        CoreRegistry registry(nullptr);
+        YAML::Node config_file = YAML::Load(policies_config_bad5);
+
+        REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
+        REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["policies"]), "unable to instantiate tap 'anycast': input_type for policy specified tap 'anycast' doesn't match tap's defined input type: wrong_type/mock");
     }
 
     SECTION("Roll Back")

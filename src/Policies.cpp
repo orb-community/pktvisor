@@ -57,7 +57,10 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
         }
         auto input_node = it->second["input"];
         if (!input_node["tap"] || !input_node["tap"].IsScalar()) {
-            throw PolicyException("missing or invalid tap at key 'tap'");
+            throw PolicyException("missing or invalid tap at key 'input.tap'");
+        }
+        if (!input_node["input_type"] || !input_node["input_type"].IsScalar()) {
+            throw PolicyException("missing or invalid input_type at key 'input.input_type'");
         }
 
         // Tap
@@ -99,9 +102,13 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
         try {
             spdlog::get("visor")->info("policy [{}]: instantiating Tap: {}", policy_name, tap_name);
             input_stream = tap->instantiate(policy.get(), &tap_filter);
+            // ensure tap input type matches policy input tap
+            if (input_node["input_type"].as<std::string>() != tap->input_plugin()->plugin()) {
+                throw PolicyException(fmt::format("input_type for policy specified tap '{}' doesn't match tap's defined input type: {}/{}", tap_name, input_node["input_type"].as<std::string>(), tap->input_plugin()->plugin()));
+            }
             input_stream_module_name = input_stream->name();
         } catch (std::runtime_error &e) {
-            throw PolicyException(fmt::format("unable to instantiate tap {}: {}", tap_name, e.what()));
+            throw PolicyException(fmt::format("unable to instantiate tap '{}': {}", tap_name, e.what()));
         }
         policy->set_input_stream(input_stream.get());
 

@@ -30,6 +30,11 @@ public:
 
     std::unique_ptr<InputStream> instantiate(Policy *policy, const Configurable *filter_config);
 
+    const InputModulePlugin *input_plugin() const
+    {
+        return _input_plugin;
+    }
+
     void info_json(json &j) const override
     {
         j["input_type"] = _input_plugin->plugin();
