@@ -20,8 +20,8 @@ visor:
       input:
         # this must reference a tap name, or application of the policy will fail
         tap: anycast
-        # this must match the type of the matching tap name. or application of the policy will fail
-        type: pcap
+        # this must match the input_type of the matching tap name, or application of the policy will fail
+        input_type: pcap
         config:
           bpf: "port 53"
       # stream handlers to attach to this input stream
