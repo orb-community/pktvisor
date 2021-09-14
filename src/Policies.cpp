@@ -51,6 +51,14 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
             throw PolicyException("expecting policy configuration map");
         }
 
+        // Policy kind defines schema
+        if (!it->second["kind"] || !it->second["kind"].IsScalar()) {
+            throw PolicyException("missing or invalid policy kind at key 'kind'");
+        }
+        if (it->second["kind"].as<std::string>() != "collection") {
+            throw PolicyException(fmt::format("unknown policy kind: {}", it->second["kind"].as<std::string>()));
+        }
+
         // Input Section
         if (!it->second["input"] || !it->second["input"].IsMap()) {
             throw PolicyException("missing or invalid policy input stream configuration at key 'input'");

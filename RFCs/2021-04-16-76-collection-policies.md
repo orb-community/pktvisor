@@ -6,6 +6,8 @@ Collection policies direct pktvisor to use Taps (#75) to create an instance of a
 and attach handlers to it. Processing takes place, and the data is exposed for sinks to collect. These policies may be
 given directly to pktvisor via command line or through the Admin API if available.
 
+Policies require a `kind` to indicate the type of policy being applied.
+
 `collection-policy-anycast.yaml`
 
 ```yaml
@@ -15,6 +17,7 @@ visor:
   policies:
     # policy name and description
     anycast_dns:
+      kind: collection
       description: "base anycast DNS policy"
       # input stream to create based on the given tap and optional filter config
       input:

@@ -25,6 +25,7 @@ visor:
   policies:
     # policy name and description
     default_view:
+      kind: collection
 #      description: "a mock view of anycast traffic"
       # input stream to create based on the given tap and optional filter config
       input:
@@ -71,6 +72,7 @@ visor:
         iface: eth0
   policies:
     default_view:
+      kind: collection
       input:
         tap: nonexist
         input_type: mock
@@ -87,6 +89,7 @@ visor:
         iface: eth0
   policies:
     default_view:
+      kind: collection
       input:
         tap: anycast
         input_type: mock
@@ -106,6 +109,7 @@ visor:
         iface: eth0
   policies:
     default_view:
+      kind: collection
       input:
         tap: anycast
         input_type: mock
@@ -127,9 +131,26 @@ visor:
         iface: eth0
   policies:
     default_view:
+      kind: collection
       input:
         tap: anycast
         input_type: wrong_type
+)";
+auto policies_config_bad6 = R"(
+version: "1.0"
+
+visor:
+  taps:
+    anycast:
+      input_type: mock
+      config:
+        iface: eth0
+  policies:
+    default_view:
+      kind: unknown_kind
+      input:
+        tap: anycast
+        input_type: mock
 )";
 
 TEST_CASE("Policies", "[policies]")
@@ -219,6 +240,15 @@ TEST_CASE("Policies", "[policies]")
 
         REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
         REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["policies"]), "unable to instantiate tap 'anycast': input_type for policy specified tap 'anycast' doesn't match tap's defined input type: wrong_type/mock");
+    }
+
+    SECTION("Bad Config: bad policy kind")
+    {
+        CoreRegistry registry(nullptr);
+        YAML::Node config_file = YAML::Load(policies_config_bad6);
+
+        REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
+        REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["policies"]), "unknown policy kind: unknown_kind");
     }
 
     SECTION("Roll Back")
