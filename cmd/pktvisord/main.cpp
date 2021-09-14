@@ -161,8 +161,10 @@ visor:
         host_spec: "{}"
   policies:
     default:
+      kind: collection
       input:
         tap: default
+        input_type: pcap
         config:
           bpf: "{}"
       handlers:
