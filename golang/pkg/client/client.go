@@ -22,6 +22,7 @@ const (
 type Client interface {
 	GetStats() (*StatSnapshot, error)
 	GetServerVersion() string
+	GetPolicy() string
 }
 
 type ClientConfig struct {
@@ -34,6 +35,10 @@ type ClientConfig struct {
 type client struct {
 	config        ClientConfig
 	serverVersion string
+}
+
+func (c *client) GetPolicy() string {
+	return c.config.DefaultPolicy
 }
 
 func (c *client) GetServerVersion() string {

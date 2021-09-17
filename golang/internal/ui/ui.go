@@ -197,7 +197,7 @@ func (u *ui) Layout(g *gocui.Gui) error {
 		if err != gocui.ErrUnknownView {
 			return err
 		}
-		v.Title = fmt.Sprintf("pktvisor-cli (client: %s | server: %s)", client.VisorVersionNum, u.client.GetServerVersion())
+		v.Title = fmt.Sprintf("pktvisor-cli (client: %s | server: %s) Policy: %s", client.VisorVersionNum, u.client.GetServerVersion(), u.client.GetPolicy())
 	}
 
 	//if currentView == "main" {
