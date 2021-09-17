@@ -224,8 +224,8 @@ func (u *ui) quit(g *gocui.Gui, v *gocui.View) error {
 func (u *ui) updateViews() {
 	stats, err := u.client.GetStats()
 	if err != nil {
-		u.gui.Close()
 		log.Println(err)
+		return
 	}
 	u.gui.Update(func(g *gocui.Gui) error {
 		v, err := u.gui.View("header")

@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/pkg/errors"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"time"
@@ -65,7 +66,20 @@ func (c *client) getMetrics(url string, payload interface{}) error {
 		return getErr
 	}
 	if res.StatusCode != 200 {
-		return errors.New("500 error from pktvisord getting stats")
+		body, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			return errors.New(fmt.Sprintf("non 200 HTTP error code from pktvisord, no or invalid body: %d", res.StatusCode))
+		}
+		if body[0] == '{' {
+			var jsonBody map[string]interface{}
+			err := json.Unmarshal(body, &jsonBody)
+			if err == nil {
+				if errMsg, ok := jsonBody["error"]; ok {
+					return errors.New(fmt.Sprintf("%d %s", res.StatusCode, errMsg))
+				}
+			}
+		}
+		return errors.New(fmt.Sprintf("%d %s", res.StatusCode, body))
 	}
 
 	err = json.NewDecoder(res.Body).Decode(&payload)

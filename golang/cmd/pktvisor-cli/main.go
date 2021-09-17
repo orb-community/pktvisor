@@ -57,6 +57,7 @@ Options:
 		DefaultPolicy: *pPolicy,
 	}
 
+	config.Protocol = "http"
 	if *wantTLS || *wantTLSNoVerify {
 		config.Protocol = "https"
 		if *wantTLSNoVerify {
