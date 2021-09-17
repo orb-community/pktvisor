@@ -7,11 +7,16 @@ package client
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"time"
+)
+
+const (
+	wantServerVersion = "3.3"
 )
 
 type Client interface {
@@ -42,6 +47,9 @@ func (c *client) GetServerVersion() string {
 		log.Println(err)
 	}
 	c.serverVersion = appMetrics.App.Version
+	if c.serverVersion[0:3] != wantServerVersion {
+		log.Println(fmt.Sprintf("WARNING: this version of pktvisor-cli was written for pktvisord %s.x", wantServerVersion))
+	}
 	return c.serverVersion
 }
 
@@ -96,13 +104,23 @@ func (c *client) GetStats() (*StatSnapshot, error) {
 		return nil, err
 	}
 	stats := StatSnapshot{}
-	//for handlerName, handlerData := range rawStats {
-	//	_, isDns := handlerData["dns"]
-	//	_, isPackets := handlerData["packets"]
-	//	_, isPcap := handlerData["pcap"]
-	//	if isPcap {
-	//		stats.Pcap.OsDrops = handlerData["pcap"]
-	//	}
-	//}
+	for _, handlerData := range rawStats {
+		if data, ok := handlerData["pcap"]; ok {
+			err := mapstructure.Decode(data, &stats.Pcap)
+			if err != nil {
+				log.Println("error decoding")
+			}
+		} else if data, ok := handlerData["dns"]; ok {
+			err := mapstructure.Decode(data, &stats.DNS)
+			if err != nil {
+				log.Println("error decoding")
+			}
+		} else if data, ok := handlerData["packets"]; ok {
+			err := mapstructure.Decode(data, &stats.Packets)
+			if err != nil {
+				log.Println("error decoding")
+			}
+		}
+	}
 	return &stats, nil
 }
