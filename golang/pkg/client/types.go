@@ -142,7 +142,7 @@ type PeriodPayload struct {
 
 // StatSnapshot is a snapshot of a given period from pktvisord
 type StatSnapshot struct {
-	DNS     DNSPayload    `json:"dns"`
-	Packets PacketPayload `json:"packets"`
-	Pcap    PcapPayload   `json:"pcap"`
+	DNS     DNSPayload
+	Packets PacketPayload
+	Pcap    PcapPayload
 }
