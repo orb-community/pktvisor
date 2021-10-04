@@ -50,6 +50,7 @@ func (c *client) GetServerVersion() string {
 	err := c.getMetrics(URL, &appMetrics)
 	if err != nil {
 		log.Println(err)
+		return "unknown"
 	}
 	c.serverVersion = appMetrics.App.Version
 	if c.serverVersion[0:3] != wantServerVersion {
@@ -66,7 +67,7 @@ func New(config ClientConfig) (Client, error) {
 
 func (c *client) getMetrics(url string, payload interface{}) error {
 	spaceClient := http.Client{
-		Timeout: time.Second * 30,
+		Timeout: time.Second * 5,
 	}
 
 	req, err := http.NewRequest(http.MethodGet, url, nil)
