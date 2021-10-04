@@ -127,22 +127,49 @@ void PcapInputStream::start()
     }
 
     if (_cur_pcap_source == PcapSource::libpcap) {
+        pcpp::PcapLiveDevice *pcapDevice;
         // extract pcap live device by interface name or IP address
         if (interfaceIP4.isValid() || interfaceIP6.isValid()) {
             if (interfaceIP4.isValid()) {
-                _pcapDevice = pcpp::PcapLiveDeviceList::getInstance().getPcapLiveDeviceByIp(interfaceIP4);
+                pcapDevice = pcpp::PcapLiveDeviceList::getInstance().getPcapLiveDeviceByIp(interfaceIP4);
             } else {
-                _pcapDevice = pcpp::PcapLiveDeviceList::getInstance().getPcapLiveDeviceByIp(interfaceIP6);
+                pcapDevice = pcpp::PcapLiveDeviceList::getInstance().getPcapLiveDeviceByIp(interfaceIP6);
             }
-            if (_pcapDevice == nullptr) {
+            if (pcapDevice == nullptr) {
                 throw PcapException("Couldn't find interface by provided IP: " + TARGET);
             }
         } else {
-            _pcapDevice = pcpp::PcapLiveDeviceList::getInstance().getPcapLiveDeviceByName(TARGET);
-            if (_pcapDevice == nullptr) {
+            pcapDevice = pcpp::PcapLiveDeviceList::getInstance().getPcapLiveDeviceByName(TARGET);
+            if (pcapDevice == nullptr) {
                 throw PcapException("Couldn't find interface by provided name: " + TARGET);
             }
         }
+
+        // PcapPlusPlus upstream incompatibility note: this block requires ns1 fork of PcapPlusPlus until upstream
+        // makes PcapLiveDevice constructor pubic
+        pcap_if_t *interfaceList;
+        char errbuf[PCAP_ERRBUF_SIZE];
+        int err = pcap_findalldevs(&interfaceList, errbuf);
+        if (err < 0) {
+            throw PcapException("Error searching for pcap devices: " + std::string(errbuf));
+        }
+
+        pcap_if_t *currInterface = interfaceList;
+        while (currInterface != NULL) {
+            if (currInterface->name != pcapDevice->getName()) {
+                currInterface = currInterface->next;
+                continue;
+            }
+            _pcapDevice = std::make_unique<pcpp::PcapLiveDevice>(currInterface, true, true, true);
+            break;
+        }
+
+        pcap_freealldevs(interfaceList);
+        if (_pcapDevice == nullptr) {
+            throw PcapException("Couldn't find interface by provided name: " + TARGET);
+        }
+        // end upstream PcapPlusPlus incompatibility block
+
         _get_hosts_from_libpcap_iface();
         _open_libpcap_iface(config_get<std::string>("bpf"));
     } else if (_cur_pcap_source == PcapSource::af_packet) {
