@@ -265,6 +265,28 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
             res.set_content(j.dump(), "text/json");
         }
     });
+    _svr.Delete(fmt::format("/api/v1/policies/({})", AbstractModule::MODULE_ID_REGEX).c_str(), [&](const httplib::Request &req, httplib::Response &res) {
+        json j;
+        auto name = req.matches[1];
+        if (!_registry.policy_manager()->module_exists(name)) {
+            res.status = 404;
+            j["error"] = "policy does not exists";
+            res.set_content(j.dump(), "text/json");
+            return;
+        }
+        try {
+            auto [policy, lock] = _registry.policy_manager()->module_get_locked(name);
+            policy->stop();
+            lock.unlock();
+            // TODO chance of race here
+            _registry.policy_manager()->module_remove(name);
+            res.set_content(j.dump(), "text/json");
+        } catch (const std::exception &e) {
+            res.status = 500;
+            j["error"] = e.what();
+            res.set_content(j.dump(), "text/json");
+        }
+    });
     _svr.Get(fmt::format("/api/v1/policies/({})/metrics/bucket/(\\d+)", AbstractModule::MODULE_ID_REGEX).c_str(), [&](const httplib::Request &req, httplib::Response &res) {
         json j;
         auto name = req.matches[1];

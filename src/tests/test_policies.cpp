@@ -272,4 +272,30 @@ TEST_CASE("Policies", "[policies]")
         REQUIRE(!registry.policy_manager()->module_exists("default_view"));
         REQUIRE(!registry.input_manager()->module_exists("anycast-default_view"));
     }
+    SECTION("Good Config, test stop()")
+    {
+        CoreRegistry registry(nullptr);
+        YAML::Node config_file = YAML::Load(policies_config);
+
+        CHECK(config_file["visor"]["policies"]);
+        CHECK(config_file["visor"]["policies"].IsMap());
+
+        REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
+        REQUIRE_NOTHROW(registry.policy_manager()->load(config_file["visor"]["policies"]));
+
+        REQUIRE(registry.policy_manager()->module_exists("default_view"));
+        auto [policy, lock] = registry.policy_manager()->module_get_locked("default_view");
+        CHECK(policy->name() == "default_view");
+        CHECK(policy->input_stream()->running());
+        CHECK(policy->modules()[0]->running());
+        CHECK(policy->modules()[1]->running());
+        CHECK(policy->modules()[2]->running());
+        policy->stop();
+        CHECK(!policy->input_stream()->running());
+        CHECK(!policy->modules()[0]->running());
+        CHECK(!policy->modules()[1]->running());
+        CHECK(!policy->modules()[2]->running());
+        lock.unlock();
+        REQUIRE_NOTHROW(registry.policy_manager()->module_remove("default_view"));
+    }
 }
