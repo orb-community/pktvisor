@@ -48,7 +48,7 @@ private:
     PcapSource _cur_pcap_source{PcapSource::unknown};
 
     // libpcap source
-    pcpp::PcapLiveDevice *_pcapDevice = nullptr; // non owning
+    std::unique_ptr<pcpp::PcapLiveDevice> _pcapDevice;
     bool _pcapFile = false;
 
 #ifdef __linux__
