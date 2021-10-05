@@ -131,10 +131,23 @@ public:
         for (YAML::const_iterator it = config_yaml.begin(); it != config_yaml.end(); ++it) {
             auto key = it->first.as<std::string>();
 
-            if (!it->second.IsScalar()) {
+            if (!it->second.IsScalar() && !it->second.IsSequence()) {
                 throw ConfigException(fmt::format("invalid value for key: {}", key));
             }
 
+            if (it->second.IsSequence()) {
+                StringList sl;
+                for (std::size_t i = 0; i < it->second.size(); ++i) {
+                    if (!it->second[i].IsScalar()) {
+                        throw ConfigException(fmt::format("invalid value for sequence in key: {}", key));
+                    }
+                    sl.push_back(it->second[i].as<std::string>());
+                }
+                _config[key] = sl;
+                continue;
+            }
+
+            // otherwise, scalar
             auto value = it->second.as<std::string>();
 
             // the yaml library doesn't discriminate between scalar types, so we have to do that ourselves
