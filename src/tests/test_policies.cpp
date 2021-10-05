@@ -52,7 +52,10 @@ visor:
           special_domain:
             type: dns
             config:
-              qname_suffix: .mydomain.com
+              filter_only_qname_suffix:
+                - ".google.com"
+                - ".ns1.com"
+                - "slack.com"
 )";
 
 auto policies_config_bad1 = R"(
@@ -175,7 +178,7 @@ TEST_CASE("Policies", "[policies]")
         CHECK(policy->modules()[0]->name() == "default_view-default_net");
         CHECK(policy->modules()[1]->name() == "default_view-default_dns");
         CHECK(policy->modules()[2]->name() == "default_view-special_domain");
-        CHECK(policy->modules()[2]->config_get<std::string>("qname_suffix") == ".mydomain.com");
+        CHECK(policy->modules()[2]->config_get<Configurable::StringList>("filter_only_qname_suffix")[0] == ".google.com");
         // TODO check window config settings made it through
         CHECK(policy->input_stream()->running());
         CHECK(policy->modules()[0]->running());
