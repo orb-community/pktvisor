@@ -21,6 +21,7 @@ type NameCount struct {
 // DNSPayload contains the information specifically for the DNS protocol
 type DNSPayload struct {
 	WirePackets struct {
+		Filtered int64 `mapstructure:"filtered"`
 		Ipv4     int64 `mapstructure:"ipv4"`
 		Ipv6     int64 `mapstructure:"ipv6"`
 		Queries  int64 `mapstructure:"queries"`
