@@ -17,15 +17,18 @@ MockStreamHandler::MockStreamHandler(const std::string &name, InputStream *strea
     }
 }
 
+void MockStreamHandler::process_random_int(uint64_t i)
+{
+    _metrics->process_random_int(i);
+}
+
 void MockStreamHandler::start()
 {
     if (_running) {
         return;
     }
 
-    if (config_exists("recorded_stream")) {
-        _metrics->set_recorded_stream();
-    }
+    _random_int_connection = _mock_stream->random_int_signal.connect(&MockStreamHandler::process_random_int, this);
 
     _running = true;
 }
@@ -63,5 +66,14 @@ void MockMetricsBucket::to_json(json &j) const
 
     _counters.mock_counter.to_json(j);
 }
+void MockMetricsBucket::process_random_int(uint64_t i)
+{
+    std::unique_lock w_lock(_mutex);
+    _counters.mock_counter += i;
+}
 
+void MockMetricsManager::process_random_int(uint64_t i)
+{
+    live_bucket()->process_random_int(i);
+}
 }

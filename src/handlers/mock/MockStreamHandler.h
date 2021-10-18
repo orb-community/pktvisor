@@ -50,6 +50,7 @@ public:
     void to_json(json &j) const override;
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override;
 
+    void process_random_int(uint64_t i);
 };
 
 class MockMetricsManager final : public visor::AbstractMetricsManager<MockMetricsBucket>
@@ -60,12 +61,17 @@ public:
     {
     }
 
+    void process_random_int(uint64_t i);
 };
 
 class MockStreamHandler final : public visor::StreamMetricsHandler<MockMetricsManager>
 {
 
     MockInputStream *_mock_stream;
+
+    sigslot::connection _random_int_connection;
+
+    void process_random_int(uint64_t i);
 
 public:
     MockStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config);
