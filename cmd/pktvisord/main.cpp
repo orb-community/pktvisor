@@ -67,6 +67,8 @@ static const char USAGE[] =
     Configuration:
       --config FILE         Use specified YAML configuration to configure options, Taps, and Collection Policies
                             Please see https://pktvisor.dev for more information
+    Modules:
+      --modules-list        List available modules (builtin and dynamic)
     Logging Options:
       --log-file FILE       Log to the given output file name
       --syslog              Log to syslog
@@ -226,6 +228,18 @@ int main(int argc, char *argv[])
         logger->set_level(spdlog::level::debug);
     }
 
+    // modules
+    CoreRegistry registry;
+    if (args["--modules-list"].asBool()) {
+        for (auto &p : registry.input_plugin_registry()->pluginList()) {
+            logger->info("input: {}", p);
+        }
+        for (auto &p : registry.handler_plugin_registry()->pluginList()) {
+            logger->info("handler: {}", p);
+        }
+        exit(EXIT_SUCCESS);
+    }
+
     logger->info("{} starting up", VISOR_VERSION);
 
     // if we are demonized, change to root directory now that (potentially) logs are open
@@ -254,7 +268,7 @@ int main(int argc, char *argv[])
 
     std::unique_ptr<CoreServer> svr;
     try {
-        svr = std::make_unique<CoreServer>(logger, http_config, prom_config);
+        svr = std::make_unique<CoreServer>(&registry, logger, http_config, prom_config);
     } catch (const std::exception &e) {
         logger->error(e.what());
         logger->info("exit with failure");

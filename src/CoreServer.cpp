@@ -16,9 +16,9 @@
 
 namespace visor {
 
-visor::CoreServer::CoreServer(std::shared_ptr<spdlog::logger> logger, const HttpConfig &http_config, const PrometheusConfig &prom_config)
+visor::CoreServer::CoreServer(CoreRegistry *registry, std::shared_ptr<spdlog::logger> logger, const HttpConfig &http_config, const PrometheusConfig &prom_config)
     : _svr(http_config)
-    , _registry(&_svr)
+    , _registry(registry)
     , _logger(logger)
     , _start_time(std::chrono::system_clock::now())
 {
@@ -49,7 +49,7 @@ void CoreServer::start(const std::string &host, int port)
 void CoreServer::stop()
 {
     _svr.stop();
-    _registry.stop();
+    _registry->stop();
 }
 
 CoreServer::~CoreServer()
@@ -100,14 +100,14 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
     _svr.Get(R"(/api/v1/metrics/bucket/(\d+))", [&](const httplib::Request &req, httplib::Response &res) {
         json j;
         bool bc_period{false};
-        if (!_registry.policy_manager()->module_exists("default")) {
+        if (!_registry->policy_manager()->module_exists("default")) {
             res.status = 404;
             j["error"] = "no \"default\" policy exists";
             res.set_content(j.dump(), "text/json");
             return;
         }
         try {
-            auto [policy, lock] = _registry.policy_manager()->module_get_locked("default");
+            auto [policy, lock] = _registry->policy_manager()->module_get_locked("default");
             uint64_t period(std::stol(req.matches[1]));
             for (auto &mod : policy->modules()) {
                 auto hmod = dynamic_cast<StreamHandler *>(mod);
@@ -132,14 +132,14 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
     // 3.0.x compatible: reference "default" policy
     _svr.Get(R"(/api/v1/metrics/window/(\d+))", [&](const httplib::Request &req, httplib::Response &res) {
         json j;
-        if (!_registry.policy_manager()->module_exists("default")) {
+        if (!_registry->policy_manager()->module_exists("default")) {
             res.status = 404;
             j["error"] = "no \"default\" policy exists";
             res.set_content(j.dump(), "text/json");
             return;
         }
         try {
-            auto [policy, lock] = _registry.policy_manager()->module_get_locked("default");
+            auto [policy, lock] = _registry->policy_manager()->module_get_locked("default");
             uint64_t period(std::stol(req.matches[1]));
             for (auto &mod : policy->modules()) {
                 auto hmod = dynamic_cast<StreamHandler *>(mod);
@@ -161,13 +161,13 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
     if (!prom_config.default_path.empty()) {
         _logger->info("enabling prometheus metrics for \"default\" policy on: {}", prom_config.default_path);
         _svr.Get(prom_config.default_path.c_str(), [&]([[maybe_unused]] const httplib::Request &req, httplib::Response &res) {
-            if (!_registry.policy_manager()->module_exists("default")) {
+            if (!_registry->policy_manager()->module_exists("default")) {
                 res.status = 404;
                 return;
             }
             try {
                 std::stringstream output;
-                auto [policy, lock] = _registry.policy_manager()->module_get_locked("default");
+                auto [policy, lock] = _registry->policy_manager()->module_get_locked("default");
                 for (auto &mod : policy->modules()) {
                     auto hmod = dynamic_cast<StreamHandler *>(mod);
                     if (hmod) {
@@ -187,7 +187,7 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
     _svr.Get(R"(/api/v1/taps)", [&]([[maybe_unused]] const httplib::Request &req, httplib::Response &res) {
         json j;
         try {
-            auto [tap_modules, hm_lock] = _registry.tap_manager()->module_get_all_locked();
+            auto [tap_modules, hm_lock] = _registry->tap_manager()->module_get_all_locked();
             for (auto &[name, mod] : tap_modules) {
                 auto tmod = dynamic_cast<Tap *>(mod.get());
                 if (tmod) {
@@ -205,7 +205,7 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
     _svr.Get(R"(/api/v1/policies)", [&]([[maybe_unused]] const httplib::Request &req, httplib::Response &res) {
         json j;
         try {
-            auto [policy_modules, hm_lock] = _registry.policy_manager()->module_get_all_locked();
+            auto [policy_modules, hm_lock] = _registry->policy_manager()->module_get_all_locked();
             for (auto &[name, mod] : policy_modules) {
                 auto tmod = dynamic_cast<Policy *>(mod.get());
                 if (tmod) {
@@ -235,7 +235,7 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
             return;
         }
         try {
-            auto policies = _registry.policy_manager()->load_from_str(req.body);
+            auto policies = _registry->policy_manager()->load_from_str(req.body);
             for (auto &mod : policies) {
                 mod->info_json(j[mod->name()]);
             }
@@ -249,14 +249,14 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
     _svr.Get(fmt::format("/api/v1/policies/({})", AbstractModule::MODULE_ID_REGEX).c_str(), [&](const httplib::Request &req, httplib::Response &res) {
         json j;
         auto name = req.matches[1];
-        if (!_registry.policy_manager()->module_exists(name)) {
+        if (!_registry->policy_manager()->module_exists(name)) {
             res.status = 404;
             j["error"] = "policy does not exists";
             res.set_content(j.dump(), "text/json");
             return;
         }
         try {
-            auto [policy, lock] = _registry.policy_manager()->module_get_locked(name);
+            auto [policy, lock] = _registry->policy_manager()->module_get_locked(name);
             policy->info_json(j);
             res.set_content(j.dump(), "text/json");
         } catch (const std::exception &e) {
@@ -268,18 +268,18 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
     _svr.Delete(fmt::format("/api/v1/policies/({})", AbstractModule::MODULE_ID_REGEX).c_str(), [&](const httplib::Request &req, httplib::Response &res) {
         json j;
         auto name = req.matches[1];
-        if (!_registry.policy_manager()->module_exists(name)) {
+        if (!_registry->policy_manager()->module_exists(name)) {
             res.status = 404;
             j["error"] = "policy does not exists";
             res.set_content(j.dump(), "text/json");
             return;
         }
         try {
-            auto [policy, lock] = _registry.policy_manager()->module_get_locked(name);
+            auto [policy, lock] = _registry->policy_manager()->module_get_locked(name);
             policy->stop();
             lock.unlock();
             // TODO chance of race here
-            _registry.policy_manager()->module_remove(name);
+            _registry->policy_manager()->module_remove(name);
             res.set_content(j.dump(), "text/json");
         } catch (const std::exception &e) {
             res.status = 500;
@@ -290,14 +290,14 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
     _svr.Get(fmt::format("/api/v1/policies/({})/metrics/bucket/(\\d+)", AbstractModule::MODULE_ID_REGEX).c_str(), [&](const httplib::Request &req, httplib::Response &res) {
         json j;
         auto name = req.matches[1];
-        if (!_registry.policy_manager()->module_exists(name)) {
+        if (!_registry->policy_manager()->module_exists(name)) {
             res.status = 404;
             j["error"] = "policy does not exist";
             res.set_content(j.dump(), "text/json");
             return;
         }
         try {
-            auto [policy, lock] = _registry.policy_manager()->module_get_locked(name);
+            auto [policy, lock] = _registry->policy_manager()->module_get_locked(name);
             uint64_t period(std::stol(req.matches[2]));
             for (auto &mod : policy->modules()) {
                 auto hmod = dynamic_cast<StreamHandler *>(mod);
@@ -317,14 +317,14 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
     _svr.Get(fmt::format("/api/v1/policies/({})/metrics/window/(\\d+)", AbstractModule::MODULE_ID_REGEX).c_str(), [&](const httplib::Request &req, httplib::Response &res) {
         json j;
         auto name = req.matches[1];
-        if (!_registry.policy_manager()->module_exists(name)) {
+        if (!_registry->policy_manager()->module_exists(name)) {
             res.status = 404;
             j["error"] = "policy does not exist";
             res.set_content(j.dump(), "text/json");
             return;
         }
         try {
-            auto [policy, lock] = _registry.policy_manager()->module_get_locked(name);
+            auto [policy, lock] = _registry->policy_manager()->module_get_locked(name);
             uint64_t period(std::stol(req.matches[2]));
             for (auto &mod : policy->modules()) {
                 auto hmod = dynamic_cast<StreamHandler *>(mod);
@@ -343,14 +343,14 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
     });
     _svr.Get(fmt::format("/api/v1/policies/({})/metrics/prometheus", AbstractModule::MODULE_ID_REGEX).c_str(), [&](const httplib::Request &req, httplib::Response &res) {
         auto name = req.matches[1];
-        if (!_registry.policy_manager()->module_exists(name)) {
+        if (!_registry->policy_manager()->module_exists(name)) {
             res.status = 404;
             res.set_content("policy does not exists", "text/plain");
             return;
         }
         try {
             std::stringstream output;
-            auto [policy, lock] = _registry.policy_manager()->module_get_locked(name);
+            auto [policy, lock] = _registry->policy_manager()->module_get_locked(name);
             for (auto &mod : policy->modules()) {
                 auto hmod = dynamic_cast<StreamHandler *>(mod);
                 if (hmod) {

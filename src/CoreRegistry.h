@@ -47,12 +47,12 @@ private:
     std::unique_ptr<PolicyManager> _policy_manager;
 
     std::shared_ptr<spdlog::logger> _logger;
-    HttpServer *_svr;
 
 public:
-    CoreRegistry(HttpServer *svr);
+    CoreRegistry();
     ~CoreRegistry();
 
+    void start(HttpServer *svr);
     void stop();
 
     // yaml based configuration
@@ -83,6 +83,10 @@ public:
     [[nodiscard]] const PolicyManager *policy_manager() const
     {
         return _policy_manager.get();
+    }
+    [[nodiscard]] const HandlerPluginRegistry *handler_plugin_registry() const
+    {
+        return &_handler_registry;
     }
     [[nodiscard]] const InputPluginRegistry *input_plugin_registry() const
     {
