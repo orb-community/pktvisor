@@ -1,37 +1,47 @@
 #include <catch2/catch.hpp>
 
-#include "GeoDB.h"
 #include "PcapInputStream.h"
-#include "PcapStreamHandler.h"
+#include "DhcpStreamHandler.h"
 
-using namespace visor::handler::pcap;
+using namespace visor::handler::dhcp;
 using namespace visor::input::pcap;
+using namespace nlohmann;
 
-TEST_CASE("Parse net (dns) random UDP/TCP tests", "[pcap][net]")
+TEST_CASE("Parse DHCP tests", "[pcap][dhcp]")
 {
-
     PcapInputStream stream{"pcap-test"};
-    stream.config_set("pcap_file", "tests/fixtures/dns_udp_tcp_random.pcap");
+    stream.config_set("pcap_file", "tests/fixtures/dhcp_ipv4.pcap");
     stream.config_set("bpf", "");
-    stream.config_set("host_spec", "192.168.0.0/24");
-    stream.parse_host_spec();
 
     visor::Config c;
     c.config_set<uint64_t>("num_periods", 1);
-    PcapStreamHandler pcap_handler{"pcap-handler-test", &stream, &c};
+    DhcpStreamHandler dhcp_handler{"dhcp-test", &stream, &c};
 
-    pcap_handler.start();
+    dhcp_handler.start();
     stream.start();
+    dhcp_handler.stop();
     stream.stop();
-    pcap_handler.stop();
 
-    auto counters = pcap_handler.metrics()->bucket(0)->counters();
+    auto counters = dhcp_handler.metrics()->bucket(0)->counters();
+    auto event_data = dhcp_handler.metrics()->bucket(0)->event_data_locked();
 
-    CHECK(pcap_handler.metrics()->start_tstamp().tv_sec == 1614874231);
-    CHECK(pcap_handler.metrics()->start_tstamp().tv_nsec == 565771000);
+    CHECK(dhcp_handler.metrics()->current_periods() == 1);
+    CHECK(dhcp_handler.metrics()->start_tstamp().tv_sec == 1567706414);
+    CHECK(dhcp_handler.metrics()->start_tstamp().tv_nsec == 599964000);
 
-    // confirmed with wireshark
-    CHECK(counters.pcap_TCP_reassembly_errors.value() == 0);
-    CHECK(counters.pcap_os_drop.value() == 0);
-    CHECK(counters.pcap_if_drop.value() == 0);
+    CHECK(dhcp_handler.metrics()->end_tstamp().tv_sec == 1567706420);
+    CHECK(dhcp_handler.metrics()->end_tstamp().tv_nsec == 602866000);
+
+    CHECK(dhcp_handler.metrics()->bucket(0)->period_length() == 6);
+
+    json j;
+    dhcp_handler.metrics()->bucket(0)->to_json(j);
+
+    CHECK(dhcp_handler.metrics()->current_periods() == 1);
+    CHECK(event_data.num_events->value() == 0);
+    CHECK(counters.DISCOVER.value() == 0);
+    CHECK(counters.OFFER.value() == 0);
+    CHECK(counters.REQUEST.value() == 0);
+    CHECK(counters.ACK.value() == 0);
+
 }

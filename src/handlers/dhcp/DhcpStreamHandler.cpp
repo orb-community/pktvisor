@@ -17,6 +17,22 @@ DhcpStreamHandler::DhcpStreamHandler(const std::string &name, InputStream *strea
     }
 }
 
+// callback from input module
+void DhcpStreamHandler::process_udp_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp)
+{
+    pcpp::UdpLayer *udpLayer = payload.getLayerOfType<pcpp::UdpLayer>();
+    assert(udpLayer);
+
+    auto dst_port = ntohs(udpLayer->getUdpHeader()->portDst);
+    auto src_port = ntohs(udpLayer->getUdpHeader()->portSrc);
+    if (dst_port == 67 || src_port == 67 || dst_port == 68 || src_port == 68) {
+        pcpp::DhcpLayer *dhcpLayer = payload.getLayerOfType<pcpp::DhcpLayer>();
+        if (dhcpLayer && !_filtering(dhcpLayer, dir, l3, pcpp::UDP, src_port, dst_port, stamp)) {
+            _metrics->process_dhcp_layer(dhcpLayer, dir, l3, pcpp::UDP, flowkey, src_port, dst_port, stamp);
+        }
+    }
+}
+
 void DhcpStreamHandler::start()
 {
     if (_running) {
@@ -27,11 +43,11 @@ void DhcpStreamHandler::start()
         _metrics->set_recorded_stream();
     }
 
-    _start_tstamp_connection = _pcap_stream->start_tstamp_signal.connect(&DhcpStreamHandler::set_start_tstamp, this);
-    _end_tstamp_connection = _pcap_stream->end_tstamp_signal.connect(&DhcpStreamHandler::set_end_tstamp, this);
-
-    _dhcp_tcp_reassembly_errors_connection = _pcap_stream->tcp_reassembly_error_signal.connect(&DhcpStreamHandler::process_dhcp_tcp_reassembly_error, this);
-    _dhcp_stats_connection = _pcap_stream->dhcp_stats_signal.connect(&DhcpStreamHandler::process_dhcp_stats, this);
+    if (_pcap_stream) {
+        _pkt_udp_connection = _pcap_stream->udp_signal.connect(&DhcpStreamHandler::process_udp_packet_cb, this);
+        _start_tstamp_connection = _pcap_stream->start_tstamp_signal.connect(&DhcpStreamHandler::set_start_tstamp, this);
+        _end_tstamp_connection = _pcap_stream->end_tstamp_signal.connect(&DhcpStreamHandler::set_end_tstamp, this);
+    }
 
     _running = true;
 }
@@ -42,22 +58,16 @@ void DhcpStreamHandler::stop()
         return;
     }
 
-    _start_tstamp_connection.disconnect();
-    _end_tstamp_connection.disconnect();
-    _dhcp_tcp_reassembly_errors_connection.disconnect();
+    if (_pcap_stream) {
+        _pkt_udp_connection.disconnect();
+        _start_tstamp_connection.disconnect();
+        _end_tstamp_connection.disconnect();
+    }
 
     _running = false;
 }
 
 // callback from input module
-void DhcpStreamHandler::process_dhcp_tcp_reassembly_error(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, timespec stamp)
-{
-    _metrics->process_dhcp_tcp_reassembly_error(payload, dir, l3, stamp);
-}
-void DhcpStreamHandler::process_dhcp_stats(const pcpp::IDhcpDevice::DhcpStats &stats)
-{
-    _metrics->process_dhcp_stats(stats);
-}
 void DhcpStreamHandler::set_start_tstamp(timespec stamp)
 {
     _metrics->set_start_tstamp(stamp);
@@ -75,65 +85,78 @@ void DhcpMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
     std::shared_lock r_lock(other._mutex);
     std::unique_lock w_lock(_mutex);
 
-    _counters.dhcp_TCP_reassembly_errors += other._counters.dhcp_TCP_reassembly_errors;
-    _counters.dhcp_os_drop += other._counters.dhcp_os_drop;
-    _counters.dhcp_if_drop += other._counters.dhcp_if_drop;
+    _counters.DISCOVER += other._counters.DISCOVER;
+    _counters.OFFER += other._counters.OFFER;
+    _counters.REQUEST += other._counters.REQUEST;
+    _counters.ACK += other._counters.ACK;
 }
 
 void DhcpMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap add_labels) const
 {
     std::shared_lock r_lock(_mutex);
 
-    _counters.dhcp_TCP_reassembly_errors.to_prometheus(out, add_labels);
-    _counters.dhcp_os_drop.to_prometheus(out, add_labels);
-    _counters.dhcp_if_drop.to_prometheus(out, add_labels);
+    _counters.DISCOVER.to_prometheus(out, add_labels);
+    _counters.OFFER.to_prometheus(out, add_labels);
+    _counters.REQUEST.to_prometheus(out, add_labels);
+    _counters.ACK.to_prometheus(out, add_labels);
 }
 
 void DhcpMetricsBucket::to_json(json &j) const
 {
     std::shared_lock r_lock(_mutex);
 
-    _counters.dhcp_TCP_reassembly_errors.to_json(j);
-    _counters.dhcp_os_drop.to_json(j);
-    _counters.dhcp_if_drop.to_json(j);
+    _counters.DISCOVER.to_json(j);
+    _counters.OFFER.to_json(j);
+    _counters.REQUEST.to_json(j);
+    _counters.ACK.to_json(j);
 }
 
-void DhcpMetricsBucket::process_dhcp_tcp_reassembly_error([[maybe_unused]] bool deep, [[maybe_unused]] pcpp::Packet &payload, [[maybe_unused]] PacketDirection dir, [[maybe_unused]] pcpp::ProtocolType l3)
+void DhcpMetricsBucket::process_filtered()
 {
     std::unique_lock lock(_mutex);
-    ++_counters.dhcp_TCP_reassembly_errors;
+    ++_counters.filtered;
 }
-void DhcpMetricsBucket::process_dhcp_stats(const pcpp::IDhcpDevice::DhcpStats &stats)
+
+bool DhcpStreamHandler::_filtering(pcpp::DhcpLayer *payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint16_t src_port, uint16_t dst_port, timespec stamp)
 {
+    // no filters yet
+    return false;
+}
+
+void DhcpMetricsBucket::process_dhcp_layer(bool deep, pcpp::DhcpLayer *payload, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint16_t src_port, uint16_t dst_port)
+{
+
     std::unique_lock lock(_mutex);
 
-    // dhcp keeps monotonic counters, so at the start of every new bucket we have to record
-    // the current dhcp value and then keep track of differences.
-    if (_counters.dhcp_last_os_drop == std::numeric_limits<uint64_t>::max() || _counters.dhcp_last_if_drop == std::numeric_limits<uint64_t>::max()) {
-        _counters.dhcp_last_os_drop = stats.packetsDrop;
-        _counters.dhcp_last_if_drop = stats.packetsDropByInterface;
-        return;
-    }
-    if (stats.packetsDrop > _counters.dhcp_last_os_drop) {
-        _counters.dhcp_os_drop += stats.packetsDrop - _counters.dhcp_last_os_drop;
-        _counters.dhcp_last_os_drop = stats.packetsDrop;
-    }
-    if (stats.packetsDropByInterface > _counters.dhcp_last_if_drop) {
-        _counters.dhcp_if_drop += stats.packetsDropByInterface - _counters.dhcp_last_if_drop;
-        _counters.dhcp_last_if_drop = stats.packetsDropByInterface;
+    switch (payload->getMesageType()) {
+    case pcpp::DHCP_DISCOVER:
+        ++_counters.DISCOVER;
+        break;
+    case pcpp::DHCP_OFFER:
+        ++_counters.OFFER;
+        break;
+    case pcpp::DHCP_REQUEST:
+        ++_counters.REQUEST;
+        break;
+    case pcpp::DHCP_ACK:
+        ++_counters.ACK;
+        break;
     }
 }
 
-// the general metrics manager entry point
-void DhcpMetricsManager::process_dhcp_tcp_reassembly_error(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, [[maybe_unused]] timespec stamp)
+void DhcpMetricsManager::process_dhcp_layer(pcpp::DhcpLayer *payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowkey, uint16_t src_port, uint16_t dst_port, timespec stamp)
 {
-    // process in the "live" bucket
-    live_bucket()->process_dhcp_tcp_reassembly_error(_deep_sampling_now, payload, dir, l3);
+    // base event
+    new_event(stamp);
+    // process in the "live" bucket. this will parse the resources if we are deep sampling
+    live_bucket()->process_dhcp_layer(_deep_sampling_now, payload, l3, l4, src_port, dst_port);
 }
-void DhcpMetricsManager::process_dhcp_stats(const pcpp::IDhcpDevice::DhcpStats &stats)
+
+void DhcpMetricsManager::process_filtered(timespec stamp)
 {
-    // process in the "live" bucket
-    live_bucket()->process_dhcp_stats(stats);
+    // base event, no sample
+    new_event(stamp, false);
+    live_bucket()->process_filtered();
 }
 
 }

@@ -29,12 +29,14 @@ protected:
         Counter OFFER;
         Counter REQUEST;
         Counter ACK;
+        Counter filtered;
 
         counters()
             : DISCOVER("dhcp", {"wire_packets", "discover"}, "Total DHCP packets with message type DISCOVER")
             , OFFER("dhcp", {"wire_packets", "discover"}, "Total DHCP packets with message type OFFER")
             , REQUEST("dhcp", {"wire_packets", "discover"}, "Total DHCP packets with message type REQUEST")
             , ACK("dhcp", {"wire_packets", "discover"}, "Total DHCP packets with message type ACK")
+            , filtered("dhcp", {"wire_packets", "filtered"}, "Total DHCP wire packets seen that did not match the configured filter(s) (if any)")
         {
         }
     };
@@ -60,7 +62,8 @@ public:
     void to_json(json &j) const override;
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override;
 
-    void process_dhcp_layer(bool deep, pcpp::DhcpLayer &payload, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint16_t port);
+    void process_filtered();
+    void process_dhcp_layer(bool deep, pcpp::DhcpLayer *payload, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint16_t src_port, uint16_t dst_port);
 
 };
 
@@ -72,7 +75,8 @@ public:
     {
     }
 
-    void process_dhcp_layer(pcpp::DhcpLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowkey, uint16_t port, timespec stamp);
+    void process_filtered(timespec stamp);
+    void process_dhcp_layer(pcpp::DhcpLayer *payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowkey, uint16_t src_port, uint16_t dst_port, timespec stamp);
 };
 
 class DhcpStreamHandler final : public visor::StreamMetricsHandler<DhcpMetricsManager>
@@ -88,6 +92,8 @@ class DhcpStreamHandler final : public visor::StreamMetricsHandler<DhcpMetricsMa
 
     void set_start_tstamp(timespec stamp);
     void set_end_tstamp(timespec stamp);
+
+    bool _filtering(pcpp::DhcpLayer *payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint16_t src_port, uint16_t dst_port, timespec stamp);
 
 public:
     DhcpStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config);

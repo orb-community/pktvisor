@@ -9,38 +9,38 @@
 #include <string>
 
 #include "PcapInputStream.h"
-#include "PcapStreamHandler.h"
+#include "DhcpStreamHandler.h"
 
-using namespace visor::handler::pcap;
+using namespace visor::handler::dhcp;
 using namespace visor::input::pcap;
 using namespace nlohmann;
 using nlohmann::json_schema::json_validator;
 
-TEST_CASE("Pcap JSON Schema", "[pcap][iface][json]")
+TEST_CASE("DHCP JSON Schema", "[dhcp][iface][json]")
 {
 
     SECTION("json iface")
     {
 
         PcapInputStream stream{"pcap-test"};
-        stream.config_set("pcap_file", "tests/fixtures/dns_udp_tcp_random.pcap");
+        stream.config_set("pcap_file", "tests/fixtures/dhcp_ipv4.pcap");
         stream.config_set("bpf", "");
         stream.config_set("host_spec", "192.168.0.0/24");
         stream.parse_host_spec();
 
         visor::Config c;
-        PcapStreamHandler pcap_handler{"pcap-test", &stream, &c};
-        pcap_handler.config_set("recorded_stream", true);
+        DhcpStreamHandler handler{"dhcp-test", &stream, &c};
+        handler.config_set("recorded_stream", true);
 
-        pcap_handler.start();
+        handler.start();
         stream.start();
         stream.stop();
-        pcap_handler.stop();
+        handler.stop();
 
         json pcap_json;
-        pcap_handler.metrics()->window_merged_json(pcap_json, pcap_handler.schema_key(), 5);
+        handler.metrics()->window_merged_json(pcap_json, handler.schema_key(), 5);
         WARN(pcap_json);
-        std::ifstream sfile("handlers/pcap/tests/window-schema.json");
+        std::ifstream sfile("handlers/dhcp/tests/window-schema.json");
         CHECK(sfile.is_open());
         std::string schema;
 
