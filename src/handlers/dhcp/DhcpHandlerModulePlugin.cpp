@@ -7,7 +7,6 @@
 #include "DhcpStreamHandler.h"
 #include "HandlerManager.h"
 #include "InputStreamManager.h"
-#include "DhcpInputStream.h"
 #include <Corrade/PluginManager/AbstractManager.h>
 #include <nlohmann/json.hpp>
 
@@ -16,7 +15,7 @@ CORRADE_PLUGIN_REGISTER(VisorHandlerDhcp, visor::handler::dhcp::DhcpHandlerModul
 
 namespace visor::handler::dhcp {
 
-using namespace visor::input::dhcp;
+using namespace visor::input::pcap;
 using json = nlohmann::json;
 
 void DhcpHandlerModulePlugin::setup_routes(HttpServer *svr)
@@ -26,6 +25,7 @@ std::unique_ptr<StreamHandler> DhcpHandlerModulePlugin::instantiate(const std::s
 {
     // TODO using config as both window config and module config
     auto handler_module = std::make_unique<DhcpStreamHandler>(name, input_stream, config);
+    handler_module->config_merge(*config);
     return handler_module;
 }
 

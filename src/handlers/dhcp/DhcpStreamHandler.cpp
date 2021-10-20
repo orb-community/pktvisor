@@ -11,8 +11,8 @@ DhcpStreamHandler::DhcpStreamHandler(const std::string &name, InputStream *strea
 {
     assert(stream);
     // figure out which input stream we have
-    _dhcp_stream = dynamic_cast<DhcpInputStream *>(stream);
-    if (!_dhcp_stream) {
+    _pcap_stream = dynamic_cast<PcapInputStream *>(stream);
+    if (!_pcap_stream) {
         throw StreamHandlerException(fmt::format("DhcpStreamHandler: unsupported input stream {}", stream->name()));
     }
 }
@@ -27,11 +27,11 @@ void DhcpStreamHandler::start()
         _metrics->set_recorded_stream();
     }
 
-    _start_tstamp_connection = _dhcp_stream->start_tstamp_signal.connect(&DhcpStreamHandler::set_start_tstamp, this);
-    _end_tstamp_connection = _dhcp_stream->end_tstamp_signal.connect(&DhcpStreamHandler::set_end_tstamp, this);
+    _start_tstamp_connection = _pcap_stream->start_tstamp_signal.connect(&DhcpStreamHandler::set_start_tstamp, this);
+    _end_tstamp_connection = _pcap_stream->end_tstamp_signal.connect(&DhcpStreamHandler::set_end_tstamp, this);
 
-    _dhcp_tcp_reassembly_errors_connection = _dhcp_stream->tcp_reassembly_error_signal.connect(&DhcpStreamHandler::process_dhcp_tcp_reassembly_error, this);
-    _dhcp_stats_connection = _dhcp_stream->dhcp_stats_signal.connect(&DhcpStreamHandler::process_dhcp_stats, this);
+    _dhcp_tcp_reassembly_errors_connection = _pcap_stream->tcp_reassembly_error_signal.connect(&DhcpStreamHandler::process_dhcp_tcp_reassembly_error, this);
+    _dhcp_stats_connection = _pcap_stream->dhcp_stats_signal.connect(&DhcpStreamHandler::process_dhcp_stats, this);
 
     _running = true;
 }
