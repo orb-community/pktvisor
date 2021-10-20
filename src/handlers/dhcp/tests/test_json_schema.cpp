@@ -23,7 +23,7 @@ TEST_CASE("DHCP JSON Schema", "[dhcp][iface][json]")
     {
 
         PcapInputStream stream{"pcap-test"};
-        stream.config_set("pcap_file", "tests/fixtures/dhcp_ipv4.pcap");
+        stream.config_set("pcap_file", "tests/fixtures/nb6-startup.pcap");
         stream.config_set("bpf", "");
         stream.config_set("host_spec", "192.168.0.0/24");
         stream.parse_host_spec();
