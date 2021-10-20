@@ -38,7 +38,7 @@ private:
     HandlerPluginMap _handler_plugins;
 
     // these hold instances of active visor::AbstractModule derived modules (the main event processors) which are created from the plugins above
-    // any number can exist per plugin type can exist at a time, each with their own life cycle
+    // any number can exist per plugin type at a time, each with their own life cycle
     std::unique_ptr<InputStreamManager> _input_manager;
     std::unique_ptr<HandlerManager> _handler_manager;
 
@@ -89,6 +89,14 @@ public:
         return &_handler_registry;
     }
     [[nodiscard]] const InputPluginRegistry *input_plugin_registry() const
+    {
+        return &_input_registry;
+    }
+    [[nodiscard]] HandlerPluginRegistry *handler_plugin_registry()
+    {
+        return &_handler_registry;
+    }
+    [[nodiscard]] InputPluginRegistry *input_plugin_registry()
     {
         return &_input_registry;
     }

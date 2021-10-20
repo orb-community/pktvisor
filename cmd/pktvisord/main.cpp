@@ -32,9 +32,9 @@ static const char USAGE[] =
 
     pktvisord summarizes data streams and exposes a REST API control plane for configuration and metrics.
 
-    pktvisord operation is configured via Taps and Collection Policies. The former set up the available
-    input streams while the latter instantiate Taps and Stream Handlers to analyze and summarize
-    the stream data.
+    pktvisord operation is configured via Taps and Collection Policies. Taps abstract the process of "tapping into"
+    input streams with templated configuration while Policies use Taps to instantiate and configure Input and Stream
+    Handlers to analyze and summarize stream data, which is then made available for collection via REST API.
 
     Taps and Collection Policies may be created by passing the appropriate YAML configuration file to
     --config, and/or by enabling the admin REST API with --admin-api and using the appropriate endpoints.
@@ -47,42 +47,44 @@ static const char USAGE[] =
     For more documentation, see https://pktvisor.dev
 
     Base Options:
-      -d                    Daemonize; fork and continue running in the background [default: false]
-      -h --help             Show this screen
-      -v                    Verbose log output
-      --no-track            Don't send lightweight, anonymous usage metrics
-      --version             Show version
+      -d                          Daemonize; fork and continue running in the background [default: false]
+      -h --help                   Show this screen
+      -v                          Verbose log output
+      --no-track                  Don't send lightweight, anonymous usage metrics
+      --version                   Show version
     Web Server Options:
-      -l HOST               Run web server on the given host or IP [default: localhost]
-      -p PORT               Run web server on the given port [default: 10853]
-      --tls                 Enable TLS on the web server
-      --tls-cert FILE       Use given TLS cert. Required if --tls is enabled.
-      --tls-key FILE        Use given TLS private key. Required if --tls is enabled.
-      --admin-api           Enable admin REST API giving complete control plane functionality [default: false]
-                            When not specified, the exposed API is read-only access to module status and metrics.
-                            When specified, write access is enabled for all modules.
+      -l HOST                     Run web server on the given host or IP [default: localhost]
+      -p PORT                     Run web server on the given port [default: 10853]
+      --tls                       Enable TLS on the web server
+      --tls-cert FILE             Use given TLS cert. Required if --tls is enabled.
+      --tls-key FILE              Use given TLS private key. Required if --tls is enabled.
+      --admin-api                 Enable admin REST API giving complete control plane functionality [default: false]
+                                  When not specified, the exposed API is read-only access to module status and metrics.
+                                  When specified, write access is enabled for all modules.
     Geo Options:
-      --geo-city FILE       GeoLite2 City database to use for IP to Geo mapping
-      --geo-asn FILE        GeoLite2 ASN database to use for IP to ASN mapping
+      --geo-city FILE             GeoLite2 City database to use for IP to Geo mapping
+      --geo-asn FILE              GeoLite2 ASN database to use for IP to ASN mapping
     Configuration:
-      --config FILE         Use specified YAML configuration to configure options, Taps, and Collection Policies
-                            Please see https://pktvisor.dev for more information
+      --config FILE               Use specified YAML configuration to configure options, Taps, and Collection Policies
+                                  Please see https://pktvisor.dev for more information
     Modules:
-      --modules-list        List available modules (builtin and dynamic)
+      --module-list               List all modules which have been loaded (builtin and dynamic)
+      --module-load FILE          Load the specified dynamic module
     Logging Options:
-      --log-file FILE       Log to the given output file name
-      --syslog              Log to syslog
+      --log-file FILE             Log to the given output file name
+      --syslog                    Log to syslog
     Prometheus Options:
-      --prometheus          Ignored, Prometheus output always enabled (left for backwards compatibility)
-      --prom-instance ID    Optionally set the 'instance' label to given ID
+      --prometheus                Ignored, Prometheus output always enabled (left for backwards compatibility)
+      --prom-instance ID          Optionally set the 'instance' label to given ID
     Handler Module Defaults:
-      --max-deep-sample N   Never deep sample more than N% of streams (an int between 0 and 100) [default: 100]
-      --periods P           Hold this many 60 second time periods of history in memory [default: 5]
+      --max-deep-sample N         Never deep sample more than N% of streams (an int between 0 and 100) [default: 100]
+      --periods P                 Hold this many 60 second time periods of history in memory [default: 5]
     pcap Input Module Options: (applicable to default policy when IFACE is specified only)
-      -b BPF                Filter packets using the given tcpdump compatible filter expression. Example: "port 53"
-      -H HOSTSPEC           Specify subnets (comma separated) to consider HOST, in CIDR form. In live capture this /may/ be detected automatically
-                            from capture device but /must/ be specified for pcaps. Example: "10.0.1.0/24,10.0.2.1/32,2001:db8::/64"
-                            Specifying this for live capture will append to any automatic detection.
+      -b BPF                      Filter packets using the given tcpdump compatible filter expression. Example: "port 53"
+      -H HOSTSPEC                 Specify subnets (comma separated) to consider HOST, in CIDR form. In live capture this
+                                  /may/ be detected automatically from capture device but /must/ be specified for pcaps.
+                                  Example: "10.0.1.0/24,10.0.2.1/32,2001:db8::/64"
+                                  Specifying this for live capture will append to any automatic detection.
 )";
 
 namespace {
@@ -230,13 +232,17 @@ int main(int argc, char *argv[])
 
     // modules
     CoreRegistry registry;
-    if (args["--modules-list"].asBool()) {
+    if (args["--module-list"].asBool()) {
         for (auto &p : registry.input_plugin_registry()->pluginList()) {
             logger->info("input: {}", p);
         }
         for (auto &p : registry.handler_plugin_registry()->pluginList()) {
             logger->info("handler: {}", p);
         }
+        exit(EXIT_SUCCESS);
+    }
+    if (args["--module-load"]) {
+        auto result = registry.input_plugin_registry()->load(args["--module-load"].asString());
         exit(EXIT_SUCCESS);
     }
 
