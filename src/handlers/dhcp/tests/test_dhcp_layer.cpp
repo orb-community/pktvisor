@@ -10,7 +10,7 @@ using namespace nlohmann;
 TEST_CASE("Parse DHCP tests", "[pcap][dhcp]")
 {
     PcapInputStream stream{"pcap-test"};
-    stream.config_set("pcap_file", "tests/fixtures/nb6-startup.pcap");
+    stream.config_set("pcap_file", "tests/fixtures/dhcp-flow.pcap");
     stream.config_set("bpf", "");
 
     visor::Config c;
@@ -26,21 +26,21 @@ TEST_CASE("Parse DHCP tests", "[pcap][dhcp]")
     auto event_data = dhcp_handler.metrics()->bucket(0)->event_data_locked();
 
     CHECK(dhcp_handler.metrics()->current_periods() == 1);
-    CHECK(dhcp_handler.metrics()->start_tstamp().tv_sec == 54);
-    CHECK(dhcp_handler.metrics()->start_tstamp().tv_nsec == 643990000);
+    CHECK(dhcp_handler.metrics()->start_tstamp().tv_sec == 1634851620);
+    CHECK(dhcp_handler.metrics()->start_tstamp().tv_nsec == 703423000);
 
-    CHECK(dhcp_handler.metrics()->end_tstamp().tv_sec == 1388651332);
-    CHECK(dhcp_handler.metrics()->end_tstamp().tv_nsec == 306235000);
+    CHECK(dhcp_handler.metrics()->end_tstamp().tv_sec == 1634851650);
+    CHECK(dhcp_handler.metrics()->end_tstamp().tv_nsec == 401994000);
 
-    CHECK(dhcp_handler.metrics()->bucket(0)->period_length() == 1388651278);
+    CHECK(dhcp_handler.metrics()->bucket(0)->period_length() == 30);
 
     json j;
     dhcp_handler.metrics()->bucket(0)->to_json(j);
 
-    CHECK(event_data.num_events->value() == 11);
-    CHECK(counters.DISCOVER.value() == 7);
-    CHECK(counters.OFFER.value() == 2);
-    CHECK(counters.REQUEST.value() == 1);
-    CHECK(counters.ACK.value() == 1);
+    CHECK(event_data.num_events->value() == 8);
+    CHECK(counters.DISCOVER.value() == 1);
+    CHECK(counters.OFFER.value() == 1);
+    CHECK(counters.REQUEST.value() == 3);
+    CHECK(counters.ACK.value() == 3);
 
 }

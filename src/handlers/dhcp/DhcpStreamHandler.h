@@ -33,9 +33,9 @@ protected:
 
         counters()
             : DISCOVER("dhcp", {"wire_packets", "discover"}, "Total DHCP packets with message type DISCOVER")
-            , OFFER("dhcp", {"wire_packets", "discover"}, "Total DHCP packets with message type OFFER")
-            , REQUEST("dhcp", {"wire_packets", "discover"}, "Total DHCP packets with message type REQUEST")
-            , ACK("dhcp", {"wire_packets", "discover"}, "Total DHCP packets with message type ACK")
+            , OFFER("dhcp", {"wire_packets", "offer"}, "Total DHCP packets with message type OFFER")
+            , REQUEST("dhcp", {"wire_packets", "request"}, "Total DHCP packets with message type REQUEST")
+            , ACK("dhcp", {"wire_packets", "ack"}, "Total DHCP packets with message type ACK")
             , filtered("dhcp", {"wire_packets", "filtered"}, "Total DHCP wire packets seen that did not match the configured filter(s) (if any)")
         {
         }

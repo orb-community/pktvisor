@@ -23,9 +23,8 @@ TEST_CASE("DHCP JSON Schema", "[dhcp][iface][json]")
     {
 
         PcapInputStream stream{"pcap-test"};
-        stream.config_set("pcap_file", "tests/fixtures/nb6-startup.pcap");
+        stream.config_set("pcap_file", "tests/fixtures/dhcp-flow.pcap");
         stream.config_set("bpf", "");
-        stream.config_set("host_spec", "192.168.0.0/24");
         stream.parse_host_spec();
 
         visor::Config c;
@@ -37,9 +36,9 @@ TEST_CASE("DHCP JSON Schema", "[dhcp][iface][json]")
         stream.stop();
         handler.stop();
 
-        json pcap_json;
-        handler.metrics()->window_merged_json(pcap_json, handler.schema_key(), 5);
-        WARN(pcap_json);
+        json output_json;
+        handler.metrics()->window_merged_json(output_json, handler.schema_key(), 5);
+        WARN(output_json);
         std::ifstream sfile("handlers/dhcp/tests/window-schema.json");
         CHECK(sfile.is_open());
         std::string schema;
@@ -55,7 +54,7 @@ TEST_CASE("DHCP JSON Schema", "[dhcp][iface][json]")
 
         try {
             validator.set_root_schema(schema_json);
-            validator.validate(pcap_json);
+            validator.validate(output_json);
         } catch (const std::exception &e) {
             FAIL(e.what());
         }
