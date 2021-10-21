@@ -342,6 +342,7 @@ void DnsMetricsBucket::to_json(json &j) const
     event_rate->to_json(j, live_rates);
     num_events->to_json(j);
     num_samples->to_json(j);
+    event_lock.unlock();
 
     std::shared_lock r_lock(_mutex);
 
@@ -520,6 +521,7 @@ void DnsMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap ad
     event_rate->to_prometheus(out, add_labels);
     num_events->to_prometheus(out, add_labels);
     num_samples->to_prometheus(out, add_labels);
+    event_lock.unlock();
 
     std::shared_lock r_lock(_mutex);
 
