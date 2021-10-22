@@ -38,6 +38,7 @@ TEST_CASE("Parse DHCP tests", "[pcap][dhcp]")
     dhcp_handler.metrics()->bucket(0)->to_json(j);
 
     CHECK(event_data.num_events->value() == 8);
+    CHECK(counters.filtered.value() == 0);
     CHECK(counters.DISCOVER.value() == 1);
     CHECK(counters.OFFER.value() == 1);
     CHECK(counters.REQUEST.value() == 3);

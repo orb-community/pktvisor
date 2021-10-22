@@ -90,6 +90,8 @@ void DhcpMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
     _counters.OFFER += other._counters.OFFER;
     _counters.REQUEST += other._counters.REQUEST;
     _counters.ACK += other._counters.ACK;
+    _counters.filtered += other._counters.filtered;
+
 }
 
 void DhcpMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap add_labels) const
@@ -109,6 +111,8 @@ void DhcpMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap a
     _counters.OFFER.to_prometheus(out, add_labels);
     _counters.REQUEST.to_prometheus(out, add_labels);
     _counters.ACK.to_prometheus(out, add_labels);
+    _counters.filtered.to_prometheus(out, add_labels);
+
 }
 
 void DhcpMetricsBucket::to_json(json &j) const
@@ -130,6 +134,8 @@ void DhcpMetricsBucket::to_json(json &j) const
     _counters.OFFER.to_json(j);
     _counters.REQUEST.to_json(j);
     _counters.ACK.to_json(j);
+    _counters.filtered.to_json(j);
+
 }
 
 void DhcpMetricsBucket::process_filtered()
