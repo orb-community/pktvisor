@@ -8,6 +8,7 @@
 #include <assert.h>
 #include <fmt/format.h>
 #include <memory>
+#include <mutex>
 #include <shared_mutex>
 #include <string>
 #include <unordered_map>
