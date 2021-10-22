@@ -94,12 +94,14 @@ void DhcpMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
 
 void DhcpMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap add_labels) const
 {
-    auto [num_events, num_samples, event_rate, event_lock] = event_data_locked(); // thread safe
 
-    event_rate->to_prometheus(out, add_labels);
-    num_events->to_prometheus(out, add_labels);
-    num_samples->to_prometheus(out, add_labels);
-    event_lock.unlock();
+    {
+        auto [num_events, num_samples, event_rate, event_lock] = event_data_locked(); // thread safe
+
+        event_rate->to_prometheus(out, add_labels);
+        num_events->to_prometheus(out, add_labels);
+        num_samples->to_prometheus(out, add_labels);
+    }
 
     std::shared_lock r_lock(_mutex);
 
@@ -113,12 +115,14 @@ void DhcpMetricsBucket::to_json(json &j) const
 {
 
     bool live_rates = !read_only() && !recorded_stream();
-    auto [num_events, num_samples, event_rate, event_lock] = event_data_locked(); // thread safe
 
-    event_rate->to_json(j, live_rates);
-    num_events->to_json(j);
-    num_samples->to_json(j);
-    event_lock.unlock();
+    {
+        auto [num_events, num_samples, event_rate, event_lock] = event_data_locked(); // thread safe
+
+        event_rate->to_json(j, live_rates);
+        num_events->to_json(j);
+        num_samples->to_json(j);
+    }
 
     std::shared_lock r_lock(_mutex);
 
