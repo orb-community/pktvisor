@@ -35,7 +35,7 @@ func (u *ui) updateHeader(v *gocui.View, window5m *client.StatSnapshot) {
 		pcounts.DeepSamples,
 		(float64(pcounts.DeepSamples)/float64(pcounts.Total))*100,
 	)
-	_, _ = fmt.Fprintf(v, "Pkt Rates Total %d/s %d/%d/%d/%d pps | In %d/s %d/%d/%d/%d pps | Out %d/s %d/%d/%d/%d pps | IP Card. In: %d | Out: %d | TCP Errors %d | OS Drops %d | IF Drops %d\n\n",
+	_, _ = fmt.Fprintf(v, "Pkt Rates Total %d/s %d/%d/%d/%d pps | In %d/s %d/%d/%d/%d pps | Out %d/s %d/%d/%d/%d pps | IP Card. In: %d | Out: %d | TCP Errors %d | OS Drops %d | IF Drops %d\n",
 		pcounts.Rates.Pps_total.Live,
 		pcounts.Rates.Pps_total.P50,
 		pcounts.Rates.Pps_total.P90,
