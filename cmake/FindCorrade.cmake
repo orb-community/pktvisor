@@ -342,7 +342,7 @@ endforeach()
 # CMake module dir
 find_path(_CORRADE_MODULE_DIR
     NAMES UseCorrade.cmake CorradeLibSuffix.cmake
-    PATH_SUFFIXES share/cmake/Corrade)
+    PATH_SUFFIXES share/cmake/Corrade lib/cmake)
 mark_as_advanced(_CORRADE_MODULE_DIR)
 
 set(CORRADE_USE_MODULE ${_CORRADE_MODULE_DIR}/UseCorrade.cmake)
