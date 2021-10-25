@@ -26,10 +26,9 @@ void DhcpStreamHandler::process_udp_packet_cb(pcpp::Packet &payload, PacketDirec
     auto dst_port = ntohs(udpLayer->getUdpHeader()->portDst);
     auto src_port = ntohs(udpLayer->getUdpHeader()->portSrc);
     if (dst_port == 67 || src_port == 67 || dst_port == 68 || src_port == 68) {
-        udpLayer->parseNextLayer();
-        pcpp::DhcpLayer *dhcpLayer = payload.getLayerOfType<pcpp::DhcpLayer>();
-        if (dhcpLayer && !_filtering(dhcpLayer, dir, l3, pcpp::UDP, src_port, dst_port, stamp)) {
-            _metrics->process_dhcp_layer(dhcpLayer, dir, l3, pcpp::UDP, flowkey, src_port, dst_port, stamp);
+        pcpp::DhcpLayer dhcpLayer(udpLayer->getLayerPayload(), udpLayer->getLayerPayloadSize(), udpLayer, &payload);
+        if (!_filtering(&dhcpLayer, dir, l3, pcpp::UDP, src_port, dst_port, stamp)) {
+            _metrics->process_dhcp_layer(&dhcpLayer, dir, l3, pcpp::UDP, flowkey, src_port, dst_port, stamp);
         }
     }
 }
