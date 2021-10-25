@@ -121,6 +121,11 @@ func (c *client) GetStats() (*StatSnapshot, error) {
 			if err != nil {
 				log.Println("error decoding")
 			}
+		} else if data, ok := handlerData["dhcp"]; ok {
+			err := mapstructure.Decode(data, &stats.DHCP)
+			if err != nil {
+				log.Println("error decoding")
+			}
 		} else if data, ok := handlerData["packets"]; ok {
 			err := mapstructure.Decode(data, &stats.Packets)
 			if err != nil {

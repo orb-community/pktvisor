@@ -1,6 +1,7 @@
 
 add_subdirectory(net)
 add_subdirectory(dns)
+add_subdirectory(dhcp)
 add_subdirectory(pcap)
 add_subdirectory(mock)
 

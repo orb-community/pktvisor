@@ -176,11 +176,13 @@ visor:
           num_periods: {}
           deep_sample_rate: {}
         modules:
-          default_net:
+          net:
             type: net
-          default_dns:
+          dhcp:
+            type: dhcp
+          dns:
             type: dns
-          default_pcap_stats:
+          pcap_stats:
             type: pcap
 )";
 

@@ -19,6 +19,7 @@
 
 #include "GeoDB.h"
 #include "handlers/dns/DnsStreamHandler.h"
+#include "handlers/dhcp/DhcpStreamHandler.h"
 #include "handlers/net/NetStreamHandler.h"
 #include "inputs/pcap/PcapInputStream.h"
 
@@ -154,6 +155,16 @@ int main(int argc, char *argv[])
             handler_mgr_lock.unlock();
             dns_handler = dynamic_cast<handler::dns::DnsStreamHandler *>(handler);
         }
+        handler::dhcp::DhcpStreamHandler *dhcp_handler{nullptr};
+        {
+            auto handler_module = std::make_unique<handler::dhcp::DhcpStreamHandler>("dhcp", pcap_stream, &window_config);
+            handler_module->config_set("recorded_stream", true);
+            handler_module->start();
+            mgrs.handler_manager()->module_add(std::move(handler_module));
+            auto [handler, handler_mgr_lock] = mgrs.handler_manager()->module_get_locked("dhcp");
+            handler_mgr_lock.unlock();
+            dhcp_handler = dynamic_cast<handler::dhcp::DhcpStreamHandler *>(handler);
+        }
 
         // blocking
         pcap_stream->start();
@@ -163,11 +174,13 @@ int main(int argc, char *argv[])
             // in summary mode we output a single summary of stats
             net_handler->window_json(result["1m"], 0, false);
             dns_handler->window_json(result["1m"], 0, false);
+            dhcp_handler->window_json(result["1m"], 0, false);
         } else {
             // otherwise, merge the max time window available
             auto key = fmt::format("{}m", periods);
             net_handler->window_json(result[key], periods, true);
             dns_handler->window_json(result[key], periods, true);
+            dhcp_handler->window_json(result[key], periods, true);
         }
         std::cout << result.dump() << std::endl;
 

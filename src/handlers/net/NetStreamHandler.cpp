@@ -119,11 +119,13 @@ void NetworkMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMa
     _rate_in.to_prometheus(out, add_labels);
     _rate_out.to_prometheus(out, add_labels);
 
-    auto [num_events, num_samples, event_rate, event_lock] = event_data_locked(); // thread safe
+    {
+        auto [num_events, num_samples, event_rate, event_lock] = event_data_locked(); // thread safe
 
-    event_rate->to_prometheus(out, add_labels);
-    num_events->to_prometheus(out, add_labels);
-    num_samples->to_prometheus(out, add_labels);
+        event_rate->to_prometheus(out, add_labels);
+        num_events->to_prometheus(out, add_labels);
+        num_samples->to_prometheus(out, add_labels);
+    }
 
     std::shared_lock r_lock(_mutex);
 
@@ -152,11 +154,13 @@ void NetworkMetricsBucket::to_json(json &j) const
     _rate_in.to_json(j, live_rates);
     _rate_out.to_json(j, live_rates);
 
-    auto [num_events, num_samples, event_rate, event_lock] = event_data_locked(); // thread safe
+    {
+        auto [num_events, num_samples, event_rate, event_lock] = event_data_locked(); // thread safe
 
-    event_rate->to_json(j, live_rates);
-    num_events->to_json(j);
-    num_samples->to_json(j);
+        event_rate->to_json(j, live_rates);
+        num_events->to_json(j);
+        num_samples->to_json(j);
+    }
 
     std::shared_lock r_lock(_mutex);
 

@@ -7,6 +7,7 @@
 #include <atomic>
 #include <exception>
 #include <fmt/core.h>
+#include <mutex>
 #include <nlohmann/json.hpp>
 #include <regex>
 #include <shared_mutex>
