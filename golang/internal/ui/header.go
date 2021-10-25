@@ -35,7 +35,7 @@ func (u *ui) updateHeader(v *gocui.View, window5m *client.StatSnapshot) {
 		pcounts.DeepSamples,
 		(float64(pcounts.DeepSamples)/float64(pcounts.Total))*100,
 	)
-	_, _ = fmt.Fprintf(v, "Pkt Rates Total %d/s %d/%d/%d/%d pps | In %d/s %d/%d/%d/%d pps | Out %d/s %d/%d/%d/%d pps | IP Card. In: %d | Out: %d | TCP Errors %d | OS Drops %d | IF Drops %d\n\n",
+	_, _ = fmt.Fprintf(v, "Pkt Rates Total %d/s %d/%d/%d/%d pps | In %d/s %d/%d/%d/%d pps | Out %d/s %d/%d/%d/%d pps | IP Card. In: %d | Out: %d | TCP Errors %d | OS Drops %d | IF Drops %d\n",
 		pcounts.Rates.Pps_total.Live,
 		pcounts.Rates.Pps_total.P50,
 		pcounts.Rates.Pps_total.P90,
@@ -56,6 +56,24 @@ func (u *ui) updateHeader(v *gocui.View, window5m *client.StatSnapshot) {
 		window5m.Pcap.TcpReassemblyErrors,
 		window5m.Pcap.OsDrops,
 		window5m.Pcap.IfDrops,
+	)
+	dhcpc := window5m.DHCP.WirePackets
+	_, _ = fmt.Fprintf(v, "DHCP Wire Pkts %d/%d | Rates Total %d/s %d/%d/%d/%d | Discover %d (%3.1f%%) | Offer %d (%3.1f%%) | Request %d (%3.1f%%) | Ack %d (%3.1f%%)\n",
+		dhcpc.Total-dhcpc.Filtered,
+		dhcpc.Total,
+		window5m.DHCP.Rates.Total.Live,
+		window5m.DHCP.Rates.Total.P50,
+		window5m.DHCP.Rates.Total.P90,
+		window5m.DHCP.Rates.Total.P95,
+		window5m.DHCP.Rates.Total.P99,
+		dhcpc.Discover,
+		(float64(dhcpc.Discover)/float64(dhcpc.Total))*100,
+		dhcpc.Offer,
+		(float64(dhcpc.Offer)/float64(dhcpc.Total))*100,
+		dhcpc.Request,
+		(float64(dhcpc.Request)/float64(dhcpc.Total))*100,
+		dhcpc.Ack,
+		(float64(dhcpc.Ack)/float64(dhcpc.Total))*100,
 	)
 	dnsc := window5m.DNS.WirePackets
 	_, _ = fmt.Fprintf(v, "DNS Wire Pkts %d/%d | Rates Total %d/s %d/%d/%d/%d | UDP %d (%3.1f%%) | TCP %d (%3.1f%%) | IPv4 %d (%3.1f%%) | IPv6 %d (%3.1f%%) | Query %d (%3.1f%%) | Response %d (%3.1f%%)\n",
