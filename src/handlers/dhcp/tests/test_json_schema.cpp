@@ -38,7 +38,6 @@ TEST_CASE("DHCP JSON Schema", "[dhcp][iface][json]")
 
         json output_json;
         handler.metrics()->window_merged_json(output_json, handler.schema_key(), 5);
-        WARN(output_json);
         std::ifstream sfile("handlers/dhcp/tests/window-schema.json");
         CHECK(sfile.is_open());
         std::string schema;
