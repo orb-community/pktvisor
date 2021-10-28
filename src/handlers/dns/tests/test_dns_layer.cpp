@@ -253,7 +253,7 @@ TEST_CASE("Parse DNS random UDP/TCP tests", "[pcap][net]")
     CHECK(j["top_qtype"][6]["estimate"] == 620);
 }
 
-TEST_CASE("DNS Filters: filter_exclude_noerror", "[pcap][net]")
+TEST_CASE("DNS Filters: exclude_noerror", "[pcap][net]")
 {
 
     PcapInputStream stream{"pcap-test"};
@@ -266,7 +266,7 @@ TEST_CASE("DNS Filters: filter_exclude_noerror", "[pcap][net]")
     c.config_set<uint64_t>("num_periods", 1);
     DnsStreamHandler dns_handler{"dns-test", &stream, &c};
 
-    dns_handler.config_set<bool>("filter_exclude_noerror", true);
+    dns_handler.config_set<bool>("exclude_noerror", true);
 
     dns_handler.start();
     stream.start();
@@ -284,7 +284,7 @@ TEST_CASE("DNS Filters: filter_exclude_noerror", "[pcap][net]")
     REQUIRE(j["wire_packets"]["filtered"] == 22);
 }
 
-TEST_CASE("DNS Filters: filter_only_rcode nx", "[pcap][net]")
+TEST_CASE("DNS Filters: only_rcode nx", "[pcap][net]")
 {
 
     PcapInputStream stream{"pcap-test"};
@@ -297,7 +297,7 @@ TEST_CASE("DNS Filters: filter_only_rcode nx", "[pcap][net]")
     c.config_set<uint64_t>("num_periods", 1);
     DnsStreamHandler dns_handler{"dns-test", &stream, &c};
 
-    dns_handler.config_set<uint64_t>("filter_only_rcode", NXDomain);
+    dns_handler.config_set<uint64_t>("only_rcode", NXDomain);
 
     dns_handler.start();
     stream.start();
@@ -315,7 +315,7 @@ TEST_CASE("DNS Filters: filter_only_rcode nx", "[pcap][net]")
     REQUIRE(j["wire_packets"]["filtered"] == 23);
 }
 
-TEST_CASE("DNS Filters: filter_only_rcode refused", "[pcap][net]")
+TEST_CASE("DNS Filters: only_rcode refused", "[pcap][net]")
 {
 
     PcapInputStream stream{"pcap-test"};
@@ -328,7 +328,7 @@ TEST_CASE("DNS Filters: filter_only_rcode refused", "[pcap][net]")
     c.config_set<uint64_t>("num_periods", 1);
     DnsStreamHandler dns_handler{"dns-test", &stream, &c};
 
-    dns_handler.config_set<uint64_t>("filter_only_rcode", Refused);
+    dns_handler.config_set<uint64_t>("only_rcode", Refused);
 
     dns_handler.start();
     stream.start();
@@ -346,7 +346,7 @@ TEST_CASE("DNS Filters: filter_only_rcode refused", "[pcap][net]")
     REQUIRE(j["wire_packets"]["filtered"] == 23);
 }
 
-TEST_CASE("DNS Filters: filter_only_qname_suffix", "[pcap][net]")
+TEST_CASE("DNS Filters: only_qname_suffix", "[pcap][net]")
 {
 
     PcapInputStream stream{"pcap-test"};
@@ -360,7 +360,7 @@ TEST_CASE("DNS Filters: filter_only_qname_suffix", "[pcap][net]")
     DnsStreamHandler dns_handler{"dns-test", &stream, &c};
 
     // notice, case insensitive
-    dns_handler.config_set<visor::Configurable::StringList>("filter_only_qname_suffix", {"GooGle.com"});
+    dns_handler.config_set<visor::Configurable::StringList>("only_qname_suffix", {"GooGle.com"});
     dns_handler.start();
     stream.start();
     stream.stop();
