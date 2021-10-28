@@ -8,6 +8,8 @@ given directly to pktvisor via command line or through the Admin API if availabl
 
 Policies require a `kind` to indicate the type of policy being applied.
 
+NOTE: this is not yet a complete, formal specification, and not all of it is implemented. See src/tests/test_policies.cpp for current, tested implementation.
+
 `collection-policy-anycast.yaml`
 
 ```yaml
@@ -25,7 +27,7 @@ visor:
         tap: anycast
         # this must match the input_type of the matching tap name, or application of the policy will fail
         input_type: pcap
-        config:
+        filter:
           bpf: "port 53"
       # stream handlers to attach to this input stream
       # these decide exactly which data to summarize and expose for collection
@@ -40,7 +42,7 @@ visor:
             type: net
           udp_traffic:
             type: net
-            config:
+            filter:
               protocols: [ udp ]
             metrics:
               enable:
@@ -58,7 +60,7 @@ visor:
             type: dns
             # specify that the stream handler module requires >= specific version to be successfully applied 
             require_version: "1.0"
-            config:
+            filter:
               # must match the available configuration options for this version of this stream handler
               qname_suffix: .mydomain.com
             metrics:

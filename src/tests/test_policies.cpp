@@ -33,6 +33,8 @@ visor:
         tap: anycast
         input_type: mock
         config:
+          sample: value
+        filter:
           bpf: "tcp or udp"
       # stream handlers to attach to this input stream
       # these decide exactly which data to summarize and expose for collection
@@ -51,8 +53,8 @@ visor:
 #              max_deep_sample: 75
           special_domain:
             type: dns
-            config:
-              filter_only_qname_suffix:
+            filter:
+              only_qname_suffix:
                 - ".google.com"
                 - ".ns1.com"
                 - "slack.com"
@@ -96,7 +98,7 @@ visor:
       input:
         tap: anycast
         input_type: mock
-        config:
+        filter:
           bpf:
             badmap: "bad value"
 )";
@@ -174,11 +176,12 @@ TEST_CASE("Policies", "[policies]")
         auto [policy, lock] = registry.policy_manager()->module_get_locked("default_view");
         CHECK(policy->name() == "default_view");
         CHECK(policy->input_stream()->name() == "anycast-default_view");
-        CHECK(policy->input_stream()->config_get<std::string>("bpf") == "tcp or udp");
+        CHECK(policy->input_stream()->config_get<std::string>("bpf") == "tcp or udp"); // TODO this will move to filter member variable
+        CHECK(policy->input_stream()->config_get<std::string>("sample") == "value");
         CHECK(policy->modules()[0]->name() == "default_view-default_net");
         CHECK(policy->modules()[1]->name() == "default_view-default_dns");
         CHECK(policy->modules()[2]->name() == "default_view-special_domain");
-        CHECK(policy->modules()[2]->config_get<Configurable::StringList>("filter_only_qname_suffix")[0] == ".google.com");
+        CHECK(policy->modules()[2]->config_get<Configurable::StringList>("only_qname_suffix")[0] == ".google.com");
         // TODO check window config settings made it through
         CHECK(policy->input_stream()->running());
         CHECK(policy->modules()[0]->running());
@@ -224,7 +227,7 @@ TEST_CASE("Policies", "[policies]")
         YAML::Node config_file = YAML::Load(policies_config_bad3);
 
         REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
-        REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["policies"]), "invalid input config for tap 'anycast': invalid value for key: bpf");
+        REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["policies"]), "invalid input filter for tap 'anycast': invalid value for key: bpf");
     }
 
     SECTION("Bad Config: exception on input start")
