@@ -31,30 +31,51 @@ All interfaces and schemas are versioned.
       "eth1": {}
     }
   },
+  "filter": {
+    "bpf": {
+      "type": "string",
+      "input": "text",
+      "label": "Filter Expression",
+      "description": "tcpdump compatible filter expression for limiting the traffic examined (with BPF). See https://www.tcpdump.org/manpages/tcpdump.1.html",
+      "props": {
+        "example": "udp port 53 and host 127.0.0.1"
+      }
+    }
+  },
   "config": {
     "iface": {
-      "required": true,
       "type": "string",
-      "title": "Interface",
-      "description": "The ethernet interface to capture on"
-    },
-    "bpf": {
-      "required": false,
-      "type": "string",
-      "title": "Filter Expression",
-      "description": "tcpdump compatible filter expression for limiting the traffic examined (with BPF). Example: \"port 53\""
+      "input": "text",
+      "label": "Network Interface",
+      "description": "The network interface to capture traffic from",
+      "props": {
+        "required": true,
+        "example": "eth0"
+      }
     },
     "host_spec": {
-      "required": false,
       "type": "string",
-      "title": "Host Specification",
-      "description": "Subnets (comma separated) to consider this HOST, in CIDR form. Example: \"10.0.1.0/24,10.0.2.1/32,2001:db8::/64\""
+      "input": "text",
+      "label": "Host Specification",
+      "description": "Subnets (comma separated) which should be considered belonging to this host, in CIDR form. Used for ingress/egress determination, defaults to host attached to the network interface.",
+      "props": {
+        "advanced": true,
+        "example": "10.0.1.0/24,10.0.2.1/32,2001:db8::/64"
+      }
     },
     "pcap_source": {
-      "required": false,
       "type": "string",
-      "title": "pcap Engine",
-      "description": "pcap backend engine to use. Defaults to best for platform."
+      "input": "select",
+      "label": "Packet Capture Engine",
+      "description": "Packet capture engine to use. Defaults to best for platform.",
+      "props": {
+        "advanced": true,
+        "example": "libpcap",
+        "options": {
+          "libpcap": "libpcap",
+          "af_packet (linux only)": "af_packet"
+        }
+      }
     }
   }
 }
@@ -81,23 +102,39 @@ All interfaces and schemas are versioned.
 ```json
 {
   "version": "1.0",
-  "config": {
-    "filter_exclude_noerror": {
-      "title": "Filter: Exclude NOERROR",
+  "filter": {
+    "exclude_noerror": {
+      "label": "Exclude NOERROR",
       "type": "bool",
+      "input": "checkbox",
       "description": "Filter out all NOERROR responses"
     },
-    "filter_only_rcode": {
-      "title": "Filter: Include Only RCode",
-      "type": "integer",
-      "description": "Filter out any queries which are not the given RCODE"
+    "only_rcode": {
+      "label": "Include Only RCODE",
+      "type": "number",
+      "input": "select",
+      "description": "Filter out any queries which are not the given RCODE",
+      "props": {
+        "allow_custom_options": true,
+        "options": {
+          "NOERROR": 0,
+          "SERVFAIL": 2,
+          "NXDOMAIN": 3,
+          "REFUSED": 5
+        }
+      }
     },
-    "filter_only_qname_suffix": {
-      "title": "Filter: Include Only QName With Suffix",
-      "type": "array[string]",
-      "description": "Filter out any queries whose QName does not end in a suffix on the list"
+    "only_qname_suffix": {
+      "label": "Include Only QName With Suffix",
+      "type": "string[]",
+      "input": "text",
+      "description": "Filter out any queries whose QName does not end in a suffix on the list",
+      "props": {
+        "example": ".foo.com,.example.com"
+      }
     }
   },
+  "config": {},
   "metrics": {
     "cardinality.qname": {
       "type": "cardinality",
@@ -167,8 +204,8 @@ All interfaces and schemas are versioned.
 ```json
 {
   "version": "1.0",
-  "config": {
-  },
+  "filter": { },
+  "config": { },
   "metrics": {
     "cardinality.dst_ips_out": {
       "type": "cardinality",
