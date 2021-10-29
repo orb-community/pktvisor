@@ -192,6 +192,7 @@ void PcapInputStream::start()
         _mock_generator_thread = std::make_unique<std::thread>([this] {
             while (_running) {
                 _generate_mock_traffic();
+                // 10 qps. could be configurable in future.
                 std::this_thread::sleep_for(100ms);
             }
         });
