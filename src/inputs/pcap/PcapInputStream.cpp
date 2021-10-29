@@ -10,6 +10,7 @@
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #pragma clang diagnostic ignored "-Wc99-extensions"
 #pragma GCC diagnostic ignored "-Wpedantic"
+#include <DnsLayer.h> // used only for mock generator
 #include <EthLayer.h>
 #include <IPv4Layer.h>
 #include <IPv6Layer.h>
@@ -230,7 +231,6 @@ void PcapInputStream::stop()
         _mock_generator_thread->join();
         _mock_generator_thread.reset(nullptr);
     }
-
 }
 
 void PcapInputStream::tcp_message_ready(int8_t side, const pcpp::TcpStreamData &tcpData)
@@ -255,35 +255,68 @@ void PcapInputStream::process_pcap_stats(const pcpp::IPcapDevice::PcapStats &sta
 
 void PcapInputStream::_generate_mock_traffic()
 {
+
+    PacketDirection dir = (std::rand() % 2 == 0) ? PacketDirection::toHost : PacketDirection::fromHost;
+
+    pcpp::MacAddress host_mac("00:50:43:11:22:33");
+    pcpp::IPv4Address host_ip("192.168.0.1");
+
+    pcpp::MacAddress other_mac("aa:bb:cc:dd:" + std::string('a' + std::rand() % 26, 2));
+    pcpp::IPv4Address other_ip("10.0.0." + std::to_string(std::rand() % 255));
+
     // create a new Ethernet layer
-    pcpp::EthLayer newEthernetLayer(pcpp::MacAddress("00:50:43:11:22:33"), pcpp::MacAddress("aa:bb:cc:dd:ee"));
+    pcpp::EthLayer *newEthernetLayer{nullptr};
+    if (dir == PacketDirection::toHost) {
+        newEthernetLayer = new pcpp::EthLayer(other_mac, host_mac);
+    } else {
+        newEthernetLayer = new pcpp::EthLayer(host_mac, other_mac);
+    }
 
     // create a new IPv4 layer
-    pcpp::IPv4Layer newIPLayer(pcpp::IPv4Address("192.168.1.1"), pcpp::IPv4Address("10.0.0.1"));
-    newIPLayer.getIPv4Header()->ipId = pcpp::hostToNet16(2000);
-    newIPLayer.getIPv4Header()->timeToLive = 64;
+    pcpp::IPv4Layer *newIPLayer;
+    if (dir == PacketDirection::toHost) {
+        newIPLayer = new pcpp::IPv4Layer(other_ip, host_ip);
+    } else {
+        newIPLayer = new pcpp::IPv4Layer(host_ip, other_ip);
+    }
+    newIPLayer->getIPv4Header()->ipId = pcpp::hostToNet16(2000);
+    newIPLayer->getIPv4Header()->timeToLive = 64;
 
     // create a new UDP layer
-    pcpp::UdpLayer newUdpLayer(12345, 53);
+    pcpp::UdpLayer *newUdpLayer;
+    if (dir == PacketDirection::toHost) {
+        newUdpLayer = new pcpp::UdpLayer(std::rand() % 65536, 53);
+    } else {
+        newUdpLayer = new pcpp::UdpLayer(53, std::rand() % 65536);
+    }
 
     // create a new DNS layer
-    //pcpp::DnsLayer newDnsLayer;
-    //newDnsLayer.addQuery("www.ebay.com", pcpp::DNS_TYPE_A, pcpp::DNS_CLASS_IN);
+    std::random_device rd;
+    std::mt19937 g(rd());
+    pcpp::DnsLayer *newDnsLayer = new pcpp::DnsLayer();
+    std::vector<pcpp::DnsType> types{pcpp::DNS_TYPE_A, pcpp::DNS_TYPE_AAAA, pcpp::DNS_TYPE_PTR, pcpp::DNS_TYPE_MX, pcpp::DNS_TYPE_TXT};
+    std::shuffle(types.begin(), types.end(), g);
+    newDnsLayer->addQuery(std::to_string(std::rand() % 20) + ".pktvisor-mock.dev", types[0], pcpp::DNS_CLASS_IN);
+    newDnsLayer->getDnsHeader()->transactionID = std::rand() % 65536; // note this does not work with our transaction tracking
+    if (dir == PacketDirection::fromHost) {
+        // mocking a server
+        newDnsLayer->getDnsHeader()->queryOrResponse = 1;
+        newDnsLayer->getDnsHeader()->responseCode = std::rand() % 6;
+    }
 
     // create a packet with initial capacity of 100 bytes (will grow automatically if needed)
     pcpp::Packet newPacket(100);
 
-    // add all the layers we created
-    newPacket.addLayer(&newEthernetLayer);
-    newPacket.addLayer(&newIPLayer);
-    newPacket.addLayer(&newUdpLayer);
-    //newPacket.addLayer(&newDnsLayer);
+    // add all the layers we created. newPacket takes ownership and frees them.
+    newPacket.addLayer(newEthernetLayer, true);
+    newPacket.addLayer(newIPLayer, true);
+    newPacket.addLayer(newUdpLayer, true);
+    newPacket.addLayer(newDnsLayer, true);
     newPacket.computeCalculateFields();
 
     pcpp::Packet packet(newPacket.getRawPacket());
-    pcpp::ProtocolType l3 = (std::rand() % 2 == 0) ? pcpp::IPv4 : pcpp::IPv6;
+    pcpp::ProtocolType l3 = pcpp::IPv4;
     pcpp::ProtocolType l4 = pcpp::UDP;
-    PacketDirection dir = (std::rand() % 2 == 0) ? PacketDirection::toHost : PacketDirection::fromHost;
     std::timespec ts;
     std::timespec_get(&ts, TIME_UTC);
     packet_signal(packet, dir, l3, l4, ts);
