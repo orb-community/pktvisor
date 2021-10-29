@@ -10,6 +10,7 @@
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #pragma clang diagnostic ignored "-Wc99-extensions"
 #pragma GCC diagnostic ignored "-Wpedantic"
+#include <EthLayer.h>
 #include <IPv4Layer.h>
 #include <IPv6Layer.h>
 #include <Logger.h>
@@ -99,16 +100,6 @@ void PcapInputStream::start()
         pcpp::LoggerPP::getInstance().setAllModlesToLogLevel(pcpp::LoggerPP::LogLevel::Debug);
     }
 
-    // live capture
-    assert(config_exists("iface"));
-    if (!config_exists("bpf")) {
-        config_set("bpf", "");
-    }
-    parse_host_spec();
-    std::string TARGET(config_get<std::string>("iface"));
-    pcpp::IPv4Address interfaceIP4(TARGET);
-    pcpp::IPv6Address interfaceIP6(TARGET);
-
     _cur_pcap_source = PcapInputStream::DefaultPcapSource;
 
     if (config_exists("pcap_source")) {
@@ -121,9 +112,28 @@ void PcapInputStream::start()
 #else
             _cur_pcap_source = PcapSource::af_packet;
 #endif
+        } else if (req_source == "mock") {
+            _cur_pcap_source = PcapSource::mock;
         } else {
             throw PcapException("unknown pcap source");
         }
+    }
+
+    parse_host_spec();
+
+    std::string TARGET;
+    pcpp::IPv4Address interfaceIP4;
+    pcpp::IPv6Address interfaceIP6;
+    if (_cur_pcap_source == PcapSource::libpcap || _cur_pcap_source == PcapSource::af_packet) {
+        if (!config_exists("iface")) {
+            throw PcapException("no iface was specified for live capture");
+        }
+        if (!config_exists("bpf")) {
+            config_set("bpf", "");
+        }
+        TARGET = config_get<std::string>("iface");
+        interfaceIP4 = TARGET;
+        interfaceIP6 = TARGET;
     }
 
     if (_cur_pcap_source == PcapSource::libpcap) {
@@ -178,6 +188,13 @@ void PcapInputStream::start()
 #else
         _open_af_packet_iface(TARGET, config_get<std::string>("bpf"));
 #endif
+    } else if (_cur_pcap_source == PcapSource::mock) {
+        _mock_generator_thread = std::make_unique<std::thread>([this] {
+            while (_running) {
+                _generate_mock_traffic();
+                std::this_thread::sleep_for(100ms);
+            }
+        });
     } else {
         assert(true);
     }
@@ -207,6 +224,12 @@ void PcapInputStream::stop()
     _tcp_reassembly.closeAllConnections();
 
     _running = false;
+
+    if (_mock_generator_thread) {
+        _mock_generator_thread->join();
+        _mock_generator_thread.reset(nullptr);
+    }
+
 }
 
 void PcapInputStream::tcp_message_ready(int8_t side, const pcpp::TcpStreamData &tcpData)
@@ -227,6 +250,43 @@ void PcapInputStream::tcp_connection_end(const pcpp::ConnectionData &connectionD
 void PcapInputStream::process_pcap_stats(const pcpp::IPcapDevice::PcapStats &stats)
 {
     pcap_stats_signal(stats);
+}
+
+void PcapInputStream::_generate_mock_traffic()
+{
+    // create a new Ethernet layer
+    pcpp::EthLayer newEthernetLayer(pcpp::MacAddress("00:50:43:11:22:33"), pcpp::MacAddress("aa:bb:cc:dd:ee"));
+
+    // create a new IPv4 layer
+    pcpp::IPv4Layer newIPLayer(pcpp::IPv4Address("192.168.1.1"), pcpp::IPv4Address("10.0.0.1"));
+    newIPLayer.getIPv4Header()->ipId = pcpp::hostToNet16(2000);
+    newIPLayer.getIPv4Header()->timeToLive = 64;
+
+    // create a new UDP layer
+    pcpp::UdpLayer newUdpLayer(12345, 53);
+
+    // create a new DNS layer
+    //pcpp::DnsLayer newDnsLayer;
+    //newDnsLayer.addQuery("www.ebay.com", pcpp::DNS_TYPE_A, pcpp::DNS_CLASS_IN);
+
+    // create a packet with initial capacity of 100 bytes (will grow automatically if needed)
+    pcpp::Packet newPacket(100);
+
+    // add all the layers we created
+    newPacket.addLayer(&newEthernetLayer);
+    newPacket.addLayer(&newIPLayer);
+    newPacket.addLayer(&newUdpLayer);
+    //newPacket.addLayer(&newDnsLayer);
+    newPacket.computeCalculateFields();
+
+    pcpp::Packet packet(newPacket.getRawPacket());
+    pcpp::ProtocolType l3 = (std::rand() % 2 == 0) ? pcpp::IPv4 : pcpp::IPv6;
+    pcpp::ProtocolType l4 = pcpp::UDP;
+    PacketDirection dir = (std::rand() % 2 == 0) ? PacketDirection::toHost : PacketDirection::fromHost;
+    std::timespec ts;
+    std::timespec_get(&ts, TIME_UTC);
+    packet_signal(packet, dir, l3, l4, ts);
+    udp_signal(packet, dir, l3, pcpp::hash5Tuple(&packet), ts);
 }
 
 void PcapInputStream::process_raw_packet(pcpp::RawPacket *rawPacket)
@@ -463,6 +523,9 @@ void PcapInputStream::info_json(json &j) const
     case PcapSource::af_packet:
         info["pcap_source"] = "af_packet";
         break;
+    case PcapSource::mock:
+        info["pcap_source"] = "mock";
+        break;
     }
     j[schema_key()] = info;
 }
@@ -473,5 +536,4 @@ void PcapInputStream::parse_host_spec()
         parseHostSpec(config_get<std::string>("host_spec"), _hostIPv4, _hostIPv6);
     }
 }
-
 }
