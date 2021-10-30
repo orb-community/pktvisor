@@ -317,8 +317,8 @@ void PcapInputStream::_generate_mock_traffic()
     pcpp::Packet packet(newPacket.getRawPacket());
     pcpp::ProtocolType l3 = pcpp::IPv4;
     pcpp::ProtocolType l4 = pcpp::UDP;
-    std::timespec ts;
-    std::timespec_get(&ts, TIME_UTC);
+    timespec ts;
+    timespec_get(&ts, TIME_UTC);
     packet_signal(packet, dir, l3, l4, ts);
     udp_signal(packet, dir, l3, pcpp::hash5Tuple(&packet), ts);
 }
