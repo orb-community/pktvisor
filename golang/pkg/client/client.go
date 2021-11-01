@@ -104,13 +104,13 @@ func (c *client) getMetrics(url string, payload interface{}) error {
 }
 
 func (c *client) GetStats() (*StatSnapshot, error) {
-	var rawStats map[string]map[string]interface{}
+	var rawStats map[string]map[string]map[string]interface{}
 	err := c.getMetrics(fmt.Sprintf("%s://%s:%d/api/v1/policies/%s/metrics/window/5", c.config.Protocol, c.config.Host, c.config.Port, c.config.DefaultPolicy), &rawStats)
 	if err != nil {
 		return nil, err
 	}
 	stats := StatSnapshot{}
-	for _, handlerData := range rawStats {
+	for _, handlerData := range rawStats[c.config.DefaultPolicy] {
 		if data, ok := handlerData["pcap"]; ok {
 			err := mapstructure.Decode(data, &stats.Pcap)
 			if err != nil {
