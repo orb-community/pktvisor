@@ -203,7 +203,7 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
     });
     // Policies
     _svr.Get(R"(/api/v1/policies)", [&]([[maybe_unused]] const httplib::Request &req, httplib::Response &res) {
-        json j;
+        json j = json::object();
         try {
             auto [policy_modules, hm_lock] = _registry.policy_manager()->module_get_all_locked();
             for (auto &[name, mod] : policy_modules) {
@@ -220,7 +220,7 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
         }
     });
     _svr.Post(R"(/api/v1/policies)", [&](const httplib::Request &req, httplib::Response &res) {
-        json j;
+        json j = json::object();
         if (!req.has_header("Content-Type")) {
             res.status = 400;
             j["error"] = "must include Content-Type header";
@@ -247,7 +247,7 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
         }
     });
     _svr.Get(fmt::format("/api/v1/policies/({})", AbstractModule::MODULE_ID_REGEX).c_str(), [&](const httplib::Request &req, httplib::Response &res) {
-        json j;
+        json j = json::object();
         auto name = req.matches[1];
         if (!_registry.policy_manager()->module_exists(name)) {
             res.status = 404;
@@ -266,7 +266,7 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
         }
     });
     _svr.Delete(fmt::format("/api/v1/policies/({})", AbstractModule::MODULE_ID_REGEX).c_str(), [&](const httplib::Request &req, httplib::Response &res) {
-        json j;
+        json j = json::object();
         auto name = req.matches[1];
         if (!_registry.policy_manager()->module_exists(name)) {
             res.status = 404;
@@ -288,7 +288,7 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
         }
     });
     _svr.Get(fmt::format("/api/v1/policies/({})/metrics/(window|bucket)/(\\d+)", AbstractModule::MODULE_ID_REGEX).c_str(), [&](const httplib::Request &req, httplib::Response &res) {
-        json j;
+        json j = json::object();
         auto name = req.matches[1];
         std::vector<std::string> plist;
         if (name == "__all") {
