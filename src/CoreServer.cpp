@@ -287,52 +287,35 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
             res.set_content(j.dump(), "text/json");
         }
     });
-    _svr.Get(fmt::format("/api/v1/policies/({})/metrics/bucket/(\\d+)", AbstractModule::MODULE_ID_REGEX).c_str(), [&](const httplib::Request &req, httplib::Response &res) {
+    _svr.Get(fmt::format("/api/v1/policies/({})/metrics/(window|bucket)/(\\d+)", AbstractModule::MODULE_ID_REGEX).c_str(), [&](const httplib::Request &req, httplib::Response &res) {
         json j;
         auto name = req.matches[1];
-        if (!_registry.policy_manager()->module_exists(name)) {
+        std::vector<std::string> plist;
+        if (name == "__all") {
+            // special route to get all policy metrics in one call, for scraping performance reasons
+            plist = _registry.policy_manager()->module_get_keys();
+        } else if (!_registry.policy_manager()->module_exists(name)) {
             res.status = 404;
             j["error"] = "policy does not exist";
             res.set_content(j.dump(), "text/json");
             return;
+        } else {
+            plist.emplace_back(name);
         }
         try {
-            auto [policy, lock] = _registry.policy_manager()->module_get_locked(name);
-            uint64_t period(std::stol(req.matches[2]));
-            for (auto &mod : policy->modules()) {
-                auto hmod = dynamic_cast<StreamHandler *>(mod);
-                if (hmod) {
-                    spdlog::stopwatch sw;
-                    hmod->window_json(j[name][hmod->name()], period, false);
-                    _logger->debug("{} bucket window_json elapsed time: {}", hmod->name(), sw);
+            for (const auto &p_mname : plist) {
+                spdlog::stopwatch psw;
+                auto [policy, lock] = _registry.policy_manager()->module_get_locked(p_mname);
+                uint64_t period(std::stol(req.matches[3]));
+                for (auto &mod : policy->modules()) {
+                    auto hmod = dynamic_cast<StreamHandler *>(mod);
+                    if (hmod) {
+                        spdlog::stopwatch hsw;
+                        hmod->window_json(j[policy->name()][hmod->name()], period, req.matches[2] == "window");
+                        _logger->debug("{} handler bucket json elapsed time: {}", hmod->name(), hsw);
+                    }
                 }
-            }
-            res.set_content(j.dump(), "text/json");
-        } catch (const std::exception &e) {
-            res.status = 500;
-            j["error"] = e.what();
-            res.set_content(j.dump(), "text/json");
-        }
-    });
-    _svr.Get(fmt::format("/api/v1/policies/({})/metrics/window/(\\d+)", AbstractModule::MODULE_ID_REGEX).c_str(), [&](const httplib::Request &req, httplib::Response &res) {
-        json j;
-        auto name = req.matches[1];
-        if (!_registry.policy_manager()->module_exists(name)) {
-            res.status = 404;
-            j["error"] = "policy does not exist";
-            res.set_content(j.dump(), "text/json");
-            return;
-        }
-        try {
-            auto [policy, lock] = _registry.policy_manager()->module_get_locked(name);
-            uint64_t period(std::stol(req.matches[2]));
-            for (auto &mod : policy->modules()) {
-                auto hmod = dynamic_cast<StreamHandler *>(mod);
-                if (hmod) {
-                    spdlog::stopwatch sw;
-                    hmod->window_json(j[name][hmod->name()], period, true);
-                    _logger->debug("{} bucket window_json elapsed time: {}", hmod->name(), sw);
-                }
+                _logger->debug("{} policy json metrics elapsed time: {}", policy->name(), psw);
             }
             res.set_content(j.dump(), "text/json");
         } catch (const std::exception &e) {

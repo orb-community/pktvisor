@@ -55,6 +55,15 @@ public:
     {
     }
 
+    std::vector<std::string> module_get_keys() const {
+        std::shared_lock lock(_map_mutex);
+        std::vector<std::string> result;
+        for (auto &kv : _map) {
+            result.emplace_back(kv.first);
+        }
+        return result;
+    }
+
     auto module_get_all_locked()
     {
         struct retVals {
