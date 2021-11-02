@@ -309,14 +309,28 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
                 uint64_t period(std::stol(req.matches[3]));
                 for (auto &mod : policy->modules()) {
                     auto hmod = dynamic_cast<StreamHandler *>(mod);
-                    if (hmod) {
+                    assert(hmod);
+                    try {
                         spdlog::stopwatch hsw;
                         hmod->window_json(j[policy->name()][hmod->name()], period, req.matches[2] == "window");
                         _logger->debug("{} handler bucket json elapsed time: {}", hmod->name(), hsw);
+                    } catch (const PeriodException &e) {
+                        // if period is bad for a single policy in __all mode, skip it. otherwise fail
+                        if (name == "__all") {
+                            _logger->warn("{} handler for policy {} had a PeriodException, skipping: {}", hmod->name(), policy->name(), e.what());
+                            j.erase(policy->name());
+                            continue;
+                        } else {
+                            throw e;
+                        }
                     }
                 }
                 _logger->debug("{} policy json metrics elapsed time: {}", policy->name(), psw);
             }
+            res.set_content(j.dump(), "text/json");
+        } catch (const PeriodException &e) {
+            res.status = 425; // 425 Too Early
+            j["error"] = e.what();
             res.set_content(j.dump(), "text/json");
         } catch (const std::exception &e) {
             res.status = 500;
