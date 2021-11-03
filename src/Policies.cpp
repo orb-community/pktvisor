@@ -50,6 +50,10 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
         if (!it->second.IsMap()) {
             throw PolicyException("expecting policy configuration map");
         }
+        // Ensure policy name isn't already defined
+        if (module_exists(policy_name)) {
+            throw PolicyException(fmt::format("policy with name '{}' already defined", policy_name));
+        }
 
         // Policy kind defines schema
         if (!it->second["kind"] || !it->second["kind"].IsScalar()) {
