@@ -4,6 +4,7 @@
 
 #include "PcapInputStream.h"
 #include <pcap.h>
+#include <spdlog/spdlog.h>
 #include <timer.hpp>
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wold-style-cast"
@@ -87,6 +88,8 @@ void PcapInputStream::start()
         return;
     }
 
+    auto logger = spdlog::get("visor");
+
     if (config_exists("pcap_file")) {
         // read from pcap file. this is a special case from a command line utility
         assert(config_exists("bpf"));
@@ -137,6 +140,18 @@ void PcapInputStream::start()
         interfaceIP6 = TARGET;
     }
 
+    // gather list of valid interfaces
+    std::vector<std::string> ifNameListV;
+    auto l = pcpp::PcapLiveDeviceList::getInstance().getPcapLiveDevicesList();
+    for (const auto &ifd : l) {
+        ifNameListV.push_back(ifd->getName());
+    }
+    std::string ifNameList = std::accumulate(std::begin(ifNameListV), std::end(ifNameListV), std::string(),
+        [](std::string &ss, std::string &s) {
+            return ss.empty() ? s : ss + "," + s;
+        });
+    logger->info("interfaces available for capture: {}", ifNameList);
+
     if (_cur_pcap_source == PcapSource::libpcap) {
         pcpp::PcapLiveDevice *pcapDevice;
         // extract pcap live device by interface name or IP address
@@ -152,7 +167,7 @@ void PcapInputStream::start()
         } else {
             pcapDevice = pcpp::PcapLiveDeviceList::getInstance().getPcapLiveDeviceByName(TARGET);
             if (pcapDevice == nullptr) {
-                throw PcapException("Couldn't find interface by provided name: " + TARGET);
+                throw PcapException(fmt::format("Couldn't find interface by provided name: \"{}\". Available interface: {}", TARGET, ifNameList));
             }
         }
 
@@ -177,7 +192,7 @@ void PcapInputStream::start()
 
         pcap_freealldevs(interfaceList);
         if (_pcapDevice == nullptr) {
-            throw PcapException("Couldn't find interface by provided name: " + TARGET);
+            throw PcapException(fmt::format("Couldn't find interface by provided name: \"{}\". Available interface: {}", TARGET, ifNameList));
         }
         // end upstream PcapPlusPlus incompatibility block
 
