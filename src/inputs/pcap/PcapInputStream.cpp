@@ -4,7 +4,6 @@
 
 #include "PcapInputStream.h"
 #include <pcap.h>
-#include <spdlog/spdlog.h>
 #include <timer.hpp>
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wold-style-cast"
