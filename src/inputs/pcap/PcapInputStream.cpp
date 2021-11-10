@@ -136,6 +136,7 @@ void PcapInputStream::start()
         interfaceIP4 = TARGET;
         interfaceIP6 = TARGET;
     }
+    std::string ifNameList = _get_interface_list();
 
     if (_cur_pcap_source == PcapSource::libpcap) {
         pcpp::PcapLiveDevice *pcapDevice;
@@ -152,7 +153,7 @@ void PcapInputStream::start()
         } else {
             pcapDevice = pcpp::PcapLiveDeviceList::getInstance().getPcapLiveDeviceByName(TARGET);
             if (pcapDevice == nullptr) {
-                throw PcapException("Couldn't find interface by provided name: " + TARGET);
+                throw PcapException(fmt::format("Couldn't find interface by provided name: \"{}\". Available interfaces: {}", TARGET, ifNameList));
             }
         }
 
@@ -177,7 +178,7 @@ void PcapInputStream::start()
 
         pcap_freealldevs(interfaceList);
         if (_pcapDevice == nullptr) {
-            throw PcapException("Couldn't find interface by provided name: " + TARGET);
+            throw PcapException(fmt::format("Couldn't find interface by provided name: \"{}\". Available interfaces: {}", TARGET, ifNameList));
         }
         // end upstream PcapPlusPlus incompatibility block
 
@@ -202,6 +203,21 @@ void PcapInputStream::start()
     }
 
     _running = true;
+}
+
+std::string PcapInputStream::_get_interface_list() const
+{
+    // gather list of valid interfaces
+    std::vector<std::string> ifNameListV;
+    auto l = pcpp::PcapLiveDeviceList::getInstance().getPcapLiveDevicesList();
+    for (const auto &ifd : l) {
+        ifNameListV.push_back(ifd->getName());
+    }
+    std::string ifNameList = std::accumulate(std::begin(ifNameListV), std::end(ifNameListV), std::string(),
+        [](std::string &ss, std::string &s) {
+            return ss.empty() ? s : ss + "," + s;
+        });
+    return ifNameList;
 }
 
 void PcapInputStream::stop()
@@ -530,6 +546,7 @@ void PcapInputStream::info_json(json &j) const
 {
     common_info_json(j);
     json info;
+    info["available_iface"] = _get_interface_list();
     info["host_ips"] = json::object();
     for (auto &i : _hostIPv4) {
         std::stringstream out;
