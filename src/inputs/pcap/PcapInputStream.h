@@ -67,6 +67,7 @@ protected:
     void _open_libpcap_iface(const std::string &bpfFilter = "");
     void _get_hosts_from_libpcap_iface();
     void _generate_mock_traffic();
+    std::string _get_interface_list() const;
 
 #ifdef __linux__
     void _open_af_packet_iface(const std::string &iface, const std::string &bpfFilter);
