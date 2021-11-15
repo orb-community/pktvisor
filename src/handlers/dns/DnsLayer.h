@@ -435,28 +435,33 @@ struct dnshdr {
 
                 bool parseResources(bool queryOnly);
 
-                pcpp::OsiModelLayer getOsiModelLayer() const { return pcpp::OsiModelApplicationLayer; }
+                pcpp::OsiModelLayer getOsiModelLayer() const
+                {
+                    return pcpp::OsiModelApplicationLayer;
+                }
 
-		/**
+                /**
 		 * A static method that checks whether the port is considered as DNS
 		 * @param[in] port The port number to be checked
 		 */
-		static inline bool isDnsPort(uint16_t port);
+                static inline bool isDnsPort(uint16_t port);
 
-	private:
-		IDnsResource* m_ResourceList;
-		DnsQuery*     m_FirstQuery;
-		DnsResource*  m_FirstAnswer;
-		DnsResource*  m_FirstAuthority;
-		DnsResource*  m_FirstAdditional;
+            private:
+                bool m_ResourcesParsed{false};
+                bool m_ResourcesParseResult{false};
+                IDnsResource *m_ResourceList;
+                DnsQuery *m_FirstQuery;
+                DnsResource *m_FirstAnswer;
+                DnsResource *m_FirstAuthority;
+                DnsResource *m_FirstAdditional;
 
-		IDnsResource* getFirstResource(DnsResourceType resType) const;
-		void setFirstResource(DnsResourceType resType, IDnsResource* resource);
+                IDnsResource *getFirstResource(DnsResourceType resType) const;
+                void setFirstResource(DnsResourceType resType, IDnsResource *resource);
 
-		using Layer::extendLayer;
-		bool extendLayer(int offsetInLayer, size_t numOfBytesToExtend, IDnsResource* resource);
+                using Layer::extendLayer;
+                bool extendLayer(int offsetInLayer, size_t numOfBytesToExtend, IDnsResource *resource);
 
-		using Layer::shortenLayer;
+                using Layer::shortenLayer;
 		bool shortenLayer(int offsetInLayer, size_t numOfBytesToShorten, IDnsResource* resource);
 
 		IDnsResource* getResourceByName(IDnsResource* startFrom, size_t resourceCount, const std::string& name, bool exactMatch) const;

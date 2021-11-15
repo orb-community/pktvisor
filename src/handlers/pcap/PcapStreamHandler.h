@@ -56,7 +56,7 @@ public:
     // visor::AbstractMetricsBucket
     void specialized_merge(const AbstractMetricsBucket &other) override;
     void to_json(json &j) const override;
-    void to_prometheus(std::stringstream &out) const override;
+    void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override;
 
     void process_pcap_tcp_reassembly_error(bool deep, pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3);
     void process_pcap_stats(const pcpp::IPcapDevice::PcapStats &stats);
@@ -65,8 +65,8 @@ public:
 class PcapMetricsManager final : public visor::AbstractMetricsManager<PcapMetricsBucket>
 {
 public:
-    PcapMetricsManager(uint periods, int deepSampleRate)
-        : visor::AbstractMetricsManager<PcapMetricsBucket>(periods, deepSampleRate)
+    PcapMetricsManager(const Configurable *window_config)
+        : visor::AbstractMetricsManager<PcapMetricsBucket>(window_config)
     {
     }
 
@@ -77,7 +77,7 @@ public:
 class PcapStreamHandler final : public visor::StreamMetricsHandler<PcapMetricsManager>
 {
 
-    PcapInputStream *_stream;
+    PcapInputStream *_pcap_stream;
 
     sigslot::connection _start_tstamp_connection;
     sigslot::connection _end_tstamp_connection;
@@ -92,8 +92,8 @@ class PcapStreamHandler final : public visor::StreamMetricsHandler<PcapMetricsMa
     void set_end_tstamp(timespec stamp);
 
 public:
-    PcapStreamHandler(const std::string &name, PcapInputStream *stream, uint periods, uint deepSampleRate);
-    ~PcapStreamHandler() override;
+    PcapStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config);
+    ~PcapStreamHandler() = default;
 
     // visor::AbstractModule
     std::string schema_key() const override
@@ -102,11 +102,6 @@ public:
     }
     void start() override;
     void stop() override;
-    void info_json(json &j) const override;
-
-    // visor::StreamHandler
-    void window_json(json &j, uint64_t period, bool merged) override;
-    void window_prometheus(std::stringstream &out) override;
 };
 
 }

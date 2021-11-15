@@ -15,6 +15,8 @@ namespace visor {
 
 using json = nlohmann::json;
 
+class CoreRegistry;
+
 class SchemaException : public std::runtime_error
 {
 public:
@@ -24,15 +26,44 @@ public:
     }
 };
 
+/**
+ * These are loadable plugins (static or dynamic libraries)
+ * Their job is to enable life cycle maintenance of AbstractModule instances
+ * This means they provide an interface to do so over the Admin API and through Policies
+ */
 class AbstractPlugin : public Corrade::PluginManager::AbstractPlugin
 {
 public:
     typedef const std::unordered_map<std::string, std::string> SchemaMap;
 
+private:
+    CoreRegistry *_registry;
+
 protected:
-    void _check_schema(json obj, SchemaMap &required);
-    void _check_schema(json obj, SchemaMap &required, SchemaMap &optional);
-    virtual void _setup_routes(HttpServer &svr) = 0;
+    /**
+     * Utility functions for checking json schema
+     */
+    void check_schema(json obj, SchemaMap &required, SchemaMap &optional);
+
+    /**
+     * Configure Admin API routes for life cycle maintenance of AbstractModule instances
+     * @param svr
+     */
+    virtual void setup_routes(HttpServer *svr) = 0;
+
+    virtual void on_init_plugin()
+    {
+    }
+
+    const CoreRegistry *registry() const
+    {
+        return _registry;
+    }
+
+    CoreRegistry *registry()
+    {
+        return _registry;
+    }
 
 public:
     static std::vector<std::string> pluginSearchPaths()
@@ -45,7 +76,14 @@ public:
     {
     }
 
-    virtual std::string name() const = 0;
+    void init_plugin(CoreRegistry *mgrs, HttpServer *svr)
+    {
+        _registry = mgrs;
+        if (svr) {
+            setup_routes(svr);
+        }
+        on_init_plugin();
+    }
 };
 
 }

@@ -6,12 +6,31 @@
 
 #include "AbstractModule.h"
 #include <assert.h>
+#include <fmt/format.h>
 #include <memory>
+#include <mutex>
 #include <shared_mutex>
 #include <string>
 #include <unordered_map>
 
 namespace visor {
+
+class ModuleException : public std::runtime_error
+{
+    std::string _name;
+
+public:
+    explicit ModuleException(const std::string &name, const std::string &msg)
+        : std::runtime_error(msg)
+        , _name(name)
+    {
+    }
+
+    const std::string &name()
+    {
+        return _name;
+    }
+};
 
 /**
  * called from HTTP threads so must be thread safe
@@ -32,6 +51,19 @@ public:
     {
     }
 
+    virtual ~AbstractManager()
+    {
+    }
+
+    std::vector<std::string> module_get_keys() const {
+        std::shared_lock lock(_map_mutex);
+        std::vector<std::string> result;
+        for (auto &kv : _map) {
+            result.emplace_back(kv.first);
+        }
+        return result;
+    }
+
     auto module_get_all_locked()
     {
         struct retVals {
@@ -42,15 +74,11 @@ public:
         return retVals{_map, std::move(lock)};
     }
 
-    // atomically ensure module starts before arriving in registry, if requested
-    virtual void module_add(std::unique_ptr<ModuleType> &&m, bool start = true)
+    virtual void module_add(std::unique_ptr<ModuleType> &&m)
     {
         std::unique_lock lock(_map_mutex);
         if (_map.count(m->name())) {
-            throw std::runtime_error("module name already exists");
-        }
-        if (start) {
-            m->start();
+            throw ModuleException(m->name(), fmt::format("module name '{}' already exists", m->name()));
         }
         _map.emplace(m->name(), std::move(m));
     }
@@ -61,10 +89,10 @@ public:
     {
         std::unique_lock lock(_map_mutex);
         if (_map.count(name) == 0) {
-            throw std::runtime_error("module name does not exist");
+            throw ModuleException(name, fmt::format("module name '{}' does not exist", name));
         }
         struct retVals {
-            ModuleType *map;
+            ModuleType *module;
             std::unique_lock<std::shared_mutex> lock;
         };
         return retVals{_map[name].get(), std::move(lock)};
@@ -74,9 +102,8 @@ public:
     {
         std::unique_lock lock(_map_mutex);
         if (_map.count(name) == 0) {
-            throw std::runtime_error("module name does not exist");
+            throw ModuleException(name, fmt::format("module name '{}' does not exist", name));
         }
-        _map[name]->stop();
         _map.erase(name);
     }
 

@@ -120,6 +120,11 @@ bool DnsLayer::shortenLayer(int offsetInLayer, size_t numOfBytesToShorten, IDnsR
 
 bool DnsLayer::parseResources(bool queryOnly)
 {
+
+    if (m_ResourcesParsed) {
+        return m_ResourcesParseResult;
+    }
+
     size_t offsetInPacket = sizeof(dnshdr);
     IDnsResource *curResource = m_ResourceList;
 
@@ -132,7 +137,9 @@ bool DnsLayer::parseResources(bool queryOnly)
 
     if (numOfOtherResources > 100) {
         // probably bad packet
-        return false;
+        m_ResourcesParsed = true;
+        m_ResourcesParseResult = false;
+        return m_ResourcesParseResult;
     }
 
     for (uint32_t i = 0; i < numOfOtherResources; i++) {
@@ -174,7 +181,9 @@ bool DnsLayer::parseResources(bool queryOnly)
 		if (offsetInPacket > m_DataLen) {
                     //Parse packet failed, DNS resource is out of bounds. Probably a bad packet
                     delete newGenResource;
-                    return false;
+                    m_ResourcesParsed = true;
+                    m_ResourcesParseResult = false;
+                    return m_ResourcesParseResult;
                 }
 
                 // this resource is the first resource
@@ -201,7 +210,9 @@ bool DnsLayer::parseResources(bool queryOnly)
                     m_FirstAdditional = newResource;
     }
 
-    return true;
+    m_ResourcesParsed = true;
+    m_ResourcesParseResult = true;
+    return m_ResourcesParseResult;
 }
 
 IDnsResource* DnsLayer::getResourceByName(IDnsResource* startFrom, size_t resourceCount, const std::string& name, bool exactMatch) const

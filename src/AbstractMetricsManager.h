@@ -11,8 +11,9 @@
 #include <nlohmann/json.hpp>
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
-#include <randutils.hpp>
+#include <jsf.h>
 #pragma GCC diagnostic pop
+#include "Configurable.h"
 #include "Metrics.h"
 #include <shared_mutex>
 #include <sstream>
@@ -195,7 +196,7 @@ public:
     }
 
     virtual void to_json(json &j) const = 0;
-    virtual void to_prometheus(std::stringstream &out) const = 0;
+    virtual void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const = 0;
 };
 
 template <typename MetricsBucketClass>
@@ -213,13 +214,13 @@ private:
     /**
      * the total number of periods we will maintain in the window
      */
-    uint _num_periods;
+    uint _num_periods{5};
 
     /**
      * sampling
      */
-    randutils::default_rng _rng;
-    uint _deep_sample_rate;
+    jsf32 _rng;
+    uint32_t _deep_sample_rate{100};
 
 protected:
     std::atomic_bool _deep_sampling_now; // atomic so we can reference without mutex
@@ -283,16 +284,15 @@ public:
 protected:
     /**
      * the "base" event method that should be called on every event before specialized event functionality. sampling will be
-     * chosen, and the time window will be maintained
+     * (optionally) chosen, and the time window will be maintained
      *
      * @param stamp time stamp of the event
      */
-    void new_event(timespec stamp)
+    void new_event(timespec stamp, bool sample = true)
     {
         // CRITICAL EVENT PATH
-        _deep_sampling_now.store(true, std::memory_order_relaxed);
-        if (_deep_sample_rate != 100) {
-            _deep_sampling_now.store((_rng.uniform(0U, 100U) <= _deep_sample_rate), std::memory_order_relaxed);
+        if (sample && _deep_sample_rate != 100) {
+            _deep_sampling_now.store((_rng() % 100U < _deep_sample_rate), std::memory_order_relaxed);
         }
         std::shared_lock rlb(_base_mutex);
         bool will_shift = _num_periods > 1 && stamp.tv_sec >= _next_shift_tstamp.tv_sec;
@@ -316,14 +316,16 @@ protected:
     }
 
 public:
-    AbstractMetricsManager(uint periods, int deepSampleRate)
+    AbstractMetricsManager(const Configurable *window_config)
         : _metric_buckets{}
-        , _num_periods{periods}
-        , _deep_sample_rate(deepSampleRate)
         , _deep_sampling_now{true}
         , _last_shift_tstamp{0, 0}
         , _next_shift_tstamp{0, 0}
     {
+
+        if (window_config->config_exists("deep_sample_rate")) {
+            _deep_sample_rate = window_config->config_get<uint64_t>("deep_sample_rate");
+        }
         if (_deep_sample_rate > 100) {
             _deep_sample_rate = 100;
         }
@@ -331,6 +333,9 @@ public:
             _deep_sample_rate = 1;
         }
 
+        if (window_config->config_exists("num_periods")) {
+            _num_periods = window_config->config_get<uint64_t>("num_periods");
+        }
         _num_periods = std::min(_num_periods, 10U);
         _num_periods = std::max(_num_periods, 1U);
         timespec_get(&_last_shift_tstamp, TIME_UTC);
@@ -442,15 +447,13 @@ public:
             throw PeriodException(err.str());
         }
 
-        std::string period_str = "1m";
+        j[key]["period"]["start_ts"] = _metric_buckets.at(period)->start_tstamp().tv_sec;
+        j[key]["period"]["length"] = _metric_buckets.at(period)->period_length();
 
-        j[period_str][key]["period"]["start_ts"] = _metric_buckets.at(period)->start_tstamp().tv_sec;
-        j[period_str][key]["period"]["length"] = _metric_buckets.at(period)->period_length();
-
-        _metric_buckets.at(period)->to_json(j[period_str][key]);
+        _metric_buckets.at(period)->to_json(j[key]);
     }
 
-    void window_single_prometheus(std::stringstream &out, uint64_t period = 0) const
+    void window_single_prometheus(std::stringstream &out, uint64_t period = 0, Metric::LabelMap add_labels = {}) const
     {
         std::shared_lock rl(_base_mutex);
         std::shared_lock rbl(_bucket_mutex);
@@ -466,7 +469,7 @@ public:
             throw PeriodException(err.str());
         }
 
-        _metric_buckets.at(period)->to_prometheus(out);
+        _metric_buckets.at(period)->to_prometheus(out, add_labels);
     }
 
     void window_merged_json(json &j, const std::string &key, uint64_t period) const
@@ -507,10 +510,10 @@ public:
 
         std::string period_str = std::to_string(period) + "m";
 
-        j[period_str][key]["period"]["start_ts"] = merged.start_tstamp().tv_sec;
-        j[period_str][key]["period"]["length"] = merged.period_length();
+        j[key]["period"]["start_ts"] = merged.start_tstamp().tv_sec;
+        j[key]["period"]["length"] = merged.period_length();
 
-        merged.to_json(j[period_str][key]);
+        merged.to_json(j[key]);
 
         _mergeResultCache[period] = std::pair<std::chrono::high_resolution_clock::time_point, json>(std::chrono::high_resolution_clock::now(), j);
     }

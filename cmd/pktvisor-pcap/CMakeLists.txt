@@ -10,5 +10,7 @@ target_link_libraries(pktvisor-pcap
         ${CONAN_LIBS_DOCOPT.CPP}
         Visor::Handler::Net
         Visor::Handler::Dns
+        Visor::Handler::Dhcp
         Visor::Handler::Pcap
+        Visor::Input::Mock
         )

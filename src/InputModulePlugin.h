@@ -5,23 +5,22 @@
 #pragma once
 
 #include "AbstractPlugin.h"
-#include "InputStreamManager.h"
+#include <Corrade/PluginManager/Manager.h>
+#include <Corrade/PluginManager/PluginMetadata.h>
 #include <string>
 
 namespace visor {
 
+class InputStream;
+class Configurable;
+
 class InputModulePlugin : public AbstractPlugin
 {
-
-protected:
-    visor::InputStreamManager *_input_manager;
-
-    virtual void _setup_routes(HttpServer &svr) = 0;
 
 public:
     static std::string pluginInterface()
     {
-        return "dev.visor.module.input/1.0";
+        return "visor.module.input/1.0";
     }
 
     static std::vector<std::string> pluginSearchPaths()
@@ -34,11 +33,13 @@ public:
     {
     }
 
-    virtual std::string name() const = 0;
-
-    void init_module(InputStreamManager *im, HttpServer &svr);
-    void init_module(InputStreamManager *im);
+    /**
+     * Instantiate a new InputStream
+     */
+    virtual std::unique_ptr<InputStream> instantiate(const std::string name, const Configurable *config) = 0;
 };
 
-}
+typedef Corrade::PluginManager::Manager<InputModulePlugin> InputPluginRegistry;
+typedef Corrade::Containers::Pointer<InputModulePlugin> InputPluginPtr;
 
+}

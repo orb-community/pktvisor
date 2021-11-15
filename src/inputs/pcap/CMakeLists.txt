@@ -28,6 +28,7 @@ set(VISOR_STATIC_PLUGINS ${VISOR_STATIC_PLUGINS} Visor::Input::Pcap PARENT_SCOPE
 ## TEST SUITE
 add_executable(unit-tests-input-pcap
         tests/main.cpp
+        tests/test_mock_traffic.cpp
         tests/test_parse_pcap.cpp
         tests/test_utils.cpp
         )

@@ -55,7 +55,9 @@ TEST_CASE("Parse DNS UDP IPv4 tests", "[pcap][ipv4][udp][dns]")
     stream.config_set("pcap_file", "tests/fixtures/dns_ipv4_udp.pcap");
     stream.config_set("bpf", "");
 
-    DnsStreamHandler dns_handler{"dns-test", &stream, 1, 100};
+    visor::Config c;
+    c.config_set<uint64_t>("num_periods", 1);
+    DnsStreamHandler dns_handler{"dns-test", &stream, &c};
 
     dns_handler.start();
     stream.start();
@@ -94,7 +96,9 @@ TEST_CASE("Parse DNS TCP IPv4 tests", "[pcap][ipv4][tcp][dns]")
     stream.config_set("pcap_file", "tests/fixtures/dns_ipv4_tcp.pcap");
     stream.config_set("bpf", "");
 
-    DnsStreamHandler dns_handler{"dns-test", &stream, 1, 100};
+    visor::Config c;
+    c.config_set<uint64_t>("num_periods", 1);
+    DnsStreamHandler dns_handler{"dns-test", &stream, &c};
 
     dns_handler.start();
     stream.start();
@@ -123,7 +127,9 @@ TEST_CASE("Parse DNS UDP IPv6 tests", "[pcap][ipv6][udp][dns]")
     stream.config_set("pcap_file", "tests/fixtures/dns_ipv6_udp.pcap");
     stream.config_set("bpf", "");
 
-    DnsStreamHandler dns_handler{"dns-test", &stream, 1, 100};
+    visor::Config c;
+    c.config_set<uint64_t>("num_periods", 1);
+    DnsStreamHandler dns_handler{"dns-test", &stream, &c};
 
     dns_handler.start();
     stream.start();
@@ -152,7 +158,9 @@ TEST_CASE("Parse DNS TCP IPv6 tests", "[pcap][ipv6][tcp][dns]")
     stream.config_set("pcap_file", "tests/fixtures/dns_ipv6_tcp.pcap");
     stream.config_set("bpf", "");
 
-    DnsStreamHandler dns_handler{"dns-test", &stream, 1, 100};
+    visor::Config c;
+    c.config_set<uint64_t>("num_periods", 1);
+    DnsStreamHandler dns_handler{"dns-test", &stream, &c};
 
     dns_handler.start();
     stream.start();
@@ -183,7 +191,9 @@ TEST_CASE("Parse DNS random UDP/TCP tests", "[pcap][net]")
     stream.config_set("host_spec", "192.168.0.0/24");
     stream.parse_host_spec();
 
-    DnsStreamHandler dns_handler{"dns-test", &stream, 1, 100};
+    visor::Config c;
+    c.config_set<uint64_t>("num_periods", 1);
+    DnsStreamHandler dns_handler{"dns-test", &stream, &c};
 
     dns_handler.start();
     stream.start();
@@ -241,4 +251,125 @@ TEST_CASE("Parse DNS random UDP/TCP tests", "[pcap][net]")
     CHECK(j["top_qtype"][5]["estimate"] == 662);
     CHECK(j["top_qtype"][6]["name"] == "TXT");
     CHECK(j["top_qtype"][6]["estimate"] == 620);
+}
+
+TEST_CASE("DNS Filters: exclude_noerror", "[pcap][net]")
+{
+
+    PcapInputStream stream{"pcap-test"};
+    stream.config_set("pcap_file", "tests/fixtures/dns_udp_mixed_rcode.pcap");
+    stream.config_set("bpf", "");
+    stream.config_set("host_spec", "192.168.0.0/24");
+    stream.parse_host_spec();
+
+    visor::Config c;
+    c.config_set<uint64_t>("num_periods", 1);
+    DnsStreamHandler dns_handler{"dns-test", &stream, &c};
+
+    dns_handler.config_set<bool>("exclude_noerror", true);
+
+    dns_handler.start();
+    stream.start();
+    stream.stop();
+    dns_handler.stop();
+
+    auto counters = dns_handler.metrics()->bucket(0)->counters();
+    REQUIRE(counters.NOERROR.value() == 0);
+    REQUIRE(counters.SRVFAIL.value() == 0);
+    REQUIRE(counters.REFUSED.value() == 1);
+    REQUIRE(counters.NX.value() == 1);
+    REQUIRE(counters.filtered.value() == 22);
+    nlohmann::json j;
+    dns_handler.metrics()->bucket(0)->to_json(j);
+    REQUIRE(j["wire_packets"]["filtered"] == 22);
+}
+
+TEST_CASE("DNS Filters: only_rcode nx", "[pcap][net]")
+{
+
+    PcapInputStream stream{"pcap-test"};
+    stream.config_set("pcap_file", "tests/fixtures/dns_udp_mixed_rcode.pcap");
+    stream.config_set("bpf", "");
+    stream.config_set("host_spec", "192.168.0.0/24");
+    stream.parse_host_spec();
+
+    visor::Config c;
+    c.config_set<uint64_t>("num_periods", 1);
+    DnsStreamHandler dns_handler{"dns-test", &stream, &c};
+
+    dns_handler.config_set<uint64_t>("only_rcode", NXDomain);
+
+    dns_handler.start();
+    stream.start();
+    stream.stop();
+    dns_handler.stop();
+
+    auto counters = dns_handler.metrics()->bucket(0)->counters();
+    REQUIRE(counters.NOERROR.value() == 0);
+    REQUIRE(counters.SRVFAIL.value() == 0);
+    REQUIRE(counters.REFUSED.value() == 0);
+    REQUIRE(counters.NX.value() == 1);
+    REQUIRE(counters.filtered.value() == 23);
+    nlohmann::json j;
+    dns_handler.metrics()->bucket(0)->to_json(j);
+    REQUIRE(j["wire_packets"]["filtered"] == 23);
+}
+
+TEST_CASE("DNS Filters: only_rcode refused", "[pcap][net]")
+{
+
+    PcapInputStream stream{"pcap-test"};
+    stream.config_set("pcap_file", "tests/fixtures/dns_udp_mixed_rcode.pcap");
+    stream.config_set("bpf", "");
+    stream.config_set("host_spec", "192.168.0.0/24");
+    stream.parse_host_spec();
+
+    visor::Config c;
+    c.config_set<uint64_t>("num_periods", 1);
+    DnsStreamHandler dns_handler{"dns-test", &stream, &c};
+
+    dns_handler.config_set<uint64_t>("only_rcode", Refused);
+
+    dns_handler.start();
+    stream.start();
+    stream.stop();
+    dns_handler.stop();
+
+    auto counters = dns_handler.metrics()->bucket(0)->counters();
+    REQUIRE(counters.NOERROR.value() == 0);
+    REQUIRE(counters.SRVFAIL.value() == 0);
+    REQUIRE(counters.REFUSED.value() == 1);
+    REQUIRE(counters.NX.value() == 0);
+    REQUIRE(counters.filtered.value() == 23);
+    nlohmann::json j;
+    dns_handler.metrics()->bucket(0)->to_json(j);
+    REQUIRE(j["wire_packets"]["filtered"] == 23);
+}
+
+TEST_CASE("DNS Filters: only_qname_suffix", "[pcap][net]")
+{
+
+    PcapInputStream stream{"pcap-test"};
+    stream.config_set("pcap_file", "tests/fixtures/dns_udp_mixed_rcode.pcap");
+    stream.config_set("bpf", "");
+    stream.config_set("host_spec", "192.168.0.0/24");
+    stream.parse_host_spec();
+
+    visor::Config c;
+    c.config_set<uint64_t>("num_periods", 1);
+    DnsStreamHandler dns_handler{"dns-test", &stream, &c};
+
+    // notice, case insensitive
+    dns_handler.config_set<visor::Configurable::StringList>("only_qname_suffix", {"GooGle.com"});
+    dns_handler.start();
+    stream.start();
+    stream.stop();
+    dns_handler.stop();
+
+    auto counters = dns_handler.metrics()->bucket(0)->counters();
+    CHECK(counters.NOERROR.value() == 4);
+    CHECK(counters.SRVFAIL.value() == 0);
+    CHECK(counters.REFUSED.value() == 0);
+    CHECK(counters.NX.value() == 1);
+    CHECK(counters.filtered.value() == 14);
 }

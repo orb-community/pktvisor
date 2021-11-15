@@ -5,16 +5,17 @@ docopt.cpp/0.6.3
 nlohmann_json/3.9.1
 cpp-httplib/0.8.0
 corrade/2020.06
-pcapplusplus/21.05
+pcapplusplus/ns1-dev
 json-schema-validator/2.1.0
 openssl/1.1.1k
+yaml-cpp/0.6.3
+fmt/7.1.3
 
 [build_requires]
-benchmark/1.5.2
-catch2/2.13.4
+benchmark/1.6.0
+catch2/2.13.7
 
 [options]
-corrade:with_pluginmanager=True
 pcapplusplus:immediate_mode=True
 
 [generators]

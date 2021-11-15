@@ -63,7 +63,7 @@ public:
 
     Server &Get(const char *pattern, Server::Handler handler)
     {
-        spdlog::get("pktvisor")->info("Registering GET {}", pattern);
+        spdlog::get("visor")->info("Registering GET {}", pattern);
         return _svr->Get(pattern, handler);
     }
     Server &Post(const char *pattern, Server::Handler handler)
@@ -71,7 +71,7 @@ public:
         if (_config.read_only) {
             return *_svr;
         }
-        spdlog::get("pktvisor")->info("Registering POST {}", pattern);
+        spdlog::get("visor")->info("Registering POST {}", pattern);
         return _svr->Post(pattern, handler);
     }
     Server &Put(const char *pattern, Server::Handler handler)
@@ -79,7 +79,7 @@ public:
         if (_config.read_only) {
             return *_svr;
         }
-        spdlog::get("pktvisor")->info("Registering PUT {}", pattern);
+        spdlog::get("visor")->info("Registering PUT {}", pattern);
         return _svr->Put(pattern, handler);
     }
     Server &Delete(const char *pattern, Server::Handler handler)
@@ -87,7 +87,7 @@ public:
         if (_config.read_only) {
             return *_svr;
         }
-        spdlog::get("pktvisor")->info("Registering DELETE {}", pattern);
+        spdlog::get("visor")->info("Registering DELETE {}", pattern);
         return _svr->Delete(pattern, handler);
     }
 };

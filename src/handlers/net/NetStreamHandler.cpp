@@ -16,14 +16,20 @@
 #pragma GCC diagnostic pop
 #include <arpa/inet.h>
 #include <cpc_union.hpp>
+#include <fmt/format.h>
 
 namespace visor::handler::net {
 
-NetStreamHandler::NetStreamHandler(const std::string &name, PcapInputStream *stream, uint periods, uint deepSampleRate)
-    : visor::StreamMetricsHandler<NetworkMetricsManager>(name, periods, deepSampleRate)
-    , _stream(stream)
+NetStreamHandler::NetStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config)
+    : visor::StreamMetricsHandler<NetworkMetricsManager>(name, window_config)
 {
     assert(stream);
+    // figure out which input stream we have
+    _pcap_stream = dynamic_cast<PcapInputStream *>(stream);
+    _mock_stream = dynamic_cast<MockInputStream *>(stream);
+    if (!_pcap_stream && !_mock_stream) {
+        throw StreamHandlerException(fmt::format("NetStreamHandler: unsupported input stream {}", stream->name()));
+    }
 }
 
 void NetStreamHandler::start()
@@ -36,9 +42,11 @@ void NetStreamHandler::start()
         _metrics->set_recorded_stream();
     }
 
-    _pkt_connection = _stream->packet_signal.connect(&NetStreamHandler::process_packet_cb, this);
-    _start_tstamp_connection = _stream->start_tstamp_signal.connect(&NetStreamHandler::set_start_tstamp, this);
-    _end_tstamp_connection = _stream->end_tstamp_signal.connect(&NetStreamHandler::set_end_tstamp, this);
+    if (_pcap_stream) {
+        _pkt_connection = _pcap_stream->packet_signal.connect(&NetStreamHandler::process_packet_cb, this);
+        _start_tstamp_connection = _pcap_stream->start_tstamp_signal.connect(&NetStreamHandler::set_start_tstamp, this);
+        _end_tstamp_connection = _pcap_stream->end_tstamp_signal.connect(&NetStreamHandler::set_end_tstamp, this);
+    }
 
     _running = true;
 }
@@ -49,9 +57,11 @@ void NetStreamHandler::stop()
         return;
     }
 
-    _pkt_connection.disconnect();
-    _start_tstamp_connection.disconnect();
-    _end_tstamp_connection.disconnect();
+    if (_pcap_stream) {
+        _pkt_connection.disconnect();
+        _start_tstamp_connection.disconnect();
+        _end_tstamp_connection.disconnect();
+    }
 
     _running = false;
 }
@@ -65,15 +75,6 @@ void NetStreamHandler::process_packet_cb(pcpp::Packet &payload, PacketDirection 
 {
     _metrics->process_packet(payload, dir, l3, l4, stamp);
 }
-
-void NetStreamHandler::window_json(json &j, uint64_t period, bool merged)
-{
-    if (merged) {
-        _metrics->window_merged_json(j, schema_key(), period);
-    } else {
-        _metrics->window_single_json(j, schema_key(), period);
-    }
-}
 void NetStreamHandler::set_start_tstamp(timespec stamp)
 {
     _metrics->set_start_tstamp(stamp);
@@ -81,18 +82,6 @@ void NetStreamHandler::set_start_tstamp(timespec stamp)
 void NetStreamHandler::set_end_tstamp(timespec stamp)
 {
     _metrics->set_end_tstamp(stamp);
-}
-void NetStreamHandler::info_json(json &j) const
-{
-    _common_info_json(j);
-}
-void NetStreamHandler::window_prometheus(std::stringstream &out)
-{
-    if (_metrics->current_periods() > 1) {
-        _metrics->window_single_prometheus(out, 1);
-    } else {
-        _metrics->window_single_prometheus(out, 0);
-    }
 }
 
 void NetworkMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
@@ -124,35 +113,37 @@ void NetworkMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
     _topASN.merge(other._topASN);
 }
 
-void NetworkMetricsBucket::to_prometheus(std::stringstream &out) const
+void NetworkMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap add_labels) const
 {
 
-    _rate_in.to_prometheus(out);
-    _rate_out.to_prometheus(out);
+    _rate_in.to_prometheus(out, add_labels);
+    _rate_out.to_prometheus(out, add_labels);
 
-    auto [num_events, num_samples, event_rate, event_lock] = event_data_locked(); // thread safe
+    {
+        auto [num_events, num_samples, event_rate, event_lock] = event_data_locked(); // thread safe
 
-    event_rate->to_prometheus(out);
-    num_events->to_prometheus(out);
-    num_samples->to_prometheus(out);
+        event_rate->to_prometheus(out, add_labels);
+        num_events->to_prometheus(out, add_labels);
+        num_samples->to_prometheus(out, add_labels);
+    }
 
     std::shared_lock r_lock(_mutex);
 
-    _counters.UDP.to_prometheus(out);
-    _counters.TCP.to_prometheus(out);
-    _counters.OtherL4.to_prometheus(out);
-    _counters.IPv4.to_prometheus(out);
-    _counters.IPv6.to_prometheus(out);
-    _counters.total_in.to_prometheus(out);
-    _counters.total_out.to_prometheus(out);
+    _counters.UDP.to_prometheus(out, add_labels);
+    _counters.TCP.to_prometheus(out, add_labels);
+    _counters.OtherL4.to_prometheus(out, add_labels);
+    _counters.IPv4.to_prometheus(out, add_labels);
+    _counters.IPv6.to_prometheus(out, add_labels);
+    _counters.total_in.to_prometheus(out, add_labels);
+    _counters.total_out.to_prometheus(out, add_labels);
 
-    _srcIPCard.to_prometheus(out);
-    _dstIPCard.to_prometheus(out);
+    _srcIPCard.to_prometheus(out, add_labels);
+    _dstIPCard.to_prometheus(out, add_labels);
 
-    _topIPv4.to_prometheus(out, [](const uint32_t &val) { return pcpp::IPv4Address(val).toString(); });
-    _topIPv6.to_prometheus(out);
-    _topGeoLoc.to_prometheus(out);
-    _topASN.to_prometheus(out);
+    _topIPv4.to_prometheus(out, add_labels, [](const uint32_t &val) { return pcpp::IPv4Address(val).toString(); });
+    _topIPv6.to_prometheus(out, add_labels);
+    _topGeoLoc.to_prometheus(out, add_labels);
+    _topASN.to_prometheus(out, add_labels);
 }
 
 void NetworkMetricsBucket::to_json(json &j) const
@@ -163,11 +154,13 @@ void NetworkMetricsBucket::to_json(json &j) const
     _rate_in.to_json(j, live_rates);
     _rate_out.to_json(j, live_rates);
 
-    auto [num_events, num_samples, event_rate, event_lock] = event_data_locked(); // thread safe
+    {
+        auto [num_events, num_samples, event_rate, event_lock] = event_data_locked(); // thread safe
 
-    event_rate->to_json(j, live_rates);
-    num_events->to_json(j);
-    num_samples->to_json(j);
+        event_rate->to_json(j, live_rates);
+        num_events->to_json(j);
+        num_samples->to_json(j);
+    }
 
     std::shared_lock r_lock(_mutex);
 

@@ -9,12 +9,12 @@
 
 namespace visor {
 
-class InputStream : public AbstractModule
+class InputStream : public AbstractRunnableModule
 {
 
 public:
     InputStream(const std::string &name)
-        : AbstractModule(name)
+        : AbstractRunnableModule(name)
     {
     }
 
@@ -22,9 +22,10 @@ public:
 
     virtual size_t consumer_count() const = 0;
 
-    void _common_info_json(json &j) const
+    void common_info_json(json &j) const
     {
-        AbstractModule::_common_info_json(j);
+        AbstractModule::common_info_json(j);
+        j["input"]["running"] = running();
         j["input"]["consumers"] = consumer_count();
     }
 };
