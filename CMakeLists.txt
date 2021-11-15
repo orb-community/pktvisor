@@ -4,7 +4,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
 # VERSION
 # this is the source of truth for semver version
-project(visor VERSION 3.3.0)
+project(visor VERSION 3.4.0)
 
 # for main line release, this is empty
 # for development release, this is "-develop"
