@@ -50,6 +50,10 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
         if (!it->second.IsMap()) {
             throw PolicyException("expecting policy configuration map");
         }
+        // Ensure policy name isn't already defined
+        if (module_exists(policy_name)) {
+            throw PolicyException(fmt::format("policy with name '{}' already defined", policy_name));
+        }
 
         // Policy kind defines schema
         if (!it->second["kind"] || !it->second["kind"].IsScalar()) {
@@ -86,18 +90,30 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
             throw PolicyException(fmt::format("unable to retrieve tap '{}': {}", tap_name, e.what()));
         }
 
-        // Tap Input Filter
+        // Tap Input Config and Filter
         Config tap_filter;
-        if (input_node["config"]) {
-            if (!input_node["config"].IsMap()) {
+        if (input_node["filter"]) {
+            if (!input_node["filter"].IsMap()) {
                 throw PolicyException("input filter configuration is not a map");
             }
             try {
-                tap_filter.config_set_yaml(input_node["config"]);
+                tap_filter.config_set_yaml(input_node["filter"]);
+            } catch (ConfigException &e) {
+                throw PolicyException(fmt::format("invalid input filter for tap '{}': {}", tap_name, e.what()));
+            }
+        }
+        Config tap_config;
+        if (input_node["config"]) {
+            if (!input_node["config"].IsMap()) {
+                throw PolicyException("input configuration is not a map");
+            }
+            try {
+                tap_config.config_set_yaml(input_node["config"]);
             } catch (ConfigException &e) {
                 throw PolicyException(fmt::format("invalid input config for tap '{}': {}", tap_name, e.what()));
             }
         }
+
 
         // Create Policy
         auto policy = std::make_unique<Policy>(policy_name, tap);
@@ -109,6 +125,8 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
         std::string input_stream_module_name;
         try {
             spdlog::get("visor")->info("policy [{}]: instantiating Tap: {}", policy_name, tap_name);
+            // TODO separate config and filter. for now, they merge
+            tap_filter.config_merge(tap_config);
             input_stream = tap->instantiate(policy.get(), &tap_filter);
             // ensure tap input type matches policy input tap
             if (input_node["input_type"].as<std::string>() != tap->input_plugin()->plugin()) {
@@ -155,6 +173,17 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
             if (handler_plugin == _registry->handler_plugins().end()) {
                 throw PolicyException(fmt::format("Policy '{}' requires stream handler type '{}' which is not available", policy_name, handler_module_type));
             }
+            Config handler_filter;
+            if (h_it->second["filter"]) {
+                if (!h_it->second["filter"].IsMap()) {
+                    throw PolicyException("stream handler filter configuration is not a map");
+                }
+                try {
+                    handler_filter.config_set_yaml(h_it->second["filter"]);
+                } catch (ConfigException &e) {
+                    throw PolicyException(fmt::format("invalid stream handler filter config for handler '{}': {}", handler_module_name, e.what()));
+                }
+            }
             Config handler_config;
             if (h_it->second["config"]) {
                 if (!h_it->second["config"].IsMap()) {
@@ -168,6 +197,8 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
             }
             spdlog::get("visor")->info("policy [{}]: instantiating Handler {} of type {}", policy_name, handler_module_name, handler_module_type);
             // note, currently merging the handler config with the window config. do they need to be separate?
+            // TODO separate filter config
+            handler_config.config_merge(handler_filter);
             handler_config.config_merge(window_config);
             auto handler_module = handler_plugin->second->instantiate(policy_name + "-" + handler_module_name, input_stream.get(), &handler_config);
             policy->add_module(handler_module.get());

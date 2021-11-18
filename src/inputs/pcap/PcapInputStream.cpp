@@ -10,6 +10,8 @@
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #pragma clang diagnostic ignored "-Wc99-extensions"
 #pragma GCC diagnostic ignored "-Wpedantic"
+#include <DnsLayer.h> // used only for mock generator
+#include <EthLayer.h>
 #include <IPv4Layer.h>
 #include <IPv6Layer.h>
 #include <Logger.h>
@@ -99,16 +101,6 @@ void PcapInputStream::start()
         pcpp::LoggerPP::getInstance().setAllModlesToLogLevel(pcpp::LoggerPP::LogLevel::Debug);
     }
 
-    // live capture
-    assert(config_exists("iface"));
-    if (!config_exists("bpf")) {
-        config_set("bpf", "");
-    }
-    parse_host_spec();
-    std::string TARGET(config_get<std::string>("iface"));
-    pcpp::IPv4Address interfaceIP4(TARGET);
-    pcpp::IPv6Address interfaceIP6(TARGET);
-
     _cur_pcap_source = PcapInputStream::DefaultPcapSource;
 
     if (config_exists("pcap_source")) {
@@ -121,10 +113,30 @@ void PcapInputStream::start()
 #else
             _cur_pcap_source = PcapSource::af_packet;
 #endif
+        } else if (req_source == "mock") {
+            _cur_pcap_source = PcapSource::mock;
         } else {
             throw PcapException("unknown pcap source");
         }
     }
+
+    parse_host_spec();
+
+    std::string TARGET;
+    pcpp::IPv4Address interfaceIP4;
+    pcpp::IPv6Address interfaceIP6;
+    if (_cur_pcap_source == PcapSource::libpcap || _cur_pcap_source == PcapSource::af_packet) {
+        if (!config_exists("iface")) {
+            throw PcapException("no iface was specified for live capture");
+        }
+        if (!config_exists("bpf")) {
+            config_set("bpf", "");
+        }
+        TARGET = config_get<std::string>("iface");
+        interfaceIP4 = TARGET;
+        interfaceIP6 = TARGET;
+    }
+    std::string ifNameList = _get_interface_list();
 
     if (_cur_pcap_source == PcapSource::libpcap) {
         pcpp::PcapLiveDevice *pcapDevice;
@@ -141,7 +153,7 @@ void PcapInputStream::start()
         } else {
             pcapDevice = pcpp::PcapLiveDeviceList::getInstance().getPcapLiveDeviceByName(TARGET);
             if (pcapDevice == nullptr) {
-                throw PcapException("Couldn't find interface by provided name: " + TARGET);
+                throw PcapException(fmt::format("Couldn't find interface by provided name: \"{}\". Available interfaces: {}", TARGET, ifNameList));
             }
         }
 
@@ -166,7 +178,7 @@ void PcapInputStream::start()
 
         pcap_freealldevs(interfaceList);
         if (_pcapDevice == nullptr) {
-            throw PcapException("Couldn't find interface by provided name: " + TARGET);
+            throw PcapException(fmt::format("Couldn't find interface by provided name: \"{}\". Available interfaces: {}", TARGET, ifNameList));
         }
         // end upstream PcapPlusPlus incompatibility block
 
@@ -178,11 +190,34 @@ void PcapInputStream::start()
 #else
         _open_af_packet_iface(TARGET, config_get<std::string>("bpf"));
 #endif
+    } else if (_cur_pcap_source == PcapSource::mock) {
+        _mock_generator_thread = std::make_unique<std::thread>([this] {
+            while (_running) {
+                _generate_mock_traffic();
+                // 10 qps. could be configurable in future.
+                std::this_thread::sleep_for(100ms);
+            }
+        });
     } else {
         assert(true);
     }
 
     _running = true;
+}
+
+std::string PcapInputStream::_get_interface_list() const
+{
+    // gather list of valid interfaces
+    std::vector<std::string> ifNameListV;
+    auto l = pcpp::PcapLiveDeviceList::getInstance().getPcapLiveDevicesList();
+    for (const auto &ifd : l) {
+        ifNameListV.push_back(ifd->getName());
+    }
+    std::string ifNameList = std::accumulate(std::begin(ifNameListV), std::end(ifNameListV), std::string(),
+        [](std::string &ss, std::string &s) {
+            return ss.empty() ? s : ss + "," + s;
+        });
+    return ifNameList;
 }
 
 void PcapInputStream::stop()
@@ -207,6 +242,11 @@ void PcapInputStream::stop()
     _tcp_reassembly.closeAllConnections();
 
     _running = false;
+
+    if (_mock_generator_thread) {
+        _mock_generator_thread->join();
+        _mock_generator_thread.reset(nullptr);
+    }
 }
 
 void PcapInputStream::tcp_message_ready(int8_t side, const pcpp::TcpStreamData &tcpData)
@@ -227,6 +267,76 @@ void PcapInputStream::tcp_connection_end(const pcpp::ConnectionData &connectionD
 void PcapInputStream::process_pcap_stats(const pcpp::IPcapDevice::PcapStats &stats)
 {
     pcap_stats_signal(stats);
+}
+
+void PcapInputStream::_generate_mock_traffic()
+{
+
+    PacketDirection dir = (std::rand() % 2 == 0) ? PacketDirection::toHost : PacketDirection::fromHost;
+
+    pcpp::MacAddress host_mac("00:50:43:11:22:33");
+    pcpp::IPv4Address host_ip("192.168.0.1");
+
+    pcpp::MacAddress other_mac("aa:bb:cc:dd:" + std::string('a' + std::rand() % 26, 2));
+    pcpp::IPv4Address other_ip("10.0.0." + std::to_string(std::rand() % 255));
+
+    // create a new Ethernet layer
+    pcpp::EthLayer *newEthernetLayer{nullptr};
+    if (dir == PacketDirection::toHost) {
+        newEthernetLayer = new pcpp::EthLayer(other_mac, host_mac);
+    } else {
+        newEthernetLayer = new pcpp::EthLayer(host_mac, other_mac);
+    }
+
+    // create a new IPv4 layer
+    pcpp::IPv4Layer *newIPLayer;
+    if (dir == PacketDirection::toHost) {
+        newIPLayer = new pcpp::IPv4Layer(other_ip, host_ip);
+    } else {
+        newIPLayer = new pcpp::IPv4Layer(host_ip, other_ip);
+    }
+    newIPLayer->getIPv4Header()->ipId = pcpp::hostToNet16(2000);
+    newIPLayer->getIPv4Header()->timeToLive = 64;
+
+    // create a new UDP layer
+    pcpp::UdpLayer *newUdpLayer;
+    if (dir == PacketDirection::toHost) {
+        newUdpLayer = new pcpp::UdpLayer(std::rand() % 65536, 53);
+    } else {
+        newUdpLayer = new pcpp::UdpLayer(53, std::rand() % 65536);
+    }
+
+    // create a new DNS layer
+    std::random_device rd;
+    std::mt19937 g(rd());
+    pcpp::DnsLayer *newDnsLayer = new pcpp::DnsLayer();
+    std::vector<pcpp::DnsType> types{pcpp::DNS_TYPE_A, pcpp::DNS_TYPE_AAAA, pcpp::DNS_TYPE_PTR, pcpp::DNS_TYPE_MX, pcpp::DNS_TYPE_TXT};
+    std::shuffle(types.begin(), types.end(), g);
+    newDnsLayer->addQuery(std::to_string(std::rand() % 20) + ".pktvisor-mock.dev", types[0], pcpp::DNS_CLASS_IN);
+    newDnsLayer->getDnsHeader()->transactionID = std::rand() % 65536; // note this does not work with our transaction tracking
+    if (dir == PacketDirection::fromHost) {
+        // mocking a server
+        newDnsLayer->getDnsHeader()->queryOrResponse = 1;
+        newDnsLayer->getDnsHeader()->responseCode = std::rand() % 6;
+    }
+
+    // create a packet with initial capacity of 100 bytes (will grow automatically if needed)
+    pcpp::Packet newPacket(100);
+
+    // add all the layers we created. newPacket takes ownership and frees them.
+    newPacket.addLayer(newEthernetLayer, true);
+    newPacket.addLayer(newIPLayer, true);
+    newPacket.addLayer(newUdpLayer, true);
+    newPacket.addLayer(newDnsLayer, true);
+    newPacket.computeCalculateFields();
+
+    pcpp::Packet packet(newPacket.getRawPacket());
+    pcpp::ProtocolType l3 = pcpp::IPv4;
+    pcpp::ProtocolType l4 = pcpp::UDP;
+    timespec ts;
+    timespec_get(&ts, TIME_UTC);
+    packet_signal(packet, dir, l3, l4, ts);
+    udp_signal(packet, dir, l3, pcpp::hash5Tuple(&packet), ts);
 }
 
 void PcapInputStream::process_raw_packet(pcpp::RawPacket *rawPacket)
@@ -436,6 +546,7 @@ void PcapInputStream::info_json(json &j) const
 {
     common_info_json(j);
     json info;
+    info["available_iface"] = _get_interface_list();
     info["host_ips"] = json::object();
     for (auto &i : _hostIPv4) {
         std::stringstream out;
@@ -463,6 +574,9 @@ void PcapInputStream::info_json(json &j) const
     case PcapSource::af_packet:
         info["pcap_source"] = "af_packet";
         break;
+    case PcapSource::mock:
+        info["pcap_source"] = "mock";
+        break;
     }
     j[schema_key()] = info;
 }
@@ -473,5 +587,4 @@ void PcapInputStream::parse_host_spec()
         parseHostSpec(config_get<std::string>("host_spec"), _hostIPv4, _hostIPv6);
     }
 }
-
 }

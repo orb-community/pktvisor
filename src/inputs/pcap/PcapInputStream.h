@@ -27,7 +27,8 @@ namespace visor::input::pcap {
 enum class PcapSource {
     unknown,
     libpcap,
-    af_packet
+    af_packet,
+    mock
 };
 
 enum class PacketDirection {
@@ -51,6 +52,9 @@ private:
     std::unique_ptr<pcpp::PcapLiveDevice> _pcapDevice;
     bool _pcapFile = false;
 
+    // mock source
+    std::unique_ptr<std::thread> _mock_generator_thread;
+
 #ifdef __linux__
     // af_packet source
     std::unique_ptr<AFPacket> _af_device;
@@ -62,6 +66,8 @@ protected:
     void _open_pcap(const std::string &fileName, const std::string &bpfFilter);
     void _open_libpcap_iface(const std::string &bpfFilter = "");
     void _get_hosts_from_libpcap_iface();
+    void _generate_mock_traffic();
+    std::string _get_interface_list() const;
 
 #ifdef __linux__
     void _open_af_packet_iface(const std::string &iface, const std::string &bpfFilter);

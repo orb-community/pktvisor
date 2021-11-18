@@ -38,11 +38,11 @@ void DnsStreamHandler::start()
     }
 
     // Setup Filters
-    if (config_exists("filter_exclude_noerror") && config_get<bool>("filter_exclude_noerror")) {
+    if (config_exists("exclude_noerror") && config_get<bool>("exclude_noerror")) {
         _f_enabled.set(Filters::ExcludingRCode);
         _f_rcode = NoError;
-    } else if (config_exists("filter_only_rcode")) {
-        auto want_code = config_get<uint64_t>("filter_only_rcode");
+    } else if (config_exists("only_rcode")) {
+        auto want_code = config_get<uint64_t>("only_rcode");
         switch (want_code) {
         case NoError:
         case NXDomain:
@@ -52,12 +52,12 @@ void DnsStreamHandler::start()
             _f_rcode = want_code;
             break;
         default:
-            throw ConfigException("filter_only_rcode contained an invalid/unsupported rcode");
+            throw ConfigException("only_rcode contained an invalid/unsupported rcode");
         }
     }
-    if (config_exists("filter_only_qname_suffix")) {
+    if (config_exists("only_qname_suffix")) {
         _f_enabled.set(Filters::OnlyQNameSuffix);
-        for (const auto &qname : config_get<StringList>("filter_only_qname_suffix")) {
+        for (const auto &qname : config_get<StringList>("only_qname_suffix")) {
             // note, this currently copies the strings, meaning there could be a big list that is duplicated
             // we can work on trying to make this a string_view instead
             // we copy it out so that we don't have to hit the config mutex
