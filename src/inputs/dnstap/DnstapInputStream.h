@@ -9,22 +9,22 @@
 #include <spdlog/spdlog.h>
 #include <timer.hpp>
 
-namespace visor::input::mock {
+namespace visor::input::dnstap {
 
-class MockInputStream : public visor::InputStream
+class DnstapInputStream : public visor::InputStream
 {
 
-    std::shared_ptr<timer::interval_handle> _mock_work;
+    std::shared_ptr<timer::interval_handle> _dnstap_work;
     std::shared_ptr<spdlog::logger> _logger;
 
 public:
-    MockInputStream(const std::string &name);
-    ~MockInputStream();
+    DnstapInputStream(const std::string &name);
+    ~DnstapInputStream();
 
     // visor::AbstractModule
     std::string schema_key() const override
     {
-        return "mock";
+        return "dnstap";
     }
     void start() override;
     void stop() override;

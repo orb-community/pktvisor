@@ -7,16 +7,16 @@
 #include "DnstapInputStream.h"
 #include "InputModulePlugin.h"
 
-namespace visor::input::mock {
+namespace visor::input::dnstap {
 
-class MockInputModulePlugin : public visor::InputModulePlugin
+class DnstapInputModulePlugin : public visor::InputModulePlugin
 {
 
 protected:
     void setup_routes(HttpServer *svr) override;
 
 public:
-    explicit MockInputModulePlugin(Corrade::PluginManager::AbstractManager &manager, const std::string &plugin)
+    explicit DnstapInputModulePlugin(Corrade::PluginManager::AbstractManager &manager, const std::string &plugin)
         : visor::InputModulePlugin{manager, plugin}
     {
     }

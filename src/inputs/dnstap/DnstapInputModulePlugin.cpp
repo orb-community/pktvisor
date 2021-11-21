@@ -8,18 +8,18 @@
 #include <Corrade/PluginManager/AbstractManager.h>
 #include <Corrade/Utility/FormatStl.h>
 
-CORRADE_PLUGIN_REGISTER(VisorInputMock, visor::input::mock::MockInputModulePlugin,
+CORRADE_PLUGIN_REGISTER(VisorInputDnstap, visor::input::dnstap::DnstapInputModulePlugin,
     "visor.module.input/1.0")
 
-namespace visor::input::mock {
+namespace visor::input::dnstap {
 
-void MockInputModulePlugin::setup_routes([[maybe_unused]] HttpServer *svr)
+void DnstapInputModulePlugin::setup_routes([[maybe_unused]] HttpServer *svr)
 {
 }
 
-std::unique_ptr<InputStream> MockInputModulePlugin::instantiate(const std::string name, const Configurable *config)
+std::unique_ptr<InputStream> DnstapInputModulePlugin::instantiate(const std::string name, const Configurable *config)
 {
-    auto input_stream = std::make_unique<MockInputStream>(name);
+    auto input_stream = std::make_unique<DnstapInputStream>(name);
     input_stream->config_merge(*config);
     return input_stream;
 }

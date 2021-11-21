@@ -3,8 +3,8 @@
 #include <netinet/in.h>
 
 //using namespace visor;
-//using namespace visor::input::mock;
+//using namespace visor::input::dnstap;
 
-TEST_CASE("mock", "[mack]")
+TEST_CASE("dnstap", "[dnstap]")
 {
 }

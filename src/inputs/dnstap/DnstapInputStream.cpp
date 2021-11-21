@@ -4,58 +4,58 @@
 
 #include "DnstapInputStream.h"
 
-namespace visor::input::mock {
+namespace visor::input::dnstap {
 
-MockInputStream::MockInputStream(const std::string &name)
+DnstapInputStream::DnstapInputStream(const std::string &name)
     : visor::InputStream(name)
 {
     _logger = spdlog::get("visor");
     assert(_logger);
-    _logger->info("mock input created");
+    _logger->info("dnstap input created");
 }
-MockInputStream::~MockInputStream()
+DnstapInputStream::~DnstapInputStream()
 {
-    _logger->info("mock input destroyed");
+    _logger->info("dnstap input destroyed");
 }
 
-void MockInputStream::start()
+void DnstapInputStream::start()
 {
 
     if (_running) {
         return;
     }
 
-    _logger->info("mock input start()");
+    _logger->info("dnstap input start()");
 
     // for unit testing purposes
     if (config_exists("except_on_start")) {
-        throw std::runtime_error("mock error on start");
+        throw std::runtime_error("dnstap error on start");
     }
 
     static timer timer_thread{500ms};
     std::srand(std::time(nullptr));
-    _mock_work = timer_thread.set_interval(1s, [this] {
-        _logger->info("mock input sends random int signal");
+    _dnstap_work = timer_thread.set_interval(1s, [this] {
+        _logger->info("dnstap input sends random int signal");
         random_int_signal(std::rand());
     });
 
     _running = true;
 }
 
-void MockInputStream::stop()
+void DnstapInputStream::stop()
 {
     if (!_running) {
         return;
     }
 
-    _logger->info("mock input stop()");
+    _logger->info("dnstap input stop()");
 
-    _mock_work->cancel();
+    _dnstap_work->cancel();
 
     _running = false;
 }
 
-void MockInputStream::info_json(json &j) const
+void DnstapInputStream::info_json(json &j) const
 {
     common_info_json(j);
 }
