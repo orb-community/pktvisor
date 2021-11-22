@@ -10,17 +10,20 @@ corrade_add_static_plugin(VisorInputDnstap ${CMAKE_CURRENT_BINARY_DIR}
         DnstapInputModulePlugin.cpp
         DnstapInputStream.cpp
         ${PROTO_SRCS}
-        ${PROTO_HDRS}
         )
 add_library(Visor::Input::Dnstap ALIAS VisorInputDnstap)
 
 target_include_directories(VisorInputDnstap
+        PRIVATE
+        ${CMAKE_CURRENT_BINARY_DIR}
         INTERFACE
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+        #$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
         )
 
 target_link_libraries(VisorInputDnstap
         PUBLIC
+        fstrm
         Visor::Core
         ${CONAN_LIBS_PROTOBUF}
         )

@@ -1,10 +1,16 @@
 
 #include <catch2/catch.hpp>
-#include <netinet/in.h>
+#include "DnstapInputStream.h"
 
-//using namespace visor;
-//using namespace visor::input::dnstap;
+using namespace visor::input::dnstap;
 
 TEST_CASE("dnstap", "[dnstap]")
 {
+
+    DnstapInputStream stream{"dnstap-test"};
+    stream.config_set("dnstap_file", "inputs/dnstap/tests/fixtures/dnstap.pcap");
+
+    stream.start();
+    stream.stop();
+
 }

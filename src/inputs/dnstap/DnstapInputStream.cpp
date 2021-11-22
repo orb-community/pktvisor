@@ -3,6 +3,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 #include "DnstapInputStream.h"
+#include <fstrm/fstrm.h>
+#include "dnstap.pb.h"
 
 namespace visor::input::dnstap {
 

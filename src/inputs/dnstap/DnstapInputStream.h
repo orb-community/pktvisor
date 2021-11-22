@@ -7,7 +7,6 @@
 #include "InputStream.h"
 #include <sigslot/signal.hpp>
 #include <spdlog/spdlog.h>
-#include <timer.hpp>
 
 namespace visor::input::dnstap {
 
