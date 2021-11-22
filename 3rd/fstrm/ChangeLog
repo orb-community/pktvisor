@@ -1,0 +1,105 @@
+fstrm (0.6.1)
+
+  * fstrm_capture: ignore SIGPIPE, which will cause the
+    interrupted connections to generate an EPIPE instead.
+
+  * Fix truncation in snprintf calls in argument processing.
+
+  * fstrm_capture: Fix output printf format.
+
+fstrm (0.6.0)
+
+  * fstrm_capture: Perform output file rotation when a SIGUSR1 signal
+    is received. This allows fstrm_capture's output file to be rotated
+    by logrotate or a similar external utility. (Output rotation is
+    suppressed if fstrm_capture is writing to stdout.)
+
+fstrm (0.5.0)
+
+  * Change license to modern MIT license for compatibility with GPLv2
+    software.
+
+  * src/fstrm_replay.c: For OpenBSD and Posix portability include
+    netinet/in.h and sys/socket.h to get struct sockaddr_in and the AF_*
+    defines respectively.
+
+  * Fix various compiler warnings.
+
+fstrm (0.4.0)
+
+  * Added manual pages for fstrm_capture and fstrm_dump.
+
+  * Added new tool, fstrm_replay, for replaying saved Frame Streams data
+    to a socket connection.
+
+  * Adds TCP support. Add tcp_writer to the core library which
+    implements a bi-directional Frame Streams writer as a TCP socket
+    client. Introduces new developer API: fstrm_tcp_writer_init,
+    fstrm_tcp_writer_options_init, fstrm_tcp_writer_options_destroy,
+    fstrm_tcp_writer_options_set_socket_address, and
+    fstrm_tcp_writer_options_set_socket_port.
+
+  * fstrm_capture: new options for reading from TCP socket.
+
+  * fstrm_capture: add "-c" / "--connections" option to limit the
+    number of concurrent connections it will accept.
+
+  * fstrm_capture: add "-b / --buffer-size" option to set the read buffer
+    size (effectively the maximum frame size) to a value other than the
+    default 256 KiB.
+
+  * fstrm_capture: skip oversize messages to fix stalled connections
+    caused by messages larger than the read highwater mark of the input
+    buffer. Discarded messages are logged for the purposes of tuning
+    the input buffer size.
+
+  * fstrm_capture: complete sending of FINISH frame before closing
+    connection.
+
+  * Various test additions and improvements.
+
+fstrm (0.3.2)
+
+  * Accommodate systems without pthread_condattr_setclock (Issue #34)
+
+ -- Chris Mikkelson <cmikk@fsi.io>  Tue, 21 Mar 2017 19:15:11 -0500
+
+fstrm (0.3.1)
+
+  * Add support for '-' as a filename for stdin/stdout (PR #28)
+
+  * destroy condition variable and mutexes in fstrm_iothr_destroy() (PR #25)
+
+ -- Chris Mikkelson <cmikk@fsi.io>  Thu, 26 Jan 2017 16:05:06 -0600
+
+fstrm (0.3.0)
+
+  * Output file rotation (Issue #22).
+
+  * Build on OS X (Issue #21).
+
+  * Change state properly in fstrm_writer_close() (Issue #18).
+
+  * force output flush on sighup (Issue #12).
+ 
+ -- Ben April <bapril@fsi.io>  Fri, 24 Jun 2016 22:29:56 -0500
+
+fstrm (0.2.0)
+
+  * Fix fstrm_writer_open() to allow multiple opens (Issue #1).
+
+  * New utility 'fstrm_capture', which requires libevent >= 2 (Issue #4).
+
+  * Fix incorrect pthread_cond_timedwait() usage (Issue #5).
+
+  * Backwards incompatible library API and protocol changes.
+
+  * Doxygen documentation.
+
+ -- Robert Edmonds <edmonds@fsi.io>  Thu, 06 Nov 2014 19:19:44 -0500
+
+fstrm (0.1.0)
+
+  * Initial release.
+
+ -- Robert Edmonds <edmonds@fsi.io>  Tue, 11 Feb 2014 20:00:25 -0500
