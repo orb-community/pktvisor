@@ -2,10 +2,15 @@ message(STATUS "Input Module: Dnstap")
 
 set_directory_properties(PROPERTIES CORRADE_USE_PEDANTIC_FLAGS ON)
 
+find_package(Protobuf REQUIRED)
+protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS pb/dnstap.proto)
+
 corrade_add_static_plugin(VisorInputDnstap ${CMAKE_CURRENT_BINARY_DIR}
         Dnstap.conf
         DnstapInputModulePlugin.cpp
         DnstapInputStream.cpp
+        ${PROTO_SRCS}
+        ${PROTO_HDRS}
         )
 add_library(Visor::Input::Dnstap ALIAS VisorInputDnstap)
 
@@ -17,6 +22,7 @@ target_include_directories(VisorInputDnstap
 target_link_libraries(VisorInputDnstap
         PUBLIC
         Visor::Core
+        ${CONAN_LIBS_PROTOBUF}
         )
 
 set(VISOR_STATIC_PLUGINS ${VISOR_STATIC_PLUGINS} Visor::Input::Dnstap PARENT_SCOPE)
