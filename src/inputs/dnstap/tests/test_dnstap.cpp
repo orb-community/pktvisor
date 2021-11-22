@@ -8,7 +8,7 @@ TEST_CASE("dnstap", "[dnstap]")
 {
 
     DnstapInputStream stream{"dnstap-test"};
-    stream.config_set("dnstap_file", "inputs/dnstap/tests/fixtures/dnstap.pcap");
+    stream.config_set("dnstap_file", "inputs/dnstap/tests/fixtures/fixture.dnstap");
 
     stream.start();
     stream.stop();

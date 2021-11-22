@@ -10,11 +10,26 @@
 
 namespace visor::input::dnstap {
 
+class DnstapException : public std::runtime_error
+{
+public:
+    DnstapException(const char *msg)
+        : std::runtime_error(msg)
+    {
+    }
+    DnstapException(const std::string &msg)
+        : std::runtime_error(msg)
+    {
+    }
+};
+
 class DnstapInputStream : public visor::InputStream
 {
+    bool _dnstapFile = false;
 
-    std::shared_ptr<timer::interval_handle> _dnstap_work;
     std::shared_ptr<spdlog::logger> _logger;
+
+    void _read_frame_stream();
 
 public:
     DnstapInputStream(const std::string &name);
