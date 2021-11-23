@@ -24,6 +24,7 @@ target_include_directories(VisorHandlerDns
 target_link_libraries(VisorHandlerDns
         PUBLIC
         Visor::Input::Pcap
+        Visor::Input::Dnstap
         Visor::Input::Mock
         )
 

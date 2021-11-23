@@ -3,7 +3,6 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 #include "DnstapInputStream.h"
-#include "dnstap.pb.h"
 #include <fstrm/fstrm.h>
 #include <DnsLayer.h>
 
@@ -56,6 +55,7 @@ void DnstapInputStream::_read_frame_stream()
             if (!d.ParseFromArray(data, len_data)) {
                 _logger->warn("ParseFromArray fail");
             }
+            /*
             if (d.has_message() && d.message().has_query_message()) {
                 auto query = d.message().query_message();
                 uint8_t* buf = new uint8_t[query.size()];
@@ -72,6 +72,8 @@ void DnstapInputStream::_read_frame_stream()
                 auto dns = pcpp::DnsLayer(buf, response.size(), nullptr, nullptr);
                 dnstap_signal(&dns);
             }
+             */
+            dnstap_signal(d);
         } else if (res == fstrm_res_stop) {
             // Normal end of data stream
             break;

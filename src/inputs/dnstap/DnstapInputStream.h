@@ -5,6 +5,7 @@
 #pragma once
 
 #include "InputStream.h"
+#include "dnstap.pb.h"
 #include <DnsLayer.h>
 #include <sigslot/signal.hpp>
 #include <spdlog/spdlog.h>
@@ -52,7 +53,7 @@ public:
     // handler functionality
     // IF THIS changes, see consumer_count()
     // note: these are mutable because consumer_count() calls slot_count() which is not const (unclear if it could/should be)
-    mutable sigslot::signal<pcpp::DnsLayer *> dnstap_signal;
+    mutable sigslot::signal<const ::dnstap::Dnstap&> dnstap_signal;
 };
 
 }

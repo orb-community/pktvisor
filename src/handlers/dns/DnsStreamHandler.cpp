@@ -26,7 +26,8 @@ DnsStreamHandler::DnsStreamHandler(const std::string &name, InputStream *stream,
     // figure out which input stream we have
     _pcap_stream = dynamic_cast<PcapInputStream *>(stream);
     _mock_stream = dynamic_cast<MockInputStream *>(stream);
-    if (!_pcap_stream && !_mock_stream) {
+    _dnstap_stream = dynamic_cast<DnstapInputStream *>(stream);
+    if (!_pcap_stream && !_mock_stream && !_dnstap_stream) {
         throw StreamHandlerException(fmt::format("NetStreamHandler: unsupported input stream {}", stream->name()));
     }
 }
@@ -79,6 +80,8 @@ void DnsStreamHandler::start()
         _tcp_start_connection = _pcap_stream->tcp_connection_start_signal.connect(&DnsStreamHandler::tcp_connection_start_cb, this);
         _tcp_end_connection = _pcap_stream->tcp_connection_end_signal.connect(&DnsStreamHandler::tcp_connection_end_cb, this);
         _tcp_message_connection = _pcap_stream->tcp_message_ready_signal.connect(&DnsStreamHandler::tcp_message_ready_cb, this);
+    } else if (_dnstap_stream) {
+        _dnstap_connection = _dnstap_stream->dnstap_signal.connect(&DnsStreamHandler::process_dnstap_cb, this);
     }
 
     _running = true;
@@ -97,9 +100,16 @@ void DnsStreamHandler::stop()
         _tcp_start_connection.disconnect();
         _tcp_end_connection.disconnect();
         _tcp_message_connection.disconnect();
+    } else if (_dnstap_stream) {
+        _dnstap_connection.disconnect();
     }
 
     _running = false;
+}
+
+// callback from input module
+void DnsStreamHandler::process_dnstap_cb(const dnstap::Dnstap &) {
+
 }
 
 // callback from input module

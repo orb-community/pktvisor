@@ -5,6 +5,7 @@
 #pragma once
 
 #include "AbstractMetricsManager.h"
+#include "DnstapInputStream.h"
 #include "MockInputStream.h"
 #include "PcapInputStream.h"
 #include "StreamHandler.h"
@@ -14,6 +15,7 @@
 namespace visor::handler::net {
 
 using namespace visor::input::pcap;
+using namespace visor::input::dnstap;
 using namespace visor::input::mock;
 
 class NetworkMetricsBucket final : public visor::AbstractMetricsBucket
@@ -111,6 +113,7 @@ class NetStreamHandler final : public visor::StreamMetricsHandler<NetworkMetrics
     // the input stream sources we support (only one will be in use at a time)
     PcapInputStream *_pcap_stream{nullptr};
     MockInputStream *_mock_stream{nullptr};
+    DnstapInputStream *_dnstap_stream{nullptr};
 
     sigslot::connection _pkt_connection;
     sigslot::connection _start_tstamp_connection;

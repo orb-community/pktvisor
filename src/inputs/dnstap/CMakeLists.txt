@@ -18,7 +18,7 @@ target_include_directories(VisorInputDnstap
         ${CMAKE_CURRENT_BINARY_DIR}
         INTERFACE
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
-        #$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}> # for generated dnstap.pb.h
         )
 
 target_link_libraries(VisorInputDnstap
