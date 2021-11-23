@@ -23,6 +23,7 @@ target_include_directories(VisorInputDnstap
 
 target_link_libraries(VisorInputDnstap
         PUBLIC
+        ${CONAN_LIBS_PCAPPLUSPLUS}
         fstrm
         Visor::Core
         ${CONAN_LIBS_PROTOBUF}

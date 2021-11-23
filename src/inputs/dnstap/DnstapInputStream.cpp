@@ -5,6 +5,7 @@
 #include "DnstapInputStream.h"
 #include "dnstap.pb.h"
 #include <fstrm/fstrm.h>
+#include <DnsLayer.h>
 
 namespace visor::input::dnstap {
 
@@ -23,52 +24,65 @@ DnstapInputStream::~DnstapInputStream()
 
 void DnstapInputStream::_read_frame_stream()
 {
-    struct fstrm_reader *r = NULL;
-    int rv = EXIT_FAILURE;
-    fstrm_res res;
 
-    /* Setup file reader options. */
+    // Setup file reader options
     struct fstrm_file_options *fopt;
     fopt = fstrm_file_options_init();
     assert(config_exists("dnstap_file"));
     fstrm_file_options_set_file_path(fopt, config_get<std::string>("dnstap_file").c_str());
 
-    /* Initialize file reader. */
-    r = fstrm_file_reader_init(fopt, NULL);
+    // Initialize file reader
+    struct fstrm_reader *r = fstrm_file_reader_init(fopt, NULL);
     if (!r) {
         throw DnstapException("fstrm_file_reader_init() failed");
     }
-    res = fstrm_reader_open(r);
+    fstrm_res res = fstrm_reader_open(r);
     if (res != fstrm_res_success) {
         throw DnstapException("fstrm_reader_open() failed");
     }
 
-    /* Cleanup. */
+    // Cleanup
     fstrm_file_options_destroy(&fopt);
 
-    /* Loop over data frames. */
+    // Loop over data frames
     for (;;) {
         const uint8_t *data;
         size_t len_data;
 
         res = fstrm_reader_read(r, &data, &len_data);
         if (res == fstrm_res_success) {
-            /* Data frame ready. */
+            // Data frame ready, parse protobuf
             ::dnstap::Dnstap d;
             if (!d.ParseFromArray(data, len_data)) {
-               _logger->warn("ParseFromArray fail");
+                _logger->warn("ParseFromArray fail");
             }
-            _logger->info("frame: {}", d.message().query_message());
+            if (d.has_message() && d.message().has_query_message()) {
+                auto query = d.message().query_message();
+                uint8_t* buf = new uint8_t[query.size()];
+                std::memcpy(buf, query.c_str(), query.size());
+                // DnsLayer takes ownership of buf
+                auto dns = pcpp::DnsLayer(buf, query.size(), nullptr, nullptr);
+                dnstap_signal(&dns);
+            }
+            else if (d.has_message() && d.message().has_response_message()) {
+                auto response = d.message().response_message();
+                uint8_t* buf = new uint8_t[response.size()];
+                std::memcpy(buf, response.c_str(), response.size());
+                // DnsLayer takes ownership of buf
+                auto dns = pcpp::DnsLayer(buf, response.size(), nullptr, nullptr);
+                dnstap_signal(&dns);
+            }
         } else if (res == fstrm_res_stop) {
-            /* Normal end of data stream. */
-            rv = EXIT_SUCCESS;
+            // Normal end of data stream
+            break;
         } else {
-            /* Abnormal end. */
-            throw DnstapException(fmt::format("fstrm_reader_read() failed: {}", res));
+            // Abnormal end
+            _logger->warn(fmt::format("fstrm_reader_read() data stream ended abnormally: {}", res));
+            break;
         }
     }
 
-    /* Cleanup. */
+    // Cleanup
     fstrm_reader_destroy(&r);
 }
 

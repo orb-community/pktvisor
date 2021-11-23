@@ -5,6 +5,7 @@
 #pragma once
 
 #include "InputStream.h"
+#include <DnsLayer.h>
 #include <sigslot/signal.hpp>
 #include <spdlog/spdlog.h>
 
@@ -45,13 +46,13 @@ public:
     void info_json(json &j) const override;
     size_t consumer_count() const override
     {
-        return random_int_signal.slot_count();
+        return dnstap_signal.slot_count();
     }
 
     // handler functionality
     // IF THIS changes, see consumer_count()
     // note: these are mutable because consumer_count() calls slot_count() which is not const (unclear if it could/should be)
-    mutable sigslot::signal<uint64_t> random_int_signal;
+    mutable sigslot::signal<pcpp::DnsLayer *> dnstap_signal;
 };
 
 }
