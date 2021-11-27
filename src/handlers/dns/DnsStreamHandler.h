@@ -132,6 +132,7 @@ public:
 
     void process_filtered();
     void process_dns_layer(bool deep, DnsLayer &payload, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint16_t port);
+    void process_dnstap(bool deep, const dnstap::Dnstap &payload);
 
     void new_dns_transaction(bool deep, float to90th, float from90th, DnsLayer &dns, PacketDirection dir, DnsTransaction xact);
 };

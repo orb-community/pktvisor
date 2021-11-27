@@ -408,6 +408,21 @@ void DnsMetricsBucket::to_json(json &j) const
 }
 
 // the main bucket analysis
+void DnsMetricsBucket::process_dnstap(bool deep, const dnstap::Dnstap &payload)
+{
+    std::unique_lock lock(_mutex);
+
+    if (payload.message().has_socket_family()) {
+        if (payload.message().socket_family() == dnstap::INET6) {
+            ++_counters.IPv6;
+        } else if (payload.message().socket_family() == dnstap::INET) {
+            ++_counters.IPv4;
+        }
+    }
+
+
+
+}
 void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint16_t port)
 {
 
@@ -645,5 +660,7 @@ void DnsMetricsManager::process_dnstap(const dnstap::Dnstap &payload)
     }
     // base event
     new_event(stamp);
+    // process in the "live" bucket. this will parse the resources if we are deep sampling
+    live_bucket()->process_dnstap(_deep_sampling_now, payload);
 }
 }
