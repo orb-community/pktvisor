@@ -108,8 +108,9 @@ void DnsStreamHandler::stop()
 }
 
 // callback from input module
-void DnsStreamHandler::process_dnstap_cb(const dnstap::Dnstap &) {
-
+void DnsStreamHandler::process_dnstap_cb(const dnstap::Dnstap &d)
+{
+    _metrics->process_dnstap(d);
 }
 
 // callback from input module
@@ -614,5 +615,35 @@ void DnsMetricsManager::process_filtered(timespec stamp)
     // base event, no sample
     new_event(stamp, false);
     live_bucket()->process_filtered();
+}
+void DnsMetricsManager::process_dnstap(const dnstap::Dnstap &payload)
+{
+    // dnstap message type
+    auto mtype = payload.message().type();
+    // set proper timestamp. use dnstap version if available, otherwise "now"
+    timespec stamp;
+    switch (mtype) {
+    case dnstap::Message_Type_CLIENT_RESPONSE:
+    case dnstap::Message_Type_AUTH_RESPONSE:
+    case dnstap::Message_Type_RESOLVER_RESPONSE:
+        if (payload.message().has_response_time_sec()) {
+            stamp.tv_sec = payload.message().response_time_sec();
+            stamp.tv_nsec = payload.message().response_time_nsec();
+        }
+        break;
+    case dnstap::Message_Type_CLIENT_QUERY:
+    case dnstap::Message_Type_AUTH_QUERY:
+    case dnstap::Message_Type_RESOLVER_QUERY:
+        if (payload.message().has_query_time_sec()) {
+            stamp.tv_sec = payload.message().query_time_sec();
+            stamp.tv_nsec = payload.message().query_time_nsec();
+        }
+        break;
+    default:
+        // use now()
+        std::timespec_get(&stamp, TIME_UTC);
+    }
+    // base event
+    new_event(stamp);
 }
 }

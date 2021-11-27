@@ -53,26 +53,13 @@ void DnstapInputStream::_read_frame_stream()
             // Data frame ready, parse protobuf
             ::dnstap::Dnstap d;
             if (!d.ParseFromArray(data, len_data)) {
-                _logger->warn("ParseFromArray fail");
+                _logger->warn("Dnstap::ParseFromArray fail, skipping frame of size {}", len_data);
+                continue;
             }
-            /*
-            if (d.has_message() && d.message().has_query_message()) {
-                auto query = d.message().query_message();
-                uint8_t* buf = new uint8_t[query.size()];
-                std::memcpy(buf, query.c_str(), query.size());
-                // DnsLayer takes ownership of buf
-                auto dns = pcpp::DnsLayer(buf, query.size(), nullptr, nullptr);
-                dnstap_signal(&dns);
+            if (!d.has_type() || d.type() != ::dnstap::Dnstap_Type_MESSAGE || !d.has_message()) {
+                _logger->warn("dnstap data is wrong type or has no message, skipping frame of size {}", len_data);
+                continue;
             }
-            else if (d.has_message() && d.message().has_response_message()) {
-                auto response = d.message().response_message();
-                uint8_t* buf = new uint8_t[response.size()];
-                std::memcpy(buf, response.c_str(), response.size());
-                // DnsLayer takes ownership of buf
-                auto dns = pcpp::DnsLayer(buf, response.size(), nullptr, nullptr);
-                dnstap_signal(&dns);
-            }
-             */
             dnstap_signal(d);
         } else if (res == fstrm_res_stop) {
             // Normal end of data stream

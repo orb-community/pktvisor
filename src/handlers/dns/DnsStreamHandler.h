@@ -173,6 +173,7 @@ public:
 
     void process_filtered(timespec stamp);
     void process_dns_layer(DnsLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowkey, uint16_t port, timespec stamp);
+    void process_dnstap(const dnstap::Dnstap& payload);
 };
 
 class TcpSessionData final
