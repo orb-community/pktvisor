@@ -420,7 +420,35 @@ void DnsMetricsBucket::process_dnstap(bool deep, const dnstap::Dnstap &payload)
         }
     }
 
+    if (payload.message().has_socket_protocol()) {
+        switch (payload.message().socket_protocol()) {
+        case dnstap::UDP:
+            ++_counters.UDP;
+            break;
+        case dnstap::TCP:
+            ++_counters.TCP;
+            break;
+        case dnstap::DOT:
+            ++_counters.DOT;
+            break;
+        case dnstap::DOH:
+            ++_counters.DOH;
+            break;
+        }
+    }
 
+    switch (payload.type()) {
+    case dnstap::Message_Type_CLIENT_RESPONSE:
+    case dnstap::Message_Type_AUTH_RESPONSE:
+    case dnstap::Message_Type_RESOLVER_RESPONSE:
+        ++_counters.replies;
+        break;
+    case dnstap::Message_Type_CLIENT_QUERY:
+    case dnstap::Message_Type_AUTH_QUERY:
+    case dnstap::Message_Type_RESOLVER_QUERY:
+        ++_counters.queries;
+        break;
+    }
 
 }
 void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint16_t port)

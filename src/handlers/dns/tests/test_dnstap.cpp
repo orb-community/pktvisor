@@ -27,9 +27,9 @@ TEST_CASE("Parse DNSTAP", "[dnstap][net]")
 
     CHECK(event_data.num_events->value() == 153);
     CHECK(event_data.num_samples->value() == 153);
-    CHECK(counters.TCP.value() == 2880);
-    CHECK(counters.UDP.value() == 2971);
-    CHECK(counters.IPv4.value() == 5851);
+    CHECK(counters.TCP.value() == 0);
+    CHECK(counters.UDP.value() == 153);
+    CHECK(counters.IPv4.value() == 153);
     CHECK(counters.IPv6.value() == 0);
     CHECK(counters.queries.value() == 2930);
     CHECK(counters.replies.value() == 2921);

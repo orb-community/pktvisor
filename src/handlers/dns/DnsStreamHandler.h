@@ -52,6 +52,8 @@ protected:
         Counter replies;
         Counter UDP;
         Counter TCP;
+        Counter DOT;
+        Counter DOH;
         Counter IPv4;
         Counter IPv6;
         Counter NX;
@@ -68,6 +70,8 @@ protected:
             , replies("dns", {"wire_packets", "replies"}, "Total DNS wire packets flagged as reply (ingress and egress)")
             , UDP("dns", {"wire_packets", "udp"}, "Total DNS wire packets received over UDP (ingress and egress)")
             , TCP("dns", {"wire_packets", "tcp"}, "Total DNS wire packets received over TCP (ingress and egress)")
+            , DOT("dns", {"wire_packets", "dot"}, "Total DNS wire packets received over DNS over TLS")
+            , DOH("dns", {"wire_packets", "doh"}, "Total DNS wire packets received over DNS over HTTPS")
             , IPv4("dns", {"wire_packets", "ipv4"}, "Total DNS wire packets received over IPv4 (ingress and egress)")
             , IPv6("dns", {"wire_packets", "ipv6"}, "Total DNS wire packets received over IPv6 (ingress and egress)")
             , NX("dns", {"wire_packets", "nxdomain"}, "Total DNS wire packets flagged as reply with return code NXDOMAIN (ingress and egress)")
