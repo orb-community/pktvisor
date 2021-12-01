@@ -339,27 +339,37 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
         }
     });
     _svr.Get(fmt::format("/api/v1/policies/({})/metrics/prometheus", AbstractModule::MODULE_ID_REGEX).c_str(), [&](const httplib::Request &req, httplib::Response &res) {
-        auto name = req.matches[1];
-        if (!_registry.policy_manager()->module_exists(name)) {
-            res.status = 404;
-            res.set_content("policy does not exists", "text/plain");
-            return;
+        std::vector<std::string> plist;
+        {
+            auto name = req.matches[1];
+            if (name == "__all") {
+                // special route to get all policy metrics in one call, for scraping performance reasons
+                plist = _registry.policy_manager()->module_get_keys();
+            } else if (!_registry.policy_manager()->module_exists(name)) {
+                res.status = 404;
+                res.set_content("policy does not exists", "text/plain");
+                return;
+            } else {
+                plist.emplace_back(name);
+            }
         }
-        try {
-            std::stringstream output;
-            auto [policy, lock] = _registry.policy_manager()->module_get_locked(name);
-            for (auto &mod : policy->modules()) {
-                auto hmod = dynamic_cast<StreamHandler *>(mod);
-                if (hmod) {
-                    spdlog::stopwatch sw;
-                    hmod->window_prometheus(output, {{"policy", name}, {"module", hmod->name()}});
-                    _logger->debug("{} window_prometheus elapsed time: {}", hmod->name(), sw);
+        std::stringstream output;
+        for (const auto &p_mname : plist) {
+            try {
+                auto [policy, lock] = _registry.policy_manager()->module_get_locked(p_mname);
+                for (auto &mod : policy->modules()) {
+                    auto hmod = dynamic_cast<StreamHandler *>(mod);
+                    if (hmod) {
+                        spdlog::stopwatch sw;
+                        hmod->window_prometheus(output, {{"policy", p_mname}, {"module", hmod->name()}});
+                        _logger->debug("{} window_prometheus elapsed time: {}", hmod->name(), sw);
+                    }
                 }
+            } catch (const std::exception &e) {
+                res.status = 500;
+                res.set_content(e.what(), "text/plain");
             }
             res.set_content(output.str(), "text/plain");
-        } catch (const std::exception &e) {
-            res.status = 500;
-            res.set_content(e.what(), "text/plain");
         }
     });
 }
