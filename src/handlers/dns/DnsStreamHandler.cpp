@@ -437,17 +437,46 @@ void DnsMetricsBucket::process_dnstap(bool deep, const dnstap::Dnstap &payload)
         }
     }
 
+    QR side{QR::query};
     switch (payload.type()) {
+    case dnstap::Message_Type_FORWARDER_RESPONSE:
+    case dnstap::Message_Type_STUB_RESPONSE:
+    case dnstap::Message_Type_TOOL_RESPONSE:
+    case dnstap::Message_Type_UPDATE_RESPONSE:
     case dnstap::Message_Type_CLIENT_RESPONSE:
     case dnstap::Message_Type_AUTH_RESPONSE:
     case dnstap::Message_Type_RESOLVER_RESPONSE:
+        side = QR::response;
         ++_counters.replies;
         break;
+    case dnstap::Message_Type_FORWARDER_QUERY:
+    case dnstap::Message_Type_STUB_QUERY:
+    case dnstap::Message_Type_TOOL_QUERY:
+    case dnstap::Message_Type_UPDATE_QUERY:
     case dnstap::Message_Type_CLIENT_QUERY:
     case dnstap::Message_Type_AUTH_QUERY:
     case dnstap::Message_Type_RESOLVER_QUERY:
+        side = QR::query;
         ++_counters.queries;
         break;
+    }
+
+    if (payload.message().has_query_port()) {
+        _dns_topUDPPort.update(payload.message().query_port());
+    }
+
+    if (payload.message().has_query_zone()) {
+        // TODO decode wire name, use in top_qname
+    }
+
+    if (!deep || (!payload.message().has_query_message() && !payload.message().has_response_message())) {
+        return;
+    }
+
+    if (side == QR::query && payload.message().has_query_message()) {
+
+    } else if (side == QR::response && payload.message().has_response_message()) {
+
     }
 
 }
