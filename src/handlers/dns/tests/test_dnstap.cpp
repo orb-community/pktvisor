@@ -31,14 +31,13 @@ TEST_CASE("Parse DNSTAP", "[dnstap][net]")
     CHECK(counters.UDP.value() == 153);
     CHECK(counters.IPv4.value() == 153);
     CHECK(counters.IPv6.value() == 0);
-    CHECK(counters.queries.value() == 2930);
-    CHECK(counters.replies.value() == 2921);
-    CHECK(counters.xacts_total.value() == 2921);
+    CHECK(counters.queries.value() == 153);
+    CHECK(counters.replies.value() == 0);
+    CHECK(counters.xacts_total.value() == 0);
     CHECK(counters.xacts_in.value() == 0);
-    CHECK(counters.xacts_out.value() == 2921);
+    CHECK(counters.xacts_out.value() == 0);
     CHECK(counters.xacts_timed_out.value() == 0);
-    CHECK(counters.NOERROR.value() == 2921);
-    CHECK(counters.NOERROR.value() == 2921);
+    CHECK(counters.NOERROR.value() == 0);
     CHECK(counters.NX.value() == 0);
     CHECK(counters.REFUSED.value() == 0);
     CHECK(counters.SRVFAIL.value() == 0);
@@ -46,30 +45,17 @@ TEST_CASE("Parse DNSTAP", "[dnstap][net]")
     nlohmann::json j;
     dns_handler.metrics()->bucket(0)->to_json(j);
 
-    CHECK(j["cardinality"]["qname"] == 2055); // flame was run with 1000 randoms x2 (udp+tcp)
+    CHECK(j["cardinality"]["qname"] == 70);
 
-    CHECK(j["top_qname2"][0]["name"] == ".test.com");
-    CHECK(j["top_qname2"][0]["estimate"] == event_data.num_events->value());
+    CHECK(j["top_qname2"][0]["name"] == ".google.com");
+    CHECK(j["top_qname2"][0]["estimate"] == 9);
 
-    CHECK(j["top_rcode"][0]["name"] == "NOERROR");
-    CHECK(j["top_rcode"][0]["estimate"] == counters.NOERROR.value());
+    CHECK(j["top_udp_ports"][0]["name"] == "33000");
+    CHECK(j["top_udp_ports"][0]["estimate"] == 4);
 
-    CHECK(j["top_udp_ports"][0]["name"] == "57975");
-    CHECK(j["top_udp_ports"][0]["estimate"] == 302);
-
-    CHECK(j["top_qtype"][0]["name"] == "AAAA");
-    CHECK(j["top_qtype"][0]["estimate"] == 1476);
-    CHECK(j["top_qtype"][1]["name"] == "CNAME");
-    CHECK(j["top_qtype"][1]["estimate"] == 825);
-    CHECK(j["top_qtype"][2]["name"] == "SOA");
-    CHECK(j["top_qtype"][2]["estimate"] == 794);
-    CHECK(j["top_qtype"][3]["name"] == "MX");
-    CHECK(j["top_qtype"][3]["estimate"] == 757);
-    CHECK(j["top_qtype"][4]["name"] == "A");
-    CHECK(j["top_qtype"][4]["estimate"] == 717);
-    CHECK(j["top_qtype"][5]["name"] == "NS");
-    CHECK(j["top_qtype"][5]["estimate"] == 662);
-    CHECK(j["top_qtype"][6]["name"] == "TXT");
-    CHECK(j["top_qtype"][6]["estimate"] == 620);
+    CHECK(j["top_qtype"][0]["name"] == "A");
+    CHECK(j["top_qtype"][0]["estimate"] == 77);
+    CHECK(j["top_qtype"][1]["name"] == "HTTPS");
+    CHECK(j["top_qtype"][1]["estimate"] == 2);
 }
 

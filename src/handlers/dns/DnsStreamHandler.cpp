@@ -474,31 +474,45 @@ void DnsMetricsBucket::process_dnstap(bool deep, const dnstap::Dnstap &payload)
     }
 
     if (side == QR::query && payload.message().has_query_message()) {
-
+        auto query = payload.message().query_message();
+        uint8_t *buf = new uint8_t[query.size()];
+        std::memcpy(buf, query.c_str(), query.size());
+        // DnsLayer takes ownership of buf
+        DnsLayer dpayload(buf, query.size(), nullptr, nullptr);
+        _mutex.unlock();
+        process_dns_layer(deep, dpayload, true, pcpp::UnknownProtocol, pcpp::UnknownProtocol, 0);
     } else if (side == QR::response && payload.message().has_response_message()) {
-
+        auto query = payload.message().response_message();
+        uint8_t *buf = new uint8_t[query.size()];
+        std::memcpy(buf, query.c_str(), query.size());
+        // DnsLayer takes ownership of buf
+        DnsLayer dpayload(buf, query.size(), nullptr, nullptr);
+        _mutex.unlock();
+        process_dns_layer(deep, dpayload, true, pcpp::UnknownProtocol, pcpp::UnknownProtocol, 0);
     }
-
 }
-void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint16_t port)
+void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, bool dnstapped, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint16_t port)
 {
 
     std::unique_lock lock(_mutex);
 
+    // if dnstapped is true, then dnstap already processeed so we skip some metrics so as not
+    // to double count
+
     if (l3 == pcpp::IPv6) {
         ++_counters.IPv6;
-    } else {
+    } else if (l3 == pcpp::IPv4) {
         ++_counters.IPv4;
     }
 
     if (l4 == pcpp::TCP) {
         ++_counters.TCP;
-    } else {
+    } else if (l4 == pcpp::UDP) {
         ++_counters.UDP;
     }
 
     // only count response codes on responses (not queries)
-    if (payload.getDnsHeader()->queryOrResponse == QR::response) {
+    if (!dnstapped && payload.getDnsHeader()->queryOrResponse == QR::response) {
         ++_counters.replies;
         switch (payload.getDnsHeader()->responseCode) {
         case NoError:
@@ -514,7 +528,7 @@ void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, pcpp::Pro
             ++_counters.REFUSED;
             break;
         }
-    } else {
+    } else if (!dnstapped) {
         ++_counters.queries;
     }
 
@@ -522,7 +536,9 @@ void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, pcpp::Pro
         return;
     }
 
-    _dns_topUDPPort.update(port);
+    if (port) {
+        _dns_topUDPPort.update(port);
+    }
 
     auto success = payload.parseResources(true);
     if (!success) {
@@ -671,7 +687,7 @@ void DnsMetricsManager::process_dns_layer(DnsLayer &payload, PacketDirection dir
     // base event
     new_event(stamp);
     // process in the "live" bucket. this will parse the resources if we are deep sampling
-    live_bucket()->process_dns_layer(_deep_sampling_now, payload, l3, l4, port);
+    live_bucket()->process_dns_layer(_deep_sampling_now, payload, false, l3, l4, port);
     // handle dns transactions (query/response pairs)
     if (payload.getDnsHeader()->queryOrResponse == QR::response) {
         auto xact = _qr_pair_manager.maybe_end_transaction(flowkey, payload.getDnsHeader()->transactionID, stamp);
