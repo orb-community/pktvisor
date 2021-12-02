@@ -277,9 +277,9 @@ public:
     {
         LabelMap l(add_labels);
         auto items = _fi.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
+        out << "# HELP " << base_name_snake() << ' ' << _desc << std::endl;
+        out << "# TYPE " << base_name_snake() << " gauge" << std::endl;
         for (uint64_t i = 0; i < std::min(_top_count, items.size()); i++) {
-            out << "# HELP " << base_name_snake() << ' ' << _desc << std::endl;
-            out << "# TYPE " << base_name_snake() << " gauge" << std::endl;
             l["name"] = formatter(items[i].get_item());
             out << name_snake({}, l) << ' ' << items[i].get_estimate() << std::endl;
         }
@@ -301,9 +301,9 @@ public:
     {
         LabelMap l(add_labels);
         auto items = _fi.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
+        out << "# HELP " << base_name_snake() << ' ' << _desc << std::endl;
+        out << "# TYPE " << base_name_snake() << " gauge" << std::endl;
         for (uint64_t i = 0; i < std::min(_top_count, items.size()); i++) {
-            out << "# HELP " << base_name_snake() << ' ' << _desc << std::endl;
-            out << "# TYPE " << base_name_snake() << " gauge" << std::endl;
             std::stringstream name_text;
             name_text << items[i].get_item();
             l["name"] = name_text.str();
