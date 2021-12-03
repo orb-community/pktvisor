@@ -70,6 +70,7 @@ static const char USAGE[] =
     Modules:
       --module-list               List all modules which have been loaded (builtin and dynamic)
       --module-load FILE          Load the specified dynamic module
+      --module-dir DIR            Set module search path
     Logging Options:
       --log-file FILE             Log to the given output file name
       --syslog                    Log to syslog
@@ -234,6 +235,10 @@ int main(int argc, char *argv[])
 
     // modules
     CoreRegistry registry;
+    if (args["--module-dir"]) {
+        registry.input_plugin_registry()->setPluginDirectory(args["--module-dir"].asString());
+        registry.handler_plugin_registry()->setPluginDirectory(args["--module-dir"].asString());
+    }
     if (args["--module-load"]) {
         auto result = registry.input_plugin_registry()->load(args["--module-load"].asString());
         if (result != Corrade::PluginManager::LoadState::Loaded) {
