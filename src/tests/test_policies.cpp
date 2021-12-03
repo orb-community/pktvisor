@@ -164,6 +164,7 @@ TEST_CASE("Policies", "[policies]")
     SECTION("Good Config happy path")
     {
         CoreRegistry registry;
+        registry.start(nullptr);
         YAML::Node config_file = YAML::Load(policies_config);
 
         CHECK(config_file["visor"]["policies"]);
@@ -194,6 +195,7 @@ TEST_CASE("Policies", "[policies]")
     SECTION("Duplicate")
     {
         CoreRegistry registry;
+        registry.start(nullptr);
         YAML::Node config_file = YAML::Load(policies_config);
 
         REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
@@ -224,6 +226,7 @@ TEST_CASE("Policies", "[policies]")
     SECTION("Bad Config: invalid tap config")
     {
         CoreRegistry registry;
+        registry.start(nullptr);
         YAML::Node config_file = YAML::Load(policies_config_bad3);
 
         REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
@@ -233,6 +236,7 @@ TEST_CASE("Policies", "[policies]")
     SECTION("Bad Config: exception on input start")
     {
         CoreRegistry registry;
+        registry.start(nullptr);
         YAML::Node config_file = YAML::Load(policies_config_bad4);
 
         REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
@@ -242,6 +246,7 @@ TEST_CASE("Policies", "[policies]")
     SECTION("Bad Config: mis-matched input_type on tap")
     {
         CoreRegistry registry;
+        registry.start(nullptr);
         YAML::Node config_file = YAML::Load(policies_config_bad5);
 
         REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
@@ -251,6 +256,7 @@ TEST_CASE("Policies", "[policies]")
     SECTION("Bad Config: bad policy kind")
     {
         CoreRegistry registry;
+        registry.start(nullptr);
         YAML::Node config_file = YAML::Load(policies_config_bad6);
 
         REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
@@ -260,6 +266,7 @@ TEST_CASE("Policies", "[policies]")
     SECTION("Roll Back")
     {
         CoreRegistry registry;
+        registry.start(nullptr);
         YAML::Node config_file = YAML::Load(policies_config);
 
         CHECK(config_file["visor"]["policies"]);
@@ -281,6 +288,7 @@ TEST_CASE("Policies", "[policies]")
     SECTION("Good Config, test stop()")
     {
         CoreRegistry registry;
+        registry.start(nullptr);
         YAML::Node config_file = YAML::Load(policies_config);
 
         CHECK(config_file["visor"]["policies"]);

@@ -28,6 +28,8 @@ visor::CoreServer::CoreServer(CoreRegistry *r, std::shared_ptr<spdlog::logger> l
         _logger = spdlog::stderr_color_mt("visor");
     }
 
+    _registry->start(&_svr);
+
     _setup_routes(prom_config);
 
     if (!prom_config.instance_label.empty()) {
