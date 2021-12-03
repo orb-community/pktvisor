@@ -44,7 +44,7 @@ TEST_CASE("Taps", "[taps]")
 
     SECTION("Good Config")
     {
-        CoreRegistry registry(nullptr);
+        CoreRegistry registry;
         YAML::Node config_file = YAML::Load(tap_config);
 
         CHECK(config_file["visor"]["taps"]);
@@ -60,7 +60,7 @@ TEST_CASE("Taps", "[taps]")
 
     SECTION("Duplicate")
     {
-        CoreRegistry registry(nullptr);
+        CoreRegistry registry;
         YAML::Node config_file = YAML::Load(tap_config);
 
         CHECK_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
@@ -69,7 +69,7 @@ TEST_CASE("Taps", "[taps]")
 
     SECTION("Bad Config")
     {
-        CoreRegistry registry(nullptr);
+        CoreRegistry registry;
         YAML::Node config_file = YAML::Load(tap_config_bad);
 
         CHECK(config_file["visor"]["taps"]);

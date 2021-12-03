@@ -234,6 +234,13 @@ int main(int argc, char *argv[])
 
     // modules
     CoreRegistry registry;
+    if (args["--module-load"]) {
+        auto result = registry.input_plugin_registry()->load(args["--module-load"].asString());
+        if (result != Corrade::PluginManager::LoadState::Loaded) {
+            logger->error("failed to load plugin: {}", result);
+            exit(EXIT_FAILURE);
+        }
+    }
     if (args["--module-list"].asBool()) {
         for (auto &p : registry.input_plugin_registry()->pluginList()) {
             logger->info("input: {}", p);
@@ -241,10 +248,6 @@ int main(int argc, char *argv[])
         for (auto &p : registry.handler_plugin_registry()->pluginList()) {
             logger->info("handler: {}", p);
         }
-        exit(EXIT_SUCCESS);
-    }
-    if (args["--module-load"]) {
-        auto result = registry.input_plugin_registry()->load(args["--module-load"].asString());
         exit(EXIT_SUCCESS);
     }
 
