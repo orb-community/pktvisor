@@ -10,15 +10,23 @@ MockStreamHandler::MockStreamHandler(const std::string &name, InputStream *strea
     : visor::StreamMetricsHandler<MockMetricsManager>(name, window_config)
 {
     assert(stream);
+    _logger = spdlog::get("visor");
+    assert(_logger);
     // figure out which input stream we have
     _mock_stream = dynamic_cast<MockInputStream *>(stream);
     if (!_mock_stream) {
         throw StreamHandlerException(fmt::format("MockStreamHandler: unsupported input stream {}", stream->name()));
     }
+    _logger->info("mock handler created");
+}
+MockStreamHandler::~MockStreamHandler()
+{
+    _logger->info("mock handler destroyed");
 }
 
 void MockStreamHandler::process_random_int(uint64_t i)
 {
+    _logger->info("mock handler received random int signal: {}", i);
     _metrics->process_random_int(i);
 }
 
@@ -27,6 +35,8 @@ void MockStreamHandler::start()
     if (_running) {
         return;
     }
+
+    _logger->info("mock handler start()");
 
     _random_int_connection = _mock_stream->random_int_signal.connect(&MockStreamHandler::process_random_int, this);
 
@@ -38,6 +48,8 @@ void MockStreamHandler::stop()
     if (!_running) {
         return;
     }
+
+    _logger->info("mock handler stop()");
 
     _running = false;
 }

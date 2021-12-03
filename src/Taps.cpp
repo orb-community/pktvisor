@@ -54,7 +54,7 @@ void TapManager::load(const YAML::Node &tap_yaml, bool strict)
         // will throw if it already exists. nothing else to clean up
         module_add(std::move(tap_module));
 
-        spdlog::get("visor")->info("tap [{}]: loaded", tap_name);
+        spdlog::get("visor")->info("tap [{}]: loaded, type {}", tap_name, input_type);
     }
 }
 

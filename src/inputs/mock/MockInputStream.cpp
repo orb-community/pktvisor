@@ -35,8 +35,9 @@ void MockInputStream::start()
     static timer timer_thread{500ms};
     std::srand(std::time(nullptr));
     _mock_work = timer_thread.set_interval(1s, [this] {
-        _logger->info("mock input sends random int signal");
-        random_int_signal(std::rand());
+        auto i = std::rand();
+        _logger->info("mock input sends random int signal: {}", i);
+        random_int_signal(i);
     });
 
     _running = true;

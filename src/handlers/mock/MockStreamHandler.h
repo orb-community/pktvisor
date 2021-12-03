@@ -7,6 +7,7 @@
 #include "AbstractMetricsManager.h"
 #include "MockInputStream.h"
 #include "StreamHandler.h"
+#include <spdlog/spdlog.h>
 #include <Corrade/Utility/Debug.h>
 #include <limits>
 #include <string>
@@ -68,6 +69,7 @@ class MockStreamHandler final : public visor::StreamMetricsHandler<MockMetricsMa
 {
 
     MockInputStream *_mock_stream;
+    std::shared_ptr<spdlog::logger> _logger;
 
     sigslot::connection _random_int_connection;
 
@@ -75,7 +77,7 @@ class MockStreamHandler final : public visor::StreamMetricsHandler<MockMetricsMa
 
 public:
     MockStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config);
-    ~MockStreamHandler() = default;
+    ~MockStreamHandler();
 
     // visor::AbstractModule
     std::string schema_key() const override
