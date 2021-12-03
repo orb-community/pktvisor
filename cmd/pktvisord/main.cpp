@@ -12,6 +12,7 @@
 #include "handlers/static_plugins.h"
 #include "inputs/static_plugins.h"
 #include "visor_config.h"
+#include <Corrade/Utility/ConfigurationGroup.h>
 #include <docopt/docopt.h>
 #include <resolv.h>
 #include <spdlog/sinks/basic_file_sink.h>
@@ -240,10 +241,28 @@ int main(int argc, char *argv[])
         registry.handler_plugin_registry()->setPluginDirectory(args["--module-dir"].asString());
     }
     if (args["--module-load"]) {
-        auto result = registry.input_plugin_registry()->load(args["--module-load"].asString());
-        if (result != Corrade::PluginManager::LoadState::Loaded) {
-            logger->error("failed to load plugin: {}", result);
+        auto meta = registry.input_plugin_registry()->metadata(args["--module-load"].asString());
+        if (!meta) {
+            logger->error("failed to load plugin: {}", args["--module-load"].asString());
             exit(EXIT_FAILURE);
+        }
+        if (!meta->data().hasValue("type") || (meta->data().value("type") != "handler" && meta->data().value("type") != "input")) {
+            logger->error("plugin configuration metadata did not specify a valid plugin type", args["--module-load"].asString());
+            exit(EXIT_FAILURE);
+        }
+        if (meta->data().value("type") == "input") {
+            auto result = registry.input_plugin_registry()->load(args["--module-load"].asString());
+            if (result != Corrade::PluginManager::LoadState::Loaded) {
+                logger->error("failed to load input plugin: {}", result);
+                exit(EXIT_FAILURE);
+            }
+        }
+        else if (meta->data().value("type") == "handler") {
+            auto result = registry.handler_plugin_registry()->load(args["--module-load"].asString());
+            if (result != Corrade::PluginManager::LoadState::Loaded) {
+                logger->error("failed to load input handler plugin: {}", result);
+                exit(EXIT_FAILURE);
+            }
         }
     }
     if (args["--module-list"].asBool()) {

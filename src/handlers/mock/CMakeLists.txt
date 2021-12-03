@@ -4,7 +4,8 @@ set_directory_properties(PROPERTIES CORRADE_USE_PEDANTIC_FLAGS ON)
 
 corrade_add_plugin(VisorHandlerMock
         ${CMAKE_CURRENT_BINARY_DIR}
-        MockHandler.conf
+        ""
+        VisorHandlerMock.conf
         MockHandlerModulePlugin.cpp
         MockStreamHandler.cpp)
 add_library(Visor::Handler::Mock ALIAS VisorHandlerMock)
