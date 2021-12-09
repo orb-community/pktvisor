@@ -82,7 +82,7 @@ int main(int argc, char *argv[])
         logger->set_level(spdlog::level::debug);
     }
 
-    CoreRegistry mgrs(nullptr);
+    CoreRegistry registry;
 
     std::signal(SIGINT, signal_handler);
     std::signal(SIGTERM, signal_handler);
@@ -125,8 +125,8 @@ int main(int argc, char *argv[])
         input_stream->info_json(j["info"]);
         logger->info("{}", j.dump(4));
 
-        mgrs.input_manager()->module_add(std::move(input_stream));
-        auto [input_stream_, stream_mgr_lock] = mgrs.input_manager()->module_get_locked("pcap");
+        registry.input_manager()->module_add(std::move(input_stream));
+        auto [input_stream_, stream_mgr_lock] = registry.input_manager()->module_get_locked("pcap");
         stream_mgr_lock.unlock();
         auto pcap_stream = dynamic_cast<input::pcap::PcapInputStream *>(input_stream_);
 
@@ -140,8 +140,8 @@ int main(int argc, char *argv[])
             auto handler_module = std::make_unique<handler::net::NetStreamHandler>("net", pcap_stream, &window_config);
             handler_module->config_set("recorded_stream", true);
             handler_module->start();
-            mgrs.handler_manager()->module_add(std::move(handler_module));
-            auto [handler, handler_mgr_lock] = mgrs.handler_manager()->module_get_locked("net");
+            registry.handler_manager()->module_add(std::move(handler_module));
+            auto [handler, handler_mgr_lock] = registry.handler_manager()->module_get_locked("net");
             handler_mgr_lock.unlock();
             net_handler = dynamic_cast<handler::net::NetStreamHandler *>(handler);
         }
@@ -150,8 +150,8 @@ int main(int argc, char *argv[])
             auto handler_module = std::make_unique<handler::dns::DnsStreamHandler>("dns", pcap_stream, &window_config);
             handler_module->config_set("recorded_stream", true);
             handler_module->start();
-            mgrs.handler_manager()->module_add(std::move(handler_module));
-            auto [handler, handler_mgr_lock] = mgrs.handler_manager()->module_get_locked("dns");
+            registry.handler_manager()->module_add(std::move(handler_module));
+            auto [handler, handler_mgr_lock] = registry.handler_manager()->module_get_locked("dns");
             handler_mgr_lock.unlock();
             dns_handler = dynamic_cast<handler::dns::DnsStreamHandler *>(handler);
         }
@@ -160,8 +160,8 @@ int main(int argc, char *argv[])
             auto handler_module = std::make_unique<handler::dhcp::DhcpStreamHandler>("dhcp", pcap_stream, &window_config);
             handler_module->config_set("recorded_stream", true);
             handler_module->start();
-            mgrs.handler_manager()->module_add(std::move(handler_module));
-            auto [handler, handler_mgr_lock] = mgrs.handler_manager()->module_get_locked("dhcp");
+            registry.handler_manager()->module_add(std::move(handler_module));
+            auto [handler, handler_mgr_lock] = registry.handler_manager()->module_get_locked("dhcp");
             handler_mgr_lock.unlock();
             dhcp_handler = dynamic_cast<handler::dhcp::DhcpStreamHandler *>(handler);
         }

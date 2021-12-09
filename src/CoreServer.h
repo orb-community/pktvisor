@@ -20,7 +20,7 @@ class CoreServer
 {
 
     HttpServer _svr;
-    CoreRegistry _registry;
+    CoreRegistry *_registry;
 
     std::shared_ptr<spdlog::logger> _logger;
     std::chrono::system_clock::time_point _start_time;
@@ -28,7 +28,7 @@ class CoreServer
     void _setup_routes(const PrometheusConfig &prom_config);
 
 public:
-    CoreServer(std::shared_ptr<spdlog::logger> logger, const HttpConfig &http_config, const PrometheusConfig &prom_config);
+    CoreServer(CoreRegistry *registry, std::shared_ptr<spdlog::logger> logger, const HttpConfig &http_config, const PrometheusConfig &prom_config);
     ~CoreServer();
 
     void start(const std::string &host, int port);
@@ -36,12 +36,12 @@ public:
 
     const CoreRegistry *registry() const
     {
-        return &_registry;
+        return _registry;
     }
 
     CoreRegistry *registry()
     {
-        return &_registry;
+        return _registry;
     }
 
     void set_http_logger(httplib::Logger logger)

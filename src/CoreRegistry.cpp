@@ -12,8 +12,7 @@
 
 namespace visor {
 
-CoreRegistry::CoreRegistry(HttpServer *svr)
-    : _svr(svr)
+CoreRegistry::CoreRegistry()
 {
 
     _logger = spdlog::get("visor");
@@ -21,12 +20,24 @@ CoreRegistry::CoreRegistry(HttpServer *svr)
         _logger = spdlog::stderr_color_mt("visor");
     }
 
+    // inputs
+    _input_manager = std::make_unique<InputStreamManager>();
+
+    // handlers
+    _handler_manager = std::make_unique<HandlerManager>();
+
+    // taps
+    _tap_manager = std::make_unique<TapManager>(this);
+
+    // policies policies
+    _policy_manager = std::make_unique<PolicyManager>(this);
+}
+
+void CoreRegistry::start(HttpServer *svr)
+{
     if (!svr) {
         _logger->warn("initializing modules with no HttpServer");
     }
-
-    // inputs
-    _input_manager = std::make_unique<InputStreamManager>();
 
     // initialize input plugins
     {
@@ -38,13 +49,10 @@ CoreRegistry::CoreRegistry(HttpServer *svr)
         for (auto &s : by_alias) {
             InputPluginPtr mod = _input_registry.instantiate(s);
             _logger->info("Load input stream plugin: {} {}", s, mod->pluginInterface());
-            mod->init_plugin(this, _svr);
+            mod->init_plugin(this, svr);
             _input_plugins.insert({s, std::move(mod)});
         }
     }
-
-    // handlers
-    _handler_manager = std::make_unique<HandlerManager>();
 
     // initialize handler plugins
     {
@@ -56,15 +64,11 @@ CoreRegistry::CoreRegistry(HttpServer *svr)
         for (auto &s : by_alias) {
             HandlerPluginPtr mod = _handler_registry.instantiate(s);
             _logger->info("Load stream handler plugin: {} {}", s, mod->pluginInterface());
-            mod->init_plugin(this, _svr);
+            mod->init_plugin(this, svr);
             _handler_plugins.insert({s, std::move(mod)});
         }
     }
 
-    // taps
-    _tap_manager = std::make_unique<TapManager>(this);
-    // policies policies
-    _policy_manager = std::make_unique<PolicyManager>(this);
 }
 
 void CoreRegistry::stop()
