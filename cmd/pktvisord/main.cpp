@@ -99,13 +99,141 @@ void signal_handler(int signal)
 
 using namespace visor;
 
-void initialize_geo(const docopt::value &city, const docopt::value &asn)
+struct CmdOptions
 {
-    if (city) {
-        geo::GeoIP().enable(city.asString());
+    bool daemon{false};
+    bool syslog{false};
+    bool verbose{false};
+    bool no_track{false};
+    bool prometheus{false};
+    std::pair<bool, std::string> log_file{false, ""};
+    std::pair<bool, std::string> prom_instance{false, ""};
+    std::pair<bool, std::string> geo_city{false, ""};
+    std::pair<bool, std::string> geo_asn{false, ""};
+    std::pair<bool, unsigned int> max_deep_sample{false, 0};
+    std::pair<bool, unsigned int> periods{false, 0};
+    std::pair<bool, YAML::Node> config;
+
+    struct WebServer
+    {
+        bool tls_support{false};
+        bool admin_api{false};
+        std::pair<bool, unsigned int> port{false, 0};
+        std::pair<bool, std::string> host{false, ""};
+        std::pair<bool, std::string> tls_cert{false, ""};
+        std::pair<bool, std::string> tls_key{false, ""};
+    };
+    WebServer web_server;
+};
+
+CmdOptions fill_cmd_options(std::map<std::string, docopt::value> args)
+{
+    CmdOptions options;
+    YAML::Node config;
+    // local config file
+    options.config.first = false;
+    if (args["--config"]) {
+        YAML::Node config_file;
+        // look for local options
+        try {
+            config_file = YAML::LoadFile(args["--config"].asString());
+
+            if (!config_file.IsMap() || !config_file["visor"]) {
+                throw std::runtime_error("invalid schema");
+            }
+            if (!config_file["version"] || !config_file["version"].IsScalar() || config_file["version"].as<std::string>() != "1.0") {
+                throw std::runtime_error("missing or unsupported version");
+            }
+
+            options.config = std::make_pair(true, config_file);
+
+            if (config_file["visor"]["config"] && config_file["visor"]["config"].IsMap()) {
+                config = config_file["visor"]["config"];
+            }
+        } catch (std::runtime_error &e) {
+            exit(EXIT_FAILURE);
+        }
     }
-    if (asn) {
-        geo::GeoASN().enable(asn.asString());
+
+    options.verbose = (config["verbose"] && config["verbose"].as<bool>()) || args["-v"].asBool();
+    options.daemon = (config["daemon"] && config["daemon"].as<bool>()) || args["-d"].asBool();
+    options.syslog = (config["syslog"] && config["syslog"].as<bool>()) || args["--syslog"].asBool();
+    options.no_track = (config["no-track"] && config["no-track"].as<bool>()) || args["--no-track"].asBool();
+    options.prometheus = (config["prometheus"] && config["prometheus"].as<bool>()) || args["--prometheus"].asBool();
+
+    if (args["--log-file"]) {
+        options.log_file = std::make_pair(true,args["--log-file"].asString());
+    } else if (config["log-file"]) {
+        options.log_file = std::make_pair(true,config["log-file"].as<std::string>());
+    }
+
+    if (args["--prom-instance"]) {
+        options.prom_instance = std::make_pair(true,args["--prom-instance"].asString());
+    } else if (config["prom-instance"]) {
+        options.prom_instance = std::make_pair(true,config["prom-instance"].as<std::string>());
+    }
+
+    if (args["--geo-city"]) {
+        options.geo_city = std::make_pair(true,args["--geo-city"].asString());
+    } else if (config["geo-city"]) {
+        options.geo_city = std::make_pair(true,config["geo-city"].as<std::string>());
+    }
+
+    if (args["--geo-asn"]) {
+        options.geo_asn = std::make_pair(true,args["--geo-asn"].asString());
+    } else if (config["geo-asn"]) {
+        options.geo_asn = std::make_pair(true,config["geo-asn"].as<std::string>());
+    }
+
+    if (args["--max-deep-sample"]) {
+        options.max_deep_sample = std::make_pair(true,static_cast<unsigned int>(args["--max-deep-sample"].asLong()));
+    } else if (config["max-deep-sample"]) {
+        options.max_deep_sample = std::make_pair(true,config["max-deep-sample"].as<unsigned int>());
+    }
+
+    if (args["--periods"]) {
+        options.max_deep_sample = std::make_pair(true,static_cast<unsigned int>(args["--periods"].asLong()));
+    } else if (config["periods"]) {
+        options.max_deep_sample = std::make_pair(true,config["periods"].as<unsigned int>());
+    }
+
+    options.web_server.tls_support = (config["tls"] && config["tls"].as<bool>()) || args["--tls"].asBool();
+    options.web_server.admin_api = (config["admin-api"] && config["admin-api"].as<bool>()) || args["--admin-api"].asBool();
+
+    if (args["-p"]) {
+        options.web_server.port = std::make_pair(true,static_cast<unsigned int>(args["-p"].asLong()));
+    } else if (config["port"]) {
+        options.web_server.port = std::make_pair(true,config["port"].as<unsigned int>());
+    }
+
+    if (args["-l"]) {
+        options.web_server.host = std::make_pair(true,args["-l"].asString());
+    } else if (config["host"]) {
+        options.web_server.host = std::make_pair(true,config["host"].as<std::string>());
+    }
+
+    if (args["--tls-cert"]) {
+        options.web_server.tls_cert = std::make_pair(true,args["--tls-cert"].asString());
+    } else if (config["tls-cert"]) {
+        options.web_server.tls_cert = std::make_pair(true,config["tls-cert"].as<std::string>());
+    }
+
+    if (args["--tls-key"]) {
+        options.web_server.host = std::make_pair(true,args["--tls-key"].asString());
+    } else if (config["tls-key"]) {
+        options.web_server.tls_key = std::make_pair(true,config["tls-key"].as<std::string>());
+    }
+
+    return options;
+}
+
+void initialize_geo(const std::string &city, const std::string &asn)
+{
+    if (!city.empty()) {
+        geo::GeoIP().enable(city);
+    }
+    if (!asn.empty()) {
+        geo::GeoASN().enable(asn);
     }
 }
 
@@ -190,18 +318,18 @@ visor:
 
 int main(int argc, char *argv[])
 {
-
     std::map<std::string, docopt::value> args = docopt::docopt(USAGE,
         {argv + 1, argv + argc},
         true,           // show help if requested
         VISOR_VERSION); // version string
 
-    bool daemon{args["-d"].asBool()};
-    if (daemon) {
+    auto options = fill_cmd_options(args);
+
+    if (options.daemon) {
         // before we daemonize, if they are using a log file, ensure it can be opened
-        if (args["--log-file"]) {
+        if (options.log_file.first) {
             try {
-                auto logger_probe = spdlog::basic_logger_mt("pktvisor-log-probe", args["--log-file"].asString());
+                auto logger_probe = spdlog::basic_logger_mt("pktvisor-log-probe", options.log_file.second);
             } catch (const spdlog::spdlog_ex &ex) {
                 std::cerr << "Log init failed: " << ex.what() << std::endl;
                 exit(EXIT_FAILURE);
@@ -217,20 +345,20 @@ int main(int argc, char *argv[])
 
     std::shared_ptr<spdlog::logger> logger;
     spdlog::flush_on(spdlog::level::err);
-    if (args["--log-file"]) {
+    if (options.log_file.first) {
         try {
-            logger = spdlog::basic_logger_mt("visor", args["--log-file"].asString());
+            logger = spdlog::basic_logger_mt("visor", options.log_file.second);
             spdlog::flush_every(std::chrono::seconds(3));
         } catch (const spdlog::spdlog_ex &ex) {
             std::cerr << "Log init failed: " << ex.what() << std::endl;
             exit(EXIT_FAILURE);
         }
-    } else if (args["--syslog"].asBool()) {
+    } else if (options.syslog) {
         logger = spdlog::syslog_logger_mt("visor", "pktvisord", LOG_PID, LOG_DAEMON);
     } else {
         logger = spdlog::stdout_color_mt("visor");
     }
-    if (args["-v"].asBool()) {
+    if (options.verbose) {
         logger->set_level(spdlog::level::debug);
     }
 
@@ -278,26 +406,26 @@ int main(int argc, char *argv[])
     logger->info("{} starting up", VISOR_VERSION);
 
     // if we are demonized, change to root directory now that (potentially) logs are open
-    if (daemon) {
+    if (options.daemon) {
         chdir("/");
     }
 
     PrometheusConfig prom_config;
     prom_config.default_path = "/metrics";
-    if (args["--prom-instance"]) {
-        prom_config.instance_label = args["--prom-instance"].asString();
+    if (options.prom_instance.first) {
+        prom_config.instance_label = options.prom_instance.second;
     }
 
     HttpConfig http_config;
-    http_config.read_only = !args["--admin-api"].asBool();
-    if (args["--tls"].asBool()) {
+    http_config.read_only = !options.web_server.admin_api;
+    if (options.web_server.tls_support) {
         http_config.tls_enabled = true;
-        if (!args["--tls-key"] || !args["--tls-cert"]) {
+        if (!options.web_server.tls_key.first || !options.web_server.tls_cert.first) {
             logger->error("you must specify --tls-key and --tls-cert to use --tls");
             exit(EXIT_FAILURE);
         }
-        http_config.key = args["--tls-key"].asString();
-        http_config.cert = args["--tls-cert"].asString();
+        http_config.key = options.web_server.tls_key.second;
+        http_config.cert = options.web_server.tls_cert.second;
         logger->info("Enabling TLS with cert {} and key {}", http_config.key, http_config.cert);
     }
 
@@ -317,35 +445,9 @@ int main(int argc, char *argv[])
     });
 
     // local config file
-    if (args["--config"]) {
-        logger->info("loading config file: {}", args["--config"].asString());
-        YAML::Node config_file;
-        // look for local options
-        try {
-            config_file = YAML::LoadFile(args["--config"].asString());
-
-            if (!config_file.IsMap() || !config_file["visor"]) {
-                throw std::runtime_error("invalid schema");
-            }
-            if (!config_file["version"] || !config_file["version"].IsScalar() || config_file["version"].as<std::string>() != "1.0") {
-                throw std::runtime_error("missing or unsupported version");
-            }
-
-            if (config_file["visor"]["config"] && config_file["visor"]["config"].IsMap()) {
-                // todo more config items
-                auto config = config_file["visor"]["config"];
-                if (config["verbose"] && config["verbose"].as<bool>()) {
-                    logger->set_level(spdlog::level::debug);
-                }
-            }
-
-            // then pass to CoreManagers
-            svr->registry()->configure_from_yaml(config_file);
-
-        } catch (std::runtime_error &e) {
-            logger->error("configuration error: {}", e.what());
-            exit(EXIT_FAILURE);
-        }
+    if (options.config.first) {
+        //pass to CoreManagers
+        svr->registry()->configure_from_yaml(options.config.second);
     }
 
     shutdown_handler = [&]([[maybe_unused]] int signal) {
@@ -360,9 +462,9 @@ int main(int argc, char *argv[])
     auto host = args["-l"].asString();
     auto port = args["-p"].asLong();
 
-    int sample_rate = 100;
-    if (args["--max-deep-sample"]) {
-        sample_rate = (int)args["--max-deep-sample"].asLong();
+    unsigned int sample_rate = 100;
+    if (options.max_deep_sample.first) {
+        sample_rate = options.max_deep_sample.second;
         if (sample_rate != 100) {
             logger->info("Using maximum deep sample rate: {}%", sample_rate);
         }
@@ -382,7 +484,7 @@ int main(int argc, char *argv[])
             logger->warn("metrics send failed");
         }
     };
-    if (!args["--no-track"].asBool()) {
+    if (!options.no_track) {
         static timer timer_thread{1min};
         // once at start up
         usage_metrics();
@@ -390,10 +492,10 @@ int main(int argc, char *argv[])
         timer_handle = timer_thread.set_interval(24h, usage_metrics);
     }
 
-    long periods = args["--periods"].asLong();
+    unsigned int periods = options.periods.second;
 
     try {
-        initialize_geo(args["--geo-city"], args["--geo-asn"]);
+        initialize_geo(options.geo_asn.second, options.geo_asn.second);
     } catch (const std::exception &e) {
         logger->error("Fatal error: {}", e.what());
         exit(EXIT_FAILURE);
@@ -421,7 +523,7 @@ int main(int argc, char *argv[])
             logger->info("exit with failure");
             exit(EXIT_FAILURE);
         }
-    } else if (!args["--admin-api"].asBool()) {
+    } else if (!options.web_server.admin_api) {
         // if they didn't specify pcap target, or config file, or admin api then there is nothing to do
         logger->error("Nothing to do: specify --admin-api or IFACE.");
         std::cerr << USAGE << std::endl;
