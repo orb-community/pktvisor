@@ -3,6 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 #include "MockStreamHandler.h"
+#include <spdlog/sinks/stdout_color_sinks.h>
 
 namespace visor::handler::mock {
 
@@ -10,7 +11,10 @@ MockStreamHandler::MockStreamHandler(const std::string &name, InputStream *strea
     : visor::StreamMetricsHandler<MockMetricsManager>(name, window_config)
 {
     assert(stream);
-    _logger = spdlog::get("visor");
+    _logger = spdlog::get("dyn-mock-handler");
+    if (!_logger) {
+        _logger = spdlog::stderr_color_mt("dyn-mock-handler");
+    }
     assert(_logger);
     // figure out which input stream we have
     _mock_stream = dynamic_cast<MockInputStream *>(stream);
