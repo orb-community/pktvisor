@@ -438,7 +438,7 @@ void DnsMetricsBucket::process_dnstap(bool deep, const dnstap::Dnstap &payload)
     }
 
     QR side{QR::query};
-    switch (payload.type()) {
+    switch (payload.message().type()) {
     case dnstap::Message_Type_FORWARDER_RESPONSE:
     case dnstap::Message_Type_STUB_RESPONSE:
     case dnstap::Message_Type_TOOL_RESPONSE:

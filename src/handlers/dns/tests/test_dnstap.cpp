@@ -31,8 +31,8 @@ TEST_CASE("Parse DNSTAP", "[dnstap][net]")
     CHECK(counters.UDP.value() == 153);
     CHECK(counters.IPv4.value() == 153);
     CHECK(counters.IPv6.value() == 0);
-    CHECK(counters.queries.value() == 153);
-    CHECK(counters.replies.value() == 0);
+    CHECK(counters.queries.value() == 79);
+    CHECK(counters.replies.value() == 74);
     CHECK(counters.xacts_total.value() == 0);
     CHECK(counters.xacts_in.value() == 0);
     CHECK(counters.xacts_out.value() == 0);
@@ -48,14 +48,14 @@ TEST_CASE("Parse DNSTAP", "[dnstap][net]")
     CHECK(j["cardinality"]["qname"] == 70);
 
     CHECK(j["top_qname2"][0]["name"] == ".google.com");
-    CHECK(j["top_qname2"][0]["estimate"] == 9);
+    CHECK(j["top_qname2"][0]["estimate"] == 18);
 
     CHECK(j["top_udp_ports"][0]["name"] == "33000");
     CHECK(j["top_udp_ports"][0]["estimate"] == 4);
 
     CHECK(j["top_qtype"][0]["name"] == "A");
-    CHECK(j["top_qtype"][0]["estimate"] == 77);
+    CHECK(j["top_qtype"][0]["estimate"] == 149);
     CHECK(j["top_qtype"][1]["name"] == "HTTPS");
-    CHECK(j["top_qtype"][1]["estimate"] == 2);
+    CHECK(j["top_qtype"][1]["estimate"] == 4);
 }
 
