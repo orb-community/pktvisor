@@ -3,7 +3,7 @@ message(STATUS "Input Module: Mock")
 set_directory_properties(PROPERTIES CORRADE_USE_PEDANTIC_FLAGS ON)
 
 corrade_add_static_plugin(VisorInputMock ${CMAKE_CURRENT_BINARY_DIR}
-        Mock.conf
+        VisorInputMock.conf
         MockInputModulePlugin.cpp
         MockInputStream.cpp
         )
