@@ -77,7 +77,7 @@ int main(int argc, char *argv[])
         logger->set_level(spdlog::level::debug);
     }
 
-    CoreRegistry mgrs(nullptr);
+    CoreRegistry mgrs;
 
     std::signal(SIGINT, signal_handler);
     std::signal(SIGTERM, signal_handler);
