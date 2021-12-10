@@ -70,7 +70,7 @@ static const char USAGE[] =
                                   Please see https://pktvisor.dev for more information
     Modules:
       --module-list               List all modules which have been loaded (builtin and dynamic)
-      --module-load FILE          Load the specified dynamic module
+      --module-load FILE          Load the specified dynamic module (allow multiples --module-load FILE)
       --module-dir DIR            Set module search path
     Logging Options:
       --log-file FILE             Log to the given output file name
@@ -124,6 +124,14 @@ struct CmdOptions
         std::pair<bool, std::string> tls_key{false, ""};
     };
     WebServer web_server;
+
+    struct Module
+    {
+        bool list{false};
+        std::pair<bool, std::string> load{false, ""};
+        std::pair<bool, std::string> dir{false, ""};
+    };
+    Module module;
 };
 
 CmdOptions fill_cmd_options(std::map<std::string, docopt::value> args)
@@ -224,6 +232,19 @@ CmdOptions fill_cmd_options(std::map<std::string, docopt::value> args)
         options.web_server.tls_key = std::make_pair(true,config["tls-key"].as<std::string>());
     }
 
+    options.module.list = (config["module-list"] && config["module-list"].as<bool>()) || args["--module-list"].asBool();
+
+    if (args["--module-load"]) {
+        options.module.load = std::make_pair(true,args["--module-load"].asString());
+    } else if (config["module-load"]) {
+        options.module.load = std::make_pair(true,config["module-load"].as<std::string>());
+    }
+
+    if (args["--module-dir"]) {
+        options.module.dir = std::make_pair(true,args["--module-dir"].asString());
+    } else if (config["module-dir"]) {
+        options.module.dir = std::make_pair(true,config["module-dir"].as<std::string>());
+    }
     return options;
 }
 
@@ -364,36 +385,36 @@ int main(int argc, char *argv[])
 
     // modules
     CoreRegistry registry;
-    if (args["--module-dir"]) {
-        registry.input_plugin_registry()->setPluginDirectory(args["--module-dir"].asString());
-        registry.handler_plugin_registry()->setPluginDirectory(args["--module-dir"].asString());
+    if (options.module.dir.first) {
+        registry.input_plugin_registry()->setPluginDirectory(options.module.dir.second);
+        registry.handler_plugin_registry()->setPluginDirectory(options.module.dir.second);
     }
-    if (args["--module-load"]) {
-        auto meta = registry.input_plugin_registry()->metadata(args["--module-load"].asString());
+    if (options.module.load.first) {
+        auto meta = registry.input_plugin_registry()->metadata(options.module.dir.second);
         if (!meta) {
-            logger->error("failed to load plugin: {}", args["--module-load"].asString());
+            logger->error("failed to load plugin: {}", options.module.load.second);
             exit(EXIT_FAILURE);
         }
         if (!meta->data().hasValue("type") || (meta->data().value("type") != "handler" && meta->data().value("type") != "input")) {
-            logger->error("plugin configuration metadata did not specify a valid plugin type", args["--module-load"].asString());
+            logger->error("plugin configuration metadata did not specify a valid plugin type", options.module.dir.second);
             exit(EXIT_FAILURE);
         }
         if (meta->data().value("type") == "input") {
-            auto result = registry.input_plugin_registry()->load(args["--module-load"].asString());
+            auto result = registry.input_plugin_registry()->load(options.module.dir.second);
             if (result != Corrade::PluginManager::LoadState::Loaded) {
                 logger->error("failed to load input plugin: {}", result);
                 exit(EXIT_FAILURE);
             }
         }
         else if (meta->data().value("type") == "handler") {
-            auto result = registry.handler_plugin_registry()->load(args["--module-load"].asString());
+            auto result = registry.handler_plugin_registry()->load(options.module.dir.second);
             if (result != Corrade::PluginManager::LoadState::Loaded) {
                 logger->error("failed to load input handler plugin: {}", result);
                 exit(EXIT_FAILURE);
             }
         }
     }
-    if (args["--module-list"].asBool()) {
+    if (options.module.list) {
         for (auto &p : registry.input_plugin_registry()->pluginList()) {
             logger->info("input: {}", p);
         }
@@ -459,8 +480,8 @@ int main(int argc, char *argv[])
     std::signal(SIGINT, signal_handler);
     std::signal(SIGTERM, signal_handler);
 
-    auto host = args["-l"].asString();
-    auto port = args["-p"].asLong();
+    auto host = options.web_server.host.second;
+    auto port = options.web_server.port.second;
 
     unsigned int sample_rate = 100;
     if (options.max_deep_sample.first) {
