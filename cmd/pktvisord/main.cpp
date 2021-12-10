@@ -99,8 +99,7 @@ void signal_handler(int signal)
 
 using namespace visor;
 
-struct CmdOptions
-{
+struct CmdOptions {
     bool daemon{false};
     bool syslog{false};
     bool verbose{false};
@@ -114,8 +113,7 @@ struct CmdOptions
     std::pair<bool, unsigned int> periods{false, 0};
     std::pair<bool, YAML::Node> config;
 
-    struct WebServer
-    {
+    struct WebServer {
         bool tls_support{false};
         bool admin_api{false};
         std::pair<bool, unsigned int> port{false, 0};
@@ -125,8 +123,7 @@ struct CmdOptions
     };
     WebServer web_server;
 
-    struct Module
-    {
+    struct Module {
         bool list{false};
         std::pair<bool, std::string> load{false, ""};
         std::pair<bool, std::string> dir{false, ""};
@@ -170,80 +167,80 @@ CmdOptions fill_cmd_options(std::map<std::string, docopt::value> args)
     options.prometheus = (config["prometheus"] && config["prometheus"].as<bool>()) || args["--prometheus"].asBool();
 
     if (args["--log-file"]) {
-        options.log_file = std::make_pair(true,args["--log-file"].asString());
+        options.log_file = std::make_pair(true, args["--log-file"].asString());
     } else if (config["log-file"]) {
-        options.log_file = std::make_pair(true,config["log-file"].as<std::string>());
+        options.log_file = std::make_pair(true, config["log-file"].as<std::string>());
     }
 
     if (args["--prom-instance"]) {
-        options.prom_instance = std::make_pair(true,args["--prom-instance"].asString());
+        options.prom_instance = std::make_pair(true, args["--prom-instance"].asString());
     } else if (config["prom-instance"]) {
-        options.prom_instance = std::make_pair(true,config["prom-instance"].as<std::string>());
+        options.prom_instance = std::make_pair(true, config["prom-instance"].as<std::string>());
     }
 
     if (args["--geo-city"]) {
-        options.geo_city = std::make_pair(true,args["--geo-city"].asString());
+        options.geo_city = std::make_pair(true, args["--geo-city"].asString());
     } else if (config["geo-city"]) {
-        options.geo_city = std::make_pair(true,config["geo-city"].as<std::string>());
+        options.geo_city = std::make_pair(true, config["geo-city"].as<std::string>());
     }
 
     if (args["--geo-asn"]) {
-        options.geo_asn = std::make_pair(true,args["--geo-asn"].asString());
+        options.geo_asn = std::make_pair(true, args["--geo-asn"].asString());
     } else if (config["geo-asn"]) {
-        options.geo_asn = std::make_pair(true,config["geo-asn"].as<std::string>());
+        options.geo_asn = std::make_pair(true, config["geo-asn"].as<std::string>());
     }
 
     if (args["--max-deep-sample"]) {
-        options.max_deep_sample = std::make_pair(true,static_cast<unsigned int>(args["--max-deep-sample"].asLong()));
+        options.max_deep_sample = std::make_pair(true, static_cast<unsigned int>(args["--max-deep-sample"].asLong()));
     } else if (config["max-deep-sample"]) {
-        options.max_deep_sample = std::make_pair(true,config["max-deep-sample"].as<unsigned int>());
+        options.max_deep_sample = std::make_pair(true, config["max-deep-sample"].as<unsigned int>());
     }
 
     if (args["--periods"]) {
-        options.max_deep_sample = std::make_pair(true,static_cast<unsigned int>(args["--periods"].asLong()));
+        options.max_deep_sample = std::make_pair(true, static_cast<unsigned int>(args["--periods"].asLong()));
     } else if (config["periods"]) {
-        options.max_deep_sample = std::make_pair(true,config["periods"].as<unsigned int>());
+        options.max_deep_sample = std::make_pair(true, config["periods"].as<unsigned int>());
     }
 
     options.web_server.tls_support = (config["tls"] && config["tls"].as<bool>()) || args["--tls"].asBool();
     options.web_server.admin_api = (config["admin-api"] && config["admin-api"].as<bool>()) || args["--admin-api"].asBool();
 
     if (args["-p"]) {
-        options.web_server.port = std::make_pair(true,static_cast<unsigned int>(args["-p"].asLong()));
+        options.web_server.port = std::make_pair(true, static_cast<unsigned int>(args["-p"].asLong()));
     } else if (config["port"]) {
-        options.web_server.port = std::make_pair(true,config["port"].as<unsigned int>());
+        options.web_server.port = std::make_pair(true, config["port"].as<unsigned int>());
     }
 
     if (args["-l"]) {
-        options.web_server.host = std::make_pair(true,args["-l"].asString());
+        options.web_server.host = std::make_pair(true, args["-l"].asString());
     } else if (config["host"]) {
-        options.web_server.host = std::make_pair(true,config["host"].as<std::string>());
+        options.web_server.host = std::make_pair(true, config["host"].as<std::string>());
     }
 
     if (args["--tls-cert"]) {
-        options.web_server.tls_cert = std::make_pair(true,args["--tls-cert"].asString());
+        options.web_server.tls_cert = std::make_pair(true, args["--tls-cert"].asString());
     } else if (config["tls-cert"]) {
-        options.web_server.tls_cert = std::make_pair(true,config["tls-cert"].as<std::string>());
+        options.web_server.tls_cert = std::make_pair(true, config["tls-cert"].as<std::string>());
     }
 
     if (args["--tls-key"]) {
-        options.web_server.host = std::make_pair(true,args["--tls-key"].asString());
+        options.web_server.host = std::make_pair(true, args["--tls-key"].asString());
     } else if (config["tls-key"]) {
-        options.web_server.tls_key = std::make_pair(true,config["tls-key"].as<std::string>());
+        options.web_server.tls_key = std::make_pair(true, config["tls-key"].as<std::string>());
     }
 
     options.module.list = (config["module-list"] && config["module-list"].as<bool>()) || args["--module-list"].asBool();
 
     if (args["--module-load"]) {
-        options.module.load = std::make_pair(true,args["--module-load"].asString());
+        options.module.load = std::make_pair(true, args["--module-load"].asString());
     } else if (config["module-load"]) {
-        options.module.load = std::make_pair(true,config["module-load"].as<std::string>());
+        options.module.load = std::make_pair(true, config["module-load"].as<std::string>());
     }
 
     if (args["--module-dir"]) {
-        options.module.dir = std::make_pair(true,args["--module-dir"].asString());
+        options.module.dir = std::make_pair(true, args["--module-dir"].asString());
     } else if (config["module-dir"]) {
-        options.module.dir = std::make_pair(true,config["module-dir"].as<std::string>());
+        options.module.dir = std::make_pair(true, config["module-dir"].as<std::string>());
     }
     return options;
 }
@@ -405,8 +402,7 @@ int main(int argc, char *argv[])
                 logger->error("failed to load input plugin: {}", result);
                 exit(EXIT_FAILURE);
             }
-        }
-        else if (meta->data().value("type") == "handler") {
+        } else if (meta->data().value("type") == "handler") {
             auto result = registry.handler_plugin_registry()->load(options.module.load.second);
             if (result != Corrade::PluginManager::LoadState::Loaded) {
                 logger->error("failed to load input handler plugin: {}", result);
@@ -467,7 +463,7 @@ int main(int argc, char *argv[])
 
     // local config file
     if (options.config.first) {
-        //pass to CoreManagers
+        // pass to CoreManagers
         svr->registry()->configure_from_yaml(options.config.second);
     }
 
