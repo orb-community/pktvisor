@@ -479,7 +479,7 @@ void DnsMetricsBucket::process_dnstap(bool deep, const dnstap::Dnstap &payload)
         std::memcpy(buf, query.c_str(), query.size());
         // DnsLayer takes ownership of buf
         DnsLayer dpayload(buf, query.size(), nullptr, nullptr);
-        _mutex.unlock();
+        lock.unlock();
         process_dns_layer(deep, dpayload, true, pcpp::UnknownProtocol, pcpp::UnknownProtocol, 0);
     } else if (side == QR::response && payload.message().has_response_message()) {
         auto query = payload.message().response_message();
@@ -487,7 +487,7 @@ void DnsMetricsBucket::process_dnstap(bool deep, const dnstap::Dnstap &payload)
         std::memcpy(buf, query.c_str(), query.size());
         // DnsLayer takes ownership of buf
         DnsLayer dpayload(buf, query.size(), nullptr, nullptr);
-        _mutex.unlock();
+        lock.unlock();
         process_dns_layer(deep, dpayload, true, pcpp::UnknownProtocol, pcpp::UnknownProtocol, 0);
     }
 }
