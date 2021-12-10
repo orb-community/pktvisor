@@ -26,6 +26,8 @@ target_link_libraries(VisorInputDnstap
         fstrm
         Visor::Core
         ${CONAN_LIBS_PROTOBUF}
+        ${CONAN_LIBS_LIBUV}
+        ${CONAN_LIBS_UVW}
         )
 
 set(VISOR_STATIC_PLUGINS ${VISOR_STATIC_PLUGINS} Visor::Input::Dnstap PARENT_SCOPE)

@@ -4,7 +4,8 @@
 
 #include "DnstapInputStream.h"
 #include <fstrm/fstrm.h>
-#include <DnsLayer.h>
+#include <uvw/async.h>
+#include <uvw/loop.h>
 
 namespace visor::input::dnstap {
 
@@ -14,11 +15,6 @@ DnstapInputStream::DnstapInputStream(const std::string &name)
     GOOGLE_PROTOBUF_VERIFY_VERSION;
     _logger = spdlog::get("visor");
     assert(_logger);
-    _logger->info("dnstap input created");
-}
-DnstapInputStream::~DnstapInputStream()
-{
-    _logger->info("dnstap input destroyed");
 }
 
 void DnstapInputStream::_read_frame_stream()
@@ -31,7 +27,7 @@ void DnstapInputStream::_read_frame_stream()
     fstrm_file_options_set_file_path(fopt, config_get<std::string>("dnstap_file").c_str());
 
     // Initialize file reader
-    struct fstrm_reader *r = fstrm_file_reader_init(fopt, NULL);
+    struct fstrm_reader *r = fstrm_file_reader_init(fopt, nullptr);
     if (!r) {
         throw DnstapException("fstrm_file_reader_init() failed");
     }
@@ -82,14 +78,31 @@ void DnstapInputStream::start()
         return;
     }
 
-    _logger->info("dnstap input start()");
-
     if (config_exists("dnstap_file")) {
         // read from dnstap file. this is a special case from a command line utility
-        _dnstapFile = true;
         _running = true;
         _read_frame_stream();
         return;
+    } else if (config_exists("socket")) {
+        _io_loop = uvw::Loop::create();
+        if (!_io_loop) {
+            throw DnstapException("unable to create io loop");
+        }
+        _async_h = _io_loop->resource<uvw::AsyncHandle>();
+        _async_h->on<uvw::AsyncEvent>([this](const auto &, auto &hndl) {
+            std::cerr << "got signal: " << std::this_thread::get_id() << std::endl;
+            _io_loop->stop();
+            _io_loop->close();
+            hndl.close();
+        });
+        std::cerr << "main thread: " << std::this_thread::get_id() << std::endl;
+        _io_thread = std::make_unique<std::thread>([this] {
+            std::cerr << "running in new thread: " << std::this_thread::get_id() << std::endl;
+            _io_loop->run();
+            std::cerr << "run ended: " << std::this_thread::get_id() << std::endl;
+        });
+    } else {
+        throw DnstapException("must specify socket or dnstap_file");
     }
 
     _running = true;
@@ -101,7 +114,13 @@ void DnstapInputStream::stop()
         return;
     }
 
-    _logger->info("dnstap input stop()");
+    if (_async_h && _io_thread) {
+        std::cerr << "stopping from main thread: " << std::this_thread::get_id() << std::endl;
+        // we have to use AsyncHandle to stop the loop from the same thread the loop is running in
+        _async_h->send();
+        // wait for waits for _io_loop->run() to return
+        _io_thread->join();
+    }
 
     _running = false;
 }

@@ -10,6 +10,11 @@
 #include <sigslot/signal.hpp>
 #include <spdlog/spdlog.h>
 
+namespace uvw {
+class Loop;
+class AsyncHandle;
+}
+
 namespace visor::input::dnstap {
 
 class DnstapException : public std::runtime_error
@@ -27,15 +32,17 @@ public:
 
 class DnstapInputStream : public visor::InputStream
 {
-    bool _dnstapFile = false;
-
     std::shared_ptr<spdlog::logger> _logger;
+
+    std::unique_ptr<std::thread> _io_thread;
+    std::shared_ptr<uvw::Loop> _io_loop;
+    std::shared_ptr<uvw::AsyncHandle> _async_h;
 
     void _read_frame_stream();
 
 public:
     DnstapInputStream(const std::string &name);
-    ~DnstapInputStream();
+    ~DnstapInputStream() = default;
 
     // visor::AbstractModule
     std::string schema_key() const override
