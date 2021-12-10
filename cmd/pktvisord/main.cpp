@@ -131,9 +131,8 @@ struct CmdOptions {
     Module module;
 };
 
-CmdOptions fill_cmd_options(std::map<std::string, docopt::value> args)
+void fill_cmd_options(std::map<std::string, docopt::value> args, CmdOptions &options)
 {
-    CmdOptions options;
     YAML::Node config;
     // local config file
     options.config.first = false;
@@ -163,37 +162,37 @@ CmdOptions fill_cmd_options(std::map<std::string, docopt::value> args)
     options.verbose = (config["verbose"] && config["verbose"].as<bool>()) || args["-v"].asBool();
     options.daemon = (config["daemon"] && config["daemon"].as<bool>()) || args["-d"].asBool();
     options.syslog = (config["syslog"] && config["syslog"].as<bool>()) || args["--syslog"].asBool();
-    options.no_track = (config["no-track"] && config["no-track"].as<bool>()) || args["--no-track"].asBool();
+    options.no_track = (config["no_track"] && config["no_track"].as<bool>()) || args["--no-track"].asBool();
     options.prometheus = (config["prometheus"] && config["prometheus"].as<bool>()) || args["--prometheus"].asBool();
 
     if (args["--log-file"]) {
         options.log_file = std::make_pair(true, args["--log-file"].asString());
-    } else if (config["log-file"]) {
-        options.log_file = std::make_pair(true, config["log-file"].as<std::string>());
+    } else if (config["log_file"]) {
+        options.log_file = std::make_pair(true, config["log_file"].as<std::string>());
     }
 
     if (args["--prom-instance"]) {
         options.prom_instance = std::make_pair(true, args["--prom-instance"].asString());
-    } else if (config["prom-instance"]) {
-        options.prom_instance = std::make_pair(true, config["prom-instance"].as<std::string>());
+    } else if (config["prom_instance"]) {
+        options.prom_instance = std::make_pair(true, config["prom_instance"].as<std::string>());
     }
 
     if (args["--geo-city"]) {
         options.geo_city = std::make_pair(true, args["--geo-city"].asString());
-    } else if (config["geo-city"]) {
-        options.geo_city = std::make_pair(true, config["geo-city"].as<std::string>());
+    } else if (config["geo_city"]) {
+        options.geo_city = std::make_pair(true, config["geo_city"].as<std::string>());
     }
 
     if (args["--geo-asn"]) {
         options.geo_asn = std::make_pair(true, args["--geo-asn"].asString());
-    } else if (config["geo-asn"]) {
-        options.geo_asn = std::make_pair(true, config["geo-asn"].as<std::string>());
+    } else if (config["geo_asn"]) {
+        options.geo_asn = std::make_pair(true, config["geo_asn"].as<std::string>());
     }
 
     if (args["--max-deep-sample"]) {
         options.max_deep_sample = std::make_pair(true, static_cast<unsigned int>(args["--max-deep-sample"].asLong()));
-    } else if (config["max-deep-sample"]) {
-        options.max_deep_sample = std::make_pair(true, config["max-deep-sample"].as<unsigned int>());
+    } else if (config["max_deep_sample"]) {
+        options.max_deep_sample = std::make_pair(true, config["max_deep_sample"].as<unsigned int>());
     }
 
     if (args["--periods"]) {
@@ -203,7 +202,7 @@ CmdOptions fill_cmd_options(std::map<std::string, docopt::value> args)
     }
 
     options.web_server.tls_support = (config["tls"] && config["tls"].as<bool>()) || args["--tls"].asBool();
-    options.web_server.admin_api = (config["admin-api"] && config["admin-api"].as<bool>()) || args["--admin-api"].asBool();
+    options.web_server.admin_api = (config["admin_api"] && config["admin_api"].as<bool>()) || args["--admin-api"].asBool();
 
     if (args["-p"]) {
         options.web_server.port = std::make_pair(true, static_cast<unsigned int>(args["-p"].asLong()));
@@ -219,30 +218,29 @@ CmdOptions fill_cmd_options(std::map<std::string, docopt::value> args)
 
     if (args["--tls-cert"]) {
         options.web_server.tls_cert = std::make_pair(true, args["--tls-cert"].asString());
-    } else if (config["tls-cert"]) {
-        options.web_server.tls_cert = std::make_pair(true, config["tls-cert"].as<std::string>());
+    } else if (config["tls_cert"]) {
+        options.web_server.tls_cert = std::make_pair(true, config["tls_cert"].as<std::string>());
     }
 
     if (args["--tls-key"]) {
         options.web_server.host = std::make_pair(true, args["--tls-key"].asString());
-    } else if (config["tls-key"]) {
-        options.web_server.tls_key = std::make_pair(true, config["tls-key"].as<std::string>());
+    } else if (config["tls_key"]) {
+        options.web_server.tls_key = std::make_pair(true, config["tls_key"].as<std::string>());
     }
 
-    options.module.list = (config["module-list"] && config["module-list"].as<bool>()) || args["--module-list"].asBool();
+    options.module.list = (config["module_list"] && config["module_list"].as<bool>()) || args["--module-list"].asBool();
 
     if (args["--module-load"]) {
         options.module.load = std::make_pair(true, args["--module-load"].asString());
-    } else if (config["module-load"]) {
-        options.module.load = std::make_pair(true, config["module-load"].as<std::string>());
+    } else if (config["module_load"]) {
+        options.module.load = std::make_pair(true, config["module_load"].as<std::string>());
     }
 
     if (args["--module-dir"]) {
         options.module.dir = std::make_pair(true, args["--module-dir"].asString());
-    } else if (config["module-dir"]) {
-        options.module.dir = std::make_pair(true, config["module-dir"].as<std::string>());
+    } else if (config["module_dir"]) {
+        options.module.dir = std::make_pair(true, config["module_dir"].as<std::string>());
     }
-    return options;
 }
 
 void initialize_geo(const std::string &city, const std::string &asn)
@@ -341,7 +339,8 @@ int main(int argc, char *argv[])
         true,           // show help if requested
         VISOR_VERSION); // version string
 
-    auto options = fill_cmd_options(args);
+    CmdOptions options;
+    fill_cmd_options(args, options);
 
     if (options.daemon) {
         // before we daemonize, if they are using a log file, ensure it can be opened
