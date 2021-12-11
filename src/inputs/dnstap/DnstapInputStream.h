@@ -39,6 +39,7 @@ class DnstapInputStream : public visor::InputStream
     std::shared_ptr<uvw::AsyncHandle> _async_h;
 
     void _read_frame_stream();
+    void _create_socket();
 
 public:
     DnstapInputStream(const std::string &name);

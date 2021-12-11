@@ -3,9 +3,12 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 #include "DnstapInputStream.h"
+#include <catch2/catch.hpp>
 #include <fstrm/fstrm.h>
 #include <uvw/async.h>
 #include <uvw/loop.h>
+#include <uvw/stream.h>
+#include <uvw/pipe.h>
 
 namespace visor::input::dnstap {
 
@@ -84,27 +87,62 @@ void DnstapInputStream::start()
         _read_frame_stream();
         return;
     } else if (config_exists("socket")) {
-        // main io loop, run in its own thread
-        _io_loop = uvw::Loop::create();
-        if (!_io_loop) {
-            throw DnstapException("unable to create io loop");
-        }
-        // AsyncHandle lets us stop the loop from its own thread
-        _async_h = _io_loop->resource<uvw::AsyncHandle>();
-        _async_h->on<uvw::AsyncEvent>([this](const auto &, auto &hndl) {
-            _io_loop->stop();
-            _io_loop->close();
-            hndl.close();
-        });
-        // spawn the loop
-        _io_thread = std::make_unique<std::thread>([this] {
-            _io_loop->run();
-        });
+        _create_socket();
     } else {
-        throw DnstapException("must specify socket or dnstap_file");
+        throw DnstapException("config must specify one of: socket, dnstap_file");
     }
 
     _running = true;
+}
+
+void DnstapInputStream::_create_socket()
+{
+    assert(config_exists("socket"));
+
+    // main io loop, run in its own thread
+    _io_loop = uvw::Loop::create();
+    if (!_io_loop) {
+        throw DnstapException("unable to create io loop");
+    }
+    // AsyncHandle lets us stop the loop from its own thread
+    _async_h = _io_loop->resource<uvw::AsyncHandle>();
+    _async_h->on<uvw::AsyncEvent>([this](const auto &, auto &hndl) {
+        _io_loop->stop();
+        _io_loop->close();
+        hndl.close();
+    });
+    _async_h->on<uvw::ErrorEvent>([this](const auto &err, auto &) {
+        _logger->error("AsyncEvent error: {}", err.what());
+    });
+
+    // setup socket handler
+    auto server = _io_loop->resource<uvw::PipeHandle>();
+
+    server->on<uvw::ErrorEvent>([this](const auto &err, auto &) {
+        _logger->error("PipeHandle error: {}", err.what());
+    });
+
+    server->once<uvw::ListenEvent>([this](const uvw::ListenEvent &, uvw::PipeHandle &handle) {
+        _logger->info("dnstap client connected");
+        std::shared_ptr<uvw::PipeHandle> socket = handle.loop().resource<uvw::PipeHandle>();
+
+        socket->on<uvw::ErrorEvent>([this](const uvw::ErrorEvent &err, uvw::PipeHandle &) {
+            _logger->error("socket PipeHandle error: {}", err.what());
+        });
+        socket->on<uvw::CloseEvent>([&handle](const uvw::CloseEvent &, uvw::PipeHandle &) { handle.close(); });
+        socket->on<uvw::EndEvent>([](const uvw::EndEvent &, uvw::PipeHandle &sock) { sock.close(); });
+
+        handle.accept(*socket);
+        socket->read();
+    });
+
+    server->bind(config_get<std::string>("socket"));
+    server->listen();
+
+    // spawn the loop
+    _io_thread = std::make_unique<std::thread>([this] {
+        _io_loop->run();
+    });
 }
 
 void DnstapInputStream::stop()
