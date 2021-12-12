@@ -7,8 +7,8 @@
 #include <fstrm/fstrm.h>
 #include <uvw/async.h>
 #include <uvw/loop.h>
-#include <uvw/stream.h>
 #include <uvw/pipe.h>
+#include <uvw/stream.h>
 
 namespace visor::input::dnstap {
 
@@ -20,35 +20,34 @@ DnstapInputStream::DnstapInputStream(const std::string &name)
     assert(_logger);
 }
 
-void DnstapInputStream::_read_frame_stream()
+void DnstapInputStream::_read_frame_stream_file()
 {
+    assert(config_exists("dnstap_file"));
 
     // Setup file reader options
-    struct fstrm_file_options *fopt;
-    fopt = fstrm_file_options_init();
-    assert(config_exists("dnstap_file"));
-    fstrm_file_options_set_file_path(fopt, config_get<std::string>("dnstap_file").c_str());
+    auto fileOptions = fstrm_file_options_init();
+    fstrm_file_options_set_file_path(fileOptions, config_get<std::string>("dnstap_file").c_str());
 
     // Initialize file reader
-    struct fstrm_reader *r = fstrm_file_reader_init(fopt, nullptr);
-    if (!r) {
+    auto reader = fstrm_file_reader_init(fileOptions, nullptr);
+    if (!reader) {
         throw DnstapException("fstrm_file_reader_init() failed");
     }
-    fstrm_res res = fstrm_reader_open(r);
-    if (res != fstrm_res_success) {
+    auto result = fstrm_reader_open(reader);
+    if (result != fstrm_res_success) {
         throw DnstapException("fstrm_reader_open() failed");
     }
 
     // Cleanup
-    fstrm_file_options_destroy(&fopt);
+    fstrm_file_options_destroy(&fileOptions);
 
     // Loop over data frames
     for (;;) {
         const uint8_t *data;
         size_t len_data;
 
-        res = fstrm_reader_read(r, &data, &len_data);
-        if (res == fstrm_res_success) {
+        result = fstrm_reader_read(reader, &data, &len_data);
+        if (result == fstrm_res_success) {
             // Data frame ready, parse protobuf
             ::dnstap::Dnstap d;
             if (!d.ParseFromArray(data, len_data)) {
@@ -59,19 +58,22 @@ void DnstapInputStream::_read_frame_stream()
                 _logger->warn("dnstap data is wrong type or has no message, skipping frame of size {}", len_data);
                 continue;
             }
+            // Emit signal to handlers
             dnstap_signal(d);
-        } else if (res == fstrm_res_stop) {
+        } else if (result == fstrm_res_stop) {
             // Normal end of data stream
             break;
         } else {
             // Abnormal end
-            _logger->warn(fmt::format("fstrm_reader_read() data stream ended abnormally: {}", res));
+            _logger->warn("fstrm_reader_read() data stream ended abnormally: {}", result);
             break;
         }
     }
 
-    // Cleanup
-    fstrm_reader_destroy(&r);
+    result = fstrm_reader_destroy(&reader);
+    if (result != fstrm_res_success) {
+        throw DnstapException("fstrm_reader_destroy failed");
+    }
 }
 
 void DnstapInputStream::start()
@@ -84,10 +86,10 @@ void DnstapInputStream::start()
     if (config_exists("dnstap_file")) {
         // read from dnstap file. this is a special case from a command line utility
         _running = true;
-        _read_frame_stream();
+        _read_frame_stream_file();
         return;
     } else if (config_exists("socket")) {
-        _create_socket();
+        _create_frame_stream_socket();
     } else {
         throw DnstapException("config must specify one of: socket, dnstap_file");
     }
@@ -95,7 +97,7 @@ void DnstapInputStream::start()
     _running = true;
 }
 
-void DnstapInputStream::_create_socket()
+void DnstapInputStream::_create_frame_stream_socket()
 {
     assert(config_exists("socket"));
 
@@ -112,25 +114,31 @@ void DnstapInputStream::_create_socket()
         hndl.close();
     });
     _async_h->on<uvw::ErrorEvent>([this](const auto &err, auto &) {
-        _logger->error("AsyncEvent error: {}", err.what());
+        _logger->error("[{}] AsyncEvent error: {}", _name, err.what());
     });
 
     // setup socket handler
     auto server = _io_loop->resource<uvw::PipeHandle>();
 
     server->on<uvw::ErrorEvent>([this](const auto &err, auto &) {
-        _logger->error("PipeHandle error: {}", err.what());
+        _logger->error("[{}] PipeHandle error: {}", _name, err.what());
     });
 
-    server->once<uvw::ListenEvent>([this](const uvw::ListenEvent &, uvw::PipeHandle &handle) {
-        _logger->info("dnstap client connected");
+    server->once<uvw::ListenEvent>([this](const uvw::ListenEvent &l, uvw::PipeHandle &handle) {
+        _logger->info("[{}]: dnstap client connected", _name);
         std::shared_ptr<uvw::PipeHandle> socket = handle.loop().resource<uvw::PipeHandle>();
 
-        socket->on<uvw::ErrorEvent>([this](const uvw::ErrorEvent &err, uvw::PipeHandle &) {
-            _logger->error("socket PipeHandle error: {}", err.what());
+        socket->on<uvw::ErrorEvent>([this](const uvw::ErrorEvent &err, const uvw::PipeHandle &) {
+            _logger->error("[{}]: socket PipeHandle error: {}", _name, err.what());
+        });
+        socket->on<uvw::DataEvent>([this](const uvw::DataEvent &data, const uvw::PipeHandle &) {
+            _logger->info("got data {}", data.length);
         });
         socket->on<uvw::CloseEvent>([&handle](const uvw::CloseEvent &, uvw::PipeHandle &) { handle.close(); });
-        socket->on<uvw::EndEvent>([](const uvw::EndEvent &, uvw::PipeHandle &sock) { sock.close(); });
+        socket->on<uvw::EndEvent>([this](const uvw::EndEvent &, uvw::PipeHandle &sock) {
+            _logger->info("[{}]: dnstap client disconnected", _name);
+            sock.close();
+        });
 
         handle.accept(*socket);
         socket->read();

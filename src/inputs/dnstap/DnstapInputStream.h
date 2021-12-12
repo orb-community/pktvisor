@@ -15,6 +15,8 @@ class Loop;
 class AsyncHandle;
 }
 
+struct fstrm_reader;
+
 namespace visor::input::dnstap {
 
 class DnstapException : public std::runtime_error
@@ -38,8 +40,8 @@ class DnstapInputStream : public visor::InputStream
     std::shared_ptr<uvw::Loop> _io_loop;
     std::shared_ptr<uvw::AsyncHandle> _async_h;
 
-    void _read_frame_stream();
-    void _create_socket();
+    void _read_frame_stream_file();
+    void _create_frame_stream_socket();
 
 public:
     DnstapInputStream(const std::string &name);
