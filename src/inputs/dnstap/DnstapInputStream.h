@@ -32,6 +32,33 @@ public:
     }
 };
 
+class FrameSessionData final
+{
+public:
+    using on_data_frame_cb_t = std::function<void(const void *data, std::size_t size)>;
+    using on_frame_stream_err_cb_t = std::function<void(const std::string &err)>;
+
+    enum class FrameState {
+        New,
+        Running
+    };
+
+private:
+    std::string _buffer;
+    on_data_frame_cb_t _on_data_frame_cb;
+    on_frame_stream_err_cb_t _on_frame_stream_err_cb;
+    FrameState _state{FrameState::New};
+
+public:
+    FrameSessionData(on_data_frame_cb_t on_data_frame, on_frame_stream_err_cb_t on_frame_stream_err)
+        : _on_data_frame_cb{std::move(on_data_frame)}
+        , _on_frame_stream_err_cb{std::move(on_frame_stream_err)}
+    {
+    }
+
+    void receive_socket_data(const char data[], std::size_t data_len);
+};
+
 class DnstapInputStream : public visor::InputStream
 {
     std::shared_ptr<spdlog::logger> _logger;
@@ -63,7 +90,7 @@ public:
     // handler functionality
     // IF THIS changes, see consumer_count()
     // note: these are mutable because consumer_count() calls slot_count() which is not const (unclear if it could/should be)
-    mutable sigslot::signal<const ::dnstap::Dnstap&> dnstap_signal;
+    mutable sigslot::signal<const ::dnstap::Dnstap &> dnstap_signal;
 };
 
 }

@@ -4,6 +4,7 @@
 
 #include "DnstapInputStream.h"
 #include <catch2/catch.hpp>
+#include <filesystem>
 #include <fstrm/fstrm.h>
 #include <uvw/async.h>
 #include <uvw/loop.h>
@@ -70,10 +71,7 @@ void DnstapInputStream::_read_frame_stream_file()
         }
     }
 
-    result = fstrm_reader_destroy(&reader);
-    if (result != fstrm_res_success) {
-        throw DnstapException("fstrm_reader_destroy failed");
-    }
+    fstrm_reader_destroy(&reader);
 }
 
 void DnstapInputStream::start()
@@ -126,13 +124,31 @@ void DnstapInputStream::_create_frame_stream_socket()
 
     server->once<uvw::ListenEvent>([this](const uvw::ListenEvent &l, uvw::PipeHandle &handle) {
         _logger->info("[{}]: dnstap client connected", _name);
+        auto on_frame_stream_err = [this](const std::string &err) {
+            _logger->error("[{}]: frame stream error: {}", _name, err);
+        };
+        FrameSessionData session([this](const void *data, std::size_t len_data) {
+            // Data frame ready, parse protobuf
+            ::dnstap::Dnstap d;
+            if (!d.ParseFromArray(data, len_data)) {
+                _logger->warn("Dnstap::ParseFromArray fail, skipping frame of size {}", len_data);
+                return;
+            }
+            if (!d.has_type() || d.type() != ::dnstap::Dnstap_Type_MESSAGE || !d.has_message()) {
+                _logger->warn("dnstap data is wrong type or has no message, skipping frame of size {}", len_data);
+                return;
+            }
+            // Emit signal to handlers
+            dnstap_signal(d);
+        },
+            on_frame_stream_err);
         std::shared_ptr<uvw::PipeHandle> socket = handle.loop().resource<uvw::PipeHandle>();
 
         socket->on<uvw::ErrorEvent>([this](const uvw::ErrorEvent &err, const uvw::PipeHandle &) {
             _logger->error("[{}]: socket PipeHandle error: {}", _name, err.what());
         });
-        socket->on<uvw::DataEvent>([this](const uvw::DataEvent &data, const uvw::PipeHandle &) {
-            _logger->info("got data {}", data.length);
+        socket->on<uvw::DataEvent>([&session](const uvw::DataEvent &data, const uvw::PipeHandle &) {
+            session.receive_socket_data(data.data.get(), data.length);
         });
         socket->on<uvw::CloseEvent>([&handle](const uvw::CloseEvent &, uvw::PipeHandle &) { handle.close(); });
         socket->on<uvw::EndEvent>([this](const uvw::EndEvent &, uvw::PipeHandle &sock) {
@@ -143,6 +159,9 @@ void DnstapInputStream::_create_frame_stream_socket()
         handle.accept(*socket);
         socket->read();
     });
+
+    // attempt to remove socket if it exists, ignore errors
+    std::filesystem::remove(config_get<std::string>("socket"));
 
     server->bind(config_get<std::string>("socket"));
     server->listen();
@@ -172,6 +191,37 @@ void DnstapInputStream::stop()
 void DnstapInputStream::info_json(json &j) const
 {
     common_info_json(j);
+}
+
+void FrameSessionData::receive_socket_data(const char data[], std::size_t data_len)
+{
+    _buffer.append(reinterpret_cast<const char *>(data), data_len);
+
+    for (;;) {
+        std::uint32_t len;
+
+        if (_buffer.size() < sizeof(len)) {
+            break;
+        }
+
+        /*
+        len = static_cast<unsigned char>(_buffer[1]) | static_cast<unsigned char>(_buffer[0]) << 8;
+        // ensure we never allocate more than max
+        if (len < MIN_DNS_QUERY_SIZE || len > MAX_DNS_QUERY_SIZE) {
+            break;
+        }
+
+        if (_buffer.size() >= sizeof(len) + len) {
+            auto data = std::make_unique<uint8_t[]>(len);
+            std::memcpy(data.get(), _buffer.data() + sizeof(len), len);
+            _buffer.erase(0, sizeof(len) + len);
+            _got_dns_msg(std::move(data), len);
+        } else {
+            // Nope, we need more data.
+            break;
+        }
+        */
+    }
 }
 
 }
