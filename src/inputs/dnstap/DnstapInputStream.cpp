@@ -127,25 +127,48 @@ void DnstapInputStream::_create_frame_stream_socket()
         auto on_frame_stream_err = [this](const std::string &err) {
             _logger->error("[{}]: frame stream error: {}", _name, err);
         };
-        bool ready{false}, finished{false};
-        auto on_control_ready = [&ready]() { ready = true; };
-        auto on_control_finished = [&finished]() { finished = true; };
-        FrameSessionData session(
-            CONTENT_TYPE, [this](const void *data, std::size_t len_data) {
-                // Data frame ready, parse protobuf
-                ::dnstap::Dnstap d;
-                if (!d.ParseFromArray(data, len_data)) {
-                    _logger->warn("Dnstap::ParseFromArray fail, skipping frame of size {}", len_data);
-                    return;
-                }
-                if (!d.has_type() || d.type() != ::dnstap::Dnstap_Type_MESSAGE || !d.has_message()) {
-                    _logger->warn("dnstap data is wrong type or has no message, skipping frame of size {}", len_data);
-                    return;
-                }
-                // Emit signal to handlers
-                dnstap_signal(d);
-            },
-            on_frame_stream_err, on_control_ready, on_control_finished);
+        auto on_control_ready = [this, &handle]() {
+            // bi-directional: got READY, send ACCEPT
+            fstrm_res res;
+            struct fstrm_control *c;
+            auto control_frame = std::make_unique<char[]>(FSTRM_CONTROL_FRAME_LENGTH_MAX);
+            size_t len_control_frame = sizeof(control_frame);
+            c = fstrm_control_init();
+            res = fstrm_control_set_type(c, FSTRM_CONTROL_ACCEPT);
+            if (res != fstrm_res_success) {
+                _logger->error("unable to send ACCEPT: fstrm_control_set_type");
+                return false;
+            }
+            // Serialize the control frame.
+            res = fstrm_control_encode(c, control_frame.get(), &len_control_frame, 0);
+            if (res != fstrm_res_success) {
+                _logger->error("unable to send ACCEPT: fstrm_control_encode");
+                return false;
+            }
+            // write to client
+            handle.write(std::move(control_frame), len_control_frame);
+            // Clean up.
+            fstrm_control_destroy(&c);
+            return true;
+        };
+        auto on_control_finished = []() {
+            return true;
+        };
+        auto on_data_frame = [this](const void *data, std::size_t len_data) {
+            // Data frame ready, parse protobuf
+            ::dnstap::Dnstap d;
+            if (!d.ParseFromArray(data, len_data)) {
+                _logger->warn("Dnstap::ParseFromArray fail, skipping frame of size {}", len_data);
+                return;
+            }
+            if (!d.has_type() || d.type() != ::dnstap::Dnstap_Type_MESSAGE || !d.has_message()) {
+                _logger->warn("dnstap data is wrong type or has no message, skipping frame of size {}", len_data);
+                return;
+            }
+            // Emit signal to handlers
+            dnstap_signal(d);
+        };
+        FrameSessionData session(CONTENT_TYPE, on_data_frame, on_frame_stream_err, on_control_ready, on_control_finished);
         std::shared_ptr<uvw::PipeHandle> socket = handle.loop().resource<uvw::PipeHandle>();
 
         socket->on<uvw::ErrorEvent>([this](const uvw::ErrorEvent &err, const uvw::PipeHandle &) {
@@ -241,7 +264,9 @@ bool FrameSessionData::decode_control_frame(const void *control_frame, size_t le
         } else {
             _state = FrameState::Ready;
             _is_bidir = true;
-            _on_control_ready_cb();
+            if (!_on_control_ready_cb()) {
+                return false;
+            }
         }
     }
     }
@@ -319,6 +344,12 @@ bool FrameSessionData::receive_socket_data(const char data[], std::size_t data_l
 
         std::memcpy(&ctrl_len, _buffer.data(), sizeof(ctrl_len));
         ctrl_len = ntohl(ctrl_len);
+
+        // ensure we never allocate more than max
+        if (ctrl_len > FSTRM_CONTROL_FRAME_LENGTH_MAX) {
+            _on_frame_stream_err_cb("control frame too large");
+            return false;
+        }
 
         if (_buffer.size() >= sizeof(ctrl_len) + ctrl_len) {
             if (!decode_control_frame(_buffer.data() + sizeof(ctrl_len), ctrl_len)) {

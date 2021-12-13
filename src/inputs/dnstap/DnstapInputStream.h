@@ -35,8 +35,8 @@ class FrameSessionData final
 public:
     using on_data_frame_cb_t = std::function<void(const void *data, std::size_t size)>;
     using on_frame_stream_err_cb_t = std::function<void(const std::string &err)>;
-    using on_control_ready_cb_t = std::function<void()>;
-    using on_control_finished_cb_t = std::function<void()>;
+    using on_control_ready_cb_t = std::function<bool()>;
+    using on_control_finished_cb_t = std::function<bool()>;
 
     enum class FrameState {
         New,

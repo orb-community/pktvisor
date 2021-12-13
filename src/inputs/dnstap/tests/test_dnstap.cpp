@@ -22,8 +22,8 @@ TEST_CASE("bi-directional frame stream process", "[dnstap][frmstrm]")
         WARN("data frame parsed");
     };
     bool ready{false}, finished{false};
-    auto on_control_ready = [&ready]() { ready = true; };
-    auto on_control_finished = [&finished]() { finished = true; };
+    auto on_control_ready = [&ready]() { ready = true; return true; };
+    auto on_control_finished = [&finished]() { finished = true; return true; };
 
     FrameSessionData session(CONTENT_TYPE, on_data_frame, on_frame_stream_err, on_control_ready, on_control_finished);
     CHECK(session.receive_socket_data(bi_frame_1_len42, 42) == true);
