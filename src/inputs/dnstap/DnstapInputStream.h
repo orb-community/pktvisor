@@ -19,14 +19,12 @@ struct fstrm_reader;
 
 namespace visor::input::dnstap {
 
+const static std::string CONTENT_TYPE = "protobuf:dnstap.Dnstap";
+
 class DnstapException : public std::runtime_error
 {
 public:
     DnstapException(const char *msg)
-        : std::runtime_error(msg)
-    {
-    }
-    DnstapException(const std::string &msg)
         : std::runtime_error(msg)
     {
     }
@@ -37,26 +35,56 @@ class FrameSessionData final
 public:
     using on_data_frame_cb_t = std::function<void(const void *data, std::size_t size)>;
     using on_frame_stream_err_cb_t = std::function<void(const std::string &err)>;
+    using on_control_ready_cb_t = std::function<void()>;
+    using on_control_finished_cb_t = std::function<void()>;
 
     enum class FrameState {
         New,
-        Running
+        Ready,
+        Running,
+        Finishing
     };
 
 private:
+    std::string _content_type;
     std::string _buffer;
+    bool _is_bidir;
+
     on_data_frame_cb_t _on_data_frame_cb;
     on_frame_stream_err_cb_t _on_frame_stream_err_cb;
+    on_control_ready_cb_t _on_control_ready_cb;
+    on_control_finished_cb_t _on_control_finished_cb;
+
     FrameState _state{FrameState::New};
 
+    bool decode_control_frame(const void *control_frame, size_t len_control_frame);
+
 public:
-    FrameSessionData(on_data_frame_cb_t on_data_frame, on_frame_stream_err_cb_t on_frame_stream_err)
-        : _on_data_frame_cb{std::move(on_data_frame)}
+    FrameSessionData(
+        const std::string &content_type,
+        on_data_frame_cb_t on_data_frame,
+        on_frame_stream_err_cb_t on_frame_stream_err,
+        on_control_ready_cb_t on_control_ready,
+        on_control_finished_cb_t on_control_finished)
+        : _content_type{content_type}
+        , _on_data_frame_cb{std::move(on_data_frame)}
         , _on_frame_stream_err_cb{std::move(on_frame_stream_err)}
+        , _on_control_ready_cb(std::move(on_control_ready))
+        , _on_control_finished_cb(std::move(on_control_finished))
     {
     }
 
-    void receive_socket_data(const char data[], std::size_t data_len);
+    bool receive_socket_data(const char data[], std::size_t data_len);
+
+    const FrameState &state() const
+    {
+        return _state;
+    }
+
+    bool is_bidir() const
+    {
+        return _is_bidir;
+    }
 };
 
 class DnstapInputStream : public visor::InputStream
