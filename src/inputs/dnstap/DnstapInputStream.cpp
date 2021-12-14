@@ -137,9 +137,6 @@ void DnstapInputStream::_create_frame_stream_socket()
             throw DnstapException("unable to initialize connected client PipeHandle");
         }
 
-        auto on_frame_stream_err = [this, &client](const std::string &err) {
-            _logger->error("[{}]: frame stream error: {}", _name, err);
-        };
         auto on_control_ready = [this, &client]() {
             // bi-directional: got READY, send ACCEPT
             fstrm_res res;
@@ -191,11 +188,17 @@ void DnstapInputStream::_create_frame_stream_socket()
         client->on<uvw::DataEvent>([this](const uvw::DataEvent &data, uvw::PipeHandle &c_sock) {
             _logger->info("GOT MSG LEN {}", data.length);
             assert(_sessions[c_sock.fd()]);
-            _sessions[c_sock.fd()]->receive_socket_data(reinterpret_cast<uint8_t *>(data.data.get()), data.length);
+            try {
+                _sessions[c_sock.fd()]->receive_socket_data(reinterpret_cast<uint8_t *>(data.data.get()), data.length);
+            } catch (DnstapException &err) {
+                _logger->error("[{}] dnstap client read error: {}", _name, err.what());
+                c_sock.stop();
+                c_sock.close();
+            }
         });
         // client was closed
         client->on<uvw::CloseEvent>([this](const uvw::CloseEvent &, uvw::PipeHandle &c_sock) {
-            _logger->info("[{}]: dnstap client disconnected {}", _name, c_sock.fd());
+            _logger->info("[{}]: dnstap client disconnected", _name);
             _sessions.erase(c_sock.fd());
         });
         // client read EOF
@@ -207,7 +210,7 @@ void DnstapInputStream::_create_frame_stream_socket()
 
         _server_h->accept(*client);
         _logger->info("[{}]: dnstap client connected {}", _name, client->fd());
-        _sessions[client->fd()] = std::make_unique<FrameSessionData>(CONTENT_TYPE, on_data_frame, on_frame_stream_err, on_control_ready, on_control_finished);
+        _sessions[client->fd()] = std::make_unique<FrameSessionData>(CONTENT_TYPE, on_data_frame, on_control_ready, on_control_finished);
         client->read();
     });
 
@@ -270,8 +273,7 @@ bool FrameSessionData::_decode_control_frame(const void *control_frame, size_t l
         // uni-directional
     case FSTRM_CONTROL_START: {
         if (_state != FrameState::New) {
-            _on_frame_stream_err_cb("received START frame but already started, aborting");
-            return false;
+            throw DnstapException("received START frame but already started, aborting");
         } else {
             _state = FrameState::Running;
         }
@@ -279,8 +281,7 @@ bool FrameSessionData::_decode_control_frame(const void *control_frame, size_t l
         // bi-directional
     case FSTRM_CONTROL_READY: {
         if (_state != FrameState::New) {
-            _on_frame_stream_err_cb("received READY frame but already started, aborting");
-            return false;
+            throw DnstapException("received READY frame but already started, aborting");
         } else {
             _state = FrameState::Ready;
             _is_bidir = true;
@@ -317,11 +318,10 @@ bool FrameSessionData::_decode_control_frame(const void *control_frame, size_t l
     return true;
 }
 
-bool FrameSessionData::receive_socket_data(const uint8_t data[], std::size_t data_len)
+void FrameSessionData::receive_socket_data(const uint8_t data[], std::size_t data_len)
 {
     _buffer.append(data, data_len);
-    while (_buffer.size() && _try_yield_frame()) { }
-    return true;
+    while (_try_yield_frame()) { }
 }
 bool FrameSessionData::_try_yield_frame()
 {
@@ -329,8 +329,7 @@ bool FrameSessionData::_try_yield_frame()
     std::uint32_t frame_len{0};
 
     if (_buffer.size() < sizeof(frame_len)) {
-        _on_frame_stream_err_cb("invalid data: header length");
-        return false;
+        throw DnstapException("invalid data: header length");
     }
 
     std::memcpy(&frame_len, _buffer.data(), sizeof(frame_len));
@@ -340,14 +339,12 @@ bool FrameSessionData::_try_yield_frame()
         // this is a data frame and we have the length
         if (_state != FrameState::Running) {
             // we got a data frame but we never saw a START control frame, abort
-            _on_frame_stream_err_cb("data frame without a START control frame");
-            return false;
+            throw DnstapException("data frame without a START control frame");
         }
 
         // ensure we never allocate more than max
         if (frame_len > FSTRM_READER_MAX_FRAME_SIZE_DEFAULT) {
-            _on_frame_stream_err_cb("data frame too large");
-            return false;
+            throw DnstapException("data frame too large");
         }
 
         if (_buffer.size() >= sizeof(frame_len) + frame_len) {
@@ -366,8 +363,7 @@ bool FrameSessionData::_try_yield_frame()
         std::uint32_t ctrl_len{0};
 
         if (_buffer.size() < sizeof(ctrl_len)) {
-            _on_frame_stream_err_cb("invalid data: control frame length");
-            return false;
+            throw DnstapException("invalid data: control frame length");
         }
 
         std::memcpy(&ctrl_len, _buffer.data(), sizeof(ctrl_len));
@@ -375,20 +371,18 @@ bool FrameSessionData::_try_yield_frame()
 
         // ensure we never allocate more than max
         if (ctrl_len > FSTRM_CONTROL_FRAME_LENGTH_MAX) {
-            _on_frame_stream_err_cb("control frame too large");
-            return false;
+            throw DnstapException("control frame too large");
         }
 
         if (_buffer.size() >= sizeof(ctrl_len) + ctrl_len) {
             if (!_decode_control_frame(_buffer.data() + sizeof(ctrl_len), ctrl_len)) {
-                _on_frame_stream_err_cb("unable to parse control frame");
-                return false;
+                throw DnstapException("unable to parse control frame");
             }
             _buffer.erase(0, sizeof(ctrl_len) + ctrl_len);
         }
     }
-    // parsed ok, wait for more data
-    return true;
+    // parsed ok. if we have more data, try to parse another frame.
+    return _buffer.size();
 }
 
 }

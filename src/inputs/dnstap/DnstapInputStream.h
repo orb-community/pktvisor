@@ -55,7 +55,6 @@ private:
     bool _is_bidir;
 
     on_data_frame_cb_t _on_data_frame_cb;
-    on_frame_stream_err_cb_t _on_frame_stream_err_cb;
     on_control_ready_cb_t _on_control_ready_cb;
     on_control_finished_cb_t _on_control_finished_cb;
 
@@ -68,18 +67,16 @@ public:
     FrameSessionData(
         const std::string &content_type,
         on_data_frame_cb_t on_data_frame,
-        on_frame_stream_err_cb_t on_frame_stream_err,
         on_control_ready_cb_t on_control_ready,
         on_control_finished_cb_t on_control_finished)
         : _content_type{content_type}
         , _on_data_frame_cb{std::move(on_data_frame)}
-        , _on_frame_stream_err_cb{std::move(on_frame_stream_err)}
         , _on_control_ready_cb(std::move(on_control_ready))
         , _on_control_finished_cb(std::move(on_control_finished))
     {
     }
 
-    bool receive_socket_data(const uint8_t data[], std::size_t data_len);
+    void receive_socket_data(const uint8_t data[], std::size_t data_len);
 
     const FrameState &state() const
     {
