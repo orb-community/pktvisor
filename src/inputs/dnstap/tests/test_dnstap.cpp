@@ -15,21 +15,14 @@ static uint8_t bi_frame_1_len42[] = {
 
 TEST_CASE("bi-directional frame stream process", "[dnstap][frmstrm]")
 {
-    auto on_frame_stream_err = [](const std::string &err) {
-        WARN(err);
-    };
     auto on_data_frame = [](const void *data, std::size_t len_data) {
         WARN("data frame parsed");
     };
-    bool ready{false}, finished{false};
-    auto on_control_ready = [&ready]() { ready = true; return true; };
-    auto on_control_finished = [&finished]() { finished = true; return true; };
 
-    FrameSessionData session(CONTENT_TYPE, on_data_frame, on_frame_stream_err, on_control_ready, on_control_finished);
-    CHECK(session.receive_socket_data(bi_frame_1_len42, 42) == true);
+    FrameSessionData session(nullptr, CONTENT_TYPE, on_data_frame);
+    CHECK_NOTHROW(session.receive_socket_data(bi_frame_1_len42, 42));
     CHECK(session.state() == FrameSessionData::FrameState::Ready);
     CHECK(session.is_bidir() == true);
-    CHECK(ready == true);
 }
 
 TEST_CASE("dnstap file", "[dnstap][file]")

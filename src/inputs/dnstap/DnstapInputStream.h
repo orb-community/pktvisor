@@ -6,11 +6,11 @@
 
 #include "InputStream.h"
 #include "dnstap.pb.h"
-#include <uv.h>
-#include <unordered_map>
 #include <DnsLayer.h>
 #include <sigslot/signal.hpp>
 #include <spdlog/spdlog.h>
+#include <unordered_map>
+#include <uv.h>
 
 namespace uvw {
 class Loop;
@@ -49,14 +49,13 @@ public:
     };
 
 private:
+    std::shared_ptr<uvw::PipeHandle> _client_h;
     std::string _content_type;
     using binary = std::basic_string<uint8_t>;
     binary _buffer;
     bool _is_bidir;
 
     on_data_frame_cb_t _on_data_frame_cb;
-    on_control_ready_cb_t _on_control_ready_cb;
-    on_control_finished_cb_t _on_control_finished_cb;
 
     FrameState _state{FrameState::New};
 
@@ -65,14 +64,12 @@ private:
 
 public:
     FrameSessionData(
+        std::shared_ptr<uvw::PipeHandle> client,
         const std::string &content_type,
-        on_data_frame_cb_t on_data_frame,
-        on_control_ready_cb_t on_control_ready,
-        on_control_finished_cb_t on_control_finished)
-        : _content_type{content_type}
+        on_data_frame_cb_t on_data_frame)
+        : _client_h{client}
+        , _content_type{content_type}
         , _on_data_frame_cb{std::move(on_data_frame)}
-        , _on_control_ready_cb(std::move(on_control_ready))
-        , _on_control_finished_cb(std::move(on_control_finished))
     {
     }
 

@@ -5,16 +5,20 @@
 #pragma once
 
 #include "AbstractMetricsManager.h"
-#include "DnstapInputStream.h"
 #include "MockInputStream.h"
 #include "PcapInputStream.h"
 #include "StreamHandler.h"
 #include "dns.h"
 #include "querypairmgr.h"
+#include "dnstap.pb.h"
 #include <Corrade/Utility/Debug.h>
 #include <bitset>
 #include <limits>
 #include <string>
+
+namespace visor::input::dnstap {
+class DnstapInputStream;
+};
 
 namespace visor::handler::dns {
 
@@ -178,7 +182,7 @@ public:
 
     void process_filtered(timespec stamp);
     void process_dns_layer(DnsLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowkey, uint16_t port, timespec stamp);
-    void process_dnstap(const dnstap::Dnstap& payload);
+    void process_dnstap(const dnstap::Dnstap &payload);
 };
 
 class TcpSessionData final

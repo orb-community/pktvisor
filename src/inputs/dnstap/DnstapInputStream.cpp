@@ -137,32 +137,6 @@ void DnstapInputStream::_create_frame_stream_socket()
             throw DnstapException("unable to initialize connected client PipeHandle");
         }
 
-        auto on_control_ready = [this, &client]() {
-            // bi-directional: got READY, send ACCEPT
-            fstrm_res res;
-            struct fstrm_control *c;
-            auto control_frame = std::make_unique<char[]>(FSTRM_CONTROL_FRAME_LENGTH_MAX);
-            size_t len_control_frame = sizeof(control_frame);
-            c = fstrm_control_init();
-            res = fstrm_control_set_type(c, FSTRM_CONTROL_ACCEPT);
-            if (res != fstrm_res_success) {
-                _logger->error("unable to send ACCEPT: fstrm_control_set_type");
-                return false;
-            }
-            // Serialize the control frame.
-            res = fstrm_control_encode(c, control_frame.get(), &len_control_frame, FSTRM_CONTROL_FLAG_WITH_HEADER);
-            if (res != fstrm_res_success) {
-                _logger->error("unable to send ACCEPT: fstrm_control_encode");
-                return false;
-            }
-            fstrm_control_destroy(&c);
-            // write to client
-            client->write(std::move(control_frame), len_control_frame);
-            return true;
-        };
-        auto on_control_finished = []() {
-            return true;
-        };
         auto on_data_frame = [this](const void *data, std::size_t len_data) {
             // Data frame ready, parse protobuf
             ::dnstap::Dnstap d;
@@ -210,7 +184,7 @@ void DnstapInputStream::_create_frame_stream_socket()
 
         _server_h->accept(*client);
         _logger->info("[{}]: dnstap client connected {}", _name, client->fd());
-        _sessions[client->fd()] = std::make_unique<FrameSessionData>(CONTENT_TYPE, on_data_frame, on_control_ready, on_control_finished);
+        _sessions[client->fd()] = std::make_unique<FrameSessionData>(client, CONTENT_TYPE, on_data_frame);
         client->read();
     });
 
@@ -272,11 +246,12 @@ bool FrameSessionData::_decode_control_frame(const void *control_frame, size_t l
     switch (c_type) {
         // uni-directional
     case FSTRM_CONTROL_START: {
-        if (_state != FrameState::New) {
-            throw DnstapException("received START frame but already started, aborting");
+        if ((!_is_bidir && _state != FrameState::New) || (_is_bidir && _state != FrameState::Ready)) {
+            throw DnstapException("received START frame out of order, aborting");
         } else {
             _state = FrameState::Running;
         }
+        break;
     }
         // bi-directional
     case FSTRM_CONTROL_READY: {
@@ -285,10 +260,28 @@ bool FrameSessionData::_decode_control_frame(const void *control_frame, size_t l
         } else {
             _state = FrameState::Ready;
             _is_bidir = true;
-            if (!_on_control_ready_cb()) {
-                return false;
+            // bi-directional: got READY, send ACCEPT
+            fstrm_res res;
+            struct fstrm_control *c;
+            auto control_frame = std::make_unique<char[]>(FSTRM_CONTROL_FRAME_LENGTH_MAX);
+            size_t len_control_frame = FSTRM_CONTROL_FRAME_LENGTH_MAX;
+            c = fstrm_control_init();
+            res = fstrm_control_set_type(c, FSTRM_CONTROL_ACCEPT);
+            if (res != fstrm_res_success) {
+                throw DnstapException("unable to send ACCEPT: fstrm_control_set_type");
             }
+            // Serialize the control frame.
+            res = fstrm_control_encode(c, control_frame.get(), &len_control_frame, FSTRM_CONTROL_FLAG_WITH_HEADER);
+            if (res != fstrm_res_success) {
+                throw DnstapException("unable to send ACCEPT: fstrm_control_encode");
+            }
+            fstrm_control_destroy(&c);
+            // don't write to client in unit tests
+#ifdef CATCH_VERSION_MAJOR
+            _client_h->write(std::move(control_frame), len_control_frame);
+#endif
         }
+        break;
     }
     case FSTRM_CONTROL_ACCEPT:
     case FSTRM_CONTROL_STOP:
