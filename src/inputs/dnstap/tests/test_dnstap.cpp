@@ -5,7 +5,7 @@
 using namespace visor::input::dnstap;
 
 // bidirectional: READY with dnstap content-type
-static char bi_frame_1_len42[] = {
+static uint8_t bi_frame_1_len42[] = {
     0x00, 0x00, 0x00, 0x00, // escape: expect control frame
     0x00, 0x00, 0x00, 0x22, // control frame length 0x22 == 34 bytes
     // control frame 34 bytes

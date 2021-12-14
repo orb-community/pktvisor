@@ -3,7 +3,6 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 #include "DnstapInputStream.h"
-#include <catch2/catch.hpp>
 #include <filesystem>
 #include <fstrm/fstrm.h>
 #include <uvw/async.h>
@@ -123,7 +122,6 @@ void DnstapInputStream::_create_frame_stream_socket()
     });
 
     server->once<uvw::ListenEvent>([this](const uvw::ListenEvent &l, uvw::PipeHandle &handle) {
-        _logger->info("[{}]: dnstap client connected", _name);
         auto on_frame_stream_err = [this](const std::string &err) {
             _logger->error("[{}]: frame stream error: {}", _name, err);
         };
@@ -168,22 +166,26 @@ void DnstapInputStream::_create_frame_stream_socket()
             // Emit signal to handlers
             dnstap_signal(d);
         };
-        FrameSessionData session(CONTENT_TYPE, on_data_frame, on_frame_stream_err, on_control_ready, on_control_finished);
+
         std::shared_ptr<uvw::PipeHandle> socket = handle.loop().resource<uvw::PipeHandle>();
+        _logger->info("[{}]: dnstap client connected {}", _name, handle.fd());
+        _sessions[handle.fd()] = std::make_unique<FrameSessionData>(CONTENT_TYPE, on_data_frame, on_frame_stream_err, on_control_ready, on_control_finished);
 
         socket->on<uvw::ErrorEvent>([this](const uvw::ErrorEvent &err, const uvw::PipeHandle &) {
             _logger->error("[{}]: socket PipeHandle error: {}", _name, err.what());
         });
-        socket->on<uvw::DataEvent>([this, &session](const uvw::DataEvent &data, uvw::PipeHandle &sock) {
-            auto result = session.receive_socket_data(data.data.get(), data.length);
+        socket->on<uvw::DataEvent>([this, &handle](const uvw::DataEvent &data, uvw::PipeHandle &sock) {
+            assert(_sessions[handle.fd()]);
+            auto result = _sessions[handle.fd()]->receive_socket_data(reinterpret_cast<uint8_t *>(data.data.get()), data.length);
             if (!result) {
                 // error in the session - close it
                 sock.close();
             }
         });
         socket->on<uvw::CloseEvent>([&handle](const uvw::CloseEvent &, uvw::PipeHandle &) { handle.close(); });
-        socket->on<uvw::EndEvent>([this](const uvw::EndEvent &, uvw::PipeHandle &sock) {
-            _logger->info("[{}]: dnstap client disconnected", _name);
+        socket->on<uvw::EndEvent>([this, &handle](const uvw::EndEvent &, uvw::PipeHandle &sock) {
+            _logger->info("[{}]: dnstap client disconnected {}", _name, sock.fd());
+            _sessions.erase(handle.fd());
             sock.close();
         });
 
@@ -224,7 +226,7 @@ void DnstapInputStream::info_json(json &j) const
     common_info_json(j);
 }
 
-bool FrameSessionData::decode_control_frame(const void *control_frame, size_t len_control_frame)
+bool FrameSessionData::_decode_control_frame(const void *control_frame, size_t len_control_frame)
 {
     fstrm_res res;
     fstrm_control_type c_type;
@@ -269,6 +271,10 @@ bool FrameSessionData::decode_control_frame(const void *control_frame, size_t le
             }
         }
     }
+    case FSTRM_CONTROL_ACCEPT:
+    case FSTRM_CONTROL_STOP:
+    case FSTRM_CONTROL_FINISH:
+        break;
     }
 
     size_t n_content_type;
@@ -293,10 +299,14 @@ bool FrameSessionData::decode_control_frame(const void *control_frame, size_t le
     return true;
 }
 
-// for reference, see fstrm__reader_next_data from fstrm library
-bool FrameSessionData::receive_socket_data(const char data[], std::size_t data_len)
+bool FrameSessionData::receive_socket_data(const uint8_t data[], std::size_t data_len)
 {
     _buffer.append(data, data_len);
+    while (_try_yield_frame()) { }
+    return true;
+}
+bool FrameSessionData::_try_yield_frame()
+{
 
     std::uint32_t frame_len{0};
 
@@ -312,7 +322,7 @@ bool FrameSessionData::receive_socket_data(const char data[], std::size_t data_l
         // this is a data frame and we have the length
         if (_state != FrameState::Running) {
             // we got a data frame but we never saw a START control frame, abort
-            _on_frame_stream_err_cb("stream had data frame with a START control frame");
+            _on_frame_stream_err_cb("data frame without a START control frame");
             return false;
         }
 
@@ -352,7 +362,7 @@ bool FrameSessionData::receive_socket_data(const char data[], std::size_t data_l
         }
 
         if (_buffer.size() >= sizeof(ctrl_len) + ctrl_len) {
-            if (!decode_control_frame(_buffer.data() + sizeof(ctrl_len), ctrl_len)) {
+            if (!_decode_control_frame(_buffer.data() + sizeof(ctrl_len), ctrl_len)) {
                 _on_frame_stream_err_cb("unable to parse control frame");
                 return false;
             }
