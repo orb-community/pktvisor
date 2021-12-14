@@ -105,23 +105,32 @@ void DnstapInputStream::_create_frame_stream_socket()
     }
     // AsyncHandle lets us stop the loop from its own thread
     _async_h = _io_loop->resource<uvw::AsyncHandle>();
-    _async_h->on<uvw::AsyncEvent>([this](const auto &, auto &hndl) {
+    if (!_async_h) {
+        throw DnstapException("unable to initialize AsyncHandle");
+    }
+    _async_h->once<uvw::AsyncEvent>([this](const auto &, auto &handle) {
+        _server_h->stop();
+        _server_h->close();
         _io_loop->stop();
         _io_loop->close();
-        hndl.close();
+        handle.close();
     });
-    _async_h->on<uvw::ErrorEvent>([this](const auto &err, auto &) {
+    _async_h->on<uvw::ErrorEvent>([this](const auto &err, auto &handle) {
         _logger->error("[{}] AsyncEvent error: {}", _name, err.what());
+        handle.close();
     });
 
-    // setup socket handler
-    auto server = _io_loop->resource<uvw::PipeHandle>();
+    // setup server socket
+    _server_h = _io_loop->resource<uvw::PipeHandle>();
+    if (!_server_h) {
+        throw DnstapException("unable to initialize server PipeHandle");
+    }
 
-    server->on<uvw::ErrorEvent>([this](const auto &err, auto &) {
-        _logger->error("[{}] PipeHandle error: {}", _name, err.what());
+    _server_h->on<uvw::ErrorEvent>([this](const auto &err, auto &) {
+        _logger->error("[{}] socket error: {}", _name, err.what());
     });
 
-    server->once<uvw::ListenEvent>([this](const uvw::ListenEvent &l, uvw::PipeHandle &handle) {
+    _server_h->on<uvw::ListenEvent>([this](const uvw::ListenEvent &, uvw::PipeHandle &handle) {
         auto on_frame_stream_err = [this](const std::string &err) {
             _logger->error("[{}]: frame stream error: {}", _name, err);
         };
@@ -138,7 +147,7 @@ void DnstapInputStream::_create_frame_stream_socket()
                 return false;
             }
             // Serialize the control frame.
-            res = fstrm_control_encode(c, control_frame.get(), &len_control_frame, 0);
+            res = fstrm_control_encode(c, control_frame.get(), &len_control_frame, FSTRM_CONTROL_FLAG_WITH_HEADER);
             if (res != fstrm_res_success) {
                 _logger->error("unable to send ACCEPT: fstrm_control_encode");
                 return false;
@@ -167,14 +176,18 @@ void DnstapInputStream::_create_frame_stream_socket()
             dnstap_signal(d);
         };
 
-        std::shared_ptr<uvw::PipeHandle> socket = handle.loop().resource<uvw::PipeHandle>();
+        auto client = handle.loop().resource<uvw::PipeHandle>();
+        if (!client) {
+            throw DnstapException("unable to initialize connected client PipeHandle");
+        }
         _logger->info("[{}]: dnstap client connected {}", _name, handle.fd());
         _sessions[handle.fd()] = std::make_unique<FrameSessionData>(CONTENT_TYPE, on_data_frame, on_frame_stream_err, on_control_ready, on_control_finished);
 
-        socket->on<uvw::ErrorEvent>([this](const uvw::ErrorEvent &err, const uvw::PipeHandle &) {
+        client->on<uvw::ErrorEvent>([this](const uvw::ErrorEvent &err, const uvw::PipeHandle &) {
             _logger->error("[{}]: socket PipeHandle error: {}", _name, err.what());
         });
-        socket->on<uvw::DataEvent>([this, &handle](const uvw::DataEvent &data, uvw::PipeHandle &sock) {
+        client->on<uvw::DataEvent>([this, &handle](const uvw::DataEvent &data, uvw::PipeHandle &sock) {
+            _logger->info("GOT MSG LEN {}", data.length);
             assert(_sessions[handle.fd()]);
             auto result = _sessions[handle.fd()]->receive_socket_data(reinterpret_cast<uint8_t *>(data.data.get()), data.length);
             if (!result) {
@@ -182,22 +195,22 @@ void DnstapInputStream::_create_frame_stream_socket()
                 sock.close();
             }
         });
-        socket->on<uvw::CloseEvent>([&handle](const uvw::CloseEvent &, uvw::PipeHandle &) { handle.close(); });
-        socket->on<uvw::EndEvent>([this, &handle](const uvw::EndEvent &, uvw::PipeHandle &sock) {
+        client->on<uvw::CloseEvent>([&handle](const uvw::CloseEvent &, uvw::PipeHandle &) { handle.close(); });
+        client->on<uvw::EndEvent>([this, &handle](const uvw::EndEvent &, uvw::PipeHandle &sock) {
             _logger->info("[{}]: dnstap client disconnected {}", _name, sock.fd());
             _sessions.erase(handle.fd());
             sock.close();
         });
 
-        handle.accept(*socket);
-        socket->read();
+        handle.accept(*client);
+        client->read();
     });
 
     // attempt to remove socket if it exists, ignore errors
     std::filesystem::remove(config_get<std::string>("socket"));
 
-    server->bind(config_get<std::string>("socket"));
-    server->listen();
+    _server_h->bind(config_get<std::string>("socket"));
+    _server_h->listen();
 
     // spawn the loop
     _io_thread = std::make_unique<std::thread>([this] {
@@ -302,7 +315,7 @@ bool FrameSessionData::_decode_control_frame(const void *control_frame, size_t l
 bool FrameSessionData::receive_socket_data(const uint8_t data[], std::size_t data_len)
 {
     _buffer.append(data, data_len);
-    while (_try_yield_frame()) { }
+    while (_buffer.size() && _try_yield_frame()) { }
     return true;
 }
 bool FrameSessionData::_try_yield_frame()
