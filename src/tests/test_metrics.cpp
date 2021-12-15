@@ -5,17 +5,81 @@ using namespace visor;
 
 class TestMetricsBucket : public AbstractMetricsBucket
 {
+public:
+    void specialized_merge([[maybe_unused]] const AbstractMetricsBucket &other)
+    {
+    }
+    void to_json([[maybe_unused]] json &j) const
+    {
+    }
+    void to_prometheus([[maybe_unused]] std::stringstream &out,
+        [[maybe_unused]] Metric::LabelMap add_labels = {}) const
+    {
+        out << "test_performed" << std::endl;
+    }
 };
 
 class TestMetricsManager : public AbstractMetricsManager<TestMetricsBucket>
 {
+public:
+    TestMetricsManager(const Configurable *windowConfig)
+        : AbstractMetricsManager(windowConfig){};
+    ~TestMetricsManager() = default;
 };
+
+TEST_CASE("Abstract metrics manager", "[metrics][abstract]")
+{
+    json j;
+    std::stringstream output;
+    std::string line;
+    visor::Config c;
+    c.config_set<uint64_t>("num_periods", 1);
+    c.config_set<uint64_t>("deep_sample_rate", 102);
+    std::unique_ptr<TestMetricsManager> manager = std::make_unique<TestMetricsManager>(&c);
+
+    SECTION("Check Configs")
+    {
+        CHECK(manager->num_periods() == 1);
+        CHECK(manager->deep_sample_rate() == 100);
+    }
+
+    SECTION("Abstract window single json")
+    {
+        manager->window_single_json(j, "metrics");
+        CHECK(j["metrics"]["period"]["length"] == 0);
+    }
+
+    SECTION("Abstract window single json failed")
+    {
+        CHECK_THROWS_WITH(manager->window_single_json(j, "metrics", 2), "invalid metrics period, specify [0, 0]");
+    }
+
+    SECTION("Abstract window single prometheus")
+    {
+        manager->window_single_prometheus(output, 0, {{"policy", "default"}});
+        std::getline(output, line);
+        CHECK(line == "test_performed");
+    }
+
+    SECTION("Abstract window single prometheus failed")
+    {
+        CHECK_THROWS_WITH(manager->window_single_prometheus(output, 2, {{"policy", "default"}}),
+            "invalid metrics period, specify [0, 0]");
+    }
+
+    SECTION("Abstract window merged json failed")
+    {
+        CHECK_THROWS_WITH(manager->window_merged_json(j, "metrics", 0), "invalid metrics period, specify [2, 1]");
+    }
+}
 
 TEST_CASE("Counter metrics", "[metrics][counter]")
 {
     Metric::add_static_label("instance", "test instance");
 
     json j;
+    std::stringstream output;
+    std::string line;
     Counter c("root", {"test", "metric"}, "A counter test metric");
 
     SECTION("Counter increment")
@@ -38,8 +102,6 @@ TEST_CASE("Counter metrics", "[metrics][counter]")
 
     SECTION("Counter prometheus")
     {
-        std::stringstream output;
-        std::string line;
         ++c;
         c.to_prometheus(output, {{"policy", "default"}});
         std::getline(output, line);
@@ -56,6 +118,8 @@ TEST_CASE("Quantile metrics", "[metrics][quantile]")
     Metric::add_static_label("instance", "test instance");
 
     json j;
+    std::stringstream output;
+    std::string line;
     Quantile<int_fast32_t> q("root", {"test", "metric"}, "A quantile test metric");
 
     SECTION("Quantile to json")
@@ -87,8 +151,6 @@ TEST_CASE("Quantile metrics", "[metrics][quantile]")
 
     SECTION("Quantile prometheus")
     {
-        std::stringstream output;
-        std::string line;
         q.update(12);
         q.to_prometheus(output, {{"policy", "default"}});
         std::getline(output, line);
@@ -115,6 +177,8 @@ TEST_CASE("TopN metrics", "[metrics][topn]")
     Metric::add_static_label("instance", "test instance");
 
     json j;
+    std::stringstream output;
+    std::string line;
     TopN<std::string> top_sting("root", {"test", "metric"}, "A topn test metric");
     TopN<uint16_t> top_int("root", {"test", "metric"}, "A topn test metric");
 
@@ -140,8 +204,6 @@ TEST_CASE("TopN metrics", "[metrics][topn]")
 
     SECTION("TopN prometheus")
     {
-        std::stringstream output;
-        std::string line;
         top_sting.update("top1");
         top_sting.update("top2");
         top_sting.update("top1");
@@ -158,8 +220,6 @@ TEST_CASE("TopN metrics", "[metrics][topn]")
 
     SECTION("TopN prometheus formatter")
     {
-        std::stringstream output;
-        std::string line;
         top_int.update(123);
         top_int.update(10);
         top_int.update(123);
@@ -181,6 +241,8 @@ TEST_CASE("Cardinality metrics", "[metrics][cardinality]")
     Metric::add_static_label("instance", "test instance");
 
     json j;
+    std::stringstream output;
+    std::string line;
     Cardinality c("root", {"test", "metric"}, "A cardinality test metric");
 
     SECTION("Cardinality update")
@@ -198,8 +260,6 @@ TEST_CASE("Cardinality metrics", "[metrics][cardinality]")
 
     SECTION("Cardinality prometheus")
     {
-        std::stringstream output;
-        std::string line;
         c.update("metric");
         c.to_prometheus(output, {{"policy", "default"}});
         std::getline(output, line);
@@ -216,6 +276,8 @@ TEST_CASE("Rate metrics", "[metrics][rate]")
     Metric::add_static_label("instance", "test instance");
 
     json j;
+    std::stringstream output;
+    std::string line;
     Rate r("root", {"test", "metric"}, "A rate test metric");
 
     SECTION("rate set info invalid name")
@@ -238,7 +300,6 @@ TEST_CASE("Rate metrics", "[metrics][rate]")
 
     SECTION("rate prometheus")
     {
-        std::stringstream output;
         r.to_prometheus(output, {{"policy", "default"}});
     }
 }
