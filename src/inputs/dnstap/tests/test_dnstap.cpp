@@ -13,15 +13,22 @@ static uint8_t bi_frame_1_len42[] = {
     0x6f, 0x62, 0x75, 0x66, 0x3a, 0x64, 0x6e, 0x73, 0x74, 0x61, 0x70, 0x2e, 0x44, 0x6e, 0x73, 0x74,
     0x61, 0x70};
 
+struct MockClient {
+    void write(std::unique_ptr<char[]> data, unsigned int len)
+    {
+    }
+};
+
 TEST_CASE("bi-directional frame stream process", "[dnstap][frmstrm]")
 {
     auto on_data_frame = [](const void *data, std::size_t len_data) {
         WARN("data frame parsed");
     };
 
-    FrameSessionData session(nullptr, CONTENT_TYPE, on_data_frame);
+    auto client = std::make_shared<MockClient>();
+    FrameSessionData<MockClient> session(client, CONTENT_TYPE, on_data_frame);
     CHECK_NOTHROW(session.receive_socket_data(bi_frame_1_len42, 42));
-    CHECK(session.state() == FrameSessionData::FrameState::Ready);
+    CHECK(session.state() == FrameSessionData<MockClient>::FrameState::Ready);
     CHECK(session.is_bidir() == true);
 }
 

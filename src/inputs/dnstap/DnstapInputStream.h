@@ -5,6 +5,7 @@
 #pragma once
 
 #include "InputStream.h"
+#include "FrameSession.h"
 #include "dnstap.pb.h"
 #include <DnsLayer.h>
 #include <sigslot/signal.hpp>
@@ -24,68 +25,6 @@ namespace visor::input::dnstap {
 
 const static std::string CONTENT_TYPE = "protobuf:dnstap.Dnstap";
 
-class DnstapException : public std::runtime_error
-{
-public:
-    DnstapException(const char *msg)
-        : std::runtime_error(msg)
-    {
-    }
-};
-
-class FrameSessionData final
-{
-public:
-    using on_data_frame_cb_t = std::function<void(const void *data, std::size_t size)>;
-    using on_frame_stream_err_cb_t = std::function<void(const std::string &err)>;
-    using on_control_ready_cb_t = std::function<bool()>;
-    using on_control_finished_cb_t = std::function<bool()>;
-
-    enum class FrameState {
-        New,
-        Ready,
-        Running,
-        Finishing
-    };
-
-private:
-    std::shared_ptr<uvw::PipeHandle> _client_h;
-    std::string _content_type;
-    using binary = std::basic_string<uint8_t>;
-    binary _buffer;
-    bool _is_bidir;
-
-    on_data_frame_cb_t _on_data_frame_cb;
-
-    FrameState _state{FrameState::New};
-
-    bool _decode_control_frame(const void *control_frame, size_t len_control_frame);
-    bool _try_yield_frame();
-
-public:
-    FrameSessionData(
-        std::shared_ptr<uvw::PipeHandle> client,
-        const std::string &content_type,
-        on_data_frame_cb_t on_data_frame)
-        : _client_h{client}
-        , _content_type{content_type}
-        , _on_data_frame_cb{std::move(on_data_frame)}
-    {
-    }
-
-    void receive_socket_data(const uint8_t data[], std::size_t data_len);
-
-    const FrameState &state() const
-    {
-        return _state;
-    }
-
-    bool is_bidir() const
-    {
-        return _is_bidir;
-    }
-};
-
 class DnstapInputStream : public visor::InputStream
 {
     std::shared_ptr<spdlog::logger> _logger;
@@ -95,7 +34,7 @@ class DnstapInputStream : public visor::InputStream
     std::shared_ptr<uvw::PipeHandle> _server_h;
     std::shared_ptr<uvw::AsyncHandle> _async_h;
 
-    std::unordered_map<uv_os_fd_t, std::unique_ptr<FrameSessionData>> _sessions;
+    std::unordered_map<uv_os_fd_t, std::unique_ptr<FrameSessionData<uvw::PipeHandle>>> _sessions;
 
     void _read_frame_stream_file();
     void _create_frame_stream_socket();
