@@ -47,6 +47,8 @@ void NetStreamHandler::start()
         _pkt_connection = _pcap_stream->packet_signal.connect(&NetStreamHandler::process_packet_cb, this);
         _start_tstamp_connection = _pcap_stream->start_tstamp_signal.connect(&NetStreamHandler::set_start_tstamp, this);
         _end_tstamp_connection = _pcap_stream->end_tstamp_signal.connect(&NetStreamHandler::set_end_tstamp, this);
+    } else if (_dnstap_stream) {
+        _dnstap_connection = _dnstap_stream->dnstap_signal.connect(&NetStreamHandler::process_dnstap_cb, this);
     }
 
     _running = true;
@@ -62,6 +64,8 @@ void NetStreamHandler::stop()
         _pkt_connection.disconnect();
         _start_tstamp_connection.disconnect();
         _end_tstamp_connection.disconnect();
+    } else if (_dnstap_stream) {
+        _dnstap_connection.disconnect();
     }
 
     _running = false;
@@ -83,6 +87,10 @@ void NetStreamHandler::set_start_tstamp(timespec stamp)
 void NetStreamHandler::set_end_tstamp(timespec stamp)
 {
     _metrics->set_end_tstamp(stamp);
+}
+void NetStreamHandler::process_dnstap_cb(const dnstap::Dnstap &payload)
+{
+    _metrics->process_dnstap(payload);
 }
 
 void NetworkMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
@@ -291,6 +299,92 @@ void NetworkMetricsBucket::process_packet(bool deep, pcpp::Packet &payload, Pack
         }
     }
 }
+void NetworkMetricsBucket::process_dnstap(bool deep, const dnstap::Dnstap &payload)
+{
+
+    std::unique_lock lock(_mutex);
+
+    bool is_ipv6{false};
+    if (payload.message().has_socket_family()) {
+        if (payload.message().socket_family() == dnstap::INET6) {
+            ++_counters.IPv6;
+            is_ipv6 = true;
+        } else if (payload.message().socket_family() == dnstap::INET) {
+            ++_counters.IPv4;
+        }
+    }
+
+    if (payload.message().has_socket_protocol()) {
+        switch (payload.message().socket_protocol()) {
+        case dnstap::UDP:
+            ++_counters.UDP;
+            break;
+        case dnstap::TCP:
+            ++_counters.TCP;
+            break;
+        }
+    }
+
+    switch (payload.message().type()) {
+    case dnstap::Message_Type_FORWARDER_RESPONSE:
+    case dnstap::Message_Type_STUB_RESPONSE:
+    case dnstap::Message_Type_TOOL_RESPONSE:
+    case dnstap::Message_Type_UPDATE_RESPONSE:
+    case dnstap::Message_Type_CLIENT_RESPONSE:
+    case dnstap::Message_Type_AUTH_RESPONSE:
+    case dnstap::Message_Type_RESOLVER_RESPONSE:
+        ++_counters.total_in;
+        ++_rate_in;
+        break;
+    case dnstap::Message_Type_FORWARDER_QUERY:
+    case dnstap::Message_Type_STUB_QUERY:
+    case dnstap::Message_Type_TOOL_QUERY:
+    case dnstap::Message_Type_UPDATE_QUERY:
+    case dnstap::Message_Type_CLIENT_QUERY:
+    case dnstap::Message_Type_AUTH_QUERY:
+    case dnstap::Message_Type_RESOLVER_QUERY:
+        ++_counters.total_out;
+        ++_rate_out;
+        break;
+    }
+
+    if (!deep) {
+        return;
+    }
+
+    struct sockaddr_in sa4;
+    struct sockaddr_in6 sa6;
+
+    if (!is_ipv6 && payload.message().has_query_address() && payload.message().query_address().size() >= 4) {
+        auto ip = pcpp::IPv4Address(reinterpret_cast<const uint8_t *>(payload.message().query_address().data()));
+        _srcIPCard.update(ip.toInt());
+        _topIPv4.update(ip.toInt());
+        if (geo::enabled()) {
+            if (IPv4tosockaddr(ip, &sa4)) {
+                if (geo::GeoIP().enabled()) {
+                    _topGeoLoc.update(geo::GeoIP().getGeoLocString(reinterpret_cast<struct sockaddr *>(&sa4)));
+                }
+                if (geo::GeoASN().enabled()) {
+                    _topASN.update(geo::GeoASN().getASNString(reinterpret_cast<struct sockaddr *>(&sa4)));
+                }
+            }
+        }
+    } else if (is_ipv6 && payload.message().has_query_address() && payload.message().query_address().size() == 16) {
+        auto ip = pcpp::IPv6Address(reinterpret_cast<const uint8_t *>(payload.message().query_address().data()));
+        _srcIPCard.update(reinterpret_cast<const void *>(ip.toBytes()), 16);
+        _topIPv6.update(ip.toString());
+        if (geo::enabled()) {
+            if (IPv6tosockaddr(ip, &sa6)) {
+                if (geo::GeoIP().enabled()) {
+                    _topGeoLoc.update(geo::GeoIP().getGeoLocString(reinterpret_cast<struct sockaddr *>(&sa6)));
+                }
+                if (geo::GeoASN().enabled()) {
+                    _topASN.update(geo::GeoASN().getASNString(reinterpret_cast<struct sockaddr *>(&sa6)));
+                }
+            }
+        }
+    }
+}
 
 // the general metrics manager entry point
 void NetworkMetricsManager::process_packet(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp)
@@ -300,5 +394,36 @@ void NetworkMetricsManager::process_packet(pcpp::Packet &payload, PacketDirectio
     // process in the "live" bucket
     live_bucket()->process_packet(_deep_sampling_now, payload, dir, l3, l4);
 }
-
+void NetworkMetricsManager::process_dnstap(const dnstap::Dnstap &payload)
+{
+    // dnstap message type
+    auto mtype = payload.message().type();
+    // set proper timestamp. use dnstap version if available, otherwise "now"
+    timespec stamp;
+    switch (mtype) {
+    case dnstap::Message_Type_CLIENT_RESPONSE:
+    case dnstap::Message_Type_AUTH_RESPONSE:
+    case dnstap::Message_Type_RESOLVER_RESPONSE:
+        if (payload.message().has_response_time_sec()) {
+            stamp.tv_sec = payload.message().response_time_sec();
+            stamp.tv_nsec = payload.message().response_time_nsec();
+        }
+        break;
+    case dnstap::Message_Type_CLIENT_QUERY:
+    case dnstap::Message_Type_AUTH_QUERY:
+    case dnstap::Message_Type_RESOLVER_QUERY:
+        if (payload.message().has_query_time_sec()) {
+            stamp.tv_sec = payload.message().query_time_sec();
+            stamp.tv_nsec = payload.message().query_time_nsec();
+        }
+        break;
+    default:
+        // use now()
+        std::timespec_get(&stamp, TIME_UTC);
+    }
+    // base event
+    new_event(stamp);
+    // process in the "live" bucket. this will parse the resources if we are deep sampling
+    live_bucket()->process_dnstap(_deep_sampling_now, payload);
+}
 }

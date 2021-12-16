@@ -195,13 +195,13 @@ void DnstapInputStream::_create_frame_stream_tcp_socket()
         });
         // client read EOF
         client->on<uvw::EndEvent>([this](const uvw::EndEvent &, uvw::TCPHandle &c_sock) {
-            _logger->info("[{}]: dnstap client EOF {}", _name, c_sock.fd());
+            _logger->info("[{}]: dnstap client EOF {}", _name, c_sock.peer().ip);
             c_sock.stop();
             c_sock.close();
         });
 
         _tcp_server_h->accept(*client);
-        _logger->info("[{}]: dnstap client connected {}", _name, client->fd());
+        _logger->info("[{}]: dnstap client connected {}", _name, client->peer().ip);
         _tcp_sessions[client->fd()] = std::make_unique<FrameSessionData<uvw::TCPHandle>>(client, CONTENT_TYPE, on_data_frame);
         client->read();
     });

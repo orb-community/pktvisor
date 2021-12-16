@@ -94,6 +94,7 @@ public:
     }
 
     void process_packet(bool deep, pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4);
+    void process_dnstap(bool deep, const dnstap::Dnstap &payload);
 };
 
 class NetworkMetricsManager final : public visor::AbstractMetricsManager<NetworkMetricsBucket>
@@ -105,6 +106,7 @@ public:
     }
 
     void process_packet(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp);
+    void process_dnstap(const dnstap::Dnstap &payload);
 };
 
 class NetStreamHandler final : public visor::StreamMetricsHandler<NetworkMetricsManager>
@@ -115,10 +117,13 @@ class NetStreamHandler final : public visor::StreamMetricsHandler<NetworkMetrics
     MockInputStream *_mock_stream{nullptr};
     DnstapInputStream *_dnstap_stream{nullptr};
 
+    sigslot::connection _dnstap_connection;
+
     sigslot::connection _pkt_connection;
     sigslot::connection _start_tstamp_connection;
     sigslot::connection _end_tstamp_connection;
 
+    void process_dnstap_cb(const dnstap::Dnstap &);
     void process_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp);
     void set_start_tstamp(timespec stamp);
     void set_end_tstamp(timespec stamp);
