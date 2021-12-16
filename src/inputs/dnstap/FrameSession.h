@@ -135,7 +135,12 @@ bool FrameSessionData<C>::_decode_control_frame(const void *control_frame, size_
     for (size_t idx = 0; idx < n_content_type; idx++) {
         res = fstrm_control_get_field_content_type(c, idx,
             &content_type, &len_content_type);
-        // TODO check content_type
+        if (res != fstrm_res_success) {
+            throw DnstapException("unable to parse content type");
+        }
+        if (len_content_type != _content_type.size() || memcmp(content_type, _content_type.data(), len_content_type) != 0) {
+            throw DnstapException("content type mismatch");
+        }
     }
     fstrm_control_destroy(&c);
     return true;
