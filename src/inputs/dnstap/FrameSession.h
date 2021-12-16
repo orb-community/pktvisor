@@ -5,6 +5,7 @@
 #pragma once
 
 #include "DnstapException.h"
+#include <arpa/inet.h>
 #include <fstrm/fstrm.h>
 
 namespace visor::input::dnstap {
@@ -70,18 +71,14 @@ bool FrameSessionData<C>::_decode_control_frame(const void *control_frame, size_
     c = fstrm_control_init();
     res = fstrm_control_decode(c, control_frame, len_control_frame, flags);
     if (res != fstrm_res_success) {
-        puts("fstrm_control_decode() failed.");
         fstrm_control_destroy(&c);
         return false;
     }
     res = fstrm_control_get_type(c, &c_type);
     if (res != fstrm_res_success) {
-        puts("fstrm_control_get_type() failed.");
         fstrm_control_destroy(&c);
         return false;
     }
-    printf("The control frame is of type %s (%u).\n",
-        fstrm_control_type_to_str(c_type), c_type);
 
     switch (c_type) {
         // uni-directional
@@ -130,7 +127,6 @@ bool FrameSessionData<C>::_decode_control_frame(const void *control_frame, size_
     size_t n_content_type;
     res = fstrm_control_get_num_field_content_type(c, &n_content_type);
     if (res != fstrm_res_success) {
-        puts("fstrm_control_get_num_field_content_type() failed.");
         fstrm_control_destroy(&c);
         return false;
     }
@@ -139,10 +135,6 @@ bool FrameSessionData<C>::_decode_control_frame(const void *control_frame, size_
     for (size_t idx = 0; idx < n_content_type; idx++) {
         res = fstrm_control_get_field_content_type(c, idx,
             &content_type, &len_content_type);
-        if (res == fstrm_res_success) {
-            printf("The control frame has a CONTENT_TYPE field of length %zd.\n",
-                len_content_type);
-        }
         // TODO check content_type
     }
     fstrm_control_destroy(&c);
@@ -181,10 +173,8 @@ bool FrameSessionData<C>::_try_yield_frame()
         }
 
         if (_buffer.size() >= sizeof(frame_len) + frame_len) {
-            auto data = std::make_unique<uint8_t[]>(frame_len);
-            std::memcpy(data.get(), _buffer.data() + sizeof(frame_len), frame_len);
+            _on_data_frame_cb(_buffer.data() + sizeof(frame_len), frame_len);
             _buffer.erase(0, sizeof(frame_len) + frame_len);
-            //_on_data_frame_cb(std::move(data), len);
         }
     } else {
         // this is a control frame

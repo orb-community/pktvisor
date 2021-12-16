@@ -161,7 +161,6 @@ void DnstapInputStream::_create_frame_stream_socket()
 
         // client sent data
         client->on<uvw::DataEvent>([this](const uvw::DataEvent &data, uvw::PipeHandle &c_sock) {
-            _logger->info("GOT MSG LEN {}", data.length);
             assert(_sessions[c_sock.fd()]);
             try {
                 _sessions[c_sock.fd()]->receive_socket_data(reinterpret_cast<uint8_t *>(data.data.get()), data.length);

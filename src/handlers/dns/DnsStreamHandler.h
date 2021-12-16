@@ -18,7 +18,7 @@
 
 namespace visor::input::dnstap {
 class DnstapInputStream;
-};
+}
 
 namespace visor::handler::dns {
 
