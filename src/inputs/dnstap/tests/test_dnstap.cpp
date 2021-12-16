@@ -101,7 +101,17 @@ TEST_CASE("dnstap file", "[dnstap][file]")
     stream.stop();
 }
 
-TEST_CASE("dnstap socket", "[dnstap][socket]")
+TEST_CASE("dnstap tcp socket", "[dnstap][tcp]")
+{
+
+    DnstapInputStream stream{"dnstap-test"};
+    stream.config_set("tcp", "127.0.0.1:5353");
+
+    stream.start();
+    stream.stop();
+}
+
+TEST_CASE("dnstap unix socket", "[dnstap][unix]")
 {
 
     DnstapInputStream stream{"dnstap-test"};

@@ -17,6 +17,7 @@ namespace uvw {
 class Loop;
 class AsyncHandle;
 class PipeHandle;
+class TCPHandle;
 }
 
 struct fstrm_reader;
@@ -31,13 +32,17 @@ class DnstapInputStream : public visor::InputStream
 
     std::unique_ptr<std::thread> _io_thread;
     std::shared_ptr<uvw::Loop> _io_loop;
-    std::shared_ptr<uvw::PipeHandle> _server_h;
     std::shared_ptr<uvw::AsyncHandle> _async_h;
 
-    std::unordered_map<uv_os_fd_t, std::unique_ptr<FrameSessionData<uvw::PipeHandle>>> _sessions;
+    std::shared_ptr<uvw::PipeHandle> _unix_server_h;
+    std::unordered_map<uv_os_fd_t, std::unique_ptr<FrameSessionData<uvw::PipeHandle>>> _unix_sessions;
+
+    std::shared_ptr<uvw::TCPHandle> _tcp_server_h;
+    std::unordered_map<uv_os_fd_t, std::unique_ptr<FrameSessionData<uvw::TCPHandle>>> _tcp_sessions;
 
     void _read_frame_stream_file();
-    void _create_frame_stream_socket();
+    void _create_frame_stream_unix_socket();
+    void _create_frame_stream_tcp_socket();
 
 public:
     DnstapInputStream(const std::string &name);
