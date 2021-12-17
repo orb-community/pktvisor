@@ -10,14 +10,20 @@
 #include "StreamHandler.h"
 #include "dns.h"
 #include "querypairmgr.h"
+#include "dnstap.pb.h"
 #include <Corrade/Utility/Debug.h>
 #include <bitset>
 #include <limits>
 #include <string>
 
+namespace visor::input::dnstap {
+class DnstapInputStream;
+}
+
 namespace visor::handler::dns {
 
 using namespace visor::input::pcap;
+using namespace visor::input::dnstap;
 using namespace visor::input::mock;
 
 class DnsMetricsBucket final : public visor::AbstractMetricsBucket
@@ -50,6 +56,8 @@ protected:
         Counter replies;
         Counter UDP;
         Counter TCP;
+        Counter DOT;
+        Counter DOH;
         Counter IPv4;
         Counter IPv6;
         Counter NX;
@@ -66,6 +74,8 @@ protected:
             , replies("dns", {"wire_packets", "replies"}, "Total DNS wire packets flagged as reply (ingress and egress)")
             , UDP("dns", {"wire_packets", "udp"}, "Total DNS wire packets received over UDP (ingress and egress)")
             , TCP("dns", {"wire_packets", "tcp"}, "Total DNS wire packets received over TCP (ingress and egress)")
+            , DOT("dns", {"wire_packets", "dot"}, "Total DNS wire packets received over DNS over TLS")
+            , DOH("dns", {"wire_packets", "doh"}, "Total DNS wire packets received over DNS over HTTPS")
             , IPv4("dns", {"wire_packets", "ipv4"}, "Total DNS wire packets received over IPv4 (ingress and egress)")
             , IPv6("dns", {"wire_packets", "ipv6"}, "Total DNS wire packets received over IPv6 (ingress and egress)")
             , NX("dns", {"wire_packets", "nxdomain"}, "Total DNS wire packets flagged as reply with return code NXDOMAIN (ingress and egress)")
@@ -129,7 +139,8 @@ public:
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override;
 
     void process_filtered();
-    void process_dns_layer(bool deep, DnsLayer &payload, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint16_t port);
+    void process_dns_layer(bool deep, DnsLayer &payload, bool dnstapped, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint16_t port);
+    void process_dnstap(bool deep, const dnstap::Dnstap &payload);
 
     void new_dns_transaction(bool deep, float to90th, float from90th, DnsLayer &dns, PacketDirection dir, DnsTransaction xact);
 };
@@ -171,6 +182,7 @@ public:
 
     void process_filtered(timespec stamp);
     void process_dns_layer(DnsLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowkey, uint16_t port, timespec stamp);
+    void process_dnstap(const dnstap::Dnstap &payload);
 };
 
 class TcpSessionData final
@@ -212,9 +224,12 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
     // the input stream sources we support (only one will be in use at a time)
     PcapInputStream *_pcap_stream{nullptr};
     MockInputStream *_mock_stream{nullptr};
+    DnstapInputStream *_dnstap_stream{nullptr};
 
     typedef uint32_t flowKey;
     std::unordered_map<flowKey, TcpFlowData> _tcp_connections;
+
+    sigslot::connection _dnstap_connection;
 
     sigslot::connection _pkt_udp_connection;
     sigslot::connection _start_tstamp_connection;
@@ -225,6 +240,7 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
     sigslot::connection _tcp_message_connection;
 
     void process_udp_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp);
+    void process_dnstap_cb(const dnstap::Dnstap &);
     void tcp_message_ready_cb(int8_t side, const pcpp::TcpStreamData &tcpData);
     void tcp_connection_start_cb(const pcpp::ConnectionData &connectionData);
     void tcp_connection_end_cb(const pcpp::ConnectionData &connectionData, pcpp::TcpReassembly::ConnectionEndReason reason);

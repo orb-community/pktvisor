@@ -4,6 +4,7 @@ add_executable(unit-tests-handler-dns
         main.cpp
         test_dns.cpp
         test_dns_layer.cpp
+        test_dnstap.cpp
         test_json_schema.cpp
         )
 

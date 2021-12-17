@@ -17,23 +17,23 @@
 
 ## What is pktvisor?
 
-**pktvisor** (pronounced "packet visor") is an **observability agent** for _summarizing_ high volume, information dense
-data streams down to lightweight, immediately actionable observability data directly at the edge. Its goal is to extract
+**pktvisor** (pronounced "packet visor") is a **network observability agent** for analyzing high volume, information dense
+data streams and producing actionable insights directly from the edge. Its goal is to extract
 the signal from the noise; to separate the needles from the haystacks as close to the source as possible.
 
-It is a resource efficient, side-car style agent built from the ground up to be modular and dynamically controlled in
-real time via API. Input and processor modules may be dynamically loaded at runtime. Metric output can be visualized
-both on-node via command line UI (for a localized, hyper real-time view)
+It is a resource efficient agent built from the ground up to be modular and dynamically controlled in
+real time via API. Input and processor modules may be dynamically loaded at runtime. Metric output can be used and visualized
+both on-node via command line UI (for localized, hyper real-time actions)
 as well as centrally collected into industry standard observability stacks like Prometheus and Grafana.
 
 The [input stream system](src/inputs) is designed to _tap into_ data streams, and currently focuses
-on [packet capture](https://en.wikipedia.org/wiki/Packet_analyzer) but will soon support additional taps such
-as [sFlow](https://en.wikipedia.org/wiki/SFlow) / [Netflow](https://en.wikipedia.org/wiki/NetFlow)
-, [dnstap](https://dnstap.info/), [envoy taps](https://www.envoyproxy.io/docs/envoy/latest/operations/traffic_tapping),
+on data streams such as [packet capture](https://en.wikipedia.org/wiki/Packet_analyzer) and [dnstap](https://dnstap.info/) 
+but will soon support additional taps such as [sFlow](https://en.wikipedia.org/wiki/SFlow) / [Netflow](https://en.wikipedia.org/wiki/NetFlow)
+, [envoy taps](https://www.envoyproxy.io/docs/envoy/latest/operations/traffic_tapping),
 and [eBPF](https://ebpf.io/).
 
-The [stream processor system](src/handlers) includes full application level analysis,
-and [efficiently](https://en.wikipedia.org/wiki/Streaming_algorithm) summarizes to one minute buckets of:
+The [stream processor system](src/handlers) includes full application layer analysis,
+and [efficiently](https://en.wikipedia.org/wiki/Streaming_algorithm) summarizes to:
 
 * Counters
 * Histograms and Quantiles
@@ -43,7 +43,7 @@ and [efficiently](https://en.wikipedia.org/wiki/Streaming_algorithm) summarizes 
 * GeoIP
 
 pktvisor has its origins in observability of critical internet infrastructure in support of DDoS protection, traffic
-engineering, and ongoing operations.
+engineering, and operations.
 
 These screenshots display both the [command line](golang/) and [centralized views](centralized_collection/) of
 the [Network](src/handlers/net)
@@ -59,7 +59,7 @@ and [DNS](src/handlers/dns) stream processors, and the types of summary informat
 
 One of the easiest ways to get started with pktvisor is to use
 the [public docker image](https://hub.docker.com/r/ns1labs/pktvisor). The image contains the collector
-agent (`pktvisord`), the command line UI (`pktvisor-cli`), and the pcap file analyzer (`pktvisor-pcap`). When running
+agent (`pktvisord`), the command line UI (`pktvisor-cli`), the pcap file analyzer (`pktvisor-pcap`), and the dnstap file analyzer (`pktvisor-dnstap`). When running
 the container, you specify which tool to run.
 
 1. *Pull the container*
@@ -109,8 +109,8 @@ For example, to run the agent on ethernet interface `eth0`:
 ./pktvisor-x86_64.AppImage pktvisord eth0
 ```
 
-The AppImage contains the collector agent (`pktvisord`), the command line UI (`pktvisor-cli`), and the pcap file
-analyzer (`pktvisor-pcap`). You can specify which tool to run by passing it as the first argument:
+The AppImage contains the collector agent (`pktvisord`), the command line UI (`pktvisor-cli`), the pcap file
+analyzer (`pktvisor-pcap`), and the dnstap file analyzer (`pktvisor-dnstap`). You can specify which tool to run by passing it as the first argument:
 
 For example, to visualize the running agent started above with the pktvisor command line UI:
 
@@ -158,45 +158,127 @@ or
 
     pktvisord summarizes data streams and exposes a REST API control plane for configuration and metrics.
 
-    IFACE, if specified, is either a network interface or an IP address (4 or 6). If this is specified,
-    a "pcap" input stream will be automatically created, with "net", "dns", and "pcap" handler modules attached.
+    pktvisord operation is configured via Taps and Collection Policies. Taps abstract the process of "tapping into"
+    input streams with templated configuration while Policies use Taps to instantiate and configure Input and Stream
+    Handlers to analyze and summarize stream data, which is then made available for collection via REST API.
+
+    Taps and Collection Policies may be created by passing the appropriate YAML configuration file to
+    --config, and/or by enabling the admin REST API with --admin-api and using the appropriate endpoints.
+
+    Alternatively, for simple use cases you may specify IFACE, which is either a network interface or an
+    IP address (4 or 6). If this is specified, "default" Tap and Collection Policies will be created with
+    a "pcap" input stream on the specified interfaced, along with the built in "net", "dns", and "pcap"
+    Stream Handler modules attached. Note that this feature may be deprecated in the future.
+
+    For more documentation, see https://pktvisor.dev
 
     Base Options:
-      -d                    Daemonize; fork and continue running in the background [default: false]
-      -h --help             Show this screen
-      -v                    Verbose log output
-      --no-track            Don't send lightweight, anonymous usage metrics
-      --version             Show version
+      -d                          Daemonize; fork and continue running in the background [default: false]
+      -h --help                   Show this screen
+      -v                          Verbose log output
+      --no-track                  Don't send lightweight, anonymous usage metrics
+      --version                   Show version
     Web Server Options:
-      -l HOST               Run web server on the given host or IP [default: localhost]
-      -p PORT               Run web server on the given port [default: 10853]
-      --tls                 Enable TLS on the web server
-      --tls-cert FILE       Use given TLS cert. Required if --tls is enabled.
-      --tls-key FILE        Use given TLS private key. Required if --tls is enabled.
-      --admin-api           Enable admin REST API giving complete control plane functionality [default: false]
-                            When not specified, the exposed API is read-only access to summarized metrics.
-                            When specified, write access is enabled for all modules.
+      -l HOST                     Run web server on the given host or IP [default: localhost]
+      -p PORT                     Run web server on the given port [default: 10853]
+      --tls                       Enable TLS on the web server
+      --tls-cert FILE             Use given TLS cert. Required if --tls is enabled.
+      --tls-key FILE              Use given TLS private key. Required if --tls is enabled.
+      --admin-api                 Enable admin REST API giving complete control plane functionality [default: false]
+                                  When not specified, the exposed API is read-only access to module status and metrics.
+                                  When specified, write access is enabled for all modules.
     Geo Options:
-      --geo-city FILE       GeoLite2 City database to use for IP to Geo mapping
-      --geo-asn FILE        GeoLite2 ASN database to use for IP to ASN mapping
+      --geo-city FILE             GeoLite2 City database to use for IP to Geo mapping
+      --geo-asn FILE              GeoLite2 ASN database to use for IP to ASN mapping
     Configuration:
-      --config FILE         Use specified YAML configuration to configure options, Taps, and Collection Policies      
+      --config FILE               Use specified YAML configuration to configure options, Taps, and Collection Policies
+                                  Please see https://pktvisor.dev for more information
+    Modules:
+      --module-list               List all modules which have been loaded (builtin and dynamic)
+      --module-load FILE          Load the specified dynamic module
+      --module-dir DIR            Set module search path
     Logging Options:
-      --log-file FILE       Log to the given output file name
-      --syslog              Log to syslog
+      --log-file FILE             Log to the given output file name
+      --syslog                    Log to syslog
     Prometheus Options:
-      --prometheus          Enable native Prometheus metrics at path /metrics
-      --prom-instance ID    Optionally set the 'instance' label to given ID
+      --prometheus                Ignored, Prometheus output always enabled (left for backwards compatibility)
+      --prom-instance ID          Optionally set the 'instance' label to given ID
     Handler Module Defaults:
-      --max-deep-sample N   Never deep sample more than N% of streams (an int between 0 and 100) [default: 100]
-      --periods P           Hold this many 60 second time periods of history in memory [default: 5]
-    pcap Input Module Options:
-      -b BPF                Filter packets using the given tcpdump compatible filter expression. Example: "port 53"
-      -H HOSTSPEC           Specify subnets (comma separated) to consider HOST, in CIDR form. In live capture this /may/ be detected automatically
-                            from capture device but /must/ be specified for pcaps. Example: "10.0.1.0/24,10.0.2.1/32,2001:db8::/64"
-                            Specifying this for live capture will append to any automatic detection.
+      --max-deep-sample N         Never deep sample more than N% of streams (an int between 0 and 100) [default: 100]
+      --periods P                 Hold this many 60 second time periods of history in memory [default: 5]
+    pcap Input Module Options: (applicable to default policy when IFACE is specified only)
+      -b BPF                      Filter packets using the given tcpdump compatible filter expression. Example: "port 53"
+      -H HOSTSPEC                 Specify subnets (comma separated) to consider HOST, in CIDR form. In live capture this
+                                  /may/ be detected automatically from capture device but /must/ be specified for pcaps.
+                                  Example: "10.0.1.0/24,10.0.2.1/32,2001:db8::/64"
+                                  Specifying this for live capture will append to any automatic detection.
 
 ```
+
+### Using a Configuration File
+
+pktvisord may be configured at startup by YAML configuration file with the `--config` option.
+The configuration file can configure all options that are available on the command line,
+as well as defining [Policies](RFCs/2021-04-16-76-collection-policies.md) and [Taps](RFCs/2021-04-16-75-taps.md). All sections are optional.
+
+Note that Policies and Taps may also be maintained in real-time via [REST API](#rest-api).
+
+```yaml
+version: "1.0"
+
+visor:
+  # optionally define global configuration (see command line options)
+  config:
+    verbose: true
+    log_file: /tmp/pktvisor_output.log
+  # optionally define taps
+  taps:
+    default_pcap:
+      input_type: pcap
+      config:
+        iface: eth0
+    unix_dnstap:
+      input_type: dnstap
+      config:
+        socket: "/tmp/dnstap.sock"
+    tcp_dnstap:
+      input_type: dnstap
+      config:
+        tcp: "127.0.0.1:53053"
+  # optionally define policies
+  policies:
+    mysocket:
+      kind: collection
+      input:
+        tap: unix_dnstap
+        input_type: dnstap
+      handlers:
+        modules:
+          default_net:
+            type: net
+          default_dns:
+            type: dns
+    mytcp:
+      kind: collection
+      input:
+        tap: tcp_dnstap
+        input_type: dnstap
+      handlers:
+        modules:
+          default_net:
+            type: net
+          default_dns:
+            type: dns
+```
+
+If running in a Docker container, you must mount the configuration file into the container. For example, if the configuration file
+is on the host at `/local/pktvisor/agent.yaml`, you can mount it into the container and use it with this command:
+
+```shell
+docker run -v /local/pktvisor:/usr/local/pktvisor/ --net=host \
+      ns1labs/pktvisor pktvisord --config /usr/local/pktvisor/agent.yaml
+```
+
 
 ### Command Line UI Usage
 
@@ -229,10 +311,15 @@ Usage:
 
 ```
 
-### pcap File Analysis
+### pcap and dnstap File Analysis
 
-`pktvisor-pcap` is a tool that can statically analyze prerecorded packet capture files. It takes many of the same
-options, and does all of the same analysis, as the live agent version.
+`pktvisor-pcap` and `pktvisor-dnstap` are tools that can statically analyze prerecorded packet capture and dnstap files.
+
+pcap files can come from many sources, the most famous of which is [tcpdump](https://www.tcpdump.org/). Dnstap files
+can be generated from most DNS server software that support dnstap logging, either directly or 
+using a tool such as [golang-dnstap](https://github.com/dnstap/golang-dnstap).
+
+Both take many of the same options, and do all of the same analysis, as `pktvisord` for live capture.
 
 ```
 docker run --rm ns1labs/pktvisor pktvisor-pcap --help
