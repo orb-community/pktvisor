@@ -221,7 +221,7 @@ pktvisord may be configured at startup by YAML configuration file with the `--co
 The configuration file can configure all options that are available on the command line,
 as well as defining [Policies](RFCs/2021-04-16-76-collection-policies.md) and [Taps](RFCs/2021-04-16-75-taps.md). All sections are optional.
 
-Note that Policies and Taps may also be maintained in real-time via [REST API](REST API).
+Note that Policies and Taps may also be maintained in real-time via [REST API](#rest-api).
 
 ```yaml
 version: "1.0"
