@@ -315,11 +315,11 @@ Usage:
 
 `pktvisor-pcap` and `pktvisor-dnstap` are tools that can statically analyze prerecorded packet capture and dnstap files.
 
-pcap files can come from many sources, the most famous of which is [https://www.tcpdump.org/](tcpdump). Dnstap files
+pcap files can come from many sources, the most famous of which is [tcpdump](https://www.tcpdump.org/). Dnstap files
 can be generated from most DNS server software that support dnstap logging, either directly or 
-using a tool such as [https://github.com/dnstap/golang-dnstap](golang-dnstap).
+using a tool such as [golang-dnstap](https://github.com/dnstap/golang-dnstap).
 
-Both take many of the same options, and do all of the same analysis, as the live agent version.
+Both take many of the same options, and do all of the same analysis, as `pktvisord` for live capture.
 
 ```
 docker run --rm ns1labs/pktvisor pktvisor-pcap --help
