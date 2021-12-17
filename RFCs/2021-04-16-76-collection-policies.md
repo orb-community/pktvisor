@@ -1,5 +1,8 @@
 ### pktvisor Collection Policies
 
+## Status
+**Experimental**: implemented and available for beta testing but the interface may still change
+
 ## Summary
 
 Collection policies direct pktvisor to use Taps (#75) to create an instance of an input stream (possibly with a filter),

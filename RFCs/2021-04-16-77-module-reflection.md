@@ -1,5 +1,8 @@
 # Module Reflection
 
+## Status
+**Draft**: under design and not yet implemented 
+
 ## Summary
 
 pktvisord exposes a method for discovering the available modules, their configurable properties, and their associated
