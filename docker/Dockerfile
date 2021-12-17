@@ -38,6 +38,7 @@ RUN \
 
 COPY --from=cppbuild /tmp/build/bin/pktvisord /usr/local/sbin/pktvisord
 COPY --from=cppbuild /tmp/build/bin/pktvisor-pcap /usr/local/sbin/pktvisor-pcap
+COPY --from=cppbuild /tmp/build/bin/pktvisor-dnstap /usr/local/sbin/pktvisor-dnstap
 COPY --from=gobuild /src/pktvisor-cli /usr/local/bin/pktvisor-cli
 COPY docker/entry.sh /usr/local/bin/
 
