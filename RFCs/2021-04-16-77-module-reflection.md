@@ -84,6 +84,38 @@ All interfaces and schemas are versioned.
 }
 ```
 
+`GET /api/v1/inputs/dnstap/features`
+
+```json
+ {
+  "version": "1.0",
+  "info": {
+  },
+  "filter": {
+  },
+  "config": {
+    "socket": {
+      "type": "string",
+      "input": "text",
+      "label": "Unix domain socket path",
+      "description": "Full path on local file system to unix domain socket used by the DNS server for dnstap stream",
+      "props": {
+        "example": "/var/dns/dnstap.sock"
+      }
+    },
+    "tcp": {
+      "type": "string",
+      "input": "text",
+      "label": "IP:port",
+      "description": "IP address and port to listen on for dnstap over TCP",
+      "props": {
+        "example": "127.0.0.1:1234"
+      }
+    }
+  }
+}
+```
+
 `GET /api/v1/handlers`
 
 ```json
