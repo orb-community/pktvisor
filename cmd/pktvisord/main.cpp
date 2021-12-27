@@ -196,9 +196,9 @@ void fill_cmd_options(std::map<std::string, docopt::value> args, CmdOptions &opt
     }
 
     if (args["--periods"]) {
-        options.max_deep_sample = std::make_pair(true, static_cast<unsigned int>(args["--periods"].asLong()));
+        options.periods = std::make_pair(true, static_cast<unsigned int>(args["--periods"].asLong()));
     } else if (config["periods"]) {
-        options.max_deep_sample = std::make_pair(true, config["periods"].as<unsigned int>());
+        options.periods = std::make_pair(true, config["periods"].as<unsigned int>());
     }
 
     options.web_server.tls_support = (config["tls"] && config["tls"].as<bool>()) || args["--tls"].asBool();
@@ -223,7 +223,7 @@ void fill_cmd_options(std::map<std::string, docopt::value> args, CmdOptions &opt
     }
 
     if (args["--tls-key"]) {
-        options.web_server.host = std::make_pair(true, args["--tls-key"].asString());
+        options.web_server.tls_key = std::make_pair(true, args["--tls-key"].asString());
     } else if (config["tls_key"]) {
         options.web_server.tls_key = std::make_pair(true, config["tls_key"].as<std::string>());
     }
@@ -511,7 +511,7 @@ int main(int argc, char *argv[])
     unsigned int periods = options.periods.second;
 
     try {
-        initialize_geo(options.geo_asn.second, options.geo_asn.second);
+        initialize_geo(options.geo_city.second, options.geo_asn.second);
     } catch (const std::exception &e) {
         logger->error("Fatal error: {}", e.what());
         exit(EXIT_FAILURE);
