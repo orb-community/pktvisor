@@ -30,7 +30,7 @@ target_link_libraries(visor-core
         datasketches
         rng
         timer
-        maxminddb
+        ${CONAN_LIBS_LIBMAXMINDDB}
         ${CONAN_LIBS_CORRADE}
         ${CONAN_LIBS_SPDLOG}
         ${CONAN_LIBS_FMT}
