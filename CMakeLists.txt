@@ -26,6 +26,8 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 #set(CMAKE_VERBOSE_MAKEFILE ON)
 add_compile_options(-Wall -pedantic -W -Wextra -Wno-unknown-pragmas)
 
+# use a custom conan home directory in our build directory
+set(ENV{CONAN_USER_HOME} ${CMAKE_BINARY_DIR}/conan_home)
 include(conan)
 
 conan_add_remote(NAME ns1labs INDEX 1
@@ -33,9 +35,9 @@ conan_add_remote(NAME ns1labs INDEX 1
         VERIFY_SSL True)
 
 conan_cmake_autodetect(settings)
-
+execute_process(COMMAND ${CONAN_CMD} config set general.revisions_enabled=1)
 conan_cmake_install(PATH_OR_REFERENCE ${CMAKE_SOURCE_DIR}
-        BUILD missing
+        BUILD missing m4
         GENERATOR cmake
         SETTINGS ${settings}
         INSTALL_FOLDER ${CMAKE_BINARY_DIR})

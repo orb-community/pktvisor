@@ -11,9 +11,6 @@ RUN ln -s /usr/local/bin/clang /usr/local/bin/cc \
     && ln -s /usr/local/bin/clang++ /usr/local/bin/c++ \
     && ln -s /usr/local/bin/clang++ /usr/local/bin/g++ \
     && ln -s /usr/local/bin/clang-cpp /usr/local/bin/cpp \
-    && pip install conan \
-    && conan profile new default --detect \
-    && conan profile update settings.compiler.libcxx=libc++ default \
-    && conan config set general.revisions_enabled=1
+    && pip install conan
 
 USER builder
