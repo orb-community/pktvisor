@@ -35,9 +35,31 @@ conan_add_remote(NAME ns1labs INDEX 1
         VERIFY_SSL True)
 
 conan_cmake_autodetect(settings)
+
 execute_process(COMMAND ${CONAN_CMD} config set general.revisions_enabled=1)
+
+# by default, build all conan dependencies that don't have a binary for this env
+set(CONAN_BUILD_SETTING missing)
+
+# Linux/clang/libc++/musl special requirements
+if(UNIX AND NOT APPLE)
+    set(LINUX TRUE)
+endif()
+if(LINUX)
+    # as of 1/1/2022 m4 inappropriately tries to use a GCC binary version, must force build
+    set(CONAN_BUILD_SETTING ${CONAN_BUILD_SETTING} m4)
+    foreach(SETTING ${settings})
+        if (SETTING STREQUAL "compiler.libcxx=libc++")
+            # if std c++ lib is libc++ (llvm) + linux then assume no gcc is available
+            # (is there a way to check we're using musl?)
+            # in this case must manually link libexecinfo
+            execute_process(COMMAND ${CONAN_CMD} profile update env.pcapplusplus:LDFLAGS=-lexecinfo default)
+        endif()
+    endforeach()
+endif()
+
 conan_cmake_install(PATH_OR_REFERENCE ${CMAKE_SOURCE_DIR}
-        BUILD missing m4
+        BUILD ${CONAN_BUILD_SETTING}
         GENERATOR cmake
         SETTINGS ${settings}
         INSTALL_FOLDER ${CMAKE_BINARY_DIR})
