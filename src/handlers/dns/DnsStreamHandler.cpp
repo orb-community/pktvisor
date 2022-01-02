@@ -202,7 +202,7 @@ void DnsStreamHandler::tcp_message_ready_cb(int8_t side, const pcpp::TcpStreamDa
     auto port{iter->second.port};
     timespec stamp{0, 0};
     // for tcp, endTime is updated by pcpp to represent the time stamp from the latest packet in the stream
-    TIMEVAL_TO_TIMESPEC(&tcpData.getConnectionData().endTime, &stamp)
+    TIMEVAL_TO_TIMESPEC(&tcpData.getConnectionData().endTime, &stamp);
     auto dir = (side == 0) ? PacketDirection::fromHost : PacketDirection::toHost;
 
     auto got_dns_message = [this, port, dir, l3Type, flowKey, stamp](std::unique_ptr<uint8_t[]> data, size_t size) {
