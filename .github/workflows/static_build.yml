@@ -31,7 +31,7 @@ jobs:
 
       - name: Build and test static pktvisord
         run: |
-          docker build -v ${{github.workspace}}:/project -f docker/Dockerfile.clang-toolchain-build .
+          docker build -f docker/Dockerfile.clang-toolchain-build .
 
 #  package:
 #    needs: build
