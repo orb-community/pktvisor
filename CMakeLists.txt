@@ -53,6 +53,7 @@ if(LINUX)
             # if std c++ lib is libc++ (llvm) + linux then assume no gcc is available
             # (is there a way to check we're using musl?)
             # in this case must manually link libexecinfo
+            set(MUSL TRUE)
             execute_process(COMMAND ${CONAN_CMD} profile update env.pcapplusplus:LDFLAGS=-lexecinfo default)
         endif()
     endforeach()
