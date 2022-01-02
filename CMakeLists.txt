@@ -50,13 +50,17 @@ if(LINUX)
     set(CONAN_BUILD_SETTING ${CONAN_BUILD_SETTING} m4)
     foreach(SETTING ${settings})
         if (SETTING STREQUAL "compiler.libcxx=libc++")
+            set(STATIC_BINARIES TRUE)
             # if std c++ lib is libc++ (llvm) + linux then assume no gcc is available
             # (is there a way to check we're using musl?)
             # in this case must manually link libexecinfo
-            set(MUSL TRUE)
             execute_process(COMMAND ${CONAN_CMD} profile update env.pcapplusplus:LDFLAGS=-lexecinfo default)
         endif()
     endforeach()
+endif()
+
+if(STATIC_BINARIES)
+set(STATIC_FLAGS -static -lc++ -lc++abi)
 endif()
 
 conan_cmake_install(PATH_OR_REFERENCE ${CMAKE_SOURCE_DIR}
