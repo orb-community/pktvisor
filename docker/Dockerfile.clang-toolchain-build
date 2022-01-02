@@ -14,9 +14,6 @@ RUN ln -s /usr/local/bin/clang /usr/local/bin/cc \
 COPY . /pktvisor-src/
 
 WORKDIR /tmp/build
-RUN \
-    conan profile new --detect default && \
-    conan config set general.revisions_enabled=1
 
 RUN \
     PKG_CONFIG_PATH=/local/lib/pkgconfig cmake -DCMAKE_BUILD_TYPE=Release /pktvisor-src && \
