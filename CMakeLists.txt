@@ -67,28 +67,34 @@ execute_process(COMMAND ${CONAN_CMD} config set general.revisions_enabled=1)
 # by default, build all conan dependencies that don't have a binary for this env
 set(CONAN_BUILD_SETTING missing)
 set(CONAN_ENV_SETTING "")
+set(DYNAMIC_LIB_SUPPORT TRUE)
 
-# Linux/clang/libc++/musl special requirements
 if(UNIX AND NOT APPLE)
     set(LINUX TRUE)
 endif()
 if(LINUX)
-    # as of 1/1/2022 m4 inappropriately tries to use a GCC binary version, must force build
+    execute_process(
+            COMMAND ldd /bin/ls
+            OUTPUT_VARIABLE MUSL_CHECK
+    )
+    if(MUSL_CHECK MATCHES "musl")
+        set(MUSL TRUE)
+        message(STATUS "Musl libc detected")
+    endif()
+endif()
+
+if(MUSL)
+    # m4 inappropriately tries to use a GCC binary version, must force build
     set(CONAN_BUILD_SETTING ${CONAN_BUILD_SETTING} m4)
-    # TODO check for musl like this: ldd /bin/ls | grep 'musl' | head -1 | cut -d ' ' -f1
-    foreach(SETTING ${CONAN_SETTINGS})
-        if (SETTING STREQUAL "compiler.libcxx=libc++")
-            message(STATUS "Enabling musl static build")
-            set(STATIC_BINARIES TRUE)
-            # if std c++ lib is libc++ (llvm) + linux then assume no gcc is available
-            # in this case must manually link libexecinfo
-            set(CONAN_ENV_SETTING ${CONAN_ENV_SETTING} pcapplusplus:LDFLAGS=-lexecinfo)
-        endif()
-    endforeach()
+    # pcapplusplus uses a gcc extension for backtrace, musl needs an extra lib to emulate
+    set(CONAN_ENV_SETTING ${CONAN_ENV_SETTING} pcapplusplus:LDFLAGS=-lexecinfo)
+    set(STATIC_BINARIES TRUE)
+    set(DYNAMIC_LIB_SUPPORT FALSE)
 endif()
 
 if(STATIC_BINARIES)
-set(STATIC_FLAGS -static -lc++ -lc++abi)
+    message(STATUS "Enabling statically linked binaries")
+    set(STATIC_FLAGS -static -lc++ -lc++abi)
 endif()
 
 conan_cmake_install(PATH_OR_REFERENCE ${CMAKE_SOURCE_DIR}
