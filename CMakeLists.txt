@@ -81,6 +81,10 @@ if(LINUX)
         set(MUSL TRUE)
         message(STATUS "Musl libc detected")
     endif()
+    if(NOT MUSL)
+        # on gcc, use latest standard
+        set(CONAN_SETTINGS ${CONAN_SETTINGS} compiler.libcxx=libstdc++11)
+    endif()
 endif()
 
 if(MUSL)
