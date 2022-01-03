@@ -1,8 +1,9 @@
 cmake_minimum_required(VERSION 3.13)
 
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
-
+#######################################################
 # VERSION
+#######################################################
+
 # this is the source of truth for semver version
 project(visor VERSION 3.4.0)
 
@@ -10,6 +11,25 @@ project(visor VERSION 3.4.0)
 # for development release, this is "-develop"
 # for release candidate, this is "-rc"
 set(VISOR_PRERELEASE "-develop")
+
+#######################################################
+
+# if develop or rc build, add git hash
+# note this only updates on cmake reconfigure, not every git commit
+# so it's mainly useful for GitHub CI, not developers
+if(VISOR_PRERELEASE STREQUAL "-develop" OR VISOR_PRERELEASE STREQUAL "-rc")
+    execute_process(
+            COMMAND
+            git rev-parse --short HEAD
+            RESULT_VARIABLE
+            SHORT_HASH_RESULT
+            OUTPUT_VARIABLE
+            SHORT_HASH)
+    string(REGEX REPLACE "\n$" "" SHORT_HASH "${SHORT_HASH}")
+    string(APPEND VISOR_PRERELEASE "-${SHORT_HASH}")
+endif()
+
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
 # these are computed
 set(VISOR_VERSION_NUM "${PROJECT_VERSION}${VISOR_PRERELEASE}")
@@ -27,6 +47,7 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 add_compile_options(-Wall -pedantic -W -Wextra -Wno-unknown-pragmas)
 
 # use a custom conan home directory in our build directory
+# this allows us to use the clang-toolchain docker image in CLion docker toolchain
 set(ENV{CONAN_USER_HOME} ${CMAKE_BINARY_DIR}/conan_home)
 include(conan)
 
@@ -52,7 +73,7 @@ if(LINUX)
         if (SETTING STREQUAL "compiler.libcxx=libc++")
             set(STATIC_BINARIES TRUE)
             # if std c++ lib is libc++ (llvm) + linux then assume no gcc is available
-            # (is there a way to check we're using musl?)
+            # (stackoverflow says to check like this: ldd /bin/ls | grep 'musl' | head -1 | cut -d ' ' -f1)
             # in this case must manually link libexecinfo
             execute_process(COMMAND ${CONAN_CMD} profile update env.pcapplusplus:LDFLAGS=-lexecinfo default)
         endif()
@@ -78,6 +99,8 @@ include(sanitizer)
 set(VISOR_STATIC_PLUGINS)
 
 enable_testing()
+
+message(STATUS "Building pktvisor version ${CMAKE_PROJECT_VERSION_MAJOR}.${CMAKE_PROJECT_VERSION_MINOR}.${CMAKE_PROJECT_VERSION_MINOR}${VISOR_PRERELEASE}")
 add_subdirectory(3rd)
 add_subdirectory(src)
 add_subdirectory(cmd)
