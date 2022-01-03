@@ -86,6 +86,12 @@ if(LINUX)
         set(CONAN_SETTINGS ${CONAN_SETTINGS} compiler.libcxx=libstdc++11)
     endif()
 endif()
+if(APPLE)
+    # 1/3/21 clang 13.0 doesn't have a lot of binary packages yet, use 12.0 which seems compatible
+    # otherwise it has to build all packages, killing CI. remove this when binary packages show up.
+    set(CONAN_SETTINGS ${CONAN_SETTINGS} compiler.version=12.0)
+    set(CONAN_DISABLE_CHECK_COMPILER TRUE)
+endif()
 
 if(MUSL)
     # m4 inappropriately tries to use a GCC binary version, must force build
