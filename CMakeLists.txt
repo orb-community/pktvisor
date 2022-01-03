@@ -24,8 +24,10 @@ if(VISOR_PRERELEASE STREQUAL "-develop" OR VISOR_PRERELEASE STREQUAL "-rc")
             RESULT_VARIABLE
             SHORT_HASH_RESULT
             OUTPUT_VARIABLE
-            SHORT_HASH)
-    string(REGEX REPLACE "\n$" "" SHORT_HASH "${SHORT_HASH}")
+            SHORT_HASH
+            ERROR_QUIET
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
     string(APPEND VISOR_PRERELEASE "-${SHORT_HASH}")
 endif()
 
@@ -55,12 +57,16 @@ conan_add_remote(NAME ns1labs INDEX 1
         URL https://ns1labs.jfrog.io/artifactory/api/conan/ns1labs-conan
         VERIFY_SSL True)
 
-conan_cmake_autodetect(settings)
+conan_cmake_autodetect(CONAN_SETTINGS)
+message(STATUS "Detected conan settings: ${CONAN_SETTINGS}")
 
+# is this destructive for developer environment?
+message(STATUS "Setting conan general.revisions_enabled=1")
 execute_process(COMMAND ${CONAN_CMD} config set general.revisions_enabled=1)
 
 # by default, build all conan dependencies that don't have a binary for this env
 set(CONAN_BUILD_SETTING missing)
+set(CONAN_ENV_SETTING "")
 
 # Linux/clang/libc++/musl special requirements
 if(UNIX AND NOT APPLE)
@@ -69,13 +75,14 @@ endif()
 if(LINUX)
     # as of 1/1/2022 m4 inappropriately tries to use a GCC binary version, must force build
     set(CONAN_BUILD_SETTING ${CONAN_BUILD_SETTING} m4)
-    foreach(SETTING ${settings})
+    # TODO check for musl like this: ldd /bin/ls | grep 'musl' | head -1 | cut -d ' ' -f1
+    foreach(SETTING ${CONAN_SETTINGS})
         if (SETTING STREQUAL "compiler.libcxx=libc++")
+            message(STATUS "Enabling musl static build")
             set(STATIC_BINARIES TRUE)
             # if std c++ lib is libc++ (llvm) + linux then assume no gcc is available
-            # (stackoverflow says to check like this: ldd /bin/ls | grep 'musl' | head -1 | cut -d ' ' -f1)
             # in this case must manually link libexecinfo
-            execute_process(COMMAND ${CONAN_CMD} profile update env.pcapplusplus:LDFLAGS=-lexecinfo default)
+            set(CONAN_ENV_SETTING ${CONAN_ENV_SETTING} pcapplusplus:LDFLAGS=-lexecinfo)
         endif()
     endforeach()
 endif()
@@ -87,7 +94,8 @@ endif()
 conan_cmake_install(PATH_OR_REFERENCE ${CMAKE_SOURCE_DIR}
         BUILD ${CONAN_BUILD_SETTING}
         GENERATOR cmake
-        SETTINGS ${settings}
+        SETTINGS ${CONAN_SETTINGS}
+        ENV ${CONAN_ENV_SETTING}
         INSTALL_FOLDER ${CMAKE_BINARY_DIR})
 
 include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)

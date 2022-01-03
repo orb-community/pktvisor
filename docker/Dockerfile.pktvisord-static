@@ -8,18 +8,16 @@ RUN ln -s /usr/local/bin/clang /usr/local/bin/cc \
     && ln -s /usr/local/bin/clang++ /usr/local/bin/c++ \
     && ln -s /usr/local/bin/clang++ /usr/local/bin/g++ \
     && ln -s /usr/local/bin/clang-cpp /usr/local/bin/cpp \
-    && pip install conan \
-    && conan profile new --detect default
+    && pip install conan
 
 COPY . /pktvisor-src/
 
 WORKDIR /tmp/build
 
-RUN \
-    PKG_CONFIG_PATH=/local/lib/pkgconfig cmake -DCMAKE_BUILD_TYPE=Release /pktvisor-src && \
-    make all test -j 4
+RUN cmake -DCMAKE_BUILD_TYPE=Release /pktvisor-src \
+    && make all test -j 4
 
-FROM alpine:latest AS runtime
+FROM scratch AS runtime
 
 COPY --from=cppbuild /build/bin/pktvisord /pktvisord
 
