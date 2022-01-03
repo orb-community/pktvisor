@@ -20,16 +20,24 @@
 
 namespace visor::handler::net {
 
-NetStreamHandler::NetStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config)
+NetStreamHandler::NetStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config, StreamHandler *handler)
     : visor::StreamMetricsHandler<NetworkMetricsManager>(name, window_config)
 {
-    assert(stream);
     // figure out which input stream we have
-    _pcap_stream = dynamic_cast<PcapInputStream *>(stream);
-    _mock_stream = dynamic_cast<MockInputStream *>(stream);
-    _dnstap_stream = dynamic_cast<DnstapInputStream *>(stream);
-    if (!_pcap_stream && !_mock_stream && !_dnstap_stream) {
-        throw StreamHandlerException(fmt::format("NetStreamHandler: unsupported input stream {}", stream->name()));
+    if (stream) {
+        _pcap_stream = dynamic_cast<PcapInputStream *>(stream);
+        _mock_stream = dynamic_cast<MockInputStream *>(stream);
+        _dnstap_stream = dynamic_cast<DnstapInputStream *>(stream);
+        if (!_pcap_stream && !_mock_stream && !_dnstap_stream) {
+            throw StreamHandlerException(fmt::format("NetStreamHandler: unsupported input stream {}", stream->name()));
+        }
+    }
+
+    if (handler) {
+        _dns_handler = dynamic_cast<DnsStreamHandler *>(handler);
+        if (!_dns_handler) {
+            throw StreamHandlerException(fmt::format("NetStreamHandler: unsupported stream handler {}", handler->name()));
+        }
     }
 }
 
@@ -49,6 +57,8 @@ void NetStreamHandler::start()
         _end_tstamp_connection = _pcap_stream->end_tstamp_signal.connect(&NetStreamHandler::set_end_tstamp, this);
     } else if (_dnstap_stream) {
         _dnstap_connection = _dnstap_stream->dnstap_signal.connect(&NetStreamHandler::process_dnstap_cb, this);
+    } else if (_dns_handler) {
+
     }
 
     _running = true;

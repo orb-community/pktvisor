@@ -114,7 +114,6 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
             }
         }
 
-
         // Create Policy
         auto policy = std::make_unique<Policy>(policy_name, tap);
         // if and only if policy succeeds, we will return this in result set
@@ -143,7 +142,7 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
             throw PolicyException("missing or invalid handler configuration at key 'handlers'");
         }
         auto handler_node = it->second["handlers"];
-        if (!handler_node["modules"] || !handler_node["modules"].IsMap()) {
+        if (!handler_node["modules"] || (!handler_node["modules"].IsMap() && !handler_node["modules"].IsSequence())) {
             throw PolicyException("missing or invalid handler modules at key 'modules'");
         }
         Config window_config;
