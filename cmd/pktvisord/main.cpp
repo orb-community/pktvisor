@@ -134,6 +134,7 @@ struct CmdOptions {
 void fill_cmd_options(std::map<std::string, docopt::value> args, CmdOptions &options)
 {
     YAML::Node config;
+    auto logger = spdlog::stdout_color_mt("visor");
     // local config file
     options.config.first = false;
     if (args["--config"]) {
@@ -143,10 +144,12 @@ void fill_cmd_options(std::map<std::string, docopt::value> args, CmdOptions &opt
             config_file = YAML::LoadFile(args["--config"].asString());
 
             if (!config_file.IsMap() || !config_file["visor"]) {
-                throw std::runtime_error("invalid schema");
+                logger->error("invalid schema");
+                exit(EXIT_FAILURE);
             }
             if (!config_file["version"] || !config_file["version"].IsScalar() || config_file["version"].as<std::string>() != "1.0") {
-                throw std::runtime_error("missing or unsupported version");
+                logger->error("missing or unsupported version");
+                exit(EXIT_FAILURE);
             }
 
             options.config = std::make_pair(true, config_file);
@@ -155,9 +158,12 @@ void fill_cmd_options(std::map<std::string, docopt::value> args, CmdOptions &opt
                 config = config_file["visor"]["config"];
             }
         } catch (std::runtime_error &e) {
+            logger->error(e.what());
             exit(EXIT_FAILURE);
         }
     }
+
+    spdlog::drop("visor");
 
     options.verbose = (config["verbose"] && config["verbose"].as<bool>()) || args["-v"].asBool();
     options.daemon = (config["daemon"] && config["daemon"].as<bool>()) || args["-d"].asBool();
