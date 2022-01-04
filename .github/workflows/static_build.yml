@@ -29,9 +29,82 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: Build and test static pktvisord
+      - name: Build and test static base
         run: |
-          docker build -f docker/Dockerfile.pktvisord-static .
+          docker build -f docker/Dockerfile.static-base -t ns1labs/static-base .
+
+      - name: Configure CMake to generate VERSION
+        shell: bash
+        working-directory: ${{github.workspace}}/build
+        run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE
+
+      - name: Get branch name
+        shell: bash
+        run: echo "BRANCH_NAME=$(echo ${GITHUB_REF#refs/heads/} | tr / -)" >> $GITHUB_ENV
+
+      - name: Debug branch name
+        run: echo ${{ env.BRANCH_NAME }}
+
+      - name: Get VERSION
+        run: |
+          echo "VERSION=`cat ${{github.workspace}}/build/VERSION`" >> $GITHUB_ENV
+
+      - name: Debug version
+        run: echo ${{ env.VERSION }}
+
+      - name: Generate ref tag (master)
+        if: ${{ env.BRANCH_NAME == 'master' }}
+        run: |
+          echo "REF_TAG=latest" >> $GITHUB_ENV
+          echo "PRERELEASE=false" >> $GITHUB_ENV
+          echo "DRAFT=true" >> $GITHUB_ENV
+
+      - name: Generate ref tag (develop)
+        if: ${{ env.BRANCH_NAME == 'develop' }}
+        run: |
+          echo "REF_TAG=latest-develop" >> $GITHUB_ENV
+          echo "PRERELEASE=true" >> $GITHUB_ENV
+          echo "DRAFT=false" >> $GITHUB_ENV
+
+      - name: Generate ref tag (release candidate)
+        if: ${{ env.BRANCH_NAME == 'release' }}
+        run: |
+          echo "REF_TAG=latest-rc" >> $GITHUB_ENV
+          echo "PRERELEASE=true" >> $GITHUB_ENV
+          echo "DRAFT=false" >> $GITHUB_ENV
+
+      - name: Debug ref tag
+        run: echo ${{ env.REF_TAG }}
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build static pktvisord
+        if: github.event_name != 'pull_request'
+        env:
+          IMAGE_NAME: ns1labs/pktvisord
+        run: |
+          docker build -f docker/Dockerfile.pktvisord-static -t ${{ env.IMAGE_NAME }} .
+          docker push -a ${{ env.IMAGE_NAME }}
+
+      - name: Build static pktvisor-pcap
+        if: github.event_name != 'pull_request'
+        env:
+          IMAGE_NAME: ns1labs/pktvisor-pcap
+        run: |
+          docker build -f docker/Dockerfile.pktvisor-pcap-static -t ${{ env.IMAGE_NAME }} .
+          docker push -a ${{ env.IMAGE_NAME }}
+
+      - name: Build static pktvisord-dnstap
+        if: github.event_name != 'pull_request'
+        env:
+          IMAGE_NAME: ns1labs/pktvisor-pcap
+        run: |
+          docker build -f docker/Dockerfile.pktvisor-dnstap-static -t ${{ env.IMAGE_NAME }} .
+          docker push -a ${{ env.IMAGE_NAME }}
 
 #  package:
 #    needs: build

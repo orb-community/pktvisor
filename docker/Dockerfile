@@ -8,7 +8,14 @@ RUN \
     apt-get install --yes --force-yes --no-install-recommends ${BUILD_DEPS} && \
     pip3 install conan
 
-COPY . /pktvisor-src/
+COPY ./src/ /pktvisor-src/src/
+COPY ./cmd/ /pktvisor-src/cmd/
+COPY ./3rd/ /pktvisor-src/3rd/
+COPY ./golang/ /pktvisor-src/golang/
+COPY ./integration_tests/ /pktvisor-src/integration_tests/
+COPY ./cmake/ /pktvisor-src/cmake/
+COPY ./CMakeLists.txt /pktvisor-src/
+COPY ./conanfile.txt /pktvisor-src/
 
 WORKDIR /tmp/build
 RUN \
