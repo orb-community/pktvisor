@@ -24,8 +24,6 @@ jobs:
     strategy:
       matrix:
         os: [ ubuntu-latest, macos-latest ]
-         # 1/5/21 bison fails to build on macos-latest only in github CI
-#         os: [ ubuntu-latest ]
     runs-on: ${{ matrix.os }}
 
     steps:
