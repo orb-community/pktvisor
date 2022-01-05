@@ -77,15 +77,28 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build static pktvisord
-        if: github.event_name != 'pull_request'
+      - name: Build and package static pktvisord
+#        if: github.event_name != 'pull_request'
         env:
-          IMAGE_NAME: ns1labs/pktvisord
+          BASE_BINARY: pktvisord
+          IMAGE_NAME: ns1labs/${{ env.BASE_BINARY }}-slim
+          BINARY_NAME: ${{ env.BASE_BINARY }}-linux-x86_64-${{ env.VERSION }}
         run: |
-          docker build -f docker/Dockerfile.pktvisord-static -t ${{ env.IMAGE_NAME }} .
+          docker build -f docker/Dockerfile.${{ env.BASE_BINARY }}-static -t ${{ env.IMAGE_NAME }} .
           docker push -a ${{ env.IMAGE_NAME }}
+          echo "CONT_ID=$(docker create --name ${{ env.BASE_BINARY }}-slim-tmp ${{ env.IMAGE_NAME }})" >> $GITHUB_ENV
+          docker cp ${{ env.CONT_ID }}:/${{ env.BASE_BINARY }} ${{github.workspace}}/${{ env.BINARY_NAME }}
 
-      - name: Build static pktvisor-pcap
+      - name: Upload pktvisord artifact
+#        if: github.event_name != 'pull_request'
+        env:
+          BINARY_NAME: pktvisord-linux-x86_64-${{ env.VERSION }}
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{ env.BINARY_NAME }}
+          path: ${{github.workspace}}/${{ env.BINARY_NAME }}
+
+      - name: Build static pktvisor-pcap-slim
         if: github.event_name != 'pull_request'
         env:
           IMAGE_NAME: ns1labs/pktvisor-pcap
@@ -96,129 +109,8 @@ jobs:
       - name: Build static pktvisord-dnstap
         if: github.event_name != 'pull_request'
         env:
-          IMAGE_NAME: ns1labs/pktvisor-pcap
+          IMAGE_NAME: ns1labs/pktvisor-pcap-slim
         run: |
           docker build -f docker/Dockerfile.pktvisor-dnstap-static -t ${{ env.IMAGE_NAME }} .
           docker push -a ${{ env.IMAGE_NAME }}
 
-#  package:
-#    needs: build
-#    runs-on: ubuntu-latest
-#    # if this is a push into one of our main branches (rather than just a pull request), we will also package
-#    if: github.event_name != 'pull_request'
-#
-#    steps:
-#      - uses: actions/checkout@v2
-#
-#      - name: Create Build Environment
-#        run: cmake -E make_directory ${{github.workspace}}/build
-#
-#      - name: Get Conan
-#        uses: turtlebrowser/get-conan@v1.0
-#
-#      - name: Conan profile and settings
-#        run: |
-#          conan profile new --detect default
-#          conan config set general.revisions_enabled=1
-#          conan profile update settings.compiler.libcxx=libstdc++11 default
-#
-#      - name: Configure CMake to generate VERSION
-#        shell: bash
-#        working-directory: ${{github.workspace}}/build
-#        run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE
-#
-#      - name: Get branch name
-#        shell: bash
-#        run: echo "BRANCH_NAME=$(echo ${GITHUB_REF#refs/heads/} | tr / -)" >> $GITHUB_ENV
-#
-#      - name: Debug branch name
-#        run: echo ${{ env.BRANCH_NAME }}
-#
-#      - name: Get VERSION
-#        run: |
-#          echo "VERSION=`cat ${{github.workspace}}/build/VERSION`" >> $GITHUB_ENV
-#
-#      - name: Debug version
-#        run: echo ${{ env.VERSION }}
-#
-#      - name: Generate ref tag (master)
-#        if: ${{ env.BRANCH_NAME == 'master' }}
-#        run: |
-#          echo "REF_TAG=latest" >> $GITHUB_ENV
-#          echo "PRERELEASE=false" >> $GITHUB_ENV
-#          echo "DRAFT=true" >> $GITHUB_ENV
-#
-#      - name: Generate ref tag (develop)
-#        if: ${{ env.BRANCH_NAME == 'develop' }}
-#        run: |
-#          echo "REF_TAG=latest-develop" >> $GITHUB_ENV
-#          echo "PRERELEASE=true" >> $GITHUB_ENV
-#          echo "DRAFT=false" >> $GITHUB_ENV
-#
-#      - name: Generate ref tag (release candidate)
-#        if: ${{ env.BRANCH_NAME == 'release' }}
-#        run: |
-#          echo "REF_TAG=latest-rc" >> $GITHUB_ENV
-#          echo "PRERELEASE=true" >> $GITHUB_ENV
-#          echo "DRAFT=false" >> $GITHUB_ENV
-#
-#      - name: Debug ref tag
-#        run: echo ${{ env.REF_TAG }}
-#
-#      - name: Manage Github ref tags
-#        uses: actions/github-script@v3
-#        with:
-#          github-token: ${{ github.token }}
-#          # note deleteRef can't start with refs/, but create createRef does.
-#          script: |
-#            try {
-#                await github.git.deleteRef({
-#                  owner: context.repo.owner,
-#                  repo: context.repo.repo,
-#                  ref: "tags/${{ env.REF_TAG }}",
-#                })
-#            } catch (e) {
-#              console.log("The tag doesn't exist yet: " + e)
-#            }
-#            await github.git.createRef({
-#              owner: context.repo.owner,
-#              repo: context.repo.repo,
-#              ref: "refs/tags/${{ env.REF_TAG }}",
-#              sha: context.sha
-#            })
-#
-#      - name: Login to Docker Hub
-#        uses: docker/login-action@v1
-#        with:
-#          username: ${{ secrets.DOCKERHUB_USERNAME }}
-#          password: ${{ secrets.DOCKERHUB_TOKEN }}
-#
-#      - name: Build + push - pktvisor
-#        env:
-#          IMAGE_NAME: ns1labs/pktvisor
-#        run: |
-#          docker build . --file docker/Dockerfile --tag ${{ env.IMAGE_NAME }}:${{ env.VERSION }} --tag ${{ env.IMAGE_NAME }}:${{ env.REF_TAG }}
-#          docker push -a ${{ env.IMAGE_NAME }}
-#
-#      - name: Build + push - pktvisor-prom-write
-#        env:
-#          IMAGE_NAME: ns1labs/pktvisor-prom-write
-#        working-directory: ${{github.workspace}}/centralized_collection/prometheus/docker-grafana-agent
-#        run: |
-#          docker build . --file Dockerfile --build-arg PKTVISOR_TAG=${{ env.REF_TAG }} --tag ${{ env.IMAGE_NAME }}:${{ env.VERSION }} --tag ${{ env.IMAGE_NAME }}:${{ env.REF_TAG }}
-#          docker push -a ${{ env.IMAGE_NAME }}
-#
-#      - name: Generate AppImage
-#        env:
-#          IMAGE_NAME: ns1labs/pktvisor
-#        working-directory: ${{github.workspace}}/appimage
-#        run: |
-#          DEV_IMAGE="${{ env.IMAGE_NAME }}:${{ env.VERSION }}" DEV_MODE=t make pktvisor-x86_64.AppImage
-#          mv pktvisor-x86_64.AppImage pktvisor-x86_64-${{ env.VERSION }}.AppImage
-#
-#      - name: Upload AppImage artifact
-#        uses: actions/upload-artifact@v2
-#        with:
-#          name: pktvisor-x86_64-${{ env.VERSION }}.AppImage
-#          path: ${{github.workspace}}/appimage/pktvisor-x86_64-${{ env.VERSION }}.AppImage
-#
