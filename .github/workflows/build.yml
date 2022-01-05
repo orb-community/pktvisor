@@ -23,9 +23,9 @@ jobs:
     # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
     strategy:
       matrix:
-#        os: [ ubuntu-latest, macos-latest ]
+        os: [ ubuntu-latest, macos-latest ]
          # 1/5/21 bison fails to build on macos-latest only in github CI
-         os: [ ubuntu-latest ]
+#         os: [ ubuntu-latest ]
     runs-on: ${{ matrix.os }}
 
     steps:
