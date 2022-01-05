@@ -25,3 +25,7 @@ WORKDIR /tmp/build
 
 RUN cmake -DCMAKE_BUILD_TYPE=Release /pktvisor-src \
     && make all test -j 4
+
+# after build, use this to upload conan packages to ns1labs jfrog server
+# docker run --rm -it ns1labs/static-base
+# CONAN_USER_HOME=/tmp/build/conan_home conan upload "*" --all -r ns1labs -c
