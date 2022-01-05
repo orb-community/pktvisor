@@ -33,11 +33,6 @@ jobs:
         run: |
           docker build -f docker/Dockerfile.static-base -t ns1labs/static-base .
 
-      - name: Configure CMake to generate VERSION
-        shell: bash
-        working-directory: ${{github.workspace}}/build
-        run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE
-
       - name: Get branch name
         shell: bash
         run: echo "BRANCH_NAME=$(echo ${GITHUB_REF#refs/heads/} | tr / -)" >> $GITHUB_ENV
@@ -47,7 +42,7 @@ jobs:
 
       - name: Get VERSION
         run: |
-          echo "VERSION=`cat ${{github.workspace}}/build/VERSION`" >> $GITHUB_ENV
+          echo "VERSION=`docker run --rm -a stdout --entrypoint cat ns1labs/static-base VERSION`" >> $GITHUB_ENV
 
       - name: Debug version
         run: echo ${{ env.VERSION }}
