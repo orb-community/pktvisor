@@ -9,15 +9,15 @@ namespace visor::handler::dhcp {
 DhcpStreamHandler::DhcpStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config, StreamHandler *handler)
     : visor::StreamMetricsHandler<DhcpMetricsManager>(name, window_config)
 {
+    if (handler) {
+        throw StreamHandlerException(fmt::format("DhcpStreamHandler: unsupported stream handler {}", handler->name()));
+    }
+
     assert(stream);
     // figure out which input stream we have
     _pcap_stream = dynamic_cast<PcapInputStream *>(stream);
     if (!_pcap_stream) {
         throw StreamHandlerException(fmt::format("DhcpStreamHandler: unsupported input stream {}", stream->name()));
-    }
-
-    if (handler) {
-        throw StreamHandlerException(fmt::format("DhcpStreamHandler: unsupported stream handler {}", handler->name()));
     }
 }
 
