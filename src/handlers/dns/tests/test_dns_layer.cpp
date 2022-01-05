@@ -182,7 +182,7 @@ TEST_CASE("Parse DNS TCP IPv6 tests", "[pcap][ipv6][tcp][dns]")
     CHECK(j["top_qname2"][0]["estimate"] == 360);
 }
 
-TEST_CASE("Parse DNS random UDP/TCP tests", "[pcap][net]")
+TEST_CASE("Parse DNS random UDP/TCP tests", "[pcap][dns]")
 {
 
     PcapInputStream stream{"pcap-test"};
@@ -253,7 +253,7 @@ TEST_CASE("Parse DNS random UDP/TCP tests", "[pcap][net]")
     CHECK(j["top_qtype"][6]["estimate"] == 620);
 }
 
-TEST_CASE("DNS Filters: exclude_noerror", "[pcap][net]")
+TEST_CASE("DNS Filters: exclude_noerror", "[pcap][dns]")
 {
 
     PcapInputStream stream{"pcap-test"};
@@ -315,7 +315,7 @@ TEST_CASE("DNS Filters: only_rcode nx", "[pcap][net]")
     REQUIRE(j["wire_packets"]["filtered"] == 23);
 }
 
-TEST_CASE("DNS Filters: only_rcode refused", "[pcap][net]")
+TEST_CASE("DNS Filters: only_rcode refused", "[pcap][dns]")
 {
 
     PcapInputStream stream{"pcap-test"};
@@ -346,7 +346,7 @@ TEST_CASE("DNS Filters: only_rcode refused", "[pcap][net]")
     REQUIRE(j["wire_packets"]["filtered"] == 23);
 }
 
-TEST_CASE("DNS Filters: only_qname_suffix", "[pcap][net]")
+TEST_CASE("DNS Filters: only_qname_suffix", "[pcap][dns]")
 {
 
     PcapInputStream stream{"pcap-test"};
@@ -367,6 +367,8 @@ TEST_CASE("DNS Filters: only_qname_suffix", "[pcap][net]")
     dns_handler.stop();
 
     auto counters = dns_handler.metrics()->bucket(0)->counters();
+
+    CHECK(counters.UDP.value() == 10);
     CHECK(counters.NOERROR.value() == 4);
     CHECK(counters.SRVFAIL.value() == 0);
     CHECK(counters.REFUSED.value() == 0);
