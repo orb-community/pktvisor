@@ -53,7 +53,7 @@ add_compile_options(-Wall -pedantic -W -Wextra -Wno-unknown-pragmas)
 set(ENV{CONAN_USER_HOME} ${CMAKE_BINARY_DIR}/conan_home)
 include(conan)
 
-conan_add_remote(NAME ns1labs INDEX 1
+conan_add_remote(NAME ns1labs INDEX 0
         URL https://ns1labs.jfrog.io/artifactory/api/conan/ns1labs-conan
         VERIFY_SSL True)
 
