@@ -21,13 +21,16 @@ if(VISOR_PRERELEASE STREQUAL "-develop" OR VISOR_PRERELEASE STREQUAL "-rc")
     execute_process(
             COMMAND
             git rev-parse --short HEAD
+            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
             RESULT_VARIABLE
             SHORT_HASH_RESULT
             OUTPUT_VARIABLE
             SHORT_HASH
-            ERROR_QUIET
             OUTPUT_STRIP_TRAILING_WHITESPACE
     )
+    if (${SHORT_HASH} STREQUAL "")
+        message(FATAL "Unable to get current git hash for develop/rc version")
+    endif ()
     string(APPEND VISOR_PRERELEASE "-${SHORT_HASH}")
 endif()
 
@@ -118,7 +121,7 @@ set(VISOR_STATIC_PLUGINS)
 
 enable_testing()
 
-message(STATUS "Building pktvisor version ${CMAKE_PROJECT_VERSION_MAJOR}.${CMAKE_PROJECT_VERSION_MINOR}.${CMAKE_PROJECT_VERSION_MINOR}${VISOR_PRERELEASE}")
+message(STATUS "Building pktvisor version ${CMAKE_PROJECT_VERSION_MAJOR}.${CMAKE_PROJECT_VERSION_MINOR}.${CMAKE_PROJECT_VERSION_PATCH}${VISOR_PRERELEASE}")
 add_subdirectory(3rd)
 add_subdirectory(src)
 add_subdirectory(cmd)
