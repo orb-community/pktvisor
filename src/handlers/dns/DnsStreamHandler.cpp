@@ -24,7 +24,7 @@ DnsStreamHandler::DnsStreamHandler(const std::string &name, InputStream *stream,
     : visor::StreamMetricsHandler<DnsMetricsManager>(name, window_config)
 {
     if (handler) {
-        throw StreamHandlerException(fmt::format("DnsStreamHandler: unsupported stream handler {}", handler->name()));
+        throw StreamHandlerException(fmt::format("DnsStreamHandler: unsupported upstream chained stream handler {}", handler->name()));
     }
 
     assert(stream);
@@ -138,6 +138,7 @@ void DnsStreamHandler::process_udp_packet_cb(pcpp::Packet &payload, PacketDirect
         DnsLayer dnsLayer(udpLayer, &payload);
         if (!_filtering(dnsLayer, dir, l3, pcpp::UDP, metric_port, stamp)) {
             _metrics->process_dns_layer(dnsLayer, dir, l3, pcpp::UDP, flowkey, metric_port, stamp);
+            // signal for chained stream handlers, if we have any
             udp_signal(payload, dir, l3, flowkey, stamp);
         }
     }

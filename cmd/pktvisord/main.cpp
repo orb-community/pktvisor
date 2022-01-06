@@ -144,11 +144,11 @@ void fill_cmd_options(std::map<std::string, docopt::value> args, CmdOptions &opt
             config_file = YAML::LoadFile(args["--config"].asString());
 
             if (!config_file.IsMap() || !config_file["visor"]) {
-                logger->error("invalid schema");
+                logger->error("invalid schema in config file: {}", args["--config"].asString());
                 exit(EXIT_FAILURE);
             }
             if (!config_file["version"] || !config_file["version"].IsScalar() || config_file["version"].as<std::string>() != "1.0") {
-                logger->error("missing or unsupported version");
+                logger->error("missing or unsupported version in config file: {}", args["--config"].asString());
                 exit(EXIT_FAILURE);
             }
 
@@ -158,7 +158,7 @@ void fill_cmd_options(std::map<std::string, docopt::value> args, CmdOptions &opt
                 config = config_file["visor"]["config"];
             }
         } catch (std::runtime_error &e) {
-            logger->error(e.what());
+            logger->error("{} in config file: {}", e.what(), args["--config"].asString());
             exit(EXIT_FAILURE);
         }
     }

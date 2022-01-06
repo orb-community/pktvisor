@@ -10,7 +10,7 @@ PcapStreamHandler::PcapStreamHandler(const std::string &name, InputStream *strea
     : visor::StreamMetricsHandler<PcapMetricsManager>(name, window_config)
 {
     if (handler) {
-        throw StreamHandlerException(fmt::format("PcapStreamHandler: unsupported stream handler {}", handler->name()));
+        throw StreamHandlerException(fmt::format("PcapStreamHandler: unsupported upstream chained stream handler {}", handler->name()));
     }
 
     assert(stream);

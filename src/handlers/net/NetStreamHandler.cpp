@@ -36,7 +36,7 @@ NetStreamHandler::NetStreamHandler(const std::string &name, InputStream *stream,
     if (handler) {
         _dns_handler = dynamic_cast<DnsStreamHandler *>(handler);
         if (!_dns_handler) {
-            throw StreamHandlerException(fmt::format("NetStreamHandler: unsupported stream handler {}", handler->name()));
+            throw StreamHandlerException(fmt::format("NetStreamHandler: unsupported upstream chained stream handler {}", handler->name()));
         }
     }
 }

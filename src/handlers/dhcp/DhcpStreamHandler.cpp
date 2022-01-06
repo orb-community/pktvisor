@@ -10,7 +10,7 @@ DhcpStreamHandler::DhcpStreamHandler(const std::string &name, InputStream *strea
     : visor::StreamMetricsHandler<DhcpMetricsManager>(name, window_config)
 {
     if (handler) {
-        throw StreamHandlerException(fmt::format("DhcpStreamHandler: unsupported stream handler {}", handler->name()));
+        throw StreamHandlerException(fmt::format("DhcpStreamHandler: unsupported upstream chained stream handler {}", handler->name()));
     }
 
     assert(stream);

@@ -11,7 +11,7 @@ MockStreamHandler::MockStreamHandler(const std::string &name, InputStream *strea
     : visor::StreamMetricsHandler<MockMetricsManager>(name, window_config)
 {
     if (handler) {
-        throw StreamHandlerException(fmt::format("MockStreamHandler: unsupported stream handler {}", handler->name()));
+        throw StreamHandlerException(fmt::format("MockStreamHandler: unsupported upstream chained stream handler {}", handler->name()));
     }
 
     assert(stream);

@@ -491,7 +491,7 @@ TEST_CASE("Policies", "[policies]")
         YAML::Node config_file = YAML::Load(policies_config_hseq_bad1);
 
         REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
-        REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["policies"]), "DnsStreamHandler: unsupported stream handler default_view-default_net");
+        REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["policies"]), "DnsStreamHandler: unsupported upstream chained stream handler default_view-default_net");
     }
 
     SECTION("Bad Config: invalid handler modules YAML type")
