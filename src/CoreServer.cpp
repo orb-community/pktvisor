@@ -4,6 +4,8 @@
 
 #include "CoreServer.h"
 #include "HandlerManager.h"
+#include "InputStreamManager.h"
+#include "InputStream.h"
 #include "Metrics.h"
 #include "Policies.h"
 #include "Taps.h"
@@ -278,9 +280,18 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
         }
         try {
             auto [policy, lock] = _registry->policy_manager()->module_get_locked(name);
+            std::string input_name = policy->input_stream()->name();
+            std::vector<std::string> module_names;
+            for (auto &mod : policy->modules()) {
+                module_names.push_back(mod->name());
+            }
             policy->stop();
             lock.unlock();
             // TODO chance of race here
+            for (auto &name : module_names) {
+                _registry->handler_manager()->module_remove(name);
+            }
+            _registry->input_manager()->module_remove(input_name);
             _registry->policy_manager()->module_remove(name);
             res.set_content(j.dump(), "text/json");
         } catch (const std::exception &e) {
