@@ -114,7 +114,6 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
             }
         }
 
-
         // Create Policy
         auto policy = std::make_unique<Policy>(policy_name, tap);
         // if and only if policy succeeds, we will return this in result set
@@ -143,8 +142,11 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
             throw PolicyException("missing or invalid handler configuration at key 'handlers'");
         }
         auto handler_node = it->second["handlers"];
-        if (!handler_node["modules"] || !handler_node["modules"].IsMap()) {
+        bool handler_sequence = false;
+        if (!handler_node["modules"] || (!handler_node["modules"].IsMap() && !handler_node["modules"].IsSequence())) {
             throw PolicyException("missing or invalid handler modules at key 'modules'");
+        } else if (handler_node["modules"].IsSequence()) {
+            handler_sequence = true;
         }
         Config window_config;
         if (handler_node["window_config"] && handler_node["window_config"].IsMap()) {
@@ -157,40 +159,54 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
 
         std::vector<std::unique_ptr<StreamHandler>> handler_modules;
         for (YAML::const_iterator h_it = handler_node["modules"].begin(); h_it != handler_node["modules"].end(); ++h_it) {
+
             // Per handler
-            if (!h_it->first.IsScalar()) {
-                throw PolicyException("expecting handler module identifier");
+            auto module = [&]() -> const YAML::Node {
+                return handler_sequence ? *h_it : h_it->second;
+            }();
+
+            std::string handler_module_name;
+            if (handler_sequence) {
+                if (!module.begin()->first.IsScalar()) {
+                    throw PolicyException("expecting handler module identifier");
+                }
+                handler_module_name = module.begin()->first.as<std::string>();
+            } else {
+                if (!h_it->first.IsScalar()) {
+                    throw PolicyException("expecting handler module identifier");
+                }
+                handler_module_name = h_it->first.as<std::string>();
             }
-            auto handler_module_name = h_it->first.as<std::string>();
-            if (!h_it->second.IsMap()) {
+
+            if (!module.IsMap()) {
                 throw PolicyException("expecting Handler configuration map");
             }
-            if (!h_it->second["type"] || !h_it->second["type"].IsScalar()) {
+            if (!module["type"] || !module["type"].IsScalar()) {
                 throw PolicyException("missing or invalid stream handler type at key 'type'");
             }
-            auto handler_module_type = h_it->second["type"].as<std::string>();
+            auto handler_module_type = module["type"].as<std::string>();
             auto handler_plugin = _registry->handler_plugins().find(handler_module_type);
             if (handler_plugin == _registry->handler_plugins().end()) {
                 throw PolicyException(fmt::format("Policy '{}' requires stream handler type '{}' which is not available", policy_name, handler_module_type));
             }
             Config handler_filter;
-            if (h_it->second["filter"]) {
-                if (!h_it->second["filter"].IsMap()) {
+            if (module["filter"]) {
+                if (!module["filter"].IsMap()) {
                     throw PolicyException("stream handler filter configuration is not a map");
                 }
                 try {
-                    handler_filter.config_set_yaml(h_it->second["filter"]);
+                    handler_filter.config_set_yaml(module["filter"]);
                 } catch (ConfigException &e) {
                     throw PolicyException(fmt::format("invalid stream handler filter config for handler '{}': {}", handler_module_name, e.what()));
                 }
             }
             Config handler_config;
-            if (h_it->second["config"]) {
-                if (!h_it->second["config"].IsMap()) {
+            if (module["config"]) {
+                if (!module["config"].IsMap()) {
                     throw PolicyException("stream handler configuration is not a map");
                 }
                 try {
-                    handler_config.config_set_yaml(h_it->second["config"]);
+                    handler_config.config_set_yaml(module["config"]);
                 } catch (ConfigException &e) {
                     throw PolicyException(fmt::format("invalid stream handler config for handler '{}': {}", handler_module_name, e.what()));
                 }
@@ -200,8 +216,15 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
             // TODO separate filter config
             handler_config.config_merge(handler_filter);
             handler_config.config_merge(window_config);
-            auto handler_module = handler_plugin->second->instantiate(policy_name + "-" + handler_module_name, input_stream.get(), &handler_config);
-            policy->add_module(handler_module.get());
+
+            std::unique_ptr<StreamHandler> handler_module;
+            if (!handler_sequence || handler_modules.empty()) {
+                handler_module = handler_plugin->second->instantiate(policy_name + "-" + handler_module_name, input_stream.get(), &handler_config);
+            } else {
+                // for sequence, use only previous handler
+                handler_module = handler_plugin->second->instantiate(policy_name + "-" + handler_module_name, nullptr, &handler_config, handler_modules.back().get());
+            }
+            policy_ptr->add_module(handler_module.get());
             handler_modules.emplace_back(std::move(handler_module));
         }
 

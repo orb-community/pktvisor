@@ -19,6 +19,7 @@ target_link_libraries(VisorHandlerNet
         Visor::Input::Pcap
         Visor::Input::Mock
         Visor::Input::Dnstap
+        Visor::Handler::Dns
         )
 
 set(VISOR_STATIC_PLUGINS ${VISOR_STATIC_PLUGINS} Visor::Handler::Net PARENT_SCOPE)

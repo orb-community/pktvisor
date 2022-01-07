@@ -76,7 +76,7 @@ class MockStreamHandler final : public visor::StreamMetricsHandler<MockMetricsMa
     void process_random_int(uint64_t i);
 
 public:
-    MockStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config);
+    MockStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config, StreamHandler *handler = nullptr);
     ~MockStreamHandler();
 
     // visor::AbstractModule

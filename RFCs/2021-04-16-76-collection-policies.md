@@ -1,6 +1,7 @@
 ### pktvisor Collection Policies
 
 ## Status
+
 **Experimental**: implemented and available for beta testing but the interface may still change
 
 ## Summary
@@ -9,9 +10,14 @@ Collection policies direct pktvisor to use Taps (#75) to create an instance of a
 and attach handlers to it. Processing takes place, and the data is exposed for sinks to collect. These policies may be
 given directly to pktvisor via command line or through the Admin API if available.
 
+Pktvisor also supports a chain of handlers. Therefore, the output of a filtered handler can be the input stream of the
+next handler. This requires that modules policy to use YAML sequence. For handlers to chain successfully, they must have
+explicit support for the handler type upstream to them, otherwise the policy will fail.
+
 Policies require a `kind` to indicate the type of policy being applied.
 
-NOTE: this is not yet a complete, formal specification, and not all of it is implemented. See src/tests/test_policies.cpp for current, tested implementation.
+NOTE: this is not yet a complete, formal specification, and not all of it is implemented. See
+src/tests/test_policies.cpp for current, tested implementation.
 
 `collection-policy-anycast.yaml`
 
@@ -70,6 +76,33 @@ visor:
               disable:
                 - top_qtypes
                 - top_udp_ports
+    chaning_handlers:
+      kind: collection
+      description: "base chaning NET to DNS policy"
+      # input stream to create based on the given tap and optional filter config
+      input:
+        # this must reference a tap name, or application of the policy will fail
+        tap: anycast
+        # this must match the input_type of the matching tap name, or application of the policy will fail
+        input_type: pcap
+        filter:
+          bpf: "port 53"
+      handlers:
+        # default configuration for the stream handlers
+        config:
+          periods: 5
+          max_deep_sample: 50
+        modules:
+          # the keys at this level are unique identifiers
+          # Chaning handlers example
+          - upstream_dns:
+            type: dns
+            filter:
+              # must match the available configuration options for this version of this stream handler
+              qname_suffix: .mydomain.com
+          # net handler will only receive .mydomain.com packages
+          - chain_net:
+            type: net
 ```
 
 ## REST API
