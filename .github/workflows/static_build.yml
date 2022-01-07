@@ -86,6 +86,8 @@ jobs:
           docker build -f docker/Dockerfile.${{ env.BASE_BINARY }}-static -t ${{ env.IMAGE_NAME }} .
           docker push -a ${{ env.IMAGE_NAME }}
           echo "CONT_ID=$(docker create --name ${{ env.BASE_BINARY }}-slim-tmp ${{ env.IMAGE_NAME }})" >> $GITHUB_ENV
+          echo "cont_id: ${{ env.CONT_ID }}"
+          docker create --name ${{ env.BASE_BINARY }}-slim-tmp ${{ env.IMAGE_NAME }} 
           docker cp ${{ env.CONT_ID }}:/${{ env.BASE_BINARY }} ${{github.workspace}}/pktvisord-linux-x86_64-${{ env.VERSION }}
 
       - name: Upload pktvisord artifact
