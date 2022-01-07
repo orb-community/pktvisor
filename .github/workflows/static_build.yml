@@ -78,7 +78,7 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build and push static pktvisord container
-#        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request'
         env:
           BASE_BINARY: pktvisord
           IMAGE_NAME: ns1labs/pktvisord-slim
@@ -88,6 +88,7 @@ jobs:
           echo "CONT_ID=$(docker create --name ${{ env.BASE_BINARY }}-slim-tmp ${{ env.IMAGE_NAME }})" >> $GITHUB_ENV
 
       - name: Extract static pktvisord asset
+        if: github.event_name != 'pull_request'
         env:
           BASE_BINARY: pktvisord
           IMAGE_NAME: ns1labs/pktvisord-slim
@@ -95,7 +96,7 @@ jobs:
           docker cp ${{ env.CONT_ID }}:/${{ env.BASE_BINARY }} ${{github.workspace}}/${{ env.BASE_BINARY }}-linux-x86_64-${{ env.VERSION }}
 
       - name: Upload pktvisord artifact
-#        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request'
         env:
           BINARY_NAME: pktvisord-linux-x86_64-${{ env.VERSION }}
         uses: actions/upload-artifact@v2
@@ -103,19 +104,59 @@ jobs:
           name: ${{ env.BINARY_NAME }}
           path: ${{github.workspace}}/${{ env.BINARY_NAME }}
 
-      - name: Build static pktvisor-pcap-slim
+      - name: Build and push static pktvisor-pcap container
         if: github.event_name != 'pull_request'
         env:
-          IMAGE_NAME: ns1labs/pktvisor-pcap
-        run: |
-          docker build -f docker/Dockerfile.pktvisor-pcap-static -t ${{ env.IMAGE_NAME }} .
-          docker push -a ${{ env.IMAGE_NAME }}
-
-      - name: Build static pktvisord-dnstap
-        if: github.event_name != 'pull_request'
-        env:
+          BASE_BINARY: pktvisor-pcap
           IMAGE_NAME: ns1labs/pktvisor-pcap-slim
         run: |
-          docker build -f docker/Dockerfile.pktvisor-dnstap-static -t ${{ env.IMAGE_NAME }} .
+          docker build -f docker/Dockerfile.${{ env.BASE_BINARY }}-static -t ${{ env.IMAGE_NAME }} .
           docker push -a ${{ env.IMAGE_NAME }}
+          echo "CONT_ID=$(docker create --name ${{ env.BASE_BINARY }}-slim-tmp ${{ env.IMAGE_NAME }})" >> $GITHUB_ENV
+
+      - name: Extract static pktvisor-pcap asset
+        if: github.event_name != 'pull_request'
+        env:
+          BASE_BINARY: pktvisor-pcap
+          IMAGE_NAME: ns1labs/pktvisor-pcap-slim
+        run: |
+          docker cp ${{ env.CONT_ID }}:/${{ env.BASE_BINARY }} ${{github.workspace}}/${{ env.BASE_BINARY }}-linux-x86_64-${{ env.VERSION }}
+
+      - name: Upload pktvisor-pcap artifact
+        if: github.event_name != 'pull_request'
+        env:
+          BINARY_NAME: pktvisor-pcap-linux-x86_64-${{ env.VERSION }}
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{ env.BINARY_NAME }}
+          path: ${{github.workspace}}/${{ env.BINARY_NAME }}
+
+
+      - name: Build and push static pktvisor-dnstap container
+        if: github.event_name != 'pull_request'
+        env:
+          BASE_BINARY: pktvisor-dnstap
+          IMAGE_NAME: ns1labs/pktvisor-dnstap-slim
+        run: |
+          docker build -f docker/Dockerfile.${{ env.BASE_BINARY }}-static -t ${{ env.IMAGE_NAME }} .
+          docker push -a ${{ env.IMAGE_NAME }}
+          echo "CONT_ID=$(docker create --name ${{ env.BASE_BINARY }}-slim-tmp ${{ env.IMAGE_NAME }})" >> $GITHUB_ENV
+
+      - name: Extract static pktvisor-dnstap asset
+        if: github.event_name != 'pull_request'
+        env:
+          BASE_BINARY: pktvisor-dnstap
+          IMAGE_NAME: ns1labs/pktvisor-dnstap-slim
+        run: |
+          docker cp ${{ env.CONT_ID }}:/${{ env.BASE_BINARY }} ${{github.workspace}}/${{ env.BASE_BINARY }}-linux-x86_64-${{ env.VERSION }}
+
+      - name: Upload pktvisor-dnstap artifact
+        if: github.event_name != 'pull_request'
+        env:
+          BINARY_NAME: pktvisor-dnstap-linux-x86_64-${{ env.VERSION }}
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{ env.BINARY_NAME }}
+          path: ${{github.workspace}}/${{ env.BINARY_NAME }}
+
 
