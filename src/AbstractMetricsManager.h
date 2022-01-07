@@ -54,7 +54,7 @@ private:
 
     timespec _start_tstamp;
     timespec _end_tstamp;
-    uint _period_length = 0;
+    unsigned int _period_length = 0;
     bool _read_only = false;
     bool _recorded_stream = false;
 
@@ -91,7 +91,7 @@ public:
         return _end_tstamp;
     }
 
-    uint period_length() const
+    unsigned int period_length() const
     {
         std::shared_lock r_lock(_base_mutex);
         if (_read_only || _recorded_stream) {
@@ -214,7 +214,7 @@ private:
     /**
      * the total number of periods we will maintain in the window
      */
-    uint _num_periods{5};
+    unsigned int _num_periods{5};
 
     /**
      * sampling
@@ -242,7 +242,7 @@ private:
     /**
      * simple cache for json results
      */
-    mutable std::unordered_map<uint, std::pair<std::chrono::high_resolution_clock::time_point, json>> _mergeResultCache;
+    mutable std::unordered_map<unsigned int, std::pair<std::chrono::high_resolution_clock::time_point, json>> _mergeResultCache;
 
     /**
      * manage the time window
@@ -278,8 +278,8 @@ private:
     }
 
 public:
-    static const uint PERIOD_SEC = 60;
-    static const uint MERGE_CACHE_TTL_MS = 1000;
+    static const unsigned int PERIOD_SEC = 60;
+    static const unsigned int MERGE_CACHE_TTL_MS = 1000;
 
 protected:
     /**
@@ -360,7 +360,7 @@ public:
         });
     }
 
-    uint num_periods() const
+    unsigned int num_periods() const
     {
         std::shared_lock rl(_base_mutex);
         return _num_periods;
@@ -372,7 +372,7 @@ public:
         return _metric_buckets.size();
     }
 
-    uint deep_sample_rate() const
+    unsigned int deep_sample_rate() const
     {
         std::shared_lock rl(_base_mutex);
         return _deep_sample_rate;

@@ -9,4 +9,5 @@ target_link_libraries(pktvisor-dnstap
         PRIVATE
         ${CONAN_LIBS_DOCOPT.CPP}
         ${VISOR_STATIC_PLUGINS}
+        ${STATIC_FLAGS}
         )

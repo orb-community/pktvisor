@@ -1,0 +1,16 @@
+FROM ns1labs/clang-toolchain:latest
+ARG REQUIRE="make cmake python3 py3-pip perl git bash libexecinfo-static libexecinfo-dev"
+ARG UID=1000
+
+RUN adduser -u ${UID} -D builder
+
+RUN apk add --no-cache ${REQUIRE}
+
+RUN ln -s /usr/local/bin/clang /usr/local/bin/cc \
+    && ln -s /usr/local/bin/clang /usr/local/bin/gcc \
+    && ln -s /usr/local/bin/clang++ /usr/local/bin/c++ \
+    && ln -s /usr/local/bin/clang++ /usr/local/bin/g++ \
+    && ln -s /usr/local/bin/clang-cpp /usr/local/bin/cpp \
+    && pip install conan
+
+USER builder

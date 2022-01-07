@@ -25,7 +25,9 @@ visor_pcap_int_test(dns_ipv6_udp)
 visor_pcap_int_test(dns_ipv6_tcp)
 visor_pcap_int_test(dhcp-flow)
 
-visor_dyn_mod_int_test(VisorHandlerMock)
+if(DYNAMIC_LIB_SUPPORT)
+    visor_dyn_mod_int_test(VisorHandlerMock)
+endif()
 
 # this allows local, non-public integration tests (for example, on private pcap data)
 #add_test(NAME external-tests

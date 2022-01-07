@@ -252,7 +252,7 @@ TEST_CASE("Cardinality metrics", "[metrics][cardinality]")
         c.update("metric");
         c.to_json(j);
         CHECK(j["test"]["metric"] == 1);
-        u_int8_t data[16] = {2, 0, 0, 1, ':', 'd', 'b', 8, ':', 3, 'c', 4, 'd', ':', 1, 5};
+        uint8_t data[16] = {2, 0, 0, 1, ':', 'd', 'b', 8, ':', 3, 'c', 4, 'd', ':', 1, 5};
         c.update(reinterpret_cast<const void *>(data), 16);
         c.to_json(j["top"]);
         CHECK(j["top"]["test"]["metric"] == 2);
