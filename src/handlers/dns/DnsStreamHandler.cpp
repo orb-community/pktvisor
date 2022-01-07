@@ -20,16 +20,20 @@
 
 namespace visor::handler::dns {
 
-DnsStreamHandler::DnsStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config)
+DnsStreamHandler::DnsStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config, StreamHandler *handler)
     : visor::StreamMetricsHandler<DnsMetricsManager>(name, window_config)
 {
+    if (handler) {
+        throw StreamHandlerException(fmt::format("DnsStreamHandler: unsupported upstream chained stream handler {}", handler->name()));
+    }
+
     assert(stream);
     // figure out which input stream we have
     _pcap_stream = dynamic_cast<PcapInputStream *>(stream);
     _mock_stream = dynamic_cast<MockInputStream *>(stream);
     _dnstap_stream = dynamic_cast<DnstapInputStream *>(stream);
     if (!_pcap_stream && !_mock_stream && !_dnstap_stream) {
-        throw StreamHandlerException(fmt::format("NetStreamHandler: unsupported input stream {}", stream->name()));
+        throw StreamHandlerException(fmt::format("DnsStreamHandler: unsupported input stream {}", stream->name()));
     }
 }
 
@@ -134,6 +138,8 @@ void DnsStreamHandler::process_udp_packet_cb(pcpp::Packet &payload, PacketDirect
         DnsLayer dnsLayer(udpLayer, &payload);
         if (!_filtering(dnsLayer, dir, l3, pcpp::UDP, metric_port, stamp)) {
             _metrics->process_dns_layer(dnsLayer, dir, l3, pcpp::UDP, flowkey, metric_port, stamp);
+            // signal for chained stream handlers, if we have any
+            udp_signal(payload, dir, l3, flowkey, stamp);
         }
     }
 }

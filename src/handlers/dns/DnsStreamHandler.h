@@ -260,7 +260,7 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
     bool _filtering(DnsLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint16_t port, timespec stamp);
 
 public:
-    DnsStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config);
+    DnsStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config, StreamHandler *handler = nullptr);
     ~DnsStreamHandler() = default;
 
     // visor::AbstractModule
@@ -271,6 +271,8 @@ public:
     void start() override;
     void stop() override;
     void info_json(json &j) const override;
+
+    mutable sigslot::signal<pcpp::Packet &, PacketDirection, pcpp::ProtocolType, uint32_t, timespec> udp_signal;
 };
 
 }

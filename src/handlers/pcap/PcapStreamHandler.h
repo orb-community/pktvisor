@@ -92,7 +92,7 @@ class PcapStreamHandler final : public visor::StreamMetricsHandler<PcapMetricsMa
     void set_end_tstamp(timespec stamp);
 
 public:
-    PcapStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config);
+    PcapStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config, StreamHandler *handler = nullptr);
     ~PcapStreamHandler() = default;
 
     // visor::AbstractModule

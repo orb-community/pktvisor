@@ -96,7 +96,7 @@ class DhcpStreamHandler final : public visor::StreamMetricsHandler<DhcpMetricsMa
     bool _filtering(pcpp::DhcpLayer *payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint16_t src_port, uint16_t dst_port, timespec stamp);
 
 public:
-    DhcpStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config);
+    DhcpStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config, StreamHandler *handler = nullptr);
     ~DhcpStreamHandler() = default;
 
     // visor::AbstractModule

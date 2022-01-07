@@ -7,10 +7,15 @@
 
 namespace visor::handler::mock {
 
-MockStreamHandler::MockStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config)
+MockStreamHandler::MockStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config, StreamHandler *handler)
     : visor::StreamMetricsHandler<MockMetricsManager>(name, window_config)
 {
+    if (handler) {
+        throw StreamHandlerException(fmt::format("MockStreamHandler: unsupported upstream chained stream handler {}", handler->name()));
+    }
+
     assert(stream);
+
     _logger = spdlog::get("dyn-mock-handler");
     if (!_logger) {
         _logger = spdlog::stderr_color_mt("dyn-mock-handler");
@@ -21,6 +26,7 @@ MockStreamHandler::MockStreamHandler(const std::string &name, InputStream *strea
     if (!_mock_stream) {
         throw StreamHandlerException(fmt::format("MockStreamHandler: unsupported input stream {}", stream->name()));
     }
+
     _logger->info("mock handler created");
 }
 MockStreamHandler::~MockStreamHandler()
