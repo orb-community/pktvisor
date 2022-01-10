@@ -4,8 +4,6 @@
 
 #include "CoreServer.h"
 #include "HandlerManager.h"
-#include "InputStreamManager.h"
-#include "InputStream.h"
 #include "Metrics.h"
 #include "Policies.h"
 #include "Taps.h"
