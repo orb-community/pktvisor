@@ -284,19 +284,19 @@ void PolicyManager::remove_policy(const std::string &name)
     }
 
     auto policy = _map[name].get();
-    std::string input_name = policy->input_stream()->name();
+    auto input_name = policy->input_stream()->name();
     std::vector<std::string> module_names;
-    for (auto &mod : policy->modules()) {
+    for (const auto &mod : policy->modules()) {
         module_names.push_back(mod->name());
     }
     policy->stop();
-    _map.erase(name);
-    lock.unlock();
 
-    for (auto &name : module_names) {
+    for (const auto &name : module_names) {
         _registry->handler_manager()->module_remove(name);
     }
     _registry->input_manager()->module_remove(input_name);
+
+    _map.erase(name);
 }
 void Policy::info_json(json &j) const
 {
