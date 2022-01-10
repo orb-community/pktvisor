@@ -91,6 +91,7 @@ public:
 
     std::vector<Policy *> load_from_str(const std::string &str);
     std::vector<Policy *> load(const YAML::Node &tap_yaml);
+    void remove_policy(const std::string &name);
 };
 
 }

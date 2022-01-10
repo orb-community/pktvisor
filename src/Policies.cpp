@@ -276,6 +276,28 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
     return result;
 }
 
+void PolicyManager::remove_policy(const std::string &name)
+{
+    std::unique_lock lock(_map_mutex);
+    if (_map.count(name) == 0) {
+        throw ModuleException(name, fmt::format("module name '{}' does not exist", name));
+    }
+
+    auto policy = _map[name].get();
+    auto input_name = policy->input_stream()->name();
+    std::vector<std::string> module_names;
+    for (const auto &mod : policy->modules()) {
+        module_names.push_back(mod->name());
+    }
+    policy->stop();
+
+    for (const auto &name : module_names) {
+        _registry->handler_manager()->module_remove(name);
+    }
+    _registry->input_manager()->module_remove(input_name);
+
+    _map.erase(name);
+}
 void Policy::info_json(json &j) const
 {
     _input_stream->info_json(j["input"][_input_stream->name()]);

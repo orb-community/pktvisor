@@ -277,11 +277,7 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
             return;
         }
         try {
-            auto [policy, lock] = _registry->policy_manager()->module_get_locked(name);
-            policy->stop();
-            lock.unlock();
-            // TODO chance of race here
-            _registry->policy_manager()->module_remove(name);
+            _registry->policy_manager()->remove_policy(name);
             res.set_content(j.dump(), "text/json");
         } catch (const std::exception &e) {
             res.status = 500;

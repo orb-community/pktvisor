@@ -550,4 +550,39 @@ TEST_CASE("Policies", "[policies]")
         lock.unlock();
         REQUIRE_NOTHROW(registry.policy_manager()->module_remove("default_view"));
     }
+
+    SECTION("Good Config, test remove policy and add again")
+    {
+        CoreRegistry registry;
+        registry.start(nullptr);
+        YAML::Node config_file = YAML::Load(policies_config);
+
+        CHECK(config_file["visor"]["policies"]);
+        CHECK(config_file["visor"]["policies"].IsMap());
+
+        REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
+        REQUIRE_NOTHROW(registry.policy_manager()->load(config_file["visor"]["policies"]));
+
+        REQUIRE(registry.policy_manager()->module_exists("default_view"));
+        auto [policy, lock] = registry.policy_manager()->module_get_locked("default_view");
+        CHECK(policy->name() == "default_view");
+        CHECK(policy->input_stream()->running());
+        CHECK(policy->modules()[0]->running());
+        CHECK(policy->modules()[1]->running());
+        CHECK(policy->modules()[2]->running());
+        lock.unlock();
+
+        REQUIRE_NOTHROW(registry.policy_manager()->remove_policy("default_view"));
+
+        REQUIRE_NOTHROW(registry.policy_manager()->load(config_file["visor"]["policies"]));
+        REQUIRE(registry.policy_manager()->module_exists("default_view"));
+        auto [new_policy, new_lock] = registry.policy_manager()->module_get_locked("default_view");
+        CHECK(new_policy->name() == "default_view");
+        CHECK(new_policy->input_stream()->running());
+        CHECK(new_policy->modules()[0]->running());
+        CHECK(new_policy->modules()[1]->running());
+        CHECK(new_policy->modules()[2]->running());
+        new_lock.unlock();
+        REQUIRE_NOTHROW(registry.policy_manager()->remove_policy("default_view"));
+    }
 }
