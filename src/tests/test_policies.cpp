@@ -551,7 +551,7 @@ TEST_CASE("Policies", "[policies]")
         REQUIRE_NOTHROW(registry.policy_manager()->module_remove("default_view"));
     }
 
-    SECTION("Good Config, test stop() then start()")
+    SECTION("Good Config, test remove policy and add again")
     {
         CoreRegistry registry;
         registry.start(nullptr);
@@ -570,17 +570,9 @@ TEST_CASE("Policies", "[policies]")
         CHECK(policy->modules()[0]->running());
         CHECK(policy->modules()[1]->running());
         CHECK(policy->modules()[2]->running());
-        policy->stop();
-        CHECK(!policy->input_stream()->running());
-        CHECK(!policy->modules()[0]->running());
-        CHECK(!policy->modules()[1]->running());
-        CHECK(!policy->modules()[2]->running());
         lock.unlock();
-        REQUIRE_NOTHROW(registry.handler_manager()->module_remove("default_view-default_net"));
-        REQUIRE_NOTHROW(registry.handler_manager()->module_remove("default_view-default_dns"));
-        REQUIRE_NOTHROW(registry.handler_manager()->module_remove("default_view-special_domain"));
-        REQUIRE_NOTHROW(registry.input_manager()->module_remove("anycast-default_view"));
-        REQUIRE_NOTHROW(registry.policy_manager()->module_remove("default_view"));
+
+        REQUIRE_NOTHROW(registry.policy_manager()->remove_policy("default_view"));
 
         REQUIRE_NOTHROW(registry.policy_manager()->load(config_file["visor"]["policies"]));
         REQUIRE(registry.policy_manager()->module_exists("default_view"));
@@ -590,12 +582,7 @@ TEST_CASE("Policies", "[policies]")
         CHECK(new_policy->modules()[0]->running());
         CHECK(new_policy->modules()[1]->running());
         CHECK(new_policy->modules()[2]->running());
-        new_policy->stop();
-        CHECK(!new_policy->input_stream()->running());
-        CHECK(!new_policy->modules()[0]->running());
-        CHECK(!new_policy->modules()[1]->running());
-        CHECK(!new_policy->modules()[2]->running());
         new_lock.unlock();
-        REQUIRE_NOTHROW(registry.policy_manager()->module_remove("default_view"));
+        REQUIRE_NOTHROW(registry.policy_manager()->remove_policy("default_view"));
     }
 }
