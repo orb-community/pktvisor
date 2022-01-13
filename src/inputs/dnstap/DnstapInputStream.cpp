@@ -147,6 +147,7 @@ void DnstapInputStream::_create_frame_stream_tcp_socket()
 
     _tcp_server_h->on<uvw::ErrorEvent>([this](const auto &err, auto &) {
         _logger->error("[{}] socket error: {}", _name, err.what());
+        throw DnstapException(err.what());
     });
 
     // ListenEvent happens on client connection
@@ -206,6 +207,7 @@ void DnstapInputStream::_create_frame_stream_tcp_socket()
         client->read();
     });
 
+    _logger->info("[{}]: opening dnstap server on {}", _name, config_get<std::string>("tcp"));
     _tcp_server_h->bind(host, port);
     _tcp_server_h->listen();
 
@@ -248,6 +250,7 @@ void DnstapInputStream::_create_frame_stream_unix_socket()
 
     _unix_server_h->on<uvw::ErrorEvent>([this](const auto &err, auto &) {
         _logger->error("[{}] socket error: {}", _name, err.what());
+        throw DnstapException(err.what());
     });
 
     // ListenEvent happens on client connection
@@ -310,6 +313,7 @@ void DnstapInputStream::_create_frame_stream_unix_socket()
     // attempt to remove socket if it exists, ignore errors
     std::filesystem::remove(config_get<std::string>("socket"));
 
+    _logger->info("[{}]: opening dnstap server on {}", _name, config_get<std::string>("socket"));
     _unix_server_h->bind(config_get<std::string>("socket"));
     _unix_server_h->listen();
 
