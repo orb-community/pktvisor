@@ -180,6 +180,9 @@ bool FrameSessionData<C>::_try_yield_frame()
         if (_buffer.size() >= sizeof(frame_len) + frame_len) {
             _on_data_frame_cb(_buffer.data() + sizeof(frame_len), frame_len);
             _buffer.erase(0, sizeof(frame_len) + frame_len);
+        } else {
+            // need more data
+            return false;
         }
     } else {
         // this is a control frame
