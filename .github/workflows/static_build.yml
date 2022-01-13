@@ -105,7 +105,7 @@ jobs:
         if: github.event_name != 'pull_request'
         env:
           BASE_BINARY: pktvisor-reader
-          IMAGE_NAME: ns1labs/pktvisor-reader-slim
+          IMAGE_NAME: ns1labs/pktvisor-reader
         run: |
           docker build -f docker/Dockerfile.${{ env.BASE_BINARY }}-static -t ${{ env.IMAGE_NAME }}:${{ env.REF_TAG }} -t ${{ env.IMAGE_NAME }}:${{ env.VERSION }} .
           docker push -a ${{ env.IMAGE_NAME }}
@@ -115,7 +115,7 @@ jobs:
         if: github.event_name != 'pull_request'
         env:
           BASE_BINARY: pktvisor-reader
-          IMAGE_NAME: ns1labs/pktvisor-reader-slim
+          IMAGE_NAME: ns1labs/pktvisor-reader
         run: |
           docker cp ${{ env.CONT_ID }}:/${{ env.BASE_BINARY }} ${{github.workspace}}/${{ env.BASE_BINARY }}-linux-x86_64-${{ env.VERSION }}
 
