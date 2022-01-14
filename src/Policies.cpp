@@ -313,12 +313,14 @@ void Policy::start()
     assert(_tap);
     assert(_input_stream);
     spdlog::get("visor")->info("policy [{}]: starting", _name);
-    spdlog::get("visor")->info("policy [{}]: starting input instance: {}", _name, _input_stream->name());
-    _input_stream->start();
     for (auto &mod : _modules) {
         spdlog::get("visor")->info("policy [{}]: starting handler instance: {}", _name, mod->name());
         mod->start();
     }
+    // start input stream _after_ modules, since input stream will create a new thread and we need to catch any startup errors
+    // from handlers in the same thread we are starting the policy from
+    spdlog::get("visor")->info("policy [{}]: starting input instance: {}", _name, _input_stream->name());
+    _input_stream->start();
     _running = true;
 }
 void Policy::stop()
