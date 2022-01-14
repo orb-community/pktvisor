@@ -360,6 +360,11 @@ public:
         });
     }
 
+    virtual ~AbstractMetricsManager()
+    {
+        _flush_timer_handle->cancel();
+    }
+
     unsigned int num_periods() const
     {
         std::shared_lock rl(_base_mutex);
