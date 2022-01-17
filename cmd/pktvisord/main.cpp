@@ -69,8 +69,8 @@ static const char USAGE[] =
       --config FILE               Use specified YAML configuration to configure options, Taps, and Collection Policies
                                   Please see https://pktvisor.dev for more information
     Modules:
-      --module-list               List all modules which have been loaded (builtin and dynamic)
-      --module-dir DIR            Set module search path
+      --module-list               List all modules which have been loaded (builtin and dynamic).
+      --module-dir DIR            Set module load path. All modules in this directory will be loaded.
     Logging Options:
       --log-file FILE             Log to the given output file name
       --syslog                    Log to syslog
