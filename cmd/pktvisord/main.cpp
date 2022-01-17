@@ -70,7 +70,6 @@ static const char USAGE[] =
                                   Please see https://pktvisor.dev for more information
     Modules:
       --module-list               List all modules which have been loaded (builtin and dynamic)
-      --module-load FILE          Load the specified dynamic module
       --module-dir DIR            Set module search path
     Logging Options:
       --log-file FILE             Log to the given output file name
@@ -125,7 +124,6 @@ struct CmdOptions {
 
     struct Module {
         bool list{false};
-        std::pair<bool, std::string> load{false, ""};
         std::pair<bool, std::string> dir{false, ""};
     };
     Module module;
@@ -235,12 +233,6 @@ void fill_cmd_options(std::map<std::string, docopt::value> args, CmdOptions &opt
     }
 
     options.module.list = (config["module_list"] && config["module_list"].as<bool>()) || args["--module-list"].asBool();
-
-    if (args["--module-load"]) {
-        options.module.load = std::make_pair(true, args["--module-load"].asString());
-    } else if (config["module_load"]) {
-        options.module.load = std::make_pair(true, config["module_load"].as<std::string>());
-    }
 
     if (args["--module-dir"]) {
         options.module.dir = std::make_pair(true, args["--module-dir"].asString());
@@ -391,39 +383,6 @@ int main(int argc, char *argv[])
         registry.input_plugin_registry()->setPluginDirectory(options.module.dir.second);
         registry.handler_plugin_registry()->setPluginDirectory(options.module.dir.second);
     }
-    if (options.module.load.first) {
-        auto meta = registry.input_plugin_registry()->metadata(options.module.load.second);
-        if (!meta) {
-            logger->error("failed to load plugin: {}", options.module.load.second);
-            exit(EXIT_FAILURE);
-        }
-        if (!meta->data().hasValue("type") || (meta->data().value("type") != "handler" && meta->data().value("type") != "input")) {
-            logger->error("plugin configuration metadata did not specify a valid plugin type", options.module.load.second);
-            exit(EXIT_FAILURE);
-        }
-        if (meta->data().value("type") == "input") {
-            auto result = registry.input_plugin_registry()->load(options.module.load.second);
-            if (result != Corrade::PluginManager::LoadState::Loaded) {
-                logger->error("failed to load input plugin: {}", result);
-                exit(EXIT_FAILURE);
-            }
-        } else if (meta->data().value("type") == "handler") {
-            auto result = registry.handler_plugin_registry()->load(options.module.load.second);
-            if (result != Corrade::PluginManager::LoadState::Loaded) {
-                logger->error("failed to load input handler plugin: {}", result);
-                exit(EXIT_FAILURE);
-            }
-        }
-    }
-    if (options.module.list) {
-        for (auto &p : registry.input_plugin_registry()->pluginList()) {
-            logger->info("input: {}", p);
-        }
-        for (auto &p : registry.handler_plugin_registry()->pluginList()) {
-            logger->info("handler: {}", p);
-        }
-        exit(EXIT_SUCCESS);
-    }
 
     logger->info("{} starting up", VISOR_VERSION);
 
@@ -465,6 +424,22 @@ int main(int argc, char *argv[])
             logger->error(res.body);
         }
     });
+
+    if (options.module.list) {
+        for (auto &p : registry.input_plugin_registry()->pluginList()) {
+            auto meta = registry.input_plugin_registry()->metadata(p);
+            if (meta && meta->data().hasValue("type") && meta->data().value("type") == "input") {
+                logger->info("input: {}", p);
+            }
+        }
+        for (auto &p : registry.handler_plugin_registry()->pluginList()) {
+            auto meta = registry.handler_plugin_registry()->metadata(p);
+            if (meta && meta->data().hasValue("type") && meta->data().value("type") == "handler") {
+                logger->info("handler: {}", p);
+            }
+        }
+        exit(EXIT_SUCCESS);
+    }
 
     // local config file
     if (options.config.first) {

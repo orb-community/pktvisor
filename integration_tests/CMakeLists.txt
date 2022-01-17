@@ -16,7 +16,7 @@ endmacro()
 macro(visor_dyn_mod_int_test name)
     add_test(NAME ${name}
             WORKING_DIRECTORY ${WORKING_DIR}
-            COMMAND ${PKTD_BINARY} --module-dir ${VISOR_DYNMODULE_DIR} --module-load ${name} --module-list)
+            COMMAND ${PKTD_BINARY} --module-dir ${VISOR_DYNMODULE_DIR} --module-list)
 endmacro()
 
 visor_pcap_int_test(dns_ipv4_udp)
