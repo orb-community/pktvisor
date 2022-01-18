@@ -15,7 +15,12 @@ namespace visor {
 
 std::vector<Policy *> PolicyManager::load_from_str(const std::string &str)
 {
+    if (str.empty()) {
+        throw PolicyException("empty data");
+    }
+
     YAML::Node node = YAML::Load(str);
+
     if (!node.IsMap() || !node["visor"]) {
         throw PolicyException("invalid schema");
     }
