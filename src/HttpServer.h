@@ -7,7 +7,6 @@
 #define CPPHTTPLIB_OPENSSL_SUPPORT
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wold-style-cast"
-#undef SO_REUSEPORT
 #include <httplib.h>
 #pragma GCC diagnostic pop
 #include <spdlog/spdlog.h>
@@ -40,6 +39,18 @@ public:
         } else {
             _svr = std::make_unique<httplib::Server>();
         }
+        _svr->set_socket_options(std::bind(&HttpServer::socket_options, this, std::placeholders::_1));
+    }
+
+    inline void socket_options(socket_t sock)
+    {
+        int yes = 1;
+#ifdef _WIN32
+        setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<char *>(&yes), sizeof(yes));
+        setsockopt(sock, SOL_SOCKET, SO_EXCLUSIVEADDRUSE, reinterpret_cast<char *>(&yes), sizeof(yes));
+#else
+        setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<void *>(&yes), sizeof(yes));
+#endif
     }
 
     void set_logger(Logger logger)
