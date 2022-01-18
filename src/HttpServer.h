@@ -7,6 +7,7 @@
 #define CPPHTTPLIB_OPENSSL_SUPPORT
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wold-style-cast"
+#undef SO_REUSEPORT
 #include <httplib.h>
 #pragma GCC diagnostic pop
 #include <spdlog/spdlog.h>
