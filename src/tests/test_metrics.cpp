@@ -179,8 +179,8 @@ TEST_CASE("TopN metrics", "[metrics][topn]")
     json j;
     std::stringstream output;
     std::string line;
-    TopN<std::string> top_sting("root", {"test", "metric"}, "A topn test metric");
-    TopN<uint16_t> top_int("root", {"test", "metric"}, "A topn test metric");
+    TopN<std::string> top_sting("root", "string", {"test", "metric"}, "A topn test metric");
+    TopN<uint16_t> top_int("root", "integer", {"test", "metric"}, "A topn test metric");
 
     SECTION("TopN to json")
     {
@@ -205,17 +205,21 @@ TEST_CASE("TopN metrics", "[metrics][topn]")
     SECTION("TopN prometheus")
     {
         top_sting.update("top1");
-        top_sting.update("top2");
+        top_sting.update("ToP2");
         top_sting.update("top1");
-        top_sting.to_prometheus(output, {{"policy", "default"}});
+        top_sting.to_prometheus(output, {{"policy", "default"}}, [](std::string val) {
+            std::transform(val.begin(), val.end(), val.begin(),
+                [](unsigned char c) { return std::tolower(c); });
+            return val;
+        });
         std::getline(output, line);
         CHECK(line == "# HELP root_test_metric A topn test metric");
         std::getline(output, line);
         CHECK(line == "# TYPE root_test_metric gauge");
         std::getline(output, line);
-        CHECK(line == R"(root_test_metric{instance="test instance",name="top1",policy="default"} 2)");
+        CHECK(line == R"(root_test_metric{instance="test instance",policy="default",string="top1"} 2)");
         std::getline(output, line);
-        CHECK(line == R"(root_test_metric{instance="test instance",name="top2",policy="default"} 1)");
+        CHECK(line == R"(root_test_metric{instance="test instance",policy="default",string="top2"} 1)");
     }
 
     SECTION("TopN prometheus formatter")
@@ -230,9 +234,9 @@ TEST_CASE("TopN metrics", "[metrics][topn]")
         std::getline(output, line);
         CHECK(line == "# TYPE root_test_metric gauge");
         std::getline(output, line);
-        CHECK(line == R"(root_test_metric{instance="test instance",name="123",policy="default"} 2)");
+        CHECK(line == R"(root_test_metric{instance="test instance",integer="123",policy="default"} 2)");
         std::getline(output, line);
-        CHECK(line == R"(root_test_metric{instance="test instance",name="10",policy="default"} 1)");
+        CHECK(line == R"(root_test_metric{instance="test instance",integer="10",policy="default"} 1)");
     }
 }
 
