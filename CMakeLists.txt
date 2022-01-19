@@ -51,21 +51,28 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 #set(CMAKE_VERBOSE_MAKEFILE ON)
 add_compile_options(-Wall -pedantic -W -Wextra -Wno-unknown-pragmas)
 
-# use a custom conan home directory in our build directory
-# this allows us to use the clang-toolchain docker image in CLion docker toolchain
-set(ENV{CONAN_USER_HOME} ${CMAKE_BINARY_DIR}/conan_home)
+# Conan setup
+
+set(PKTVISOR_CONAN_INIT ON CACHE BOOL "Create new Conan environment for the build.")
+set(PKTVISOR_CONAN_BUILD_PROFILE "default" CACHE STRING "Profile for the build environment.")
+set(PKTVISOR_CONAN_HOST_PROFILE "default" CACHE STRING "Profile for the host environment.")
+
 include(conan)
 
-conan_add_remote(NAME ns1labs INDEX 0
-        URL https://ns1labs.jfrog.io/artifactory/api/conan/ns1labs-conan
-        VERIFY_SSL True)
+# setup new environment by default but allow using an existing one
+# this also allows us to use the clang-toolchain docker image in CLion docker toolchain
+if(PKTVISOR_CONAN_INIT)
+    message(STATUS "Creating new Conan environment.")
+    set(ENV{CONAN_USER_HOME} ${CMAKE_BINARY_DIR}/conan_home)
+    execute_process(COMMAND ${CONAN_CMD} config set "general.revisions_enabled=1")
+    execute_process(COMMAND ${CONAN_CMD} profile update settings.compiler.libcxx=libstdc++11 default)
+    conan_add_remote(NAME ns1labs INDEX 0
+            URL https://ns1labs.jfrog.io/artifactory/api/conan/ns1labs-conan
+            VERIFY_SSL True)
+endif()
 
 conan_cmake_autodetect(CONAN_SETTINGS)
 message(STATUS "Detected conan settings: ${CONAN_SETTINGS}")
-
-# is this destructive for developer environment?
-message(STATUS "Setting conan general.revisions_enabled=1")
-execute_process(COMMAND ${CONAN_CMD} config set general.revisions_enabled=1)
 
 # by default, build all conan dependencies that don't have a binary for this env
 set(CONAN_BUILD_SETTING missing)
@@ -106,6 +113,8 @@ endif()
 
 conan_cmake_install(PATH_OR_REFERENCE ${CMAKE_SOURCE_DIR}
         BUILD ${CONAN_BUILD_SETTING}
+        PROFILE_BUILD ${PKTVISOR_CONAN_BUILD_PROFILE}
+        PROFILE_HOST ${PKTVISOR_CONAN_HOST_PROFILE}
         GENERATOR cmake
         SETTINGS ${CONAN_SETTINGS}
         ENV ${CONAN_ENV_SETTING}
