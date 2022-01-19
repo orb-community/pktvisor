@@ -95,14 +95,14 @@ public:
         , _dns_qnameCard("dns", {"cardinality", "qname"}, "Cardinality of unique QNAMES, both ingress and egress")
         , _dns_topQname2("dns", "qname", {"top_qname2"}, "Top QNAMES, aggregated at a depth of two labels")
         , _dns_topQname3("dns", "qname", {"top_qname3"}, "Top QNAMES, aggregated at a depth of three labels")
-        , _dns_topNX("dns", "nxdomain", {"top_nxdomain"}, "Top QNAMES with result code NXDOMAIN")
-        , _dns_topREFUSED("dns", "refused", {"top_refused"}, "Top QNAMES with result code REFUSED")
-        , _dns_topSRVFAIL("dns", "srvfail", {"top_srvfail"}, "Top QNAMES with result code SRVFAIL")
-        , _dns_topUDPPort("dns", "udp_ports", {"top_udp_ports"}, "Top UDP source port on the query side of a transaction")
+        , _dns_topNX("dns", "qname", {"top_nxdomain"}, "Top QNAMES with result code NXDOMAIN")
+        , _dns_topREFUSED("dns", "qname", {"top_refused"}, "Top QNAMES with result code REFUSED")
+        , _dns_topSRVFAIL("dns", "qname", {"top_srvfail"}, "Top QNAMES with result code SRVFAIL")
+        , _dns_topUDPPort("dns", "port", {"top_udp_ports"}, "Top UDP source port on the query side of a transaction")
         , _dns_topQType("dns", "qtype", {"top_qtype"}, "Top query types")
         , _dns_topRCode("dns", "rcode", {"top_rcode"}, "Top result codes")
-        , _dns_slowXactIn("dns", "xact", {"xact", "in", "top_slow"}, "Top QNAMES in transactions where host is the server and transaction speed is slower than p90")
-        , _dns_slowXactOut("dns", "xact", {"xact", "out", "top_slow"}, "Top QNAMES in transactions where host is the client and transaction speed is slower than p90")
+        , _dns_slowXactIn("dns", "qname", {"xact", "in", "top_slow"}, "Top QNAMES in transactions where host is the server and transaction speed is slower than p90")
+        , _dns_slowXactOut("dns", "qname", {"xact", "out", "top_slow"}, "Top QNAMES in transactions where host is the client and transaction speed is slower than p90")
     {
         set_event_rate_info("dns", {"rates", "total"}, "Rate of all DNS wire packets (combined ingress and egress) per second");
         set_num_events_info("dns", {"wire_packets", "total"}, "Total DNS wire packets");

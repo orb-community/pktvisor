@@ -207,11 +207,7 @@ TEST_CASE("TopN metrics", "[metrics][topn]")
         top_sting.update("top1");
         top_sting.update("ToP2");
         top_sting.update("top1");
-        top_sting.to_prometheus(output, {{"policy", "default"}}, [](std::string val) {
-            std::transform(val.begin(), val.end(), val.begin(),
-                [](unsigned char c) { return std::tolower(c); });
-            return val;
-        });
+        top_sting.to_prometheus(output, {{"policy", "default"}});
         std::getline(output, line);
         CHECK(line == "# HELP root_test_metric A topn test metric");
         std::getline(output, line);

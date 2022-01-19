@@ -393,16 +393,8 @@ void DnsMetricsBucket::to_json(json &j) const
     _dns_slowXactOut.to_json(j);
 
     _dns_topUDPPort.to_json(j, [](const uint16_t &val) { return std::to_string(val); });
-    _dns_topQname2.to_json(j, [](std::string val) {
-        std::transform(val.begin(), val.end(), val.begin(),
-            [](unsigned char c) { return std::tolower(c); });
-        return val;
-    });
-    _dns_topQname3.to_json(j, [](std::string val) {
-        std::transform(val.begin(), val.end(), val.begin(),
-            [](unsigned char c) { return std::tolower(c); });
-        return val;
-    });
+    _dns_topQname2.to_json(j);
+    _dns_topQname3.to_json(j);
     _dns_topNX.to_json(j);
     _dns_topREFUSED.to_json(j);
     _dns_topSRVFAIL.to_json(j);
@@ -568,6 +560,8 @@ void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, bool dnst
     if (query) {
 
         auto name = query->getName();
+        std::transform(name.begin(), name.end(), name.begin(),
+            [](unsigned char c) { return std::tolower(c); });
 
         _dns_qnameCard.update(name);
         _dns_topQType.update(query->getDnsType());
@@ -670,16 +664,8 @@ void DnsMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap ad
     _dns_slowXactOut.to_prometheus(out, add_labels);
 
     _dns_topUDPPort.to_prometheus(out, add_labels, [](const uint16_t &val) { return std::to_string(val); });
-    _dns_topQname2.to_prometheus(out, add_labels, [](std::string val) {
-        std::transform(val.begin(), val.end(), val.begin(),
-            [](unsigned char c) { return std::tolower(c); });
-        return val;
-    });
-    _dns_topQname3.to_prometheus(out, add_labels, [](std::string val) {
-        std::transform(val.begin(), val.end(), val.begin(),
-            [](unsigned char c) { return std::tolower(c); });
-        return val;
-    });
+    _dns_topQname2.to_prometheus(out, add_labels);
+    _dns_topQname3.to_prometheus(out, add_labels);
     _dns_topNX.to_prometheus(out, add_labels);
     _dns_topREFUSED.to_prometheus(out, add_labels);
     _dns_topSRVFAIL.to_prometheus(out, add_labels);
