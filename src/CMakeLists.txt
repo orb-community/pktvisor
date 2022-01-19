@@ -37,6 +37,8 @@ target_link_libraries(visor-core
         ${CONAN_LIBS_YAML-CPP}
         ${CONAN_LIBS_OPENSSL}
         ${VISOR_STATIC_PLUGINS}
+        INTERFACE
+        atomic
         )
 
 configure_file(visor_config.h.in visor_config.h @ONLY)
