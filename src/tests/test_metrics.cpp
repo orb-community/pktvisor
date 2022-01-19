@@ -205,7 +205,7 @@ TEST_CASE("TopN metrics", "[metrics][topn]")
     SECTION("TopN prometheus")
     {
         top_sting.update("top1");
-        top_sting.update("ToP2");
+        top_sting.update("top2");
         top_sting.update("top1");
         top_sting.to_prometheus(output, {{"policy", "default"}});
         std::getline(output, line);
