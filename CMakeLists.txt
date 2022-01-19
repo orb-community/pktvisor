@@ -77,39 +77,6 @@ message(STATUS "Detected conan settings: ${CONAN_SETTINGS}")
 # by default, build all conan dependencies that don't have a binary for this env
 set(CONAN_BUILD_SETTING missing)
 set(CONAN_ENV_SETTING "")
-set(DYNAMIC_LIB_SUPPORT TRUE)
-
-if(UNIX AND NOT APPLE)
-    set(LINUX TRUE)
-endif()
-if(LINUX)
-    execute_process(
-            COMMAND ldd /bin/ls
-            OUTPUT_VARIABLE MUSL_CHECK
-    )
-    if(MUSL_CHECK MATCHES "musl")
-        set(MUSL TRUE)
-        message(STATUS "Musl libc detected")
-    endif()
-    if(NOT MUSL)
-        # on gcc, use latest standard
-        set(CONAN_SETTINGS ${CONAN_SETTINGS} compiler.libcxx=libstdc++11)
-    endif()
-endif()
-
-if(MUSL)
-    # m4 inappropriately tries to use a GCC binary version, must force build
-    set(CONAN_BUILD_SETTING ${CONAN_BUILD_SETTING} m4)
-    # pcapplusplus uses a gcc extension for backtrace, musl needs an extra lib to emulate
-    set(CONAN_ENV_SETTING ${CONAN_ENV_SETTING} pcapplusplus:LDFLAGS=-lexecinfo)
-    set(STATIC_BINARIES TRUE)
-    set(DYNAMIC_LIB_SUPPORT FALSE)
-endif()
-
-if(STATIC_BINARIES)
-    message(STATUS "Enabling statically linked binaries")
-    set(STATIC_FLAGS -static -lc++ -lc++abi)
-endif()
 
 conan_cmake_install(PATH_OR_REFERENCE ${CMAKE_SOURCE_DIR}
         BUILD ${CONAN_BUILD_SETTING}
