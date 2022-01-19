@@ -560,6 +560,8 @@ void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, bool dnst
     if (query) {
 
         auto name = query->getName();
+        std::transform(name.begin(), name.end(), name.begin(),
+            [](unsigned char c) { return std::tolower(c); });
 
         _dns_qnameCard.update(name);
         _dns_topQType.update(query->getDnsType());

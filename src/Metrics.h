@@ -234,11 +234,13 @@ public:
 private:
     datasketches::frequent_items_sketch<T> _fi;
     size_t _top_count = 10;
+    std::string _item_key;
 
 public:
-    TopN(std::string schema_key, std::initializer_list<std::string> names, std::string desc)
+    TopN(std::string schema_key, std::string item_key, std::initializer_list<std::string> names, std::string desc)
         : Metric(schema_key, names, std::move(desc))
         , _fi(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
+        , _item_key(item_key)
     {
     }
 
@@ -280,7 +282,7 @@ public:
         out << "# HELP " << base_name_snake() << ' ' << _desc << std::endl;
         out << "# TYPE " << base_name_snake() << " gauge" << std::endl;
         for (uint64_t i = 0; i < std::min(_top_count, items.size()); i++) {
-            l["name"] = formatter(items[i].get_item());
+            l[_item_key] = formatter(items[i].get_item());
             out << name_snake({}, l) << ' ' << items[i].get_estimate() << std::endl;
         }
     }
@@ -306,7 +308,7 @@ public:
         for (uint64_t i = 0; i < std::min(_top_count, items.size()); i++) {
             std::stringstream name_text;
             name_text << items[i].get_item();
-            l["name"] = name_text.str();
+            l[_item_key] = name_text.str();
             out << name_snake({}, l) << ' ' << items[i].get_estimate() << std::endl;
         }
     }

@@ -226,7 +226,7 @@ TEST_CASE("Parse DNS random UDP/TCP tests", "[pcap][dns]")
     nlohmann::json j;
     dns_handler.metrics()->bucket(0)->to_json(j);
 
-    CHECK(j["cardinality"]["qname"] == 2055); // flame was run with 1000 randoms x2 (udp+tcp)
+    CHECK(j["cardinality"]["qname"] == 2036); // flame was run with 1000 randoms x2 (udp+tcp)
 
     CHECK(j["top_qname2"][0]["name"] == ".test.com");
     CHECK(j["top_qname2"][0]["estimate"] == event_data.num_events->value());
