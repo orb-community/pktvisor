@@ -25,79 +25,79 @@
       "top_qname3": [
         {
           "estimate": 8,
-          "name": ".as.test.com"
+          "qname": ".as.test.com"
         },
         {
           "estimate": 8,
-          "name": ".jk.test.com"
+          "qname": ".jk.test.com"
         },
         {
           "estimate": 8,
-          "name": ".M6.test.com"
+          "qname": ".M6.test.com"
         },
         {
           "estimate": 6,
-          "name": ".AG.test.com"
+          "qname": ".AG.test.com"
         },
         {
           "estimate": 4,
-          "name": "Lg.test.com"
+          "qname": "Lg.test.com"
         },
         {
           "estimate": 4,
-          "name": ".LDyZ.test.com"
+          "qname": ".LDyZ.test.com"
         },
         {
           "estimate": 4,
-          "name": "_GbQ8x.test.com"
+          "qname": "_GbQ8x.test.com"
         },
         {
           "estimate": 4,
-          "name": "3ZI6Sv.test.com"
+          "qname": "3ZI6Sv.test.com"
         },
         {
           "estimate": 4,
-          "name": ".0E5QKD.test.com"
+          "qname": ".0E5QKD.test.com"
         },
         {
           "estimate": 4,
-          "name": "oK5y8IB.test.com"
+          "qname": "oK5y8IB.test.com"
         }
       ],
       "top_qtype": [
         {
           "estimate": 1476,
-          "name": "AAAA"
+          "qtype": "AAAA"
         },
         {
           "estimate": 825,
-          "name": "CNAME"
+          "qtype": "CNAME"
         },
         {
           "estimate": 794,
-          "name": "SOA"
+          "qtype": "SOA"
         },
         {
           "estimate": 757,
-          "name": "MX"
+          "qtype": "MX"
         },
         {
           "estimate": 717,
-          "name": "A"
+          "qtype": "A"
         },
         {
           "estimate": 662,
-          "name": "NS"
+          "qtype": "NS"
         },
         {
           "estimate": 620,
-          "name": "TXT"
+          "qtype": "TXT"
         }
       ],
       "top_rcode": [
         {
           "estimate": 2921,
-          "name": "NOERROR"
+          "rcode": "NOERROR"
         }
       ],
       "top_refused": [],
@@ -105,43 +105,43 @@
       "top_udp_ports": [
         {
           "estimate": 302,
-          "name": "57975"
+          "port": "57975"
         },
         {
           "estimate": 298,
-          "name": "64406"
+          "port": "64406"
         },
         {
           "estimate": 298,
-          "name": "59371"
+          "port": "59371"
         },
         {
           "estimate": 298,
-          "name": "54916"
+          "port": "54916"
         },
         {
           "estimate": 298,
-          "name": "63354"
+          "port": "63354"
         },
         {
           "estimate": 298,
-          "name": "56323"
+          "port": "56323"
         },
         {
           "estimate": 298,
-          "name": "64767"
+          "port": "64767"
         },
         {
           "estimate": 298,
-          "name": "49867"
+          "port": "49867"
         },
         {
           "estimate": 298,
-          "name": "53476"
+          "port": "53476"
         },
         {
           "estimate": 289,
-          "name": "52301"
+          "port": "52301"
         }
       ],
       "wire_packets": {
@@ -204,85 +204,85 @@
           "top_qname2": [
             {
               "estimate": 5851,
-              "name": ".test.com"
+              "qname": ".test.com"
             }
           ],
           "top_qname3": [
             {
               "estimate": 8,
-              "name": ".as.test.com"
+              "qname": ".as.test.com"
             },
             {
               "estimate": 8,
-              "name": ".jk.test.com"
+              "qname": ".jk.test.com"
             },
             {
               "estimate": 8,
-              "name": ".M6.test.com"
+              "qname": ".M6.test.com"
             },
             {
               "estimate": 6,
-              "name": ".AG.test.com"
+              "qname": ".AG.test.com"
             },
             {
               "estimate": 4,
-              "name": "Lg.test.com"
+              "qname": "Lg.test.com"
             },
             {
               "estimate": 4,
-              "name": ".LDyZ.test.com"
+              "qname": ".LDyZ.test.com"
             },
             {
               "estimate": 4,
-              "name": "_GbQ8x.test.com"
+              "qname": "_GbQ8x.test.com"
             },
             {
               "estimate": 4,
-              "name": "3ZI6Sv.test.com"
+              "qname": "3ZI6Sv.test.com"
             },
             {
               "estimate": 4,
-              "name": ".0E5QKD.test.com"
+              "qname": ".0E5QKD.test.com"
             },
             {
               "estimate": 4,
-              "name": "oK5y8IB.test.com"
+              "qname": "oK5y8IB.test.com"
             }
           ],
           "top_qtype": [
             {
               "estimate": 1476,
-              "name": "AAAA"
+              "qtype": "AAAA"
             },
             {
               "estimate": 825,
-              "name": "CNAME"
+              "qtype": "CNAME"
             },
             {
               "estimate": 794,
-              "name": "SOA"
+              "qtype": "SOA"
             },
             {
               "estimate": 757,
-              "name": "MX"
+              "qtype": "MX"
             },
             {
               "estimate": 717,
-              "name": "A"
+              "qtype": "A"
             },
             {
               "estimate": 662,
-              "name": "NS"
+              "qtype": "NS"
             },
             {
               "estimate": 620,
-              "name": "TXT"
+              "qtype": "TXT"
             }
           ],
           "top_rcode": [
             {
               "estimate": 2921,
-              "name": "NOERROR"
+              "rcode": "NOERROR"
             }
           ],
           "top_refused": [],
@@ -290,43 +290,43 @@
           "top_udp_ports": [
             {
               "estimate": 302,
-              "name": "57975"
+              "port": "57975"
             },
             {
               "estimate": 298,
-              "name": "64406"
+              "port": "64406"
             },
             {
               "estimate": 298,
-              "name": "59371"
+              "port": "59371"
             },
             {
               "estimate": 298,
-              "name": "54916"
+              "port": "54916"
             },
             {
               "estimate": 298,
-              "name": "63354"
+              "port": "63354"
             },
             {
               "estimate": 298,
-              "name": "56323"
+              "port": "56323"
             },
             {
               "estimate": 298,
-              "name": "64767"
+              "port": "64767"
             },
             {
               "estimate": 298,
-              "name": "49867"
+              "port": "49867"
             },
             {
               "estimate": 298,
-              "name": "53476"
+              "port": "53476"
             },
             {
               "estimate": 289,
-              "name": "52301"
+              "port": "52301"
             }
           ],
           "wire_packets": {
@@ -472,7 +472,7 @@
             [
               {
                 "estimate": 5851,
-                "name": ".test.com"
+                "qname": ".test.com"
               }
             ]
           ],
@@ -489,12 +489,12 @@
                 "examples": [
                   {
                     "estimate": 5851,
-                    "name": ".test.com"
+                    "qname": ".test.com"
                   }
                 ],
                 "required": [
                   "estimate",
-                  "name"
+                  "qname"
                 ],
                 "properties": {
                   "estimate": {
@@ -507,7 +507,7 @@
                       5851
                     ]
                   },
-                  "name": {
+                  "qname": {
                     "$id": "#/properties/dns/properties/top_qname2/items/anyOf/0/properties/name",
                     "type": "string",
                     "title": "The name schema",
@@ -533,11 +533,11 @@
             [
               {
                 "estimate": 8,
-                "name": ".as.test.com"
+                "qname": ".as.test.com"
               },
               {
                 "estimate": 8,
-                "name": ".jk.test.com"
+                "qname": ".jk.test.com"
               }
             ]
           ],
@@ -554,12 +554,12 @@
                 "examples": [
                   {
                     "estimate": 8,
-                    "name": ".as.test.com"
+                    "qname": ".as.test.com"
                   }
                 ],
                 "required": [
                   "estimate",
-                  "name"
+                  "qname"
                 ],
                 "properties": {
                   "estimate": {
@@ -572,7 +572,7 @@
                       8
                     ]
                   },
-                  "name": {
+                  "qname": {
                     "$id": "#/properties/dns/properties/top_qname3/items/anyOf/0/properties/name",
                     "type": "string",
                     "title": "The name schema",
@@ -598,11 +598,11 @@
             [
               {
                 "estimate": 1476,
-                "name": "AAAA"
+                "qtype": "AAAA"
               },
               {
                 "estimate": 825,
-                "name": "CNAME"
+                "qtype": "CNAME"
               }
             ]
           ],
@@ -619,12 +619,12 @@
                 "examples": [
                   {
                     "estimate": 1476,
-                    "name": "AAAA"
+                    "qtype": "AAAA"
                   }
                 ],
                 "required": [
                   "estimate",
-                  "name"
+                  "qtype"
                 ],
                 "properties": {
                   "estimate": {
@@ -637,7 +637,7 @@
                       1476
                     ]
                   },
-                  "name": {
+                  "qtype": {
                     "$id": "#/properties/dns/properties/top_qtype/items/anyOf/0/properties/name",
                     "type": "string",
                     "title": "The name schema",
@@ -663,7 +663,7 @@
             [
               {
                 "estimate": 2921,
-                "name": "NOERROR"
+                "rcode": "NOERROR"
               }
             ]
           ],
@@ -685,7 +685,7 @@
                 ],
                 "required": [
                   "estimate",
-                  "name"
+                  "rcode"
                 ],
                 "properties": {
                   "estimate": {
@@ -698,7 +698,7 @@
                       2921
                     ]
                   },
-                  "name": {
+                  "rcode": {
                     "$id": "#/properties/dns/properties/top_rcode/items/anyOf/0/properties/name",
                     "type": "string",
                     "title": "The name schema",
@@ -752,11 +752,11 @@
             [
               {
                 "estimate": 302,
-                "name": "57975"
+                "port": "57975"
               },
               {
                 "estimate": 298,
-                "name": "64406"
+                "port": "64406"
               }
             ]
           ],
@@ -773,12 +773,12 @@
                 "examples": [
                   {
                     "estimate": 302,
-                    "name": "57975"
+                    "port": "57975"
                   }
                 ],
                 "required": [
                   "estimate",
-                  "name"
+                  "port"
                 ],
                 "properties": {
                   "estimate": {
@@ -791,7 +791,7 @@
                       302
                     ]
                   },
-                  "name": {
+                  "port": {
                     "$id": "#/properties/dns/properties/top_udp_ports/items/anyOf/0/properties/name",
                     "type": "string",
                     "title": "The name schema",

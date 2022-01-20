@@ -162,7 +162,7 @@ TEST_CASE("Parse net (dns) random UDP/TCP tests", "[pcap][net]")
     CHECK(j["cardinality"]["dst_ips_out"] == 1);
     CHECK(j["cardinality"]["src_ips_in"] == 1);
     CHECK(j["top_ipv4"][0]["estimate"] == 16147);
-    CHECK(j["top_ipv4"][0]["name"] == "8.8.8.8");
+    CHECK(j["top_ipv4"][0]["ipv4"] == "8.8.8.8");
 }
 
 TEST_CASE("Parse net (dns) with DNS filter only_qname_suffix", "[pcap][dns][net]")
@@ -206,5 +206,5 @@ TEST_CASE("Parse net (dns) with DNS filter only_qname_suffix", "[pcap][dns][net]
     CHECK(j["cardinality"]["dst_ips_out"] == 3);
     CHECK(j["cardinality"]["src_ips_in"] == 5);
     CHECK(j["top_ipv4"][0]["estimate"] == 4);
-    CHECK(j["top_ipv4"][0]["name"] == "216.239.38.10");
+    CHECK(j["top_ipv4"][0]["ipv4"] == "216.239.38.10");
 }

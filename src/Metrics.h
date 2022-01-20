@@ -269,7 +269,7 @@ public:
         auto section = json::array();
         auto items = _fi.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
         for (uint64_t i = 0; i < std::min(_top_count, items.size()); i++) {
-            section[i]["name"] = formatter(items[i].get_item());
+            section[i][_item_key] = formatter(items[i].get_item());
             section[i]["estimate"] = items[i].get_estimate();
         }
         name_json_assign(j, section);
@@ -293,7 +293,7 @@ public:
         auto section = json::array();
         auto items = _fi.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
         for (uint64_t i = 0; i < std::min(_top_count, items.size()); i++) {
-            section[i]["name"] = items[i].get_item();
+            section[i][_item_key] = items[i].get_item();
             section[i]["estimate"] = items[i].get_estimate();
         }
         name_json_assign(j, section);

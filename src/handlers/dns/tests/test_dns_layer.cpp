@@ -86,7 +86,7 @@ TEST_CASE("Parse DNS UDP IPv4 tests", "[pcap][ipv4][udp][dns]")
     CHECK(counters.IPv6.value() == 0);
     CHECK(counters.queries.value() == 70);
     CHECK(counters.replies.value() == 70);
-    CHECK(j["top_qname2"][0]["name"] == ".test.com");
+    CHECK(j["top_qname2"][0]["qname"] == ".test.com");
     CHECK(j["top_qname2"][0]["estimate"] == 140);
 }
 
@@ -116,7 +116,7 @@ TEST_CASE("Parse DNS TCP IPv4 tests", "[pcap][ipv4][tcp][dns]")
     CHECK(counters.IPv6.value() == 0);
     CHECK(counters.queries.value() == 210);
     CHECK(counters.replies.value() == 210);
-    CHECK(j["top_qname2"][0]["name"] == ".test.com");
+    CHECK(j["top_qname2"][0]["qname"] == ".test.com");
     CHECK(j["top_qname2"][0]["estimate"] == 420);
 }
 
@@ -147,7 +147,7 @@ TEST_CASE("Parse DNS UDP IPv6 tests", "[pcap][ipv6][udp][dns]")
     CHECK(counters.IPv6.value() == 140);
     CHECK(counters.queries.value() == 70);
     CHECK(counters.replies.value() == 70);
-    CHECK(j["top_qname2"][0]["name"] == ".test.com");
+    CHECK(j["top_qname2"][0]["qname"] == ".test.com");
     CHECK(j["top_qname2"][0]["estimate"] == 140);
 }
 
@@ -178,7 +178,7 @@ TEST_CASE("Parse DNS TCP IPv6 tests", "[pcap][ipv6][tcp][dns]")
     CHECK(counters.IPv6.value() == 360);
     CHECK(counters.queries.value() == 180);
     CHECK(counters.replies.value() == 180);
-    CHECK(j["top_qname2"][0]["name"] == ".test.com");
+    CHECK(j["top_qname2"][0]["qname"] == ".test.com");
     CHECK(j["top_qname2"][0]["estimate"] == 360);
 }
 
@@ -228,28 +228,28 @@ TEST_CASE("Parse DNS random UDP/TCP tests", "[pcap][dns]")
 
     CHECK(j["cardinality"]["qname"] == 2036); // flame was run with 1000 randoms x2 (udp+tcp)
 
-    CHECK(j["top_qname2"][0]["name"] == ".test.com");
+    CHECK(j["top_qname2"][0]["qname"] == ".test.com");
     CHECK(j["top_qname2"][0]["estimate"] == event_data.num_events->value());
 
-    CHECK(j["top_rcode"][0]["name"] == "NOERROR");
+    CHECK(j["top_rcode"][0]["rcode"] == "NOERROR");
     CHECK(j["top_rcode"][0]["estimate"] == counters.NOERROR.value());
 
-    CHECK(j["top_udp_ports"][0]["name"] == "57975");
+    CHECK(j["top_udp_ports"][0]["port"] == "57975");
     CHECK(j["top_udp_ports"][0]["estimate"] == 302);
 
-    CHECK(j["top_qtype"][0]["name"] == "AAAA");
+    CHECK(j["top_qtype"][0]["qtype"] == "AAAA");
     CHECK(j["top_qtype"][0]["estimate"] == 1476);
-    CHECK(j["top_qtype"][1]["name"] == "CNAME");
+    CHECK(j["top_qtype"][1]["qtype"] == "CNAME");
     CHECK(j["top_qtype"][1]["estimate"] == 825);
-    CHECK(j["top_qtype"][2]["name"] == "SOA");
+    CHECK(j["top_qtype"][2]["qtype"] == "SOA");
     CHECK(j["top_qtype"][2]["estimate"] == 794);
-    CHECK(j["top_qtype"][3]["name"] == "MX");
+    CHECK(j["top_qtype"][3]["qtype"] == "MX");
     CHECK(j["top_qtype"][3]["estimate"] == 757);
-    CHECK(j["top_qtype"][4]["name"] == "A");
+    CHECK(j["top_qtype"][4]["qtype"] == "A");
     CHECK(j["top_qtype"][4]["estimate"] == 717);
-    CHECK(j["top_qtype"][5]["name"] == "NS");
+    CHECK(j["top_qtype"][5]["qtype"] == "NS");
     CHECK(j["top_qtype"][5]["estimate"] == 662);
-    CHECK(j["top_qtype"][6]["name"] == "TXT");
+    CHECK(j["top_qtype"][6]["qtype"] == "TXT");
     CHECK(j["top_qtype"][6]["estimate"] == 620);
 }
 

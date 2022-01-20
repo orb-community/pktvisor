@@ -69,7 +69,7 @@
           "top_ipv4": [
             {
               "estimate": 16147,
-              "name": "8.8.8.8"
+              "ipv4": "8.8.8.8"
             }
           ],
           "top_ipv6": [],
@@ -283,7 +283,7 @@
             [
               {
                 "estimate": 16147,
-                "name": "8.8.8.8"
+                "ipv4": "8.8.8.8"
               }
             ]
           ],
@@ -300,12 +300,12 @@
                 "examples": [
                   {
                     "estimate": 16147,
-                    "name": "8.8.8.8"
+                    "ipv4": "8.8.8.8"
                   }
                 ],
                 "required": [
                   "estimate",
-                  "name"
+                  "ipv4"
                 ],
                 "properties": {
                   "estimate": {
@@ -318,7 +318,7 @@
                       16147
                     ]
                   },
-                  "name": {
+                  "ipv4": {
                     "$id": "#/properties/packets/properties/top_ipv4/items/anyOf/0/properties/name",
                     "type": "string",
                     "title": "The name schema",

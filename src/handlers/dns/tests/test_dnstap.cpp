@@ -47,15 +47,15 @@ TEST_CASE("Parse DNSTAP", "[dnstap][net]")
 
     CHECK(j["cardinality"]["qname"] == 70);
 
-    CHECK(j["top_qname2"][0]["name"] == ".google.com");
+    CHECK(j["top_qname2"][0]["qname"] == ".google.com");
     CHECK(j["top_qname2"][0]["estimate"] == 18);
 
-    CHECK(j["top_udp_ports"][0]["name"] == "33000");
+    CHECK(j["top_udp_ports"][0]["port"] == "33000");
     CHECK(j["top_udp_ports"][0]["estimate"] == 4);
 
-    CHECK(j["top_qtype"][0]["name"] == "A");
+    CHECK(j["top_qtype"][0]["qtype"] == "A");
     CHECK(j["top_qtype"][0]["estimate"] == 149);
-    CHECK(j["top_qtype"][1]["name"] == "HTTPS");
+    CHECK(j["top_qtype"][1]["qtype"] == "HTTPS");
     CHECK(j["top_qtype"][1]["estimate"] == 4);
 }
 

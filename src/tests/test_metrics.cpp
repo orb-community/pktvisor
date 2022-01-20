@@ -189,7 +189,7 @@ TEST_CASE("TopN metrics", "[metrics][topn]")
         top_sting.update("top1");
         top_sting.to_json(j["top"]);
         CHECK(j["top"]["test"]["metric"][0]["estimate"] == 1);
-        CHECK(j["top"]["test"]["metric"][0]["name"] == "top1");
+        CHECK(j["top"]["test"]["metric"][0]["string"] == "top1");
     }
 
     SECTION("TopN to json formatter")
@@ -199,7 +199,7 @@ TEST_CASE("TopN metrics", "[metrics][topn]")
         top_int.update(123);
         top_int.to_json(j["top"], [](const uint16_t &val) { return std::to_string(val); });
         CHECK(j["top"]["test"]["metric"][0]["estimate"] == 1);
-        CHECK(j["top"]["test"]["metric"][0]["name"] == "123");
+        CHECK(j["top"]["test"]["metric"][0]["integer"] == "123");
     }
 
     SECTION("TopN prometheus")
