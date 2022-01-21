@@ -22,7 +22,7 @@ public:
 
     virtual ~InputStream(){};
 
-    void set_policy(const Policy *policy)
+    void add_policy(const Policy *policy)
     {
         std::unique_lock lock(_input_mutex);
         _policies.push_back(policy);

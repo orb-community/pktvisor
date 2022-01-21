@@ -360,7 +360,7 @@ TEST_CASE("Policies", "[policies]")
         REQUIRE(registry.policy_manager()->module_exists("default_view"));
         auto [policy, lock] = registry.policy_manager()->module_get_locked("default_view");
         CHECK(policy->name() == "default_view");
-        CHECK(policy->input_stream()->name() == "anycast-14766593178614402303");
+        CHECK(policy->input_stream()->name() == "anycast-7c1e3de3e177c3ea");
         CHECK(policy->input_stream()->config_get<std::string>("bpf") == "tcp or udp"); // TODO this will move to filter member variable
         CHECK(policy->input_stream()->config_get<std::string>("sample") == "value");
         CHECK(policy->modules()[0]->name() == "default_view-default_net");
@@ -388,7 +388,7 @@ TEST_CASE("Policies", "[policies]")
         REQUIRE(registry.policy_manager()->module_exists("default_view"));
         auto [policy, lock] = registry.policy_manager()->module_get_locked("default_view");
         CHECK(policy->name() == "default_view");
-        CHECK(policy->input_stream()->name() == "anycast-16071510057998546344");
+        CHECK(policy->input_stream()->name() == "anycast-f2fb471f6cb587fd");
         CHECK(policy->modules()[0]->name() == "default_view-default_dns");
         CHECK(policy->modules()[1]->name() == "default_view-default_net");
         CHECK(policy->input_stream()->running());
@@ -546,7 +546,7 @@ TEST_CASE("Policies", "[policies]")
 
         // ensure the modules were rolled back
         REQUIRE(!registry.policy_manager()->module_exists("default_view"));
-        REQUIRE(!registry.input_manager()->module_exists("anycast-14766593178614402303"));
+        REQUIRE(!registry.input_manager()->module_exists("anycast-7c1e3de3e177c3ea"));
     }
     SECTION("Good Config, test stop()")
     {
@@ -626,7 +626,7 @@ TEST_CASE("Policies", "[policies]")
         REQUIRE(registry.policy_manager()->module_exists("default_view"));
         auto [policy, lock] = registry.policy_manager()->module_get_locked("default_view");
         CHECK(policy->name() == "default_view");
-        CHECK(policy->input_stream()->name() == "anycast-14766593178614402303");
+        CHECK(policy->input_stream()->name() == "anycast-7c1e3de3e177c3ea");
         lock.unlock();
 
         YAML::Node config_file2 = YAML::Load(policies_config_same_input);
@@ -638,7 +638,7 @@ TEST_CASE("Policies", "[policies]")
         REQUIRE(registry.policy_manager()->module_exists("same_input"));
         auto [policy2, lock2] = registry.policy_manager()->module_get_locked("same_input");
         CHECK(policy2->name() == "same_input");
-        CHECK(policy2->input_stream()->name() == "anycast-14766593178614402303");
+        CHECK(policy2->input_stream()->name() == "anycast-7c1e3de3e177c3ea");
         lock2.unlock();
     }
 }

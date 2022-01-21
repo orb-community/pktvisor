@@ -11,6 +11,7 @@
 #include <nlohmann/json.hpp>
 #include <regex>
 #include <shared_mutex>
+#include <sstream>
 #include <string>
 #include <unordered_map>
 #include <variant>
@@ -162,12 +163,13 @@ public:
         }
     }
 
-    void config_hash(std::string &hash)
+    const std::string config_hash()
     {
         std::shared_lock lock(_config_mutex);
-        std::string data;
+        std::vector<std::string> key_values;
         for (const auto &[key, value] : _config) {
-            std::visit([&data, key = key](auto &&arg) {
+            std::visit([&key_values, key = key](auto &&arg) {
+                std::string data;
                 data += key;
                 using T = std::decay_t<decltype(arg)>;
                 if constexpr (std::is_same_v<T, StringList>) {
@@ -179,12 +181,19 @@ public:
                 } else {
                     data += std::to_string(arg);
                 }
+                key_values.push_back(data);
             },
                 value);
         }
-        std::sort(data.begin(), data.end());
-        auto h1 = std::hash<std::string>{}(data);
-        hash = std::to_string(h1);
+        std::sort(key_values.begin(), key_values.end());
+        std::string hash;
+        for (auto &data : key_values) {
+            hash += data;
+        }
+        auto h1 = std::hash<std::string>{}(hash);
+        std::stringstream string_stream;
+        string_stream << std::hex << h1;
+        return string_stream.str();
     }
 };
 

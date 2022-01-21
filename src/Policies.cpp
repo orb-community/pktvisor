@@ -121,18 +121,15 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
         // TODO separate config and filter. for now, they merge
         tap_filter.config_merge(tap_config);
 
-        std::string input_stream_module_name;
-        tap_filter.config_hash(input_stream_module_name);
+        std::string input_stream_module_name = tap_filter.config_hash();
         input_stream_module_name.insert(0, tap->name() + "-");
 
         std::unique_ptr<InputStream> input_stream;
         InputStream *input_ptr;
         if (_registry->input_manager()->module_exists(input_stream_module_name)) {
             spdlog::get("visor")->info("policy [{}]: input stream already exists. reusing: {}", policy_name, input_stream_module_name);
-            std::unique_lock<std::shared_mutex> input_lock;
             auto result_input = _registry->input_manager()->module_get_locked(input_stream_module_name);
             input_ptr = result_input.module;
-            input_lock = std::move(result_input.lock);
         } else {
             // Instantiate stream from tap
             try {
@@ -288,7 +285,7 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
         }
 
         // success
-        input_ptr->set_policy(policy_ptr);
+        input_ptr->add_policy(policy_ptr);
         result.push_back(policy_ptr);
     }
     return result;
@@ -313,7 +310,7 @@ void PolicyManager::remove_policy(const std::string &name)
         _registry->handler_manager()->module_remove(name);
     }
 
-    if (policy->input_stream()->policies_count()) {
+    if (!policy->input_stream()->policies_count()) {
         _registry->input_manager()->module_remove(input_name);
     }
 
