@@ -11,6 +11,8 @@ namespace visor {
 
 class InputStream : public AbstractRunnableModule
 {
+    mutable std::shared_mutex _input_mutex;
+    std::vector<const Policy *> _policies;
 
 public:
     InputStream(const std::string &name)
@@ -19,6 +21,24 @@ public:
     }
 
     virtual ~InputStream(){};
+
+    void set_policy(const Policy *policy)
+    {
+        std::unique_lock lock(_input_mutex);
+        _policies.push_back(policy);
+    }
+
+    void remove_policy(const Policy *policy)
+    {
+        std::unique_lock lock(_input_mutex);
+        _policies.erase(std::remove(_policies.begin(), _policies.end(), policy), _policies.end());
+    }
+
+    size_t policies_count() const
+    {
+        std::unique_lock lock(_input_mutex);
+        return _policies.size();
+    }
 
     virtual size_t consumer_count() const = 0;
 
@@ -31,4 +51,3 @@ public:
 };
 
 }
-

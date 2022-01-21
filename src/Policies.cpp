@@ -118,30 +118,40 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
                 throw PolicyException(fmt::format("invalid input config for tap '{}': {}", tap_name, e.what()));
             }
         }
+        // TODO separate config and filter. for now, they merge
+        tap_filter.config_merge(tap_config);
 
+        std::string input_stream_module_name;
+        tap_filter.config_hash(input_stream_module_name);
+        input_stream_module_name.insert(0, tap->name() + "-");
+
+        std::unique_ptr<InputStream> input_stream;
+        InputStream *input_ptr;
+        if (_registry->input_manager()->module_exists(input_stream_module_name)) {
+            spdlog::get("visor")->info("policy [{}]: input stream already exists. reusing: {}", policy_name, input_stream_module_name);
+            std::unique_lock<std::shared_mutex> input_lock;
+            auto result_input = _registry->input_manager()->module_get_locked(input_stream_module_name);
+            input_ptr = result_input.module;
+            input_lock = std::move(result_input.lock);
+        } else {
+            // Instantiate stream from tap
+            try {
+                spdlog::get("visor")->info("policy [{}]: instantiating Tap: {}", policy_name, tap_name);
+                input_stream = tap->instantiate(&tap_filter, input_stream_module_name);
+                // ensure tap input type matches policy input tap
+                if (input_node["input_type"].as<std::string>() != tap->input_plugin()->plugin()) {
+                    throw PolicyException(fmt::format("input_type for policy specified tap '{}' doesn't match tap's defined input type: {}/{}", tap_name, input_node["input_type"].as<std::string>(), tap->input_plugin()->plugin()));
+                }
+                input_ptr = input_stream.get();
+            } catch (std::runtime_error &e) {
+                throw PolicyException(fmt::format("unable to instantiate tap '{}': {}", tap_name, e.what()));
+            }
+        }
         // Create Policy
         auto policy = std::make_unique<Policy>(policy_name, tap);
         // if and only if policy succeeds, we will return this in result set
         Policy *policy_ptr = policy.get();
-
-        // Instantiate stream from tap
-        std::unique_ptr<InputStream> input_stream;
-        std::string input_stream_module_name;
-        try {
-            spdlog::get("visor")->info("policy [{}]: instantiating Tap: {}", policy_name, tap_name);
-            // TODO separate config and filter. for now, they merge
-            tap_filter.config_merge(tap_config);
-            input_stream = tap->instantiate(policy.get(), &tap_filter);
-            // ensure tap input type matches policy input tap
-            if (input_node["input_type"].as<std::string>() != tap->input_plugin()->plugin()) {
-                throw PolicyException(fmt::format("input_type for policy specified tap '{}' doesn't match tap's defined input type: {}/{}", tap_name, input_node["input_type"].as<std::string>(), tap->input_plugin()->plugin()));
-            }
-            input_stream_module_name = input_stream->name();
-        } catch (std::runtime_error &e) {
-            throw PolicyException(fmt::format("unable to instantiate tap '{}': {}", tap_name, e.what()));
-        }
-        policy->set_input_stream(input_stream.get());
-
+        policy->set_input_stream(input_ptr);
         // Handler Section
         if (!it->second["handlers"] || !it->second["handlers"].IsMap()) {
             throw PolicyException("missing or invalid handler configuration at key 'handlers'");
@@ -224,7 +234,7 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
 
             std::unique_ptr<StreamHandler> handler_module;
             if (!handler_sequence || handler_modules.empty()) {
-                handler_module = handler_plugin->second->instantiate(policy_name + "-" + handler_module_name, input_stream.get(), &handler_config);
+                handler_module = handler_plugin->second->instantiate(policy_name + "-" + handler_module_name, input_ptr, &handler_config);
             } else {
                 // for sequence, use only previous handler
                 handler_module = handler_plugin->second->instantiate(policy_name + "-" + handler_module_name, nullptr, &handler_config, handler_modules.back().get());
@@ -249,7 +259,9 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
             throw PolicyException(fmt::format("policy [{}] creation failed (policy): {}", policy_name, e.what()));
         }
         try {
-            _registry->input_manager()->module_add(std::move(input_stream));
+            if (!_registry->input_manager()->module_exists(input_stream_module_name)) {
+                _registry->input_manager()->module_add(std::move(input_stream));
+            }
         } catch (ModuleException &e) {
             // note that if this call excepts, we are in an unknown state and the exception will propagate
             module_remove(policy_name);
@@ -276,6 +288,7 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
         }
 
         // success
+        input_ptr->set_policy(policy_ptr);
         result.push_back(policy_ptr);
     }
     return result;
@@ -299,7 +312,10 @@ void PolicyManager::remove_policy(const std::string &name)
     for (const auto &name : module_names) {
         _registry->handler_manager()->module_remove(name);
     }
-    _registry->input_manager()->module_remove(input_name);
+
+    if (policy->input_stream()->policies_count()) {
+        _registry->input_manager()->module_remove(input_name);
+    }
 
     _map.erase(name);
 }
@@ -335,9 +351,14 @@ void Policy::stop()
     }
     spdlog::get("visor")->info("policy [{}]: stopping", _name);
     if (_input_stream->running()) {
-        spdlog::get("visor")->info("policy [{}]: stopping input instance: {}", _name, _input_stream->name());
-        _input_stream->stop();
+        if (_input_stream->policies_count() <= 1) {
+            spdlog::get("visor")->info("policy [{}]: stopping input instance: {}", _name, _input_stream->name());
+            _input_stream->stop();
+        } else {
+            spdlog::get("visor")->info("policy [{}]: input instance {} not stopped because it is in use by another policy.", _name, _input_stream->name());
+        }
     }
+    _input_stream->remove_policy(this);
     for (auto &mod : _modules) {
         if (mod->running()) {
             spdlog::get("visor")->info("policy [{}]: stopping handler instance: {}", _name, mod->name());

@@ -28,7 +28,7 @@ public:
         assert(input_plugin);
     }
 
-    std::unique_ptr<InputStream> instantiate(Policy *policy, const Configurable *filter_config);
+    std::unique_ptr<InputStream> instantiate(const Configurable *filter_config, std::string input_name);
 
     const InputModulePlugin *input_plugin() const
     {

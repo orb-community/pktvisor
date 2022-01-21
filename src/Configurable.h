@@ -161,6 +161,31 @@ public:
             }
         }
     }
+
+    void config_hash(std::string &hash)
+    {
+        std::shared_lock lock(_config_mutex);
+        std::string data;
+        for (const auto &[key, value] : _config) {
+            std::visit([&data, key = key](auto &&arg) {
+                data += key;
+                using T = std::decay_t<decltype(arg)>;
+                if constexpr (std::is_same_v<T, StringList>) {
+                    for (const auto &s : arg) {
+                        data += s;
+                    }
+                } else if constexpr (std::is_same_v<T, std::string>) {
+                    data += arg;
+                } else {
+                    data += std::to_string(arg);
+                }
+            },
+                value);
+        }
+        std::sort(data.begin(), data.end());
+        auto h1 = std::hash<std::string>{}(data);
+        hash = std::to_string(h1);
+    }
 };
 
 class Config : public Configurable

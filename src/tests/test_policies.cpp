@@ -90,6 +90,31 @@ visor:
             type: net
 )";
 
+auto policies_config_same_input = R"(
+version: "1.0"
+
+visor:
+  policies:
+    # policy name and description
+    same_input:
+      kind: collection
+      input:
+        # this must reference a tap name, or application of the policy will fail
+        tap: anycast
+        input_type: mock
+        config:
+          sample: value
+        filter:
+          bpf: "tcp or udp"
+      handlers:
+        window_config:
+          num_periods: 5
+          deep_sample_rate: 100
+        modules:
+          net:
+            type: net
+)";
+
 auto policies_config_bad1 = R"(
 visor:
   policies:
@@ -335,7 +360,7 @@ TEST_CASE("Policies", "[policies]")
         REQUIRE(registry.policy_manager()->module_exists("default_view"));
         auto [policy, lock] = registry.policy_manager()->module_get_locked("default_view");
         CHECK(policy->name() == "default_view");
-        CHECK(policy->input_stream()->name() == "anycast-default_view");
+        CHECK(policy->input_stream()->name() == "anycast-14766593178614402303");
         CHECK(policy->input_stream()->config_get<std::string>("bpf") == "tcp or udp"); // TODO this will move to filter member variable
         CHECK(policy->input_stream()->config_get<std::string>("sample") == "value");
         CHECK(policy->modules()[0]->name() == "default_view-default_net");
@@ -363,7 +388,7 @@ TEST_CASE("Policies", "[policies]")
         REQUIRE(registry.policy_manager()->module_exists("default_view"));
         auto [policy, lock] = registry.policy_manager()->module_get_locked("default_view");
         CHECK(policy->name() == "default_view");
-        CHECK(policy->input_stream()->name() == "anycast-default_view");
+        CHECK(policy->input_stream()->name() == "anycast-16071510057998546344");
         CHECK(policy->modules()[0]->name() == "default_view-default_dns");
         CHECK(policy->modules()[1]->name() == "default_view-default_net");
         CHECK(policy->input_stream()->running());
@@ -521,7 +546,7 @@ TEST_CASE("Policies", "[policies]")
 
         // ensure the modules were rolled back
         REQUIRE(!registry.policy_manager()->module_exists("default_view"));
-        REQUIRE(!registry.input_manager()->module_exists("anycast-default_view"));
+        REQUIRE(!registry.input_manager()->module_exists("anycast-14766593178614402303"));
     }
     SECTION("Good Config, test stop()")
     {
@@ -584,5 +609,36 @@ TEST_CASE("Policies", "[policies]")
         CHECK(new_policy->modules()[2]->running());
         new_lock.unlock();
         REQUIRE_NOTHROW(registry.policy_manager()->remove_policy("default_view"));
+    }
+
+    SECTION("Good Config, policies with same tap and input")
+    {
+        CoreRegistry registry;
+        registry.start(nullptr);
+        YAML::Node config_file = YAML::Load(policies_config);
+
+        CHECK(config_file["visor"]["policies"]);
+        CHECK(config_file["visor"]["policies"].IsMap());
+
+        REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
+        REQUIRE_NOTHROW(registry.policy_manager()->load(config_file["visor"]["policies"]));
+
+        REQUIRE(registry.policy_manager()->module_exists("default_view"));
+        auto [policy, lock] = registry.policy_manager()->module_get_locked("default_view");
+        CHECK(policy->name() == "default_view");
+        CHECK(policy->input_stream()->name() == "anycast-14766593178614402303");
+        lock.unlock();
+
+        YAML::Node config_file2 = YAML::Load(policies_config_same_input);
+        CHECK(config_file2["visor"]["policies"]);
+        CHECK(config_file2["visor"]["policies"].IsMap());
+
+        REQUIRE_NOTHROW(registry.policy_manager()->load(config_file2["visor"]["policies"]));
+
+        REQUIRE(registry.policy_manager()->module_exists("same_input"));
+        auto [policy2, lock2] = registry.policy_manager()->module_get_locked("same_input");
+        CHECK(policy2->name() == "same_input");
+        CHECK(policy2->input_stream()->name() == "anycast-14766593178614402303");
+        lock2.unlock();
     }
 }
