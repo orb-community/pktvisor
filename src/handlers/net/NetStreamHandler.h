@@ -9,6 +9,7 @@
 #include "DnstapInputStream.h"
 #include "MockInputStream.h"
 #include "PcapInputStream.h"
+#include "SflowInputStream.h"
 #include "StreamHandler.h"
 #include <Corrade/Utility/Debug.h>
 #include <string>
@@ -18,6 +19,7 @@ namespace visor::handler::net {
 using namespace visor::input::pcap;
 using namespace visor::input::dnstap;
 using namespace visor::input::mock;
+using namespace visor::input::sflow;
 using namespace visor::handler::dns;
 
 class NetworkMetricsBucket final : public visor::AbstractMetricsBucket
@@ -116,8 +118,9 @@ class NetStreamHandler final : public visor::StreamMetricsHandler<NetworkMetrics
 
     // the input stream sources we support (only one will be in use at a time)
     PcapInputStream *_pcap_stream{nullptr};
-    MockInputStream *_mock_stream{nullptr};
     DnstapInputStream *_dnstap_stream{nullptr};
+    MockInputStream *_mock_stream{nullptr};
+    SflowInputStream *_sflow_stream{nullptr};
 
     // the stream handlers sources we support (only one will be in use at a time)
     DnsStreamHandler *_dns_handler{nullptr};

@@ -26,9 +26,10 @@ NetStreamHandler::NetStreamHandler(const std::string &name, InputStream *stream,
     // figure out which input stream we have
     if (stream) {
         _pcap_stream = dynamic_cast<PcapInputStream *>(stream);
-        _mock_stream = dynamic_cast<MockInputStream *>(stream);
         _dnstap_stream = dynamic_cast<DnstapInputStream *>(stream);
-        if (!_pcap_stream && !_mock_stream && !_dnstap_stream) {
+        _mock_stream = dynamic_cast<MockInputStream *>(stream);
+        _sflow_stream = dynamic_cast<SflowInputStream *>(stream);
+        if (!_pcap_stream && !_mock_stream && !_dnstap_stream && !_sflow_stream) {
             throw StreamHandlerException(fmt::format("NetStreamHandler: unsupported input stream {}", stream->name()));
         }
     }

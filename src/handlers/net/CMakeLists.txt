@@ -17,8 +17,9 @@ target_include_directories(VisorHandlerNet
 target_link_libraries(VisorHandlerNet
         PUBLIC
         Visor::Input::Pcap
-        Visor::Input::Mock
         Visor::Input::Dnstap
+        Visor::Input::Mock
+        Visor::Input::Sflow
         Visor::Handler::Dns
         )
 
