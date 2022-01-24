@@ -173,7 +173,9 @@ public:
                 data += key;
                 using T = std::decay_t<decltype(arg)>;
                 if constexpr (std::is_same_v<T, StringList>) {
-                    for (const auto &s : arg) {
+                    auto temp_list = arg;
+                    std::sort(temp_list.begin(), temp_list.end());
+                    for (const auto &s : temp_list) {
                         data += s;
                     }
                 } else if constexpr (std::is_same_v<T, std::string>) {
