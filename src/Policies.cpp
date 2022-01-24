@@ -249,7 +249,6 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
             throw PolicyException(fmt::format("policy [{}] failed to start: {}", policy_name, e.what()));
         }
 
-        input_ptr->add_policy(policy_ptr);
         // Make modules visible in registry
         // If the modules created above go out of scope before this step, they will destruct so the key is to make sure
         // roll back during exception ensures no modules have been added to any of the managers
@@ -259,11 +258,7 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
             throw PolicyException(fmt::format("policy [{}] creation failed (policy): {}", policy_name, e.what()));
         }
         try {
-            //Avoid deadlock in input manager
-            if (input_lock) {
-                input_lock.unlock();
-            }
-            if (!_registry->input_manager()->module_exists(input_stream_module_name)) {
+            if (input_stream) {
                 _registry->input_manager()->module_add(std::move(input_stream));
             }
         } catch (ModuleException &e) {
@@ -292,6 +287,7 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
         }
 
         // success
+        input_ptr->add_policy(policy_ptr);
         result.push_back(policy_ptr);
     }
     return result;
