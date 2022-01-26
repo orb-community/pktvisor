@@ -3,6 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 #include "SflowInputStream.h"
+#include "SflowException.h"
 
 namespace visor::input::sflow {
 
@@ -11,11 +12,6 @@ SflowInputStream::SflowInputStream(const std::string &name)
 {
     _logger = spdlog::get("visor");
     assert(_logger);
-    _logger->info("mock input created");
-}
-SflowInputStream::~SflowInputStream()
-{
-    _logger->info("mock input destroyed");
 }
 
 void SflowInputStream::start()
@@ -25,22 +21,73 @@ void SflowInputStream::start()
         return;
     }
 
-    _logger->info("mock input start()");
-
-    // for unit testing purposes
-    if (config_exists("except_on_start")) {
-        throw std::runtime_error("mock error on start");
-    }
-
-    static timer timer_thread{500ms};
-    std::srand(std::time(nullptr));
-    _mock_work = timer_thread.set_interval(1s, [this] {
-        auto i = std::rand();
-        _logger->info("mock input sends random int signal: {}", i);
-        random_int_signal(i);
-    });
+    _create_frame_stream_udp_socket();
 
     _running = true;
+}
+
+void SflowInputStream::_create_frame_stream_udp_socket()
+{
+    // main io loop, run in its own thread
+    _io_loop = uvw::Loop::create();
+    if (!_io_loop) {
+        throw SflowException("unable to create io loop");
+    }
+    // AsyncHandle lets us stop the loop from its own thread
+    _async_h = _io_loop->resource<uvw::AsyncHandle>();
+    if (!_async_h) {
+        throw SflowException("unable to initialize AsyncHandle");
+    }
+    _async_h->once<uvw::AsyncEvent>([this](const auto &, auto &handle) {
+        _udp_server_h->stop();
+        _udp_server_h->close();
+        _io_loop->stop();
+        _io_loop->close();
+        handle.close();
+    });
+    _async_h->on<uvw::ErrorEvent>([this](const auto &err, auto &handle) {
+        _logger->error("[{}] AsyncEvent error: {}", _name, err.what());
+        handle.close();
+    });
+
+    // setup server socket
+    _udp_server_h = _io_loop->resource<uvw::UDPHandle>();
+    if (!_udp_server_h) {
+        throw SflowException("unable to initialize server PipeHandle");
+    }
+
+    _udp_server_h->on<uvw::ErrorEvent>([this](const auto &err, auto &) {
+        _logger->error("[{}] socket error: {}", _name, err.what());
+        throw SflowException(err.what());
+    });
+
+    // ListenEvent happens on client connection
+    _udp_server_h->on<uvw::UDPDataEvent>([this](const uvw::UDPDataEvent &event, uvw::UDPHandle &) {
+        _logger->info("received packet from {}:{}", event.sender.ip, event.sender.port);
+        try {
+            SFSample sample;
+            std::memset(&sample, 0, sizeof(sample));
+            sample.rawSample = reinterpret_cast<uint8_t *>(event.data.get());
+            sample.rawSampleLen = event.length;
+            sample.sourceIP.type = SFLADDRESSTYPE_IP_V4;
+            struct sockaddr_in peer4;
+            inet_pton(AF_INET, event.sender.ip.c_str(), &(peer4.sin_addr));
+            std::memcpy(&sample.sourceIP.address.ip_v4, &peer4.sin_addr, 4);
+
+            read_sflow_datagram(&sample);
+            sflow_signal(sample);
+        } catch (const std::exception &e) {
+            _logger->error(e.what());
+        }
+    });
+
+    _udp_server_h->bind("0.0.0.0", 6343);
+    _udp_server_h->recv();
+
+    // spawn the loop
+    _io_thread = std::make_unique<std::thread>([this] {
+        _io_loop->run();
+    });
 }
 
 void SflowInputStream::stop()
@@ -49,9 +96,14 @@ void SflowInputStream::stop()
         return;
     }
 
-    _logger->info("mock input stop()");
-
-    _mock_work->cancel();
+    if (_async_h && _io_thread) {
+        // we have to use AsyncHandle to stop the loop from the same thread the loop is running in
+        _async_h->send();
+        // waits for _io_loop->run() to return
+        if (_io_thread->joinable()) {
+            _io_thread->join();
+        }
+    }
 
     _running = false;
 }

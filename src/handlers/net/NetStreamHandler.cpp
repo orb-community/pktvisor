@@ -58,6 +58,8 @@ void NetStreamHandler::start()
         _end_tstamp_connection = _pcap_stream->end_tstamp_signal.connect(&NetStreamHandler::set_end_tstamp, this);
     } else if (_dnstap_stream) {
         _dnstap_connection = _dnstap_stream->dnstap_signal.connect(&NetStreamHandler::process_dnstap_cb, this);
+    } else if (_sflow_stream) {
+        _sflow_connection = _sflow_stream->sflow_signal.connect(&NetStreamHandler::process_sflow_cb, this);
     } else if (_dns_handler) {
         _pkt_udp_connection = _dns_handler->udp_signal.connect(&NetStreamHandler::process_udp_packet_cb, this);
     }
@@ -93,14 +95,22 @@ void NetStreamHandler::process_packet_cb(pcpp::Packet &payload, PacketDirection 
 {
     _metrics->process_packet(payload, dir, l3, l4, stamp);
 }
+
 void NetStreamHandler::set_start_tstamp(timespec stamp)
 {
     _metrics->set_start_tstamp(stamp);
 }
+
 void NetStreamHandler::set_end_tstamp(timespec stamp)
 {
     _metrics->set_end_tstamp(stamp);
 }
+
+void NetStreamHandler::process_sflow_cb(const SFSample &payload)
+{
+    _metrics->process_sflow(payload);
+}
+
 void NetStreamHandler::process_dnstap_cb(const dnstap::Dnstap &payload)
 {
     _metrics->process_dnstap(payload);
@@ -404,6 +414,96 @@ void NetworkMetricsBucket::process_dnstap(bool deep, const dnstap::Dnstap &paylo
     }
 }
 
+void NetworkMetricsBucket::process_sflow(bool deep, const SFSample &payload)
+{
+    std::unique_lock lock(_mutex);
+
+    if (payload.sourceIP.type == SFLADDRESSTYPE_IP_V4) {
+        ++_counters.IPv4;
+    } else if (payload.sourceIP.type == SFLADDRESSTYPE_IP_V6) {
+        ++_counters.IPv6;
+    }
+
+    switch (payload.s.dcd_ipProtocol) {
+    case 6: /* TCP */
+        ++_counters.TCP;
+        break;
+    case 17: /* UDP */
+        ++_counters.UDP;
+        break;
+    default:
+        ++_counters.OtherL4;
+        break;
+    }
+
+    if (!deep) {
+        return;
+    }
+
+    struct sockaddr_in sa4;
+    struct sockaddr_in6 sa6;
+
+    if (payload.s.ipsrc.type == SFLADDRESSTYPE_IP_V4) {
+        auto ip = pcpp::IPv4Address(reinterpret_cast<const uint8_t *>(payload.s.ipsrc.address.ip_v4.addr));
+        _srcIPCard.update(ip.toInt());
+        _topIPv4.update(ip.toInt());
+        if (geo::enabled()) {
+            if (IPv4tosockaddr(ip, &sa4)) {
+                if (geo::GeoIP().enabled()) {
+                    _topGeoLoc.update(geo::GeoIP().getGeoLocString(reinterpret_cast<struct sockaddr *>(&sa4)));
+                }
+                if (geo::GeoASN().enabled()) {
+                    _topASN.update(geo::GeoASN().getASNString(reinterpret_cast<struct sockaddr *>(&sa4)));
+                }
+            }
+        }
+    } else if (payload.s.ipsrc.type == SFLADDRESSTYPE_IP_V6) {
+        auto ip = pcpp::IPv6Address(reinterpret_cast<const uint8_t *>(payload.s.ipsrc.address.ip_v6.addr));
+        _dstIPCard.update(reinterpret_cast<const void *>(ip.toBytes()), 16);
+        _topIPv6.update(ip.toString());
+        if (geo::enabled()) {
+            if (IPv6tosockaddr(ip, &sa6)) {
+                if (geo::GeoIP().enabled()) {
+                    _topGeoLoc.update(geo::GeoIP().getGeoLocString(reinterpret_cast<struct sockaddr *>(&sa6)));
+                }
+                if (geo::GeoASN().enabled()) {
+                    _topASN.update(geo::GeoASN().getASNString(reinterpret_cast<struct sockaddr *>(&sa6)));
+                }
+            }
+        }
+    }
+
+    if (payload.s.ipdst.type == SFLADDRESSTYPE_IP_V4) {
+        auto ip = pcpp::IPv4Address(reinterpret_cast<const uint8_t *>(payload.s.ipdst.address.ip_v4.addr));
+        _srcIPCard.update(ip.toInt());
+        _topIPv4.update(ip.toInt());
+        if (geo::enabled()) {
+            if (IPv4tosockaddr(ip, &sa4)) {
+                if (geo::GeoIP().enabled()) {
+                    _topGeoLoc.update(geo::GeoIP().getGeoLocString(reinterpret_cast<struct sockaddr *>(&sa4)));
+                }
+                if (geo::GeoASN().enabled()) {
+                    _topASN.update(geo::GeoASN().getASNString(reinterpret_cast<struct sockaddr *>(&sa4)));
+                }
+            }
+        }
+    } else if (payload.s.ipdst.type == SFLADDRESSTYPE_IP_V6) {
+        auto ip = pcpp::IPv6Address(reinterpret_cast<const uint8_t *>(payload.s.ipdst.address.ip_v6.addr));
+        _dstIPCard.update(reinterpret_cast<const void *>(ip.toBytes()), 16);
+        _topIPv6.update(ip.toString());
+        if (geo::enabled()) {
+            if (IPv6tosockaddr(ip, &sa6)) {
+                if (geo::GeoIP().enabled()) {
+                    _topGeoLoc.update(geo::GeoIP().getGeoLocString(reinterpret_cast<struct sockaddr *>(&sa6)));
+                }
+                if (geo::GeoASN().enabled()) {
+                    _topASN.update(geo::GeoASN().getASNString(reinterpret_cast<struct sockaddr *>(&sa6)));
+                }
+            }
+        }
+    }
+}
+
 // the general metrics manager entry point
 void NetworkMetricsManager::process_packet(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp)
 {
@@ -412,6 +512,7 @@ void NetworkMetricsManager::process_packet(pcpp::Packet &payload, PacketDirectio
     // process in the "live" bucket
     live_bucket()->process_packet(_deep_sampling_now, payload, dir, l3, l4);
 }
+
 void NetworkMetricsManager::process_dnstap(const dnstap::Dnstap &payload)
 {
     // dnstap message type
@@ -443,5 +544,16 @@ void NetworkMetricsManager::process_dnstap(const dnstap::Dnstap &payload)
     new_event(stamp);
     // process in the "live" bucket. this will parse the resources if we are deep sampling
     live_bucket()->process_dnstap(_deep_sampling_now, payload);
+}
+
+void NetworkMetricsManager::process_sflow(const SFSample &payload)
+{
+    timespec stamp;
+    // use now()
+    std::timespec_get(&stamp, TIME_UTC);
+    // base event
+    new_event(stamp);
+    // process in the "live" bucket
+    live_bucket()->process_sflow(_deep_sampling_now, payload);
 }
 }

@@ -5,39 +5,45 @@
 #pragma once
 
 #include "InputStream.h"
+#include "SflowData.h"
 #include <sigslot/signal.hpp>
 #include <spdlog/spdlog.h>
-#include <timer.hpp>
+#include <uvw.hpp>
 
 namespace visor::input::sflow {
 
 class SflowInputStream : public visor::InputStream
 {
-
-    std::shared_ptr<timer::interval_handle> _mock_work;
     std::shared_ptr<spdlog::logger> _logger;
 
+    std::unique_ptr<std::thread> _io_thread;
+    std::shared_ptr<uvw::Loop> _io_loop;
+    std::shared_ptr<uvw::AsyncHandle> _async_h;
+
+    std::shared_ptr<uvw::UDPHandle> _udp_server_h;
+
+    void _create_frame_stream_udp_socket();
 public:
     SflowInputStream(const std::string &name);
-    ~SflowInputStream();
+    ~SflowInputStream() = default;
 
     // visor::AbstractModule
     std::string schema_key() const override
     {
-        return "mock";
+        return "sflow";
     }
     void start() override;
     void stop() override;
     void info_json(json &j) const override;
     size_t consumer_count() const override
     {
-        return random_int_signal.slot_count();
+        return sflow_signal.slot_count();
     }
 
     // handler functionality
     // IF THIS changes, see consumer_count()
     // note: these are mutable because consumer_count() calls slot_count() which is not const (unclear if it could/should be)
-    mutable sigslot::signal<uint64_t> random_int_signal;
+    mutable sigslot::signal<const SFSample &> sflow_signal;
 };
 
 }

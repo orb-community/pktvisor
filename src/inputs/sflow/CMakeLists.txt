@@ -16,6 +16,7 @@ target_include_directories(VisorInputSflow
 
 target_link_libraries(VisorInputSflow
         PUBLIC
+        sflow
         Visor::Core
         )
 

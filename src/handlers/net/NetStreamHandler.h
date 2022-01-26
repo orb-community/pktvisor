@@ -99,6 +99,7 @@ public:
 
     void process_packet(bool deep, pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4);
     void process_dnstap(bool deep, const dnstap::Dnstap &payload);
+    void process_sflow(bool deep, const SFSample &payload);
 };
 
 class NetworkMetricsManager final : public visor::AbstractMetricsManager<NetworkMetricsBucket>
@@ -111,6 +112,7 @@ public:
 
     void process_packet(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp);
     void process_dnstap(const dnstap::Dnstap &payload);
+    void process_sflow(const SFSample &payload);
 };
 
 class NetStreamHandler final : public visor::StreamMetricsHandler<NetworkMetricsManager>
@@ -127,12 +129,15 @@ class NetStreamHandler final : public visor::StreamMetricsHandler<NetworkMetrics
 
     sigslot::connection _dnstap_connection;
 
+    sigslot::connection _sflow_connection;
+
     sigslot::connection _pkt_connection;
     sigslot::connection _start_tstamp_connection;
     sigslot::connection _end_tstamp_connection;
 
     sigslot::connection _pkt_udp_connection;
 
+    void process_sflow_cb(const SFSample &);
     void process_dnstap_cb(const dnstap::Dnstap &);
     void process_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp);
     void process_udp_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp);
