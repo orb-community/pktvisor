@@ -14,6 +14,7 @@ namespace visor::input::sflow {
 
 class SflowInputStream : public visor::InputStream
 {
+    std::atomic<uint64_t> _error_count;
     std::shared_ptr<spdlog::logger> _logger;
 
     std::unique_ptr<std::thread> _io_thread;
@@ -22,6 +23,7 @@ class SflowInputStream : public visor::InputStream
 
     std::shared_ptr<uvw::UDPHandle> _udp_server_h;
 
+    void _read_from_pcap_file();
     void _create_frame_stream_udp_socket();
 public:
     SflowInputStream(const std::string &name);

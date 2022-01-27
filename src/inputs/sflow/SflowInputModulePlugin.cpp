@@ -6,7 +6,6 @@
 #include "CoreRegistry.h"
 #include "InputStreamManager.h"
 #include <Corrade/PluginManager/AbstractManager.h>
-#include <Corrade/Utility/FormatStl.h>
 
 CORRADE_PLUGIN_REGISTER(VisorInputSflow, visor::input::sflow::SflowInputModulePlugin,
     "visor.module.input/1.0")

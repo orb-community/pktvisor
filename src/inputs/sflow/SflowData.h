@@ -1,3 +1,12 @@
+/*
+ * SflowData makes use of code originated from sflowtool by InMon Corp.
+ * Those parts of the code are distributed under the InMon Public License below.
+ * All other/additional code is pubblished under Mozilla Public License, v. 2.0.
+ */
+
+/* Copyright (c) 2002-2011 InMon Corp. Licensed under the terms of the InMon sFlow licence: */
+/* http://www.inmon.com/technology/sflowlicense.txt */
+
 #pragma once
 
 #include <netinet/in.h>
@@ -12,20 +21,18 @@
 
 namespace visor::input::sflow {
 
-enum ExtendedData {
-    SWITCH = 1,
-    ROUTER = 4,
-    GATEWAY = 8,
-    USER = 16,
-    URL = 32,
-    MPLS = 64,
-    NAT = 128,
-    MPLS_TUNNEL = 256,
-    MPLS_VC = 512,
-    MPLS_FTN = 1024,
-    MPLS_LDP_FEC = 2048,
-    VLAN_TUNNEL = 4096,
-    NAT_PORT = 8192
+enum DIRECTION {
+    UNKNOWN = 0,
+    FULL_DUPLEX =1,
+    HALF_DUPLEX = 2,
+    IN = 3,
+    OUT = 4
+};
+
+enum IP_PROTOCOL {
+    ICMP = 1,
+    TCP = 6,
+    UDP = 17
 };
 
 /* define my own IP header struct - to ease portability */
@@ -103,10 +110,7 @@ struct SFSample {
     uint32_t sequenceNo;
 
     /* per-element fields */
-    struct {
-        uint32_t prefixCount;
-        char *fieldPrefix[4];
-
+    struct Element {
         uint32_t sampleType;
         uint32_t elementType;
         uint32_t ds_class;
@@ -190,21 +194,12 @@ struct SFSample {
         uint32_t dst_peer_as;
         uint32_t dst_as;
 
-        uint32_t communities_len;
-        uint32_t *communities;
-        uint32_t localpref;
-
-        /* mpls */
-        SFLAddress mpls_nextHop;
-
-        /* nat */
-        SFLAddress nat_src;
-        SFLAddress nat_dst;
-
         /* counter blocks */
         uint32_t statsSamplingInterval;
         uint32_t counterBlockVersion;
     } s;
+
+    std::vector<Element> elements;
 };
 
 inline static uint32_t getData32_nobswap(SFSample *sample)
@@ -219,6 +214,14 @@ inline static uint32_t getData32_nobswap(SFSample *sample)
 inline static uint32_t getData32(SFSample *sample)
 {
     return ntohl(getData32_nobswap(sample));
+}
+
+inline static uint64_t getData64(SFSample *sample)
+{
+    uint64_t tmpLo, tmpHi;
+    tmpHi = getData32(sample);
+    tmpLo = getData32(sample);
+    return (tmpHi << 32) + tmpLo;
 }
 
 inline static void skipBytes(SFSample *sample, uint32_t skip)
@@ -458,16 +461,14 @@ static void decodeIPLayer4(SFSample *sample, uint8_t *ptr)
         return;
     }
     switch (sample->s.dcd_ipProtocol) {
-    case 1: /* ICMP */
-    {
+    case ICMP: {
         struct myicmphdr icmp;
         memcpy(&icmp, ptr, sizeof(icmp));
         sample->s.dcd_sport = icmp.type;
         sample->s.dcd_dport = icmp.code;
         sample->s.offsetToPayload = ptr + sizeof(icmp) - sample->s.header;
     } break;
-    case 6: /* TCP */
-    {
+    case TCP: {
         struct mytcphdr tcp;
         int headerBytes;
         memcpy(&tcp, ptr, sizeof(tcp));
@@ -478,8 +479,7 @@ static void decodeIPLayer4(SFSample *sample, uint8_t *ptr)
         ptr += headerBytes;
         sample->s.offsetToPayload = ptr - sample->s.header;
     } break;
-    case 17: /* UDP */
-    {
+    case UDP: {
         struct myudphdr udp;
         memcpy(&udp, ptr, sizeof(udp));
         sample->s.dcd_sport = ntohs(udp.uh_sport);
@@ -604,6 +604,141 @@ static void decodeIPV6(SFSample *sample)
     }
 }
 
+static void readCounters_generic(SFSample *sample)
+{
+    /* the first part of the generic counters block is really just more info about the interface. */
+    sample->s.ifCounters.ifIndex = getData32(sample);
+    sample->s.ifCounters.ifType = getData32(sample);
+    sample->s.ifCounters.ifSpeed = getData64(sample);
+    sample->s.ifCounters.ifDirection = getData32(sample);
+    sample->s.ifCounters.ifStatus = getData32(sample);
+    /* the generic counters always come first */
+    sample->s.ifCounters.ifInOctets = getData64(sample);
+    sample->s.ifCounters.ifInUcastPkts = getData32(sample);
+    sample->s.ifCounters.ifInMulticastPkts = getData32(sample);
+    sample->s.ifCounters.ifInBroadcastPkts = getData32(sample);
+    sample->s.ifCounters.ifInDiscards = getData32(sample);
+    sample->s.ifCounters.ifInErrors = getData32(sample);
+    sample->s.ifCounters.ifInUnknownProtos = getData32(sample);
+    sample->s.ifCounters.ifOutOctets = getData64(sample);
+    sample->s.ifCounters.ifOutUcastPkts = getData32(sample);
+    sample->s.ifCounters.ifOutMulticastPkts = getData32(sample);
+    sample->s.ifCounters.ifOutBroadcastPkts = getData32(sample);
+    sample->s.ifCounters.ifOutDiscards = getData32(sample);
+    sample->s.ifCounters.ifOutErrors = getData32(sample);
+    sample->s.ifCounters.ifPromiscuousMode = getData32(sample);
+}
+
+static void readCountersSample_v2v4(SFSample *sample)
+{
+    sample->s.samplesGenerated = getData32(sample);
+    uint32_t samplerId = getData32(sample);
+    sample->s.ds_class = samplerId >> 24;
+    sample->s.ds_index = samplerId & 0x00ffffff;
+    sample->s.statsSamplingInterval = getData32(sample);
+
+    /* now find out what sort of counter blocks we have here... */
+    sample->s.counterBlockVersion = getData32(sample);
+
+    /* first see if we should read the generic stats */
+    switch (sample->s.counterBlockVersion) {
+    case INMCOUNTERSVERSION_GENERIC:
+    case INMCOUNTERSVERSION_ETHERNET:
+    case INMCOUNTERSVERSION_TOKENRING:
+    case INMCOUNTERSVERSION_FDDI:
+    case INMCOUNTERSVERSION_VG:
+    case INMCOUNTERSVERSION_WAN:
+        readCounters_generic(sample);
+        break;
+    case INMCOUNTERSVERSION_VLAN:
+        break;
+    default:
+        throw std::invalid_argument("unknown stats version");
+        break;
+    }
+}
+
+static void readCountersSample(SFSample *sample, bool expanded)
+{
+    uint32_t sampleLength;
+    uint32_t num_elements;
+    uint8_t *sampleStart;
+
+    sampleLength = getData32(sample);
+    sampleStart = (uint8_t *)sample->datap;
+    sample->s.samplesGenerated = getData32(sample);
+
+    if (expanded) {
+        sample->s.ds_class = getData32(sample);
+        sample->s.ds_index = getData32(sample);
+    } else {
+        uint32_t samplerId = getData32(sample);
+        sample->s.ds_class = samplerId >> 24;
+        sample->s.ds_index = samplerId & 0x00ffffff;
+    }
+
+    num_elements = getData32(sample);
+
+    for (uint32_t el = 0; el < num_elements; el++) {
+        uint32_t tag, length;
+        uint8_t *start;
+
+        tag = sample->s.elementType = getData32(sample);
+        length = getData32(sample);
+        start = (uint8_t *)sample->datap;
+
+        switch (tag) {
+        case SFLCOUNTERS_GENERIC:
+            readCounters_generic(sample);
+            break;
+        case SFLCOUNTERS_ETHERNET:
+        case SFLCOUNTERS_TOKENRING:
+        case SFLCOUNTERS_VG:
+        case SFLCOUNTERS_VLAN:
+        case SFLCOUNTERS_80211:
+        case SFLCOUNTERS_LACP:
+        case SFLCOUNTERS_SFP:
+        case SFLCOUNTERS_PROCESSOR:
+        case SFLCOUNTERS_RADIO:
+        case SFLCOUNTERS_OFPORT:
+        case SFLCOUNTERS_PORTNAME:
+        case SFLCOUNTERS_HOST_HID:
+        case SFLCOUNTERS_ADAPTORS:
+        case SFLCOUNTERS_HOST_PAR:
+        case SFLCOUNTERS_HOST_CPU:
+        case SFLCOUNTERS_HOST_MEM:
+        case SFLCOUNTERS_HOST_DSK:
+        case SFLCOUNTERS_HOST_NIO:
+        case SFLCOUNTERS_HOST_IP:
+        case SFLCOUNTERS_HOST_ICMP:
+        case SFLCOUNTERS_HOST_TCP:
+        case SFLCOUNTERS_HOST_UDP:
+        case SFLCOUNTERS_HOST_VRT_NODE:
+        case SFLCOUNTERS_HOST_VRT_CPU:
+        case SFLCOUNTERS_HOST_VRT_MEM:
+        case SFLCOUNTERS_HOST_VRT_DSK:
+        case SFLCOUNTERS_HOST_VRT_NIO:
+        case SFLCOUNTERS_HOST_GPU_NVML:
+        case SFLCOUNTERS_BCM_TABLES:
+        case SFLCOUNTERS_MEMCACHE:
+        case SFLCOUNTERS_MEMCACHE2:
+        case SFLCOUNTERS_HTTP:
+        case SFLCOUNTERS_JVM:
+        case SFLCOUNTERS_JMX:
+        case SFLCOUNTERS_APP:
+        case SFLCOUNTERS_APP_RESOURCE:
+        case SFLCOUNTERS_APP_WORKERS:
+        case SFLCOUNTERS_VDI:
+        case SFLCOUNTERS_OVSDP:
+        default:
+            skipBytes(sample, length);
+            break;
+        }
+        lengthCheck(sample, "counters_sample_element", start, length);
+    }
+    lengthCheck(sample, "counters_sample", sampleStart, sampleLength);
+}
+
 static void readFlowSample_IPv4(SFSample *sample)
 {
     sample->s.headerLen = sizeof(SFLSampled_ipv4);
@@ -651,6 +786,16 @@ static void readFlowSample_IPv6(SFSample *sample)
     if (sample->s.dcd_ipProtocol == 6) {
         sample->s.dcd_tcpFlags = ntohl(nfKey6.tcp_flags);
     }
+}
+
+static void readFlowSample_ethernet(SFSample *sample)
+{
+    sample->s.eth_len = getData32(sample);
+    memcpy(sample->s.eth_src, sample->datap, 6);
+    skipBytes(sample, 6);
+    memcpy(sample->s.eth_dst, sample->datap, 6);
+    skipBytes(sample, 6);
+    sample->s.eth_type = getData32(sample);
 }
 
 static void readFlowSample_header(SFSample *sample)
@@ -736,7 +881,6 @@ static void readFlowSample_v2v4(SFSample *sample)
         break;
     default:
         throw std::invalid_argument("unexpected packet_data_tag");
-        break;
     }
 
     sample->s.extended_data_tag = 0;
@@ -791,10 +935,78 @@ static void readFlowSample(SFSample *sample, bool expanded)
         tag = sample->s.elementType = getData32(sample);
         length = getData32(sample);
         start = (uint8_t *)sample->datap;
-        if (tag == SFLFLOW_HEADER) {
+
+        switch (tag) {
+        case SFLFLOW_HEADER:
             readFlowSample_header(sample);
-        } else {
+            break;
+        case SFLFLOW_ETHERNET:
+            readFlowSample_ethernet(sample);
+            break;
+        case SFLFLOW_IPV4:
+            readFlowSample_IPv4(sample);
+            break;
+        case SFLFLOW_IPV6:
+            readFlowSample_IPv6(sample);
+            break;
+        case SFLFLOW_EX_IPV4_TUNNEL_OUT:
+            readFlowSample_IPv4(sample);
+            break;
+        case SFLFLOW_EX_IPV4_TUNNEL_IN:
+            readFlowSample_IPv4(sample);
+            break;
+        case SFLFLOW_EX_IPV6_TUNNEL_OUT:
+            readFlowSample_IPv6(sample);
+            break;
+        case SFLFLOW_EX_IPV6_TUNNEL_IN:
+            readFlowSample_IPv6(sample);
+            break;
+        case SFLFLOW_EX_L2_TUNNEL_OUT:
+            readFlowSample_ethernet(sample);
+            break;
+        case SFLFLOW_EX_L2_TUNNEL_IN:
+            readFlowSample_ethernet(sample);
+            break;
+        case SFLFLOW_HTTP:
+        case SFLFLOW_HTTP2:
+        case SFLFLOW_MEMCACHE:
+        case SFLFLOW_APP:
+        case SFLFLOW_APP_CTXT:
+        case SFLFLOW_APP_ACTOR_INIT:
+        case SFLFLOW_APP_ACTOR_TGT:
+        case SFLFLOW_EX_SWITCH:
+        case SFLFLOW_EX_ROUTER:
+        case SFLFLOW_EX_GATEWAY:
+        case SFLFLOW_EX_USER:
+        case SFLFLOW_EX_URL:
+        case SFLFLOW_EX_MPLS:
+        case SFLFLOW_EX_NAT:
+        case SFLFLOW_EX_NAT_PORT:
+        case SFLFLOW_EX_MPLS_TUNNEL:
+        case SFLFLOW_EX_MPLS_VC:
+        case SFLFLOW_EX_MPLS_FTN:
+        case SFLFLOW_EX_MPLS_LDP_FEC:
+        case SFLFLOW_EX_VLAN_TUNNEL:
+        case SFLFLOW_EX_80211_PAYLOAD:
+        case SFLFLOW_EX_80211_RX:
+        case SFLFLOW_EX_80211_TX:
+        case SFLFLOW_EX_AGGREGATION:
+        case SFLFLOW_EX_SOCKET4:
+        case SFLFLOW_EX_SOCKET6:
+        case SFLFLOW_EX_PROXYSOCKET4:
+        case SFLFLOW_EX_PROXYSOCKET6:;
+        case SFLFLOW_EX_DECAP_OUT:
+        case SFLFLOW_EX_DECAP_IN:
+        case SFLFLOW_EX_VNI_OUT:
+        case SFLFLOW_EX_VNI_IN:
+        case SFLFLOW_EX_TCP_INFO:
+        case SFLFLOW_EX_ENTITIES:
+        case SFLFLOW_EX_EGRESS_Q:
+        case SFLFLOW_EX_TRANSIT:
+        case SFLFLOW_EX_Q_DEPTH:
+        default:
             skipBytes(sample, length);
+            break;
         }
         lengthCheck(sample, "flow_sample_element", start, length);
     }
@@ -809,7 +1021,7 @@ static void read_sflow_datagram(SFSample *sample)
     sample->datagramVersion = getData32(sample);
 
     if (sample->datagramVersion != 2 && sample->datagramVersion != 4 && sample->datagramVersion != 5) {
-        throw std::invalid_argument("only support sflow v2, v4 and v5");
+        throw std::invalid_argument(fmt::format("version: {}. Only support sflow v2, v4 and v5", sample->datagramVersion));
     }
 
     /* get the agent address */
@@ -841,25 +1053,14 @@ static void read_sflow_datagram(SFSample *sample)
                 readFlowSample(sample, false);
                 break;
             case SFLCOUNTERS_SAMPLE:
-                // counter is performed in handlers
-                skipBytes(sample, getData32(sample));
+                readCountersSample(sample, false);
                 break;
             case SFLFLOW_SAMPLE_EXPANDED:
                 readFlowSample(sample, true);
                 break;
             case SFLCOUNTERS_SAMPLE_EXPANDED:
-                // counter is performed in handlers
-                skipBytes(sample, getData32(sample));
+                readCountersSample(sample, true);
                 break;
-            case SFLEVENT_DISCARDED_PACKET:
-                // readDiscardSample(sample);
-                // break;
-            case SFLRTMETRIC:
-                // readRTMetric(sample);
-                // break;
-            case SFLRTFLOW:
-                // readRTFlow(sample);
-                // break;
             default:
                 skipBytes(sample, getData32(sample));
                 break;
@@ -870,13 +1071,13 @@ static void read_sflow_datagram(SFSample *sample)
                 readFlowSample_v2v4(sample);
                 break;
             case COUNTERSSAMPLE:
-                // counter is performed in handlers
-                skipBytes(sample, getData32(sample));
+                readCountersSample_v2v4(sample);
                 break;
             default:
                 throw std::invalid_argument("unexpected sample type");
             }
         }
+        sample->elements.push_back(sample->s);
     }
 }
 

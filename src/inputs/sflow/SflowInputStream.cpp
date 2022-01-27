@@ -4,11 +4,14 @@
 
 #include "SflowInputStream.h"
 #include "SflowException.h"
-
+#include <Packet.h>
+#include <PcapFileDevice.h>
+#include <UdpLayer.h>
 namespace visor::input::sflow {
 
 SflowInputStream::SflowInputStream(const std::string &name)
     : visor::InputStream(name)
+    , _error_count(0)
 {
     _logger = spdlog::get("visor");
     assert(_logger);
@@ -21,13 +24,54 @@ void SflowInputStream::start()
         return;
     }
 
-    _create_frame_stream_udp_socket();
+    if (config_exists("pcap_file")) {
+        // read sflow from pcap file. this is a special case from a command line utility
+        _running = true;
+        _read_from_pcap_file();
+        return;
+    } else if (config_exists("port") && config_exists("bind")) {
+        _create_frame_stream_udp_socket();
+    } else {
+        throw SflowException("sflow config must specify port and bind");
+    }
 
     _running = true;
 }
 
+void SflowInputStream::_read_from_pcap_file()
+{
+    pcpp::IFileReaderDevice *reader = pcpp::IFileReaderDevice::getReader(config_get<std::string>("pcap_file"));
+    reader->open();
+
+    pcpp::RawPacket rawPacket;
+
+    datasketches::frequent_items_sketch<uint16_t> sketch(3);
+
+    while (reader->getNextPacket(rawPacket)) {
+        pcpp::Packet sflow_pkt(&rawPacket);
+        if (sflow_pkt.isPacketOfType(pcpp::UDP)) {
+            pcpp::UdpLayer *udpLayer = sflow_pkt.getLayerOfType<pcpp::UdpLayer>();
+            SFSample sample;
+            std::memset(&sample, 0, sizeof(sample));
+            sample.rawSample = udpLayer->getLayerPayload();
+            sample.rawSampleLen = udpLayer->getLayerPayloadSize();
+            try {
+                read_sflow_datagram(&sample);
+                sflow_signal(sample);
+            } catch (const std::exception &e) {
+                _logger->error(e.what());
+            }
+        }
+    }
+
+    reader->close();
+    delete reader;
+}
+
 void SflowInputStream::_create_frame_stream_udp_socket()
 {
+    auto bind = config_get<std::string>("bind");
+    auto port = config_get<uint64_t>("port");
     // main io loop, run in its own thread
     _io_loop = uvw::Loop::create();
     if (!_io_loop) {
@@ -63,8 +107,6 @@ void SflowInputStream::_create_frame_stream_udp_socket()
 
     // ListenEvent happens on client connection
     _udp_server_h->on<uvw::UDPDataEvent>([this](const uvw::UDPDataEvent &event, uvw::UDPHandle &) {
-        _logger->info("received packet from {}:{}", event.sender.ip, event.sender.port);
-
         SFSample sample;
         std::memset(&sample, 0, sizeof(sample));
         sample.rawSample = reinterpret_cast<uint8_t *>(event.data.get());
@@ -77,11 +119,11 @@ void SflowInputStream::_create_frame_stream_udp_socket()
             read_sflow_datagram(&sample);
             sflow_signal(sample);
         } catch (const std::exception &e) {
-            _logger->error(e.what());
+            ++_error_count;
         }
     });
 
-    _udp_server_h->bind("0.0.0.0", 6343);
+    _udp_server_h->bind(bind, port);
     _udp_server_h->recv();
 
     // spawn the loop
