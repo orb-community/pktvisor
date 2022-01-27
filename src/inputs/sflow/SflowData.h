@@ -1,8 +1,8 @@
 #pragma once
 
+#include <netinet/in.h>
 #include <sflow.h>
 #include <sflow_v2v4.h>
-#include <netinet/in.h>
 
 #define IPX_HDR_LEN 30
 #define IPX_MAX_DATA 546
@@ -245,7 +245,7 @@ static uint32_t getAddress(SFSample *sample, SFLAddress *address)
     return address->type;
 }
 
-static void lengthCheck(SFSample *sample, char *description, uint8_t *start, int len)
+static void lengthCheck(SFSample *sample, const char *description, uint8_t *start, int len)
 {
     uint32_t actualLen = (uint8_t *)sample->datap - start;
     uint32_t adjustedLen = ((len + 3) >> 2) << 2;
@@ -301,9 +301,9 @@ static void decodeLinkLayer(SFSample *sample)
     }
 
     /* now we're just looking for IP */
-    if ((end - start) < sizeof(struct myiphdr))
+    if ((end - start) < sizeof(struct myiphdr)) {
         return; /* not enough for an IPv4 header (or IPX, or SNAP) */
-
+    }
     /* peek for IPX */
     if (type_len == 0x0200 || type_len == 0x0201 || type_len == 0x0600) {
         int ipxChecksum = (ptr[0] == 0xff && ptr[1] == 0xff);
@@ -499,13 +499,14 @@ static void decodeIPV4(SFSample *sample)
         uint8_t *end = sample->s.header + sample->s.headerLen;
         uint8_t *start = sample->s.header + sample->s.offsetToIPV4;
         uint8_t *ptr = start;
-        if ((end - ptr) < sizeof(struct myiphdr))
+        if ((end - ptr) < sizeof(struct myiphdr)) {
             return;
+        }
 
         /* Create a local copy of the IP header (cannot overlay structure in case it is not quad-aligned...some
            platforms would core-dump if we tried that).  It's OK coz this probably performs just as well anyway. */
         struct myiphdr ip;
-        memcpy(&ip, ptr, sizeof(ip));
+        std::memcpy(&ip, ptr, sizeof(ip));
         /* Value copy all ip elements into sample */
         sample->s.ipsrc.type = SFLADDRESSTYPE_IP_V4;
         sample->s.ipsrc.address.ip_v4.addr = ip.saddr;
@@ -663,7 +664,6 @@ static void readFlowSample_header(SFSample *sample)
     sample->s.headerLen = getData32(sample);
     sample->s.header = (uint8_t *)sample->datap; /* just point at the header */
     skipBytes(sample, sample->s.headerLen);
-
     switch (sample->s.headerProtocol) {
         /* the header protocol tells us where to jump into the decode */
     case SFLHEADER_ETHERNET_ISO8023:
@@ -791,11 +791,10 @@ static void readFlowSample(SFSample *sample, bool expanded)
         tag = sample->s.elementType = getData32(sample);
         length = getData32(sample);
         start = (uint8_t *)sample->datap;
-
         if (tag == SFLFLOW_HEADER) {
             readFlowSample_header(sample);
         } else {
-            skipBytes(sample, getData32(sample));
+            skipBytes(sample, length);
         }
         lengthCheck(sample, "flow_sample_element", start, length);
     }

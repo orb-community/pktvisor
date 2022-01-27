@@ -64,16 +64,16 @@ void SflowInputStream::_create_frame_stream_udp_socket()
     // ListenEvent happens on client connection
     _udp_server_h->on<uvw::UDPDataEvent>([this](const uvw::UDPDataEvent &event, uvw::UDPHandle &) {
         _logger->info("received packet from {}:{}", event.sender.ip, event.sender.port);
-        try {
-            SFSample sample;
-            std::memset(&sample, 0, sizeof(sample));
-            sample.rawSample = reinterpret_cast<uint8_t *>(event.data.get());
-            sample.rawSampleLen = event.length;
-            sample.sourceIP.type = SFLADDRESSTYPE_IP_V4;
-            struct sockaddr_in peer4;
-            inet_pton(AF_INET, event.sender.ip.c_str(), &(peer4.sin_addr));
-            std::memcpy(&sample.sourceIP.address.ip_v4, &peer4.sin_addr, 4);
 
+        SFSample sample;
+        std::memset(&sample, 0, sizeof(sample));
+        sample.rawSample = reinterpret_cast<uint8_t *>(event.data.get());
+        sample.rawSampleLen = event.length;
+        sample.sourceIP.type = SFLADDRESSTYPE_IP_V4;
+        struct sockaddr_in peer4;
+        inet_pton(AF_INET, event.sender.ip.c_str(), &(peer4.sin_addr));
+        std::memcpy(&sample.sourceIP.address.ip_v4.addr, &peer4.sin_addr, 4);
+        try {
             read_sflow_datagram(&sample);
             sflow_signal(sample);
         } catch (const std::exception &e) {

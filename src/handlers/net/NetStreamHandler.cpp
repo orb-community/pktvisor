@@ -443,8 +443,8 @@ void NetworkMetricsBucket::process_sflow(bool deep, const SFSample &payload)
     struct sockaddr_in sa4;
     struct sockaddr_in6 sa6;
 
-    if (payload.s.ipsrc.type == SFLADDRESSTYPE_IP_V4) {
-        auto ip = pcpp::IPv4Address(reinterpret_cast<const uint8_t *>(payload.s.ipsrc.address.ip_v4.addr));
+    if (payload.sourceIP.type == SFLADDRESSTYPE_IP_V4) {
+        auto ip = pcpp::IPv4Address(payload.sourceIP.address.ip_v4.addr);
         _srcIPCard.update(ip.toInt());
         _topIPv4.update(ip.toInt());
         if (geo::enabled()) {
@@ -458,7 +458,7 @@ void NetworkMetricsBucket::process_sflow(bool deep, const SFSample &payload)
             }
         }
     } else if (payload.s.ipsrc.type == SFLADDRESSTYPE_IP_V6) {
-        auto ip = pcpp::IPv6Address(reinterpret_cast<const uint8_t *>(payload.s.ipsrc.address.ip_v6.addr));
+        auto ip = pcpp::IPv6Address(payload.s.ipsrc.address.ip_v6.addr);
         _dstIPCard.update(reinterpret_cast<const void *>(ip.toBytes()), 16);
         _topIPv6.update(ip.toString());
         if (geo::enabled()) {
@@ -474,7 +474,7 @@ void NetworkMetricsBucket::process_sflow(bool deep, const SFSample &payload)
     }
 
     if (payload.s.ipdst.type == SFLADDRESSTYPE_IP_V4) {
-        auto ip = pcpp::IPv4Address(reinterpret_cast<const uint8_t *>(payload.s.ipdst.address.ip_v4.addr));
+        auto ip = pcpp::IPv4Address(payload.s.ipdst.address.ip_v4.addr);
         _srcIPCard.update(ip.toInt());
         _topIPv4.update(ip.toInt());
         if (geo::enabled()) {
@@ -488,7 +488,7 @@ void NetworkMetricsBucket::process_sflow(bool deep, const SFSample &payload)
             }
         }
     } else if (payload.s.ipdst.type == SFLADDRESSTYPE_IP_V6) {
-        auto ip = pcpp::IPv6Address(reinterpret_cast<const uint8_t *>(payload.s.ipdst.address.ip_v6.addr));
+        auto ip = pcpp::IPv6Address(payload.s.ipdst.address.ip_v6.addr);
         _dstIPCard.update(reinterpret_cast<const void *>(ip.toBytes()), 16);
         _topIPv6.update(ip.toString());
         if (geo::enabled()) {
