@@ -28,7 +28,7 @@ if(VISOR_PRERELEASE STREQUAL "-develop" OR VISOR_PRERELEASE STREQUAL "-rc")
             SHORT_HASH
             OUTPUT_STRIP_TRAILING_WHITESPACE
     )
-    if (${SHORT_HASH} STREQUAL "")
+    if ("${SHORT_HASH}" STREQUAL "")
         message(FATAL "Unable to get current git hash for develop/rc version")
     endif ()
     string(APPEND VISOR_PRERELEASE "-${SHORT_HASH}")
