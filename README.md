@@ -26,9 +26,8 @@ real time via API. Input and processor modules may be dynamically loaded at runt
 both on-node via command line UI (for localized, hyper real-time actions)
 as well as centrally collected into industry standard observability stacks like Prometheus and Grafana.
 
-The [input stream system](src/inputs) is designed to _tap into_ data streams, and currently focuses
-on data streams such as [packet capture](https://en.wikipedia.org/wiki/Packet_analyzer) and [dnstap](https://dnstap.info/) 
-but will soon support additional taps such as [sFlow](https://en.wikipedia.org/wiki/SFlow) / [Netflow](https://en.wikipedia.org/wiki/NetFlow)
+The [input stream system](src/inputs) is designed to _tap into_ data streams. It currently supports [packet capture](https://en.wikipedia.org/wiki/Packet_analyzer), [dnstap](https://dnstap.info/) 
+ and [sFlow](https://en.wikipedia.org/wiki/SFlow) and will soon support additional taps such as [Netflow](https://en.wikipedia.org/wiki/NetFlow)
 , [envoy taps](https://www.envoyproxy.io/docs/envoy/latest/operations/traffic_tapping),
 and [eBPF](https://ebpf.io/).
 
@@ -59,7 +58,7 @@ and [DNS](src/handlers/dns) stream processors, and the types of summary informat
 
 One of the easiest ways to get started with pktvisor is to use
 the [public docker image](https://hub.docker.com/r/ns1labs/pktvisor). The image contains the collector
-agent (`pktvisord`), the command line UI (`pktvisor-cli`), the pcap file analyzer (`pktvisor-pcap`), and the dnstap file analyzer (`pktvisor-dnstap`). When running
+agent (`pktvisord`), the command line UI (`pktvisor-cli`), the pcap and dnstap file analyzer (`pktvisor-reader`), and the dnstap file analyzer (`pktvisor-dnstap`). When running
 the container, you specify which tool to run.
 
 1. *Pull the container*
@@ -109,8 +108,8 @@ For example, to run the agent on ethernet interface `eth0`:
 ./pktvisor-x86_64.AppImage pktvisord eth0
 ```
 
-The AppImage contains the collector agent (`pktvisord`), the command line UI (`pktvisor-cli`), the pcap file
-analyzer (`pktvisor-pcap`), and the dnstap file analyzer (`pktvisor-dnstap`). You can specify which tool to run by passing it as the first argument:
+The AppImage contains the collector agent (`pktvisord`), the command line UI (`pktvisor-cli`) and the pcap and dnstap file
+analyzer (`pktvisor-reader`). You can specify which tool to run by passing it as the first argument:
 
 For example, to visualize the running agent started above with the pktvisor command line UI:
 
@@ -313,7 +312,7 @@ Usage:
 
 ### pcap and dnstap File Analysis
 
-`pktvisor-pcap` and `pktvisor-dnstap` are tools that can statically analyze prerecorded packet capture and dnstap files.
+`pktvisor-reader` is a tool that can statically analyze prerecorded packet capture and dnstap files.
 
 pcap files can come from many sources, the most famous of which is [tcpdump](https://www.tcpdump.org/). Dnstap files
 can be generated from most DNS server software that support dnstap logging, either directly or 
@@ -322,24 +321,25 @@ using a tool such as [golang-dnstap](https://github.com/dnstap/golang-dnstap).
 Both take many of the same options, and do all of the same analysis, as `pktvisord` for live capture.
 
 ```
-docker run --rm ns1labs/pktvisor pktvisor-pcap --help
+docker run --rm ns1labs/pktvisor pktvisor-reader --help
 ```
 
 ```shell
-./pktvisor-x86_64.AppImage pktvisor-pcap --help
+./pktvisor-x86_64.AppImage pktvisor-reader --help
 ```
 
 ```
 
     Usage:
-      pktvisor-pcap [options] PCAP
-      pktvisor-pcap (-h | --help)
-      pktvisor-pcap --version
+      pktvisor-reader [options] FILE
+      pktvisor-reader (-h | --help)
+      pktvisor-reader --version
 
-    Summarize a pcap file. The result will be written to stdout in JSON format, while console logs will be printed
+    Summarize a network (pcap, dnstap) file. The result will be written to stdout in JSON format, while console logs will be printed
     to stderr.
 
     Options:
+      -i INPUT              Input type (pcap|dnstap|sflow). If not set, default is pcap input
       --max-deep-sample N   Never deep sample more than N% of streams (an int between 0 and 100) [default: 100]
       --periods P           Hold this many 60 second time periods of history in memory. Use 1 to summarize all data. [default: 5]
       -h --help             Show this screen
@@ -358,7 +358,7 @@ You can use the docker container by passing in a volume referencing the director
 output will contain the JSON summarization output, which you can capture or pipe into other tools, for example:
 ```
 
-$ docker run --rm -v /pktvisor/src/tests/fixtures:/pcaps ns1labs/pktvisor pktvisor-pcap /pcaps/dns_ipv4_udp.pcap | jq .
+$ docker run --rm -v /pktvisor/src/tests/fixtures:/pcaps ns1labs/pktvisor pktvisor-reader /pcaps/dns_ipv4_udp.pcap | jq .
 
 [2021-03-11 18:45:04.572] [pktvisor] [info] Load input plugin: PcapInputModulePlugin dev.visor.module.input/1.0
 [2021-03-11 18:45:04.573] [pktvisor] [info] Load handler plugin: DnsHandler dev.visor.module.handler/1.0
@@ -389,7 +389,7 @@ The AppImage can access local files as any normal binary:
 
 ```
 
-$ ./pktvisor-x86_64.AppImage pktvisor-pcap /pcaps/dns_ipv4_udp.pcap | jq .
+$ ./pktvisor-x86_64.AppImage pktvisor-reader /pcaps/dns_ipv4_udp.pcap | jq .
 
 [2021-03-11 18:45:04.572] [pktvisor] [info] Load input plugin: PcapInputModulePlugin dev.visor.module.input/1.0
 [2021-03-11 18:45:04.573] [pktvisor] [info] Load handler plugin: DnsHandler dev.visor.module.handler/1.0

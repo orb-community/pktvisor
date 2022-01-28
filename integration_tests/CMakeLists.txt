@@ -1,7 +1,7 @@
 
 set(FIXTURE_DIR ${CMAKE_SOURCE_DIR}/src/tests/fixtures)
 set(HOST_VAR "-H 127.0.0.1/32")
-set(PCAP_BINARY ${CMAKE_BINARY_DIR}/bin/pktvisor-pcap)
+set(PCAP_BINARY ${CMAKE_BINARY_DIR}/bin/pktvisor-reader)
 set(PKTD_BINARY ${CMAKE_BINARY_DIR}/bin/pktvisord)
 set(VISOR_DYNMODULE_DIR ${CMAKE_BINARY_DIR}/lib/)
 set(INT_SH ${CMAKE_SOURCE_DIR}/integration_tests/integration.sh)
