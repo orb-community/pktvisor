@@ -38,7 +38,7 @@ TEST_CASE("sflow udp socket", "[sflow][udp]")
         handle.close();
     });
     auto dataSend = std::unique_ptr<char[]>(new char[2]{'b', 'c'});
-    client->send(uvw::Addr{bind, port}, dataSend.get(), 2);
+    client->send(uvw::Addr{bind, static_cast<unsigned int>(port)}, dataSend.get(), 2);
     client->send(bind, port, nullptr, 0);
 
     CHECK_NOTHROW(stream.stop());
