@@ -18,6 +18,25 @@ target_link_libraries(VisorInputSflow
         PUBLIC
         sflow
         Visor::Core
+        ${CONAN_LIBS_LIBUV}
+        ${CONAN_LIBS_UVW}
+        ${CONAN_LIBS_PCAPPLUSPLUS}
+        ${CONAN_LIBS_LIBPCAP}
         )
 
 set(VISOR_STATIC_PLUGINS ${VISOR_STATIC_PLUGINS} Visor::Input::Sflow PARENT_SCOPE)
+
+## TEST SUITE
+add_executable(unit-tests-input-sflow
+        tests/main.cpp
+        tests/test_sflow.cpp
+        )
+
+target_link_libraries(unit-tests-input-sflow
+        PRIVATE Visor::Input::Sflow
+        )
+
+add_test(NAME unit-tests-input-sflow
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/src
+        COMMAND unit-tests-input-sflow
+        )

@@ -23,7 +23,7 @@ namespace visor::input::sflow {
 
 enum DIRECTION {
     UNKNOWN = 0,
-    FULL_DUPLEX =1,
+    FULL_DUPLEX = 1,
     HALF_DUPLEX = 2,
     IN = 3,
     OUT = 4
@@ -537,7 +537,6 @@ static void decodeIPV6(SFSample *sample)
     uint16_t payloadLen;
     uint32_t label;
     uint32_t nextHeader;
-    uint32_t tos;
 
     uint8_t *end = sample->s.header + sample->s.headerLen;
     uint8_t *start = sample->s.header + sample->s.offsetToIPV6;
@@ -665,7 +664,7 @@ static void readCountersSample(SFSample *sample, bool expanded)
     uint8_t *sampleStart;
 
     sampleLength = getData32(sample);
-    sampleStart = (uint8_t *)sample->datap;
+    sampleStart = reinterpret_cast<uint8_t *>(sample->datap);
     sample->s.samplesGenerated = getData32(sample);
 
     if (expanded) {
@@ -685,7 +684,7 @@ static void readCountersSample(SFSample *sample, bool expanded)
 
         tag = sample->s.elementType = getData32(sample);
         length = getData32(sample);
-        start = (uint8_t *)sample->datap;
+        start = reinterpret_cast<uint8_t *>(sample->datap);
 
         switch (tag) {
         case SFLCOUNTERS_GENERIC:
@@ -742,7 +741,7 @@ static void readCountersSample(SFSample *sample, bool expanded)
 static void readFlowSample_IPv4(SFSample *sample)
 {
     sample->s.headerLen = sizeof(SFLSampled_ipv4);
-    sample->s.header = (uint8_t *)sample->datap; /* just point at the header */
+    sample->s.header = reinterpret_cast<uint8_t *>(sample->datap); /* just point at the header */
     skipBytes(sample, sample->s.headerLen);
 
     SFLSampled_ipv4 nfKey;
@@ -767,7 +766,7 @@ static void readFlowSample_IPv4(SFSample *sample)
 
 static void readFlowSample_IPv6(SFSample *sample)
 {
-    sample->s.header = (uint8_t *)sample->datap; /* just point at the header */
+    sample->s.header = reinterpret_cast<uint8_t *>(sample->datap); /* just point at the header */
     sample->s.headerLen = sizeof(SFLSampled_ipv6);
     skipBytes(sample, sample->s.headerLen);
 
@@ -807,7 +806,7 @@ static void readFlowSample_header(SFSample *sample)
         sample->s.stripped = getData32(sample);
     }
     sample->s.headerLen = getData32(sample);
-    sample->s.header = (uint8_t *)sample->datap; /* just point at the header */
+    sample->s.header = reinterpret_cast<uint8_t *>(sample->datap); /* just point at the header */
     skipBytes(sample, sample->s.headerLen);
     switch (sample->s.headerProtocol) {
         /* the header protocol tells us where to jump into the decode */
@@ -934,7 +933,7 @@ static void readFlowSample(SFSample *sample, bool expanded)
         uint8_t *start;
         tag = sample->s.elementType = getData32(sample);
         length = getData32(sample);
-        start = (uint8_t *)sample->datap;
+        start = reinterpret_cast<uint8_t *>(sample->datap);
 
         switch (tag) {
         case SFLFLOW_HEADER:
