@@ -9,7 +9,6 @@ on:
 
 jobs:
   package:
-    needs: build
     runs-on: ubuntu-latest
 
     steps:
