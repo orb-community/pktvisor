@@ -42,6 +42,8 @@ TEST_CASE("sflow udp socket", "[sflow][udp]")
     client->send(uvw::Addr{bind, static_cast<unsigned int>(port)}, dataSend.get(), 2);
     client->send(bind, port, nullptr, 0);
 
+    uv_sleep(100);
+
     CHECK_NOTHROW(stream.stop());
 
     nlohmann::json j;

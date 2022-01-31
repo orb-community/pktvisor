@@ -153,7 +153,7 @@ void SflowInputStream::stop()
 void SflowInputStream::info_json(json &j) const
 {
     common_info_json(j);
-    j[schema_key()]["packet_errors"] = atomic_load(&_error_count);
+    j[schema_key()]["packet_errors"] = _error_count.load();
 }
 
 }
