@@ -1,3 +1,3 @@
 # Sflow Stream Input
 
-This directory contains a the sflow input tap, suitable only for testing.
+This directory contains the sflow input tap.
