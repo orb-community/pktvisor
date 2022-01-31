@@ -17,6 +17,7 @@ TEST_CASE("sflow pcap file", "[sflow][file]")
 
     nlohmann::json j;
     stream.info_json(j);
+    CHECK(j["input"]["packet_error"] == 0);
     CHECK(j["module"]["config"]["pcap_file"] == "tests/fixtures/ecmp.pcap");
 }
 
@@ -42,6 +43,10 @@ TEST_CASE("sflow udp socket", "[sflow][udp]")
     client->send(bind, port, nullptr, 0);
 
     CHECK_NOTHROW(stream.stop());
+
+    nlohmann::json j;
+    stream.info_json(j);
+    CHECK(j["input"]["packet_error"] == 1);
 }
 
 TEST_CASE("sflow udp socket without bind", "[sflow][udp]")

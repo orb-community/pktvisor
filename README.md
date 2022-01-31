@@ -58,7 +58,7 @@ and [DNS](src/handlers/dns) stream processors, and the types of summary informat
 
 One of the easiest ways to get started with pktvisor is to use
 the [public docker image](https://hub.docker.com/r/ns1labs/pktvisor). The image contains the collector
-agent (`pktvisord`), the command line UI (`pktvisor-cli`), the pcap and dnstap file analyzer (`pktvisor-reader`), and the dnstap file analyzer (`pktvisor-dnstap`). When running
+agent (`pktvisord`), the command line UI (`pktvisor-cli`) and the pcap and dnstap file analyzer (`pktvisor-reader`). When running
 the container, you specify which tool to run.
 
 1. *Pull the container*

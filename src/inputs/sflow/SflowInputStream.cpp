@@ -153,6 +153,7 @@ void SflowInputStream::stop()
 void SflowInputStream::info_json(json &j) const
 {
     common_info_json(j);
+    j["input"]["packet_error"] = _error_count.load();
 }
 
 }
