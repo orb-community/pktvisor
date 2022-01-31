@@ -90,7 +90,7 @@ the built in [REST API](https://app.swaggerhub.com/apis/ns1labs/pktvisor/3.0.0-o
 docker run -it --rm --net=host ns1labs/pktvisor pktvisor-cli
 ```
 
-### Linux Static Binary (AppImage)
+### Linux Static Binary
 
 You may also use the Linux static binary, built with [AppImage](https://appimage.org/), which is available for
 download [on the Releases page](https://github.com/ns1labs/pktvisor/releases). It is designed to work on all modern
@@ -121,6 +121,33 @@ Note that when running the AppImage version of the agent, you may want to use th
 background), and either the `--log-file` or `--syslog` argument to record logs.
 
 Also see [Advanced Agent Example](#advanced-agent-example).
+
+### StandAlone Static Binaries
+
+Pktvisor also provides standalone linux static binaries. It is also designed to work on Linux distributions and does not
+require installation or any other dependencies.
+
+You can run pktvisord by typing the following commands in your linux machine.
+```shell
+curl -L http://pktvisor.com/download/pktvisord -o pktvisord-x86_64
+chmod +x pktvisord-x86_64
+./pktvisord-x86_64 -h
+```
+
+The command line UI (`pktvisor-cli`) can also be downloaded and run over an environment which contains an agent collector.
+```shell
+curl -L http://pktvisor.com/download/cli -o pktvisor-cli-x86_64
+chmod +x pktvisor-cli-x86_64
+./pktvisor-cli-x86_64 -h
+```
+
+Also, The pcap and dnstap file analyzer (`pktvisor-reader`) can be run over input files to analyze network data.
+
+```shell
+curl -L http://pktvisor.com/download/reader -o pktvisor-reader-x86_64
+chmod +x pktvisor-reader-x86_64
+./pktvisor-reader-x86_64 -h
+```
 
 ### Other Platforms
 
