@@ -268,6 +268,12 @@ public:
     {
         return "dns";
     }
+
+    size_t consumer_count() const override
+    {
+        return udp_signal.slot_count();
+    }
+
     void start() override;
     void stop() override;
     void info_json(json &j) const override;
