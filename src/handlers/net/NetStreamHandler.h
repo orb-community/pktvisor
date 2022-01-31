@@ -9,6 +9,7 @@
 #include "DnstapInputStream.h"
 #include "MockInputStream.h"
 #include "PcapInputStream.h"
+#include "SflowInputStream.h"
 #include "StreamHandler.h"
 #include <Corrade/Utility/Debug.h>
 #include <string>
@@ -18,6 +19,7 @@ namespace visor::handler::net {
 using namespace visor::input::pcap;
 using namespace visor::input::dnstap;
 using namespace visor::input::mock;
+using namespace visor::input::sflow;
 using namespace visor::handler::dns;
 
 class NetworkMetricsBucket final : public visor::AbstractMetricsBucket
@@ -97,6 +99,7 @@ public:
 
     void process_packet(bool deep, pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4);
     void process_dnstap(bool deep, const dnstap::Dnstap &payload);
+    void process_sflow(bool deep, const SFSample &payload);
 };
 
 class NetworkMetricsManager final : public visor::AbstractMetricsManager<NetworkMetricsBucket>
@@ -109,6 +112,7 @@ public:
 
     void process_packet(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp);
     void process_dnstap(const dnstap::Dnstap &payload);
+    void process_sflow(const SFSample &payload);
 };
 
 class NetStreamHandler final : public visor::StreamMetricsHandler<NetworkMetricsManager>
@@ -116,13 +120,16 @@ class NetStreamHandler final : public visor::StreamMetricsHandler<NetworkMetrics
 
     // the input stream sources we support (only one will be in use at a time)
     PcapInputStream *_pcap_stream{nullptr};
-    MockInputStream *_mock_stream{nullptr};
     DnstapInputStream *_dnstap_stream{nullptr};
+    MockInputStream *_mock_stream{nullptr};
+    SflowInputStream *_sflow_stream{nullptr};
 
     // the stream handlers sources we support (only one will be in use at a time)
     DnsStreamHandler *_dns_handler{nullptr};
 
     sigslot::connection _dnstap_connection;
+
+    sigslot::connection _sflow_connection;
 
     sigslot::connection _pkt_connection;
     sigslot::connection _start_tstamp_connection;
@@ -130,6 +137,7 @@ class NetStreamHandler final : public visor::StreamMetricsHandler<NetworkMetrics
 
     sigslot::connection _pkt_udp_connection;
 
+    void process_sflow_cb(const SFSample &);
     void process_dnstap_cb(const dnstap::Dnstap &);
     void process_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp);
     void process_udp_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp);

@@ -208,3 +208,41 @@ TEST_CASE("Parse net (dns) with DNS filter only_qname_suffix", "[pcap][dns][net]
     CHECK(j["top_ipv4"][0]["estimate"] == 4);
     CHECK(j["top_ipv4"][0]["name"] == "216.239.38.10");
 }
+
+TEST_CASE("Parse net (dns) sflow stream", "[sflow][net]")
+{
+
+    SflowInputStream stream{"sflow-test"};
+    stream.config_set("pcap_file", "tests/fixtures/ecmp.pcap");
+
+    visor::Config c;
+    c.config_set<uint64_t>("num_periods", 1);
+    NetStreamHandler net_handler{"net-test", &stream, &c};
+
+    net_handler.start();
+    stream.start();
+    stream.stop();
+    net_handler.stop();
+
+    auto counters = net_handler.metrics()->bucket(0)->counters();
+    auto event_data = net_handler.metrics()->bucket(0)->event_data_locked();
+
+    // confirmed with wireshark
+    CHECK(event_data.num_events->value() == 9279);
+    CHECK(event_data.num_samples->value() == 9279);
+    CHECK(counters.TCP.value() == 52785);
+    CHECK(counters.UDP.value() == 0);
+    CHECK(counters.IPv4.value() == 52785);
+    CHECK(counters.IPv6.value() == 0);
+    CHECK(counters.OtherL4.value() == 3682);
+    CHECK(counters.total_in.value() == 0);
+    CHECK(counters.total_out.value() == 0);
+
+    nlohmann::json j;
+    net_handler.metrics()->bucket(0)->to_json(j);
+
+    CHECK(j["cardinality"]["dst_ips_out"] == 4);
+    CHECK(j["cardinality"]["src_ips_in"] == 4);
+    CHECK(j["top_ipv4"][0]["estimate"] == 27054);
+    CHECK(j["top_ipv4"][0]["name"] == "10.4.2.2");
+}
