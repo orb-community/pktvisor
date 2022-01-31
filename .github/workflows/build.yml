@@ -162,6 +162,30 @@ jobs:
           docker build . --file docker/Dockerfile --tag ${{ env.IMAGE_NAME }}:${{ env.VERSION }} --tag ${{ env.IMAGE_NAME }}:${{ env.REF_TAG }}
           docker push -a ${{ env.IMAGE_NAME }}
 
+      - name: Build + push - pktvisor-cli
+        env:
+          CLI_BINARY: pktvisor-cli
+          IMAGE_NAME: ns1labs/pktvisor-cli
+        run: |
+          docker build . --file docker/Dockerfile.pktvisor-cli --tag ${{ env.IMAGE_NAME }}:${{ env.VERSION }} --tag ${{ env.IMAGE_NAME }}:${{ env.REF_TAG }}
+          docker push -a ${{ env.IMAGE_NAME }}
+          echo "CONT_ID=$(docker create --name ${{ env.CLI_BINARY }}-slim-tmp ${{ env.IMAGE_NAME }}:${{ env.REF_TAG }})" >> $GITHUB_ENV
+
+      - name: Extract static pktvisor-cli asset
+        env:
+          CLI_BINARY: pktvisor-cli
+          IMAGE_NAME: ns1labs/pktvisor-cli
+        run: |
+          docker cp ${{ env.CONT_ID }}:/${{ env.CLI_BINARY }} ${{github.workspace}}/${{ env.CLI_BINARY }}-linux-x86_64-${{ env.VERSION }}
+
+      - name: Upload pktvisor-cli artifact
+        env:
+          BINARY_NAME: pktvisor-cli-linux-x86_64-${{ env.VERSION }}
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{ env.BINARY_NAME }}
+          path: ${{github.workspace}}/${{ env.BINARY_NAME }}
+
       - name: Build + push - pktvisor-prom-write
         env:
           IMAGE_NAME: ns1labs/pktvisor-prom-write
