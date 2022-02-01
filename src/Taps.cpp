@@ -54,17 +54,17 @@ void TapManager::load(const YAML::Node &tap_yaml, bool strict)
         // will throw if it already exists. nothing else to clean up
         module_add(std::move(tap_module));
 
-        spdlog::get("visor")->info("tap [{}]: loaded", tap_name);
+        spdlog::get("visor")->info("tap [{}]: loaded, type {}", tap_name, input_type);
     }
 }
 
-std::unique_ptr<InputStream> Tap::instantiate(Policy *policy, const Configurable *filter_config)
+std::unique_ptr<InputStream> Tap::instantiate(const Configurable *filter_config, std::string input_name)
 {
     Config c;
     c.config_merge(dynamic_cast<const Configurable &>(*this));
     c.config_merge(*filter_config);
-    auto module = _input_plugin->instantiate(_name + "-" + policy->name(), &c);
-    module->set_policy(policy);
+    auto module = _input_plugin->instantiate(input_name, &c);
+
     return module;
 }
 

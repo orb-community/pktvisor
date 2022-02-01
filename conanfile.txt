@@ -10,6 +10,9 @@ json-schema-validator/2.1.0
 openssl/1.1.1k
 yaml-cpp/0.6.3
 fmt/7.1.3
+protobuf/3.17.1
+uvw/2.10.0
+libmaxminddb/1.6.0
 
 [build_requires]
 benchmark/1.6.0

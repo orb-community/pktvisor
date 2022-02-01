@@ -16,9 +16,6 @@ void AbstractRunnableModule::common_info_json(json &j) const
 {
     j["module"]["name"] = _name;
     j["module"]["running"] = _running.load();
-    if (_policy) {
-        j["module"]["policy"]["name"] = _policy->name();
-    }
     config_json(j["module"]["config"]);
 }
 

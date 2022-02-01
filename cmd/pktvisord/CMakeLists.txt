@@ -12,4 +12,5 @@ target_link_libraries(pktvisord
         ${CONAN_LIBS_DOCOPT.CPP}
         Visor::Core
         ${VISOR_STATIC_PLUGINS}
+        ${STATIC_FLAGS}
         )

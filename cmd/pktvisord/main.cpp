@@ -12,6 +12,7 @@
 #include "handlers/static_plugins.h"
 #include "inputs/static_plugins.h"
 #include "visor_config.h"
+#include <Corrade/Utility/ConfigurationGroup.h>
 #include <docopt/docopt.h>
 #include <resolv.h>
 #include <spdlog/sinks/basic_file_sink.h>
@@ -32,9 +33,9 @@ static const char USAGE[] =
 
     pktvisord summarizes data streams and exposes a REST API control plane for configuration and metrics.
 
-    pktvisord operation is configured via Taps and Collection Policies. The former set up the available
-    input streams while the latter instantiate Taps and Stream Handlers to analyze and summarize
-    the stream data.
+    pktvisord operation is configured via Taps and Collection Policies. Taps abstract the process of "tapping into"
+    input streams with templated configuration while Policies use Taps to instantiate and configure Input and Stream
+    Handlers to analyze and summarize stream data, which is then made available for collection via REST API.
 
     Taps and Collection Policies may be created by passing the appropriate YAML configuration file to
     --config, and/or by enabling the admin REST API with --admin-api and using the appropriate endpoints.
@@ -47,40 +48,44 @@ static const char USAGE[] =
     For more documentation, see https://pktvisor.dev
 
     Base Options:
-      -d                    Daemonize; fork and continue running in the background [default: false]
-      -h --help             Show this screen
-      -v                    Verbose log output
-      --no-track            Don't send lightweight, anonymous usage metrics
-      --version             Show version
+      -d                          Daemonize; fork and continue running in the background [default: false]
+      -h --help                   Show this screen
+      -v                          Verbose log output
+      --no-track                  Don't send lightweight, anonymous usage metrics
+      --version                   Show version
     Web Server Options:
-      -l HOST               Run web server on the given host or IP [default: localhost]
-      -p PORT               Run web server on the given port [default: 10853]
-      --tls                 Enable TLS on the web server
-      --tls-cert FILE       Use given TLS cert. Required if --tls is enabled.
-      --tls-key FILE        Use given TLS private key. Required if --tls is enabled.
-      --admin-api           Enable admin REST API giving complete control plane functionality [default: false]
-                            When not specified, the exposed API is read-only access to module status and metrics.
-                            When specified, write access is enabled for all modules.
+      -l HOST                     Run web server on the given host or IP [default: localhost]
+      -p PORT                     Run web server on the given port [default: 10853]
+      --tls                       Enable TLS on the web server
+      --tls-cert FILE             Use given TLS cert. Required if --tls is enabled.
+      --tls-key FILE              Use given TLS private key. Required if --tls is enabled.
+      --admin-api                 Enable admin REST API giving complete control plane functionality [default: false]
+                                  When not specified, the exposed API is read-only access to module status and metrics.
+                                  When specified, write access is enabled for all modules.
     Geo Options:
-      --geo-city FILE       GeoLite2 City database to use for IP to Geo mapping
-      --geo-asn FILE        GeoLite2 ASN database to use for IP to ASN mapping
+      --geo-city FILE             GeoLite2 City database to use for IP to Geo mapping
+      --geo-asn FILE              GeoLite2 ASN database to use for IP to ASN mapping
     Configuration:
-      --config FILE         Use specified YAML configuration to configure options, Taps, and Collection Policies
-                            Please see https://pktvisor.dev for more information
+      --config FILE               Use specified YAML configuration to configure options, Taps, and Collection Policies
+                                  Please see https://pktvisor.dev for more information
+    Modules:
+      --module-list               List all modules which have been loaded (builtin and dynamic).
+      --module-dir DIR            Set module load path. All modules in this directory will be loaded.
     Logging Options:
-      --log-file FILE       Log to the given output file name
-      --syslog              Log to syslog
+      --log-file FILE             Log to the given output file name
+      --syslog                    Log to syslog
     Prometheus Options:
-      --prometheus          Ignored, Prometheus output always enabled (left for backwards compatibility)
-      --prom-instance ID    Optionally set the 'instance' label to given ID
+      --prometheus                Ignored, Prometheus output always enabled (left for backwards compatibility)
+      --prom-instance ID          Optionally set the 'instance' label to given ID
     Handler Module Defaults:
-      --max-deep-sample N   Never deep sample more than N% of streams (an int between 0 and 100) [default: 100]
-      --periods P           Hold this many 60 second time periods of history in memory [default: 5]
+      --max-deep-sample N         Never deep sample more than N% of streams (an int between 0 and 100) [default: 100]
+      --periods P                 Hold this many 60 second time periods of history in memory [default: 5]
     pcap Input Module Options: (applicable to default policy when IFACE is specified only)
-      -b BPF                Filter packets using the given tcpdump compatible filter expression. Example: "port 53"
-      -H HOSTSPEC           Specify subnets (comma separated) to consider HOST, in CIDR form. In live capture this /may/ be detected automatically
-                            from capture device but /must/ be specified for pcaps. Example: "10.0.1.0/24,10.0.2.1/32,2001:db8::/64"
-                            Specifying this for live capture will append to any automatic detection.
+      -b BPF                      Filter packets using the given tcpdump compatible filter expression. Example: "port 53"
+      -H HOSTSPEC                 Specify subnets (comma separated) to consider HOST, in CIDR form. In live capture this
+                                  /may/ be detected automatically from capture device but /must/ be specified for pcaps.
+                                  Example: "10.0.1.0/24,10.0.2.1/32,2001:db8::/64"
+                                  Specifying this for live capture will append to any automatic detection.
 )";
 
 namespace {
@@ -93,13 +98,156 @@ void signal_handler(int signal)
 
 using namespace visor;
 
-void initialize_geo(const docopt::value &city, const docopt::value &asn)
+struct CmdOptions {
+    bool daemon{false};
+    bool syslog{false};
+    bool verbose{false};
+    bool no_track{false};
+    bool prometheus{false};
+    std::pair<bool, std::string> log_file{false, ""};
+    std::pair<bool, std::string> prom_instance{false, ""};
+    std::pair<bool, std::string> geo_city{false, ""};
+    std::pair<bool, std::string> geo_asn{false, ""};
+    std::pair<bool, unsigned int> max_deep_sample{false, 0};
+    std::pair<bool, unsigned int> periods{false, 0};
+    std::pair<bool, YAML::Node> config;
+
+    struct WebServer {
+        bool tls_support{false};
+        bool admin_api{false};
+        std::pair<bool, unsigned int> port{false, 0};
+        std::pair<bool, std::string> host{false, ""};
+        std::pair<bool, std::string> tls_cert{false, ""};
+        std::pair<bool, std::string> tls_key{false, ""};
+    };
+    WebServer web_server;
+
+    struct Module {
+        bool list{false};
+        std::pair<bool, std::string> dir{false, ""};
+    };
+    Module module;
+};
+
+void fill_cmd_options(std::map<std::string, docopt::value> args, CmdOptions &options)
 {
-    if (city) {
-        geo::GeoIP().enable(city.asString());
+    YAML::Node config;
+    auto logger = spdlog::stdout_color_mt("visor");
+    // local config file
+    options.config.first = false;
+    if (args["--config"]) {
+        YAML::Node config_file;
+        // look for local options
+        try {
+            config_file = YAML::LoadFile(args["--config"].asString());
+
+            if (!config_file.IsMap() || !config_file["visor"]) {
+                logger->error("invalid schema in config file: {}", args["--config"].asString());
+                exit(EXIT_FAILURE);
+            }
+            if (!config_file["version"] || !config_file["version"].IsScalar() || config_file["version"].as<std::string>() != "1.0") {
+                logger->error("missing or unsupported version in config file: {}", args["--config"].asString());
+                exit(EXIT_FAILURE);
+            }
+
+            options.config = std::make_pair(true, config_file);
+
+            if (config_file["visor"]["config"] && config_file["visor"]["config"].IsMap()) {
+                config = config_file["visor"]["config"];
+            }
+        } catch (std::runtime_error &e) {
+            logger->error("{} in config file: {}", e.what(), args["--config"].asString());
+            exit(EXIT_FAILURE);
+        }
     }
-    if (asn) {
-        geo::GeoASN().enable(asn.asString());
+
+    spdlog::drop("visor");
+
+    options.verbose = (config["verbose"] && config["verbose"].as<bool>()) || args["-v"].asBool();
+    options.daemon = (config["daemon"] && config["daemon"].as<bool>()) || args["-d"].asBool();
+    options.syslog = (config["syslog"] && config["syslog"].as<bool>()) || args["--syslog"].asBool();
+    options.no_track = (config["no_track"] && config["no_track"].as<bool>()) || args["--no-track"].asBool();
+    options.prometheus = (config["prometheus"] && config["prometheus"].as<bool>()) || args["--prometheus"].asBool();
+
+    if (args["--log-file"]) {
+        options.log_file = std::make_pair(true, args["--log-file"].asString());
+    } else if (config["log_file"]) {
+        options.log_file = std::make_pair(true, config["log_file"].as<std::string>());
+    }
+
+    if (args["--prom-instance"]) {
+        options.prom_instance = std::make_pair(true, args["--prom-instance"].asString());
+    } else if (config["prom_instance"]) {
+        options.prom_instance = std::make_pair(true, config["prom_instance"].as<std::string>());
+    }
+
+    if (args["--geo-city"]) {
+        options.geo_city = std::make_pair(true, args["--geo-city"].asString());
+    } else if (config["geo_city"]) {
+        options.geo_city = std::make_pair(true, config["geo_city"].as<std::string>());
+    }
+
+    if (args["--geo-asn"]) {
+        options.geo_asn = std::make_pair(true, args["--geo-asn"].asString());
+    } else if (config["geo_asn"]) {
+        options.geo_asn = std::make_pair(true, config["geo_asn"].as<std::string>());
+    }
+
+    if (args["--max-deep-sample"]) {
+        options.max_deep_sample = std::make_pair(true, static_cast<unsigned int>(args["--max-deep-sample"].asLong()));
+    } else if (config["max_deep_sample"]) {
+        options.max_deep_sample = std::make_pair(true, config["max_deep_sample"].as<unsigned int>());
+    }
+
+    if (args["--periods"]) {
+        options.periods = std::make_pair(true, static_cast<unsigned int>(args["--periods"].asLong()));
+    } else if (config["periods"]) {
+        options.periods = std::make_pair(true, config["periods"].as<unsigned int>());
+    }
+
+    options.web_server.tls_support = (config["tls"] && config["tls"].as<bool>()) || args["--tls"].asBool();
+    options.web_server.admin_api = (config["admin_api"] && config["admin_api"].as<bool>()) || args["--admin-api"].asBool();
+
+    if (args["-p"]) {
+        options.web_server.port = std::make_pair(true, static_cast<unsigned int>(args["-p"].asLong()));
+    } else if (config["port"]) {
+        options.web_server.port = std::make_pair(true, config["port"].as<unsigned int>());
+    }
+
+    if (args["-l"]) {
+        options.web_server.host = std::make_pair(true, args["-l"].asString());
+    } else if (config["host"]) {
+        options.web_server.host = std::make_pair(true, config["host"].as<std::string>());
+    }
+
+    if (args["--tls-cert"]) {
+        options.web_server.tls_cert = std::make_pair(true, args["--tls-cert"].asString());
+    } else if (config["tls_cert"]) {
+        options.web_server.tls_cert = std::make_pair(true, config["tls_cert"].as<std::string>());
+    }
+
+    if (args["--tls-key"]) {
+        options.web_server.tls_key = std::make_pair(true, args["--tls-key"].asString());
+    } else if (config["tls_key"]) {
+        options.web_server.tls_key = std::make_pair(true, config["tls_key"].as<std::string>());
+    }
+
+    options.module.list = (config["module_list"] && config["module_list"].as<bool>()) || args["--module-list"].asBool();
+
+    if (args["--module-dir"]) {
+        options.module.dir = std::make_pair(true, args["--module-dir"].asString());
+    } else if (config["module_dir"]) {
+        options.module.dir = std::make_pair(true, config["module_dir"].as<std::string>());
+    }
+}
+
+void initialize_geo(const std::string &city, const std::string &asn)
+{
+    if (!city.empty()) {
+        geo::GeoIP().enable(city);
+    }
+    if (!asn.empty()) {
+        geo::GeoASN().enable(asn);
     }
 }
 
@@ -184,18 +332,19 @@ visor:
 
 int main(int argc, char *argv[])
 {
-
     std::map<std::string, docopt::value> args = docopt::docopt(USAGE,
         {argv + 1, argv + argc},
         true,           // show help if requested
         VISOR_VERSION); // version string
 
-    bool daemon{args["-d"].asBool()};
-    if (daemon) {
+    CmdOptions options;
+    fill_cmd_options(args, options);
+
+    if (options.daemon) {
         // before we daemonize, if they are using a log file, ensure it can be opened
-        if (args["--log-file"]) {
+        if (options.log_file.first) {
             try {
-                auto logger_probe = spdlog::basic_logger_mt("pktvisor-log-probe", args["--log-file"].asString());
+                auto logger_probe = spdlog::basic_logger_mt("pktvisor-log-probe", options.log_file.second);
             } catch (const spdlog::spdlog_ex &ex) {
                 std::cerr << "Log init failed: " << ex.what() << std::endl;
                 exit(EXIT_FAILURE);
@@ -211,52 +360,59 @@ int main(int argc, char *argv[])
 
     std::shared_ptr<spdlog::logger> logger;
     spdlog::flush_on(spdlog::level::err);
-    if (args["--log-file"]) {
+    if (options.log_file.first) {
         try {
-            logger = spdlog::basic_logger_mt("visor", args["--log-file"].asString());
+            logger = spdlog::basic_logger_mt("visor", options.log_file.second);
             spdlog::flush_every(std::chrono::seconds(3));
         } catch (const spdlog::spdlog_ex &ex) {
             std::cerr << "Log init failed: " << ex.what() << std::endl;
             exit(EXIT_FAILURE);
         }
-    } else if (args["--syslog"].asBool()) {
+    } else if (options.syslog) {
         logger = spdlog::syslog_logger_mt("visor", "pktvisord", LOG_PID, LOG_DAEMON);
     } else {
         logger = spdlog::stdout_color_mt("visor");
     }
-    if (args["-v"].asBool()) {
+    if (options.verbose) {
         logger->set_level(spdlog::level::debug);
+    }
+
+    // modules
+    CoreRegistry registry;
+    if (options.module.dir.first) {
+        registry.input_plugin_registry()->setPluginDirectory(options.module.dir.second);
+        registry.handler_plugin_registry()->setPluginDirectory(options.module.dir.second);
     }
 
     logger->info("{} starting up", VISOR_VERSION);
 
     // if we are demonized, change to root directory now that (potentially) logs are open
-    if (daemon) {
+    if (options.daemon) {
         chdir("/");
     }
 
     PrometheusConfig prom_config;
     prom_config.default_path = "/metrics";
-    if (args["--prom-instance"]) {
-        prom_config.instance_label = args["--prom-instance"].asString();
+    if (options.prom_instance.first) {
+        prom_config.instance_label = options.prom_instance.second;
     }
 
     HttpConfig http_config;
-    http_config.read_only = !args["--admin-api"].asBool();
-    if (args["--tls"].asBool()) {
+    http_config.read_only = !options.web_server.admin_api;
+    if (options.web_server.tls_support) {
         http_config.tls_enabled = true;
-        if (!args["--tls-key"] || !args["--tls-cert"]) {
+        if (!options.web_server.tls_key.first || !options.web_server.tls_cert.first) {
             logger->error("you must specify --tls-key and --tls-cert to use --tls");
             exit(EXIT_FAILURE);
         }
-        http_config.key = args["--tls-key"].asString();
-        http_config.cert = args["--tls-cert"].asString();
+        http_config.key = options.web_server.tls_key.second;
+        http_config.cert = options.web_server.tls_cert.second;
         logger->info("Enabling TLS with cert {} and key {}", http_config.key, http_config.cert);
     }
 
     std::unique_ptr<CoreServer> svr;
     try {
-        svr = std::make_unique<CoreServer>(logger, http_config, prom_config);
+        svr = std::make_unique<CoreServer>(&registry, logger, http_config, prom_config);
     } catch (const std::exception &e) {
         logger->error(e.what());
         logger->info("exit with failure");
@@ -269,36 +425,26 @@ int main(int argc, char *argv[])
         }
     });
 
-    // local config file
-    if (args["--config"]) {
-        logger->info("loading config file: {}", args["--config"].asString());
-        YAML::Node config_file;
-        // look for local options
-        try {
-            config_file = YAML::LoadFile(args["--config"].asString());
-
-            if (!config_file.IsMap() || !config_file["visor"]) {
-                throw std::runtime_error("invalid schema");
+    if (options.module.list) {
+        for (auto &p : registry.input_plugin_registry()->pluginList()) {
+            auto meta = registry.input_plugin_registry()->metadata(p);
+            if (meta && meta->data().hasValue("type") && meta->data().value("type") == "input") {
+                logger->info("input: {}", p);
             }
-            if (!config_file["version"] || !config_file["version"].IsScalar() || config_file["version"].as<std::string>() != "1.0") {
-                throw std::runtime_error("missing or unsupported version");
-            }
-
-            if (config_file["visor"]["config"] && config_file["visor"]["config"].IsMap()) {
-                // todo more config items
-                auto config = config_file["visor"]["config"];
-                if (config["verbose"] && config["verbose"].as<bool>()) {
-                    logger->set_level(spdlog::level::debug);
-                }
-            }
-
-            // then pass to CoreManagers
-            svr->registry()->configure_from_yaml(config_file);
-
-        } catch (std::runtime_error &e) {
-            logger->error("configuration error: {}", e.what());
-            exit(EXIT_FAILURE);
         }
+        for (auto &p : registry.handler_plugin_registry()->pluginList()) {
+            auto meta = registry.handler_plugin_registry()->metadata(p);
+            if (meta && meta->data().hasValue("type") && meta->data().value("type") == "handler") {
+                logger->info("handler: {}", p);
+            }
+        }
+        exit(EXIT_SUCCESS);
+    }
+
+    // local config file
+    if (options.config.first) {
+        // pass to CoreManagers
+        svr->registry()->configure_from_yaml(options.config.second);
     }
 
     shutdown_handler = [&]([[maybe_unused]] int signal) {
@@ -310,12 +456,12 @@ int main(int argc, char *argv[])
     std::signal(SIGINT, signal_handler);
     std::signal(SIGTERM, signal_handler);
 
-    auto host = args["-l"].asString();
-    auto port = args["-p"].asLong();
+    auto host = options.web_server.host.second;
+    auto port = options.web_server.port.second;
 
-    int sample_rate = 100;
-    if (args["--max-deep-sample"]) {
-        sample_rate = (int)args["--max-deep-sample"].asLong();
+    unsigned int sample_rate = 100;
+    if (options.max_deep_sample.first) {
+        sample_rate = options.max_deep_sample.second;
         if (sample_rate != 100) {
             logger->info("Using maximum deep sample rate: {}%", sample_rate);
         }
@@ -335,7 +481,7 @@ int main(int argc, char *argv[])
             logger->warn("metrics send failed");
         }
     };
-    if (!args["--no-track"].asBool()) {
+    if (!options.no_track) {
         static timer timer_thread{1min};
         // once at start up
         usage_metrics();
@@ -343,10 +489,10 @@ int main(int argc, char *argv[])
         timer_handle = timer_thread.set_interval(24h, usage_metrics);
     }
 
-    long periods = args["--periods"].asLong();
+    unsigned int periods = options.periods.second;
 
     try {
-        initialize_geo(args["--geo-city"], args["--geo-asn"]);
+        initialize_geo(options.geo_city.second, options.geo_asn.second);
     } catch (const std::exception &e) {
         logger->error("Fatal error: {}", e.what());
         exit(EXIT_FAILURE);
@@ -374,7 +520,7 @@ int main(int argc, char *argv[])
             logger->info("exit with failure");
             exit(EXIT_FAILURE);
         }
-    } else if (!args["--admin-api"].asBool()) {
+    } else if (!options.web_server.admin_api) {
         // if they didn't specify pcap target, or config file, or admin api then there is nothing to do
         logger->error("Nothing to do: specify --admin-api or IFACE.");
         std::cerr << USAGE << std::endl;

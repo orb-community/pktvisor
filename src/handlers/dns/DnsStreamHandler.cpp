@@ -3,6 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 #include "DnsStreamHandler.h"
+#include "DnstapInputStream.h"
 #include "GeoDB.h"
 #include "utils.h"
 #include <Corrade/Utility/Debug.h>
@@ -19,15 +20,20 @@
 
 namespace visor::handler::dns {
 
-DnsStreamHandler::DnsStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config)
+DnsStreamHandler::DnsStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config, StreamHandler *handler)
     : visor::StreamMetricsHandler<DnsMetricsManager>(name, window_config)
 {
+    if (handler) {
+        throw StreamHandlerException(fmt::format("DnsStreamHandler: unsupported upstream chained stream handler {}", handler->name()));
+    }
+
     assert(stream);
     // figure out which input stream we have
     _pcap_stream = dynamic_cast<PcapInputStream *>(stream);
     _mock_stream = dynamic_cast<MockInputStream *>(stream);
-    if (!_pcap_stream && !_mock_stream) {
-        throw StreamHandlerException(fmt::format("NetStreamHandler: unsupported input stream {}", stream->name()));
+    _dnstap_stream = dynamic_cast<DnstapInputStream *>(stream);
+    if (!_pcap_stream && !_mock_stream && !_dnstap_stream) {
+        throw StreamHandlerException(fmt::format("DnsStreamHandler: unsupported input stream {}", stream->name()));
     }
 }
 
@@ -79,6 +85,8 @@ void DnsStreamHandler::start()
         _tcp_start_connection = _pcap_stream->tcp_connection_start_signal.connect(&DnsStreamHandler::tcp_connection_start_cb, this);
         _tcp_end_connection = _pcap_stream->tcp_connection_end_signal.connect(&DnsStreamHandler::tcp_connection_end_cb, this);
         _tcp_message_connection = _pcap_stream->tcp_message_ready_signal.connect(&DnsStreamHandler::tcp_message_ready_cb, this);
+    } else if (_dnstap_stream) {
+        _dnstap_connection = _dnstap_stream->dnstap_signal.connect(&DnsStreamHandler::process_dnstap_cb, this);
     }
 
     _running = true;
@@ -97,9 +105,17 @@ void DnsStreamHandler::stop()
         _tcp_start_connection.disconnect();
         _tcp_end_connection.disconnect();
         _tcp_message_connection.disconnect();
+    } else if (_dnstap_stream) {
+        _dnstap_connection.disconnect();
     }
 
     _running = false;
+}
+
+// callback from input module
+void DnsStreamHandler::process_dnstap_cb(const dnstap::Dnstap &d)
+{
+    _metrics->process_dnstap(d);
 }
 
 // callback from input module
@@ -122,6 +138,8 @@ void DnsStreamHandler::process_udp_packet_cb(pcpp::Packet &payload, PacketDirect
         DnsLayer dnsLayer(udpLayer, &payload);
         if (!_filtering(dnsLayer, dir, l3, pcpp::UDP, metric_port, stamp)) {
             _metrics->process_dns_layer(dnsLayer, dir, l3, pcpp::UDP, flowkey, metric_port, stamp);
+            // signal for chained stream handlers, if we have any
+            udp_signal(payload, dir, l3, flowkey, stamp);
         }
     }
 }
@@ -190,7 +208,7 @@ void DnsStreamHandler::tcp_message_ready_cb(int8_t side, const pcpp::TcpStreamDa
     auto port{iter->second.port};
     timespec stamp{0, 0};
     // for tcp, endTime is updated by pcpp to represent the time stamp from the latest packet in the stream
-    TIMEVAL_TO_TIMESPEC(&tcpData.getConnectionData().endTime, &stamp)
+    TIMEVAL_TO_TIMESPEC(&tcpData.getConnectionData().endTime, &stamp);
     auto dir = (side == 0) ? PacketDirection::fromHost : PacketDirection::toHost;
 
     auto got_dns_message = [this, port, dir, l3Type, flowKey, stamp](std::unique_ptr<uint8_t[]> data, size_t size) {
@@ -397,25 +415,111 @@ void DnsMetricsBucket::to_json(json &j) const
 }
 
 // the main bucket analysis
-void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint16_t port)
+void DnsMetricsBucket::process_dnstap(bool deep, const dnstap::Dnstap &payload)
+{
+    std::unique_lock lock(_mutex);
+
+    if (payload.message().has_socket_family()) {
+        if (payload.message().socket_family() == dnstap::INET6) {
+            ++_counters.IPv6;
+        } else if (payload.message().socket_family() == dnstap::INET) {
+            ++_counters.IPv4;
+        }
+    }
+
+    if (payload.message().has_socket_protocol()) {
+        switch (payload.message().socket_protocol()) {
+        case dnstap::UDP:
+            ++_counters.UDP;
+            break;
+        case dnstap::TCP:
+            ++_counters.TCP;
+            break;
+        case dnstap::DOT:
+            ++_counters.DOT;
+            break;
+        case dnstap::DOH:
+            ++_counters.DOH;
+            break;
+        }
+    }
+
+    QR side{QR::query};
+    switch (payload.message().type()) {
+    case dnstap::Message_Type_FORWARDER_RESPONSE:
+    case dnstap::Message_Type_STUB_RESPONSE:
+    case dnstap::Message_Type_TOOL_RESPONSE:
+    case dnstap::Message_Type_UPDATE_RESPONSE:
+    case dnstap::Message_Type_CLIENT_RESPONSE:
+    case dnstap::Message_Type_AUTH_RESPONSE:
+    case dnstap::Message_Type_RESOLVER_RESPONSE:
+        side = QR::response;
+        ++_counters.replies;
+        break;
+    case dnstap::Message_Type_FORWARDER_QUERY:
+    case dnstap::Message_Type_STUB_QUERY:
+    case dnstap::Message_Type_TOOL_QUERY:
+    case dnstap::Message_Type_UPDATE_QUERY:
+    case dnstap::Message_Type_CLIENT_QUERY:
+    case dnstap::Message_Type_AUTH_QUERY:
+    case dnstap::Message_Type_RESOLVER_QUERY:
+        side = QR::query;
+        ++_counters.queries;
+        break;
+    }
+
+    if (payload.message().has_query_port()) {
+        _dns_topUDPPort.update(payload.message().query_port());
+    }
+
+    if (payload.message().has_query_zone()) {
+        // TODO decode wire name, use in top_qname
+    }
+
+    if (!deep || (!payload.message().has_query_message() && !payload.message().has_response_message())) {
+        return;
+    }
+
+    if (side == QR::query && payload.message().has_query_message()) {
+        auto query = payload.message().query_message();
+        uint8_t *buf = new uint8_t[query.size()];
+        std::memcpy(buf, query.c_str(), query.size());
+        // DnsLayer takes ownership of buf
+        DnsLayer dpayload(buf, query.size(), nullptr, nullptr);
+        lock.unlock();
+        process_dns_layer(deep, dpayload, true, pcpp::UnknownProtocol, pcpp::UnknownProtocol, 0);
+    } else if (side == QR::response && payload.message().has_response_message()) {
+        auto query = payload.message().response_message();
+        uint8_t *buf = new uint8_t[query.size()];
+        std::memcpy(buf, query.c_str(), query.size());
+        // DnsLayer takes ownership of buf
+        DnsLayer dpayload(buf, query.size(), nullptr, nullptr);
+        lock.unlock();
+        process_dns_layer(deep, dpayload, true, pcpp::UnknownProtocol, pcpp::UnknownProtocol, 0);
+    }
+}
+void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, bool dnstapped, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint16_t port)
 {
 
     std::unique_lock lock(_mutex);
 
+    // if dnstapped is true, then dnstap already processeed so we skip some metrics so as not
+    // to double count
+
     if (l3 == pcpp::IPv6) {
         ++_counters.IPv6;
-    } else {
+    } else if (l3 == pcpp::IPv4) {
         ++_counters.IPv4;
     }
 
     if (l4 == pcpp::TCP) {
         ++_counters.TCP;
-    } else {
+    } else if (l4 == pcpp::UDP) {
         ++_counters.UDP;
     }
 
     // only count response codes on responses (not queries)
-    if (payload.getDnsHeader()->queryOrResponse == QR::response) {
+    if (!dnstapped && payload.getDnsHeader()->queryOrResponse == QR::response) {
         ++_counters.replies;
         switch (payload.getDnsHeader()->responseCode) {
         case NoError:
@@ -431,7 +535,7 @@ void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, pcpp::Pro
             ++_counters.REFUSED;
             break;
         }
-    } else {
+    } else if (!dnstapped) {
         ++_counters.queries;
     }
 
@@ -439,7 +543,9 @@ void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, pcpp::Pro
         return;
     }
 
-    _dns_topUDPPort.update(port);
+    if (port) {
+        _dns_topUDPPort.update(port);
+    }
 
     auto success = payload.parseResources(true);
     if (!success) {
@@ -454,6 +560,8 @@ void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, pcpp::Pro
     if (query) {
 
         auto name = query->getName();
+        std::transform(name.begin(), name.end(), name.begin(),
+            [](unsigned char c) { return std::tolower(c); });
 
         _dns_qnameCard.update(name);
         _dns_topQType.update(query->getDnsType());
@@ -588,7 +696,7 @@ void DnsMetricsManager::process_dns_layer(DnsLayer &payload, PacketDirection dir
     // base event
     new_event(stamp);
     // process in the "live" bucket. this will parse the resources if we are deep sampling
-    live_bucket()->process_dns_layer(_deep_sampling_now, payload, l3, l4, port);
+    live_bucket()->process_dns_layer(_deep_sampling_now, payload, false, l3, l4, port);
     // handle dns transactions (query/response pairs)
     if (payload.getDnsHeader()->queryOrResponse == QR::response) {
         auto xact = _qr_pair_manager.maybe_end_transaction(flowkey, payload.getDnsHeader()->transactionID, stamp);
@@ -604,5 +712,37 @@ void DnsMetricsManager::process_filtered(timespec stamp)
     // base event, no sample
     new_event(stamp, false);
     live_bucket()->process_filtered();
+}
+void DnsMetricsManager::process_dnstap(const dnstap::Dnstap &payload)
+{
+    // dnstap message type
+    auto mtype = payload.message().type();
+    // set proper timestamp. use dnstap version if available, otherwise "now"
+    timespec stamp;
+    switch (mtype) {
+    case dnstap::Message_Type_CLIENT_RESPONSE:
+    case dnstap::Message_Type_AUTH_RESPONSE:
+    case dnstap::Message_Type_RESOLVER_RESPONSE:
+        if (payload.message().has_response_time_sec()) {
+            stamp.tv_sec = payload.message().response_time_sec();
+            stamp.tv_nsec = payload.message().response_time_nsec();
+        }
+        break;
+    case dnstap::Message_Type_CLIENT_QUERY:
+    case dnstap::Message_Type_AUTH_QUERY:
+    case dnstap::Message_Type_RESOLVER_QUERY:
+        if (payload.message().has_query_time_sec()) {
+            stamp.tv_sec = payload.message().query_time_sec();
+            stamp.tv_nsec = payload.message().query_time_nsec();
+        }
+        break;
+    default:
+        // use now()
+        std::timespec_get(&stamp, TIME_UTC);
+    }
+    // base event
+    new_event(stamp);
+    // process in the "live" bucket. this will parse the resources if we are deep sampling
+    live_bucket()->process_dnstap(_deep_sampling_now, payload);
 }
 }

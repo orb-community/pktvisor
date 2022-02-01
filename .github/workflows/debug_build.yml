@@ -1,0 +1,71 @@
+name: Debug Builds
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - develop
+      - release
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Create Build Environment
+        run: cmake -E make_directory ${{github.workspace}}/build
+
+      - name: Get Conan
+        uses: turtlebrowser/get-conan@v1.0
+
+      - name: Configure CMake to generate VERSION
+        shell: bash
+        working-directory: ${{github.workspace}}/build
+        run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=Debug
+
+      - name: Get branch name
+        shell: bash
+        run: echo "BRANCH_NAME=$(echo ${GITHUB_REF#refs/heads/} | tr / -)" >> $GITHUB_ENV
+
+      - name: Debug branch name
+        run: echo ${{ env.BRANCH_NAME }}
+
+      - name: Get VERSION
+        run: |
+          echo "VERSION=`cat ${{github.workspace}}/build/VERSION`" >> $GITHUB_ENV
+
+      - name: Debug version
+        run: echo ${{ env.VERSION }}
+
+      - name: Generate ref tag (master)
+        if: ${{ env.BRANCH_NAME == 'master' }}
+        run: |
+          echo "REF_TAG=latest-debug" >> $GITHUB_ENV
+
+      - name: Generate ref tag (develop)
+        if: ${{ env.BRANCH_NAME == 'develop' }}
+        run: |
+          echo "REF_TAG=latest-develop-debug" >> $GITHUB_ENV
+
+      - name: Generate ref tag (release candidate)
+        if: ${{ env.BRANCH_NAME == 'release' }}
+        run: |
+          echo "REF_TAG=latest-rc-debug" >> $GITHUB_ENV
+
+      - name: Debug ref tag
+        run: echo ${{ env.REF_TAG }}
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build + push - pktvisor debug
+        env:
+          IMAGE_NAME: ns1labs/pktvisor
+        run: |
+          docker build . --file docker/Dockerfile.debug --tag ${{ env.IMAGE_NAME }}:${{ env.REF_TAG }}
+          docker push -a ${{ env.IMAGE_NAME }}

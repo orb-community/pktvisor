@@ -17,7 +17,10 @@ target_include_directories(VisorHandlerNet
 target_link_libraries(VisorHandlerNet
         PUBLIC
         Visor::Input::Pcap
+        Visor::Input::Dnstap
         Visor::Input::Mock
+        Visor::Input::Sflow
+        Visor::Handler::Dns
         )
 
 set(VISOR_STATIC_PLUGINS ${VISOR_STATIC_PLUGINS} Visor::Handler::Net PARENT_SCOPE)

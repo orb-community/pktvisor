@@ -8,7 +8,17 @@ RUN \
     apt-get install --yes --force-yes --no-install-recommends ${BUILD_DEPS} && \
     pip3 install conan
 
-COPY . /pktvisor-src/
+# need git for current hash for VERSION
+COPY ./.git/ /pktvisor-src/.git/
+COPY ./src/ /pktvisor-src/src/
+COPY ./cmd/ /pktvisor-src/cmd/
+COPY ./3rd/ /pktvisor-src/3rd/
+COPY ./docker/ /pktvisor-src/docker/
+COPY ./golang/ /pktvisor-src/golang/
+COPY ./integration_tests/ /pktvisor-src/integration_tests/
+COPY ./cmake/ /pktvisor-src/cmake/
+COPY ./CMakeLists.txt /pktvisor-src/
+COPY ./conanfile.txt /pktvisor-src/
 
 WORKDIR /tmp/build
 RUN \
@@ -37,7 +47,7 @@ RUN \
     rm -rf /var/lib/apt
 
 COPY --from=cppbuild /tmp/build/bin/pktvisord /usr/local/sbin/pktvisord
-COPY --from=cppbuild /tmp/build/bin/pktvisor-pcap /usr/local/sbin/pktvisor-pcap
+COPY --from=cppbuild /tmp/build/bin/pktvisor-reader /usr/local/sbin/pktvisor-reader
 COPY --from=gobuild /src/pktvisor-cli /usr/local/bin/pktvisor-cli
 COPY docker/entry.sh /usr/local/bin/
 

@@ -7,13 +7,13 @@
 #include "InputStreamManager.h"
 #include "Policies.h"
 #include "Taps.h"
+#include <Corrade/Utility/ConfigurationGroup.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
 
 namespace visor {
 
-CoreRegistry::CoreRegistry(HttpServer *svr)
-    : _svr(svr)
+CoreRegistry::CoreRegistry()
 {
 
     _logger = spdlog::get("visor");
@@ -21,12 +21,24 @@ CoreRegistry::CoreRegistry(HttpServer *svr)
         _logger = spdlog::stderr_color_mt("visor");
     }
 
+    // inputs
+    _input_manager = std::make_unique<InputStreamManager>();
+
+    // handlers
+    _handler_manager = std::make_unique<HandlerManager>();
+
+    // taps
+    _tap_manager = std::make_unique<TapManager>(this);
+
+    // policies policies
+    _policy_manager = std::make_unique<PolicyManager>(this);
+}
+
+void CoreRegistry::start(HttpServer *svr)
+{
     if (!svr) {
         _logger->warn("initializing modules with no HttpServer");
     }
-
-    // inputs
-    _input_manager = std::make_unique<InputStreamManager>();
 
     // initialize input plugins
     {
@@ -36,15 +48,22 @@ CoreRegistry::CoreRegistry(HttpServer *svr)
         std::set_difference(alias_list.begin(), alias_list.end(),
             plugin_list.begin(), plugin_list.end(), std::inserter(by_alias, by_alias.begin()));
         for (auto &s : by_alias) {
-            InputPluginPtr mod = _input_registry.instantiate(s);
-            _logger->info("Load input stream plugin: {} {}", s, mod->pluginInterface());
-            mod->init_plugin(this, _svr);
-            _input_plugins.insert({s, std::move(mod)});
+            auto meta = _input_registry.metadata(s);
+            if (!meta) {
+                _logger->error("failed to load plugin metadata: {}", s);
+                continue;
+            }
+            if (meta->data().hasValue("type") && meta->data().value("type") == "input") {
+                if (_input_registry.loadState(s) == Corrade::PluginManager::LoadState::NotLoaded) {
+                    _input_registry.load(s);
+                }
+                InputPluginPtr mod = _input_registry.instantiate(s);
+                _logger->info("Load input stream plugin: {} {}", s, mod->pluginInterface());
+                mod->init_plugin(this, svr);
+                _input_plugins.insert({s, std::move(mod)});
+            }
         }
     }
-
-    // handlers
-    _handler_manager = std::make_unique<HandlerManager>();
 
     // initialize handler plugins
     {
@@ -54,17 +73,22 @@ CoreRegistry::CoreRegistry(HttpServer *svr)
         std::set_difference(alias_list.begin(), alias_list.end(),
             plugin_list.begin(), plugin_list.end(), std::inserter(by_alias, by_alias.begin()));
         for (auto &s : by_alias) {
-            HandlerPluginPtr mod = _handler_registry.instantiate(s);
-            _logger->info("Load stream handler plugin: {} {}", s, mod->pluginInterface());
-            mod->init_plugin(this, _svr);
-            _handler_plugins.insert({s, std::move(mod)});
+            auto meta = _handler_registry.metadata(s);
+            if (!meta) {
+                _logger->error("failed to load plugin metadata: {}", s);
+                continue;
+            }
+            if (meta->data().hasValue("type") && meta->data().value("type") == "handler") {
+                if (_handler_registry.loadState(s) == Corrade::PluginManager::LoadState::NotLoaded) {
+                    _handler_registry.load(s);
+                }
+                HandlerPluginPtr mod = _handler_registry.instantiate(s);
+                _logger->info("Load stream handler plugin: {} {}", s, mod->pluginInterface());
+                mod->init_plugin(this, svr);
+                _handler_plugins.insert({s, std::move(mod)});
+            }
         }
     }
-
-    // taps
-    _tap_manager = std::make_unique<TapManager>(this);
-    // policies policies
-    _policy_manager = std::make_unique<PolicyManager>(this);
 }
 
 void CoreRegistry::stop()

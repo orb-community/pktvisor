@@ -12,9 +12,9 @@ export GSETTINGS_SCHEMA_DIR="${HERE}/usr/share/glib-2.0/schemas/${GSETTINGS_SCHE
 export QT_PLUGIN_PATH="${HERE}/usr/lib/qt4/plugins/:${HERE}/usr/lib/i386-linux-gnu/qt4/plugins/:${HERE}/usr/lib/x86_64-linux-gnu/qt4/plugins/:${HERE}/usr/lib32/qt4/plugins/:${HERE}/usr/lib64/qt4/plugins/:${HERE}/usr/lib/qt5/plugins/:${HERE}/usr/lib/i386-linux-gnu/qt5/plugins/:${HERE}/usr/lib/x86_64-linux-gnu/qt5/plugins/:${HERE}/usr/lib32/qt5/plugins/:${HERE}/usr/lib64/qt5/plugins/${QT_PLUGIN_PATH:+:$QT_PLUGIN_PATH}"
 
 if [ $# -eq 0 ]; then
-  echo "No arguments provided: specify either 'pktvisor-cli', 'pktvisor-pcap' or 'pktvisord'. Try:"
+  echo "No arguments provided: specify either 'pktvisor-cli', 'pktvisor-reader' or 'pktvisord'. Try:"
   echo "pktvisor-cli -h"
-  echo "pktvisor-pcap --help"
+  echo "pktvisor-reader --help"
   echo "pktvisord --help"
   exit 1
 fi
@@ -23,7 +23,7 @@ fi
 BINARY="$1"
 case "$BINARY" in
 pktvisor-cli) shift ;;
-pktvisor-pcap) shift ;;
+pktvisor-reader) shift ;;
 pktvisord) shift ;;
 esac
 

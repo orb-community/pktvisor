@@ -5,6 +5,6 @@
 //using namespace visor;
 //using namespace visor::input::mock;
 
-TEST_CASE("mock", "[mack]")
+TEST_CASE("mock", "[mock]")
 {
 }

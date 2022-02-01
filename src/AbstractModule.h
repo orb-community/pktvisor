@@ -61,24 +61,12 @@ class AbstractRunnableModule : public AbstractModule
 protected:
     std::atomic_bool _running = false;
 
-    Policy *_policy = nullptr;
-
     void common_info_json(json &j) const;
 
 public:
     AbstractRunnableModule(const std::string &name)
         : AbstractModule(name)
     {
-    }
-
-    void set_policy(Policy *policy)
-    {
-        _policy = policy;
-    }
-
-    const Policy *policy() const
-    {
-        return _policy;
     }
 
     virtual ~AbstractRunnableModule(){};
