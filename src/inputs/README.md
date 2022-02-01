@@ -6,6 +6,8 @@ important information.
 
 See the individual READMEs for more information:
 
+* [dnstap](dnstap/)
 * [Mock](mock/)
 * [Packet Capture](pcap/)
+* [sFlow](sflow/)
 
