@@ -2,7 +2,6 @@
 
 ![Build status](https://github.com/ns1labs/pktvisor/workflows/Build/badge.svg)
 [![LGTM alerts](https://img.shields.io/lgtm/alerts/g/ns1/pktvisor.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/ns1/pktvisor/alerts/)
-[![Coverity alerts](https://img.shields.io/coverity/scan/22731.svg)](https://scan.coverity.com/projects/ns1-pktvisor)
 
 <p align="left">
   <strong>
@@ -17,36 +16,32 @@
 
 ## What is pktvisor?
 
-**pktvisor** (pronounced "packet visor") is a **network observability agent** for analyzing high volume, information dense
-data streams and producing actionable insights directly from the edge. Its goal is to extract
-the signal from the noise; to separate the needles from the haystacks as close to the source as possible.
+**pktvisor** (pronounced "packet visor") is an **observability agent** for analyzing high volume, information dense
+network data streams and extracting actionable insights directly from the edge while integrating tightly with modern observability stacks.
 
-It is a resource efficient agent built from the ground up to be modular and dynamically controlled in
-real time via API. Input and processor modules may be dynamically loaded at runtime. Metric output can be used and visualized
+It is resource efficient and built from the ground up to be modular and dynamically controlled in
+real time via API and YAML policies. Input and processor modules may be dynamically loaded at runtime. Metric output can be used and visualized
 both on-node via command line UI (for localized, hyper real-time actions)
 as well as centrally collected into industry standard observability stacks like Prometheus and Grafana.
 
-The [input stream system](src/inputs) is designed to _tap into_ data streams. It currently supports [packet capture](https://en.wikipedia.org/wiki/Packet_analyzer), [dnstap](https://dnstap.info/) 
- and [sFlow](https://en.wikipedia.org/wiki/SFlow) and will soon support additional taps such as [Netflow](https://en.wikipedia.org/wiki/NetFlow)
-, [envoy taps](https://www.envoyproxy.io/docs/envoy/latest/operations/traffic_tapping),
-and [eBPF](https://ebpf.io/).
+The [input stream system](src/inputs) is designed to _tap into_ data streams. It currently supports [packet capture](https://en.wikipedia.org/wiki/Packet_analyzer),
+[dnstap](https://dnstap.info/) and [sFlow](https://en.wikipedia.org/wiki/SFlow) and will soon support additional taps such as [Netflow](https://en.wikipedia.org/wiki/NetFlow),
+[envoy taps](https://www.envoyproxy.io/docs/envoy/latest/operations/traffic_tapping), and [eBPF](https://ebpf.io/).
 
-The [stream processor system](src/handlers) includes full application layer analysis,
-and [efficiently](https://en.wikipedia.org/wiki/Streaming_algorithm) summarizes to:
+The [stream processor system](src/handlers) includes full application layer analysis, and [efficiently](https://en.wikipedia.org/wiki/Streaming_algorithm) summarizes to:
 
 * Counters
 * Histograms and Quantiles
 * Timers and Rates
 * Heavy Hitters/Frequent Items/Top N
 * Set Cardinality
-* GeoIP
+* GeoIP/ASN
 
 pktvisor has its origins in observability of critical internet infrastructure in support of DDoS protection, traffic
 engineering, and operations.
 
 These screenshots display both the [command line](golang/) and [centralized views](centralized_collection/) of
-the [Network](src/handlers/net)
-and [DNS](src/handlers/dns) stream processors, and the types of summary information provided:
+the [Network](src/handlers/net) and [DNS](src/handlers/dns) stream processors, and the types of summary information provided:
 
 ![Image of CLI UI](docs/images/pktvisor3-cli-ui-screenshot.png)
 ![Image 1 of Grafana Dash](docs/images/pktvisor-grafana-screenshot1.png)
@@ -67,6 +62,8 @@ the container, you specify which tool to run.
 docker pull ns1labs/pktvisor
 ``` 
 
+or use `ns1labs/pktvisor:develop` to get the latest development version.
+
 2. *Start the collector agent*
 
 This will start in the background and stay running. Note that the final two arguments select `pktvisord` agent and
@@ -84,15 +81,15 @@ If the container does not stay running, check the `docker logs` output.
 
 After the agent is running, you can observe results locally with the included command line UI. This command will run the
 UI (`pktvisor-cli`) in the foreground, and exit when Ctrl-C is pressed. It connects to the running agent locally using
-the built in [REST API](https://app.swaggerhub.com/apis/ns1labs/pktvisor/3.0.0-oas3).
+the built in REST API.
 
 ```
 docker run -it --rm --net=host ns1labs/pktvisor pktvisor-cli
 ```
 
-### Linux Static Binary
+### Linux Static Binary (AppImage, x86_64)
 
-You may also use the Linux static binary, built with [AppImage](https://appimage.org/), which is available for
+You may also use the Linux all-in-one binary, built with [AppImage](https://appimage.org/), which is available for
 download [on the Releases page](https://github.com/ns1labs/pktvisor/releases). It is designed to work on all modern
 Linux distributions and does not require installation or any other dependencies.
 
@@ -122,27 +119,25 @@ background), and either the `--log-file` or `--syslog` argument to record logs.
 
 Also see [Advanced Agent Example](#advanced-agent-example).
 
-### StandAlone Static Binaries
+### Linux Static Binaries (Stand Alone, x86_64)
 
-Pktvisor also provides standalone linux static binaries. It is also designed to work on Linux distributions and does not
-require installation or any other dependencies.
+pktvisor provides statically linked, dependency free linux binaries for each individual pktvisor tool. These are the smallest, most compact versions of the binaries.
 
-You can run pktvisord by typing the following commands in your linux machine.
+pktvisord:
 ```shell
 curl -L http://pktvisor.com/download/pktvisord -o pktvisord-x86_64
 chmod +x pktvisord-x86_64
 ./pktvisord-x86_64 -h
 ```
 
-The command line UI (`pktvisor-cli`) can also be downloaded and run over an environment which contains an agent collector.
+pktvisor-cli:
 ```shell
 curl -L http://pktvisor.com/download/cli -o pktvisor-cli-x86_64
 chmod +x pktvisor-cli-x86_64
 ./pktvisor-cli-x86_64 -h
 ```
 
-Also, The pcap and dnstap file analyzer (`pktvisor-reader`) can be run over input files to analyze network data.
-
+pktvisor-reader:
 ```shell
 curl -L http://pktvisor.com/download/reader -o pktvisor-reader-x86_64
 chmod +x pktvisor-reader-x86_64
@@ -151,8 +146,7 @@ chmod +x pktvisor-reader-x86_64
 
 ### Other Platforms
 
-If you are unable to use the Docker container or the Linux binary, then you will have to build your own executable,
-please see the [Build](#build) section below.
+We are working on support for additional operating systems, CPU architectures and packaging systems. If you do not see your binary available, please see the [Build](#build) section below to build your own.
 
 If you have a preferred installation method that you would like to see support
 for, [please create an issue](https://github.com/ns1/pktvisor/issues/new).
@@ -160,8 +154,6 @@ for, [please create an issue](https://github.com/ns1/pktvisor/issues/new).
 ## Docs
 
 ### Agent Usage
-
-A collector agent should be installed on each node to be monitored.
 
 Current command line options are described with:
 
@@ -220,9 +212,8 @@ or
       --config FILE               Use specified YAML configuration to configure options, Taps, and Collection Policies
                                   Please see https://pktvisor.dev for more information
     Modules:
-      --module-list               List all modules which have been loaded (builtin and dynamic)
-      --module-load FILE          Load the specified dynamic module
-      --module-dir DIR            Set module search path
+      --module-list               List all modules which have been loaded (builtin and dynamic).
+      --module-dir DIR            Set module load path. All modules in this directory will be loaded.
     Logging Options:
       --log-file FILE             Log to the given output file name
       --syslog                    Log to syslog
@@ -327,17 +318,18 @@ Usage:
   pktvisor-cli -h
   pktvisor-cli --version
 
-  -H string
-    	Query pktvisord metrics webserver on the given host (default "localhost")
-  -h	Show help
-  -p int
-    	Query pktvisord metrics webserver on the given port (default 10853)
-  -version
-    	Show client version
+Options:
+  -p PORT               Query pktvisord metrics webserver on the given port [default: 10853]
+  -H HOST               Query pktvisord metrics webserver on the given host [default: localhost]
+  -P POLICY             pktvisor policy to query [default: default]
+  --tls	                Use TLS to communicate with pktvisord metrics webserver
+  --tls-noverify        Do not verify TLS certificate
+  -h                    Show this screen
+  --version             Show client version
 
 ```
 
-### pcap and dnstap File Analysis
+### File Analysis (pcap and dnstap)
 
 `pktvisor-reader` is a tool that can statically analyze prerecorded packet capture and dnstap files.
 
@@ -345,7 +337,7 @@ pcap files can come from many sources, the most famous of which is [tcpdump](htt
 can be generated from most DNS server software that support dnstap logging, either directly or 
 using a tool such as [golang-dnstap](https://github.com/dnstap/golang-dnstap).
 
-Both take many of the same options, and do all of the same analysis, as `pktvisord` for live capture.
+Both take many of the same options, and do all of the same analysis, as `pktvisord` for live capture. pcap files may include sFlow capture data.
 
 ```
 docker run --rm ns1labs/pktvisor pktvisor-reader --help
@@ -482,20 +474,20 @@ interval = "60"
 
 #### Prometheus Metrics
 
-`pktvisord` also has native Prometheus support, which you can enable by passing `--prometheus`. The metrics are
-available for collection at the standard `/metrics` endpoint.
+`pktvisord` has native Prometheus support. The `default` policy metrics are
+available for collection at the standard `/metrics` endpoint, or use `/api/v1/policies/__all/metrics/prometheus` to collect metrics from all policies.
 
 ```shell
-$ ./pktvisor-x86_64.AppImage pktvisord -d --prometheus eth0
+$ ./pktvisor-x86_64.AppImage pktvisord -d eth0
 $ curl localhost:10853/metrics
 # HELP dns_wire_packets_udp Total DNS wire packets received over UDP (ingress and egress)
 # TYPE dns_wire_packets_udp gauge
-dns_wire_packets_udp{instance="node"} 28
+dns_wire_packets_udp{instance="node",policy="default"} 28
 # HELP dns_rates_total Rate of all DNS wire packets (combined ingress and egress) per second
 # TYPE dns_rates_total summary
-dns_rates_total{instance="node",quantile="0.5"} 0
-dns_rates_total{instance="node",quantile="0.9"} 4
-dns_rates_total{instance="node",quantile="0.95"} 4
+dns_rates_total{instance="node",policy="default",quantile="0.5"} 0
+dns_rates_total{instance="node",policy="default",quantile="0.9"} 4
+dns_rates_total{instance="node",policy="default",quantile="0.95"} 4
 ...
 ```
 
@@ -505,6 +497,8 @@ If you are interested in centralized collection
 using [remote write](https://prometheus.io/docs/operating/integrations/#remote-endpoints-and-storage), including to
 cloud providers, there is a [docker image available](https://hub.docker.com/r/ns1labs/pktvisor-prom-write) to make this
 easy. See [centralized_collection/prometheus](centralized_collection/prometheus) for more.
+
+Also see [getorb.io](https://getorb.io) for information on connecting pktvisor agents to the Orb observability platform.
 
 ### REST API
 
@@ -549,7 +543,7 @@ Please [contact us](#contact-us) if you have any questions on installation, use,
 
 ## Contact Us
 
-We are _very_ interested in hearing about your use cases, feature requests, and other feedback!
+We are very interested in hearing about your use cases, feature requests, and other feedback!
 
 * [File an issue](https://github.com/ns1labs/pktvisor/issues/new)
 * Use our [public work board](https://github.com/ns1labs/pktvisor/projects/1)
@@ -565,9 +559,7 @@ build system requires CMake and the [Conan](https://conan.io/) package manager s
 
 pktvisor adheres to [semantic versioning](https://semver.org/).
 
-pktvisor is developed and tested on Linux and OSX. Windows is not yet officially supported, though the dependencies and
-code base do not preclude a Windows build. If you are interested in developing a Windows version,
-please [contact us](#contact-us).
+pktvisor is developed and tested on Linux and OSX. A Windows port is in progress. Both x86_64 and ARM architectures are known to function.
 
 #### Dependencies
 
@@ -576,11 +568,6 @@ please [contact us](#contact-us).
 * C++ compiler supporting C++17
 
 For the list of packages included by conan, see [conanfile.txt](conanfile.txt)
-
-In addition, debugging integration tests make use of:
-
-* [jq](https://stedolan.github.io/jq/)
-* [graphtage](https://github.com/trailofbits/graphtage)
 
 #### Building
 
@@ -591,10 +578,6 @@ The general build steps are:
 git clone https://github.com/ns1labs/pktvisor.git
 cd pktvisor
 mkdir build && cd build
-
-# set up conan
-conan profile update settings.compiler.libcxx=libstdc++11 default
-conan config set general.revisions_enabled=1
 
 # configure and handle dependencies 
 cmake -DCMAKE_BUILD_TYPE=Release ..

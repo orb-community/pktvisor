@@ -5,5 +5,8 @@ summarize them, typically using a time window of efficient sketch algorithms and
 
 See the individual READMEs for more information:
 
-* [Network](net/)
+* [DHCP](dhcp/)
 * [DNS](dns/)
+* [Mock](mock/)
+* [Network](net/)
+* [PCAP](pcap/)
