@@ -20,7 +20,7 @@
 network data streams and extracting actionable insights directly from the edge while integrating tightly with modern observability stacks.
 
 It is resource efficient and built from the ground up to be modular and dynamically controlled in
-real time via API and YAML policies. Input and processor modules may be dynamically loaded at runtime. Metric output can be used and visualized
+real time via API and YAML policies. Input and analyzer modules may be dynamically loaded at runtime. Metric output can be used and visualized
 both on-node via command line UI (for localized, hyper real-time actions)
 as well as centrally collected into industry standard observability stacks like Prometheus and Grafana.
 
@@ -28,7 +28,7 @@ The [input stream system](src/inputs) is designed to _tap into_ data streams. It
 [dnstap](https://dnstap.info/) and [sFlow](https://en.wikipedia.org/wiki/SFlow) and will soon support additional taps such as [Netflow](https://en.wikipedia.org/wiki/NetFlow),
 [envoy taps](https://www.envoyproxy.io/docs/envoy/latest/operations/traffic_tapping), and [eBPF](https://ebpf.io/).
 
-The [stream processor system](src/handlers) includes full application layer analysis, and [efficiently](https://en.wikipedia.org/wiki/Streaming_algorithm) summarizes to:
+The [stream analyzer system](src/handlers) includes full application layer analysis, and [efficiently](https://en.wikipedia.org/wiki/Streaming_algorithm) summarizes to:
 
 * Counters
 * Histograms and Quantiles
@@ -38,7 +38,7 @@ The [stream processor system](src/handlers) includes full application layer anal
 * GeoIP/ASN
 
 pktvisor has its origins in observability of critical internet infrastructure in support of DDoS protection, traffic
-engineering, and operations.
+engineering, and ongoing operations.
 
 These screenshots display both the [command line](golang/) and [centralized views](centralized_collection/) of
 the [Network](src/handlers/net) and [DNS](src/handlers/dns) stream processors, and the types of summary information provided:
@@ -121,7 +121,7 @@ Also see [Advanced Agent Example](#advanced-agent-example).
 
 ### Linux Static Binaries (Stand Alone, x86_64)
 
-pktvisor provides statically linked, dependency free linux binaries for each individual pktvisor tool. These are the smallest, most compact versions of the binaries.
+Finally, pktvisor also provides statically linked, dependency free Linux binaries for each individual pktvisor tool (pktvisord, pktvisor-cli and pktvisor-reader). These are the smallest, most compact versions of the binaries.
 
 pktvisord:
 ```shell
@@ -254,6 +254,8 @@ visor:
       input_type: pcap
       config:
         iface: eth0
+      filter:
+        bpf: "port 53"          
     unix_dnstap:
       input_type: dnstap
       config:
@@ -275,6 +277,10 @@ visor:
             type: net
           default_dns:
             type: dns
+            config:
+              only_qname_suffix:
+                - ".google.com"
+                - ".ns1.com"
     mytcp:
       kind: collection
       input:
@@ -449,7 +455,7 @@ curl localhost:10853/api/v1/metrics/bucket/1
 
 This can be done with tools like [telegraf](https://docs.influxdata.com/telegraf/) and
 the [standard HTTP plugin](https://github.com/influxdata/telegraf/blob/release-1.17/plugins/inputs/http/README.md).
-Example telegraf config snippet:
+Example telegraf config snippet for the `default` policy:
 
 ```
 
@@ -464,6 +470,8 @@ json_time_format = "unix"
 json_string_fields = [
   "dns_*",
   "packets_*",
+  "dhcp_*",
+  "pcap_*",
 ]
 
 [inputs.http.tags]
