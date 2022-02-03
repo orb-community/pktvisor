@@ -62,7 +62,7 @@ the container, you specify which tool to run.
 docker pull ns1labs/pktvisor
 ``` 
 
-or use `ns1labs/pktvisor:develop` to get the latest development version.
+or use `ns1labs/pktvisor:latest-develop` to get the latest development version.
 
 2. *Start the collector agent*
 
@@ -247,7 +247,6 @@ visor:
   # optionally define global configuration (see command line options)
   config:
     verbose: true
-    log_file: /tmp/pktvisor_output.log
   # optionally define taps
   taps:
     default_pcap:
@@ -298,8 +297,7 @@ If running in a Docker container, you must mount the configuration file into the
 is on the host at `/local/pktvisor/agent.yaml`, you can mount it into the container and use it with this command:
 
 ```shell
-docker run -v /local/pktvisor:/usr/local/pktvisor/ --net=host \
-      ns1labs/pktvisor pktvisord --config /usr/local/pktvisor/agent.yaml
+docker run -v /local/pktvisor:/usr/local/pktvisor/ --net=host ns1labs/pktvisor pktvisord --config /usr/local/pktvisor/agent.yaml --admin-api
 ```
 
 
@@ -554,8 +552,7 @@ Please [contact us](#contact-us) if you have any questions on installation, use,
 We are very interested in hearing about your use cases, feature requests, and other feedback!
 
 * [File an issue](https://github.com/ns1labs/pktvisor/issues/new)
-* Use our [public work board](https://github.com/ns1labs/pktvisor/projects/1)
-* Use our [public backlog board](https://github.com/ns1labs/pktvisor/projects/2)
+* See existing [issues](https://github.com/ns1labs/pktvisor/issues)
 * Start a [Discussion](https://github.com/ns1labs/pktvisor/discussions)
 * [Join us on Slack](https://join.slack.com/t/ns1labs/shared_invite/zt-qqsm5cb4-9fsq1xa~R3h~nX6W0sJzmA)
 * Send mail to [info@pktvisor.dev](mailto:info@pktvisor.dev)
@@ -599,7 +596,7 @@ bin/pktvisord --help
 
 As development environments can vary widely, please see
 the [Dockerfile](https://github.com/ns1labs/pktvisor/blob/master/docker/Dockerfile)
-and [Continuous Integration build file](https://github.com/ns1labs/pktvisor/blob/master/.github/workflows/cmake.yml) for
+and [Continuous Integration build file](https://github.com/ns1labs/pktvisor/blob/master/.github/workflows/build.yml) for
 reference.
 
 ## Contribute
