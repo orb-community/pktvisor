@@ -49,17 +49,17 @@ jobs:
         run: echo ${{ env.VERSION }}
 
       - name: Generate ref tag (master)
-        if: github.event_name != 'pull_request' && ${{ env.BRANCH_NAME == 'master' }}
+        if: github.event_name != 'pull_request' && env.BRANCH_NAME == 'master'
         run: |
           echo "REF_TAG=latest" >> $GITHUB_ENV
 
       - name: Generate ref tag (develop)
-        if: github.event_name != 'pull_request' && ${{ env.BRANCH_NAME == 'develop' }}
+        if: github.event_name != 'pull_request' && env.BRANCH_NAME == 'develop'
         run: |
           echo "REF_TAG=latest-develop" >> $GITHUB_ENV
 
       - name: Generate ref tag (release candidate)
-        if: github.event_name != 'pull_request' && ${{ env.BRANCH_NAME == 'release' }}
+        if: github.event_name != 'pull_request' && env.BRANCH_NAME == 'release'
         run: |
           echo "REF_TAG=latest-rc" >> $GITHUB_ENV
 
@@ -78,7 +78,7 @@ jobs:
         if: github.event_name != 'pull_request'
         env:
           BASE_BINARY: pktvisord
-          IMAGE_NAME: ns1labs/pktvisord-slim
+          IMAGE_NAME: ns1labs/pktvisord
         run: |
           docker build -f docker/Dockerfile.${{ env.BASE_BINARY }}-static -t ${{ env.IMAGE_NAME }}:${{ env.REF_TAG }} -t ${{ env.IMAGE_NAME }}:${{ env.VERSION }} .
           docker push -a ${{ env.IMAGE_NAME }}
@@ -88,7 +88,7 @@ jobs:
         if: github.event_name != 'pull_request'
         env:
           BASE_BINARY: pktvisord
-          IMAGE_NAME: ns1labs/pktvisord-slim
+          IMAGE_NAME: ns1labs/pktvisord
         run: |
           docker cp ${{ env.CONT_ID }}:/${{ env.BASE_BINARY }} ${{github.workspace}}/${{ env.BASE_BINARY }}-linux-x86_64-${{ env.VERSION }}
 

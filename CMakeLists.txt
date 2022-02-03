@@ -34,15 +34,20 @@ if(VISOR_PRERELEASE STREQUAL "-develop" OR VISOR_PRERELEASE STREQUAL "-rc")
     string(APPEND VISOR_PRERELEASE "-${SHORT_HASH}")
 endif()
 
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
-
 # these are computed
 set(VISOR_VERSION_NUM "${PROJECT_VERSION}${VISOR_PRERELEASE}")
 set(VISOR_VERSION "pktvisor ${PROJECT_VERSION}${VISOR_PRERELEASE}")
 
 # used in CI
 file(WRITE ${CMAKE_BINARY_DIR}/VERSION ${VISOR_VERSION_NUM})
-######
+# golang version
+configure_file(golang/pkg/client/version.go.in ${CMAKE_SOURCE_DIR}/golang/pkg/client/version.go)
+
+####### end version code #######
+
+if(NOT DEFINED ENV{VERSION_ONLY})
+
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -127,5 +132,4 @@ add_subdirectory(src)
 add_subdirectory(cmd)
 add_subdirectory(integration_tests)
 
-# golang version
-configure_file(golang/pkg/client/version.go.in ${CMAKE_SOURCE_DIR}/golang/pkg/client/version.go)
+endif()
