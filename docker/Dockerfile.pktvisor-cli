@@ -10,32 +10,23 @@ RUN \
 
 # need git for current hash for VERSION
 COPY ./.git/ /pktvisor-src/.git/
-COPY ./src/ /pktvisor-src/src/
-COPY ./cmd/ /pktvisor-src/cmd/
-COPY ./3rd/ /pktvisor-src/3rd/
 COPY ./golang/ /pktvisor-src/golang/
-COPY ./integration_tests/ /pktvisor-src/integration_tests/
-COPY ./cmake/ /pktvisor-src/cmake/
 COPY ./CMakeLists.txt /pktvisor-src/
-COPY ./conanfile.txt /pktvisor-src/
 
 WORKDIR /tmp/build
-RUN \
-    conan profile new --detect default && \
-    conan profile update settings.compiler.libcxx=libstdc++11 default && \
-    conan config set general.revisions_enabled=1
 
 # ONLY run cmake configure to get version need for go build (no c++ build)
-RUN cmake -DCMAKE_BUILD_TYPE=Release /pktvisor-src
+RUN VERSION_ONLY=1 cmake /pktvisor-src
 
 FROM golang:latest AS gobuild
 COPY golang/ /src/
 WORKDIR /src/
 COPY --from=cppbuild /pktvisor-src/golang/pkg/client/version.go /src/pkg/client/version.go
-RUN go build -o pktvisor-cli cmd/pktvisor-cli/main.go
+RUN CGO_ENABLED=0 go build -o pktvisor-cli cmd/pktvisor-cli/main.go
 
-FROM scratch AS runtime
+FROM alpine:latest AS runtime
 
 COPY --from=gobuild /src/pktvisor-cli /pktvisor-cli
+COPY docker/entry-cli.sh /
 
-ENTRYPOINT [ "/pktvisor-cli" ]
+ENTRYPOINT [ "/entry-cli.sh" ]
