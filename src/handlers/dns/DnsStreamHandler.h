@@ -218,7 +218,50 @@ struct TcpFlowData {
     }
 };
 
-class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsManager>
+class DnsStreamHandlerGroup : public visor::StreamMetricsHandler<DnsMetricsManager>
+{
+
+    // DNS Filters
+    enum DnsMetricsGroups : uint32_t {
+        Cardinality,
+        Counters,
+        DnsTransactions,
+        TopDnsWire,
+        TopQnames,
+        TopQnamesByRcode
+    };
+
+    const std::map<std::string, DnsMetricsGroups> _group_metrics = {
+        {"cardinality", Cardinality},
+        {"counters", Counters},
+        {"dns_transaction", DnsTransactions},
+        {"top_dns_wire", TopDnsWire},
+        {"top_qnames", TopQnames},
+        {"top_qnames_by_rcode", TopQnamesByRcode},
+    };
+
+    std::bitset<sizeof(DnsMetricsGroups)> _g_enabled;
+
+public:
+    DnsStreamHandlerGroup(const std::string &name, const Configurable *window_config)
+        : visor::StreamMetricsHandler<DnsMetricsManager>(name, window_config)
+    {
+
+        if (window_config->config_exists("enable")) {
+            for (const auto &group : window_config->config_get<StringList>("enable")) {
+                _g_enabled.set(_group_metrics.at(group));
+            }
+        }
+
+        if (window_config->config_exists("disable")) {
+            for (const auto &group : window_config->config_get<StringList>("disable")) {
+                _g_enabled.reset(_group_metrics.at(group));
+            }
+        }
+    }
+};
+
+class DnsStreamHandler final : public DnsStreamHandlerGroup
 {
     static constexpr size_t DNSTAP_TYPE_SIZE = 15;
 

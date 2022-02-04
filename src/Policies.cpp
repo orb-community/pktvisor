@@ -231,9 +231,26 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
                     throw PolicyException(fmt::format("invalid stream handler config for handler '{}': {}", handler_module_name, e.what()));
                 }
             }
+            Config handler_metrics;
+            if (module["metrics"]) {
+                if (!module["metrics"].IsMap()) {
+                    throw PolicyException("stream handler metrics is not a map");
+                }
+
+                if (!module["metrics"]["enable"] && module["metrics"]["disable"]) {
+                    throw PolicyException("stream handler metrics should contain enable and/or disable tags");
+                }
+
+                try {
+                    handler_config.config_set_yaml(module["metrics"]);
+                } catch (ConfigException &e) {
+                    throw PolicyException(fmt::format("invalid stream handler metrics for handler '{}': {}", handler_module_name, e.what()));
+                }
+            }
             spdlog::get("visor")->info("policy [{}]: instantiating Handler {} of type {}", policy_name, handler_module_name, handler_module_type);
             // note, currently merging the handler config with the window config. do they need to be separate?
             // TODO separate filter config
+            handler_config.config_merge(handler_metrics);
             handler_config.config_merge(handler_filter);
             handler_config.config_merge(window_config);
 
