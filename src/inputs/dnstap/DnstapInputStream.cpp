@@ -14,6 +14,8 @@
 
 namespace visor::input::dnstap {
 
+const static std::string CONTENT_TYPE = "protobuf:dnstap.Dnstap";
+
 DnstapInputStream::DnstapInputStream(const std::string &name)
     : visor::InputStream(name)
 {

@@ -21,7 +21,7 @@
 namespace visor::handler::dns {
 
 DnsStreamHandler::DnsStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config, StreamHandler *handler)
-    : visor::StreamMetricsHandler<DnsMetricsManager>(name, window_config)
+    : DnsStreamHandlerGroup(name, window_config)
 {
     if (handler) {
         throw StreamHandlerException(fmt::format("DnsStreamHandler: unsupported upstream chained stream handler {}", handler->name()));
