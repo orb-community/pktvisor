@@ -228,6 +228,7 @@ void PcapInputStream::stop()
 
     if (!_pcapFile && _pcapDevice) {
         // stop capturing and close the live device
+        _pcapDevice->clearFilter();
         _pcapDevice->stopCapture();
         _pcapDevice->close();
     }
