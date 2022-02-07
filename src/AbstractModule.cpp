@@ -15,6 +15,7 @@ void AbstractRunnableModule::info_json(json &j) const
 void AbstractRunnableModule::common_info_json(json &j) const
 {
     j["module"]["name"] = _name;
+    j["module"]["type"] = schema_key();
     j["module"]["running"] = _running.load();
     config_json(j["module"]["config"]);
 }
