@@ -47,7 +47,7 @@ protected:
 
     void common_info_json(json &j) const
     {
-        AbstractModule::common_info_json(j);
+        AbstractRunnableModule::common_info_json(j);
 
         j["metrics"]["deep_sample_rate"] = _metrics->deep_sample_rate();
         j["metrics"]["periods_configured"] = _metrics->num_periods();
