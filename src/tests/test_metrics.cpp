@@ -6,6 +6,9 @@ using namespace visor;
 class TestMetricsBucket : public AbstractMetricsBucket
 {
 public:
+    TestMetricsBucket(const std::bitset<64> groups = std::bitset<64>())
+    {
+    }
     void specialized_merge([[maybe_unused]] const AbstractMetricsBucket &other)
     {
     }

@@ -43,7 +43,7 @@ protected:
     counters _counters;
 
 public:
-    DhcpMetricsBucket()
+    DhcpMetricsBucket(const std::bitset<64> groups = std::bitset<64>())
     {
         set_event_rate_info("dhcp", {"rates", "total"}, "Rate of all DHCP wire packets (combined ingress and egress) per second");
         set_num_events_info("dhcp", {"wire_packets", "total"}, "Total DHCP wire packets");
@@ -70,7 +70,7 @@ public:
 class DhcpMetricsManager final : public visor::AbstractMetricsManager<DhcpMetricsBucket>
 {
 public:
-    DhcpMetricsManager(const Configurable *window_config)
+    DhcpMetricsManager(const Configurable *window_config, const std::bitset<64> groups)
         : visor::AbstractMetricsManager<DhcpMetricsBucket>(window_config)
     {
     }
