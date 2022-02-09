@@ -170,8 +170,8 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
                 throw PolicyException(fmt::format("invalid stream handler window config: {}", e.what()));
             }
         } else {
-            window_config.config_set("num_periods", _default_num_periods);
-            window_config.config_set("deep_sample_rate", _default_deep_sample_rate);
+            window_config.config_set<uint64_t>("num_periods", _default_num_periods);
+            window_config.config_set<uint64_t>("deep_sample_rate", _default_deep_sample_rate);
         }
 
         std::vector<std::unique_ptr<StreamHandler>> handler_modules;
