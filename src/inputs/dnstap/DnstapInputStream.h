@@ -24,6 +24,8 @@ struct fstrm_reader;
 
 namespace visor::input::dnstap {
 
+const static std::string CONTENT_TYPE = "protobuf:dnstap.Dnstap";
+
 class DnstapInputStream : public visor::InputStream
 {
     std::shared_ptr<spdlog::logger> _logger;

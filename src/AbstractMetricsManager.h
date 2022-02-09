@@ -314,13 +314,12 @@ protected:
     }
 
 public:
-    AbstractMetricsManager(const Configurable *window_config)
+    AbstractMetricsManager(const Configurable *window_config, const std::bitset<64> groups = std::bitset<64>())
         : _metric_buckets{}
         , _deep_sampling_now{true}
         , _last_shift_tstamp{0, 0}
         , _next_shift_tstamp{0, 0}
     {
-
         if (window_config->config_exists("deep_sample_rate")) {
             _deep_sample_rate = window_config->config_get<uint64_t>("deep_sample_rate");
         }
@@ -340,7 +339,7 @@ public:
         _next_shift_tstamp = _last_shift_tstamp;
         _next_shift_tstamp.tv_sec += AbstractMetricsManager::PERIOD_SEC;
 
-        _metric_buckets.emplace_front(std::make_unique<MetricsBucketClass>());
+        _metric_buckets.emplace_front(std::make_unique<MetricsBucketClass>(groups));
 
     }
 

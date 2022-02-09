@@ -21,7 +21,7 @@
 namespace visor::handler::dns {
 
 DnsStreamHandler::DnsStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config, StreamHandler *handler)
-    : DnsStreamHandlerGroup(name, window_config)
+    : StreamMetricsHandler(name, window_config, _process_dns_groups(window_config))
 {
     if (handler) {
         throw StreamHandlerException(fmt::format("DnsStreamHandler: unsupported upstream chained stream handler {}", handler->name()));
@@ -35,6 +35,8 @@ DnsStreamHandler::DnsStreamHandler(const std::string &name, InputStream *stream,
     if (!_pcap_stream && !_mock_stream && !_dnstap_stream) {
         throw StreamHandlerException(fmt::format("DnsStreamHandler: unsupported input stream {}", stream->name()));
     }
+
+    _g_enabled = _process_dns_groups(window_config);
 }
 
 void DnsStreamHandler::start()
@@ -239,11 +241,13 @@ void DnsStreamHandler::tcp_message_ready_cb(int8_t side, const pcpp::TcpStreamDa
         // data is freed upon return
     };
 
-    if (!iter->second.sessionData[side]) {
-        iter->second.sessionData[side] = std::make_unique<TcpSessionData>(got_dns_message);
-    }
+    if (_g_enabled.test(group::DnsMetrics::TopDnsWire)) {
+        if (!iter->second.sessionData[side]) {
+            iter->second.sessionData[side] = std::make_unique<TcpSessionData>(got_dns_message);
+        }
 
-    iter->second.sessionData[side]->receive_dns_wire_data(tcpData.getData(), tcpData.getDataLength());
+        iter->second.sessionData[side]->receive_dns_wire_data(tcpData.getData(), tcpData.getDataLength());
+    }
 }
 
 void DnsStreamHandler::tcp_connection_start_cb(const pcpp::ConnectionData &connectionData)
@@ -324,6 +328,30 @@ will_not_filter:
 will_filter:
     _metrics->process_filtered(stamp);
     return true;
+}
+
+const std::bitset<64> DnsStreamHandler::_process_dns_groups(const Configurable *metrics_config)
+{
+    // default enabled groups
+    std::bitset<64> groups;
+    groups.set(group::DnsMetrics::Counters);
+    groups.set(group::DnsMetrics::TopDnsWire);
+    groups.set(group::DnsMetrics::DnsTransactions);
+    groups.set(group::DnsMetrics::TopQnames);
+
+    if (metrics_config->config_exists("enable")) {
+        for (const auto &group : metrics_config->config_get<StringList>("enable")) {
+            groups.set(_group_metrics.at(group));
+        }
+    }
+
+    if (metrics_config->config_exists("disable")) {
+        for (const auto &group : metrics_config->config_get<StringList>("disable")) {
+            groups.reset(_group_metrics.at(group));
+        }
+    }
+
+    return groups;
 }
 
 void DnsMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
@@ -583,24 +611,26 @@ void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, bool dnst
         _dns_qnameCard.update(name);
         _dns_topQType.update(query->getDnsType());
 
-        if (payload.getDnsHeader()->queryOrResponse == response) {
-            switch (payload.getDnsHeader()->responseCode) {
-            case SrvFail:
-                _dns_topSRVFAIL.update(name);
-                break;
-            case NXDomain:
-                _dns_topNX.update(name);
-                break;
-            case Refused:
-                _dns_topREFUSED.update(name);
-                break;
+        if (_groups.test(group::DnsMetrics::TopQnames)) {
+            if (payload.getDnsHeader()->queryOrResponse == response) {
+                switch (payload.getDnsHeader()->responseCode) {
+                case SrvFail:
+                    _dns_topSRVFAIL.update(name);
+                    break;
+                case NXDomain:
+                    _dns_topNX.update(name);
+                    break;
+                case Refused:
+                    _dns_topREFUSED.update(name);
+                    break;
+                }
             }
-        }
 
-        auto aggDomain = aggregateDomain(name);
-        _dns_topQname2.update(std::string(aggDomain.first));
-        if (aggDomain.second.size()) {
-            _dns_topQname3.update(std::string(aggDomain.second));
+            auto aggDomain = aggregateDomain(name);
+            _dns_topQname2.update(std::string(aggDomain.first));
+            if (aggDomain.second.size()) {
+                _dns_topQname3.update(std::string(aggDomain.second));
+            }
         }
     }
 }
@@ -714,14 +744,17 @@ void DnsMetricsManager::process_dns_layer(DnsLayer &payload, PacketDirection dir
     new_event(stamp);
     // process in the "live" bucket. this will parse the resources if we are deep sampling
     live_bucket()->process_dns_layer(_deep_sampling_now, payload, false, l3, l4, port);
-    // handle dns transactions (query/response pairs)
-    if (payload.getDnsHeader()->queryOrResponse == QR::response) {
-        auto xact = _qr_pair_manager.maybe_end_transaction(flowkey, payload.getDnsHeader()->transactionID, stamp);
-        if (xact.first) {
-            live_bucket()->new_dns_transaction(_deep_sampling_now, _to90th, _from90th, payload, dir, xact.second);
+
+    if (_groups.test(group::DnsMetrics::DnsTransactions)) {
+        // handle dns transactions (query/response pairs)
+        if (payload.getDnsHeader()->queryOrResponse == QR::response) {
+            auto xact = _qr_pair_manager.maybe_end_transaction(flowkey, payload.getDnsHeader()->transactionID, stamp);
+            if (xact.first) {
+                live_bucket()->new_dns_transaction(_deep_sampling_now, _to90th, _from90th, payload, dir, xact.second);
+            }
+        } else {
+            _qr_pair_manager.start_transaction(flowkey, payload.getDnsHeader()->transactionID, stamp);
         }
-    } else {
-        _qr_pair_manager.start_transaction(flowkey, payload.getDnsHeader()->transactionID, stamp);
     }
 }
 void DnsMetricsManager::process_filtered(timespec stamp)

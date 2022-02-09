@@ -62,7 +62,7 @@ protected:
     Rate _rate_out;
 
 public:
-    NetworkMetricsBucket()
+    NetworkMetricsBucket(const std::bitset<64> groups = std::bitset<64>())
         : _srcIPCard("packets", {"cardinality", "src_ips_in"}, "Source IP cardinality")
         , _dstIPCard("packets", {"cardinality", "dst_ips_out"}, "Destination IP cardinality")
         , _topGeoLoc("packets", "geo_loc", {"top_geoLoc"}, "Top GeoIP locations")
@@ -105,7 +105,7 @@ public:
 class NetworkMetricsManager final : public visor::AbstractMetricsManager<NetworkMetricsBucket>
 {
 public:
-    NetworkMetricsManager(const Configurable *window_config)
+    NetworkMetricsManager(const Configurable *window_config, const std::bitset<64> groups)
         : visor::AbstractMetricsManager<NetworkMetricsBucket>(window_config)
     {
     }

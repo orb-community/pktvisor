@@ -76,10 +76,10 @@ protected:
     }
 
 public:
-    StreamMetricsHandler(const std::string &name, const Configurable *window_config)
+    StreamMetricsHandler(const std::string &name, const Configurable *window_config, const std::bitset<64> groups = std::bitset<64>())
         : StreamHandler(name)
     {
-        _metrics = std::make_unique<MetricsManagerClass>(window_config);
+        _metrics = std::make_unique<MetricsManagerClass>(window_config, groups);
     }
 
     const MetricsManagerClass *metrics() const

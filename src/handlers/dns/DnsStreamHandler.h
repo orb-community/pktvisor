@@ -26,10 +26,23 @@ using namespace visor::input::pcap;
 using namespace visor::input::dnstap;
 using namespace visor::input::mock;
 
+// DNS Groups
+namespace group {
+enum DnsMetrics : uint32_t {
+    Cardinality,
+    Counters,
+    DnsTransactions,
+    TopDnsWire,
+    TopQnames
+};
+}
+
 class DnsMetricsBucket final : public visor::AbstractMetricsBucket
 {
 protected:
     mutable std::shared_mutex _mutex;
+
+    const std::bitset<64> _groups;
 
     Quantile<uint64_t> _dnsXactFromTimeUs;
     Quantile<uint64_t> _dnsXactToTimeUs;
@@ -89,8 +102,9 @@ protected:
     counters _counters;
 
 public:
-    DnsMetricsBucket()
-        : _dnsXactFromTimeUs("dns", {"xact", "out", "quantiles_us"}, "Quantiles of transaction timing (query/reply pairs) when host is client, in microseconds")
+    DnsMetricsBucket(const std::bitset<64> groups = std::bitset<64>())
+        : _groups(groups)
+        , _dnsXactFromTimeUs("dns", {"xact", "out", "quantiles_us"}, "Quantiles of transaction timing (query/reply pairs) when host is client, in microseconds")
         , _dnsXactToTimeUs("dns", {"xact", "in", "quantiles_us"}, "Quantiles of transaction timing (query/reply pairs) when host is server, in microseconds")
         , _dns_qnameCard("dns", {"cardinality", "qname"}, "Cardinality of unique QNAMES, both ingress and egress")
         , _dns_topQname2("dns", "qname", {"top_qname2"}, "Top QNAMES, aggregated at a depth of two labels")
@@ -148,13 +162,15 @@ public:
 class DnsMetricsManager final : public visor::AbstractMetricsManager<DnsMetricsBucket>
 {
 
+    const std::bitset<64> _groups;
     QueryResponsePairMgr _qr_pair_manager;
     float _to90th{0.0};
     float _from90th{0.0};
 
 public:
-    DnsMetricsManager(const Configurable *window_config)
-        : visor::AbstractMetricsManager<DnsMetricsBucket>(window_config)
+    DnsMetricsManager(const Configurable *window_config, const std::bitset<64> groups)
+        : visor::AbstractMetricsManager<DnsMetricsBucket>(window_config, groups)
+        , _groups(groups)
     {
     }
 
@@ -218,50 +234,7 @@ struct TcpFlowData {
     }
 };
 
-class DnsStreamHandlerGroup : public visor::StreamMetricsHandler<DnsMetricsManager>
-{
-
-    // DNS Filters
-    enum DnsMetricsGroups : uint32_t {
-        Cardinality,
-        Counters,
-        DnsTransactions,
-        TopDnsWire,
-        TopQnames,
-        TopQnamesByRcode
-    };
-
-    const std::map<std::string, DnsMetricsGroups> _group_metrics = {
-        {"cardinality", Cardinality},
-        {"counters", Counters},
-        {"dns_transaction", DnsTransactions},
-        {"top_dns_wire", TopDnsWire},
-        {"top_qnames", TopQnames},
-        {"top_qnames_by_rcode", TopQnamesByRcode},
-    };
-
-    std::bitset<sizeof(DnsMetricsGroups)> _g_enabled;
-
-public:
-    DnsStreamHandlerGroup(const std::string &name, const Configurable *window_config)
-        : visor::StreamMetricsHandler<DnsMetricsManager>(name, window_config)
-    {
-
-        if (window_config->config_exists("enable")) {
-            for (const auto &group : window_config->config_get<StringList>("enable")) {
-                _g_enabled.set(_group_metrics.at(group));
-            }
-        }
-
-        if (window_config->config_exists("disable")) {
-            for (const auto &group : window_config->config_get<StringList>("disable")) {
-                _g_enabled.reset(_group_metrics.at(group));
-            }
-        }
-    }
-};
-
-class DnsStreamHandler final : public DnsStreamHandlerGroup
+class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsManager>
 {
     static constexpr size_t DNSTAP_TYPE_SIZE = 15;
 
@@ -314,7 +287,17 @@ class DnsStreamHandler final : public DnsStreamHandlerGroup
     std::vector<std::string> _f_qnames;
     std::bitset<DNSTAP_TYPE_SIZE> _f_dnstap_types;
 
+    const std::map<std::string, group::DnsMetrics> _group_metrics = {
+        {"cardinality", group::DnsMetrics::Cardinality},
+        {"counters", group::DnsMetrics::Counters},
+        {"dns_transaction", group::DnsMetrics::DnsTransactions},
+        {"top_dns_wire", group::DnsMetrics::TopDnsWire},
+        {"top_qnames", group::DnsMetrics::TopQnames}};
+
+    std::bitset<64> _g_enabled;
+
     bool _filtering(DnsLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint16_t port, timespec stamp);
+    const std::bitset<64> _process_dns_groups(const Configurable *metrics_config);
 
 public:
     DnsStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config, StreamHandler *handler = nullptr);
