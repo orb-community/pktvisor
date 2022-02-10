@@ -21,7 +21,7 @@
 namespace visor::handler::dns {
 
 DnsStreamHandler::DnsStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config, StreamHandler *handler)
-    : StreamMetricsHandler(name, window_config)
+    : visor::StreamMetricsHandler<DnsMetricsManager>(name, window_config)
 {
     if (handler) {
         throw StreamHandlerException(fmt::format("DnsStreamHandler: unsupported upstream chained stream handler {}", handler->name()));
@@ -608,7 +608,7 @@ void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, bool dnst
         _dns_qnameCard.update(name);
         _dns_topQType.update(query->getDnsType());
 
-        if (_groups->test(group::DnsMetrics::TopQnames)) {
+        if ((*_groups)[group::DnsMetrics::TopQnames]) {
             if (payload.getDnsHeader()->queryOrResponse == response) {
                 switch (payload.getDnsHeader()->responseCode) {
                 case SrvFail:
@@ -742,7 +742,7 @@ void DnsMetricsManager::process_dns_layer(DnsLayer &payload, PacketDirection dir
     // process in the "live" bucket. this will parse the resources if we are deep sampling
     live_bucket()->process_dns_layer(_deep_sampling_now, payload, false, l3, l4, port);
 
-    if (_groups->test(group::DnsMetrics::DnsTransactions)) {
+    if ((*_groups)[group::DnsMetrics::DnsTransactions]) {
         // handle dns transactions (query/response pairs)
         if (payload.getDnsHeader()->queryOrResponse == QR::response) {
             auto xact = _qr_pair_manager.maybe_end_transaction(flowkey, payload.getDnsHeader()->transactionID, stamp);
