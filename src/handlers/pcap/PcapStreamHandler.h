@@ -42,7 +42,7 @@ protected:
     counters _counters;
 
 public:
-    PcapMetricsBucket(const std::bitset<64> groups = std::bitset<64>())
+    PcapMetricsBucket()
     {
     }
 
@@ -65,7 +65,7 @@ public:
 class PcapMetricsManager final : public visor::AbstractMetricsManager<PcapMetricsBucket>
 {
 public:
-    PcapMetricsManager(const Configurable *window_config, const std::bitset<64> groups)
+    PcapMetricsManager(const Configurable *window_config)
         : visor::AbstractMetricsManager<PcapMetricsBucket>(window_config)
     {
     }

@@ -21,7 +21,7 @@
 namespace visor::handler::dns {
 
 DnsStreamHandler::DnsStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config, StreamHandler *handler)
-    : StreamMetricsHandler(name, window_config, _process_dns_groups(window_config))
+    : StreamMetricsHandler(name, window_config)
 {
     if (handler) {
         throw StreamHandlerException(fmt::format("DnsStreamHandler: unsupported upstream chained stream handler {}", handler->name()));
@@ -35,8 +35,6 @@ DnsStreamHandler::DnsStreamHandler(const std::string &name, InputStream *stream,
     if (!_pcap_stream && !_mock_stream && !_dnstap_stream) {
         throw StreamHandlerException(fmt::format("DnsStreamHandler: unsupported input stream {}", stream->name()));
     }
-
-    _g_enabled = _process_dns_groups(window_config);
 }
 
 void DnsStreamHandler::start()
@@ -44,6 +42,8 @@ void DnsStreamHandler::start()
     if (_running) {
         return;
     }
+
+    _process_dns_groups();
 
     // Setup Filters
     if (config_exists("exclude_noerror") && config_get<bool>("exclude_noerror")) {
@@ -243,13 +243,11 @@ void DnsStreamHandler::tcp_message_ready_cb(int8_t side, const pcpp::TcpStreamDa
         // data is freed upon return
     };
 
-    if (_g_enabled.test(group::DnsMetrics::TopDnsWire)) {
-        if (!iter->second.sessionData[side]) {
-            iter->second.sessionData[side] = std::make_unique<TcpSessionData>(got_dns_message);
-        }
-
-        iter->second.sessionData[side]->receive_dns_wire_data(tcpData.getData(), tcpData.getDataLength());
+    if (!iter->second.sessionData[side]) {
+        iter->second.sessionData[side] = std::make_unique<TcpSessionData>(got_dns_message);
     }
+
+    iter->second.sessionData[side]->receive_dns_wire_data(tcpData.getData(), tcpData.getDataLength());
 }
 
 void DnsStreamHandler::tcp_connection_start_cb(const pcpp::ConnectionData &connectionData)
@@ -332,28 +330,27 @@ will_filter:
     return true;
 }
 
-const std::bitset<64> DnsStreamHandler::_process_dns_groups(const Configurable *metrics_config)
+void DnsStreamHandler::_process_dns_groups()
 {
     // default enabled groups
-    std::bitset<64> groups;
-    groups.set(group::DnsMetrics::Counters);
-    groups.set(group::DnsMetrics::TopDnsWire);
-    groups.set(group::DnsMetrics::DnsTransactions);
-    groups.set(group::DnsMetrics::TopQnames);
+    _groups.set(group::DnsMetrics::Counters);
+    _groups.set(group::DnsMetrics::TopDnsWire);
+    _groups.set(group::DnsMetrics::DnsTransactions);
+    _groups.set(group::DnsMetrics::TopQnames);
 
-    if (metrics_config->config_exists("enable")) {
-        for (const auto &group : metrics_config->config_get<StringList>("enable")) {
-            groups.set(_group_metrics.at(group));
+    if (config_exists("enable")) {
+        for (const auto &group : config_get<StringList>("enable")) {
+            _groups.set(_group_metrics.at(group));
         }
     }
 
-    if (metrics_config->config_exists("disable")) {
-        for (const auto &group : metrics_config->config_get<StringList>("disable")) {
-            groups.reset(_group_metrics.at(group));
+    if (config_exists("disable")) {
+        for (const auto &group : config_get<StringList>("disable")) {
+            _groups.reset(_group_metrics.at(group));
         }
     }
 
-    return groups;
+    _metrics->configure_groups(&_groups);
 }
 
 void DnsMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
@@ -613,7 +610,7 @@ void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, bool dnst
         _dns_qnameCard.update(name);
         _dns_topQType.update(query->getDnsType());
 
-        if (_groups.test(group::DnsMetrics::TopQnames)) {
+        if (_groups->test(group::DnsMetrics::TopQnames)) {
             if (payload.getDnsHeader()->queryOrResponse == response) {
                 switch (payload.getDnsHeader()->responseCode) {
                 case SrvFail:
@@ -747,7 +744,7 @@ void DnsMetricsManager::process_dns_layer(DnsLayer &payload, PacketDirection dir
     // process in the "live" bucket. this will parse the resources if we are deep sampling
     live_bucket()->process_dns_layer(_deep_sampling_now, payload, false, l3, l4, port);
 
-    if (_groups.test(group::DnsMetrics::DnsTransactions)) {
+    if (_groups->test(group::DnsMetrics::DnsTransactions)) {
         // handle dns transactions (query/response pairs)
         if (payload.getDnsHeader()->queryOrResponse == QR::response) {
             auto xact = _qr_pair_manager.maybe_end_transaction(flowkey, payload.getDnsHeader()->transactionID, stamp);

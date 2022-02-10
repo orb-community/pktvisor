@@ -22,6 +22,8 @@
 
 namespace visor {
 
+constexpr size_t GROUP_SIZE = 64;
+
 using json = nlohmann::json;
 
 class PeriodException : public std::runtime_error
@@ -59,6 +61,8 @@ private:
     bool _recorded_stream = false;
 
 protected:
+    const std::bitset<GROUP_SIZE> *_groups;
+
     // merge the metrics of the specialized metric bucket
     virtual void specialized_merge(const AbstractMetricsBucket &other) = 0;
 
@@ -195,6 +199,10 @@ public:
         }
     }
 
+    void configure_groups(const std::bitset<GROUP_SIZE> *groups) {
+        _groups = groups;
+    }
+
     virtual void to_json(json &j) const = 0;
     virtual void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const = 0;
 };
@@ -230,6 +238,7 @@ protected:
      */
     bool _recorded_stream = false;
 
+    const std::bitset<GROUP_SIZE> *_groups;
 private:
     /**
      * window maintenance
@@ -314,7 +323,7 @@ protected:
     }
 
 public:
-    AbstractMetricsManager(const Configurable *window_config, const std::bitset<64> groups = std::bitset<64>())
+    AbstractMetricsManager(const Configurable *window_config)
         : _metric_buckets{}
         , _deep_sampling_now{true}
         , _last_shift_tstamp{0, 0}
@@ -339,7 +348,7 @@ public:
         _next_shift_tstamp = _last_shift_tstamp;
         _next_shift_tstamp.tv_sec += AbstractMetricsManager::PERIOD_SEC;
 
-        _metric_buckets.emplace_front(std::make_unique<MetricsBucketClass>(groups));
+        _metric_buckets.emplace_front(std::make_unique<MetricsBucketClass>());
 
     }
 
@@ -404,6 +413,15 @@ public:
         std::shared_lock rl(_bucket_mutex);
         // bounds checked
         return _metric_buckets.at(period).get();
+    }
+
+    void configure_groups(const std::bitset<GROUP_SIZE> *groups) {
+        std::unique_lock wl(_base_mutex);
+        std::shared_lock rl(_bucket_mutex);
+        _groups = groups;
+        for (const auto &bucket : _metric_buckets) {
+            bucket->configure_groups(groups);
+        }
     }
 
     MetricsBucketClass *live_bucket()
