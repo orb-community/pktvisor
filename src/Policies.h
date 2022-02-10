@@ -79,6 +79,12 @@ class PolicyManager : public AbstractManager<Policy>
 
     CoreRegistry *_registry;
 
+    /**
+     * the default number of periods we will maintain in the window for handlers
+     */
+    unsigned int _default_num_periods{5};
+    uint32_t _default_deep_sample_rate{100};
+
 public:
     PolicyManager(CoreRegistry *registry)
         : _registry(registry)
@@ -87,6 +93,25 @@ public:
 
     virtual ~PolicyManager()
     {
+    }
+
+    void set_default_num_periods(unsigned int n)
+    {
+        _default_num_periods = n;
+    }
+    void set_default_deep_sample_rate(uint32_t r)
+    {
+        _default_deep_sample_rate = r;
+    }
+
+    unsigned int default_num_periods() const
+    {
+        return _default_num_periods;
+    }
+
+    uint32_t default_deep_sample_rate() const
+    {
+        return _default_deep_sample_rate;
     }
 
     std::vector<Policy *> load_from_str(const std::string &str);

@@ -12,6 +12,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"regexp"
 	"time"
 )
 
@@ -35,6 +36,7 @@ type ClientConfig struct {
 type client struct {
 	config        ClientConfig
 	serverVersion string
+	periods       string
 }
 
 func (c *client) GetPolicy() string {
@@ -61,7 +63,8 @@ func (c *client) GetServerVersion() string {
 
 func New(config ClientConfig) (Client, error) {
 	return &client{
-		config: config,
+		config:  config,
+		periods: "5",
 	}, nil
 }
 
@@ -89,6 +92,16 @@ func (c *client) getMetrics(url string, payload interface{}) error {
 			err := json.Unmarshal(body, &jsonBody)
 			if err == nil {
 				if errMsg, ok := jsonBody["error"]; ok {
+					if res.StatusCode == 425 {
+						// attempt to resolve a period exception
+						r, _ := regexp.Compile("invalid metrics period, specify \\[\\d, (\\d)\\]")
+						match := r.FindStringSubmatch(errMsg.(string))
+						if match != nil && match[1] != c.periods {
+							// try new period on next request
+							c.periods = match[1]
+							return nil
+						}
+					}
 					return errors.New(fmt.Sprintf("%d %s", res.StatusCode, errMsg))
 				}
 			}
@@ -105,7 +118,7 @@ func (c *client) getMetrics(url string, payload interface{}) error {
 
 func (c *client) GetStats() (*StatSnapshot, error) {
 	var rawStats map[string]map[string]map[string]interface{}
-	err := c.getMetrics(fmt.Sprintf("%s://%s:%d/api/v1/policies/%s/metrics/window/5", c.config.Protocol, c.config.Host, c.config.Port, c.config.DefaultPolicy), &rawStats)
+	err := c.getMetrics(fmt.Sprintf("%s://%s:%d/api/v1/policies/%s/metrics/window/%s", c.config.Protocol, c.config.Host, c.config.Port, c.config.DefaultPolicy, c.periods), &rawStats)
 	if err != nil {
 		return nil, err
 	}
