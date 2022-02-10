@@ -44,6 +44,7 @@ class StreamMetricsHandler : public StreamHandler
 
 protected:
     std::unique_ptr<MetricsManagerClass> _metrics;
+    std::bitset<GROUP_SIZE> _groups;
 
     void common_info_json(json &j) const
     {
@@ -76,10 +77,10 @@ protected:
     }
 
 public:
-    StreamMetricsHandler(const std::string &name, const Configurable *window_config, const std::bitset<64> groups = std::bitset<64>())
+    StreamMetricsHandler(const std::string &name, const Configurable *window_config)
         : StreamHandler(name)
     {
-        _metrics = std::make_unique<MetricsManagerClass>(window_config, groups);
+        _metrics = std::make_unique<MetricsManagerClass>(window_config);
     }
 
     const MetricsManagerClass *metrics() const

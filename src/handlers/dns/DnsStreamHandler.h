@@ -42,8 +42,6 @@ class DnsMetricsBucket final : public visor::AbstractMetricsBucket
 protected:
     mutable std::shared_mutex _mutex;
 
-    const std::bitset<64> _groups;
-
     Quantile<uint64_t> _dnsXactFromTimeUs;
     Quantile<uint64_t> _dnsXactToTimeUs;
 
@@ -102,9 +100,8 @@ protected:
     counters _counters;
 
 public:
-    DnsMetricsBucket(const std::bitset<64> groups = std::bitset<64>())
-        : _groups(groups)
-        , _dnsXactFromTimeUs("dns", {"xact", "out", "quantiles_us"}, "Quantiles of transaction timing (query/reply pairs) when host is client, in microseconds")
+    DnsMetricsBucket()
+        : _dnsXactFromTimeUs("dns", {"xact", "out", "quantiles_us"}, "Quantiles of transaction timing (query/reply pairs) when host is client, in microseconds")
         , _dnsXactToTimeUs("dns", {"xact", "in", "quantiles_us"}, "Quantiles of transaction timing (query/reply pairs) when host is server, in microseconds")
         , _dns_qnameCard("dns", {"cardinality", "qname"}, "Cardinality of unique QNAMES, both ingress and egress")
         , _dns_topQname2("dns", "qname", {"top_qname2"}, "Top QNAMES, aggregated at a depth of two labels")
@@ -161,16 +158,13 @@ public:
 
 class DnsMetricsManager final : public visor::AbstractMetricsManager<DnsMetricsBucket>
 {
-
-    const std::bitset<64> _groups;
     QueryResponsePairMgr _qr_pair_manager;
     float _to90th{0.0};
     float _from90th{0.0};
 
 public:
-    DnsMetricsManager(const Configurable *window_config, const std::bitset<64> groups)
-        : visor::AbstractMetricsManager<DnsMetricsBucket>(window_config, groups)
-        , _groups(groups)
+    DnsMetricsManager(const Configurable *window_config)
+        : visor::AbstractMetricsManager<DnsMetricsBucket>(window_config)
     {
     }
 
@@ -294,10 +288,9 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
         {"top_dns_wire", group::DnsMetrics::TopDnsWire},
         {"top_qnames", group::DnsMetrics::TopQnames}};
 
-    std::bitset<64> _g_enabled;
 
     bool _filtering(DnsLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint16_t port, timespec stamp);
-    const std::bitset<64> _process_dns_groups(const Configurable *metrics_config);
+    void _process_dns_groups();
 
 public:
     DnsStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config, StreamHandler *handler = nullptr);

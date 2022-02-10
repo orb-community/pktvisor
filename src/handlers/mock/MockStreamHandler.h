@@ -35,7 +35,7 @@ protected:
     counters _counters;
 
 public:
-    MockMetricsBucket(const std::bitset<64> groups = std::bitset<64>())
+    MockMetricsBucket()
     {
     }
 
@@ -57,7 +57,7 @@ public:
 class MockMetricsManager final : public visor::AbstractMetricsManager<MockMetricsBucket>
 {
 public:
-    MockMetricsManager(const Configurable *window_config, const std::bitset<64> groups)
+    MockMetricsManager(const Configurable *window_config)
         : visor::AbstractMetricsManager<MockMetricsBucket>(window_config)
     {
     }
