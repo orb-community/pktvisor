@@ -262,6 +262,7 @@ private:
         std::unique_ptr<MetricsBucketClass> expiring_bucket;
         // this changes the live bucket
         _metric_buckets.emplace_front(std::make_unique<MetricsBucketClass>());
+        _metric_buckets[0]->configure_groups(_groups);
         _metric_buckets[0]->set_start_tstamp(stamp);
         if (_recorded_stream) {
             _metric_buckets[0]->set_recorded_stream();

@@ -6,9 +6,6 @@ using namespace visor;
 class TestMetricsBucket : public AbstractMetricsBucket
 {
 public:
-    TestMetricsBucket()
-    {
-    }
     void specialized_merge([[maybe_unused]] const AbstractMetricsBucket &other)
     {
     }

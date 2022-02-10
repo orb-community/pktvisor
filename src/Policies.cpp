@@ -198,6 +198,7 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
             if (!module.IsMap()) {
                 throw PolicyException("expecting Handler configuration map");
             }
+
             if (!module["type"] || !module["type"].IsScalar()) {
                 module = module[handler_module_name];
                 if (!module["type"] || !module["type"].IsScalar()) {
