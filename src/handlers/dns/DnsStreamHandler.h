@@ -182,7 +182,7 @@ public:
 
     void process_filtered(timespec stamp);
     void process_dns_layer(DnsLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowkey, uint16_t port, timespec stamp);
-    void process_dnstap(const dnstap::Dnstap &payload);
+    void process_dnstap(const dnstap::Dnstap &payload, bool filtered);
 };
 
 class TcpSessionData final
@@ -220,6 +220,7 @@ struct TcpFlowData {
 
 class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsManager>
 {
+    static constexpr size_t DNSTAP_TYPE_SIZE = 15;
 
     // the input stream sources we support (only one will be in use at a time)
     PcapInputStream *_pcap_stream{nullptr};
@@ -247,15 +248,28 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
     void set_start_tstamp(timespec stamp);
     void set_end_tstamp(timespec stamp);
 
+    static const inline std::map<std::string, std::pair<int, int>> _dnstap_map_types = {
+        {"auth", {dnstap::Message_Type_AUTH_QUERY, dnstap::Message_Type_AUTH_RESPONSE}},
+        {"resolver", {dnstap::Message_Type_RESOLVER_QUERY, dnstap::Message_Type_RESOLVER_RESPONSE}},
+        {"client", {dnstap::Message_Type_CLIENT_QUERY, dnstap::Message_Type_CLIENT_RESPONSE}},
+        {"forwarder", {dnstap::Message_Type_FORWARDER_QUERY, dnstap::Message_Type_FORWARDER_RESPONSE}},
+        {"stub", {dnstap::Message_Type_STUB_QUERY, dnstap::Message_Type_STUB_RESPONSE}},
+        {"tool", {dnstap::Message_Type_TOOL_QUERY, dnstap::Message_Type_TOOL_RESPONSE}},
+        {"update", {dnstap::Message_Type_UPDATE_QUERY, dnstap::Message_Type_UPDATE_RESPONSE}}
+    };
+
     // DNS Filters
     enum Filters {
         ExcludingRCode,
         OnlyRCode,
-        OnlyQNameSuffix
+        OnlyQNameSuffix,
+        DnstapMsgType,
+        FiltersMAX
     };
-    std::bitset<sizeof(Filters)> _f_enabled;
+    std::bitset<Filters::FiltersMAX> _f_enabled;
     uint16_t _f_rcode{0};
     std::vector<std::string> _f_qnames;
+    std::bitset<DNSTAP_TYPE_SIZE> _f_dnstap_types;
 
     bool _filtering(DnsLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint16_t port, timespec stamp);
 

@@ -73,6 +73,17 @@ void DnsStreamHandler::start()
             _f_qnames.emplace_back(std::move(qname_ci));
         }
     }
+    if (config_exists("dnstap_msg_type")) {
+        auto type = config_get<std::string>("dnstap_msg_type");
+        try {
+            auto type_pair = _dnstap_map_types.at(type);
+            _f_dnstap_types.set(type_pair.first);
+            _f_dnstap_types.set(type_pair.second);
+            _f_enabled.set(Filters::DnstapMsgType);
+        } catch (const std::exception &e) {
+            throw ConfigException(fmt::format("dnstap_msg_type error {}", e.what()));
+        }
+    }
 
     if (config_exists("recorded_stream")) {
         _metrics->set_recorded_stream();
@@ -115,7 +126,13 @@ void DnsStreamHandler::stop()
 // callback from input module
 void DnsStreamHandler::process_dnstap_cb(const dnstap::Dnstap &d)
 {
-    _metrics->process_dnstap(d);
+    if (_f_enabled[Filters::DnstapMsgType]) {
+        if (_f_dnstap_types[d.message().type()]) {
+            _metrics->process_dnstap(d, true);
+        }
+    } else {
+        _metrics->process_dnstap(d, false);
+    }
 }
 
 // callback from input module
@@ -280,12 +297,12 @@ static inline bool endsWith(std::string_view str, std::string_view suffix)
 }
 bool DnsStreamHandler::_filtering(DnsLayer &payload, [[maybe_unused]] PacketDirection dir, [[maybe_unused]] pcpp::ProtocolType l3, [[maybe_unused]] pcpp::ProtocolType l4, [[maybe_unused]] uint16_t port, timespec stamp)
 {
-    if (_f_enabled.test(Filters::ExcludingRCode) && payload.getDnsHeader()->responseCode == _f_rcode) {
+    if (_f_enabled[Filters::ExcludingRCode] && payload.getDnsHeader()->responseCode == _f_rcode) {
         goto will_filter;
-    } else if (_f_enabled.test(Filters::OnlyRCode) && payload.getDnsHeader()->responseCode != _f_rcode) {
+    } else if (_f_enabled[Filters::OnlyRCode] && payload.getDnsHeader()->responseCode != _f_rcode) {
         goto will_filter;
     }
-    if (_f_enabled.test(Filters::OnlyQNameSuffix)) {
+    if (_f_enabled[Filters::OnlyQNameSuffix]) {
         if (!payload.parseResources(true) || payload.getFirstQuery() == nullptr) {
             goto will_filter;
         }
@@ -713,7 +730,7 @@ void DnsMetricsManager::process_filtered(timespec stamp)
     new_event(stamp, false);
     live_bucket()->process_filtered();
 }
-void DnsMetricsManager::process_dnstap(const dnstap::Dnstap &payload)
+void DnsMetricsManager::process_dnstap(const dnstap::Dnstap &payload, bool filtered)
 {
     // dnstap message type
     auto mtype = payload.message().type();
@@ -743,6 +760,9 @@ void DnsMetricsManager::process_dnstap(const dnstap::Dnstap &payload)
     // base event
     new_event(stamp);
     // process in the "live" bucket. this will parse the resources if we are deep sampling
+    if (filtered) {
+        live_bucket()->process_filtered();
+    }
     live_bucket()->process_dnstap(_deep_sampling_now, payload);
 }
 }
