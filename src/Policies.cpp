@@ -199,7 +199,10 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
                 throw PolicyException("expecting Handler configuration map");
             }
             if (!module["type"] || !module["type"].IsScalar()) {
-                throw PolicyException("missing or invalid stream handler type at key 'type'");
+                module = module[handler_module_name];
+                if (!module["type"] || !module["type"].IsScalar()) {
+                    throw PolicyException("missing or invalid stream handler type at key 'type'");
+                }
             }
             auto handler_module_type = module["type"].as<std::string>();
             auto handler_plugin = _registry->handler_plugins().find(handler_module_type);
