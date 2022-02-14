@@ -13,6 +13,11 @@ public:
         : std::runtime_error(msg)
     {
     }
+
+    DnstapException(std::string msg)
+        : std::runtime_error(msg)
+    {
+    }
 };
 
 }

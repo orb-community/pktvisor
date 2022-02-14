@@ -11,18 +11,14 @@
 #include <sigslot/signal.hpp>
 #include <spdlog/spdlog.h>
 #include <unordered_map>
-#include <uv.h>
-
-namespace uvw {
-class Loop;
-class AsyncHandle;
-class PipeHandle;
-class TCPHandle;
-}
+#include <uvw.hpp>
 
 struct fstrm_reader;
 
 namespace visor::input::dnstap {
+
+typedef std::pair<in_addr, uint8_t> Ipv4Subnet;
+typedef std::pair<in6_addr, uint8_t> Ipv6Subnet;
 
 const static std::string CONTENT_TYPE = "protobuf:dnstap.Dnstap";
 
@@ -40,10 +36,16 @@ class DnstapInputStream : public visor::InputStream
     std::shared_ptr<uvw::TCPHandle> _tcp_server_h;
     std::unordered_map<uv_os_fd_t, std::unique_ptr<FrameSessionData<uvw::TCPHandle>>> _tcp_sessions;
 
+    std::vector<Ipv4Subnet> _IPv4_host_list;
+    std::vector<Ipv6Subnet> _IPv6_host_list;
+    bool _filter_host;
+
     void _read_frame_stream_file();
     void _create_frame_stream_unix_socket();
     void _create_frame_stream_tcp_socket();
 
+    void _parse_host_specs(const std::vector<std::string> &host_list);
+    bool _match_subnet(const std::string &dnstap_ip, bool ipv6);
 public:
     DnstapInputStream(const std::string &name);
     ~DnstapInputStream() = default;
