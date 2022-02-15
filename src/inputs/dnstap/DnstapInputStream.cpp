@@ -6,11 +6,6 @@
 #include "DnstapException.h"
 #include "FrameSession.h"
 #include <filesystem>
-#include <uvw/async.h>
-#include <uvw/loop.h>
-#include <uvw/pipe.h>
-#include <uvw/stream.h>
-#include <uvw/tcp.h>
 
 namespace visor::input::dnstap {
 
@@ -63,15 +58,20 @@ void DnstapInputStream::_read_frame_stream_file()
             }
             if (_filter_host) {
                 if (d.message().has_query_address()) {
-                    if (!_match_subnet(d.message().query_address(), d.message().socket_family() == ::dnstap::INET6)) {
-                        return;
+                    if (!_match_subnet(d.message().query_address())) {
+                        continue;
+                    }
+                    if (d.message().has_response_address()) {
+                        if (!_match_subnet(d.message().response_address())) {
+                            continue;
+                        }
                     }
                 } else if (d.message().has_response_address()) {
-                    if (!_match_subnet(d.message().response_address(), d.message().socket_family() == ::dnstap::INET6)) {
-                        return;
+                    if (!_match_subnet(d.message().response_address())) {
+                        continue;
                     }
                 } else {
-                    return;
+                    continue;
                 }
             }
             // Emit signal to handlers
@@ -189,11 +189,16 @@ void DnstapInputStream::_create_frame_stream_tcp_socket()
             }
             if (_filter_host) {
                 if (d.message().has_query_address()) {
-                    if (!_match_subnet(d.message().query_address(), d.message().socket_family() == ::dnstap::INET6)) {
+                    if (!_match_subnet(d.message().query_address())) {
                         return;
                     }
+                    if (d.message().has_response_address()) {
+                        if (!_match_subnet(d.message().response_address())) {
+                            return;
+                        }
+                    }
                 } else if (d.message().has_response_address()) {
-                    if (!_match_subnet(d.message().response_address(), d.message().socket_family() == ::dnstap::INET6)) {
+                    if (!_match_subnet(d.message().response_address())) {
                         return;
                     }
                 } else {
@@ -306,11 +311,16 @@ void DnstapInputStream::_create_frame_stream_unix_socket()
             }
             if (_filter_host) {
                 if (d.message().has_query_address()) {
-                    if (!_match_subnet(d.message().query_address(), d.message().socket_family() == ::dnstap::INET6)) {
+                    if (!_match_subnet(d.message().query_address())) {
                         return;
                     }
+                    if (d.message().has_response_address()) {
+                        if (!_match_subnet(d.message().response_address())) {
+                            return;
+                        }
+                    }
                 } else if (d.message().has_response_address()) {
-                    if (!_match_subnet(d.message().response_address(), d.message().socket_family() == ::dnstap::INET6)) {
+                    if (!_match_subnet(d.message().response_address())) {
                         return;
                     }
                 } else {
@@ -407,37 +417,39 @@ void DnstapInputStream::_parse_host_specs(const std::vector<std::string> &host_l
     }
 }
 
-bool DnstapInputStream::_match_subnet(const std::string &dnstap_ip, bool ipv6)
+bool DnstapInputStream::_match_subnet(const std::string &dnstap_ip)
 {
-    if (ipv6) {
+    if (dnstap_ip.size() == 16) {
         in6_addr ipv6;
-        inet_pton(AF_INET6, dnstap_ip.c_str(), &ipv6);
-        for (const auto &ip : _IPv6_host_list) {
-            uint8_t prefixLength = ip.second;
+        std::memcpy(&ipv6, dnstap_ip.c_str(), sizeof(in6_addr));
+        for (const auto &net : _IPv6_host_list) {
+            uint8_t prefixLength = net.second;
+            auto network = net.first;
             uint8_t compareByteCount = prefixLength / 8;
             uint8_t compareBitCount = prefixLength % 8;
             bool result = false;
-            if(compareByteCount > 0)
-            {
-                result = memcmp(&ip.first.s6_addr, &ipv6.s6_addr, compareByteCount) == 0;
+            if (compareByteCount > 0) {
+                result = std::memcmp(&network.s6_addr, &ipv6.s6_addr, compareByteCount) == 0;
             }
-            if((result || prefixLength < 8) && compareBitCount > 0)
-            {
-                uint8_t subSubnetByte = ip.first.s6_addr[compareByteCount] >> (8 - compareBitCount);
-                uint8_t subThisByte =  ipv6.s6_addr[compareByteCount]  >> (8 - compareBitCount);
+            if ((result || prefixLength < 8) && compareBitCount > 0) {
+                uint8_t subSubnetByte = network.s6_addr[compareByteCount] >> (8 - compareBitCount);
+                uint8_t subThisByte = ipv6.s6_addr[compareByteCount] >> (8 - compareBitCount);
                 result = subSubnetByte == subThisByte;
             }
-
             if (result) {
                 return true;
             }
         }
-    } else {
+    } else if (dnstap_ip.size() == 4) {
         in_addr ipv4;
-        inet_pton(AF_INET, dnstap_ip.c_str(), &ipv4);
-        for (const auto &ip : _IPv4_host_list) {
-            auto cidr = ip.second;
-            if (cidr == 0 || (!((ipv4.s_addr ^ ip.first.s_addr) & htonl(0xFFFFFFFFu << (32 - cidr))))) {
+        std::memcpy(&ipv4, dnstap_ip.c_str(), sizeof(in_addr));
+        for (const auto &net : _IPv4_host_list) {
+            uint8_t cidr = net.second;
+            if (cidr == 0) {
+                return true;
+            }
+            uint32_t mask = htonl((0xFFFFFFFFu) << (32 - cidr));
+            if (!((ipv4.s_addr ^ net.first.s_addr) & mask)) {
                 return true;
             }
         }

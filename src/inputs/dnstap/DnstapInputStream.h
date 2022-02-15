@@ -45,7 +45,7 @@ class DnstapInputStream : public visor::InputStream
     void _create_frame_stream_tcp_socket();
 
     void _parse_host_specs(const std::vector<std::string> &host_list);
-    bool _match_subnet(const std::string &dnstap_ip, bool ipv6);
+    bool _match_subnet(const std::string &dnstap_ip);
 public:
     DnstapInputStream(const std::string &name);
     ~DnstapInputStream() = default;

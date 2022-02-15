@@ -11,7 +11,7 @@ TEST_CASE("Parse DNSTAP", "[dnstap][dns]")
 {
     DnstapInputStream stream{"dnstap-test"};
     stream.config_set("dnstap_file", "inputs/dnstap/tests/fixtures/fixture.dnstap");
-
+    stream.config_set<visor::Configurable::StringList>("only_hosts", {"192.168.0.0/24", "2001:db8::/48"});
     visor::Config c;
     c.config_set<uint64_t>("num_periods", 1);
     DnsStreamHandler dns_handler{"dns-test", &stream, &c};
