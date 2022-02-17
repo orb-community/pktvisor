@@ -36,10 +36,10 @@ TEST_CASE("Parse DNSTAP", "[dnstap][dns]")
     CHECK(counters.xacts_in.value() == 0);
     CHECK(counters.xacts_out.value() == 0);
     CHECK(counters.xacts_timed_out.value() == 0);
-    CHECK(counters.NOERROR.value() == 0);
+    CHECK(counters.NOERROR.value() == 70);
     CHECK(counters.NX.value() == 0);
     CHECK(counters.REFUSED.value() == 0);
-    CHECK(counters.SRVFAIL.value() == 0);
+    CHECK(counters.SRVFAIL.value() == 4);
     CHECK(counters.filtered.value() == 0);
 
     nlohmann::json j;
@@ -128,11 +128,11 @@ TEST_CASE("Parse filtered DNSTAP with data", "[dnstap][dns][filter]")
     CHECK(counters.xacts_in.value() == 0);
     CHECK(counters.xacts_out.value() == 0);
     CHECK(counters.xacts_timed_out.value() == 0);
-    CHECK(counters.NOERROR.value() == 0);
+    CHECK(counters.NOERROR.value() == 70);
     CHECK(counters.NX.value() == 0);
     CHECK(counters.REFUSED.value() == 0);
-    CHECK(counters.SRVFAIL.value() == 0);
-    CHECK(counters.filtered.value() == 0);
+    CHECK(counters.SRVFAIL.value() == 4);
+    CHECK(counters.filtered.value() == 153);
 
     nlohmann::json j;
     dns_handler.metrics()->bucket(0)->to_json(j);
