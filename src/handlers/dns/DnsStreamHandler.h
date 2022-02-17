@@ -37,6 +37,15 @@ enum DnsMetrics : uint32_t {
 };
 }
 
+enum Protocol : uint64_t {
+    DNSTAP_UDP = 0x01,
+    DNSTAP_TCP = 0x02,
+    DNSTAP_DOT = 0x03,
+    DNSTAP_DOH = 0x04,
+    PCAP_TCP = 0x08,
+    PCAP_UDP = 0x10
+};
+
 class DnsMetricsBucket final : public visor::AbstractMetricsBucket
 {
 protected:
@@ -150,7 +159,8 @@ public:
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override;
 
     void process_filtered();
-    void process_dns_layer(bool deep, DnsLayer &payload, bool dnstapped, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint16_t port);
+    void process_dns_layer(bool deep, DnsLayer &payload, pcpp::ProtocolType l3, Protocol l4, uint16_t port);
+    void process_dns_layer(pcpp::ProtocolType l3, Protocol l4, QR side, uint16_t port);
     void process_dnstap(bool deep, const dnstap::Dnstap &payload);
 
     void new_dns_transaction(bool deep, float to90th, float from90th, DnsLayer &dns, PacketDirection dir, DnsTransaction xact);
@@ -281,7 +291,7 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
     std::vector<std::string> _f_qnames;
     std::bitset<DNSTAP_TYPE_SIZE> _f_dnstap_types;
 
-    const std::map<std::string, group::DnsMetrics> _group_metrics = {
+    static const inline std::map<std::string, group::DnsMetrics> _group_metrics = {
         {"cardinality", group::DnsMetrics::Cardinality},
         {"counters", group::DnsMetrics::Counters},
         {"dns_transaction", group::DnsMetrics::DnsTransactions},

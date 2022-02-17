@@ -184,6 +184,7 @@ public:
                 _end_tstamp.tv_sec = other._end_tstamp.tv_sec;
             }
             _rate_events.merge(other._rate_events);
+            _groups = other._groups;
         }
         specialized_merge(other);
     }
