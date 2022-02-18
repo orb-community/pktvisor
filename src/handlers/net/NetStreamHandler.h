@@ -22,6 +22,15 @@ using namespace visor::input::mock;
 using namespace visor::input::sflow;
 using namespace visor::handler::dns;
 
+namespace group {
+enum NetMetrics: uint64_t {
+    Counters,
+    Cardinality,
+    TopGeo,
+    TopIps
+};
+}
+
 class NetworkMetricsBucket final : public visor::AbstractMetricsBucket
 {
 
@@ -138,6 +147,13 @@ class NetStreamHandler final : public visor::StreamMetricsHandler<NetworkMetrics
     sigslot::connection _end_tstamp_connection;
 
     sigslot::connection _pkt_udp_connection;
+
+    static const inline std::map<std::string, group::NetMetrics> _group_metrics = {
+        {"cardinality", group::NetMetrics::Cardinality},
+        {"counters", group::NetMetrics::Counters},
+        {"top_geo", group::NetMetrics::TopGeo},
+        {"top_ips", group::NetMetrics::TopIps}
+    };
 
     void process_sflow_cb(const SFSample &);
     void process_dnstap_cb(const dnstap::Dnstap &);
