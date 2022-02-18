@@ -6,12 +6,16 @@
 #include "DnstapException.h"
 #include "FrameSession.h"
 #include <filesystem>
+#include <uvw/async.h>
+#include <uvw/loop.h>
+#include <uvw/pipe.h>
+#include <uvw/stream.h>
+#include <uvw/tcp.h>
 
 namespace visor::input::dnstap {
 
 DnstapInputStream::DnstapInputStream(const std::string &name)
     : visor::InputStream(name)
-    , _filter_host(false)
 {
     GOOGLE_PROTOBUF_VERIFY_VERSION;
     _logger = spdlog::get("visor");
@@ -56,15 +60,14 @@ void DnstapInputStream::_read_frame_stream_file()
                 _logger->warn("dnstap data is wrong type or has no message, skipping frame of size {}", len_data);
                 continue;
             }
-            if (_filter_host) {
-                if (d.message().has_query_address()) {
-                    if (!_match_subnet(d.message().query_address())) {
+            if (_f_enabled[Filters::OnlyHosts]) {
+                if (d.message().has_query_address() && d.message().has_response_address()) {
+                    if (!_match_subnet(d.message().query_address()) || !_match_subnet(d.message().response_address())) {
                         continue;
                     }
-                    if (d.message().has_response_address()) {
-                        if (!_match_subnet(d.message().response_address())) {
-                            continue;
-                        }
+                } else if (d.message().has_query_address()) {
+                    if (!_match_subnet(d.message().query_address())) {
+                        continue;
                     }
                 } else if (d.message().has_response_address()) {
                     if (!_match_subnet(d.message().response_address())) {
@@ -98,7 +101,7 @@ void DnstapInputStream::start()
 
     if (config_exists("only_hosts")) {
         _parse_host_specs(config_get<StringList>("only_hosts"));
-        _filter_host = true;
+        _f_enabled.set(Filters::OnlyHosts);
     }
 
     if (config_exists("dnstap_file")) {
@@ -187,15 +190,14 @@ void DnstapInputStream::_create_frame_stream_tcp_socket()
                 _logger->warn("dnstap data is wrong type or has no message, skipping frame of size {}", len_data);
                 return;
             }
-            if (_filter_host) {
-                if (d.message().has_query_address()) {
-                    if (!_match_subnet(d.message().query_address())) {
+            if (_f_enabled[Filters::OnlyHosts]) {
+                if (d.message().has_query_address() && d.message().has_response_address()) {
+                    if (!_match_subnet(d.message().query_address()) || !_match_subnet(d.message().response_address())) {
                         return;
                     }
-                    if (d.message().has_response_address()) {
-                        if (!_match_subnet(d.message().response_address())) {
-                            return;
-                        }
+                } else if (d.message().has_query_address()) {
+                    if (!_match_subnet(d.message().query_address())) {
+                        return;
                     }
                 } else if (d.message().has_response_address()) {
                     if (!_match_subnet(d.message().response_address())) {
@@ -309,15 +311,14 @@ void DnstapInputStream::_create_frame_stream_unix_socket()
                 _logger->warn("dnstap data is wrong type or has no message, skipping frame of size {}", len_data);
                 return;
             }
-            if (_filter_host) {
-                if (d.message().has_query_address()) {
-                    if (!_match_subnet(d.message().query_address())) {
+            if (_f_enabled[Filters::OnlyHosts]) {
+                if (d.message().has_query_address() && d.message().has_response_address()) {
+                    if (!_match_subnet(d.message().query_address()) || !_match_subnet(d.message().response_address())) {
                         return;
                     }
-                    if (d.message().has_response_address()) {
-                        if (!_match_subnet(d.message().response_address())) {
-                            return;
-                        }
+                } else if (d.message().has_query_address()) {
+                    if (!_match_subnet(d.message().query_address())) {
+                        return;
                     }
                 } else if (d.message().has_response_address()) {
                     if (!_match_subnet(d.message().response_address())) {
@@ -419,7 +420,7 @@ void DnstapInputStream::_parse_host_specs(const std::vector<std::string> &host_l
 
 bool DnstapInputStream::_match_subnet(const std::string &dnstap_ip)
 {
-    if (dnstap_ip.size() == 16) {
+    if (dnstap_ip.size() == 16 && _IPv6_host_list.size() > 0) {
         in6_addr ipv6;
         std::memcpy(&ipv6, dnstap_ip.c_str(), sizeof(in6_addr));
         for (const auto &net : _IPv6_host_list) {
@@ -440,7 +441,7 @@ bool DnstapInputStream::_match_subnet(const std::string &dnstap_ip)
                 return true;
             }
         }
-    } else if (dnstap_ip.size() == 4) {
+    } else if (dnstap_ip.size() == 4 && _IPv4_host_list.size() > 0) {
         in_addr ipv4;
         std::memcpy(&ipv4, dnstap_ip.c_str(), sizeof(in_addr));
         for (const auto &net : _IPv4_host_list) {
@@ -478,5 +479,4 @@ void DnstapInputStream::info_json(json &j) const
 {
     common_info_json(j);
 }
-
 }

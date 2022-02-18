@@ -11,7 +11,14 @@
 #include <sigslot/signal.hpp>
 #include <spdlog/spdlog.h>
 #include <unordered_map>
-#include <uvw.hpp>
+#include <uv.h>
+
+namespace uvw {
+class Loop;
+class AsyncHandle;
+class PipeHandle;
+class TCPHandle;
+}
 
 struct fstrm_reader;
 
@@ -38,7 +45,12 @@ class DnstapInputStream : public visor::InputStream
 
     std::vector<Ipv4Subnet> _IPv4_host_list;
     std::vector<Ipv6Subnet> _IPv6_host_list;
-    bool _filter_host;
+
+    enum Filters {
+        OnlyHosts,
+        FiltersMAX
+    };
+    std::bitset<Filters::FiltersMAX> _f_enabled;
 
     void _read_frame_stream_file();
     void _create_frame_stream_unix_socket();
