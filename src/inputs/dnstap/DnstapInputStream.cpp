@@ -62,19 +62,15 @@ void DnstapInputStream::_read_frame_stream_file()
             }
             if (_f_enabled[Filters::OnlyHosts]) {
                 if (d.message().has_query_address() && d.message().has_response_address()) {
-                    if (!_match_subnet(d.message().query_address()) || !_match_subnet(d.message().response_address())) {
-                        continue;
+                    if (!_match_subnet(d.message().query_address()) && !_match_subnet(d.message().response_address())) {
+                        return;
                     }
-                } else if (d.message().has_query_address()) {
-                    if (!_match_subnet(d.message().query_address())) {
-                        continue;
-                    }
-                } else if (d.message().has_response_address()) {
-                    if (!_match_subnet(d.message().response_address())) {
-                        continue;
-                    }
+                } else if (d.message().has_query_address() && !_match_subnet(d.message().query_address())) {
+                    return;
+                } else if (d.message().has_response_address() && !_match_subnet(d.message().response_address())) {
+                    return;
                 } else {
-                    continue;
+                    return;
                 }
             }
             // Emit signal to handlers
@@ -192,17 +188,13 @@ void DnstapInputStream::_create_frame_stream_tcp_socket()
             }
             if (_f_enabled[Filters::OnlyHosts]) {
                 if (d.message().has_query_address() && d.message().has_response_address()) {
-                    if (!_match_subnet(d.message().query_address()) || !_match_subnet(d.message().response_address())) {
+                    if (!_match_subnet(d.message().query_address()) && !_match_subnet(d.message().response_address())) {
                         return;
                     }
-                } else if (d.message().has_query_address()) {
-                    if (!_match_subnet(d.message().query_address())) {
-                        return;
-                    }
-                } else if (d.message().has_response_address()) {
-                    if (!_match_subnet(d.message().response_address())) {
-                        return;
-                    }
+                } else if (d.message().has_query_address() && !_match_subnet(d.message().query_address())) {
+                    return;
+                } else if (d.message().has_response_address() && !_match_subnet(d.message().response_address())) {
+                    return;
                 } else {
                     return;
                 }
@@ -313,17 +305,13 @@ void DnstapInputStream::_create_frame_stream_unix_socket()
             }
             if (_f_enabled[Filters::OnlyHosts]) {
                 if (d.message().has_query_address() && d.message().has_response_address()) {
-                    if (!_match_subnet(d.message().query_address()) || !_match_subnet(d.message().response_address())) {
+                    if (!_match_subnet(d.message().query_address()) && !_match_subnet(d.message().response_address())) {
                         return;
                     }
-                } else if (d.message().has_query_address()) {
-                    if (!_match_subnet(d.message().query_address())) {
+                } else if (d.message().has_query_address() && !_match_subnet(d.message().query_address())) {
                         return;
-                    }
-                } else if (d.message().has_response_address()) {
-                    if (!_match_subnet(d.message().response_address())) {
+                } else if (d.message().has_response_address() && !_match_subnet(d.message().response_address())) {
                         return;
-                    }
                 } else {
                     return;
                 }
