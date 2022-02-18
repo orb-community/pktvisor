@@ -28,7 +28,7 @@ using namespace visor::input::mock;
 
 // DNS Groups
 namespace group {
-enum DnsMetrics : uint32_t {
+enum DnsMetrics : visor::MetricGroupIntType {
     Cardinality,
     Counters,
     DnsTransactions,
@@ -291,13 +291,12 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
     std::vector<std::string> _f_qnames;
     std::bitset<DNSTAP_TYPE_SIZE> _f_dnstap_types;
 
-    static const inline std::map<std::string, group::DnsMetrics> _group_metrics = {
+    static const inline StreamMetricsHandler::GroupDefType _group_defs = {
         {"cardinality", group::DnsMetrics::Cardinality},
         {"counters", group::DnsMetrics::Counters},
         {"dns_transaction", group::DnsMetrics::DnsTransactions},
         {"top_dns_wire", group::DnsMetrics::TopDnsWire},
         {"top_qnames", group::DnsMetrics::TopQnames}};
-
 
     bool _filtering(DnsLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint16_t port, timespec stamp);
     void _process_dns_groups();

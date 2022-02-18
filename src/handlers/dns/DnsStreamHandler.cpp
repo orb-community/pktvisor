@@ -337,19 +337,7 @@ void DnsStreamHandler::_process_dns_groups()
     _groups.set(group::DnsMetrics::DnsTransactions);
     _groups.set(group::DnsMetrics::TopQnames);
 
-    if (config_exists("enable")) {
-        for (const auto &group : config_get<StringList>("enable")) {
-            _groups.set(_group_metrics.at(group));
-        }
-    }
-
-    if (config_exists("disable")) {
-        for (const auto &group : config_get<StringList>("disable")) {
-            _groups.reset(_group_metrics.at(group));
-        }
-    }
-
-    _metrics->configure_groups(&_groups);
+    process_groups(_group_defs);
 }
 
 void DnsMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)

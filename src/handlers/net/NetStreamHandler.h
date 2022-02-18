@@ -23,7 +23,7 @@ using namespace visor::input::sflow;
 using namespace visor::handler::dns;
 
 namespace group {
-enum NetMetrics: uint64_t {
+enum NetMetrics : visor::MetricGroupIntType {
     Counters,
     Cardinality,
     TopGeo,
@@ -148,12 +148,11 @@ class NetStreamHandler final : public visor::StreamMetricsHandler<NetworkMetrics
 
     sigslot::connection _pkt_udp_connection;
 
-    static const inline std::map<std::string, group::NetMetrics> _group_metrics = {
+    static const inline StreamMetricsHandler::GroupDefType _group_defs = {
         {"cardinality", group::NetMetrics::Cardinality},
         {"counters", group::NetMetrics::Counters},
         {"top_geo", group::NetMetrics::TopGeo},
-        {"top_ips", group::NetMetrics::TopIps}
-    };
+        {"top_ips", group::NetMetrics::TopIps}};
 
     void process_sflow_cb(const SFSample &);
     void process_dnstap_cb(const dnstap::Dnstap &);
