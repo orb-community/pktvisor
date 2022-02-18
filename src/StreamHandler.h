@@ -38,13 +38,35 @@ public:
     virtual void window_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) = 0;
 };
 
+typedef uint32_t MetricGroupIntType;
+
 template <class MetricsManagerClass>
 class StreamMetricsHandler : public StreamHandler
 {
+public:
+    typedef std::map<std::string, MetricGroupIntType> GroupDefType;
 
 protected:
     std::unique_ptr<MetricsManagerClass> _metrics;
     std::bitset<GROUP_SIZE> _groups;
+
+    void process_groups(const GroupDefType &group_defs)
+    {
+
+        if (config_exists("enable")) {
+            for (const auto &group : config_get<StringList>("enable")) {
+                _groups.set(group_defs.at(group));
+            }
+        }
+
+        if (config_exists("disable")) {
+            for (const auto &group : config_get<StringList>("disable")) {
+                _groups.reset(group_defs.at(group));
+            }
+        }
+
+        _metrics->configure_groups(&_groups);
+    }
 
     void common_info_json(json &j) const
     {
