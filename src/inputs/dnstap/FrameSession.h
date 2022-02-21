@@ -6,7 +6,10 @@
 
 #include "DnstapException.h"
 #include <arpa/inet.h>
+#include <cstring>
 #include <fstrm/fstrm.h>
+#include <functional>
+#include <memory>
 
 namespace visor::input::dnstap {
 
@@ -138,7 +141,7 @@ bool FrameSessionData<C>::_decode_control_frame(const void *control_frame, size_
         if (res != fstrm_res_success) {
             throw DnstapException("unable to parse content type");
         }
-        if (len_content_type != _content_type.size() || memcmp(content_type, _content_type.data(), len_content_type) != 0) {
+        if (len_content_type != _content_type.size() || std::memcmp(content_type, _content_type.data(), len_content_type) != 0) {
             throw DnstapException("content type mismatch");
         }
     }

@@ -4,8 +4,8 @@
 
 #pragma once
 
-#include "InputStream.h"
 #include "FrameSession.h"
+#include "InputStream.h"
 #include "dnstap.pb.h"
 #include <DnsLayer.h>
 #include <sigslot/signal.hpp>
@@ -56,9 +56,32 @@ class DnstapInputStream : public visor::InputStream
     void _create_frame_stream_unix_socket();
     void _create_frame_stream_tcp_socket();
 
-    bool _filtering(const ::dnstap::Dnstap &d);
     void _parse_host_specs(const std::vector<std::string> &host_list);
     bool _match_subnet(const std::string &dnstap_ip);
+
+    inline bool _filtering(const ::dnstap::Dnstap &d)
+    {
+        if (_f_enabled[Filters::OnlyHosts]) {
+            if (d.message().has_query_address() && d.message().has_response_address()) {
+                if (!_match_subnet(d.message().query_address()) && !_match_subnet(d.message().response_address())) {
+                    // message had both query and response address, and neither matched, so filter
+                    return true;
+                }
+            } else if (d.message().has_query_address() && !_match_subnet(d.message().query_address())) {
+                // message had only query address and it didn't match, so filter
+                return true;
+            } else if (d.message().has_response_address() && !_match_subnet(d.message().response_address())) {
+                // message had only response address and it didn't match, so filter
+                return true;
+            } else {
+                // message had neither query nor response address, so filter
+                return true;
+            }
+        }
+
+        return false;
+    }
+
 public:
     DnstapInputStream(const std::string &name);
     ~DnstapInputStream() = default;
