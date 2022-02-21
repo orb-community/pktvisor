@@ -39,8 +39,6 @@ public:
     virtual void window_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) = 0;
 };
 
-typedef uint32_t MetricGroupIntType;
-
 template <class MetricsManagerClass>
 class StreamMetricsHandler : public StreamHandler
 {
