@@ -78,8 +78,8 @@ TEST_CASE("Parse filtered DNSTAP empty data", "[dnstap][dns][filter]")
     auto counters = dns_handler.metrics()->bucket(0)->counters();
     auto event_data = dns_handler.metrics()->bucket(0)->event_data_locked();
 
-    CHECK(event_data.num_events->value() == 0);
-    CHECK(event_data.num_samples->value() == 0);
+    CHECK(event_data.num_events->value() == 153);
+    CHECK(event_data.num_samples->value() == 153);
     CHECK(counters.TCP.value() == 0);
     CHECK(counters.UDP.value() == 0);
     CHECK(counters.IPv4.value() == 0);
@@ -94,6 +94,7 @@ TEST_CASE("Parse filtered DNSTAP empty data", "[dnstap][dns][filter]")
     CHECK(counters.NX.value() == 0);
     CHECK(counters.REFUSED.value() == 0);
     CHECK(counters.SRVFAIL.value() == 0);
+    CHECK(counters.filtered.value() == 153);
 }
 
 TEST_CASE("Parse filtered DNSTAP with data", "[dnstap][dns][filter]")
@@ -131,7 +132,7 @@ TEST_CASE("Parse filtered DNSTAP with data", "[dnstap][dns][filter]")
     CHECK(counters.NX.value() == 0);
     CHECK(counters.REFUSED.value() == 0);
     CHECK(counters.SRVFAIL.value() == 0);
-    CHECK(counters.filtered.value() == 153);
+    CHECK(counters.filtered.value() == 0);
 
     nlohmann::json j;
     dns_handler.metrics()->bucket(0)->to_json(j);
@@ -148,4 +149,17 @@ TEST_CASE("Parse filtered DNSTAP with data", "[dnstap][dns][filter]")
     CHECK(j["top_qtype"][0]["estimate"] == 149);
     CHECK(j["top_qtype"][1]["name"] == "HTTPS");
     CHECK(j["top_qtype"][1]["estimate"] == 4);
+}
+
+TEST_CASE("Invalid DNSTAP filter", "[dnstap][dns][filter]")
+{
+    DnstapInputStream stream{"dnstap-test"};
+    stream.config_set("dnstap_file", "inputs/dnstap/tests/fixtures/fixture.dnstap");
+
+    visor::Config c;
+    c.config_set<uint64_t>("num_periods", 1);
+    DnsStreamHandler dns_handler{"dns-test", &stream, &c};
+
+    dns_handler.config_set<std::string>("dnstap_msg_type", "sender");
+    REQUIRE_THROWS_WITH(dns_handler.start(), "dnstap_msg_type contained an invalid/unsupported type. Valid types: auth, client, forwarder, resolver, stub, tool, update");
 }

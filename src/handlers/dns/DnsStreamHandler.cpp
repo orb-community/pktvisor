@@ -81,7 +81,11 @@ void DnsStreamHandler::start()
             _f_dnstap_types.set(type_pair.second);
             _f_enabled.set(Filters::DnstapMsgType);
         } catch (const std::exception &e) {
-            throw ConfigException(fmt::format("dnstap_msg_type error {}", e.what()));
+            std::vector<std::string> valid_types;
+            for (const auto &type : _dnstap_map_types) {
+                valid_types.push_back(type.first);
+            }
+            throw ConfigException(fmt::format("dnstap_msg_type contained an invalid/unsupported type. Valid types: {}", fmt::join(valid_types, ", ")));
         }
     }
 
@@ -126,10 +130,8 @@ void DnsStreamHandler::stop()
 // callback from input module
 void DnsStreamHandler::process_dnstap_cb(const dnstap::Dnstap &d)
 {
-    if (_f_enabled[Filters::DnstapMsgType]) {
-        if (_f_dnstap_types[d.message().type()]) {
-            _metrics->process_dnstap(d, true);
-        }
+    if (_f_enabled[Filters::DnstapMsgType] && !_f_dnstap_types[d.message().type()]) {
+        _metrics->process_dnstap(d, true);
     } else {
         _metrics->process_dnstap(d, false);
     }
@@ -757,12 +759,13 @@ void DnsMetricsManager::process_dnstap(const dnstap::Dnstap &payload, bool filte
         // use now()
         std::timespec_get(&stamp, TIME_UTC);
     }
+
+    if (filtered) {
+        return process_filtered(stamp);
+    }
     // base event
     new_event(stamp);
     // process in the "live" bucket. this will parse the resources if we are deep sampling
-    if (filtered) {
-        live_bucket()->process_filtered();
-    }
     live_bucket()->process_dnstap(_deep_sampling_now, payload);
 }
 }
