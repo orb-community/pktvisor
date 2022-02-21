@@ -63,13 +63,17 @@ void DnstapInputStream::_read_frame_stream_file()
             if (_f_enabled[Filters::OnlyHosts]) {
                 if (d.message().has_query_address() && d.message().has_response_address()) {
                     if (!_match_subnet(d.message().query_address()) && !_match_subnet(d.message().response_address())) {
+                        // message had both query and response address, and neither matched, so filter
                         continue;
                     }
                 } else if (d.message().has_query_address() && !_match_subnet(d.message().query_address())) {
+                    // message had only query address and it didn't match, so filter
                     continue;
                 } else if (d.message().has_response_address() && !_match_subnet(d.message().response_address())) {
+                    // message had only response address and it didn't match, so filter
                     continue;
                 } else {
+                    // message had neither query nor response address, so filter
                     continue;
                 }
             }
@@ -189,13 +193,17 @@ void DnstapInputStream::_create_frame_stream_tcp_socket()
             if (_f_enabled[Filters::OnlyHosts]) {
                 if (d.message().has_query_address() && d.message().has_response_address()) {
                     if (!_match_subnet(d.message().query_address()) && !_match_subnet(d.message().response_address())) {
+                        // message had both query and response address, and neither matched, so filter
                         return;
                     }
                 } else if (d.message().has_query_address() && !_match_subnet(d.message().query_address())) {
+                    // message had only query address and it didn't match, so filter
                     return;
                 } else if (d.message().has_response_address() && !_match_subnet(d.message().response_address())) {
+                    // message had only response address and it didn't match, so filter
                     return;
                 } else {
+                    // message had neither query nor response address, so filter
                     return;
                 }
             }
@@ -306,13 +314,17 @@ void DnstapInputStream::_create_frame_stream_unix_socket()
             if (_f_enabled[Filters::OnlyHosts]) {
                 if (d.message().has_query_address() && d.message().has_response_address()) {
                     if (!_match_subnet(d.message().query_address()) && !_match_subnet(d.message().response_address())) {
+                        // message had both query and response address, and neither matched, so filter
                         return;
                     }
                 } else if (d.message().has_query_address() && !_match_subnet(d.message().query_address())) {
-                        return;
+                    // message had only query address and it didn't match, so filter
+                    return;
                 } else if (d.message().has_response_address() && !_match_subnet(d.message().response_address())) {
-                        return;
+                    // message had only response address and it didn't match, so filter
+                    return;
                 } else {
+                    // message had neither query nor response address, so filter
                     return;
                 }
             }
