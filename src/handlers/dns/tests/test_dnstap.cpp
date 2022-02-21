@@ -132,7 +132,7 @@ TEST_CASE("Parse filtered DNSTAP with data", "[dnstap][dns][filter]")
     CHECK(counters.NX.value() == 0);
     CHECK(counters.REFUSED.value() == 0);
     CHECK(counters.SRVFAIL.value() == 4);
-    CHECK(counters.filtered.value() == 153);
+    CHECK(counters.filtered.value() == 0);
 
     nlohmann::json j;
     dns_handler.metrics()->bucket(0)->to_json(j);

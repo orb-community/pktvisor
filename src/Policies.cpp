@@ -233,17 +233,17 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
                 }
             }
             Config handler_metrics;
-            if (module["metrics"]) {
-                if (!module["metrics"].IsMap()) {
+            if (module["metric_groups"]) {
+                if (!module["metric_groups"].IsMap()) {
                     throw PolicyException("stream handler metrics is not a map");
                 }
 
-                if (!module["metrics"]["enable"] && module["metrics"]["disable"]) {
+                if (!module["metric_groups"]["enable"] && module["metric_groups"]["disable"]) {
                     throw PolicyException("stream handler metrics should contain enable and/or disable tags");
                 }
 
                 try {
-                    handler_config.config_set_yaml(module["metrics"]);
+                    handler_config.config_set_yaml(module["metric_groups"]);
                 } catch (ConfigException &e) {
                     throw PolicyException(fmt::format("invalid stream handler metrics for handler '{}': {}", handler_module_name, e.what()));
                 }

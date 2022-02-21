@@ -6,6 +6,7 @@
 
 #include "AbstractMetricsManager.h"
 #include "AbstractModule.h"
+#include <fmt/ostream.h>
 #include <nlohmann/json.hpp>
 #include <sstream>
 
@@ -38,13 +39,25 @@ public:
     virtual void window_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) = 0;
 };
 
-typedef uint32_t MetricGroupIntType;
-
 template <class MetricsManagerClass>
 class StreamMetricsHandler : public StreamHandler
 {
 public:
     typedef std::map<std::string, MetricGroupIntType> GroupDefType;
+
+private:
+    MetricGroupIntType _process_group(const GroupDefType &group_defs, const std::string &group)
+    {
+        auto it = group_defs.find(group);
+        if (it == group_defs.end()) {
+            std::vector<std::string> valid_groups;
+            for (const auto &defs : group_defs) {
+                valid_groups.push_back(defs.first);
+            }
+            throw StreamHandlerException(fmt::format("{} is an invalid/unsupported metric group. The valid groups are {}", group, fmt::join(valid_groups, ", ")));
+        }
+        return it->second;
+    }
 
 protected:
     std::unique_ptr<MetricsManagerClass> _metrics;
@@ -55,13 +68,13 @@ protected:
 
         if (config_exists("enable")) {
             for (const auto &group : config_get<StringList>("enable")) {
-                _groups.set(group_defs.at(group));
+                _groups.set(_process_group(group_defs, group));
             }
         }
 
         if (config_exists("disable")) {
             for (const auto &group : config_get<StringList>("disable")) {
-                _groups.reset(group_defs.at(group));
+                _groups.reset(_process_group(group_defs, group));
             }
         }
 

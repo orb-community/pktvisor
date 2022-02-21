@@ -143,7 +143,7 @@ void NetworkMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
     std::shared_lock r_lock(other._mutex);
     std::unique_lock w_lock(_mutex);
 
-    if ((*_groups)[group::NetMetrics::Counters]) {
+    if (group_enabled(group::NetMetrics::Counters)) {
         _counters.UDP += other._counters.UDP;
         _counters.TCP += other._counters.TCP;
         _counters.OtherL4 += other._counters.OtherL4;
@@ -153,16 +153,16 @@ void NetworkMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
         _counters.total_out += other._counters.total_out;
     }
 
-    if ((*_groups)[group::NetMetrics::Cardinality]) {
+    if (group_enabled(group::NetMetrics::Cardinality)) {
         _srcIPCard.merge(other._srcIPCard);
         _dstIPCard.merge(other._dstIPCard);
     }
 
-    if ((*_groups)[group::NetMetrics::TopIps]) {
+    if (group_enabled(group::NetMetrics::TopIps)) {
         _topIPv4.merge(other._topIPv4);
         _topIPv6.merge(other._topIPv6);
     }
-    if ((*_groups)[group::NetMetrics::TopGeo]) {
+    if (group_enabled(group::NetMetrics::TopGeo)) {
         _topGeoLoc.merge(other._topGeoLoc);
         _topASN.merge(other._topASN);
     }
@@ -184,7 +184,7 @@ void NetworkMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMa
 
     std::shared_lock r_lock(_mutex);
 
-    if ((*_groups)[group::NetMetrics::Counters]) {
+    if (group_enabled(group::NetMetrics::Counters)) {
         _counters.UDP.to_prometheus(out, add_labels);
         _counters.TCP.to_prometheus(out, add_labels);
         _counters.OtherL4.to_prometheus(out, add_labels);
@@ -194,17 +194,17 @@ void NetworkMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMa
         _counters.total_out.to_prometheus(out, add_labels);
     }
 
-    if ((*_groups)[group::NetMetrics::Cardinality]) {
+    if (group_enabled(group::NetMetrics::Cardinality)) {
         _srcIPCard.to_prometheus(out, add_labels);
         _dstIPCard.to_prometheus(out, add_labels);
     }
 
-    if ((*_groups)[group::NetMetrics::TopIps]) {
+    if (group_enabled(group::NetMetrics::TopIps)) {
         _topIPv4.to_prometheus(out, add_labels, [](const uint32_t &val) { return pcpp::IPv4Address(val).toString(); });
         _topIPv6.to_prometheus(out, add_labels);
     }
 
-    if ((*_groups)[group::NetMetrics::TopGeo]) {
+    if (group_enabled(group::NetMetrics::TopGeo)) {
         _topGeoLoc.to_prometheus(out, add_labels);
         _topASN.to_prometheus(out, add_labels);
     }
@@ -228,7 +228,7 @@ void NetworkMetricsBucket::to_json(json &j) const
 
     std::shared_lock r_lock(_mutex);
 
-    if ((*_groups)[group::NetMetrics::Counters]) {
+    if (group_enabled(group::NetMetrics::Counters)) {
         _counters.UDP.to_json(j);
         _counters.TCP.to_json(j);
         _counters.OtherL4.to_json(j);
@@ -238,17 +238,17 @@ void NetworkMetricsBucket::to_json(json &j) const
         _counters.total_out.to_json(j);
     }
 
-    if ((*_groups)[group::NetMetrics::Cardinality]) {
+    if (group_enabled(group::NetMetrics::Cardinality)) {
         _srcIPCard.to_json(j);
         _dstIPCard.to_json(j);
     }
 
-    if ((*_groups)[group::NetMetrics::TopIps]) {
+    if (group_enabled(group::NetMetrics::TopIps)) {
         _topIPv4.to_json(j, [](const uint32_t &val) { return pcpp::IPv4Address(val).toString(); });
         _topIPv6.to_json(j);
     }
 
-    if ((*_groups)[group::NetMetrics::TopGeo]) {
+    if (group_enabled(group::NetMetrics::TopGeo)) {
         _topGeoLoc.to_json(j);
         _topASN.to_json(j);
     }
@@ -429,7 +429,7 @@ void NetworkMetricsBucket::process_net_layer(PacketDirection dir, pcpp::Protocol
         break;
     }
 
-    if ((*_groups)[group::NetMetrics::Counters]) {
+    if (group_enabled(group::NetMetrics::Counters)) {
         switch (dir) {
         case PacketDirection::fromHost:
             ++_counters.total_out;
@@ -481,7 +481,7 @@ void NetworkMetricsBucket::process_net_layer(PacketDirection dir, pcpp::Protocol
         break;
     }
 
-    if ((*_groups)[group::NetMetrics::Counters]) {
+    if (group_enabled(group::NetMetrics::Counters)) {
         switch (dir) {
         case PacketDirection::fromHost:
             ++_counters.total_out;
@@ -521,9 +521,9 @@ void NetworkMetricsBucket::process_net_layer(PacketDirection dir, pcpp::Protocol
     struct sockaddr_in6 sa6;
 
     if (!is_ipv6 && ipv4_in.isValid()) {
-        (*_groups)[group::NetMetrics::Cardinality] ? _srcIPCard.update(ipv4_in.toInt()) : void();
-        (*_groups)[group::NetMetrics::TopIps] ? _topIPv4.update(ipv4_in.toInt()) : void();
-        if (geo::enabled() && (*_groups)[group::NetMetrics::TopGeo]) {
+        group_enabled(group::NetMetrics::Cardinality) ? _srcIPCard.update(ipv4_in.toInt()) : void();
+        group_enabled(group::NetMetrics::TopIps) ? _topIPv4.update(ipv4_in.toInt()) : void();
+        if (geo::enabled() && group_enabled(group::NetMetrics::TopGeo)) {
             if (IPv4tosockaddr(ipv4_in, &sa4)) {
                 if (geo::GeoIP().enabled()) {
                     _topGeoLoc.update(geo::GeoIP().getGeoLocString(reinterpret_cast<struct sockaddr *>(&sa4)));
@@ -534,9 +534,9 @@ void NetworkMetricsBucket::process_net_layer(PacketDirection dir, pcpp::Protocol
             }
         }
     } else if (is_ipv6 && ipv6_in.isValid()) {
-        (*_groups)[group::NetMetrics::Cardinality] ? _srcIPCard.update(reinterpret_cast<const void *>(ipv6_in.toBytes()), 16) : void();
-        (*_groups)[group::NetMetrics::TopIps] ? _topIPv6.update(ipv6_in.toString()) : void();
-        if (geo::enabled() && (*_groups)[group::NetMetrics::TopGeo]) {
+        group_enabled(group::NetMetrics::Cardinality) ? _srcIPCard.update(reinterpret_cast<const void *>(ipv6_in.toBytes()), 16) : void();
+        group_enabled(group::NetMetrics::TopIps) ? _topIPv6.update(ipv6_in.toString()) : void();
+        if (geo::enabled() && group_enabled(group::NetMetrics::TopGeo)) {
             if (IPv6tosockaddr(ipv6_in, &sa6)) {
                 if (geo::GeoIP().enabled()) {
                     _topGeoLoc.update(geo::GeoIP().getGeoLocString(reinterpret_cast<struct sockaddr *>(&sa6)));
@@ -549,9 +549,9 @@ void NetworkMetricsBucket::process_net_layer(PacketDirection dir, pcpp::Protocol
     }
 
     if (!is_ipv6 && ipv4_out.isValid()) {
-        (*_groups)[group::NetMetrics::Cardinality] ? _dstIPCard.update(ipv4_out.toInt()) : void();
-        (*_groups)[group::NetMetrics::TopIps] ? _topIPv4.update(ipv4_out.toInt()) : void();
-        if (geo::enabled() && (*_groups)[group::NetMetrics::TopGeo]) {
+        group_enabled(group::NetMetrics::Cardinality) ? _dstIPCard.update(ipv4_out.toInt()) : void();
+        group_enabled(group::NetMetrics::TopIps) ? _topIPv4.update(ipv4_out.toInt()) : void();
+        if (geo::enabled() && group_enabled(group::NetMetrics::TopGeo)) {
             if (IPv4tosockaddr(ipv4_out, &sa4)) {
                 if (geo::GeoIP().enabled()) {
                     _topGeoLoc.update(geo::GeoIP().getGeoLocString(reinterpret_cast<struct sockaddr *>(&sa4)));
@@ -562,9 +562,9 @@ void NetworkMetricsBucket::process_net_layer(PacketDirection dir, pcpp::Protocol
             }
         }
     } else if (is_ipv6 && ipv6_out.isValid()) {
-        (*_groups)[group::NetMetrics::Cardinality] ? _dstIPCard.update(reinterpret_cast<const void *>(ipv6_out.toBytes()), 16) : void();
-        (*_groups)[group::NetMetrics::TopIps] ? _topIPv6.update(ipv6_out.toString()) : void();
-        if (geo::enabled() && (*_groups)[group::NetMetrics::TopGeo]) {
+        group_enabled(group::NetMetrics::Cardinality) ? _dstIPCard.update(reinterpret_cast<const void *>(ipv6_out.toBytes()), 16) : void();
+        group_enabled(group::NetMetrics::TopIps) ? _topIPv6.update(ipv6_out.toString()) : void();
+        if (geo::enabled() && group_enabled(group::NetMetrics::TopGeo)) {
             if (IPv6tosockaddr(ipv6_out, &sa6)) {
                 if (geo::GeoIP().enabled()) {
                     _topGeoLoc.update(geo::GeoIP().getGeoLocString(reinterpret_cast<struct sockaddr *>(&sa6)));

@@ -4,8 +4,8 @@
 
 #pragma once
 
-#include <chrono>
 #include <atomic>
+#include <chrono>
 #include <deque>
 #include <exception>
 #include <nlohmann/json.hpp>
@@ -23,6 +23,7 @@
 namespace visor {
 
 constexpr size_t GROUP_SIZE = 64;
+typedef uint32_t MetricGroupIntType;
 
 using json = nlohmann::json;
 
@@ -200,8 +201,15 @@ public:
         }
     }
 
-    void configure_groups(const std::bitset<GROUP_SIZE> *groups) {
+    void configure_groups(const std::bitset<GROUP_SIZE> *groups)
+    {
+        std::unique_lock lock(_base_mutex);
         _groups = groups;
+    }
+
+    inline bool group_enabled(MetricGroupIntType g) const
+    {
+        return (*_groups)[g];
     }
 
     virtual void to_json(json &j) const = 0;
@@ -240,6 +248,7 @@ protected:
     bool _recorded_stream = false;
 
     const std::bitset<GROUP_SIZE> *_groups;
+
 private:
     /**
      * window maintenance
@@ -314,6 +323,11 @@ protected:
         _metric_buckets[0]->new_event(_deep_sampling_now);
     }
 
+    inline bool group_enabled(MetricGroupIntType g) const
+    {
+        return (*_groups)[g];
+    }
+
     /**
      * call back when the time window period shift
      *
@@ -351,7 +365,6 @@ public:
         _next_shift_tstamp.tv_sec += AbstractMetricsManager::PERIOD_SEC;
 
         _metric_buckets.emplace_front(std::make_unique<MetricsBucketClass>());
-
     }
 
     virtual ~AbstractMetricsManager() = default;
@@ -417,7 +430,8 @@ public:
         return _metric_buckets.at(period).get();
     }
 
-    void configure_groups(const std::bitset<GROUP_SIZE> *groups) {
+    void configure_groups(const std::bitset<GROUP_SIZE> *groups)
+    {
         std::unique_lock wl(_base_mutex);
         std::shared_lock rl(_bucket_mutex);
         _groups = groups;

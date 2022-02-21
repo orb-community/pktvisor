@@ -38,12 +38,12 @@ enum DnsMetrics : visor::MetricGroupIntType {
 }
 
 enum Protocol : uint64_t {
-    DNSTAP_UDP = 0x01,
-    DNSTAP_TCP = 0x02,
-    DNSTAP_DOT = 0x03,
-    DNSTAP_DOH = 0x04,
-    PCAP_TCP = 0x08,
-    PCAP_UDP = 0x10
+    DNSTAP_UDP = dnstap::SocketProtocol::UDP,
+    DNSTAP_TCP = dnstap::SocketProtocol::TCP,
+    DNSTAP_DOT = dnstap::SocketProtocol::DOT,
+    DNSTAP_DOH = dnstap::SocketProtocol::DOH,
+    PCPP_TCP = pcpp::TCP,
+    PCPP_UDP = pcpp::UDP
 };
 
 class DnsMetricsBucket final : public visor::AbstractMetricsBucket
