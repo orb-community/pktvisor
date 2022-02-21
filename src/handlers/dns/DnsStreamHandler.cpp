@@ -527,8 +527,6 @@ void DnsMetricsBucket::process_dnstap(bool deep, const dnstap::Dnstap &payload)
         DnsLayer dpayload(buf, query.size(), nullptr, nullptr);
         lock.unlock();
         process_dns_layer(deep, dpayload, l3, l4, port);
-    } else {
-        process_dns_layer(l3, l4, side, port);
     }
 }
 void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, pcpp::ProtocolType l3, Protocol l4, uint16_t port)
