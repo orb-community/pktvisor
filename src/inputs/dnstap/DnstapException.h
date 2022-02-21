@@ -3,6 +3,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 #pragma once
+#include <stdexcept>
+#include <string>
 
 namespace visor::input::dnstap {
 
@@ -10,6 +12,11 @@ class DnstapException : public std::runtime_error
 {
 public:
     DnstapException(const char *msg)
+        : std::runtime_error(msg)
+    {
+    }
+
+    DnstapException(std::string msg)
         : std::runtime_error(msg)
     {
     }

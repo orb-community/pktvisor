@@ -60,8 +60,11 @@ void DnstapInputStream::_read_frame_stream_file()
                 _logger->warn("dnstap data is wrong type or has no message, skipping frame of size {}", len_data);
                 continue;
             }
+
             // Emit signal to handlers
-            dnstap_signal(d);
+            if (!_filtering(d)) {
+                dnstap_signal(d);
+            }
         } else if (result == fstrm_res_stop) {
             // Normal end of data stream
             break;
@@ -80,6 +83,11 @@ void DnstapInputStream::start()
 
     if (_running) {
         return;
+    }
+
+    if (config_exists("only_hosts")) {
+        _parse_host_specs(config_get<StringList>("only_hosts"));
+        _f_enabled.set(Filters::OnlyHosts);
     }
 
     if (config_exists("dnstap_file")) {
@@ -168,8 +176,11 @@ void DnstapInputStream::_create_frame_stream_tcp_socket()
                 _logger->warn("dnstap data is wrong type or has no message, skipping frame of size {}", len_data);
                 return;
             }
+
             // Emit signal to handlers
-            dnstap_signal(d);
+            if (!_filtering(d)) {
+                dnstap_signal(d);
+            }
         };
 
         client->on<uvw::ErrorEvent>([this](const uvw::ErrorEvent &err, uvw::TCPHandle &c_sock) {
@@ -272,7 +283,9 @@ void DnstapInputStream::_create_frame_stream_unix_socket()
                 return;
             }
             // Emit signal to handlers
-            dnstap_signal(d);
+            if (!_filtering(d)) {
+                dnstap_signal(d);
+            }
         };
 
         client->on<uvw::ErrorEvent>([this](const uvw::ErrorEvent &err, uvw::PipeHandle &c_sock) {
@@ -323,6 +336,85 @@ void DnstapInputStream::_create_frame_stream_unix_socket()
     });
 }
 
+void DnstapInputStream::_parse_host_specs(const std::vector<std::string> &host_list)
+{
+    for (const auto &host : host_list) {
+        auto delimiter = host.find('/');
+        if (delimiter == host.npos) {
+            throw DnstapException(fmt::format("invalid CIDR: {}", host));
+        }
+        auto ip = host.substr(0, delimiter);
+        auto cidr = host.substr(++delimiter);
+        auto not_number = std::count_if(cidr.begin(), cidr.end(),
+            [](unsigned char c) { return !std::isdigit(c); });
+        if (not_number) {
+            throw DnstapException(fmt::format("invalid CIDR: {}", host));
+        }
+
+        auto cidr_number = std::stoi(cidr);
+        if (ip.find(':') != ip.npos) {
+            if (cidr_number < 0 || cidr_number > 128) {
+                throw DnstapException(fmt::format("invalid CIDR: {}", host));
+            }
+            in6_addr ipv6;
+            if (inet_pton(AF_INET6, ip.c_str(), &ipv6) != 1) {
+                throw DnstapException(fmt::format("invalid IPv6 address: {}", ip));
+            }
+            _IPv6_host_list.emplace_back(ipv6, cidr_number);
+        } else {
+            if (cidr_number < 0 || cidr_number > 32) {
+                throw DnstapException(fmt::format("invalid CIDR: {}", host));
+            }
+            in_addr ipv4;
+            if (inet_pton(AF_INET, ip.c_str(), &ipv4) != 1) {
+                throw DnstapException(fmt::format("invalid IPv4 address: {}", ip));
+            }
+            _IPv4_host_list.emplace_back(ipv4, cidr_number);
+        }
+    }
+}
+
+bool DnstapInputStream::_match_subnet(const std::string &dnstap_ip)
+{
+    if (dnstap_ip.size() == 16 && _IPv6_host_list.size() > 0) {
+        in6_addr ipv6;
+        std::memcpy(&ipv6, dnstap_ip.c_str(), sizeof(in6_addr));
+        for (const auto &net : _IPv6_host_list) {
+            uint8_t prefixLength = net.second;
+            auto network = net.first;
+            uint8_t compareByteCount = prefixLength / 8;
+            uint8_t compareBitCount = prefixLength % 8;
+            bool result = false;
+            if (compareByteCount > 0) {
+                result = std::memcmp(&network.s6_addr, &ipv6.s6_addr, compareByteCount) == 0;
+            }
+            if ((result || prefixLength < 8) && compareBitCount > 0) {
+                uint8_t subSubnetByte = network.s6_addr[compareByteCount] >> (8 - compareBitCount);
+                uint8_t subThisByte = ipv6.s6_addr[compareByteCount] >> (8 - compareBitCount);
+                result = subSubnetByte == subThisByte;
+            }
+            if (result) {
+                return true;
+            }
+        }
+    } else if (dnstap_ip.size() == 4 && _IPv4_host_list.size() > 0) {
+        in_addr ipv4;
+        std::memcpy(&ipv4, dnstap_ip.c_str(), sizeof(in_addr));
+        for (const auto &net : _IPv4_host_list) {
+            uint8_t cidr = net.second;
+            if (cidr == 0) {
+                return true;
+            }
+            uint32_t mask = htonl((0xFFFFFFFFu) << (32 - cidr));
+            if (!((ipv4.s_addr ^ net.first.s_addr) & mask)) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
 void DnstapInputStream::stop()
 {
     if (!_running) {
@@ -343,5 +435,4 @@ void DnstapInputStream::info_json(json &j) const
 {
     common_info_json(j);
 }
-
 }
