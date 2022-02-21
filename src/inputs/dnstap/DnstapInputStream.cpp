@@ -60,25 +60,11 @@ void DnstapInputStream::_read_frame_stream_file()
                 _logger->warn("dnstap data is wrong type or has no message, skipping frame of size {}", len_data);
                 continue;
             }
-            if (_f_enabled[Filters::OnlyHosts]) {
-                if (d.message().has_query_address() && d.message().has_response_address()) {
-                    if (!_match_subnet(d.message().query_address()) && !_match_subnet(d.message().response_address())) {
-                        // message had both query and response address, and neither matched, so filter
-                        continue;
-                    }
-                } else if (d.message().has_query_address() && !_match_subnet(d.message().query_address())) {
-                    // message had only query address and it didn't match, so filter
-                    continue;
-                } else if (d.message().has_response_address() && !_match_subnet(d.message().response_address())) {
-                    // message had only response address and it didn't match, so filter
-                    continue;
-                } else {
-                    // message had neither query nor response address, so filter
-                    continue;
-                }
-            }
+
             // Emit signal to handlers
-            dnstap_signal(d);
+            if (!_filtering(d)) {
+                dnstap_signal(d);
+            }
         } else if (result == fstrm_res_stop) {
             // Normal end of data stream
             break;
@@ -190,26 +176,11 @@ void DnstapInputStream::_create_frame_stream_tcp_socket()
                 _logger->warn("dnstap data is wrong type or has no message, skipping frame of size {}", len_data);
                 return;
             }
-            if (_f_enabled[Filters::OnlyHosts]) {
-                if (d.message().has_query_address() && d.message().has_response_address()) {
-                    if (!_match_subnet(d.message().query_address()) && !_match_subnet(d.message().response_address())) {
-                        // message had both query and response address, and neither matched, so filter
-                        return;
-                    }
-                } else if (d.message().has_query_address() && !_match_subnet(d.message().query_address())) {
-                    // message had only query address and it didn't match, so filter
-                    return;
-                } else if (d.message().has_response_address() && !_match_subnet(d.message().response_address())) {
-                    // message had only response address and it didn't match, so filter
-                    return;
-                } else {
-                    // message had neither query nor response address, so filter
-                    return;
-                }
-            }
 
             // Emit signal to handlers
-            dnstap_signal(d);
+            if (!_filtering(d)) {
+                dnstap_signal(d);
+            }
         };
 
         client->on<uvw::ErrorEvent>([this](const uvw::ErrorEvent &err, uvw::TCPHandle &c_sock) {
@@ -311,25 +282,10 @@ void DnstapInputStream::_create_frame_stream_unix_socket()
                 _logger->warn("dnstap data is wrong type or has no message, skipping frame of size {}", len_data);
                 return;
             }
-            if (_f_enabled[Filters::OnlyHosts]) {
-                if (d.message().has_query_address() && d.message().has_response_address()) {
-                    if (!_match_subnet(d.message().query_address()) && !_match_subnet(d.message().response_address())) {
-                        // message had both query and response address, and neither matched, so filter
-                        return;
-                    }
-                } else if (d.message().has_query_address() && !_match_subnet(d.message().query_address())) {
-                    // message had only query address and it didn't match, so filter
-                    return;
-                } else if (d.message().has_response_address() && !_match_subnet(d.message().response_address())) {
-                    // message had only response address and it didn't match, so filter
-                    return;
-                } else {
-                    // message had neither query nor response address, so filter
-                    return;
-                }
-            }
             // Emit signal to handlers
-            dnstap_signal(d);
+            if (!_filtering(d)) {
+                dnstap_signal(d);
+            }
         };
 
         client->on<uvw::ErrorEvent>([this](const uvw::ErrorEvent &err, uvw::PipeHandle &c_sock) {
@@ -378,6 +334,29 @@ void DnstapInputStream::_create_frame_stream_unix_socket()
     _io_thread = std::make_unique<std::thread>([this] {
         _io_loop->run();
     });
+}
+
+bool DnstapInputStream::_filtering(const ::dnstap::Dnstap &d)
+{
+    if (_f_enabled[Filters::OnlyHosts]) {
+        if (d.message().has_query_address() && d.message().has_response_address()) {
+            if (!_match_subnet(d.message().query_address()) && !_match_subnet(d.message().response_address())) {
+                // message had both query and response address, and neither matched, so filter
+                return true;
+            }
+        } else if (d.message().has_query_address() && !_match_subnet(d.message().query_address())) {
+            // message had only query address and it didn't match, so filter
+            return true;
+        } else if (d.message().has_response_address() && !_match_subnet(d.message().response_address())) {
+            // message had only response address and it didn't match, so filter
+            return true;
+        } else {
+            // message had neither query nor response address, so filter
+            return true;
+        }
+    }
+
+    return false;
 }
 
 void DnstapInputStream::_parse_host_specs(const std::vector<std::string> &host_list)

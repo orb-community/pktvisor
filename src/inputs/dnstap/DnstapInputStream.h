@@ -56,6 +56,7 @@ class DnstapInputStream : public visor::InputStream
     void _create_frame_stream_unix_socket();
     void _create_frame_stream_tcp_socket();
 
+    bool _filtering(const ::dnstap::Dnstap &d);
     void _parse_host_specs(const std::vector<std::string> &host_list);
     bool _match_subnet(const std::string &dnstap_ip);
 public:
