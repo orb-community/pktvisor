@@ -119,6 +119,42 @@ TEST_CASE("dnstap unix socket", "[dnstap][unix]")
     stream.stop();
 }
 
+TEST_CASE("dnstap file filter by valid subnet", "[dnstap][file][filter]")
+{
+    DnstapInputStream stream{"dnstap-test"};
+    stream.config_set("dnstap_file", "inputs/dnstap/tests/fixtures/fixture.dnstap");
+    stream.config_set<visor::Configurable::StringList>("only_hosts", {"192.168.0.0/24"});
+    uint64_t count_callbacks = 0;
+
+    stream.dnstap_signal.connect([&](const ::dnstap::Dnstap &d) {
+        ++count_callbacks;
+        return;
+    });
+
+    stream.start();
+    stream.stop();
+
+    CHECK(count_callbacks == 153);
+}
+
+TEST_CASE("dnstap file filter by invalid subnet", "[dnstap][file][filter]")
+{
+    DnstapInputStream stream{"dnstap-test"};
+    stream.config_set("dnstap_file", "inputs/dnstap/tests/fixtures/fixture.dnstap");
+    stream.config_set<visor::Configurable::StringList>("only_hosts", {"192.168.0.12/32"});
+    uint64_t count_callbacks = 0;
+
+    stream.dnstap_signal.connect([&](const ::dnstap::Dnstap &d) {
+        ++count_callbacks;
+        return;
+    });
+
+    stream.start();
+    stream.stop();
+
+    CHECK(count_callbacks == 0);
+}
+
 TEST_CASE("dnstap invalid filters", "[dnstap][tcp][filter]")
 {
     DnstapInputStream stream{"dnstap-test"};
