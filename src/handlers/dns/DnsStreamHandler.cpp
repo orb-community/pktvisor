@@ -43,7 +43,12 @@ void DnsStreamHandler::start()
         return;
     }
 
-    _process_dns_groups();
+    // default enabled groups
+    _groups.set(group::DnsMetrics::Cardinality);
+    _groups.set(group::DnsMetrics::Counters);
+    _groups.set(group::DnsMetrics::DnsTransactions);
+    _groups.set(group::DnsMetrics::TopQnames);
+    process_groups(_group_defs);
 
     // Setup Filters
     if (config_exists("exclude_noerror") && config_get<bool>("exclude_noerror")) {
@@ -328,18 +333,6 @@ will_not_filter:
 will_filter:
     _metrics->process_filtered(stamp);
     return true;
-}
-
-void DnsStreamHandler::_process_dns_groups()
-{
-    // default enabled groups
-    _groups.set(group::DnsMetrics::Counters);
-    _groups.set(group::DnsMetrics::Cardinality);
-    _groups.set(group::DnsMetrics::TopDnsWire);
-    _groups.set(group::DnsMetrics::DnsTransactions);
-    _groups.set(group::DnsMetrics::TopQnames);
-
-    process_groups(_group_defs);
 }
 
 void DnsMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)

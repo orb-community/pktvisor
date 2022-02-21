@@ -32,7 +32,6 @@ enum DnsMetrics : visor::MetricGroupIntType {
     Cardinality,
     Counters,
     DnsTransactions,
-    TopDnsWire,
     TopQnames
 };
 }
@@ -275,8 +274,7 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
         {"forwarder", {dnstap::Message_Type_FORWARDER_QUERY, dnstap::Message_Type_FORWARDER_RESPONSE}},
         {"stub", {dnstap::Message_Type_STUB_QUERY, dnstap::Message_Type_STUB_RESPONSE}},
         {"tool", {dnstap::Message_Type_TOOL_QUERY, dnstap::Message_Type_TOOL_RESPONSE}},
-        {"update", {dnstap::Message_Type_UPDATE_QUERY, dnstap::Message_Type_UPDATE_RESPONSE}}
-    };
+        {"update", {dnstap::Message_Type_UPDATE_QUERY, dnstap::Message_Type_UPDATE_RESPONSE}}};
 
     // DNS Filters
     enum Filters {
@@ -295,11 +293,9 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
         {"cardinality", group::DnsMetrics::Cardinality},
         {"counters", group::DnsMetrics::Counters},
         {"dns_transaction", group::DnsMetrics::DnsTransactions},
-        {"top_dns_wire", group::DnsMetrics::TopDnsWire},
         {"top_qnames", group::DnsMetrics::TopQnames}};
 
     bool _filtering(DnsLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint16_t port, timespec stamp);
-    void _process_dns_groups();
 
 public:
     DnsStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config, StreamHandler *handler = nullptr);
