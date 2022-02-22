@@ -53,6 +53,9 @@ visor:
 #              max_deep_sample: 75
           special_domain:
             type: dns
+            metric_groups:
+              disable:
+                - "top_qnames"
             filter:
               only_qname_suffix:
                 - ".google.com"
@@ -290,6 +293,65 @@ visor:
              config: not_a_map
 )";
 
+auto policies_config_bad10 = R"(
+version: "1.0"
+
+visor:
+  taps:
+    anycast:
+      input_type: mock
+      config:
+        iface: eth0
+  policies:
+    default_view:
+      kind: collection
+      input:
+        tap: anycast
+        input_type: mock
+      handlers:
+        window_config:
+          num_periods: 5
+          deep_sample_rate: 100
+        modules:
+          default_net:
+             type: net
+          default_dns:
+             type: dns
+             metric_groups:
+               - top_qnames
+               - counters
+)";
+
+auto policies_config_bad11 = R"(
+version: "1.0"
+
+visor:
+  taps:
+    anycast:
+      input_type: mock
+      config:
+        iface: eth0
+  policies:
+    default_view:
+      kind: collection
+      input:
+        tap: anycast
+        input_type: mock
+      handlers:
+        window_config:
+          num_periods: 5
+          deep_sample_rate: 100
+        modules:
+          default_net:
+             type: net
+          default_dns:
+             type: dns
+             metric_groups:
+               allow:
+                 - top_qnames
+                 - counters
+)";
+
 auto policies_config_hseq_bad1 = R"(
 version: "1.0"
 
@@ -506,6 +568,26 @@ TEST_CASE("Policies", "[policies]")
 
         REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
         REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["policies"]), "stream handler configuration is not a map");
+    }
+
+    SECTION("Bad Config: handler module not map metric groups")
+    {
+        CoreRegistry registry;
+        registry.start(nullptr);
+        YAML::Node config_file = YAML::Load(policies_config_bad10);
+
+        REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
+        REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["policies"]), "stream handler metric groups is not a map");
+    }
+
+    SECTION("Bad Config: handler module metric groups not valid")
+    {
+        CoreRegistry registry;
+        registry.start(nullptr);
+        YAML::Node config_file = YAML::Load(policies_config_bad11);
+
+        REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
+        REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["policies"]), "stream handler metric groups should contain enable and/or disable tags");
     }
 
     SECTION("Bad Config: invalid handler modules order")
