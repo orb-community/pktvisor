@@ -222,13 +222,6 @@ All interfaces and schemas are versioned.
       "metrics": [
         "..."
       ]
-    },
-    "top_qnames_by_rcode": {
-      "title": "Top N QNames (Failing RCodes) ",
-      "description": "Top QNames across failing result codes",
-      "metrics": [
-        "..."
-      ]
     }
   }
 }

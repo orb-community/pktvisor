@@ -53,7 +53,7 @@ visor:
             type: net
             filter:
               protocols: [ udp ]
-            metrics:
+            metric_groups:
               enable:
                 - top_ips
           default_dns:
@@ -72,7 +72,7 @@ visor:
             filter:
               # must match the available configuration options for this version of this stream handler
               qname_suffix: .mydomain.com
-            metrics:
+            metric_groups:
               disable:
                 - top_qtypes
                 - top_udp_ports
