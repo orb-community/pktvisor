@@ -22,6 +22,15 @@ using namespace visor::input::mock;
 using namespace visor::input::sflow;
 using namespace visor::handler::dns;
 
+namespace group {
+enum NetMetrics : visor::MetricGroupIntType {
+    Counters,
+    Cardinality,
+    TopGeo,
+    TopIps
+};
+}
+
 class NetworkMetricsBucket final : public visor::AbstractMetricsBucket
 {
 
@@ -100,6 +109,8 @@ public:
     void process_packet(bool deep, pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4);
     void process_dnstap(bool deep, const dnstap::Dnstap &payload);
     void process_sflow(bool deep, const SFSample &payload);
+    void process_net_layer(PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4);
+    void process_net_layer(PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, bool is_ipv6, pcpp::IPv4Address &ipv4_in, pcpp::IPv4Address &ipv4_out, pcpp::IPv6Address &ipv6_in, pcpp::IPv6Address &ipv6_out);
 };
 
 class NetworkMetricsManager final : public visor::AbstractMetricsManager<NetworkMetricsBucket>
@@ -136,6 +147,12 @@ class NetStreamHandler final : public visor::StreamMetricsHandler<NetworkMetrics
     sigslot::connection _end_tstamp_connection;
 
     sigslot::connection _pkt_udp_connection;
+
+    static const inline StreamMetricsHandler::GroupDefType _group_defs = {
+        {"cardinality", group::NetMetrics::Cardinality},
+        {"counters", group::NetMetrics::Counters},
+        {"top_geo", group::NetMetrics::TopGeo},
+        {"top_ips", group::NetMetrics::TopIps}};
 
     void process_sflow_cb(const SFSample &);
     void process_dnstap_cb(const dnstap::Dnstap &);

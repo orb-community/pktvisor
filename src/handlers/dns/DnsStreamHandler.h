@@ -26,6 +26,25 @@ using namespace visor::input::pcap;
 using namespace visor::input::dnstap;
 using namespace visor::input::mock;
 
+// DNS Groups
+namespace group {
+enum DnsMetrics : visor::MetricGroupIntType {
+    Cardinality,
+    Counters,
+    DnsTransactions,
+    TopQnames
+};
+}
+
+enum Protocol : uint64_t {
+    DNSTAP_UDP = dnstap::SocketProtocol::UDP,
+    DNSTAP_TCP = dnstap::SocketProtocol::TCP,
+    DNSTAP_DOT = dnstap::SocketProtocol::DOT,
+    DNSTAP_DOH = dnstap::SocketProtocol::DOH,
+    PCPP_TCP = pcpp::TCP,
+    PCPP_UDP = pcpp::UDP
+};
+
 class DnsMetricsBucket final : public visor::AbstractMetricsBucket
 {
 protected:
@@ -139,7 +158,8 @@ public:
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override;
 
     void process_filtered();
-    void process_dns_layer(bool deep, DnsLayer &payload, bool dnstapped, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint16_t port);
+    void process_dns_layer(bool deep, DnsLayer &payload, pcpp::ProtocolType l3, Protocol l4, uint16_t port);
+    void process_dns_layer(pcpp::ProtocolType l3, Protocol l4, QR side, uint16_t port);
     void process_dnstap(bool deep, const dnstap::Dnstap &payload);
 
     void new_dns_transaction(bool deep, float to90th, float from90th, DnsLayer &dns, PacketDirection dir, DnsTransaction xact);
@@ -147,7 +167,6 @@ public:
 
 class DnsMetricsManager final : public visor::AbstractMetricsManager<DnsMetricsBucket>
 {
-
     QueryResponsePairMgr _qr_pair_manager;
     float _to90th{0.0};
     float _from90th{0.0};
@@ -255,8 +274,7 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
         {"forwarder", {dnstap::Message_Type_FORWARDER_QUERY, dnstap::Message_Type_FORWARDER_RESPONSE}},
         {"stub", {dnstap::Message_Type_STUB_QUERY, dnstap::Message_Type_STUB_RESPONSE}},
         {"tool", {dnstap::Message_Type_TOOL_QUERY, dnstap::Message_Type_TOOL_RESPONSE}},
-        {"update", {dnstap::Message_Type_UPDATE_QUERY, dnstap::Message_Type_UPDATE_RESPONSE}}
-    };
+        {"update", {dnstap::Message_Type_UPDATE_QUERY, dnstap::Message_Type_UPDATE_RESPONSE}}};
 
     // DNS Filters
     enum Filters {
@@ -270,6 +288,12 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
     uint16_t _f_rcode{0};
     std::vector<std::string> _f_qnames;
     std::bitset<DNSTAP_TYPE_SIZE> _f_dnstap_types;
+
+    static const inline StreamMetricsHandler::GroupDefType _group_defs = {
+        {"cardinality", group::DnsMetrics::Cardinality},
+        {"counters", group::DnsMetrics::Counters},
+        {"dns_transaction", group::DnsMetrics::DnsTransactions},
+        {"top_qnames", group::DnsMetrics::TopQnames}};
 
     bool _filtering(DnsLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint16_t port, timespec stamp);
 
