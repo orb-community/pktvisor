@@ -343,38 +343,48 @@ void DnsMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
     std::shared_lock r_lock(other._mutex);
     std::unique_lock w_lock(_mutex);
 
-    _counters.xacts_total += other._counters.xacts_total;
-    _counters.xacts_in += other._counters.xacts_in;
-    _counters.xacts_out += other._counters.xacts_out;
-    _counters.xacts_timed_out += other._counters.xacts_timed_out;
-    _counters.queries += other._counters.queries;
-    _counters.replies += other._counters.replies;
-    _counters.UDP += other._counters.UDP;
-    _counters.TCP += other._counters.TCP;
-    _counters.IPv4 += other._counters.IPv4;
-    _counters.IPv6 += other._counters.IPv6;
-    _counters.NX += other._counters.NX;
-    _counters.REFUSED += other._counters.REFUSED;
-    _counters.SRVFAIL += other._counters.SRVFAIL;
-    _counters.NOERROR += other._counters.NOERROR;
+    if (group_enabled(group::DnsMetrics::Counters)) {
+        _counters.queries += other._counters.queries;
+        _counters.replies += other._counters.replies;
+        _counters.UDP += other._counters.UDP;
+        _counters.TCP += other._counters.TCP;
+        _counters.IPv4 += other._counters.IPv4;
+        _counters.IPv6 += other._counters.IPv6;
+        _counters.NX += other._counters.NX;
+        _counters.REFUSED += other._counters.REFUSED;
+        _counters.SRVFAIL += other._counters.SRVFAIL;
+        _counters.NOERROR += other._counters.NOERROR;
+    }
 
     _counters.filtered += other._counters.filtered;
 
-    _dnsXactFromTimeUs.merge(other._dnsXactFromTimeUs);
-    _dnsXactToTimeUs.merge(other._dnsXactToTimeUs);
+    if (group_enabled(group::DnsMetrics::DnsTransactions)) {
+        _counters.xacts_total += other._counters.xacts_total;
+        _counters.xacts_in += other._counters.xacts_in;
+        _counters.xacts_out += other._counters.xacts_out;
+        _counters.xacts_timed_out += other._counters.xacts_timed_out;
 
-    _dns_qnameCard.merge(other._dns_qnameCard);
+        _dnsXactFromTimeUs.merge(other._dnsXactFromTimeUs);
+        _dnsXactToTimeUs.merge(other._dnsXactToTimeUs);
+        _dns_slowXactIn.merge(other._dns_slowXactIn);
+        _dns_slowXactOut.merge(other._dns_slowXactOut);
+    }
 
-    _dns_topQname2.merge(other._dns_topQname2);
-    _dns_topQname3.merge(other._dns_topQname3);
-    _dns_topNX.merge(other._dns_topNX);
-    _dns_topREFUSED.merge(other._dns_topREFUSED);
-    _dns_topSRVFAIL.merge(other._dns_topSRVFAIL);
+    if (group_enabled(group::DnsMetrics::Cardinality)) {
+        _dns_qnameCard.merge(other._dns_qnameCard);
+    }
+
+    if (group_enabled(group::DnsMetrics::TopQnames)) {
+        _dns_topQname2.merge(other._dns_topQname2);
+        _dns_topQname3.merge(other._dns_topQname3);
+        _dns_topNX.merge(other._dns_topNX);
+        _dns_topREFUSED.merge(other._dns_topREFUSED);
+        _dns_topSRVFAIL.merge(other._dns_topSRVFAIL);
+    }
+
     _dns_topUDPPort.merge(other._dns_topUDPPort);
     _dns_topQType.merge(other._dns_topQType);
     _dns_topRCode.merge(other._dns_topRCode);
-    _dns_slowXactIn.merge(other._dns_slowXactIn);
-    _dns_slowXactOut.merge(other._dns_slowXactOut);
 }
 
 void DnsMetricsBucket::to_json(json &j) const
@@ -433,14 +443,14 @@ void DnsMetricsBucket::to_json(json &j) const
         _dns_topNX.to_json(j);
         _dns_topREFUSED.to_json(j);
         _dns_topSRVFAIL.to_json(j);
-        _dns_topRCode.to_json(j, [](const uint16_t &val) {
-            if (RCodeNames.find(val) != RCodeNames.end()) {
-                return RCodeNames[val];
-            } else {
-                return std::to_string(val);
-            }
-        });
     }
+    _dns_topRCode.to_json(j, [](const uint16_t &val) {
+        if (RCodeNames.find(val) != RCodeNames.end()) {
+            return RCodeNames[val];
+        } else {
+            return std::to_string(val);
+        }
+    });
     _dns_topQType.to_json(j, [](const uint16_t &val) {
         if (QTypeNames.find(val) != QTypeNames.end()) {
             return QTypeNames[val];
@@ -754,14 +764,15 @@ void DnsMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap ad
         _dns_topNX.to_prometheus(out, add_labels);
         _dns_topREFUSED.to_prometheus(out, add_labels);
         _dns_topSRVFAIL.to_prometheus(out, add_labels);
-        _dns_topRCode.to_prometheus(out, add_labels, [](const uint16_t &val) {
-            if (RCodeNames.find(val) != RCodeNames.end()) {
-                return RCodeNames[val];
-            } else {
-                return std::to_string(val);
-            }
-        });
     }
+    _dns_topRCode.to_prometheus(out, add_labels, [](const uint16_t &val) {
+        if (RCodeNames.find(val) != RCodeNames.end()) {
+            return RCodeNames[val];
+        } else {
+            return std::to_string(val);
+        }
+    });
+
     _dns_topQType.to_prometheus(out, add_labels, [](const uint16_t &val) {
         if (QTypeNames.find(val) != QTypeNames.end()) {
             return QTypeNames[val];
