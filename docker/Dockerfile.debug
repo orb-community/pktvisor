@@ -1,4 +1,4 @@
-FROM debian:bookworm-slim AS cppbuild
+FROM debian:bullseye-slim AS cppbuild
 
 ENV BUILD_DEPS "g++ cmake make git pkgconf jq python3-pip python3-setuptools ca-certificates libasan6"
 
@@ -36,7 +36,7 @@ WORKDIR /src/
 COPY --from=cppbuild /pktvisor-src/golang/pkg/client/version.go /src/pkg/client/version.go
 RUN go build -o pktvisor-cli cmd/pktvisor-cli/main.go
 
-FROM debian:bookworm-slim AS runtime
+FROM debian:bullseye-slim AS runtime
 
 ENV RUNTIME_DEPS "curl ca-certificates libasan6"
 
