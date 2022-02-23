@@ -28,24 +28,38 @@
 
 namespace datasketches {
 
-template <typename T, typename C, typename A>
-kll_quantile_calculator<T, C, A>::kll_quantile_calculator(const T* items, const uint32_t* levels, uint8_t num_levels, uint64_t n, const A& allocator):
-n_(n), levels_(num_levels + 1, 0, allocator), entries_(allocator)
+template<typename T, typename C, typename A>
+template<typename S>
+kll_quantile_calculator<T, C, A>::kll_quantile_calculator(const kll_sketch<T, C, S, A>& sketch):
+n_(sketch.n_), levels_(sketch.num_levels_ + 1, 0, sketch.allocator_), entries_(sketch.allocator_)
 {
-  const uint32_t num_items = levels[num_levels] - levels[0];
-  entries_.reserve(num_items);
-  populate_from_sketch(items, levels, num_levels);
-  merge_sorted_blocks(entries_, levels_.data(), levels_.size() - 1, num_items);
-  if (!is_sorted(entries_.begin(), entries_.end(), compare_pair_by_first<C>())) throw std::logic_error("entries must be sorted");
-  convert_to_preceding_cummulative();
+  const uint32_t num_items = sketch.levels_[sketch.num_levels_] - sketch.levels_[0];
+  if (num_items > 0) {
+    entries_.reserve(num_items);
+    populate_from_sketch(sketch.items_, sketch.levels_.data(), sketch.num_levels_);
+    if (!sketch.is_level_zero_sorted_) std::sort(entries_.begin(), entries_.begin() + levels_[1], compare_pair_by_first<C>());
+    merge_sorted_blocks(entries_, levels_.data(), static_cast<uint8_t>(levels_.size()) - 1, num_items);
+    if (!is_sorted(entries_.begin(), entries_.end(), compare_pair_by_first<C>())) throw std::logic_error("entries must be sorted");
+    convert_to_preceding_cummulative();
+  }
 }
 
-template <typename T, typename C, typename A>
+template<typename T, typename C, typename A>
 T kll_quantile_calculator<T, C, A>::get_quantile(double fraction) const {
   return approximately_answer_positional_query(pos_of_phi(fraction, n_));
 }
 
-template <typename T, typename C, typename A>
+template<typename T, typename C, typename A>
+auto kll_quantile_calculator<T, C, A>::begin() const -> const_iterator {
+  return entries_.begin();
+}
+
+template<typename T, typename C, typename A>
+auto kll_quantile_calculator<T, C, A>::end() const -> const_iterator {
+  return entries_.end();
+}
+
+template<typename T, typename C, typename A>
 void kll_quantile_calculator<T, C, A>::populate_from_sketch(const T* items, const uint32_t* levels, uint8_t num_levels) {
   size_t src_level = 0;
   size_t dst_level = 0;
@@ -68,7 +82,7 @@ void kll_quantile_calculator<T, C, A>::populate_from_sketch(const T* items, cons
   if (levels_.size() > static_cast<size_t>(dst_level + 1)) levels_.resize(dst_level + 1);
 }
 
-template <typename T, typename C, typename A>
+template<typename T, typename C, typename A>
 T kll_quantile_calculator<T, C, A>::approximately_answer_positional_query(uint64_t pos) const {
   if (pos >= n_) throw std::logic_error("position out of range");
   const uint32_t num_items = levels_[levels_.size() - 1];
@@ -77,7 +91,7 @@ T kll_quantile_calculator<T, C, A>::approximately_answer_positional_query(uint64
   return entries_[index].first;
 }
 
-template <typename T, typename C, typename A>
+template<typename T, typename C, typename A>
 void kll_quantile_calculator<T, C, A>::convert_to_preceding_cummulative() {
   uint64_t subtotal = 0;
   for (auto& entry: entries_) {
@@ -87,13 +101,13 @@ void kll_quantile_calculator<T, C, A>::convert_to_preceding_cummulative() {
   }
 }
 
-template <typename T, typename C, typename A>
+template<typename T, typename C, typename A>
 uint64_t kll_quantile_calculator<T, C, A>::pos_of_phi(double phi, uint64_t n) {
-  const uint64_t pos = std::floor(phi * n);
+  const uint64_t pos = static_cast<uint64_t>(std::floor(phi * n));
   return (pos == n) ? n - 1 : pos;
 }
 
-template <typename T, typename C, typename A>
+template<typename T, typename C, typename A>
 uint32_t kll_quantile_calculator<T, C, A>::chunk_containing_pos(uint64_t pos) const {
   if (entries_.size() < 1) throw std::logic_error("array too short");
   if (pos < entries_[0].second) throw std::logic_error("position too small");
@@ -101,19 +115,19 @@ uint32_t kll_quantile_calculator<T, C, A>::chunk_containing_pos(uint64_t pos) co
   return search_for_chunk_containing_pos(pos, 0, entries_.size());
 }
 
-template <typename T, typename C, typename A>
-uint32_t kll_quantile_calculator<T, C, A>::search_for_chunk_containing_pos(uint64_t pos, uint32_t l, uint32_t r) const {
+template<typename T, typename C, typename A>
+uint32_t kll_quantile_calculator<T, C, A>::search_for_chunk_containing_pos(uint64_t pos, uint64_t l, uint64_t r) const {
   if (l + 1 == r) {
-    return l;
+    return static_cast<uint32_t>(l);
   }
-  const uint32_t m(l + (r - l) / 2);
+  const uint64_t m = l + (r - l) / 2;
   if (entries_[m].second <= pos) {
     return search_for_chunk_containing_pos(pos, m, r);
   }
   return search_for_chunk_containing_pos(pos, l, m);
 }
 
-template <typename T, typename C, typename A>
+template<typename T, typename C, typename A>
 void kll_quantile_calculator<T, C, A>::merge_sorted_blocks(Container& entries, const uint32_t* levels, uint8_t num_levels, uint32_t num_items) {
   if (num_levels == 1) return;
   Container temporary(entries.get_allocator());
@@ -121,7 +135,7 @@ void kll_quantile_calculator<T, C, A>::merge_sorted_blocks(Container& entries, c
   merge_sorted_blocks_direct(entries, temporary, levels, 0, num_levels);
 }
 
-template <typename T, typename C, typename A>
+template<typename T, typename C, typename A>
 void kll_quantile_calculator<T, C, A>::merge_sorted_blocks_direct(Container& orig, Container& temp, const uint32_t* levels,
     uint8_t starting_level, uint8_t num_levels) {
   if (num_levels == 1) return;
@@ -129,10 +143,11 @@ void kll_quantile_calculator<T, C, A>::merge_sorted_blocks_direct(Container& ori
   const uint8_t num_levels_2 = num_levels - num_levels_1;
   const uint8_t starting_level_1 = starting_level;
   const uint8_t starting_level_2 = starting_level + num_levels_1;
-  const auto chunk_begin = temp.begin() + temp.size();
+  const auto initial_size = temp.size();
   merge_sorted_blocks_reversed(orig, temp, levels, starting_level_1, num_levels_1);
   merge_sorted_blocks_reversed(orig, temp, levels, starting_level_2, num_levels_2);
   const uint32_t num_items_1 = levels[starting_level_1 + num_levels_1] - levels[starting_level_1];
+  const auto chunk_begin = temp.begin() + initial_size;
   std::merge(
     std::make_move_iterator(chunk_begin), std::make_move_iterator(chunk_begin + num_items_1),
     std::make_move_iterator(chunk_begin + num_items_1), std::make_move_iterator(temp.end()),
@@ -141,7 +156,7 @@ void kll_quantile_calculator<T, C, A>::merge_sorted_blocks_direct(Container& ori
   temp.erase(chunk_begin, temp.end());
 }
 
-template <typename T, typename C, typename A>
+template<typename T, typename C, typename A>
 void kll_quantile_calculator<T, C, A>::merge_sorted_blocks_reversed(Container& orig, Container& temp, const uint32_t* levels,
     uint8_t starting_level, uint8_t num_levels) {
   if (num_levels == 1) {

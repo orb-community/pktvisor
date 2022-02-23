@@ -81,7 +81,7 @@ TEST_CASE("cpc union: large", "[cpc_union]") {
   cpc_union u(11);
   for (int i = 0; i < 1000; i++) {
     cpc_sketch tmp(11);
-    for (int i = 0; i < 10000; i++) {
+    for (int j = 0; j < 10000; j++) {
       s.update(key);
       tmp.update(key);
       key++;

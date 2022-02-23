@@ -41,4 +41,5 @@ target_sources(cpc_test
     cpc_sketch_test.cpp
     cpc_union_test.cpp
     compression_test.cpp
+    cpc_sketch_allocation_test.cpp
 )

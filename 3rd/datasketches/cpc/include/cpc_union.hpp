@@ -45,7 +45,7 @@ public:
    * @param lg_k base 2 logarithm of the number of bins in the sketch
    * @param seed for hash function
    */
-  explicit cpc_union_alloc(uint8_t lg_k = CPC_DEFAULT_LG_K, uint64_t seed = DEFAULT_SEED, const A& allocator = A());
+  explicit cpc_union_alloc(uint8_t lg_k = cpc_constants::DEFAULT_LG_K, uint64_t seed = DEFAULT_SEED, const A& allocator = A());
 
   cpc_union_alloc(const cpc_union_alloc<A>& other);
   cpc_union_alloc(cpc_union_alloc<A>&& other) noexcept;

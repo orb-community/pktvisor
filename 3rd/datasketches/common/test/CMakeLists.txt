@@ -15,6 +15,10 @@
 # specific language governing permissions and limitations
 # under the License.
 
+# two parts here, the common test code for other parts to use,
+# and an integration test using the other parts of the library.
+
+# common dependencies for tests
 add_library(common_test OBJECT "")
 
 set_target_properties(common_test PROPERTIES
@@ -35,4 +39,24 @@ target_sources(common_test
   PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/catch_runner.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test_allocator.cpp
+)
+
+# now the integration test part
+add_executable(integration_test)
+
+target_link_libraries(integration_test cpc fi hll kll req sampling theta tuple common_test)
+
+set_target_properties(integration_test PROPERTIES
+  CXX_STANDARD 11
+  CXX_STANDARD_REQUIRED YES
+)
+
+add_test(
+  NAME integration_test
+  COMMAND integration_test
+)
+
+target_sources(integration_test
+  PRIVATE
+    integration_test.cpp
 )

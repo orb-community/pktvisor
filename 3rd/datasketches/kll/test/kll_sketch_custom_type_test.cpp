@@ -26,7 +26,8 @@
 
 namespace datasketches {
 
-typedef kll_sketch<test_type, test_type_less, test_type_serde, test_allocator<test_type>> kll_test_type_sketch;
+using kll_test_type_sketch = kll_sketch<test_type, test_type_less, test_type_serde, test_allocator<test_type>>;
+using alloc = test_allocator<test_type>;
 
 TEST_CASE("kll sketch custom type", "[kll_sketch]") {
 
@@ -34,7 +35,7 @@ TEST_CASE("kll sketch custom type", "[kll_sketch]") {
   test_allocator_total_bytes = 0;
 
   SECTION("compact level zero") {
-    kll_test_type_sketch sketch(8);
+    kll_test_type_sketch sketch(8, 0);
     REQUIRE_THROWS_AS(sketch.get_quantile(0), std::runtime_error);
     REQUIRE_THROWS_AS(sketch.get_min_value(), std::runtime_error);
     REQUIRE_THROWS_AS(sketch.get_max_value(), std::runtime_error);
@@ -59,10 +60,10 @@ TEST_CASE("kll sketch custom type", "[kll_sketch]") {
   }
 
   SECTION("merge small") {
-    kll_test_type_sketch sketch1(8);
+    kll_test_type_sketch sketch1(8, 0);
     sketch1.update(1);
 
-    kll_test_type_sketch sketch2(8);
+    kll_test_type_sketch sketch2(8, 0);
     sketch2.update(2);
 
     sketch2.merge(sketch1);
@@ -76,7 +77,7 @@ TEST_CASE("kll sketch custom type", "[kll_sketch]") {
   }
 
   SECTION("merge higher levels") {
-    kll_test_type_sketch sketch1(8);
+    kll_test_type_sketch sketch1(8, 0);
     sketch1.update(1);
     sketch1.update(2);
     sketch1.update(3);
@@ -87,7 +88,7 @@ TEST_CASE("kll sketch custom type", "[kll_sketch]") {
     sketch1.update(8);
     sketch1.update(9);
 
-    kll_test_type_sketch sketch2(8);
+    kll_test_type_sketch sketch2(8, 0);
     sketch2.update(10);
     sketch2.update(11);
     sketch2.update(12);
@@ -109,7 +110,7 @@ TEST_CASE("kll sketch custom type", "[kll_sketch]") {
   }
 
   SECTION("serialize deserialize") {
-    kll_test_type_sketch sketch1;
+    kll_test_type_sketch sketch1(200, 0);
 
     const int n = 1000;
     for (int i = 0; i < n; i++) sketch1.update(i);
@@ -117,7 +118,7 @@ TEST_CASE("kll sketch custom type", "[kll_sketch]") {
     std::stringstream s(std::ios::in | std::ios::out | std::ios::binary);
     sketch1.serialize(s);
     REQUIRE((size_t) s.tellp() == sketch1.get_serialized_size_bytes());
-    auto sketch2 = kll_test_type_sketch::deserialize(s);
+    auto sketch2 = kll_test_type_sketch::deserialize(s, alloc(0));
     REQUIRE((size_t) s.tellg() == sketch2.get_serialized_size_bytes());
     REQUIRE(s.tellg() == s.tellp());
     REQUIRE(sketch2.is_empty() == sketch1.is_empty());
@@ -135,9 +136,9 @@ TEST_CASE("kll sketch custom type", "[kll_sketch]") {
   }
 
   SECTION("moving merge") {
-    kll_test_type_sketch sketch1(8);
+    kll_test_type_sketch sketch1(8, 0);
     for (int i = 0; i < 10; i++) sketch1.update(i);
-    kll_test_type_sketch sketch2(8);
+    kll_test_type_sketch sketch2(8, 0);
     sketch2.update(10);
     sketch2.merge(std::move(sketch1));
     REQUIRE(sketch2.get_min_value().get_value() == 0);

@@ -22,6 +22,7 @@
 
 #include <new>
 #include <utility>
+#include <stdexcept>
 
 // this allocator keeps the total allocated size in a global variable for testing
 
@@ -43,7 +44,14 @@ public:
   template <class U>
   struct rebind { typedef test_allocator<U> other; };
 
-  test_allocator() {}
+  // this is to test that a given instance of an allocator is used instead of instantiating
+  static const bool DISALLOW_DEFAULT_CONSTRUCTOR = true;
+  test_allocator() {
+    if (DISALLOW_DEFAULT_CONSTRUCTOR) throw std::runtime_error("test_allocator: default constructor");
+  }
+  // call this constructor in tests and pass an allocator instance
+  test_allocator(int) {}
+
   test_allocator(const test_allocator&) {}
   template <class U>
   test_allocator(const test_allocator<U>&) {}

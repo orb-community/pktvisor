@@ -27,38 +27,38 @@ namespace datasketches {
 typedef u32_table<std::allocator<void>> table;
 
 TEST_CASE("cpc sketch: compress and decompress pairs", "[cpc_sketch]") {
-  const int N = 200;
-  const int MAXWORDS = 1000;
+  const size_t N = 200;
+  const size_t MAXWORDS = 1000;
 
   HashState twoHashes;
   uint32_t pairArray[N];
   uint32_t pairArray2[N];
   uint64_t value = 35538947; // some arbitrary starting value
   const uint64_t golden64 = 0x9e3779b97f4a7c13ULL; // the golden ratio
-  for (int i = 0; i < N; i++) {
+  for (size_t i = 0; i < N; i++) {
     MurmurHash3_x64_128(&value, sizeof(value), 0, twoHashes);
     uint32_t rand = twoHashes.h1 & 0xffff;
     pairArray[i] = rand;
     value += golden64;
   }
   //table::knuth_shell_sort3(pairArray, 0, N - 1); // unsigned numerical sort
-  std::sort(pairArray, &pairArray[N]);
+  std::sort(pairArray, pairArray + N);
   uint32_t prev = UINT32_MAX;
-  int nxt = 0;
-  for (int i = 0; i < N; i++) { // uniquify
+  uint32_t nxt = 0;
+  for (size_t i = 0; i < N; i++) { // uniquify
     if (pairArray[i] != prev) {
       prev = pairArray[i];
       pairArray[nxt++] = pairArray[i];
     }
   }
-  int numPairs = nxt;
+  uint32_t numPairs = nxt;
 
   uint32_t compressedWords[MAXWORDS];
 
-  for (size_t numBaseBits = 0; numBaseBits <= 11; numBaseBits++) {
-    size_t numWordsWritten = get_compressor<std::allocator<void>>().low_level_compress_pairs(pairArray, numPairs, numBaseBits, compressedWords);
+  for (uint8_t numBaseBits = 0; numBaseBits <= 11; numBaseBits++) {
+    uint32_t numWordsWritten = get_compressor<std::allocator<void>>().low_level_compress_pairs(pairArray, numPairs, numBaseBits, compressedWords);
     get_compressor<std::allocator<void>>().low_level_uncompress_pairs(pairArray2, numPairs, numBaseBits, compressedWords, numWordsWritten);
-    for (int i = 0; i < numPairs; i++) {
+    for (size_t i = 0; i < numPairs; i++) {
       REQUIRE(pairArray[i] == pairArray2[i]);
     }
   }

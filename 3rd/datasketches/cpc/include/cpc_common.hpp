@@ -26,9 +26,16 @@
 
 namespace datasketches {
 
-static const uint8_t CPC_MIN_LG_K = 4;
-static const uint8_t CPC_MAX_LG_K = 26;
-static const uint8_t CPC_DEFAULT_LG_K = 11;
+namespace cpc_constants {
+    const uint8_t MIN_LG_K = 4;
+    const uint8_t MAX_LG_K = 26;
+    const uint8_t DEFAULT_LG_K = 11;
+}
+
+// TODO: Redundant and deprecated. Will be removed in next major version release.
+static const uint8_t CPC_MIN_LG_K = cpc_constants::MIN_LG_K;
+static const uint8_t CPC_MAX_LG_K = cpc_constants::MAX_LG_K;
+static const uint8_t CPC_DEFAULT_LG_K = cpc_constants::DEFAULT_LG_K;
 
 template<typename A> using AllocU8 = typename std::allocator_traits<A>::template rebind_alloc<uint8_t>;
 template<typename A> using AllocU16 = typename std::allocator_traits<A>::template rebind_alloc<uint16_t>;
