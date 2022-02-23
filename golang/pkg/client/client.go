@@ -7,6 +7,7 @@ package client
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/hashicorp/go-version"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 	"io/ioutil"
@@ -14,10 +15,6 @@ import (
 	"net/http"
 	"regexp"
 	"time"
-)
-
-const (
-	wantServerVersion = "3.3"
 )
 
 type Client interface {
@@ -55,8 +52,17 @@ func (c *client) GetServerVersion() string {
 		return "unknown"
 	}
 	c.serverVersion = appMetrics.App.Version
-	if c.serverVersion[0:3] != wantServerVersion {
-		log.Println(fmt.Sprintf("WARNING: this version of pktvisor-cli was written for pktvisord %s.x", wantServerVersion))
+	serverVersion, err := version.NewVersion(c.serverVersion)
+	if err == nil {
+		clientVersion, err := version.NewVersion(VisorVersionNum)
+		if err == nil {
+			cMajor := clientVersion.Segments()[0]
+			sMajor := serverVersion.Segments()[0]
+			if sMajor != cMajor {
+				log.Println(fmt.Sprintf("WARNING: this version of pktvisor-cli was written for a different major pktvisord version (server:%d, client:%d)", cMajor, sMajor))
+				time.Sleep(3 * time.Second)
+			}
+		}
 	}
 	return c.serverVersion
 }
