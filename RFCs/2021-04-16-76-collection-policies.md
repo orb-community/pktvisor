@@ -94,15 +94,15 @@ visor:
           max_deep_sample: 50
         modules:
           # the keys at this level are unique identifiers
-          # Chaning handlers example
+          # Chaning handlers example. It needs proper indentation as shown below
           - upstream_dns:
-            type: dns
-            filter:
-              # must match the available configuration options for this version of this stream handler
-              qname_suffix: .mydomain.com
+              type: dns
+              filter:
+                # must match the available configuration options for this version of this stream handler
+                qname_suffix: .mydomain.com
           # net handler will only receive .mydomain.com packages
           - chain_net:
-            type: net
+              type: net
 ```
 
 ## REST API
