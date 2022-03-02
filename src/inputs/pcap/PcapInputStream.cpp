@@ -173,6 +173,7 @@ void PcapInputStream::start()
                 continue;
             }
             _pcapDevice = std::unique_ptr<pcpp::PcapLiveDevice>(pcapDevice->clone());
+            break;
         }
 
         pcap_freealldevs(interfaceList);
