@@ -73,7 +73,7 @@ PcapInputStream::PcapInputStream(const std::string &name)
           _tcp_connection_end_cb,
           {true, 5, 500, 50})
 {
-    pcpp::LoggerPP::getInstance().suppressErrors();
+    pcpp::Logger::getInstance().suppressLogs();
 }
 
 PcapInputStream::~PcapInputStream()
@@ -98,7 +98,7 @@ void PcapInputStream::start()
     }
 
     if (config_exists("debug")) {
-        pcpp::LoggerPP::getInstance().setAllModlesToLogLevel(pcpp::LoggerPP::LogLevel::Debug);
+        pcpp::Logger::getInstance().setAllModlesToLogLevel(pcpp::Logger::LogLevel::Debug);
     }
 
     _cur_pcap_source = PcapInputStream::DefaultPcapSource;
@@ -172,8 +172,7 @@ void PcapInputStream::start()
                 currInterface = currInterface->next;
                 continue;
             }
-            _pcapDevice = std::make_unique<pcpp::PcapLiveDevice>(currInterface, true, true, true);
-            break;
+            _pcapDevice = std::unique_ptr<pcpp::PcapLiveDevice>(pcapDevice->clone());
         }
 
         pcap_freealldevs(interfaceList);
