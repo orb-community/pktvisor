@@ -124,6 +124,7 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
                     _logger->debug("{} bucket window_json elapsed time: {}", hmod->name(), sw);
                 }
             }
+            policy->window_json(j["1m"]);
             res.set_content(j.dump(), "text/json");
         } catch (const std::exception &e) {
             res.status = 500;
@@ -143,15 +144,16 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
         try {
             auto [policy, lock] = _registry->policy_manager()->module_get_locked("default");
             uint64_t period(std::stol(req.matches[1]));
+            auto key = fmt::format("{}m", period);
             for (auto &mod : policy->modules()) {
                 auto hmod = dynamic_cast<StreamHandler *>(mod);
                 if (hmod) {
                     spdlog::stopwatch sw;
-                    auto key = fmt::format("{}m", period);
                     hmod->window_json(j[key], period, true);
                     _logger->debug("{} window_json {} elapsed time: {}", hmod->name(), period, sw);
                 }
             }
+            policy->window_json(j[key]);
             res.set_content(j.dump(), "text/json");
         } catch (const std::exception &e) {
             res.status = 500;
@@ -323,6 +325,7 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
                         }
                     }
                 }
+                policy->window_json(j[policy->name()]);
                 _logger->debug("{} policy json metrics elapsed time: {}", policy->name(), psw);
             }
             res.set_content(j.dump(), "text/json");

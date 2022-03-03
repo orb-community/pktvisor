@@ -10,6 +10,7 @@
 #include "HandlerModulePlugin.h"
 #include "InputModulePlugin.h"
 #include "Taps.h"
+#include "ThreadMonitor.h"
 #include <vector>
 #include <yaml-cpp/yaml.h>
 
@@ -64,6 +65,12 @@ public:
     const std::vector<AbstractRunnableModule *> &modules()
     {
         return _modules;
+    }
+
+    void window_json(json &j)
+    {
+        j["resources"]["cpu"] = ThreadMonitor::cpu_percentage();
+        j["resources"]["memory"] = ThreadMonitor::memory_usage();
     }
 
     // life cycle
