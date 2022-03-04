@@ -73,7 +73,7 @@ PcapInputStream::PcapInputStream(const std::string &name)
           _tcp_connection_end_cb,
           {true, 5, 500, 50})
 {
-    pcpp::LoggerPP::getInstance().suppressErrors();
+    pcpp::Logger::getInstance().suppressLogs();
 }
 
 PcapInputStream::~PcapInputStream()
@@ -98,7 +98,7 @@ void PcapInputStream::start()
     }
 
     if (config_exists("debug")) {
-        pcpp::LoggerPP::getInstance().setAllModlesToLogLevel(pcpp::LoggerPP::LogLevel::Debug);
+        pcpp::Logger::getInstance().setAllModlesToLogLevel(pcpp::Logger::LogLevel::Debug);
     }
 
     _cur_pcap_source = PcapInputStream::DefaultPcapSource;
@@ -157,30 +157,7 @@ void PcapInputStream::start()
             }
         }
 
-        // PcapPlusPlus upstream incompatibility note: this block requires ns1 fork of PcapPlusPlus until upstream
-        // makes PcapLiveDevice constructor pubic
-        pcap_if_t *interfaceList;
-        char errbuf[PCAP_ERRBUF_SIZE];
-        int err = pcap_findalldevs(&interfaceList, errbuf);
-        if (err < 0) {
-            throw PcapException("Error searching for pcap devices: " + std::string(errbuf));
-        }
-
-        pcap_if_t *currInterface = interfaceList;
-        while (currInterface != NULL) {
-            if (currInterface->name != pcapDevice->getName()) {
-                currInterface = currInterface->next;
-                continue;
-            }
-            _pcapDevice = std::make_unique<pcpp::PcapLiveDevice>(currInterface, true, true, true);
-            break;
-        }
-
-        pcap_freealldevs(interfaceList);
-        if (_pcapDevice == nullptr) {
-            throw PcapException(fmt::format("Couldn't find interface by provided name: \"{}\". Available interfaces: {}", TARGET, ifNameList));
-        }
-        // end upstream PcapPlusPlus incompatibility block
+        _pcapDevice = std::unique_ptr<pcpp::PcapLiveDevice>(pcapDevice->clone());
 
         _get_hosts_from_libpcap_iface();
         _open_libpcap_iface(config_get<std::string>("bpf"));
