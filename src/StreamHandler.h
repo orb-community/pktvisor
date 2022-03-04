@@ -14,6 +14,13 @@ namespace visor {
 
 using json = nlohmann::json;
 
+struct CacheHandler
+{
+    std::string schema_key;
+    std::string filter_hash;
+    timespec timestamp;
+};
+
 class StreamHandlerException : public std::runtime_error
 {
 public:

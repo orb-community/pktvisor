@@ -31,6 +31,17 @@ enum NetMetrics : visor::MetricGroupIntType {
 };
 }
 
+struct CacheNetHandler : CacheHandler {
+    PacketDirection dir;
+    pcpp::ProtocolType l3;
+    pcpp::ProtocolType l4;
+    bool is_ipv6;
+    pcpp::IPv4Address ipv4_in;
+    pcpp::IPv4Address ipv4_out;
+    pcpp::IPv6Address ipv6_in;
+    pcpp::IPv6Address ipv6_out;
+};
+
 class NetworkMetricsBucket final : public visor::AbstractMetricsBucket
 {
 
@@ -109,8 +120,8 @@ public:
     void process_packet(bool deep, pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4);
     void process_dnstap(bool deep, const dnstap::Dnstap &payload);
     void process_sflow(bool deep, const SFSample &payload);
-    void process_net_layer(PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4);
-    void process_net_layer(PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, bool is_ipv6, pcpp::IPv4Address &ipv4_in, pcpp::IPv4Address &ipv4_out, pcpp::IPv6Address &ipv6_in, pcpp::IPv6Address &ipv6_out);
+    void process_net_layer(PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, bool cache);
+    void process_net_layer(PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, bool is_ipv6, pcpp::IPv4Address &ipv4_in, pcpp::IPv4Address &ipv4_out, pcpp::IPv6Address &ipv6_in, pcpp::IPv6Address &ipv6_out, bool cache);
 };
 
 class NetworkMetricsManager final : public visor::AbstractMetricsManager<NetworkMetricsBucket>
@@ -124,6 +135,7 @@ public:
     void process_packet(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp);
     void process_dnstap(const dnstap::Dnstap &payload);
     void process_sflow(const SFSample &payload);
+    void process_cache(CacheNetHandler *cache);
 };
 
 class NetStreamHandler final : public visor::StreamMetricsHandler<NetworkMetricsManager>

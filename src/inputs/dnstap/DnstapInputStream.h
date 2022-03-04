@@ -103,6 +103,7 @@ public:
     // IF THIS changes, see consumer_count()
     // note: these are mutable because consumer_count() calls slot_count() which is not const (unclear if it could/should be)
     mutable sigslot::signal<const ::dnstap::Dnstap &> dnstap_signal;
+    std::vector<std::unique_ptr<CacheHandler>> cache_dnstap_signal;
 };
 
 }

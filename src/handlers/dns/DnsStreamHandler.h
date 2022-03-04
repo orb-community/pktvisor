@@ -45,6 +45,13 @@ enum Protocol : uint64_t {
     PCPP_UDP = pcpp::UDP
 };
 
+struct CacheDnsHandler : CacheHandler {
+    DnsLayer payload;
+    pcpp::ProtocolType l3;
+    Protocol l4;
+    uint16_t port;
+};
+
 class DnsMetricsBucket final : public visor::AbstractMetricsBucket
 {
 protected:

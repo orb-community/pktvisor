@@ -103,6 +103,14 @@ NetStreamHandler::~NetStreamHandler()
 // callback from input module
 void NetStreamHandler::process_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp)
 {
+    for (auto const &cache : _pcap_stream->cache_packet_signal) {
+        auto net_cache = static_cast<CacheNetHandler *>(cache.get());
+        if (!net_cache) {
+            continue;
+        }
+        _metrics->process_cache(net_cache);
+        return;
+    }
     _metrics->process_packet(payload, dir, l3, l4, stamp);
 }
 
@@ -118,11 +126,27 @@ void NetStreamHandler::set_end_tstamp(timespec stamp)
 
 void NetStreamHandler::process_sflow_cb(const SFSample &payload)
 {
+    for (auto const &cache : _sflow_stream->cache_sflow_signal) {
+        auto net_cache = static_cast<CacheNetHandler *>(cache.get());
+        if (!net_cache) {
+            continue;
+        }
+        _metrics->process_cache(net_cache);
+        return;
+    }
     _metrics->process_sflow(payload);
 }
 
 void NetStreamHandler::process_dnstap_cb(const dnstap::Dnstap &payload)
 {
+    for (auto const &cache : _dnstap_stream->cache_dnstap_signal) {
+        auto net_cache = static_cast<CacheNetHandler *>(cache.get());
+        if (!net_cache) {
+            continue;
+        }
+        _metrics->process_cache(net_cache);
+        return;
+    }
     _metrics->process_dnstap(payload);
 }
 
@@ -258,7 +282,7 @@ void NetworkMetricsBucket::to_json(json &j) const
 void NetworkMetricsBucket::process_packet(bool deep, pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4)
 {
     if (!deep) {
-        process_net_layer(dir, l3, l4);
+        process_net_layer(dir, l3, l4, true);
         return;
     }
 
@@ -285,7 +309,7 @@ void NetworkMetricsBucket::process_packet(bool deep, pcpp::Packet &payload, Pack
         }
     }
 
-    process_net_layer(dir, l3, l4, is_ipv6, ipv4_in, ipv4_out, ipv6_in, ipv6_out);
+    process_net_layer(dir, l3, l4, is_ipv6, ipv4_in, ipv4_out, ipv6_in, ipv6_out, true);
 }
 void NetworkMetricsBucket::process_dnstap(bool deep, const dnstap::Dnstap &payload)
 {
@@ -335,7 +359,7 @@ void NetworkMetricsBucket::process_dnstap(bool deep, const dnstap::Dnstap &paylo
     }
 
     if (!deep) {
-        process_net_layer(dir, l3, l4);
+        process_net_layer(dir, l3, l4, true);
         return;
     }
 
@@ -354,7 +378,7 @@ void NetworkMetricsBucket::process_dnstap(bool deep, const dnstap::Dnstap &paylo
         ipv6_out = pcpp::IPv6Address(reinterpret_cast<const uint8_t *>(payload.message().response_address().data()));
     }
 
-    process_net_layer(dir, l3, l4, is_ipv6, ipv4_in, ipv4_out, ipv6_in, ipv6_out);
+    process_net_layer(dir, l3, l4, is_ipv6, ipv4_in, ipv4_out, ipv6_in, ipv6_out, true);
 }
 
 void NetworkMetricsBucket::process_sflow(bool deep, const SFSample &payload)
@@ -385,7 +409,7 @@ void NetworkMetricsBucket::process_sflow(bool deep, const SFSample &payload)
         }
 
         if (!deep) {
-            process_net_layer(dir, l3, l4);
+            process_net_layer(dir, l3, l4, true);
             return;
         }
 
@@ -410,11 +434,11 @@ void NetworkMetricsBucket::process_sflow(bool deep, const SFSample &payload)
             ipv6_out = pcpp::IPv6Address(sample.ipdst.address.ip_v6.addr);
         }
 
-        process_net_layer(dir, l3, l4, is_ipv6, ipv4_in, ipv4_out, ipv6_in, ipv6_out);
+        process_net_layer(dir, l3, l4, is_ipv6, ipv4_in, ipv4_out, ipv6_in, ipv6_out, true);
     }
 }
 
-void NetworkMetricsBucket::process_net_layer(PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4)
+void NetworkMetricsBucket::process_net_layer(PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, bool cache)
 {
     std::unique_lock lock(_mutex);
 
@@ -464,9 +488,13 @@ void NetworkMetricsBucket::process_net_layer(PacketDirection dir, pcpp::Protocol
             break;
         }
     }
+
+    if (cache) {
+
+    }
 }
 
-void NetworkMetricsBucket::process_net_layer(PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, bool is_ipv6, pcpp::IPv4Address &ipv4_in, pcpp::IPv4Address &ipv4_out, pcpp::IPv6Address &ipv6_in, pcpp::IPv6Address &ipv6_out)
+void NetworkMetricsBucket::process_net_layer(PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, bool is_ipv6, pcpp::IPv4Address &ipv4_in, pcpp::IPv4Address &ipv4_out, pcpp::IPv6Address &ipv6_in, pcpp::IPv6Address &ipv6_out, bool cache)
 {
     std::unique_lock lock(_mutex);
 
@@ -575,6 +603,10 @@ void NetworkMetricsBucket::process_net_layer(PacketDirection dir, pcpp::Protocol
             }
         }
     }
+
+    if (cache) {
+
+    }
 }
 
 // the general metrics manager entry point
@@ -628,5 +660,13 @@ void NetworkMetricsManager::process_sflow(const SFSample &payload)
     new_event(stamp);
     // process in the "live" bucket
     live_bucket()->process_sflow(_deep_sampling_now, payload);
+}
+
+void NetworkMetricsManager::process_cache(CacheNetHandler *cache)
+{
+    // base event
+    new_event(cache->timestamp);
+    // process in the "live" bucket. this will parse the resources if we are deep sampling
+    live_bucket()->process_net_layer(cache->dir, cache->l3, cache->l4, cache->is_ipv6, cache->ipv4_in, cache->ipv4_out, cache->ipv6_in, cache->ipv6_out, false);
 }
 }
