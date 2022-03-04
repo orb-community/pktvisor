@@ -74,6 +74,8 @@ protected:
 #endif
 
 public:
+    std::atomic_bool processing_packet = false;
+
     PcapInputStream(const std::string &name);
     ~PcapInputStream();
 

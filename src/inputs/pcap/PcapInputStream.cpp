@@ -319,6 +319,10 @@ void PcapInputStream::_generate_mock_traffic()
 
 void PcapInputStream::process_raw_packet(pcpp::RawPacket *rawPacket)
 {
+    if (processing_packet) {
+        return;
+    }
+    processing_packet = true;
 
     pcpp::ProtocolType l3(pcpp::UnknownProtocol), l4(pcpp::UnknownProtocol);
     pcpp::Packet packet(rawPacket, pcpp::TCP | pcpp::UDP);
@@ -382,6 +386,8 @@ void PcapInputStream::process_raw_packet(pcpp::RawPacket *rawPacket)
     } else {
         // unsupported layer3 protocol
     }
+
+    processing_packet = false;
 }
 
 void PcapInputStream::_open_pcap(const std::string &fileName, const std::string &bpfFilter)
