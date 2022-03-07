@@ -108,6 +108,10 @@ public:
 
     void start() override;
     void stop() override;
+
+    void on_cache_callback() override
+    {
+    }
 };
 
 }

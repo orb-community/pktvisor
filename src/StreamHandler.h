@@ -14,8 +14,7 @@ namespace visor {
 
 using json = nlohmann::json;
 
-struct CacheHandler
-{
+struct CacheHandler {
     std::string schema_key;
     std::string filter_hash;
     timespec timestamp;
@@ -123,6 +122,7 @@ public:
         : StreamHandler(name)
     {
         _metrics = std::make_unique<MetricsManagerClass>(window_config);
+        //_metrics->cache_signal.connect(StreamMetricsHandler::on_cache_callback(), this);
     }
 
     const MetricsManagerClass *metrics() const
@@ -147,6 +147,8 @@ public:
             _metrics->window_single_prometheus(out, 0, add_labels);
         }
     }
+
+    virtual void on_cache_callback() = 0;
 
     virtual ~StreamMetricsHandler(){};
 };

@@ -16,11 +16,14 @@
 #include "Configurable.h"
 #include "Metrics.h"
 #include <shared_mutex>
+#include <sigslot/signal.hpp>
 #include <sstream>
 #include <sys/time.h>
 #include <unordered_map>
 
 namespace visor {
+
+struct CacheHandler;
 
 constexpr size_t GROUP_SIZE = 64;
 typedef uint32_t MetricGroupIntType;
@@ -72,6 +75,8 @@ protected:
     virtual void on_set_read_only(){};
 
 public:
+    sigslot::signal<CacheHandler &> cache_signal;
+
     AbstractMetricsBucket()
         : _num_samples("base", {"deep_samples"}, "Total number of deep samples")
         , _num_events("base", {"total"}, "Total number of events")
@@ -82,7 +87,10 @@ public:
         timespec_get(&_start_tstamp, TIME_UTC);
     }
 
-    virtual ~AbstractMetricsBucket() = default;
+    virtual ~AbstractMetricsBucket()
+    {
+        cache_signal.disconnect_all();
+    }
 
     timespec start_tstamp() const
     {
@@ -249,6 +257,9 @@ protected:
 
     const std::bitset<GROUP_SIZE> *_groups;
 
+public:
+    sigslot::signal<CacheHandler &> cache_signal;
+
 private:
     /**
      * window maintenance
@@ -273,6 +284,7 @@ private:
         // this changes the live bucket
         _metric_buckets.emplace_front(std::make_unique<MetricsBucketClass>());
         _metric_buckets[0]->configure_groups(_groups);
+        _metric_buckets[0]->cache_signal.connect([this](CacheHandler &signal) { cache_signal(signal); });
         _metric_buckets[0]->set_start_tstamp(stamp);
         if (_recorded_stream) {
             _metric_buckets[0]->set_recorded_stream();
@@ -365,6 +377,7 @@ public:
         _next_shift_tstamp.tv_sec += AbstractMetricsManager::PERIOD_SEC;
 
         _metric_buckets.emplace_front(std::make_unique<MetricsBucketClass>());
+        _metric_buckets[0]->cache_signal.connect([this](CacheHandler &signal) { cache_signal(signal); });
     }
 
     virtual ~AbstractMetricsManager() = default;

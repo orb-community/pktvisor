@@ -323,6 +323,10 @@ public:
     void stop() override;
     void info_json(json &j) const override;
 
+    void on_cache_callback() override
+    {
+    }
+
     mutable sigslot::signal<pcpp::Packet &, PacketDirection, pcpp::ProtocolType, uint32_t, timespec> udp_signal;
 };
 
