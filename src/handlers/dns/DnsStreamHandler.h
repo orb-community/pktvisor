@@ -323,7 +323,7 @@ public:
     void stop() override;
     void info_json(json &j) const override;
 
-    void on_cache_callback() override
+    void on_cache_callback(CacheHandler &cache) override
     {
     }
 

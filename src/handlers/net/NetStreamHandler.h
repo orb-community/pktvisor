@@ -40,6 +40,27 @@ struct CacheNetHandler : CacheHandler {
     pcpp::IPv4Address ipv4_out;
     pcpp::IPv6Address ipv6_in;
     pcpp::IPv6Address ipv6_out;
+
+    CacheNetHandler(timespec timestamp, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, bool is_ipv6, pcpp::IPv4Address ipv4_in, pcpp::IPv4Address ipv4_out, pcpp::IPv6Address ipv6_in, pcpp::IPv6Address ipv6_out)
+        : CacheHandler("", "", timestamp)
+        , dir(dir)
+        , l3(l3)
+        , l4(l4)
+        , is_ipv6(is_ipv6)
+        , ipv4_in(ipv4_in)
+        , ipv4_out(ipv4_out)
+        , ipv6_in(ipv6_in)
+        , ipv6_out(ipv6_out)
+    {
+    }
+
+    CacheNetHandler(timespec timestamp, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4)
+        : CacheHandler("", "", timestamp)
+        , dir(dir)
+        , l3(l3)
+        , l4(l4)
+    {
+    }
 };
 
 class NetworkMetricsBucket final : public visor::AbstractMetricsBucket
@@ -191,9 +212,7 @@ public:
     void start() override;
     void stop() override;
 
-    void on_cache_callback() override
-    {
-    }
+    void on_cache_callback(CacheHandler &cache) override;
 };
 
 }

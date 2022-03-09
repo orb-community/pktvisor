@@ -96,6 +96,20 @@ void NetStreamHandler::stop()
     _running = false;
 }
 
+void NetStreamHandler::on_cache_callback(CacheHandler &cache)
+{
+    cache.schema_key = schema_key();
+    cache.filter_hash = _filter_hash;
+
+    if (_pcap_stream) {
+        _pcap_stream->cache_packet_signal.push_back(std::make_unique<CacheHandler>(cache));
+    } else if (_dnstap_stream) {
+        _dnstap_stream->cache_dnstap_signal.push_back(std::make_unique<CacheHandler>(cache));
+    } else if (_sflow_stream) {
+        _sflow_stream->cache_sflow_signal.push_back(std::make_unique<CacheHandler>(cache));
+    }
+}
+
 NetStreamHandler::~NetStreamHandler()
 {
 }
@@ -490,7 +504,8 @@ void NetworkMetricsBucket::process_net_layer(PacketDirection dir, pcpp::Protocol
     }
 
     if (cache) {
-
+        CacheNetHandler cache = CacheNetHandler(start_tstamp(), dir, l3, l4);
+        cache_signal(cache);
     }
 }
 
@@ -605,7 +620,8 @@ void NetworkMetricsBucket::process_net_layer(PacketDirection dir, pcpp::Protocol
     }
 
     if (cache) {
-
+        CacheNetHandler cache = CacheNetHandler(start_tstamp(), dir, l3, l4, is_ipv6, ipv4_in, ipv4_out, ipv6_in, ipv6_out);
+        cache_signal(cache);
     }
 }
 

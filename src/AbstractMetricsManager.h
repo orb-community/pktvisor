@@ -380,7 +380,10 @@ public:
         _metric_buckets[0]->cache_signal.connect([this](CacheHandler &signal) { cache_signal(signal); });
     }
 
-    virtual ~AbstractMetricsManager() = default;
+    virtual ~AbstractMetricsManager()
+    {
+        cache_signal.disconnect_all();
+    }
 
     unsigned int num_periods() const
     {

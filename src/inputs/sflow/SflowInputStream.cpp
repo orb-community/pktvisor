@@ -58,6 +58,7 @@ void SflowInputStream::_read_from_pcap_file()
             try {
                 read_sflow_datagram(&sample);
                 sflow_signal(sample);
+                cache_sflow_signal.clear();
             } catch (const std::exception &e) {
                 _logger->error(e.what());
             }
@@ -118,6 +119,7 @@ void SflowInputStream::_create_frame_stream_udp_socket()
         try {
             read_sflow_datagram(&sample);
             sflow_signal(sample);
+            cache_sflow_signal.clear();
         } catch (const std::exception &e) {
             ++_error_count;
         }

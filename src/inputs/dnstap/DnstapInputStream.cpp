@@ -64,6 +64,7 @@ void DnstapInputStream::_read_frame_stream_file()
             // Emit signal to handlers
             if (!_filtering(d)) {
                 dnstap_signal(d);
+                cache_dnstap_signal.clear();
             }
         } else if (result == fstrm_res_stop) {
             // Normal end of data stream
@@ -180,6 +181,7 @@ void DnstapInputStream::_create_frame_stream_tcp_socket()
             // Emit signal to handlers
             if (!_filtering(d)) {
                 dnstap_signal(d);
+                cache_dnstap_signal.clear();
             }
         };
 
@@ -285,6 +287,7 @@ void DnstapInputStream::_create_frame_stream_unix_socket()
             // Emit signal to handlers
             if (!_filtering(d)) {
                 dnstap_signal(d);
+                cache_dnstap_signal.clear();
             }
         };
 

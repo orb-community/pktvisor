@@ -18,6 +18,13 @@ struct CacheHandler {
     std::string schema_key;
     std::string filter_hash;
     timespec timestamp;
+
+    CacheHandler(std::string schema_key, std::string filter_hash, timespec timestamp)
+        : schema_key(schema_key)
+        , filter_hash(filter_hash)
+        , timestamp(timestamp)
+    {
+    }
 };
 
 class StreamHandlerException : public std::runtime_error
@@ -68,6 +75,7 @@ private:
 protected:
     std::unique_ptr<MetricsManagerClass> _metrics;
     std::bitset<GROUP_SIZE> _groups;
+    std::string _filter_hash;
 
     void process_groups(const GroupDefType &group_defs)
     {
@@ -122,7 +130,7 @@ public:
         : StreamHandler(name)
     {
         _metrics = std::make_unique<MetricsManagerClass>(window_config);
-        //_metrics->cache_signal.connect(StreamMetricsHandler::on_cache_callback(), this);
+        _metrics->cache_signal.connect(&StreamMetricsHandler::on_cache_callback, this);
     }
 
     const MetricsManagerClass *metrics() const
@@ -148,7 +156,7 @@ public:
         }
     }
 
-    virtual void on_cache_callback() = 0;
+    virtual void on_cache_callback(CacheHandler &cache) = 0;
 
     virtual ~StreamMetricsHandler(){};
 };

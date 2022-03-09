@@ -361,9 +361,10 @@ void PcapInputStream::process_raw_packet(pcpp::RawPacket *rawPacket)
 
     // interface to handlers
     packet_signal(packet, dir, l3, l4, rawPacket->getPacketTimeStamp());
-
+    cache_packet_signal.clear();
     if (l4 == pcpp::UDP) {
         udp_signal(packet, dir, l3, pcpp::hash5Tuple(&packet), rawPacket->getPacketTimeStamp());
+        cache_udp_signal.clear();
     } else if (l4 == pcpp::TCP) {
         auto result = _tcp_reassembly.reassemblePacket(packet);
         switch (result) {
