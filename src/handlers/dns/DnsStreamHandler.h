@@ -46,10 +46,31 @@ enum Protocol : uint64_t {
 };
 
 struct CacheDnsHandler : CacheHandler {
-    DnsLayer payload;
     pcpp::ProtocolType l3;
     Protocol l4;
     uint16_t port;
+    QR side;
+    DnsLayer payload;
+
+    CacheDnsHandler(timespec timestamp, pcpp::ProtocolType l3, Protocol l4, QR side, uint16_t port, DnsLayer payload)
+        : CacheHandler("", "", timestamp)
+        , l3(l3)
+        , l4(l4)
+        , side(side)
+        , port(port)
+        , payload(payload)
+    {
+    }
+
+    CacheDnsHandler(timespec timestamp, pcpp::ProtocolType l3, Protocol l4, QR side, uint16_t port)
+        : CacheHandler("", "", timestamp)
+        , l3(l3)
+        , l4(l4)
+        , side(side)
+        , port(port)
+        , payload(DnsLayer())
+    {
+    }
 };
 
 class DnsMetricsBucket final : public visor::AbstractMetricsBucket
@@ -165,8 +186,8 @@ public:
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override;
 
     void process_filtered();
-    void process_dns_layer(bool deep, DnsLayer &payload, pcpp::ProtocolType l3, Protocol l4, uint16_t port);
-    void process_dns_layer(pcpp::ProtocolType l3, Protocol l4, QR side, uint16_t port);
+    void process_dns_layer(bool deep, DnsLayer &payload, pcpp::ProtocolType l3, Protocol l4, uint16_t port, bool cache);
+    void process_dns_layer(pcpp::ProtocolType l3, Protocol l4, QR side, uint16_t port, bool cache);
     void process_dnstap(bool deep, const dnstap::Dnstap &payload);
 
     void new_dns_transaction(bool deep, float to90th, float from90th, DnsLayer &dns, PacketDirection dir, DnsTransaction xact);
@@ -209,6 +230,8 @@ public:
     void process_filtered(timespec stamp);
     void process_dns_layer(DnsLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowkey, uint16_t port, timespec stamp);
     void process_dnstap(const dnstap::Dnstap &payload, bool filtered);
+    void process_cache_pcap(CacheDnsHandler *cache, PacketDirection dir, uint32_t flowkey);
+    void process_cache_dnstap(CacheDnsHandler *cache, bool filtered);
 };
 
 class TcpSessionData final
@@ -323,9 +346,7 @@ public:
     void stop() override;
     void info_json(json &j) const override;
 
-    void on_cache_callback(CacheHandler &cache) override
-    {
-    }
+    void on_cache_callback(CacheHandler &cache) override;
 
     mutable sigslot::signal<pcpp::Packet &, PacketDirection, pcpp::ProtocolType, uint32_t, timespec> udp_signal;
 };

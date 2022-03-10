@@ -314,7 +314,9 @@ void PcapInputStream::_generate_mock_traffic()
     timespec ts;
     timespec_get(&ts, TIME_UTC);
     packet_signal(packet, dir, l3, l4, ts);
+    cache_packet_signal.clear();
     udp_signal(packet, dir, l3, pcpp::hash5Tuple(&packet), ts);
+    cache_udp_signal.clear();
 }
 
 void PcapInputStream::process_raw_packet(pcpp::RawPacket *rawPacket)

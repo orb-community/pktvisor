@@ -137,6 +137,22 @@ void DnsStreamHandler::stop()
 // callback from input module
 void DnsStreamHandler::process_dnstap_cb(const dnstap::Dnstap &d)
 {
+    for (auto const &cache : _dnstap_stream->cache_dnstap_signal) {
+        auto dns_cache = static_cast<CacheDnsHandler *>(cache.get());
+        if (!dns_cache) {
+            continue;
+        }
+        if (!dns_cache->filter_hash.empty() && dns_cache->filter_hash != _filter_hash) {
+            continue;
+        }
+        if (dns_cache->filter_hash.empty() && _f_enabled[Filters::DnstapMsgType] && !_f_dnstap_types[d.message().type()]) {
+            _metrics->process_cache_dnstap(dns_cache, true);
+        } else {
+            _metrics->process_cache_dnstap(dns_cache, false);
+        }
+        return;
+    }
+
     if (_f_enabled[Filters::DnstapMsgType] && !_f_dnstap_types[d.message().type()]) {
         _metrics->process_dnstap(d, true);
     } else {
@@ -147,6 +163,28 @@ void DnsStreamHandler::process_dnstap_cb(const dnstap::Dnstap &d)
 // callback from input module
 void DnsStreamHandler::process_udp_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp)
 {
+    for (auto const &cache : _pcap_stream->cache_udp_signal) {
+        auto dns_cache = static_cast<CacheDnsHandler *>(cache.get());
+        if (!dns_cache) {
+            continue;
+        }
+        if (!dns_cache->filter_hash.empty() && dns_cache->filter_hash != _filter_hash) {
+            continue;
+        }
+
+        if (!_filter_hash.empty() && dns_cache->payload.getDataLen() == 0) {
+            _metrics->process_filtered(stamp);
+        } else {
+            if (!_filtering(dns_cache->payload, dir, dns_cache->l3, dns_cache->l4, dns_cache->port, dns_cache->timestamp)) {
+                _metrics->process_cache_pcap(dns_cache, dir, flowkey);
+                // signal for chained stream handlers, if we have any
+                udp_signal(payload, dir, l3, flowkey, stamp);
+            }
+        }
+
+        return;
+    }
+
     pcpp::UdpLayer *udpLayer = payload.getLayerOfType<pcpp::UdpLayer>();
     assert(udpLayer);
 
@@ -299,6 +337,20 @@ void DnsStreamHandler::info_json(json &j) const
 {
     common_info_json(j);
     j[schema_key()]["xact"]["open"] = _metrics->num_open_transactions();
+}
+void DnsStreamHandler::on_cache_callback(CacheHandler &cache)
+{
+    cache.schema_key = schema_key();
+    cache.filter_hash = _filter_hash;
+
+    if (_pcap_stream) {
+        auto dns_cache = static_cast<CacheDnsHandler &>(cache);
+        if(dns_cache.l4 == PCPP_UDP) {
+            _pcap_stream->cache_udp_signal.push_back(std::make_unique<CacheHandler>(cache));
+        }
+    } else if (_dnstap_stream) {
+        _dnstap_stream->cache_dnstap_signal.push_back(std::make_unique<CacheHandler>(cache));
+    }
 }
 static inline bool endsWith(std::string_view str, std::string_view suffix)
 {
@@ -505,7 +557,7 @@ void DnsMetricsBucket::process_dnstap(bool deep, const dnstap::Dnstap &payload)
     }
 
     if (!deep || (!payload.message().has_query_message() && !payload.message().has_response_message())) {
-        process_dns_layer(l3, l4, side, 0);
+        process_dns_layer(l3, l4, side, 0, true);
         return;
     }
 
@@ -521,7 +573,7 @@ void DnsMetricsBucket::process_dnstap(bool deep, const dnstap::Dnstap &payload)
         // DnsLayer takes ownership of buf
         DnsLayer dpayload(buf, query.size(), nullptr, nullptr);
         lock.unlock();
-        process_dns_layer(deep, dpayload, l3, l4, port);
+        process_dns_layer(deep, dpayload, l3, l4, port, true);
     } else if (side == QR::response && payload.message().has_response_message()) {
         auto query = payload.message().response_message();
         uint8_t *buf = new uint8_t[query.size()];
@@ -529,13 +581,14 @@ void DnsMetricsBucket::process_dnstap(bool deep, const dnstap::Dnstap &payload)
         // DnsLayer takes ownership of buf
         DnsLayer dpayload(buf, query.size(), nullptr, nullptr);
         lock.unlock();
-        process_dns_layer(deep, dpayload, l3, l4, port);
+        process_dns_layer(deep, dpayload, l3, l4, port, true);
     }
 }
-void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, pcpp::ProtocolType l3, Protocol l4, uint16_t port)
+void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, pcpp::ProtocolType l3, Protocol l4, uint16_t port, bool cache)
 {
     std::unique_lock lock(_mutex);
 
+    QR side{QR::query};
     if (group_enabled(group::DnsMetrics::Counters)) {
         if (l3 == pcpp::IPv6) {
             ++_counters.IPv6;
@@ -561,6 +614,7 @@ void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, pcpp::Pro
         }
 
         if (payload.getDnsHeader()->queryOrResponse == QR::response) {
+            side = QR::response;
             ++_counters.replies;
             switch (payload.getDnsHeader()->responseCode) {
             case NoError:
@@ -591,6 +645,10 @@ void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, pcpp::Pro
 
     auto success = payload.parseResources(true);
     if (!success) {
+        if (cache) {
+            CacheDnsHandler cache = CacheDnsHandler(start_tstamp(), l3, l4, side, port);
+            cache_signal(cache);
+        }
         return;
     }
 
@@ -633,9 +691,14 @@ void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, pcpp::Pro
             }
         }
     }
+
+    if (cache) {
+        CacheDnsHandler cache = CacheDnsHandler(start_tstamp(), l3, l4, side, port, payload);
+        cache_signal(cache);
+    }
 }
 
-void DnsMetricsBucket::process_dns_layer(pcpp::ProtocolType l3, Protocol l4, QR side, uint16_t port)
+void DnsMetricsBucket::process_dns_layer(pcpp::ProtocolType l3, Protocol l4, QR side, uint16_t port, bool cache)
 {
     std::unique_lock lock(_mutex);
 
@@ -672,6 +735,11 @@ void DnsMetricsBucket::process_dns_layer(pcpp::ProtocolType l3, Protocol l4, QR 
 
     if (port) {
         _dns_topUDPPort.update(port);
+    }
+
+    if (cache) {
+        CacheDnsHandler cache = CacheDnsHandler(start_tstamp(), l3, l4, side, port);
+        cache_signal(cache);
     }
 }
 
@@ -793,7 +861,7 @@ void DnsMetricsManager::process_dns_layer(DnsLayer &payload, PacketDirection dir
     // base event
     new_event(stamp);
     // process in the "live" bucket. this will parse the resources if we are deep sampling
-    live_bucket()->process_dns_layer(_deep_sampling_now, payload, l3, static_cast<Protocol>(l4), port);
+    live_bucket()->process_dns_layer(_deep_sampling_now, payload, l3, static_cast<Protocol>(l4), port, true);
 
     if (group_enabled(group::DnsMetrics::DnsTransactions)) {
         // handle dns transactions (query/response pairs)
@@ -848,5 +916,41 @@ void DnsMetricsManager::process_dnstap(const dnstap::Dnstap &payload, bool filte
     new_event(stamp);
     // process in the "live" bucket. this will parse the resources if we are deep sampling
     live_bucket()->process_dnstap(_deep_sampling_now, payload);
+}
+void DnsMetricsManager::process_cache_dnstap(CacheDnsHandler *cache, bool filtered)
+{
+    if (filtered) {
+        return process_filtered(cache->timestamp);
+    }
+
+    new_event(cache->timestamp);
+    if (cache->payload.getHeaderLen() != 0) {
+        live_bucket()->process_dns_layer(_deep_sampling_now, cache->payload, cache->l3, cache->l4, cache->port, false);
+    } else {
+        live_bucket()->process_dns_layer(cache->l3, cache->l4, cache->side, cache->port, false);
+    }
+}
+
+void DnsMetricsManager::process_cache_pcap(CacheDnsHandler *cache, PacketDirection dir, uint32_t flowkey)
+{
+    new_event(cache->timestamp);
+    if (cache->payload.getHeaderLen() == 0) {
+        live_bucket()->process_dns_layer(cache->l3, cache->l4, cache->side, cache->port, false);
+
+    } else {
+        live_bucket()->process_dns_layer(_deep_sampling_now, cache->payload, cache->l3, cache->l4, cache->port, false);
+
+        if (group_enabled(group::DnsMetrics::DnsTransactions)) {
+            // handle dns transactions (query/response pairs)
+            if (cache->payload.getDnsHeader()->queryOrResponse == QR::response) {
+                auto xact = _qr_pair_manager.maybe_end_transaction(flowkey, cache->payload.getDnsHeader()->transactionID, cache->timestamp);
+                if (xact.first) {
+                    live_bucket()->new_dns_transaction(_deep_sampling_now, _to90th, _from90th, cache->payload, dir, xact.second);
+                }
+            } else {
+                _qr_pair_manager.start_transaction(flowkey, cache->payload.getDnsHeader()->transactionID, cache->timestamp);
+            }
+        }
+    }
 }
 }

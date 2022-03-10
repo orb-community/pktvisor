@@ -122,6 +122,9 @@ void NetStreamHandler::process_packet_cb(pcpp::Packet &payload, PacketDirection 
         if (!net_cache) {
             continue;
         }
+        if (!net_cache->filter_hash.empty() && net_cache->filter_hash != _filter_hash) {
+            continue;
+        }
         _metrics->process_cache(net_cache);
         return;
     }
@@ -145,6 +148,9 @@ void NetStreamHandler::process_sflow_cb(const SFSample &payload)
         if (!net_cache) {
             continue;
         }
+        if (!net_cache->filter_hash.empty() && net_cache->filter_hash != _filter_hash) {
+            continue;
+        }
         _metrics->process_cache(net_cache);
         return;
     }
@@ -156,6 +162,9 @@ void NetStreamHandler::process_dnstap_cb(const dnstap::Dnstap &payload)
     for (auto const &cache : _dnstap_stream->cache_dnstap_signal) {
         auto net_cache = static_cast<CacheNetHandler *>(cache.get());
         if (!net_cache) {
+            continue;
+        }
+        if (!net_cache->filter_hash.empty() && net_cache->filter_hash != _filter_hash) {
             continue;
         }
         _metrics->process_cache(net_cache);
