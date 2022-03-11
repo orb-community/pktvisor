@@ -17,30 +17,24 @@
 
 add_library(common INTERFACE)
 
-if (BUILD_TESTS)
-  add_subdirectory(test)
-endif()
-
 target_include_directories(common
-  INTERFACE
-    $<INSTALL_INTERFACE:$<INSTALL_PREFIX>/include>
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-)
+		INTERFACE
+		$<INSTALL_INTERFACE:$<INSTALL_PREFIX>/include>
+		$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+		)
 
 target_compile_features(common INTERFACE cxx_std_11)
 
-install(TARGETS common EXPORT ${PROJECT_NAME})
-
-install(FILES 
-			include/common_defs.hpp
-			include/memory_operations.hpp
-			include/MurmurHash3.h
-			include/serde.hpp
-			include/count_zeros.hpp
-			include/inv_pow2_table.hpp
-			include/binomial_bounds.hpp
-			include/conditional_back_inserter.hpp
-			include/conditional_forward.hpp
-			include/ceiling_power_of_2.hpp
-			include/bounds_binomial_proportions.hpp
-  DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/DataSketches")
+target_sources(common
+		INTERFACE
+		${CMAKE_CURRENT_SOURCE_DIR}/include/common_defs.hpp
+		${CMAKE_CURRENT_SOURCE_DIR}/include/memory_operations.hpp
+		${CMAKE_CURRENT_SOURCE_DIR}/include/MurmurHash3.h
+		${CMAKE_CURRENT_SOURCE_DIR}/include/serde.hpp
+		${CMAKE_CURRENT_SOURCE_DIR}/include/count_zeros.hpp
+		${CMAKE_CURRENT_SOURCE_DIR}/include/inv_pow2_table.hpp
+		${CMAKE_CURRENT_SOURCE_DIR}/include/binomial_bounds.hpp
+		${CMAKE_CURRENT_SOURCE_DIR}/include/conditional_back_inserter.hpp
+		${CMAKE_CURRENT_SOURCE_DIR}/include/conditional_forward.hpp
+		${CMAKE_CURRENT_SOURCE_DIR}/include/ceiling_power_of_2.hpp
+		)

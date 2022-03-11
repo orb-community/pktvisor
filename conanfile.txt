@@ -13,7 +13,7 @@ pcapplusplus/ns1-upstream
 protobuf/3.19.2
 sigslot/1.2.1
 spdlog/1.9.2
-uvw/2.11.0
+uvw/2.10.0
 yaml-cpp/0.7.0
 libpcap/1.10.1
 

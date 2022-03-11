@@ -19,30 +19,40 @@ add_library(kll INTERFACE)
 
 add_library(${PROJECT_NAME}::KLL ALIAS kll)
 
-if (BUILD_TESTS)
-  add_subdirectory(test)
-endif()
-
 target_include_directories(kll
-  INTERFACE
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:$<INSTALL_PREFIX>/include>
-)
+		INTERFACE
+		$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+		$<INSTALL_INTERFACE:$<INSTALL_PREFIX>/include>
+		)
 
 target_link_libraries(kll INTERFACE common)
 target_compile_features(kll INTERFACE cxx_std_11)
 
-install(TARGETS kll
-  EXPORT ${PROJECT_NAME}
-)
+set(kll_HEADERS "")
+list(APPEND kll_HEADERS "include/kll_sketch.hpp")
+list(APPEND kll_HEADERS "include/kll_sketch_impl.hpp")
+list(APPEND kll_HEADERS "include/kll_helper.hpp")
+list(APPEND kll_HEADERS "include/kll_helper_impl.hpp")
+list(APPEND kll_HEADERS "include/kll_quantile_calculator.hpp")
+list(APPEND kll_HEADERS "include/kll_quantile_calculator_impl.hpp")
+list(APPEND kll_HEADERS "include/kolmogorov_smirnov.hpp")
+list(APPEND kll_HEADERS "include/kolmogorov_smirnov_impl.hpp")
 
-install(FILES 
-		include/kll_sketch.hpp
-		include/kll_sketch_impl.hpp	
-		include/kll_helper.hpp
-		include/kll_helper_impl.hpp
-		include/kll_quantile_calculator.hpp
-		include/kll_quantile_calculator_impl.hpp
-		include/kolmogorov_smirnov.hpp
-		include/kolmogorov_smirnov_impl.hpp
-  DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/DataSketches")
+install(TARGETS kll
+		EXPORT ${PROJECT_NAME}
+		)
+
+install(FILES ${kll_HEADERS}
+		DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/DataSketches")
+
+target_sources(kll
+		INTERFACE
+		${CMAKE_CURRENT_SOURCE_DIR}/include/kll_helper.hpp
+		${CMAKE_CURRENT_SOURCE_DIR}/include/kll_helper_impl.hpp
+		${CMAKE_CURRENT_SOURCE_DIR}/include/kll_sketch.hpp
+		${CMAKE_CURRENT_SOURCE_DIR}/include/kll_sketch_impl.hpp
+		${CMAKE_CURRENT_SOURCE_DIR}/include/kll_quantile_calculator.hpp
+		${CMAKE_CURRENT_SOURCE_DIR}/include/kll_quantile_calculator_impl.hpp
+		${CMAKE_CURRENT_SOURCE_DIR}/include/kolmogorov_smirnov.hpp
+		${CMAKE_CURRENT_SOURCE_DIR}/include/kolmogorov_smirnov_impl.hpp
+		)
