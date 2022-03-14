@@ -1,25 +1,25 @@
 [requires]
 benchmark/1.6.0
-catch2/2.13.7
+catch2/2.13.8
 corrade/2020.06
-cpp-httplib/0.8.0
+cpp-httplib/0.10.1
 docopt.cpp/0.6.3
-fmt/7.1.3
+fmt/8.1.1
 json-schema-validator/2.1.0
 libmaxminddb/1.6.0
-nlohmann_json/3.9.1
+nlohmann_json/3.10.5
 openssl/1.1.1k
 pcapplusplus/ns1-upstream
-protobuf/3.17.1
-sigslot/1.2.0
-spdlog/1.8.2
+protobuf/3.19.2
+sigslot/1.2.1
+spdlog/1.9.2
 uvw/2.10.0
-yaml-cpp/0.6.3
+yaml-cpp/0.7.0
 libpcap/1.10.1
 
 [build_requires]
 corrade/2020.06
-protobuf/3.17.1
+protobuf/3.19.2
 
 [options]
 pcapplusplus:immediate_mode=True

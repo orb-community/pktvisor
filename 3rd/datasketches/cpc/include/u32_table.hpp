@@ -29,11 +29,11 @@
 
 namespace datasketches {
 
-static const uint64_t U32_TABLE_UPSIZE_NUMER = 3LL;
-static const uint64_t U32_TABLE_UPSIZE_DENOM = 4LL;
+static const uint32_t U32_TABLE_UPSIZE_NUMER = 3LL;
+static const uint32_t U32_TABLE_UPSIZE_DENOM = 4LL;
 
-static const uint64_t U32_TABLE_DOWNSIZE_NUMER = 1LL;
-static const uint64_t U32_TABLE_DOWNSIZE_DENOM = 4LL;
+static const uint32_t U32_TABLE_DOWNSIZE_NUMER = 1LL;
+static const uint32_t U32_TABLE_DOWNSIZE_DENOM = 4LL;
 
 template<typename A>
 class u32_table {
@@ -42,7 +42,7 @@ public:
   u32_table(const A& allocator);
   u32_table(uint8_t lg_size, uint8_t num_valid_bits, const A& allocator);
 
-  inline size_t get_num_items() const;
+  inline uint32_t get_num_items() const;
   inline const uint32_t* get_slots() const;
   inline uint8_t get_lg_size() const;
   inline void clear();
@@ -52,7 +52,7 @@ public:
   // returns true iff the item was present and was therefore removed from the table
   inline bool maybe_delete(uint32_t item);
 
-  static u32_table make_from_pairs(const uint32_t* pairs, size_t num_pairs, uint8_t lg_k, const A& allocator);
+  static u32_table make_from_pairs(const uint32_t* pairs, uint32_t num_pairs, uint8_t lg_k, const A& allocator);
 
   vector_u32<A> unwrapping_get_items() const;
 
@@ -69,10 +69,10 @@ private:
 
   uint8_t lg_size; // log2 of number of slots
   uint8_t num_valid_bits;
-  size_t num_items;
+  uint32_t num_items;
   vector_u32<A> slots;
 
-  inline size_t lookup(uint32_t item) const;
+  inline uint32_t lookup(uint32_t item) const;
   inline void must_insert(uint32_t item);
   inline void rebuild(uint8_t new_lg_size);
 };
