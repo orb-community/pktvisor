@@ -245,6 +245,16 @@ void PcapInputStream::tcp_connection_end(const pcpp::ConnectionData &connectionD
 void PcapInputStream::process_pcap_stats(const pcpp::IPcapDevice::PcapStats &stats)
 {
     pcap_stats_signal(stats);
+
+    for (const auto &packet : _tcp_reassembly.getConnectionInformation()) {
+        if (_tcp_reassembly.isConnectionOpen(packet.second)) {
+            time_t startTime = static_cast<time_t>(packet.second.startTime.tv_sec);
+            //check if started is 2 times closeDelayConnection
+            if(difftime(time(NULL),startTime) >= 10) {
+                _tcp_reassembly.closeConnection(packet.first);
+            }
+        }
+    }
 }
 
 void PcapInputStream::_generate_mock_traffic()
