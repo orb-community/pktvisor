@@ -71,7 +71,7 @@ PcapInputStream::PcapInputStream(const std::string &name)
           this,
           _tcp_connection_start_cb,
           _tcp_connection_end_cb,
-          {true, 5, 500, 50})
+          {true, 1, 500, 50})
 {
     pcpp::Logger::getInstance().suppressLogs();
 }
@@ -249,7 +249,7 @@ void PcapInputStream::process_pcap_stats(const pcpp::IPcapDevice::PcapStats &sta
     for (const auto &packet : _tcp_reassembly.getConnectionInformation()) {
         if (_tcp_reassembly.isConnectionOpen(packet.second)) {
             time_t startTime = static_cast<time_t>(packet.second.startTime.tv_sec);
-            //check if started is 2 times closeDelayConnection
+            //check if started is 10 times closeDelayConnection
             if(difftime(time(NULL),startTime) >= 10) {
                 _tcp_reassembly.closeConnection(packet.first);
             }
