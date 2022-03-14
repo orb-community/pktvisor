@@ -18,6 +18,31 @@ namespace visor {
 class ThreadMonitor
 {
 public:
+    static inline uint32_t thread_id()
+    {
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+        return 0;
+#elif __APPLE__
+        return 0;
+#elif __linux__
+        uint32_t thread_id;
+        std::string token;
+        std::ifstream file("/proc/thread-self/status");
+        while (file >> token) {
+            if (token == "Tgid:") {
+                if (file >> thread_id) {
+                    return thread_id;
+                } else {
+                    return 0;
+                }
+            }
+            // Ignore the rest of the line
+            file.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+        }
+        return 0; // Nothing found
+#endif
+    }
+
     static inline double cpu_percentage()
     {
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
