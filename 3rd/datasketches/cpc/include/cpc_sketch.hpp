@@ -67,7 +67,7 @@ public:
    * @param lg_k base 2 logarithm of the number of bins in the sketch
    * @param seed for hash function
    */
-  explicit cpc_sketch_alloc(uint8_t lg_k = CPC_DEFAULT_LG_K, uint64_t seed = DEFAULT_SEED, const A& allocator = A());
+  explicit cpc_sketch_alloc(uint8_t lg_k = cpc_constants::DEFAULT_LG_K, uint64_t seed = DEFAULT_SEED, const A& allocator = A());
 
   using allocator_type = A;
   A get_allocator() const;
@@ -192,7 +192,7 @@ public:
    * @param data pointer to the data
    * @param length of the data in bytes
    */
-  void update(const void* value, int size);
+  void update(const void* value, size_t size);
 
   /**
    * Returns a human-readable summary of this sketch
@@ -234,6 +234,17 @@ public:
    * @return an instance of the sketch
    */
   static cpc_sketch_alloc<A> deserialize(const void* bytes, size_t size, uint64_t seed = DEFAULT_SEED, const A& allocator = A());
+
+  /**
+   * The actual size of a compressed CPC sketch has a small random variance, but the following
+   * empirically measured size should be large enough for at least 99.9 percent of sketches.
+   *
+   * <p>For small values of <i>n</i> the size can be much smaller.
+   *
+   * @param lg_k the given value of lg_k.
+   * @return the estimated maximum compressed serialized size of a sketch.
+   */
+  static size_t get_max_serialized_size_bytes(uint8_t lg_k);
 
   // for internal use
   uint32_t get_num_coupons() const;
@@ -302,6 +313,8 @@ private:
   static uint8_t get_preamble_ints(uint32_t num_coupons, bool has_hip, bool has_table, bool has_window);
   inline void write_hip(std::ostream& os) const;
   inline size_t copy_hip_to_mem(void* dst) const;
+
+  static void check_lg_k(uint8_t lg_k);
 
   friend cpc_compressor<A>;
   friend cpc_union_alloc<A>;

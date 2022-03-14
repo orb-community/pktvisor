@@ -51,7 +51,7 @@ struct serde<T, typename std::enable_if<std::is_arithmetic<T>::value>::type> {
     bool failure = false;
     try {
       os.write(reinterpret_cast<const char*>(items), sizeof(T) * num);
-    } catch (std::ostream::failure& e) {
+    } catch (std::ostream::failure&) {
       failure = true;
     }
     if (failure || !os.good()) {
@@ -62,7 +62,7 @@ struct serde<T, typename std::enable_if<std::is_arithmetic<T>::value>::type> {
     bool failure = false;
     try {
       is.read((char*)items, sizeof(T) * num);
-    } catch (std::istream::failure& e) {
+    } catch (std::istream::failure&) {
       failure = true;
     }
     if (failure || !is.good()) {
@@ -99,11 +99,11 @@ struct serde<std::string> {
     bool failure = false;
     try {
       for (; i < num && os.good(); i++) {
-        uint32_t length = items[i].size();
+        uint32_t length = static_cast<uint32_t>(items[i].size());
         os.write((char*)&length, sizeof(length));
         os.write(items[i].c_str(), length);
       }
-    } catch (std::ostream::failure& e) {
+    } catch (std::ostream::failure&) {
       failure = true;
     }
     if (failure || !os.good()) {
@@ -121,12 +121,12 @@ struct serde<std::string> {
         std::string str;
         str.reserve(length);
         for (uint32_t j = 0; j < length; j++) {
-          str.push_back(is.get());
+          str.push_back(static_cast<char>(is.get()));
         }
         if (!is.good()) { break; }
         new (&items[i]) std::string(std::move(str));
       }
-    } catch (std::istream::failure& e) {
+    } catch (std::istream::failure&) {
       failure = true;
     }
     if (failure || !is.good()) {
@@ -143,7 +143,7 @@ struct serde<std::string> {
   size_t serialize(void* ptr, size_t capacity, const std::string* items, unsigned num) const {
     size_t bytes_written = 0;
     for (unsigned i = 0; i < num; ++i) {
-      const uint32_t length = items[i].size();
+      const uint32_t length = static_cast<uint32_t>(items[i].size());
       const size_t new_bytes = length + sizeof(length);
       check_memory_size(bytes_written + new_bytes, capacity);
       memcpy(ptr, &length, sizeof(length));

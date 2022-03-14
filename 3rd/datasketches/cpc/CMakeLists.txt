@@ -19,15 +19,11 @@ add_library(cpc INTERFACE)
 
 add_library(${PROJECT_NAME}::CPC ALIAS cpc)
 
-if (BUILD_TESTS)
-  add_subdirectory(test)
-endif()
-
 target_include_directories(cpc
-  INTERFACE
-    $<INSTALL_INTERFACE:$<INSTALL_PREFIX>/include>
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-)
+		INTERFACE
+		$<INSTALL_INTERFACE:$<INSTALL_PREFIX>/include>
+		$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+		)
 
 target_link_libraries(cpc INTERFACE common)
 target_compile_features(cpc INTERFACE cxx_std_11)
@@ -49,26 +45,26 @@ list(APPEND cpc_HEADERS "include/u32_table.hpp")
 list(APPEND cpc_HEADERS "include/u32_table_impl.hpp")
 
 install(TARGETS cpc
-  EXPORT ${PROJECT_NAME}
-)
+		EXPORT ${PROJECT_NAME}
+		)
 
 install(FILES ${cpc_HEADERS}
-  DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/DataSketches")
+		DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/DataSketches")
 
 target_sources(cpc
-  INTERFACE
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/compression_data.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/cpc_common.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/cpc_compressor.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/cpc_compressor_impl.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/cpc_confidence.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/cpc_sketch.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/cpc_sketch_impl.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/cpc_union.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/cpc_union_impl.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/cpc_util.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/icon_estimator.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/kxp_byte_lookup.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/u32_table.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/u32_table_impl.hpp
-)
+		INTERFACE
+		${CMAKE_CURRENT_SOURCE_DIR}/include/compression_data.hpp
+		${CMAKE_CURRENT_SOURCE_DIR}/include/cpc_common.hpp
+		${CMAKE_CURRENT_SOURCE_DIR}/include/cpc_compressor.hpp
+		${CMAKE_CURRENT_SOURCE_DIR}/include/cpc_compressor_impl.hpp
+		${CMAKE_CURRENT_SOURCE_DIR}/include/cpc_confidence.hpp
+		${CMAKE_CURRENT_SOURCE_DIR}/include/cpc_sketch.hpp
+		${CMAKE_CURRENT_SOURCE_DIR}/include/cpc_sketch_impl.hpp
+		${CMAKE_CURRENT_SOURCE_DIR}/include/cpc_union.hpp
+		${CMAKE_CURRENT_SOURCE_DIR}/include/cpc_union_impl.hpp
+		${CMAKE_CURRENT_SOURCE_DIR}/include/cpc_util.hpp
+		${CMAKE_CURRENT_SOURCE_DIR}/include/icon_estimator.hpp
+		${CMAKE_CURRENT_SOURCE_DIR}/include/kxp_byte_lookup.hpp
+		${CMAKE_CURRENT_SOURCE_DIR}/include/u32_table.hpp
+		${CMAKE_CURRENT_SOURCE_DIR}/include/u32_table_impl.hpp
+		)

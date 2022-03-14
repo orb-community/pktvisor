@@ -26,7 +26,8 @@
 
 namespace datasketches {
 
-static std::independent_bits_engine<std::mt19937, 1, uint32_t> random_bit(std::chrono::system_clock::now().time_since_epoch().count());
+static std::independent_bits_engine<std::mt19937, 1, uint32_t>
+  random_bit(static_cast<uint32_t>(std::chrono::system_clock::now().time_since_epoch().count()));
 
 #ifdef KLL_VALIDATION
 extern uint32_t kll_next_offset;
@@ -46,9 +47,9 @@ class kll_helper {
     static inline uint8_t floor_of_log2_of_fraction(uint64_t numer, uint64_t denom);
     static inline uint8_t ub_on_num_levels(uint64_t n);
     static inline uint32_t compute_total_capacity(uint16_t k, uint8_t m, uint8_t num_levels);
-    static inline uint32_t level_capacity(uint16_t k, uint8_t numLevels, uint8_t height, uint8_t min_wid);
-    static inline uint32_t int_cap_aux(uint16_t k, uint8_t depth);
-    static inline uint32_t int_cap_aux_aux(uint16_t k, uint8_t depth);
+    static inline uint16_t level_capacity(uint16_t k, uint8_t numLevels, uint8_t height, uint8_t min_wid);
+    static inline uint16_t int_cap_aux(uint16_t k, uint8_t depth);
+    static inline uint16_t int_cap_aux_aux(uint16_t k, uint8_t depth);
     static inline uint64_t sum_the_sample_weights(uint8_t num_levels, const uint32_t* levels);
 
     /*
