@@ -248,9 +248,9 @@ void PcapInputStream::process_pcap_stats(const pcpp::IPcapDevice::PcapStats &sta
 
     for (const auto &packet : _tcp_reassembly.getConnectionInformation()) {
         if (_tcp_reassembly.isConnectionOpen(packet.second)) {
-            time_t startTime = static_cast<time_t>(packet.second.startTime.tv_sec);
-            // check if started is 10 times closeDelayConnection
-            if (difftime(time(NULL), startTime) >= 10) {
+            time_t start_time = static_cast<time_t>(packet.second.startTime.tv_sec);
+            // check if started is 10 times closeDelayConnection (seconds)
+            if (difftime(time(NULL), start_time) >= 10) {
                 _tcp_reassembly.closeConnection(packet.first);
             }
         }
