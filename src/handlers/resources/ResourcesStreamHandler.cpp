@@ -10,6 +10,8 @@ ResourcesStreamHandler::ResourcesStreamHandler(const std::string &name, InputStr
     : visor::StreamMetricsHandler<ResourcesMetricsManager>(name, window_config)
     , _timer(time(NULL))
 {
+    std::timespec_get(&_timestamp, TIME_UTC);
+
     if (handler) {
         throw StreamHandlerException(fmt::format("ResourcesStreamHandler: unsupported upstream chained stream handler {}", handler->name()));
     }
@@ -83,8 +85,8 @@ void ResourcesStreamHandler::process_dnstap_cb([[maybe_unused]] const dnstap::Dn
 
 void ResourcesStreamHandler::process_packet_cb([[maybe_unused]] pcpp::Packet &payload, [[maybe_unused]] PacketDirection dir, [[maybe_unused]] pcpp::ProtocolType l3, [[maybe_unused]] pcpp::ProtocolType l4, [[maybe_unused]] timespec stamp)
 {
-    if (difftime(time(NULL), _timer) >= MEASURE_INTERVAL) {
-        _timer = time(NULL);
+    if (stamp.tv_sec >= MEASURE_INTERVAL + _timestamp.tv_sec) {
+        _timestamp = stamp;
         _metrics->process_resources();
     }
 }

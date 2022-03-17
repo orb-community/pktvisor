@@ -68,6 +68,7 @@ class ResourcesStreamHandler final : public visor::StreamMetricsHandler<Resource
 
     // the input stream sources we support (only one will be in use at a time)
     time_t _timer;
+    timespec _timestamp;
     PcapInputStream *_pcap_stream{nullptr};
     DnstapInputStream *_dnstap_stream{nullptr};
     MockInputStream *_mock_stream{nullptr};
