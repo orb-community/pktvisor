@@ -13,6 +13,7 @@ class InputStream : public AbstractRunnableModule
 {
     mutable std::shared_mutex _input_mutex;
     std::vector<const Policy *> _policies;
+    StreamHandler *_resources_handler;
 
 public:
     InputStream(const std::string &name)
@@ -38,6 +39,16 @@ public:
     {
         std::unique_lock lock(_input_mutex);
         return _policies.size();
+    }
+
+    void set_resources_handler(StreamHandler *resources_handler)
+    {
+        _resources_handler = resources_handler;
+    }
+
+    StreamHandler *resources_handler() const
+    {
+        return _resources_handler;
     }
 
     virtual size_t consumer_count() const = 0;

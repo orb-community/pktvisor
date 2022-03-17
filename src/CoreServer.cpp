@@ -4,6 +4,7 @@
 
 #include "CoreServer.h"
 #include "HandlerManager.h"
+#include "InputStream.h"
 #include "Metrics.h"
 #include "Policies.h"
 #include "Taps.h"
@@ -323,6 +324,8 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
                         }
                     }
                 }
+                auto resources_handler = policy->input_stream()->resources_handler();
+                resources_handler->window_json(j[policy->name()][resources_handler->name()], period, req.matches[2] == "window");
                 _logger->debug("{} policy json metrics elapsed time: {}", policy->name(), psw);
             }
             res.set_content(j.dump(), "text/json");
@@ -363,6 +366,8 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
                         _logger->debug("{} window_prometheus elapsed time: {}", hmod->name(), sw);
                     }
                 }
+                auto resources_handler = policy->input_stream()->resources_handler();
+                resources_handler->window_prometheus(output, {{"policy", p_mname}, {"module", resources_handler->name()}});
             } catch (const std::exception &e) {
                 res.status = 500;
                 res.set_content(e.what(), "text/plain");

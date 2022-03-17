@@ -174,6 +174,14 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
             window_config.config_set<uint64_t>("deep_sample_rate", _default_deep_sample_rate);
         }
 
+        std::unique_ptr<StreamHandler> resources_module;
+        if (input_stream) {
+            //create resources handler for input stream
+            auto resources_handler_plugin = _registry->handler_plugins().find("resources");
+            resources_module = resources_handler_plugin->second->instantiate(input_stream_module_name + "-resources", input_ptr, &window_config);
+            input_stream->set_resources_handler(resources_module.get());
+        }
+
         std::vector<std::unique_ptr<StreamHandler>> handler_modules;
         for (YAML::const_iterator h_it = handler_node["modules"].begin(); h_it != handler_node["modules"].end(); ++h_it) {
 
@@ -282,8 +290,9 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
             throw PolicyException(fmt::format("policy [{}] creation failed (policy): {}", policy_name, e.what()));
         }
         try {
-            if (input_stream) {
+            if (input_stream && resources_module) {
                 _registry->input_manager()->module_add(std::move(input_stream));
+                _registry->handler_manager()->module_add(std::move(resources_module));
             }
         } catch (ModuleException &e) {
             // note that if this call excepts, we are in an unknown state and the exception will propagate
@@ -326,6 +335,7 @@ void PolicyManager::remove_policy(const std::string &name)
 
     auto policy = _map[name].get();
     auto input_name = policy->input_stream()->name();
+    auto resource_handler_name = policy->input_stream()->resources_handler()->name();
     std::vector<std::string> module_names;
     for (const auto &mod : policy->modules()) {
         module_names.push_back(mod->name());
@@ -338,6 +348,7 @@ void PolicyManager::remove_policy(const std::string &name)
 
     if (!policy->input_stream()->policies_count()) {
         _registry->input_manager()->module_remove(input_name);
+        _registry->handler_manager()->module_remove(resource_handler_name);
     }
 
     _map.erase(name);
@@ -365,6 +376,7 @@ void Policy::start()
     // from handlers in the same thread we are starting the policy from
     spdlog::get("visor")->info("policy [{}]: starting input instance: {}", _name, _input_stream->name());
     _input_stream->start();
+    _input_stream->resources_handler()->start();
     _running = true;
 }
 void Policy::stop()
@@ -377,6 +389,7 @@ void Policy::stop()
         if (_input_stream->policies_count() <= 1) {
             spdlog::get("visor")->info("policy [{}]: stopping input instance: {}", _name, _input_stream->name());
             _input_stream->stop();
+            _input_stream->resources_handler()->stop();
         } else {
             spdlog::get("visor")->info("policy [{}]: input instance {} not stopped because it is in use by another policy.", _name, _input_stream->name());
         }
