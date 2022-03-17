@@ -3,7 +3,6 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 #include "ResourcesStreamHandler.h"
-#include "ThreadMonitor.h"
 
 namespace visor::handler::resources {
 
@@ -140,8 +139,8 @@ void ResourcesMetricsBucket::process_resources()
 {
     std::unique_lock lock(_mutex);
 
-    _cpu_percentage.update(ThreadMonitor::cpu_percentage());
-    _memory_usage_kb.update(ThreadMonitor::memory_usage());
+    _cpu_percentage.update(_monitor.cpu_percentage());
+    _memory_usage_kb.update(_monitor.memory_usage());
 }
 
 void ResourcesMetricsManager::process_resources()

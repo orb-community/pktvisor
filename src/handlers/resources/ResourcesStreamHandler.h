@@ -5,11 +5,12 @@
 #pragma once
 
 #include "AbstractMetricsManager.h"
-#include "PcapInputStream.h"
 #include "DnstapInputStream.h"
 #include "MockInputStream.h"
+#include "PcapInputStream.h"
 #include "SflowInputStream.h"
 #include "StreamHandler.h"
+#include "ThreadMonitor.h"
 #include <Corrade/Utility/Debug.h>
 #include <limits>
 #include <string>
@@ -21,7 +22,7 @@ using namespace visor::input::dnstap;
 using namespace visor::input::mock;
 using namespace visor::input::sflow;
 
-constexpr double MEASURE_INTERVAL = 10; //in seconds
+constexpr double MEASURE_INTERVAL = 10; // in seconds
 
 class ResourcesMetricsBucket final : public visor::AbstractMetricsBucket
 {
@@ -30,14 +31,16 @@ protected:
     mutable std::shared_mutex _mutex;
 
     // total numPackets is tracked in base class num_events
-    Quantile<uint64_t> _cpu_percentage;
+    Quantile<double> _cpu_percentage;
     Quantile<uint64_t> _memory_usage_kb;
     uint32_t thread_id;
 
+    ThreadMonitor _monitor;
+
 public:
     ResourcesMetricsBucket()
-        : _cpu_percentage("resources", {"xact", "out", "quantiles_us"}, "Quantiles of thread cpu usage")
-        , _memory_usage_kb("resources", {"xact", "in", "quantiles_us"}, "Quantiles of thead memory usage in kilobytes")
+        : _cpu_percentage("resources", {"cpu_percentage"}, "Quantiles of thread cpu usage")
+        , _memory_usage_kb("resources", {"memory_bytes"}, "Quantiles of thead memory usage in bytes")
     {
     }
 
@@ -47,7 +50,6 @@ public:
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override;
 
     void process_resources();
-
 };
 
 class ResourcesMetricsManager final : public visor::AbstractMetricsManager<ResourcesMetricsBucket>
