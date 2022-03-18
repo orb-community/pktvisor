@@ -60,7 +60,7 @@ public:
     {
     }
 
-    void process_resources();
+    void process_resources(timespec stamp = timespec());
 };
 
 class ResourcesStreamHandler final : public visor::StreamMetricsHandler<ResourcesMetricsManager>

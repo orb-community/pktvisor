@@ -8,10 +8,9 @@ namespace visor::handler::resources {
 
 ResourcesStreamHandler::ResourcesStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config, StreamHandler *handler)
     : visor::StreamMetricsHandler<ResourcesMetricsManager>(name, window_config)
-    , _timer(time(NULL))
+    , _timer(0)
+    , _timestamp(timespec())
 {
-    std::timespec_get(&_timestamp, TIME_UTC);
-
     if (handler) {
         throw StreamHandlerException(fmt::format("ResourcesStreamHandler: unsupported upstream chained stream handler {}", handler->name()));
     }
@@ -87,7 +86,7 @@ void ResourcesStreamHandler::process_packet_cb([[maybe_unused]] pcpp::Packet &pa
 {
     if (stamp.tv_sec >= MEASURE_INTERVAL + _timestamp.tv_sec) {
         _timestamp = stamp;
-        _metrics->process_resources();
+        _metrics->process_resources(stamp);
     }
 }
 
@@ -145,11 +144,12 @@ void ResourcesMetricsBucket::process_resources()
     _memory_usage_kb.update(_monitor.memory_usage());
 }
 
-void ResourcesMetricsManager::process_resources()
+void ResourcesMetricsManager::process_resources(timespec stamp)
 {
-    timespec stamp;
-    // use now()
-    std::timespec_get(&stamp, TIME_UTC);
+    if(stamp.tv_sec == 0) {
+        // use now()
+        std::timespec_get(&stamp, TIME_UTC);
+    }
     // base event
     new_event(stamp);
     // process in the "live" bucket. this will parse the resources if we are deep sampling

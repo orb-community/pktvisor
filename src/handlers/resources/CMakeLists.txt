@@ -23,3 +23,5 @@ target_link_libraries(VisorHandlerResources
         )
 
 set(VISOR_STATIC_PLUGINS ${VISOR_STATIC_PLUGINS} Visor::Handler::Resources PARENT_SCOPE)
+
+add_subdirectory(tests)
