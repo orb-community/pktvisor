@@ -32,6 +32,16 @@ TEST_CASE("Check resources for pcap input", "[pcap][resources]")
 
     CHECK(j["cpu_percentage"]["p50"] == 0.0);
     CHECK(j["memory_bytes"]["p50"] != nullptr);
+
+    std::stringstream output;
+    std::string line;
+    resources_handler.metrics()->bucket(0)->to_prometheus(output, {{"policy", "default"}});
+    std::getline(output, line);
+    CHECK(line == "# HELP base_total Total number of events");
+    std::getline(output, line);
+    CHECK(line == "# TYPE base_total gauge");
+    std::getline(output, line);
+    CHECK(line == R"(base_total{policy="default"} 1)");
 }
 
 TEST_CASE("Check resources for dnstap input", "[dnstap][resources]")
