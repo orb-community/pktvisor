@@ -21,7 +21,7 @@ if(VISOR_PRERELEASE STREQUAL "-develop" OR VISOR_PRERELEASE STREQUAL "-rc")
     execute_process(
             COMMAND
             git rev-parse --short HEAD
-            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+            WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
             RESULT_VARIABLE
             SHORT_HASH_RESULT
             OUTPUT_VARIABLE
@@ -41,13 +41,13 @@ set(VISOR_VERSION "pktvisor ${PROJECT_VERSION}${VISOR_PRERELEASE}")
 # used in CI
 file(WRITE ${CMAKE_BINARY_DIR}/VERSION ${VISOR_VERSION_NUM})
 # golang version
-configure_file(golang/pkg/client/version.go.in ${CMAKE_SOURCE_DIR}/golang/pkg/client/version.go)
+configure_file(golang/pkg/client/version.go.in ${PROJECT_SOURCE_DIR}/golang/pkg/client/version.go)
 
 ####### end version code #######
 
 if(NOT DEFINED ENV{VERSION_ONLY})
 
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
+list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -77,7 +77,7 @@ if(PKTVISOR_CONAN_INIT)
 endif()
 
 conan_cmake_install(
-        PATH_OR_REFERENCE ${CMAKE_SOURCE_DIR}
+        PATH_OR_REFERENCE ${PROJECT_SOURCE_DIR}
         BUILD ${PKTVISOR_CONAN_BUILD}
         PROFILE_BUILD ${PKTVISOR_CONAN_BUILD_PROFILE}
         PROFILE_HOST ${PKTVISOR_CONAN_HOST_PROFILE}
