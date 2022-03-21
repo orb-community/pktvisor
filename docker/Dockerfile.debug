@@ -38,7 +38,7 @@ RUN go build -o pktvisor-cli cmd/pktvisor-cli/main.go
 
 FROM debian:bullseye-slim AS runtime
 
-ENV RUNTIME_DEPS "curl ca-certificates libasan6"
+ENV RUNTIME_DEPS "curl ca-certificates libasan6 gdb"
 
 RUN \
     apt-get update && \

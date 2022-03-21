@@ -19,8 +19,8 @@ add_library(visor-core
 add_library(Visor::Core ALIAS visor-core)
 
 target_include_directories(visor-core
-        PRIVATE
-        ${CMAKE_BINARY_DIR}/src # Visor::Core config.h
+        PUBLIC
+        ${CMAKE_CURRENT_BINARY_DIR} # Visor::Core config.h
         INTERFACE
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
         )
@@ -63,6 +63,6 @@ target_include_directories(unit-tests-vizor-core
 target_link_libraries(unit-tests-vizor-core PRIVATE Visor::Core ${VISOR_STATIC_PLUGINS})
 
 add_test(NAME unit-tests-vizor-core
-        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/src
+        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/src
         COMMAND unit-tests-vizor-core
         )
