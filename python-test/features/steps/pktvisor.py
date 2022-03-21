@@ -49,16 +49,27 @@ def check_pkt_status(context, pkt_status):
     docker_client = docker.from_env()
 
     containers = docker_client.containers.list(all=True)
-    pkt_containers = list()
     for container in containers:
-        pkt_containers = container.name.startswith(PKTVISOR_CONTAINER_NAME)
-    # if test_container is True:
-    #     container.stop()
-    #     container.remove()
+        is_test_container = container.name.startswith(PKTVISOR_CONTAINER_NAME)
+        if is_test_container is True:
+            status = container.status
+            assert_that(status, equal_to(pkt_status), f"pktvisor container {container.id} failed with status:{status}")
 
-# container = docker_client.containers.get(context.container_id)
-#     status = container.status
-#     assert_that(status, equal_to(pkt_status), f"pktvisor container {context.container_id} failed with status:{status}")
+
+@step("{amount_of_pktvisor} pktvisor's containers must be {pkt_status}")
+@retry(tries=5, delay=0.2)
+def check_amount_of_pkt_with_status(context, amount_of_pktvisor, pkt_status):
+    docker_client = docker.from_env()
+    containers = docker_client.containers.list(all=True)
+    containers_with_expected_status = list()
+    for container in containers:
+        is_test_container = container.name.startswith(PKTVISOR_CONTAINER_NAME)
+        if is_test_container is True:
+            status = container.status
+            if status == pkt_status:
+                containers_with_expected_status.append(container)
+    assert_that(len(set(containers_with_expected_status)), equal_to(int(amount_of_pktvisor)),
+                f"Amount of pktvisor container with referred status failed")
 
 
 @step("pktvisor API must be enabled")

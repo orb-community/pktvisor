@@ -8,8 +8,8 @@ def before_scenario(context, scenario):
     cleanup_container(PKTVISOR_CONTAINER_NAME)
 
 
-def after_feature(context, feature):
-    cleanup_container()
+def after_scenario(context, feature):
+    cleanup_container(PKTVISOR_CONTAINER_NAME)
 
 
 def cleanup_container(name_prefix):
