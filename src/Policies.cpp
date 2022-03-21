@@ -174,12 +174,15 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
             window_config.config_set<uint64_t>("deep_sample_rate", _default_deep_sample_rate);
         }
 
+        std::unique_ptr<Policy> input_resources_policy;
         std::unique_ptr<StreamHandler> resources_module;
         if (input_stream) {
-            //create resources handler for input stream
+            // create new policy with resources handler for input stream
+            input_resources_policy = std::make_unique<Policy>(input_stream_module_name + "-resources", tap);
+            input_resources_policy->set_input_stream(input_ptr);
             auto resources_handler_plugin = _registry->handler_plugins().find("input_resources");
-            resources_module = resources_handler_plugin->second->instantiate(input_stream_module_name + "-resources", input_ptr, &window_config);
-            input_stream->set_resources_handler(resources_module.get());
+            resources_module = resources_handler_plugin->second->instantiate("resources", input_ptr, &window_config);
+            input_resources_policy->add_module(resources_module.get());
         }
 
         std::vector<std::unique_ptr<StreamHandler>> handler_modules;
@@ -276,6 +279,9 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
 
         // make sure policy starts before committing
         try {
+            if (input_resources_policy) {
+                input_resources_policy->start();
+            }
             policy->start();
         } catch (std::runtime_error &e) {
             throw PolicyException(fmt::format("policy [{}] failed to start: {}", policy_name, e.what()));
@@ -285,6 +291,9 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
         // If the modules created above go out of scope before this step, they will destruct so the key is to make sure
         // roll back during exception ensures no modules have been added to any of the managers
         try {
+            if (input_resources_policy) {
+                module_add(std::move(input_resources_policy));
+            }
             module_add(std::move(policy));
         } catch (ModuleException &e) {
             throw PolicyException(fmt::format("policy [{}] creation failed (policy): {}", policy_name, e.what()));
@@ -335,7 +344,6 @@ void PolicyManager::remove_policy(const std::string &name)
 
     auto policy = _map[name].get();
     auto input_name = policy->input_stream()->name();
-    auto resource_handler_name = policy->input_stream()->resources_handler()->name();
     std::vector<std::string> module_names;
     for (const auto &mod : policy->modules()) {
         module_names.push_back(mod->name());
@@ -347,8 +355,12 @@ void PolicyManager::remove_policy(const std::string &name)
     }
 
     if (!policy->input_stream()->policies_count()) {
+        auto resources_name = input_name + "-resources";
+        auto resources_policy = _map[resources_name].get();
+        resources_policy->stop();
+        _registry->handler_manager()->module_remove("resources");
         _registry->input_manager()->module_remove(input_name);
-        _registry->handler_manager()->module_remove(resource_handler_name);
+        _map.erase(resources_name);
     }
 
     _map.erase(name);
@@ -376,7 +388,6 @@ void Policy::start()
     // from handlers in the same thread we are starting the policy from
     spdlog::get("visor")->info("policy [{}]: starting input instance: {}", _name, _input_stream->name());
     _input_stream->start();
-    _input_stream->resources_handler()->start();
     _running = true;
 }
 void Policy::stop()
@@ -389,7 +400,6 @@ void Policy::stop()
         if (_input_stream->policies_count() <= 1) {
             spdlog::get("visor")->info("policy [{}]: stopping input instance: {}", _name, _input_stream->name());
             _input_stream->stop();
-            _input_stream->resources_handler()->stop();
         } else {
             spdlog::get("visor")->info("policy [{}]: input instance {} not stopped because it is in use by another policy.", _name, _input_stream->name());
         }
