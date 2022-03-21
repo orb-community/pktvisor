@@ -50,9 +50,9 @@ struct CacheDnsHandler : CacheHandler {
     Protocol l4;
     uint16_t port;
     QR side;
-    DnsLayer payload;
+    DnsLayer *payload;
 
-    CacheDnsHandler(timespec timestamp, pcpp::ProtocolType l3, Protocol l4, QR side, uint16_t port, DnsLayer payload)
+    CacheDnsHandler(timespec timestamp, pcpp::ProtocolType l3, Protocol l4, QR side, uint16_t port, DnsLayer *payload)
         : CacheHandler("", "", timestamp)
         , l3(l3)
         , l4(l4)
@@ -68,7 +68,7 @@ struct CacheDnsHandler : CacheHandler {
         , l4(l4)
         , side(side)
         , port(port)
-        , payload(DnsLayer())
+        , payload(nullptr)
     {
     }
 };
@@ -186,8 +186,8 @@ public:
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override;
 
     void process_filtered();
-    void process_dns_layer(bool deep, DnsLayer &payload, pcpp::ProtocolType l3, Protocol l4, uint16_t port, bool cache);
-    void process_dns_layer(pcpp::ProtocolType l3, Protocol l4, QR side, uint16_t port, bool cache);
+    void process_dns_layer(bool deep, DnsLayer &payload, pcpp::ProtocolType l3, Protocol l4, uint16_t port);
+    void process_dns_layer(pcpp::ProtocolType l3, Protocol l4, QR side, uint16_t port);
     void process_dnstap(bool deep, const dnstap::Dnstap &payload);
 
     void new_dns_transaction(bool deep, float to90th, float from90th, DnsLayer &dns, PacketDirection dir, DnsTransaction xact);

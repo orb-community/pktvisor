@@ -305,7 +305,7 @@ void NetworkMetricsBucket::to_json(json &j) const
 void NetworkMetricsBucket::process_packet(bool deep, pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4)
 {
     if (!deep) {
-        process_net_layer(dir, l3, l4, true);
+        process_net_layer(dir, l3, l4);
         return;
     }
 
@@ -332,7 +332,7 @@ void NetworkMetricsBucket::process_packet(bool deep, pcpp::Packet &payload, Pack
         }
     }
 
-    process_net_layer(dir, l3, l4, is_ipv6, ipv4_in, ipv4_out, ipv6_in, ipv6_out, true);
+    process_net_layer(dir, l3, l4, is_ipv6, ipv4_in, ipv4_out, ipv6_in, ipv6_out);
 }
 void NetworkMetricsBucket::process_dnstap(bool deep, const dnstap::Dnstap &payload)
 {
@@ -382,7 +382,7 @@ void NetworkMetricsBucket::process_dnstap(bool deep, const dnstap::Dnstap &paylo
     }
 
     if (!deep) {
-        process_net_layer(dir, l3, l4, true);
+        process_net_layer(dir, l3, l4);
         return;
     }
 
@@ -401,7 +401,7 @@ void NetworkMetricsBucket::process_dnstap(bool deep, const dnstap::Dnstap &paylo
         ipv6_out = pcpp::IPv6Address(reinterpret_cast<const uint8_t *>(payload.message().response_address().data()));
     }
 
-    process_net_layer(dir, l3, l4, is_ipv6, ipv4_in, ipv4_out, ipv6_in, ipv6_out, true);
+    process_net_layer(dir, l3, l4, is_ipv6, ipv4_in, ipv4_out, ipv6_in, ipv6_out);
 }
 
 void NetworkMetricsBucket::process_sflow(bool deep, const SFSample &payload)
@@ -432,7 +432,7 @@ void NetworkMetricsBucket::process_sflow(bool deep, const SFSample &payload)
         }
 
         if (!deep) {
-            process_net_layer(dir, l3, l4, true);
+            process_net_layer(dir, l3, l4);
             return;
         }
 
@@ -457,11 +457,11 @@ void NetworkMetricsBucket::process_sflow(bool deep, const SFSample &payload)
             ipv6_out = pcpp::IPv6Address(sample.ipdst.address.ip_v6.addr);
         }
 
-        process_net_layer(dir, l3, l4, is_ipv6, ipv4_in, ipv4_out, ipv6_in, ipv6_out, true);
+        process_net_layer(dir, l3, l4, is_ipv6, ipv4_in, ipv4_out, ipv6_in, ipv6_out);
     }
 }
 
-void NetworkMetricsBucket::process_net_layer(PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, bool cache)
+void NetworkMetricsBucket::process_net_layer(PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4)
 {
     std::unique_lock lock(_mutex);
 
@@ -512,13 +512,11 @@ void NetworkMetricsBucket::process_net_layer(PacketDirection dir, pcpp::Protocol
         }
     }
 
-    if (cache) {
-        CacheNetHandler cache = CacheNetHandler(start_tstamp(), dir, l3, l4);
-        cache_signal(cache);
-    }
+    CacheNetHandler cache = CacheNetHandler(start_tstamp(), dir, l3, l4);
+    cache_signal(cache);
 }
 
-void NetworkMetricsBucket::process_net_layer(PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, bool is_ipv6, pcpp::IPv4Address &ipv4_in, pcpp::IPv4Address &ipv4_out, pcpp::IPv6Address &ipv6_in, pcpp::IPv6Address &ipv6_out, bool cache)
+void NetworkMetricsBucket::process_net_layer(PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, bool is_ipv6, pcpp::IPv4Address &ipv4_in, pcpp::IPv4Address &ipv4_out, pcpp::IPv6Address &ipv6_in, pcpp::IPv6Address &ipv6_out)
 {
     std::unique_lock lock(_mutex);
 
@@ -628,10 +626,8 @@ void NetworkMetricsBucket::process_net_layer(PacketDirection dir, pcpp::Protocol
         }
     }
 
-    if (cache) {
-        CacheNetHandler cache = CacheNetHandler(start_tstamp(), dir, l3, l4, is_ipv6, ipv4_in, ipv4_out, ipv6_in, ipv6_out);
-        cache_signal(cache);
-    }
+    CacheNetHandler cache = CacheNetHandler(start_tstamp(), dir, l3, l4, is_ipv6, ipv4_in, ipv4_out, ipv6_in, ipv6_out);
+    cache_signal(cache);
 }
 
 // the general metrics manager entry point
@@ -692,6 +688,6 @@ void NetworkMetricsManager::process_cache(CacheNetHandler *cache)
     // base event
     new_event(cache->timestamp);
     // process in the "live" bucket. this will parse the resources if we are deep sampling
-    live_bucket()->process_net_layer(cache->dir, cache->l3, cache->l4, cache->is_ipv6, cache->ipv4_in, cache->ipv4_out, cache->ipv6_in, cache->ipv6_out, false);
+    live_bucket()->process_net_layer(cache->dir, cache->l3, cache->l4, cache->is_ipv6, cache->ipv4_in, cache->ipv4_out, cache->ipv6_in, cache->ipv6_out);
 }
 }
