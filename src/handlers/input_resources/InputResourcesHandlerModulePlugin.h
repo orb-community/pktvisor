@@ -8,14 +8,14 @@
 
 namespace visor::handler::resources {
 
-class ResourcesHandlerModulePlugin : public HandlerModulePlugin
+class InputResourcesHandlerModulePlugin : public HandlerModulePlugin
 {
 
 protected:
     void setup_routes(HttpServer *svr) override;
 
 public:
-    explicit ResourcesHandlerModulePlugin(Corrade::PluginManager::AbstractManager &manager, const std::string &plugin)
+    explicit InputResourcesHandlerModulePlugin(Corrade::PluginManager::AbstractManager &manager, const std::string &plugin)
         : visor::HandlerModulePlugin{manager, plugin}
     {
     }

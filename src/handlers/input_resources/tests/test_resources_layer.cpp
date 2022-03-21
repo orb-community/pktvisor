@@ -2,7 +2,7 @@
 
 #include "DnstapInputStream.h"
 #include "PcapInputStream.h"
-#include "ResourcesStreamHandler.h"
+#include "InputResourcesStreamHandler.h"
 #include "SflowInputStream.h"
 
 using namespace visor::handler::resources;
@@ -15,7 +15,7 @@ TEST_CASE("Check resources for pcap input", "[pcap][resources]")
 
     visor::Config c;
     c.config_set<uint64_t>("num_periods", 1);
-    ResourcesStreamHandler resources_handler{"net-test", &stream, &c};
+    InputResourcesStreamHandler resources_handler{"net-test", &stream, &c};
 
     resources_handler.start();
     stream.start();
@@ -51,7 +51,7 @@ TEST_CASE("Check resources for dnstap input", "[dnstap][resources]")
     stream.config_set<visor::Configurable::StringList>("only_hosts", {"192.168.0.0/24", "2001:db8::/48"});
     visor::Config c;
     c.config_set<uint64_t>("num_periods", 1);
-    ResourcesStreamHandler resources_handler{"net-test", &stream, &c};
+    InputResourcesStreamHandler resources_handler{"net-test", &stream, &c};
 
     resources_handler.start();
     stream.start();
@@ -77,7 +77,7 @@ TEST_CASE("Check resources for sflow input", "[sflow][resources]")
 
     visor::Config c;
     c.config_set<uint64_t>("num_periods", 1);
-    ResourcesStreamHandler resources_handler{"net-test", &stream, &c};
+    InputResourcesStreamHandler resources_handler{"net-test", &stream, &c};
 
     resources_handler.start();
     stream.start();

@@ -24,7 +24,7 @@ using namespace visor::input::sflow;
 
 constexpr double MEASURE_INTERVAL = 10; // in seconds
 
-class ResourcesMetricsBucket final : public visor::AbstractMetricsBucket
+class InputResourcesMetricsBucket final : public visor::AbstractMetricsBucket
 {
 
 protected:
@@ -38,7 +38,7 @@ protected:
     ThreadMonitor _monitor;
 
 public:
-    ResourcesMetricsBucket()
+    InputResourcesMetricsBucket()
         : _cpu_percentage("resources", {"cpu_percentage"}, "Quantiles of thread cpu usage")
         , _memory_usage_kb("resources", {"memory_bytes"}, "Quantiles of thead memory usage in bytes")
     {
@@ -52,18 +52,18 @@ public:
     void process_resources();
 };
 
-class ResourcesMetricsManager final : public visor::AbstractMetricsManager<ResourcesMetricsBucket>
+class InputResourcesMetricsManager final : public visor::AbstractMetricsManager<InputResourcesMetricsBucket>
 {
 public:
-    ResourcesMetricsManager(const Configurable *window_config)
-        : visor::AbstractMetricsManager<ResourcesMetricsBucket>(window_config)
+    InputResourcesMetricsManager(const Configurable *window_config)
+        : visor::AbstractMetricsManager<InputResourcesMetricsBucket>(window_config)
     {
     }
 
     void process_resources(timespec stamp = timespec());
 };
 
-class ResourcesStreamHandler final : public visor::StreamMetricsHandler<ResourcesMetricsManager>
+class InputResourcesStreamHandler final : public visor::StreamMetricsHandler<InputResourcesMetricsManager>
 {
 
     // the input stream sources we support (only one will be in use at a time)
@@ -83,8 +83,8 @@ class ResourcesStreamHandler final : public visor::StreamMetricsHandler<Resource
     void process_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp);
 
 public:
-    ResourcesStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config, StreamHandler *handler = nullptr);
-    ~ResourcesStreamHandler() = default;
+    InputResourcesStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config, StreamHandler *handler = nullptr);
+    ~InputResourcesStreamHandler() = default;
 
     // visor::AbstractModule
     std::string schema_key() const override

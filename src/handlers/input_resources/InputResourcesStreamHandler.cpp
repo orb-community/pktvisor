@@ -2,12 +2,12 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-#include "ResourcesStreamHandler.h"
+#include "InputResourcesStreamHandler.h"
 
 namespace visor::handler::resources {
 
-ResourcesStreamHandler::ResourcesStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config, StreamHandler *handler)
-    : visor::StreamMetricsHandler<ResourcesMetricsManager>(name, window_config)
+InputResourcesStreamHandler::InputResourcesStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config, StreamHandler *handler)
+    : visor::StreamMetricsHandler<InputResourcesMetricsManager>(name, window_config)
     , _timer(0)
     , _timestamp(timespec())
 {
@@ -28,7 +28,7 @@ ResourcesStreamHandler::ResourcesStreamHandler(const std::string &name, InputStr
     }
 }
 
-void ResourcesStreamHandler::start()
+void InputResourcesStreamHandler::start()
 {
     if (_running) {
         return;
@@ -39,17 +39,17 @@ void ResourcesStreamHandler::start()
     }
 
     if (_pcap_stream) {
-        _pkt_connection = _pcap_stream->packet_signal.connect(&ResourcesStreamHandler::process_packet_cb, this);
+        _pkt_connection = _pcap_stream->packet_signal.connect(&InputResourcesStreamHandler::process_packet_cb, this);
     } else if (_dnstap_stream) {
-        _dnstap_connection = _dnstap_stream->dnstap_signal.connect(&ResourcesStreamHandler::process_dnstap_cb, this);
+        _dnstap_connection = _dnstap_stream->dnstap_signal.connect(&InputResourcesStreamHandler::process_dnstap_cb, this);
     } else if (_sflow_stream) {
-        _sflow_connection = _sflow_stream->sflow_signal.connect(&ResourcesStreamHandler::process_sflow_cb, this);
+        _sflow_connection = _sflow_stream->sflow_signal.connect(&InputResourcesStreamHandler::process_sflow_cb, this);
     }
 
     _running = true;
 }
 
-void ResourcesStreamHandler::stop()
+void InputResourcesStreamHandler::stop()
 {
     if (!_running) {
         return;
@@ -66,7 +66,7 @@ void ResourcesStreamHandler::stop()
     _running = false;
 }
 
-void ResourcesStreamHandler::process_sflow_cb([[maybe_unused]] const SFSample &)
+void InputResourcesStreamHandler::process_sflow_cb([[maybe_unused]] const SFSample &)
 {
     if (difftime(time(NULL), _timer) >= MEASURE_INTERVAL) {
         _timer = time(NULL);
@@ -74,7 +74,7 @@ void ResourcesStreamHandler::process_sflow_cb([[maybe_unused]] const SFSample &)
     }
 }
 
-void ResourcesStreamHandler::process_dnstap_cb([[maybe_unused]] const dnstap::Dnstap &)
+void InputResourcesStreamHandler::process_dnstap_cb([[maybe_unused]] const dnstap::Dnstap &)
 {
     if (difftime(time(NULL), _timer) >= MEASURE_INTERVAL) {
         _timer = time(NULL);
@@ -82,7 +82,7 @@ void ResourcesStreamHandler::process_dnstap_cb([[maybe_unused]] const dnstap::Dn
     }
 }
 
-void ResourcesStreamHandler::process_packet_cb([[maybe_unused]] pcpp::Packet &payload, [[maybe_unused]] PacketDirection dir, [[maybe_unused]] pcpp::ProtocolType l3, [[maybe_unused]] pcpp::ProtocolType l4, [[maybe_unused]] timespec stamp)
+void InputResourcesStreamHandler::process_packet_cb([[maybe_unused]] pcpp::Packet &payload, [[maybe_unused]] PacketDirection dir, [[maybe_unused]] pcpp::ProtocolType l3, [[maybe_unused]] pcpp::ProtocolType l4, [[maybe_unused]] timespec stamp)
 {
     if (stamp.tv_sec >= MEASURE_INTERVAL + _timestamp.tv_sec) {
         _timestamp = stamp;
@@ -90,10 +90,10 @@ void ResourcesStreamHandler::process_packet_cb([[maybe_unused]] pcpp::Packet &pa
     }
 }
 
-void ResourcesMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
+void InputResourcesMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
 {
     // static because caller guarantees only our own bucket type
-    const auto &other = static_cast<const ResourcesMetricsBucket &>(o);
+    const auto &other = static_cast<const InputResourcesMetricsBucket &>(o);
 
     std::shared_lock r_lock(other._mutex);
     std::unique_lock w_lock(_mutex);
@@ -102,7 +102,7 @@ void ResourcesMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
     _memory_usage_kb.merge(other._memory_usage_kb);
 }
 
-void ResourcesMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap add_labels) const
+void InputResourcesMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap add_labels) const
 {
     {
         auto [num_events, num_samples, event_rate, event_lock] = event_data_locked(); // thread safe
@@ -118,7 +118,7 @@ void ResourcesMetricsBucket::to_prometheus(std::stringstream &out, Metric::Label
     _memory_usage_kb.to_prometheus(out, add_labels);
 }
 
-void ResourcesMetricsBucket::to_json(json &j) const
+void InputResourcesMetricsBucket::to_json(json &j) const
 {
     bool live_rates = !read_only() && !recorded_stream();
 
@@ -136,7 +136,7 @@ void ResourcesMetricsBucket::to_json(json &j) const
     _memory_usage_kb.to_json(j);
 }
 
-void ResourcesMetricsBucket::process_resources()
+void InputResourcesMetricsBucket::process_resources()
 {
     std::unique_lock lock(_mutex);
 
@@ -144,7 +144,7 @@ void ResourcesMetricsBucket::process_resources()
     _memory_usage_kb.update(_monitor.memory_usage());
 }
 
-void ResourcesMetricsManager::process_resources(timespec stamp)
+void InputResourcesMetricsManager::process_resources(timespec stamp)
 {
     if(stamp.tv_sec == 0) {
         // use now()

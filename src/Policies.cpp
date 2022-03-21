@@ -177,7 +177,7 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
         std::unique_ptr<StreamHandler> resources_module;
         if (input_stream) {
             //create resources handler for input stream
-            auto resources_handler_plugin = _registry->handler_plugins().find("resources");
+            auto resources_handler_plugin = _registry->handler_plugins().find("input_resources");
             resources_module = resources_handler_plugin->second->instantiate(input_stream_module_name + "-resources", input_ptr, &window_config);
             input_stream->set_resources_handler(resources_module.get());
         }
