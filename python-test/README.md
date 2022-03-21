@@ -1,4 +1,4 @@
-# Integration Tests
+# Pktvisor Tests
 This directory contains automated tests for pktvisor
 
 
