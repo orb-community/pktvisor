@@ -40,7 +40,7 @@ protected:
 public:
     InputResourcesMetricsBucket()
         : _cpu_percentage("resources", {"cpu_percentage"}, "Quantiles of thread cpu usage")
-        , _memory_usage_kb("resources", {"memory_bytes"}, "Quantiles of thead memory usage in bytes")
+        , _memory_usage_kb("resources", {"memory_bytes"}, "Quantiles of thread memory usage in bytes")
     {
     }
 
