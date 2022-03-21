@@ -12,6 +12,6 @@ target_link_libraries(unit-tests-handler-pcap
         Visor::Handler::Pcap)
 
 add_test(NAME unit-tests-handler-pcap
-        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/src
+        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/src
         COMMAND unit-tests-handler-pcap
         )
