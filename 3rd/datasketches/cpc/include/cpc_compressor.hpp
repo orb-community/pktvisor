@@ -48,44 +48,44 @@ template<typename A>
 class cpc_compressor {
 public:
   void compress(const cpc_sketch_alloc<A>& source, compressed_state<A>& target) const;
-  void uncompress(const compressed_state<A>& source, uncompressed_state<A>& target, uint8_t lg_k, uint64_t num_coupons) const;
+  void uncompress(const compressed_state<A>& source, uncompressed_state<A>& target, uint8_t lg_k, uint32_t num_coupons) const;
 
   // methods below are public for testing
 
   // This returns the number of compressed words that were actually used. It is the caller's
   // responsibility to ensure that the compressed_words array is long enough to prevent over-run.
-  size_t low_level_compress_bytes(
+  uint32_t low_level_compress_bytes(
       const uint8_t* byte_array, // input
-      size_t num_bytes_to_encode,
+      uint32_t num_bytes_to_encode,
       const uint16_t* encoding_table,
       uint32_t* compressed_words  // output
   ) const;
 
   void low_level_uncompress_bytes(
       uint8_t* byte_array, // output
-      size_t num_bytes_to_decode,
+      uint32_t num_bytes_to_decode,
       const uint16_t* decoding_table,
       const uint32_t* compressed_words,
-      size_t num_compressed_words // input
+      uint32_t num_compressed_words // input
   ) const;
 
   // Here "pairs" refers to row-column pairs that specify
   // the positions of surprising values in the bit matrix.
 
   // returns the number of compressedWords actually used
-  size_t low_level_compress_pairs(
+  uint32_t low_level_compress_pairs(
       const uint32_t* pair_array, // input
-      size_t num_pairs_to_encode,
-      size_t num_base_bits,
+      uint32_t num_pairs_to_encode,
+      uint8_t num_base_bits,
       uint32_t* compressed_words // output
   ) const;
 
   void low_level_uncompress_pairs(
       uint32_t* pair_array, // output
-      size_t num_pairs_to_decode,
-      size_t num_base_bits,
+      uint32_t num_pairs_to_decode,
+      uint8_t num_base_bits,
       const uint32_t* compressed_words, // input
-      size_t num_compressed_words // input
+      uint32_t num_compressed_words // input
   ) const;
 
 private:
@@ -122,22 +122,22 @@ private:
   void uncompress_pinned_flavor(const compressed_state<A>& source, uncompressed_state<A>& target, uint8_t lg_k, uint32_t num_coupons) const;
   void uncompress_sliding_flavor(const compressed_state<A>& source, uncompressed_state<A>& target, uint8_t lg_k, uint32_t num_coupons) const;
 
-  uint8_t* make_inverse_permutation(const uint8_t* permu, int length);
-  uint16_t* make_decoding_table(const uint16_t* encoding_table, int num_byte_values);
+  uint8_t* make_inverse_permutation(const uint8_t* permu, unsigned length);
+  uint16_t* make_decoding_table(const uint16_t* encoding_table, unsigned num_byte_values);
   void validate_decoding_table(const uint16_t* decoding_table, const uint16_t* encoding_table) const;
 
   void compress_surprising_values(const vector_u32<A>& pairs, uint8_t lg_k, compressed_state<A>& result) const;
   void compress_sliding_window(const uint8_t* window, uint8_t lg_k, uint32_t num_coupons, compressed_state<A>& target) const;
 
-  vector_u32<A> uncompress_surprising_values(const uint32_t* data, size_t data_words, size_t num_pairs, uint8_t lg_k, const A& allocator) const;
-  void uncompress_sliding_window(const uint32_t* data, size_t data_words, vector_u8<A>& window, uint8_t lg_k, uint32_t num_coupons) const;
+  vector_u32<A> uncompress_surprising_values(const uint32_t* data, uint32_t data_words, uint32_t num_pairs, uint8_t lg_k, const A& allocator) const;
+  void uncompress_sliding_window(const uint32_t* data, uint32_t data_words, vector_u8<A>& window, uint8_t lg_k, uint32_t num_coupons) const;
 
-  static size_t safe_length_for_compressed_pair_buf(uint64_t k, size_t num_pairs, size_t num_base_bits);
-  static size_t safe_length_for_compressed_window_buf(uint64_t k);
-  static uint8_t determine_pseudo_phase(uint8_t lg_k, uint64_t c);
+  static size_t safe_length_for_compressed_pair_buf(uint32_t k, uint32_t num_pairs, uint8_t num_base_bits);
+  static size_t safe_length_for_compressed_window_buf(uint32_t k);
+  static uint8_t determine_pseudo_phase(uint8_t lg_k, uint32_t c);
 
   static inline vector_u32<A> tricky_get_pairs_from_window(const uint8_t* window, uint32_t k, uint32_t num_pairs_to_get, uint32_t empty_space, const A& allocator);
-  static inline uint64_t golomb_choose_number_of_base_bits(uint64_t k, uint64_t count);
+  static inline uint8_t golomb_choose_number_of_base_bits(uint32_t k, uint64_t count);
 };
 
 } /* namespace datasketches */
