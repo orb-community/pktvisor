@@ -45,21 +45,30 @@ $ behave features/pktvisor.feature
 Output:
 
 ```
+Feature: pktvisor tests # features/pktvisor.feature:1
 
   Scenario: pktvisor bootstrap                         # features/pktvisor.feature:3
-    When run pktvisor on port default                  # features/steps/pktvisor.py:32 0.184s
-    Then the pktvisor container status must be running # features/steps/pktvisor.py:38 0.008s
-    And pktvisor API must be enabled                   # features/steps/pktvisor.py:64 1.123s
+    When run pktvisor instance on port default         # features/steps/pktvisor.py:33 0.150s
+    Then the pktvisor container status must be running # features/steps/pktvisor.py:39 0.007s
+    And pktvisor API must be enabled                   # features/steps/pktvisor.py:75 1.123s
 
   Scenario: run multiple pktvisors using different ports  # features/pktvisor.feature:8
-    When run pktvisor on port default                     # features/steps/pktvisor.py:32 0.168s
-    And run pktvisor on port 10854                        # features/steps/pktvisor.py:32 0.134s
-    And run pktvisor on port 10855                        # features/steps/pktvisor.py:32 0.117s
-    Then all the pktvisor containers must be running      # features/steps/pktvisor.py:46 0.074s
+    When run pktvisor instance on port default            # features/steps/pktvisor.py:33 0.156s
+    And run pktvisor instance on port 10854               # features/steps/pktvisor.py:33 0.127s
+    And run pktvisor instance on port 10855               # features/steps/pktvisor.py:33 0.146s
+    Then all the pktvisor containers must be running      # features/steps/pktvisor.py:47 0.011s
+    And 3 pktvisor's containers must be running           # features/steps/pktvisor.py:59 0.012s
+
+  Scenario: run multiple pktvisors instances using the same port  # features/pktvisor.feature:15
+    When run pktvisor instance on port default                    # features/steps/pktvisor.py:33 0.194s
+    And run pktvisor instance on port default                     # features/steps/pktvisor.py:33 0.149s
+    Then 1 pktvisor's containers must be running                  # features/steps/pktvisor.py:59 0.226s
+    And 1 pktvisor's containers must be exited                    # features/steps/pktvisor.py:59 0.011s
 
 1 feature passed, 0 failed, 0 skipped
-2 scenarios passed, 0 failed, 0 skipped
-7 steps passed, 0 failed, 0 skipped, 0 undefined
-Took 0m1.808s
+3 scenarios passed, 0 failed, 0 skipped
+12 steps passed, 0 failed, 0 skipped, 0 undefined
+Took 0m2.312s
+
 
 ```
