@@ -175,6 +175,7 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
         }
 
         std::unique_ptr<Policy> input_resources_policy;
+        Policy *input_res_policy_ptr;
         std::unique_ptr<StreamHandler> resources_module;
         if (input_stream) {
             // create new policy with resources handler for input stream
@@ -184,7 +185,7 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
             if (resources_handler_plugin != _registry->handler_plugins().end()) {
                 resources_module = resources_handler_plugin->second->instantiate(input_stream_module_name + "-resources", input_ptr, &window_config);
                 input_resources_policy->add_module(resources_module.get());
-                input_stream->add_policy(input_resources_policy.get());
+                input_res_policy_ptr = input_resources_policy.get();
             }
         }
 
@@ -302,13 +303,15 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
             throw PolicyException(fmt::format("policy [{}] creation failed (policy): {}", policy_name, e.what()));
         }
         try {
-            if (input_stream && resources_module) {
+            if (input_stream) {
                 _registry->input_manager()->module_add(std::move(input_stream));
-                _registry->handler_manager()->module_add(std::move(resources_module));
             }
         } catch (ModuleException &e) {
             // note that if this call excepts, we are in an unknown state and the exception will propagate
             module_remove(policy_name);
+            if (input_res_policy_ptr) {
+                module_remove(input_res_policy_ptr->name());
+            }
             throw PolicyException(fmt::format("policy [{}] creation failed (input): {}", policy_name, e.what()));
         }
         std::vector<std::string> added_handlers;
@@ -319,10 +322,18 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
                 // if it did not except, add it to the list for rollback upon exception
                 added_handlers.push_back(hname);
             }
+            if (resources_module) {
+                auto hname = resources_module->name();
+                _registry->handler_manager()->module_add(std::move(resources_module));
+                added_handlers.push_back(hname);
+            }
         } catch (ModuleException &e) {
             // note that if any of these calls except, we are in an unknown state and the exception will propagate
             // nothing needs to be stopped because it was not started
             module_remove(policy_name);
+            if (input_res_policy_ptr) {
+                module_remove(input_res_policy_ptr->name());
+            }
             _registry->input_manager()->module_remove(input_stream_module_name);
             for (auto &m : added_handlers) {
                 _registry->handler_manager()->module_remove(m);
@@ -332,6 +343,9 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
         }
 
         // success
+        if (input_res_policy_ptr) {
+            input_ptr->add_policy(input_res_policy_ptr);
+        }
         input_ptr->add_policy(policy_ptr);
         result.push_back(policy_ptr);
     }
@@ -346,6 +360,7 @@ void PolicyManager::remove_policy(const std::string &name)
     }
 
     auto policy = _map[name].get();
+    auto input_stream = policy->input_stream();
     auto input_name = policy->input_stream()->name();
     std::vector<std::string> module_names;
     for (const auto &mod : policy->modules()) {
@@ -357,16 +372,18 @@ void PolicyManager::remove_policy(const std::string &name)
         _registry->handler_manager()->module_remove(name);
     }
 
-    if (policy->input_stream()->policies_count() == 1) {
+    if (input_stream->policies_count() == 1) {
+        // if there is only one policy left on the input stream, and that policy is the input resources policy, then remove it
         auto input_resources_name = input_name + "-resources";
         if (_map.count(input_resources_name) != 0) {
             auto resources_policy = _map[input_resources_name].get();
             resources_policy->stop();
             _registry->handler_manager()->module_remove(input_resources_name);
-            _registry->input_manager()->module_remove(input_name);
             _map.erase(input_resources_name);
         }
-    } else if (!policy->input_stream()->policies_count()) {
+    }
+
+    if (!input_stream->policies_count()) {
         _registry->input_manager()->module_remove(input_name);
     }
 
