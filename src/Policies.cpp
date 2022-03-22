@@ -282,10 +282,10 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
 
         // make sure policy starts before committing
         try {
+            policy->start();
             if (input_resources_policy) {
                 input_resources_policy->start();
             }
-            policy->start();
         } catch (std::runtime_error &e) {
             throw PolicyException(fmt::format("policy [{}] failed to start: {}", policy_name, e.what()));
         }
