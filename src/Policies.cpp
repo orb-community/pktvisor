@@ -181,9 +181,11 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
             input_resources_policy = std::make_unique<Policy>(input_stream_module_name + "-resources", tap);
             input_resources_policy->set_input_stream(input_ptr);
             auto resources_handler_plugin = _registry->handler_plugins().find("input_resources");
-            resources_module = resources_handler_plugin->second->instantiate(input_stream_module_name + "-resources", input_ptr, &window_config);
-            input_resources_policy->add_module(resources_module.get());
-            input_stream->add_policy(input_resources_policy.get());
+            if (resources_handler_plugin != _registry->handler_plugins().end()) {
+                resources_module = resources_handler_plugin->second->instantiate(input_stream_module_name + "-resources", input_ptr, &window_config);
+                input_resources_policy->add_module(resources_module.get());
+                input_stream->add_policy(input_resources_policy.get());
+            }
         }
 
         std::vector<std::unique_ptr<StreamHandler>> handler_modules;
@@ -355,13 +357,17 @@ void PolicyManager::remove_policy(const std::string &name)
         _registry->handler_manager()->module_remove(name);
     }
 
-    if (policy->input_stream()->policies_count() <= 1) {
-        auto resources_name = input_name + "-resources";
-        auto resources_policy = _map[resources_name].get();
-        resources_policy->stop();
-        _registry->handler_manager()->module_remove(resources_name);
+    if (policy->input_stream()->policies_count() == 1) {
+        auto input_resources_name = input_name + "-resources";
+        if (_map.count(input_resources_name) != 0) {
+            auto resources_policy = _map[input_resources_name].get();
+            resources_policy->stop();
+            _registry->handler_manager()->module_remove(input_resources_name);
+            _registry->input_manager()->module_remove(input_name);
+            _map.erase(input_resources_name);
+        }
+    } else if (!policy->input_stream()->policies_count()) {
         _registry->input_manager()->module_remove(input_name);
-        _map.erase(resources_name);
     }
 
     _map.erase(name);
