@@ -292,10 +292,10 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
         // If the modules created above go out of scope before this step, they will destruct so the key is to make sure
         // roll back during exception ensures no modules have been added to any of the managers
         try {
+            module_add(std::move(policy));
             if (input_resources_policy) {
                 module_add(std::move(input_resources_policy));
             }
-            module_add(std::move(policy));
         } catch (ModuleException &e) {
             throw PolicyException(fmt::format("policy [{}] creation failed (policy): {}", policy_name, e.what()));
         }
