@@ -52,7 +52,7 @@ Feature: pktvisor tests # features/pktvisor.feature:1
     Then the pktvisor container status must be running # features/steps/pktvisor.py:39 0.007s
     And pktvisor API must be enabled                   # features/steps/pktvisor.py:75 1.123s
 
-  Scenario: run multiple pktvisors using different ports  # features/pktvisor.feature:8
+  Scenario: run multiple pktvisors instances using different ports  # features/pktvisor.feature:8
     When run pktvisor instance on port default            # features/steps/pktvisor.py:33 0.156s
     And run pktvisor instance on port 10854               # features/steps/pktvisor.py:33 0.127s
     And run pktvisor instance on port 10855               # features/steps/pktvisor.py:33 0.146s

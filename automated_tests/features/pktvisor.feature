@@ -5,7 +5,7 @@ Scenario: pktvisor bootstrap
   Then the pktvisor container status must be running
     And pktvisor API must be enabled
 
-Scenario: run multiple pktvisors using different ports
+Scenario: run multiple pktvisors instances using different ports
   When run pktvisor instance on port default
     And run pktvisor instance on port 10854
     And run pktvisor instance on port 10855
