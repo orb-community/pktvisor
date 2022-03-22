@@ -14,7 +14,7 @@ target_link_libraries(unit-tests-handler-dns
         Visor::Handler::Dns)
 
 add_test(NAME unit-tests-handler-dns
-        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/src
+        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/src
         COMMAND unit-tests-handler-dns
         )
 

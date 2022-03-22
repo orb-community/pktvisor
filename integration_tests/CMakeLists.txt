@@ -1,11 +1,11 @@
 
-set(FIXTURE_DIR ${CMAKE_SOURCE_DIR}/src/tests/fixtures)
+set(FIXTURE_DIR ${PROJECT_SOURCE_DIR}/src/tests/fixtures)
 set(HOST_VAR "-H 127.0.0.1/32")
 set(PCAP_BINARY ${CMAKE_BINARY_DIR}/bin/pktvisor-reader)
 set(PKTD_BINARY ${CMAKE_BINARY_DIR}/bin/pktvisord)
 set(VISOR_DYNMODULE_DIR ${CMAKE_BINARY_DIR}/lib/)
-set(INT_SH ${CMAKE_SOURCE_DIR}/integration_tests/integration.sh)
-set(WORKING_DIR ${CMAKE_SOURCE_DIR}/integration_tests)
+set(INT_SH ${PROJECT_SOURCE_DIR}/integration_tests/integration.sh)
+set(WORKING_DIR ${PROJECT_SOURCE_DIR}/integration_tests)
 
 macro(visor_pcap_int_test name)
     add_test(NAME ${name}
@@ -32,5 +32,5 @@ endif()
 # this allows local, non-public integration tests (for example, on private pcap data)
 #add_test(NAME external-tests
 #        WORKING_DIRECTORY ${WORKING_DIR}
-#        COMMAND ${CMAKE_SOURCE_DIR}/integration_tests/external.sh ${PCAP_BINARY}
+#        COMMAND ${PROJECT_SOURCE_DIR}/integration_tests/external.sh ${PCAP_BINARY}
 #        )
