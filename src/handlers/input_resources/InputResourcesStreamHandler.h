@@ -46,6 +46,7 @@ public:
     }
 
     // visor::AbstractMetricsBucket
+
     void specialized_merge(const AbstractMetricsBucket &other) override;
     void to_json(json &j) const override;
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override;
@@ -56,14 +57,24 @@ public:
 
 class InputResourcesMetricsManager final : public visor::AbstractMetricsManager<InputResourcesMetricsBucket>
 {
+    uint16_t policies_total;
+    uint16_t handlers_total;
+
 public:
     InputResourcesMetricsManager(const Configurable *window_config)
         : visor::AbstractMetricsManager<InputResourcesMetricsBucket>(window_config)
+        , policies_total(0)
+        , handlers_total(0)
     {
     }
 
+    void on_period_shift([[maybe_unused]] timespec stamp, [[maybe_unused]] const InputResourcesMetricsBucket *maybe_expiring_bucket) override
+    {
+        process_policies(policies_total, handlers_total, true);
+    }
+
     void process_resources(double cpu_usage, uint64_t memory_usage, timespec stamp = timespec());
-    void process_policies(int16_t policies_number, int16_t handlers_count);
+    void process_policies(int16_t policies_number, int16_t handlers_count, bool self);
 };
 
 class InputResourcesStreamHandler final : public visor::StreamMetricsHandler<InputResourcesMetricsManager>
@@ -85,7 +96,7 @@ class InputResourcesStreamHandler final : public visor::StreamMetricsHandler<Inp
 
     void process_sflow_cb(const SFSample &);
     void process_dnstap_cb(const dnstap::Dnstap &);
-    void process_policies_cb(int16_t policies_number, int16_t handlers_count);
+    void process_policies_cb(const Policy *policy, InputStream::Action action);
     void process_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp);
 
 public:

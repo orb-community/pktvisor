@@ -3,6 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 #include "InputResourcesStreamHandler.h"
+#include "Policies.h"
 
 namespace visor::handler::resources {
 
@@ -40,13 +41,13 @@ void InputResourcesStreamHandler::start()
 
     if (_pcap_stream) {
         _pkt_connection = _pcap_stream->packet_signal.connect(&InputResourcesStreamHandler::process_packet_cb, this);
-        _policies_connection = _pcap_stream->attached_policies.connect(&InputResourcesStreamHandler::process_policies_cb, this);
+        _policies_connection = _pcap_stream->policy_signal.connect(&InputResourcesStreamHandler::process_policies_cb, this);
     } else if (_dnstap_stream) {
         _dnstap_connection = _dnstap_stream->dnstap_signal.connect(&InputResourcesStreamHandler::process_dnstap_cb, this);
-        _policies_connection = _dnstap_stream->attached_policies.connect(&InputResourcesStreamHandler::process_policies_cb, this);
+        _policies_connection = _dnstap_stream->policy_signal.connect(&InputResourcesStreamHandler::process_policies_cb, this);
     } else if (_sflow_stream) {
         _sflow_connection = _sflow_stream->sflow_signal.connect(&InputResourcesStreamHandler::process_sflow_cb, this);
-        _policies_connection = _sflow_stream->attached_policies.connect(&InputResourcesStreamHandler::process_policies_cb, this);
+        _policies_connection = _sflow_stream->policy_signal.connect(&InputResourcesStreamHandler::process_policies_cb, this);
     }
 
     _running = true;
@@ -70,9 +71,23 @@ void InputResourcesStreamHandler::stop()
     _running = false;
 }
 
-void InputResourcesStreamHandler::process_policies_cb(int16_t policies_number, int16_t handlers_count)
+void InputResourcesStreamHandler::process_policies_cb(const Policy *policy, InputStream::Action action)
 {
-    _metrics->process_policies(policies_number, handlers_count);
+    int16_t policies_number = 0;
+    int16_t handlers_count = 0;
+
+    switch (action) {
+    case InputStream::Action::AddPolicy:
+        policies_number = 1;
+        handlers_count = policy->get_handlers_list_size();
+        break;
+    case InputStream::Action::RemovePolicy:
+        policies_number = -1;
+        handlers_count = -policy->get_handlers_list_size();
+        break;
+    }
+
+    _metrics->process_policies(policies_number, handlers_count, false);
 }
 
 void InputResourcesStreamHandler::process_sflow_cb([[maybe_unused]] const SFSample &)
@@ -109,8 +124,12 @@ void InputResourcesMetricsBucket::specialized_merge(const AbstractMetricsBucket 
 
     _cpu_percentage.merge(other._cpu_percentage);
     _memory_usage_kb.merge(other._memory_usage_kb);
-    _policies_number += other._policies_number;
-    _handlers_count += other._handlers_count;
+    if (other._policies_number.value() > _policies_number.value()) {
+        _policies_number += other._policies_number;
+    }
+    if (other._handlers_count.value() > _handlers_count.value()) {
+        _handlers_count += other._handlers_count;
+    }
 }
 
 void InputResourcesMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap add_labels) const
@@ -179,8 +198,13 @@ void InputResourcesMetricsManager::process_resources(double cpu_usage, uint64_t 
     live_bucket()->process_resources(cpu_usage, memory_usage);
 }
 
-void InputResourcesMetricsManager::process_policies(int16_t policies_number, int16_t handlers_count)
+void InputResourcesMetricsManager::process_policies(int16_t policies_number, int16_t handlers_count, bool self)
 {
+    if (!self) {
+        policies_total += policies_number;
+        handlers_total += handlers_count;
+    }
+
     timespec stamp;
     // use now()
     std::timespec_get(&stamp, TIME_UTC);

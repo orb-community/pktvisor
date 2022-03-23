@@ -19,22 +19,21 @@ TEST_CASE("Check resources for pcap input", "[pcap][resources]")
 
     resources_handler.start();
     stream.start();
-    stream.attached_policies(1, 2);
     resources_handler.stop();
     stream.stop();
 
     auto event_data = resources_handler.metrics()->bucket(0)->event_data_locked();
 
     CHECK(resources_handler.metrics()->current_periods() == 1);
-    CHECK(event_data.num_events->value() == 2);
+    CHECK(event_data.num_events->value() == 1);
 
     nlohmann::json j;
     resources_handler.metrics()->bucket(0)->to_json(j);
 
     CHECK(j["cpu_percentage"]["p50"] == 0.0);
     CHECK(j["memory_bytes"]["p50"] != nullptr);
-    CHECK(j["policies_attached"] == 1);
-    CHECK(j["handlers_attached"] == 2);
+    CHECK(j["policies_attached"] == 0);
+    CHECK(j["handlers_attached"] == 0);
 
     std::stringstream output;
     std::string line;
@@ -44,7 +43,7 @@ TEST_CASE("Check resources for pcap input", "[pcap][resources]")
     std::getline(output, line);
     CHECK(line == "# TYPE base_total gauge");
     std::getline(output, line);
-    CHECK(line == R"(base_total{policy="default"} 2)");
+    CHECK(line == R"(base_total{policy="default"} 1)");
 }
 
 TEST_CASE("Check resources for dnstap input", "[dnstap][resources]")
@@ -58,22 +57,21 @@ TEST_CASE("Check resources for dnstap input", "[dnstap][resources]")
 
     resources_handler.start();
     stream.start();
-    stream.attached_policies(1, 2);
     stream.stop();
     resources_handler.stop();
 
     auto event_data = resources_handler.metrics()->bucket(0)->event_data_locked();
 
     CHECK(resources_handler.metrics()->current_periods() == 1);
-    CHECK(event_data.num_events->value() == 2);
+    CHECK(event_data.num_events->value() == 1);
 
     nlohmann::json j;
     resources_handler.metrics()->bucket(0)->to_json(j);
 
     CHECK(j["cpu_percentage"]["p50"] == 0.0);
     CHECK(j["memory_bytes"]["p50"] != nullptr);
-    CHECK(j["policies_attached"] == 1);
-    CHECK(j["handlers_attached"] == 2);
+    CHECK(j["policies_attached"] == 0);
+    CHECK(j["handlers_attached"] == 0);
 }
 
 TEST_CASE("Check resources for sflow input", "[sflow][resources]")
@@ -87,20 +85,19 @@ TEST_CASE("Check resources for sflow input", "[sflow][resources]")
 
     resources_handler.start();
     stream.start();
-    stream.attached_policies(1, 2);
     stream.stop();
     resources_handler.stop();
 
     auto event_data = resources_handler.metrics()->bucket(0)->event_data_locked();
 
     CHECK(resources_handler.metrics()->current_periods() == 1);
-    CHECK(event_data.num_events->value() == 2);
+    CHECK(event_data.num_events->value() == 1);
 
     nlohmann::json j;
     resources_handler.metrics()->bucket(0)->to_json(j);
 
     CHECK(j["cpu_percentage"]["p50"] == 0.0);
     CHECK(j["memory_bytes"]["p50"] != nullptr);
-    CHECK(j["policies_attached"] == 1);
-    CHECK(j["handlers_attached"] == 2);
+    CHECK(j["policies_attached"] == 0);
+    CHECK(j["handlers_attached"] == 0);
 }

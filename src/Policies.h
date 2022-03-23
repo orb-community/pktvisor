@@ -28,15 +28,18 @@ public:
 
 class Policy : public AbstractRunnableModule
 {
+    static constexpr size_t HANDLERS_SEQUENCE_SIZE = 1;
 
     Tap *_tap;
     InputStream *_input_stream;
+    bool _modules_sequence;
     std::vector<AbstractRunnableModule *> _modules;
 
 public:
-    Policy(const std::string &name, Tap *tap)
+    Policy(const std::string &name, Tap *tap, bool modules_sequence)
         : AbstractRunnableModule(name)
         , _tap(tap)
+        , _modules_sequence(modules_sequence)
         , _input_stream(nullptr)
     {
     }
@@ -64,6 +67,15 @@ public:
     const std::vector<AbstractRunnableModule *> &modules()
     {
         return _modules;
+    }
+
+    size_t get_handlers_list_size() const
+    {
+        if (_modules_sequence) {
+            return HANDLERS_SEQUENCE_SIZE;
+        } else {
+            return _modules.size();
+        }
     }
 
     // life cycle

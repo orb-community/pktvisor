@@ -146,12 +146,7 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
                 throw PolicyException(fmt::format("unable to instantiate tap '{}': {}", tap_name, e.what()));
             }
         }
-        // Create Policy
-        auto policy = std::make_unique<Policy>(policy_name, tap);
-        // if and only if policy succeeds, we will return this in result set
-        Policy *policy_ptr = policy.get();
-        policy->set_input_stream(input_ptr);
-        // Handler Section
+        // Handler type
         if (!it->second["handlers"] || !it->second["handlers"].IsMap()) {
             throw PolicyException("missing or invalid handler configuration at key 'handlers'");
         }
@@ -162,6 +157,14 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
         } else if (handler_node["modules"].IsSequence()) {
             handler_sequence = true;
         }
+
+        // Create Policy
+        auto policy = std::make_unique<Policy>(policy_name, tap, handler_sequence);
+        // if and only if policy succeeds, we will return this in result set
+        Policy *policy_ptr = policy.get();
+        policy->set_input_stream(input_ptr);
+
+        // Handler Section
         Config window_config;
         if (handler_node["window_config"] && handler_node["window_config"].IsMap()) {
             try {
@@ -179,7 +182,7 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
         std::unique_ptr<StreamHandler> resources_module;
         if (input_stream) {
             // create new policy with resources handler for input stream
-            input_resources_policy = std::make_unique<Policy>(input_stream_module_name + "-resources", tap);
+            input_resources_policy = std::make_unique<Policy>(input_stream_module_name + "-resources", tap, false);
             input_resources_policy->set_input_stream(input_ptr);
             auto resources_handler_plugin = _registry->handler_plugins().find("input_resources");
             if (resources_handler_plugin != _registry->handler_plugins().end()) {
@@ -344,14 +347,9 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
 
         // success
         if (input_res_policy_ptr) {
-            input_ptr->add_policy(input_res_policy_ptr, input_res_policy_ptr->modules().size());
+            input_ptr->add_policy(input_res_policy_ptr);
         }
-        if (handler_sequence) {
-            input_ptr->add_policy(policy_ptr, 1);
-        } else {
-            input_ptr->add_policy(policy_ptr, policy_ptr->modules().size());
-        }
-
+        input_ptr->add_policy(policy_ptr);
         result.push_back(policy_ptr);
     }
     return result;
