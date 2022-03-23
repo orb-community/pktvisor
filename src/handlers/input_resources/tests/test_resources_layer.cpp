@@ -1,8 +1,8 @@
 #include <catch2/catch.hpp>
 
 #include "DnstapInputStream.h"
-#include "PcapInputStream.h"
 #include "InputResourcesStreamHandler.h"
+#include "PcapInputStream.h"
 #include "SflowInputStream.h"
 
 using namespace visor::handler::resources;
@@ -15,23 +15,26 @@ TEST_CASE("Check resources for pcap input", "[pcap][resources]")
 
     visor::Config c;
     c.config_set<uint64_t>("num_periods", 1);
-    InputResourcesStreamHandler resources_handler{"net-test", &stream, &c};
+    InputResourcesStreamHandler resources_handler{"resource-test", &stream, &c};
 
     resources_handler.start();
     stream.start();
+    stream.attached_policies(1, 2);
     resources_handler.stop();
     stream.stop();
 
     auto event_data = resources_handler.metrics()->bucket(0)->event_data_locked();
 
     CHECK(resources_handler.metrics()->current_periods() == 1);
-    CHECK(event_data.num_events->value() == 1);
+    CHECK(event_data.num_events->value() == 2);
 
     nlohmann::json j;
     resources_handler.metrics()->bucket(0)->to_json(j);
 
     CHECK(j["cpu_percentage"]["p50"] == 0.0);
     CHECK(j["memory_bytes"]["p50"] != nullptr);
+    CHECK(j["policies_attached"] == 1);
+    CHECK(j["handlers_attached"] == 2);
 
     std::stringstream output;
     std::string line;
@@ -41,7 +44,7 @@ TEST_CASE("Check resources for pcap input", "[pcap][resources]")
     std::getline(output, line);
     CHECK(line == "# TYPE base_total gauge");
     std::getline(output, line);
-    CHECK(line == R"(base_total{policy="default"} 1)");
+    CHECK(line == R"(base_total{policy="default"} 2)");
 }
 
 TEST_CASE("Check resources for dnstap input", "[dnstap][resources]")
@@ -51,23 +54,26 @@ TEST_CASE("Check resources for dnstap input", "[dnstap][resources]")
     stream.config_set<visor::Configurable::StringList>("only_hosts", {"192.168.0.0/24", "2001:db8::/48"});
     visor::Config c;
     c.config_set<uint64_t>("num_periods", 1);
-    InputResourcesStreamHandler resources_handler{"net-test", &stream, &c};
+    InputResourcesStreamHandler resources_handler{"resource-test", &stream, &c};
 
     resources_handler.start();
     stream.start();
+    stream.attached_policies(1, 2);
     stream.stop();
     resources_handler.stop();
 
     auto event_data = resources_handler.metrics()->bucket(0)->event_data_locked();
 
     CHECK(resources_handler.metrics()->current_periods() == 1);
-    CHECK(event_data.num_events->value() == 1);
+    CHECK(event_data.num_events->value() == 2);
 
     nlohmann::json j;
     resources_handler.metrics()->bucket(0)->to_json(j);
 
     CHECK(j["cpu_percentage"]["p50"] == 0.0);
     CHECK(j["memory_bytes"]["p50"] != nullptr);
+    CHECK(j["policies_attached"] == 1);
+    CHECK(j["handlers_attached"] == 2);
 }
 
 TEST_CASE("Check resources for sflow input", "[sflow][resources]")
@@ -77,21 +83,24 @@ TEST_CASE("Check resources for sflow input", "[sflow][resources]")
 
     visor::Config c;
     c.config_set<uint64_t>("num_periods", 1);
-    InputResourcesStreamHandler resources_handler{"net-test", &stream, &c};
+    InputResourcesStreamHandler resources_handler{"resource-test", &stream, &c};
 
     resources_handler.start();
     stream.start();
+    stream.attached_policies(1, 2);
     stream.stop();
     resources_handler.stop();
 
     auto event_data = resources_handler.metrics()->bucket(0)->event_data_locked();
 
     CHECK(resources_handler.metrics()->current_periods() == 1);
-    CHECK(event_data.num_events->value() == 1);
+    CHECK(event_data.num_events->value() == 2);
 
     nlohmann::json j;
     resources_handler.metrics()->bucket(0)->to_json(j);
 
     CHECK(j["cpu_percentage"]["p50"] == 0.0);
     CHECK(j["memory_bytes"]["p50"] != nullptr);
+    CHECK(j["policies_attached"] == 1);
+    CHECK(j["handlers_attached"] == 2);
 }

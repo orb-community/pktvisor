@@ -344,9 +344,14 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
 
         // success
         if (input_res_policy_ptr) {
-            input_ptr->add_policy(input_res_policy_ptr);
+            input_ptr->add_policy(input_res_policy_ptr, input_res_policy_ptr->modules().size());
         }
-        input_ptr->add_policy(policy_ptr);
+        if (handler_sequence) {
+            input_ptr->add_policy(policy_ptr, 1);
+        } else {
+            input_ptr->add_policy(policy_ptr, policy_ptr->modules().size());
+        }
+
         result.push_back(policy_ptr);
     }
     return result;

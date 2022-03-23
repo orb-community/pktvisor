@@ -40,10 +40,13 @@ void InputResourcesStreamHandler::start()
 
     if (_pcap_stream) {
         _pkt_connection = _pcap_stream->packet_signal.connect(&InputResourcesStreamHandler::process_packet_cb, this);
+        _policies_connection = _pcap_stream->attached_policies.connect(&InputResourcesStreamHandler::process_policies_cb, this);
     } else if (_dnstap_stream) {
         _dnstap_connection = _dnstap_stream->dnstap_signal.connect(&InputResourcesStreamHandler::process_dnstap_cb, this);
+        _policies_connection = _dnstap_stream->attached_policies.connect(&InputResourcesStreamHandler::process_policies_cb, this);
     } else if (_sflow_stream) {
         _sflow_connection = _sflow_stream->sflow_signal.connect(&InputResourcesStreamHandler::process_sflow_cb, this);
+        _policies_connection = _sflow_stream->attached_policies.connect(&InputResourcesStreamHandler::process_policies_cb, this);
     }
 
     _running = true;
@@ -62,15 +65,21 @@ void InputResourcesStreamHandler::stop()
     } else if (_sflow_stream) {
         _sflow_connection.disconnect();
     }
+    _policies_connection.disconnect();
 
     _running = false;
+}
+
+void InputResourcesStreamHandler::process_policies_cb(int16_t policies_number, int16_t handlers_count)
+{
+    _metrics->process_policies(policies_number, handlers_count);
 }
 
 void InputResourcesStreamHandler::process_sflow_cb([[maybe_unused]] const SFSample &)
 {
     if (difftime(time(NULL), _timer) >= MEASURE_INTERVAL) {
         _timer = time(NULL);
-        _metrics->process_resources();
+        _metrics->process_resources(_monitor.cpu_percentage(), _monitor.memory_usage());
     }
 }
 
@@ -78,7 +87,7 @@ void InputResourcesStreamHandler::process_dnstap_cb([[maybe_unused]] const dnsta
 {
     if (difftime(time(NULL), _timer) >= MEASURE_INTERVAL) {
         _timer = time(NULL);
-        _metrics->process_resources();
+        _metrics->process_resources(_monitor.cpu_percentage(), _monitor.memory_usage());
     }
 }
 
@@ -86,7 +95,7 @@ void InputResourcesStreamHandler::process_packet_cb([[maybe_unused]] pcpp::Packe
 {
     if (stamp.tv_sec >= MEASURE_INTERVAL + _timestamp.tv_sec) {
         _timestamp = stamp;
-        _metrics->process_resources(stamp);
+        _metrics->process_resources(_monitor.cpu_percentage(), _monitor.memory_usage());
     }
 }
 
@@ -100,6 +109,8 @@ void InputResourcesMetricsBucket::specialized_merge(const AbstractMetricsBucket 
 
     _cpu_percentage.merge(other._cpu_percentage);
     _memory_usage_kb.merge(other._memory_usage_kb);
+    _policies_number += other._policies_number;
+    _handlers_count += other._handlers_count;
 }
 
 void InputResourcesMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap add_labels) const
@@ -116,6 +127,8 @@ void InputResourcesMetricsBucket::to_prometheus(std::stringstream &out, Metric::
 
     _cpu_percentage.to_prometheus(out, add_labels);
     _memory_usage_kb.to_prometheus(out, add_labels);
+    _policies_number.to_prometheus(out, add_labels);
+    _handlers_count.to_prometheus(out, add_labels);
 }
 
 void InputResourcesMetricsBucket::to_json(json &j) const
@@ -134,25 +147,46 @@ void InputResourcesMetricsBucket::to_json(json &j) const
 
     _cpu_percentage.to_json(j);
     _memory_usage_kb.to_json(j);
+    _policies_number.to_json(j);
+    _handlers_count.to_json(j);
 }
 
-void InputResourcesMetricsBucket::process_resources()
+void InputResourcesMetricsBucket::process_resources(double cpu_usage, uint64_t memory_usage)
 {
     std::unique_lock lock(_mutex);
 
-    _cpu_percentage.update(_monitor.cpu_percentage());
-    _memory_usage_kb.update(_monitor.memory_usage());
+    _cpu_percentage.update(cpu_usage);
+    _memory_usage_kb.update(memory_usage);
 }
 
-void InputResourcesMetricsManager::process_resources(timespec stamp)
+void InputResourcesMetricsBucket::process_policies(int16_t policies_number, int16_t handlers_count)
 {
-    if(stamp.tv_sec == 0) {
+    std::unique_lock lock(_mutex);
+
+    _policies_number += policies_number;
+    _handlers_count += handlers_count;
+}
+
+void InputResourcesMetricsManager::process_resources(double cpu_usage, uint64_t memory_usage, timespec stamp)
+{
+    if (stamp.tv_sec == 0) {
         // use now()
         std::timespec_get(&stamp, TIME_UTC);
     }
     // base event
     new_event(stamp);
     // process in the "live" bucket. this will parse the resources if we are deep sampling
-    live_bucket()->process_resources();
+    live_bucket()->process_resources(cpu_usage, memory_usage);
+}
+
+void InputResourcesMetricsManager::process_policies(int16_t policies_number, int16_t handlers_count)
+{
+    timespec stamp;
+    // use now()
+    std::timespec_get(&stamp, TIME_UTC);
+    // base event
+    new_event(stamp);
+    // process in the "live" bucket. this will parse the resources if we are deep sampling
+    live_bucket()->process_policies(policies_number, handlers_count);
 }
 }

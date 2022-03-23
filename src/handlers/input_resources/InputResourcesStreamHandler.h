@@ -33,14 +33,15 @@ protected:
     // total numPackets is tracked in base class num_events
     Quantile<double> _cpu_percentage;
     Quantile<uint64_t> _memory_usage_kb;
-    uint32_t thread_id;
-
-    ThreadMonitor _monitor;
+    Counter _policies_number;
+    Counter _handlers_count;
 
 public:
     InputResourcesMetricsBucket()
         : _cpu_percentage("resources", {"cpu_percentage"}, "Quantiles of thread cpu usage")
         , _memory_usage_kb("resources", {"memory_bytes"}, "Quantiles of thread memory usage in bytes")
+        , _policies_number("resources", {"policies_attached"}, "Total number of policies attached to the input stream")
+        , _handlers_count("resources", {"handlers_attached"}, "Total number of handlers attached to the input stream")
     {
     }
 
@@ -49,7 +50,8 @@ public:
     void to_json(json &j) const override;
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override;
 
-    void process_resources();
+    void process_resources(double cpu_usage, uint64_t memory_usage);
+    void process_policies(int16_t policies_number, int16_t handlers_count);
 };
 
 class InputResourcesMetricsManager final : public visor::AbstractMetricsManager<InputResourcesMetricsBucket>
@@ -60,13 +62,15 @@ public:
     {
     }
 
-    void process_resources(timespec stamp = timespec());
+    void process_resources(double cpu_usage, uint64_t memory_usage, timespec stamp = timespec());
+    void process_policies(int16_t policies_number, int16_t handlers_count);
 };
 
 class InputResourcesStreamHandler final : public visor::StreamMetricsHandler<InputResourcesMetricsManager>
 {
 
     // the input stream sources we support (only one will be in use at a time)
+    ThreadMonitor _monitor;
     time_t _timer;
     timespec _timestamp;
     PcapInputStream *_pcap_stream{nullptr};
@@ -77,9 +81,11 @@ class InputResourcesStreamHandler final : public visor::StreamMetricsHandler<Inp
     sigslot::connection _dnstap_connection;
     sigslot::connection _sflow_connection;
     sigslot::connection _pkt_connection;
+    sigslot::connection _policies_connection;
 
     void process_sflow_cb(const SFSample &);
     void process_dnstap_cb(const dnstap::Dnstap &);
+    void process_policies_cb(int16_t policies_number, int16_t handlers_count);
     void process_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp);
 
 public:
@@ -89,7 +95,7 @@ public:
     // visor::AbstractModule
     std::string schema_key() const override
     {
-        return "resources";
+        return "input_resources";
     }
 
     size_t consumer_count() const override

@@ -6,13 +6,14 @@
 
 #include "AbstractModule.h"
 #include "StreamHandler.h"
+#include <sigslot/signal.hpp>
 
 namespace visor {
 
 class InputStream : public AbstractRunnableModule
 {
     mutable std::shared_mutex _input_mutex;
-    std::vector<const Policy *> _policies;
+    std::map<const Policy *, uint16_t> _policies;
 
 public:
     InputStream(const std::string &name)
@@ -22,16 +23,21 @@ public:
 
     virtual ~InputStream(){};
 
-    void add_policy(const Policy *policy)
+    void add_policy(const Policy *policy, uint16_t handlers)
     {
         std::unique_lock lock(_input_mutex);
-        _policies.push_back(policy);
+        _policies[policy] = handlers;
+        attached_policies(1, handlers);
     }
 
     void remove_policy(const Policy *policy)
     {
         std::unique_lock lock(_input_mutex);
-        _policies.erase(std::remove(_policies.begin(), _policies.end(), policy), _policies.end());
+        auto iterator = _policies.find(policy);
+        if (iterator != _policies.end()) {
+            attached_policies(-1, -iterator->second);
+            _policies.erase(iterator);
+        }
     }
 
     size_t policies_count() const
@@ -40,7 +46,10 @@ public:
         return _policies.size();
     }
 
-    virtual size_t consumer_count() const = 0;
+    virtual size_t consumer_count() const
+    {
+        return attached_policies.slot_count();
+    }
 
     void common_info_json(json &j) const
     {
@@ -48,6 +57,8 @@ public:
         j["input"]["running"] = running();
         j["input"]["consumers"] = consumer_count();
     }
+
+    mutable sigslot::signal<int16_t, int16_t> attached_policies;
 };
 
 }
