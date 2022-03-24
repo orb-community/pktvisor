@@ -13,7 +13,7 @@
 namespace visor::handler::dns {
 
 typedef std::pair<std::string_view, std::string_view> AggDomainResult;
-AggDomainResult aggregateDomain(const std::string &domain);
+AggDomainResult aggregateDomain(const std::string &domain, std::string_view static_suffix = "");
 
 enum QR {
     query = 0,

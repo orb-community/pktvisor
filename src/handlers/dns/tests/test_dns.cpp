@@ -72,4 +72,31 @@ TEST_CASE("DNS Utilities", "[dns]")
         CHECK(result.first == ".b.c");
         CHECK(result.second == "");
     }
+
+    SECTION("aggregateDomain with static suffix")
+    {
+        AggDomainResult result;
+        std::string domain;
+
+        domain = "biz.foo.bar.com";
+        result = aggregateDomain(domain, ".bar.com");
+        CHECK(result.first == ".foo.bar.com");
+        CHECK(result.second == "biz.foo.bar.com");
+
+        domain = "biz.foo.bar.com";
+        result = aggregateDomain(domain, "bar.com");
+        CHECK(result.first == ".foo.bar.com");
+        CHECK(result.second == "biz.foo.bar.com");
+
+        domain = "biz.foo.bar.com";
+        result = aggregateDomain(domain, "foo.bar.com");
+        CHECK(result.first == "biz.foo.bar.com");
+        CHECK(result.second == "");
+
+        domain = "foo.bar.com.";
+        result = aggregateDomain(domain, "biz.foo.bar.com");
+        CHECK(result.first == ".bar.com.");
+        CHECK(result.second == "foo.bar.com.");
+
+    }
 }
