@@ -124,11 +124,12 @@ void InputResourcesMetricsBucket::specialized_merge(const AbstractMetricsBucket 
 
     _cpu_percentage.merge(other._cpu_percentage);
     _memory_usage_kb.merge(other._memory_usage_kb);
-    if (other._policies_number.value() > _policies_number.value()) {
+
+    // Merge only the first bucket which is the more recent
+    if (!_merged) {
         _policies_number += other._policies_number;
-    }
-    if (other._handlers_count.value() > _handlers_count.value()) {
         _handlers_count += other._handlers_count;
+        _merged = true;
     }
 }
 

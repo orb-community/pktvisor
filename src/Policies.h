@@ -31,8 +31,8 @@ class Policy : public AbstractRunnableModule
     static constexpr size_t HANDLERS_SEQUENCE_SIZE = 1;
 
     Tap *_tap;
-    InputStream *_input_stream;
     bool _modules_sequence;
+    InputStream *_input_stream;
     std::vector<AbstractRunnableModule *> _modules;
 
 public:

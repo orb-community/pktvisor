@@ -35,6 +35,7 @@ protected:
     Quantile<uint64_t> _memory_usage_kb;
     Counter _policies_number;
     Counter _handlers_count;
+    bool _merged;
 
 public:
     InputResourcesMetricsBucket()
@@ -42,6 +43,7 @@ public:
         , _memory_usage_kb("resources", {"memory_bytes"}, "Quantiles of thread memory usage in bytes")
         , _policies_number("resources", {"policies_attached"}, "Total number of policies attached to the input stream")
         , _handlers_count("resources", {"handlers_attached"}, "Total number of handlers attached to the input stream")
+        , _merged(false)
     {
     }
 
