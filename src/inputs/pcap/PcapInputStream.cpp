@@ -71,7 +71,8 @@ PcapInputStream::PcapInputStream(const std::string &name)
           this,
           _tcp_connection_start_cb,
           _tcp_connection_end_cb,
-          {true, 5, 500, 50})
+          {true, 1, 1000, 50})
+    , _tcp_timeout(timespec())
 {
     pcpp::Logger::getInstance().suppressLogs();
 }
@@ -378,6 +379,16 @@ void PcapInputStream::process_raw_packet(pcpp::RawPacket *rawPacket)
         case pcpp::TcpReassembly::Ignore_PacketOfClosedFlow:
         case pcpp::TcpReassembly::Ignore_Retransimission:
             break;
+        }
+
+        // Remove staled connections every TCP_TIMEOUT period (not every packet)
+        if (rawPacket->getPacketTimeStamp().tv_sec > _tcp_timeout.tv_sec + TCP_TIMEOUT) {
+            _tcp_timeout = rawPacket->getPacketTimeStamp();
+            for (const auto &connection : _tcp_reassembly.getConnectionInformation()) {
+                if (connection.second.endTime.tv_sec > 0 && _tcp_timeout.tv_sec > connection.second.endTime.tv_sec + TCP_TIMEOUT) {
+                    _tcp_reassembly.closeConnection(connection.first);
+                }
+            }
         }
     } else {
         // unsupported layer3 protocol

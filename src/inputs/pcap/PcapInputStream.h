@@ -41,6 +41,8 @@ class PcapInputStream : public visor::InputStream
 {
 
 private:
+    static constexpr uint8_t TCP_TIMEOUT = 10;
+
     static const PcapSource DefaultPcapSource = PcapSource::libpcap;
 
     IPv4subnetList _hostIPv4;
@@ -61,6 +63,8 @@ private:
 #endif
 
     pcpp::TcpReassembly _tcp_reassembly;
+
+    timespec _tcp_timeout;
 
 protected:
     void _open_pcap(const std::string &fileName, const std::string &bpfFilter);
