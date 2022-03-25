@@ -122,13 +122,13 @@ void InputResourcesMetricsBucket::specialized_merge(const AbstractMetricsBucket 
     std::shared_lock r_lock(other._mutex);
     std::unique_lock w_lock(_mutex);
 
-    _cpu_percentage.merge(other._cpu_percentage);
-    _memory_usage_kb.merge(other._memory_usage_kb);
+    _cpu_usage.merge(other._cpu_usage);
+    _memory_bytes.merge(other._memory_bytes);
 
     // Merge only the first bucket which is the more recent
     if (!_merged) {
-        _policies_number += other._policies_number;
-        _handlers_count += other._handlers_count;
+        _policy_count += other._policy_count;
+        _handler_count += other._handler_count;
         _merged = true;
     }
 }
@@ -145,10 +145,10 @@ void InputResourcesMetricsBucket::to_prometheus(std::stringstream &out, Metric::
 
     std::shared_lock r_lock(_mutex);
 
-    _cpu_percentage.to_prometheus(out, add_labels);
-    _memory_usage_kb.to_prometheus(out, add_labels);
-    _policies_number.to_prometheus(out, add_labels);
-    _handlers_count.to_prometheus(out, add_labels);
+    _cpu_usage.to_prometheus(out, add_labels);
+    _memory_bytes.to_prometheus(out, add_labels);
+    _policy_count.to_prometheus(out, add_labels);
+    _handler_count.to_prometheus(out, add_labels);
 }
 
 void InputResourcesMetricsBucket::to_json(json &j) const
@@ -165,26 +165,26 @@ void InputResourcesMetricsBucket::to_json(json &j) const
 
     std::shared_lock r_lock(_mutex);
 
-    _cpu_percentage.to_json(j);
-    _memory_usage_kb.to_json(j);
-    _policies_number.to_json(j);
-    _handlers_count.to_json(j);
+    _cpu_usage.to_json(j);
+    _memory_bytes.to_json(j);
+    _policy_count.to_json(j);
+    _handler_count.to_json(j);
 }
 
 void InputResourcesMetricsBucket::process_resources(double cpu_usage, uint64_t memory_usage)
 {
     std::unique_lock lock(_mutex);
 
-    _cpu_percentage.update(cpu_usage);
-    _memory_usage_kb.update(memory_usage);
+    _cpu_usage.update(cpu_usage);
+    _memory_bytes.update(memory_usage);
 }
 
-void InputResourcesMetricsBucket::process_policies(int16_t policies_number, int16_t handlers_count)
+void InputResourcesMetricsBucket::process_policies(int16_t policy_count, int16_t handler_count)
 {
     std::unique_lock lock(_mutex);
 
-    _policies_number += policies_number;
-    _handlers_count += handlers_count;
+    _policy_count += policy_count;
+    _handler_count += handler_count;
 }
 
 void InputResourcesMetricsManager::process_resources(double cpu_usage, uint64_t memory_usage, timespec stamp)
@@ -199,11 +199,11 @@ void InputResourcesMetricsManager::process_resources(double cpu_usage, uint64_t 
     live_bucket()->process_resources(cpu_usage, memory_usage);
 }
 
-void InputResourcesMetricsManager::process_policies(int16_t policies_number, int16_t handlers_count, bool self)
+void InputResourcesMetricsManager::process_policies(int16_t policy_count, int16_t handler_count, bool self)
 {
     if (!self) {
-        policies_total += policies_number;
-        handlers_total += handlers_count;
+        policy_total += policy_count;
+        handler_total += handler_count;
     }
 
     timespec stamp;
@@ -212,6 +212,6 @@ void InputResourcesMetricsManager::process_policies(int16_t policies_number, int
     // base event
     new_event(stamp);
     // process in the "live" bucket. this will parse the resources if we are deep sampling
-    live_bucket()->process_policies(policies_number, handlers_count);
+    live_bucket()->process_policies(policy_count, handler_count);
 }
 }

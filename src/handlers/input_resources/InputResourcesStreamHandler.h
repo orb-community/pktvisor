@@ -22,7 +22,7 @@ using namespace visor::input::dnstap;
 using namespace visor::input::mock;
 using namespace visor::input::sflow;
 
-constexpr double MEASURE_INTERVAL = 10; // in seconds
+constexpr double MEASURE_INTERVAL = 5; // in seconds
 
 class InputResourcesMetricsBucket final : public visor::AbstractMetricsBucket
 {
@@ -30,19 +30,18 @@ class InputResourcesMetricsBucket final : public visor::AbstractMetricsBucket
 protected:
     mutable std::shared_mutex _mutex;
 
-    // total numPackets is tracked in base class num_events
-    Quantile<double> _cpu_percentage;
-    Quantile<uint64_t> _memory_usage_kb;
-    Counter _policies_number;
-    Counter _handlers_count;
+    Quantile<double> _cpu_usage;
+    Quantile<uint64_t> _memory_bytes;
+    Counter _policy_count;
+    Counter _handler_count;
     bool _merged;
 
 public:
     InputResourcesMetricsBucket()
-        : _cpu_percentage("resources", {"cpu_percentage"}, "Quantiles of thread cpu usage")
-        , _memory_usage_kb("resources", {"memory_bytes"}, "Quantiles of thread memory usage in bytes")
-        , _policies_number("resources", {"policies_attached"}, "Total number of policies attached to the input stream")
-        , _handlers_count("resources", {"handlers_attached"}, "Total number of handlers attached to the input stream")
+        : _cpu_usage("resources", {"cpu_usage"}, "Quantiles of 5s averages of percent cpu usage by the input stream")
+        , _memory_bytes("resources", {"memory_bytes"}, "Quantiles  of 5s averages of memory usage (in bytes) by the input stream")
+        , _policy_count("resources", {"policy_count"}, "Total number of policies attached to the input stream")
+        , _handler_count("resources", {"handler_count"}, "Total number of handlers attached to the input stream")
         , _merged(false)
     {
     }
@@ -54,38 +53,37 @@ public:
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override;
 
     void process_resources(double cpu_usage, uint64_t memory_usage);
-    void process_policies(int16_t policies_number, int16_t handlers_count);
+    void process_policies(int16_t policy_count, int16_t handler_count);
 };
 
 class InputResourcesMetricsManager final : public visor::AbstractMetricsManager<InputResourcesMetricsBucket>
 {
-    uint16_t policies_total;
-    uint16_t handlers_total;
+    uint16_t policy_total;
+    uint16_t handler_total;
 
 public:
     InputResourcesMetricsManager(const Configurable *window_config)
         : visor::AbstractMetricsManager<InputResourcesMetricsBucket>(window_config)
-        , policies_total(0)
-        , handlers_total(0)
+        , policy_total(0)
+        , handler_total(0)
     {
     }
 
     void on_period_shift([[maybe_unused]] timespec stamp, [[maybe_unused]] const InputResourcesMetricsBucket *maybe_expiring_bucket) override
     {
-        process_policies(policies_total, handlers_total, true);
+        process_policies(policy_total, handler_total, true);
     }
 
     void process_resources(double cpu_usage, uint64_t memory_usage, timespec stamp = timespec());
-    void process_policies(int16_t policies_number, int16_t handlers_count, bool self);
+    void process_policies(int16_t policy_count, int16_t handler_count, bool self);
 };
 
 class InputResourcesStreamHandler final : public visor::StreamMetricsHandler<InputResourcesMetricsManager>
 {
-
-    // the input stream sources we support (only one will be in use at a time)
     ThreadMonitor _monitor;
     time_t _timer;
     timespec _timestamp;
+
     PcapInputStream *_pcap_stream{nullptr};
     DnstapInputStream *_dnstap_stream{nullptr};
     MockInputStream *_mock_stream{nullptr};
