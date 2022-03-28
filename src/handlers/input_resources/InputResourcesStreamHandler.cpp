@@ -87,7 +87,7 @@ void InputResourcesStreamHandler::process_policies_cb(const Policy *policy, Inpu
         break;
     }
 
-    _metrics->process_policies(policies_number, handlers_count, false);
+    _metrics->process_policies(policies_number, handlers_count);
 }
 
 void InputResourcesStreamHandler::process_sflow_cb([[maybe_unused]] const SFSample &)
@@ -108,7 +108,7 @@ void InputResourcesStreamHandler::process_dnstap_cb([[maybe_unused]] const dnsta
 
 void InputResourcesStreamHandler::process_packet_cb([[maybe_unused]] pcpp::Packet &payload, [[maybe_unused]] PacketDirection dir, [[maybe_unused]] pcpp::ProtocolType l3, [[maybe_unused]] pcpp::ProtocolType l4, [[maybe_unused]] timespec stamp)
 {
-    if (stamp.tv_sec >= MEASURE_INTERVAL + _timestamp.tv_sec) {
+    if (stamp.tv_sec >= _timestamp.tv_sec + MEASURE_INTERVAL) {
         _timestamp = stamp;
         _metrics->process_resources(_monitor.cpu_percentage(), _monitor.memory_usage());
     }

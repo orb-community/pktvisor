@@ -75,7 +75,7 @@ public:
     }
 
     void process_resources(double cpu_usage, uint64_t memory_usage, timespec stamp = timespec());
-    void process_policies(int16_t policy_count, int16_t handler_count, bool self);
+    void process_policies(int16_t policy_count, int16_t handler_count, bool self = false);
 };
 
 class InputResourcesStreamHandler final : public visor::StreamMetricsHandler<InputResourcesMetricsManager>

@@ -4,6 +4,7 @@
 #include "InputResourcesStreamHandler.h"
 #include "PcapInputStream.h"
 #include "SflowInputStream.h"
+#include "Policies.h"
 
 using namespace visor::handler::resources;
 
@@ -19,6 +20,10 @@ TEST_CASE("Check resources for pcap input", "[pcap][resources]")
 
     resources_handler.start();
     stream.start();
+    //add and remove policy
+    auto policy = std::make_unique<visor::Policy>("policy-test", nullptr, false);
+    stream.add_policy(policy.get());
+    stream.remove_policy(policy.get());
     resources_handler.stop();
     stream.stop();
 
