@@ -45,6 +45,12 @@ enum Protocol : uint64_t {
     PCPP_UDP = pcpp::UDP
 };
 
+struct DnsCacheData {
+    uint64_t flowKey = 0;
+    timespec timestamp = timespec();
+    std::unique_ptr<DnsLayer> dnsLayer;
+};
+
 class DnsMetricsBucket final : public visor::AbstractMetricsBucket
 {
 protected:
