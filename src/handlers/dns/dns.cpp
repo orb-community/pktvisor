@@ -3,7 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 #include "dns.h"
-#include <iostream>
+
 namespace visor::handler::dns {
 
 AggDomainResult aggregateDomain(const std::string &domain, std::string_view static_suffix)
@@ -18,7 +18,7 @@ AggDomainResult aggregateDomain(const std::string &domain, std::string_view stat
         return AggDomainResult(qname2, qname3);
     }
     std::size_t endDot = std::string::npos;
-    if (!static_suffix.empty() && (static_cast<int>(domain.size()) - static_cast<int>(static_suffix.size())) > 0) {
+    if (!static_suffix.empty() && domain.size() > static_suffix.size()) {
         endDot = domain.size() - static_suffix.size();
     } else if (domain.back() == '.') {
         endDot = domain.size() - 2;
