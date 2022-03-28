@@ -77,26 +77,42 @@ TEST_CASE("DNS Utilities", "[dns]")
     {
         AggDomainResult result;
         std::string domain;
+        std::string static_suffix;
 
         domain = "biz.foo.bar.com";
-        result = aggregateDomain(domain, ".bar.com");
+        static_suffix = ".bar.com";
+        result = aggregateDomain(domain, static_suffix.size());
         CHECK(result.first == ".foo.bar.com");
         CHECK(result.second == "biz.foo.bar.com");
 
         domain = "biz.foo.bar.com";
-        result = aggregateDomain(domain, "bar.com");
+        static_suffix = "bar.com";
+        result = aggregateDomain(domain, static_suffix.size());
         CHECK(result.first == ".foo.bar.com");
         CHECK(result.second == "biz.foo.bar.com");
 
         domain = "biz.foo.bar.com";
-        result = aggregateDomain(domain, "foo.bar.com");
+        static_suffix = "foo.bar.com";
+        result = aggregateDomain(domain, static_suffix.size());
         CHECK(result.first == "biz.foo.bar.com");
         CHECK(result.second == "");
 
         domain = "foo.bar.com.";
-        result = aggregateDomain(domain, "biz.foo.bar.com");
+        static_suffix = "biz.foo.bar.com";
+        result = aggregateDomain(domain, static_suffix.size());
         CHECK(result.first == ".bar.com.");
         CHECK(result.second == "foo.bar.com.");
 
+        domain = "www.google.co.uk";
+        static_suffix = ".co.uk";
+        result = aggregateDomain(domain, static_suffix.size());
+        CHECK(result.first == ".google.co.uk");
+        CHECK(result.second == "www.google.co.uk");
+
+        domain = "www.google.co.uk";
+        static_suffix = "google.co.uk";
+        result = aggregateDomain(domain, static_suffix.size());
+        CHECK(result.first == "www.google.co.uk");
+        CHECK(result.second == "");
     }
 }

@@ -158,7 +158,7 @@ public:
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override;
 
     void process_filtered();
-    void process_dns_layer(bool deep, DnsLayer &payload, pcpp::ProtocolType l3, Protocol l4, uint16_t port, std::string_view static_suffix = "");
+    void process_dns_layer(bool deep, DnsLayer &payload, pcpp::ProtocolType l3, Protocol l4, uint16_t port, size_t suffix_size = 0);
     void process_dns_layer(pcpp::ProtocolType l3, Protocol l4, QR side, uint16_t port);
     void process_dnstap(bool deep, const dnstap::Dnstap &payload);
 
@@ -200,7 +200,7 @@ public:
     }
 
     void process_filtered(timespec stamp);
-    void process_dns_layer(DnsLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowkey, uint16_t port, std::string_view static_suffix, timespec stamp);
+    void process_dns_layer(DnsLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowkey, uint16_t port, size_t suffix_size, timespec stamp);
     void process_dnstap(const dnstap::Dnstap &payload, bool filtered);
 };
 
@@ -287,7 +287,7 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
     std::bitset<Filters::FiltersMAX> _f_enabled;
     uint16_t _f_rcode{0};
     std::vector<std::string> _f_qnames;
-    std::string_view _static_suffix;
+    size_t _static_suffix_size{0};
     std::bitset<DNSTAP_TYPE_SIZE> _f_dnstap_types;
 
     static const inline StreamMetricsHandler::GroupDefType _group_defs = {
