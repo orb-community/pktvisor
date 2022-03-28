@@ -8,7 +8,6 @@
 #include "InputStream.h"
 #include "dnstap.pb.h"
 #include <DnsLayer.h>
-#include <sigslot/signal.hpp>
 #include <spdlog/spdlog.h>
 #include <unordered_map>
 #include <uv.h>
@@ -96,7 +95,7 @@ public:
     void info_json(json &j) const override;
     size_t consumer_count() const override
     {
-        return dnstap_signal.slot_count();
+        return policy_signal.slot_count() + dnstap_signal.slot_count();
     }
 
     // handler functionality

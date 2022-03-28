@@ -6,7 +6,6 @@
 
 #include "InputStream.h"
 #include "SflowData.h"
-#include <sigslot/signal.hpp>
 #include <spdlog/spdlog.h>
 #include <uvw.hpp>
 
@@ -39,7 +38,7 @@ public:
     void info_json(json &j) const override;
     size_t consumer_count() const override
     {
-        return sflow_signal.slot_count();
+        return policy_signal.slot_count() + sflow_signal.slot_count();
     }
 
     // handler functionality
