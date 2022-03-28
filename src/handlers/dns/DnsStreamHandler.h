@@ -240,7 +240,6 @@ struct TcpFlowData {
 class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsManager>
 {
     static constexpr size_t DNSTAP_TYPE_SIZE = 15;
-
     // the input stream sources we support (only one will be in use at a time)
     PcapInputStream *_pcap_stream{nullptr};
     MockInputStream *_mock_stream{nullptr};

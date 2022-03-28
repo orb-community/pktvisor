@@ -20,6 +20,8 @@
 
 namespace visor::handler::dns {
 
+thread_local static std::pair<uint32_t, DnsLayer> cached_dns_layer = {0, DnsLayer()};
+
 DnsStreamHandler::DnsStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config, StreamHandler *handler)
     : visor::StreamMetricsHandler<DnsMetricsManager>(name, window_config)
 {
@@ -161,7 +163,14 @@ void DnsStreamHandler::process_udp_packet_cb(pcpp::Packet &payload, PacketDirect
         metric_port = dst_port;
     }
     if (metric_port) {
-        DnsLayer dnsLayer(udpLayer, &payload);
+        DnsLayer dnsLayer;
+        if (flowkey == cached_dns_layer.first) {
+            dnsLayer = cached_dns_layer.second;
+        } else {
+            cached_dns_layer = {flowkey, DnsLayer()};
+            dnsLayer = DnsLayer(udpLayer, &payload);
+        }
+
         if (!_filtering(dnsLayer, dir, l3, pcpp::UDP, metric_port, stamp)) {
             _metrics->process_dns_layer(dnsLayer, dir, l3, pcpp::UDP, flowkey, metric_port, stamp);
             // signal for chained stream handlers, if we have any
@@ -632,6 +641,10 @@ void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, pcpp::Pro
                 _dns_topQname3.update(std::string(aggDomain.second));
             }
         }
+    }
+
+    if (cached_dns_layer.second.getHeaderLen() == 0) {
+        cached_dns_layer.second = payload;
     }
 }
 
