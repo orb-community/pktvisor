@@ -374,6 +374,13 @@ TEST_CASE("DNS Filters: only_qname_suffix", "[pcap][dns]")
     CHECK(counters.REFUSED.value() == 0);
     CHECK(counters.NX.value() == 1);
     CHECK(counters.filtered.value() == 14);
+
+    nlohmann::json j;
+    dns_handler.metrics()->bucket(0)->to_json(j);
+
+    CHECK(j["top_qname2"][0]["name"] == "play.google.com");
+    CHECK(j["top_qname2"][1]["name"] == "google.com");
+    CHECK(j["top_qname2"][2]["name"] == "nonexistent.google.com");
 }
 
 TEST_CASE("DNS groups", "[pcap][dns]")
