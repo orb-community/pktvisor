@@ -657,7 +657,7 @@ TEST_CASE("Policies", "[policies]")
         CHECK(policy->modules()[1]->running());
         CHECK(policy->modules()[2]->running());
         policy->stop();
-        CHECK(!policy->input_stream()->running());
+        CHECK(policy->input_stream()->running());
         CHECK(!policy->modules()[0]->running());
         CHECK(!policy->modules()[1]->running());
         CHECK(!policy->modules()[2]->running());

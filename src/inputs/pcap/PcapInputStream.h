@@ -15,7 +15,6 @@
 #include "utils.h"
 #include <functional>
 #include <memory>
-#include <sigslot/signal.hpp>
 #include <unordered_map>
 #include <vector>
 #ifdef __linux__
@@ -87,7 +86,7 @@ public:
     void info_json(json &j) const override;
     size_t consumer_count() const override
     {
-        return packet_signal.slot_count() + udp_signal.slot_count() + start_tstamp_signal.slot_count() + tcp_message_ready_signal.slot_count() + tcp_connection_start_signal.slot_count() + tcp_connection_end_signal.slot_count() + tcp_reassembly_error_signal.slot_count() + pcap_stats_signal.slot_count();
+        return policy_signal.slot_count() + packet_signal.slot_count() + udp_signal.slot_count() + start_tstamp_signal.slot_count() + tcp_message_ready_signal.slot_count() + tcp_connection_start_signal.slot_count() + tcp_connection_end_signal.slot_count() + tcp_reassembly_error_signal.slot_count() + pcap_stats_signal.slot_count();
     }
 
     // utilities
