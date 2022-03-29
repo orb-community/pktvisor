@@ -20,7 +20,7 @@
 
 namespace visor::handler::dns {
 
-thread_local static DnsCacheData cached_dns_layer;
+thread_local DnsStreamHandler::DnsCacheData DnsStreamHandler::cached_dns_layer;
 
 DnsStreamHandler::DnsStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config, StreamHandler *handler)
     : visor::StreamMetricsHandler<DnsMetricsManager>(name, window_config)
