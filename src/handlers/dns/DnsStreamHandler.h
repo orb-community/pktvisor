@@ -242,7 +242,7 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
     static constexpr size_t DNSTAP_TYPE_SIZE = 15;
 
     struct DnsCacheData {
-        uint64_t flowKey = 0;
+        uint32_t flowKey = 0;
         timespec timestamp = timespec();
         std::unique_ptr<DnsLayer> dnsLayer;
     };
