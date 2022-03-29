@@ -45,12 +45,6 @@ enum Protocol : uint64_t {
     PCPP_UDP = pcpp::UDP
 };
 
-struct DnsCacheData {
-    uint64_t flowKey = 0;
-    timespec timestamp = timespec();
-    std::unique_ptr<DnsLayer> dnsLayer;
-};
-
 class DnsMetricsBucket final : public visor::AbstractMetricsBucket
 {
 protected:
@@ -246,6 +240,14 @@ struct TcpFlowData {
 class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsManager>
 {
     static constexpr size_t DNSTAP_TYPE_SIZE = 15;
+
+    struct DnsCacheData {
+        uint64_t flowKey = 0;
+        timespec timestamp = timespec();
+        std::unique_ptr<DnsLayer> dnsLayer;
+    };
+    static thread_local DnsCacheData cached_dns_layer;
+
     // the input stream sources we support (only one will be in use at a time)
     PcapInputStream *_pcap_stream{nullptr};
     MockInputStream *_mock_stream{nullptr};
