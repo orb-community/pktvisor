@@ -163,18 +163,14 @@ void DnsStreamHandler::process_udp_packet_cb(pcpp::Packet &payload, PacketDirect
         metric_port = dst_port;
     }
     if (metric_port) {
-        DnsLayer dnsLayer;
-        if (flowkey == cached_dns_layer.flowKey && stamp.tv_sec == cached_dns_layer.timestamp.tv_sec && stamp.tv_nsec == cached_dns_layer.timestamp.tv_nsec && cached_dns_layer.dnsLayer) {
-            dnsLayer = *cached_dns_layer.dnsLayer.get();
-        } else {
+        if (flowkey != cached_dns_layer.flowKey || stamp.tv_sec != cached_dns_layer.timestamp.tv_sec || stamp.tv_nsec != cached_dns_layer.timestamp.tv_nsec) {
             cached_dns_layer.flowKey = flowkey;
             cached_dns_layer.timestamp = stamp;
-            cached_dns_layer.dnsLayer.reset();
-            dnsLayer = DnsLayer(udpLayer, &payload);
+            cached_dns_layer.dnsLayer = std::make_unique<DnsLayer>(udpLayer, &payload);
         }
-
-        if (!_filtering(dnsLayer, dir, l3, pcpp::UDP, metric_port, stamp)) {
-            _metrics->process_dns_layer(dnsLayer, dir, l3, pcpp::UDP, flowkey, metric_port, stamp);
+        auto dnsLayer = cached_dns_layer.dnsLayer.get();
+        if (!_filtering(*dnsLayer, dir, l3, pcpp::UDP, metric_port, stamp)) {
+            _metrics->process_dns_layer(*dnsLayer, dir, l3, pcpp::UDP, flowkey, metric_port, stamp);
             // signal for chained stream handlers, if we have any
             udp_signal(payload, dir, l3, flowkey, stamp);
         }
@@ -643,10 +639,6 @@ void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, pcpp::Pro
                 _dns_topQname3.update(std::string(aggDomain.second));
             }
         }
-    }
-
-    if (cached_dns_layer.dnsLayer == nullptr) {
-        cached_dns_layer.dnsLayer = std::make_unique<DnsLayer>(payload);
     }
 }
 
