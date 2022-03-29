@@ -5,7 +5,6 @@
 #pragma once
 
 #include "InputStream.h"
-#include <sigslot/signal.hpp>
 #include <spdlog/spdlog.h>
 #include <timer.hpp>
 
@@ -31,7 +30,7 @@ public:
     void info_json(json &j) const override;
     size_t consumer_count() const override
     {
-        return random_int_signal.slot_count();
+        return policy_signal.slot_count() + random_int_signal.slot_count();
     }
 
     // handler functionality
