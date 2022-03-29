@@ -164,7 +164,7 @@ void DnsStreamHandler::process_udp_packet_cb(pcpp::Packet &payload, PacketDirect
     }
     if (metric_port) {
         DnsLayer dnsLayer;
-        if (flowkey == cached_dns_layer.flowKey && stamp.tv_sec == cached_dns_layer.timestamp.tv_sec && stamp.tv_nsec == cached_dns_layer.timestamp.tv_nsec) {
+        if (flowkey == cached_dns_layer.flowKey && stamp.tv_sec == cached_dns_layer.timestamp.tv_sec && stamp.tv_nsec == cached_dns_layer.timestamp.tv_nsec && cached_dns_layer.dnsLayer) {
             dnsLayer = *cached_dns_layer.dnsLayer.get();
         } else {
             cached_dns_layer.flowKey = flowkey;
