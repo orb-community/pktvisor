@@ -7,6 +7,7 @@ import yaml
 from yaml.loader import SafeLoader
 from retry import retry
 import random
+from policies import *
 
 PKTVISOR_CONTAINER_NAME = "pktvisor-test"
 
@@ -38,27 +39,7 @@ def amount_of_policies_per_status(context, amount_of_policies, status_condition)
 
 @step("create a new policy")
 def create_new_policy(context):
-    policy_yaml = f"""
-    version: "1.0"
-
-    visor:
-      policies:
-       {random_string(10)}:
-         kind: collection
-         input:
-           tap: default
-           input_type: pcap
-         handlers:
-            window_config:
-              num_periods: 5
-              deep_sample_rate: 100
-            modules:
-              default_dns:
-                type: dns
-              default_net:
-                type: net
-    """
-
+    policy_yaml = policies.generate_pcap_policy_with_all_handlers(random_string(10))
     policy_yaml_parsed = yaml.load(policy_yaml, Loader=SafeLoader)
     yaml_policy_data = yaml.dump(policy_yaml_parsed)
     create_policy(yaml_policy_data)
@@ -70,7 +51,8 @@ def remove_policies(context, amount_of_policies):
     for policy in policies_to_remove:
         remove_policy(policy)
         response = get_policy(policy, 10853, 404)
-        response
+        assert_that(response.json(), has_key('error'), "Unexpected message for non existing policy")
+        assert_that(response.json(), has_value('policy does not exists'), "Unexpected message for non existing policy")
 
 
 
