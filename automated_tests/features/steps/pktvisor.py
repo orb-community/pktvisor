@@ -3,37 +3,76 @@ import docker
 from behave import step
 from hamcrest import *
 import requests
+import yaml
+from yaml.loader import SafeLoader
 from retry import retry
+import random
 
 PKTVISOR_CONTAINER_NAME = "pktvisor-test"
 
 
-def run_pktvisor_container(container_image, port="default", container_name=PKTVISOR_CONTAINER_NAME):
-    """
-    Run a pktvisor container
-
-    :param (str) container_image: that will be used for running the container
-    :param (str) port: Port on which the web service must be run [default: 10853]
-    :param (dict) env_vars: that will be passed to the container context
-    :param (str) container_name: base of container name
-    :returns: (str) the container ID
-    """
-    PKTVISOR_CONTAINER_NAME = container_name + random_string(3)
-    client = docker.from_env()
-    pkt_command = ["pktvisord", "wlo1"]
-    if port != "default":
-        pkt_command.insert(-1, '-p')
-        pkt_command.insert(-1, port)
-    container = client.containers.run(container_image, name=PKTVISOR_CONTAINER_NAME, detach=True,
-                                      network_mode='host', command=pkt_command)
-    return container.id
-
-
-
-@step("run pktvisor instance on port {pkt_port}")
-def run_pktvisor(context, pkt_port):
+@step("run pktvisor instance on port {pkt_port} with {role} permission")
+def run_pktvisor(context, pkt_port, role):
     context.pkt_port = pkt_port
-    context.container_id = run_pktvisor_container("ns1labs/pktvisor", pkt_port)
+    context.container_id = run_pktvisor_container("ns1labs/pktvisor", pkt_port, role)
+
+
+@step("that a pktvisor instance is running on port {pkt_port} with {role} permission")
+def pkt_running(context, pkt_port, role):
+    run_pktvisor(context, pkt_port, role)
+
+
+@step("{amount_of_policies} policies {status_condition} be running")
+def amount_of_policies_per_status(context, amount_of_policies, status_condition):
+    assert_that(status_condition, any_of(equal_to("must"), equal_to("must not")),
+                'Unexpect condition for policy status')
+    status_condition_dict = {"must": True, "must not": False}
+    all_policies = make_get_request('policies').json()
+    amount_of_policies_per_status = list()
+    for key, value in all_policies.items():
+        if value['input'][list(value['input'].keys())[0]]['input']['running'] is status_condition_dict[status_condition]:
+            amount_of_policies_per_status.append(key)
+    assert_that(len(amount_of_policies_per_status), equal_to(int(amount_of_policies)),
+                f"Unexpect amount of policies that {status_condition} be running")
+
+
+@step("create a new policy")
+def create_new_policy(context):
+    policy_yaml = f"""
+    version: "1.0"
+
+    visor:
+      policies:
+       {random_string(10)}:
+         kind: collection
+         input:
+           tap: default
+           input_type: pcap
+         handlers:
+            window_config:
+              num_periods: 5
+              deep_sample_rate: 100
+            modules:
+              default_dns:
+                type: dns
+              default_net:
+                type: net
+    """
+
+    policy_yaml_parsed = yaml.load(policy_yaml, Loader=SafeLoader)
+    yaml_policy_data = yaml.dump(policy_yaml_parsed)
+    create_policy(yaml_policy_data)
+
+@step("delete {amount_of_policies} policies")
+def remove_policies(context, amount_of_policies):
+    names_of_all_policies = make_get_request('policies').json().keys()
+    policies_to_remove = random.sample(names_of_all_policies, int(amount_of_policies))
+    for policy in policies_to_remove:
+        remove_policy(policy)
+        response = get_policy(policy, 10853, 404)
+        response
+
+
 
 
 @step("the pktvisor container status must be {pkt_status}")
@@ -95,10 +134,84 @@ def check_pkt_base_API(context):
 
 
 @retry(tries=3, delay=1)
+def create_policy(yaml_data, pkt_port=10853, expected_status_code=201):
+    """
+
+    :param yaml_data: policy configurations
+    :param pkt_port: port on which pktvisor is running
+    :param expected_status_code: expected status from response
+    :return: response
+    """
+    pkt_api = 'http://localhost:'+str(pkt_port)+'/api/v1/policies'
+    headers_request = {'Content-type': 'application/x-yaml'}
+    response = requests.post(pkt_api, data=yaml_data, headers=headers_request)
+    assert_that(response.status_code, equal_to(int(expected_status_code)), f"Post request to create a policy failed with status {response.status_code}")
+    return response
+
+
+@retry(tries=3, delay=1)
 def make_get_request(end_point, pkt_port=10853, expected_status_code=200):
+    """
+
+    :param end_point: endpoint to which the request must be sent
+    :param pkt_port: port on which pktvisor is running
+    :param expected_status_code: expected status from response
+    :return: response
+    """
     pkt_base_api = 'http://localhost:'+str(pkt_port)+'/api/v1/'
     path = pkt_base_api+end_point
     response = requests.get(path)
     assert_that(response.status_code, equal_to(int(expected_status_code)),
                 f"Get request to endpoint {path} failed with status {response.status_code}")
     return response
+
+
+def run_pktvisor_container(container_image, port="default", role="user", container_name=PKTVISOR_CONTAINER_NAME):
+    """
+    Run a pktvisor container
+
+    :param (str) container_image: that will be used for running the container
+    :param (str) port: Port on which the web service must be run [default: 10853]
+    :param (str) role: that manage the permissions. [Default: 'user']
+    :param (str) container_name: base of container name
+    :returns: (str) the container ID
+    """
+    assert_that(role, any_of(equal_to('user'), equal_to('admin')), "Unexpect permission role")
+    PKTVISOR_CONTAINER_NAME = container_name + random_string(3)
+    client = docker.from_env()
+    pkt_command = ["pktvisord", "wlo1"]
+    if port != "default":
+        pkt_command.insert(-1, '-p')
+        pkt_command.insert(-1, port)
+    if role == "admin":
+        pkt_command.insert(-1, '--admin-api')
+    container = client.containers.run(container_image, name=PKTVISOR_CONTAINER_NAME, detach=True,
+                                      network_mode='host', command=pkt_command)
+    return container.id
+
+
+def get_policy(policy_name, pkt_port=10853, expected_status_code=200):
+    """
+
+    :param (str) policy_name: name of the policy to be fetched
+    :param pkt_port: port on which pktvisor is running
+    :param expected_status_code: expected status from response
+    :return: (dict) referred policy data
+    """
+    endpoint = f"policies/{policy_name}"
+    return make_get_request(endpoint, pkt_port, expected_status_code)
+
+
+def remove_policy(policy_name, pkt_port=10853, expected_status_code=204):
+
+    """
+    :param (str) policy_name: name of the policy to be fetched
+    :param pkt_port: port on which pktvisor is . Default: 10853
+    :param expected_status_code: expected status from response. Default: 204
+    :return: response
+    """
+    pkt_base_api = 'http://localhost:'+str(pkt_port)+'/api/v1/policies/'
+    path = pkt_base_api+policy_name
+    response = requests.delete(path)
+    assert_that(response.status_code, equal_to(int(expected_status_code)),
+                f"Delete request of policy {policy_name} failed with status {response.status_code}")
