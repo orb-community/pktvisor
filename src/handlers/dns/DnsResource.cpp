@@ -19,8 +19,12 @@ IDnsResource::IDnsResource(DnsLayer *dnsLayer, size_t offsetInLayer)
 {
     char decodedName[256];
     m_NameLength = decodeName((const char *)getRawData(), decodedName);
-    if (m_NameLength > 0)
+    if (m_NameLength > 0) {
         m_DecodedName = decodedName;
+        m_DecodedNameLower = m_DecodedName;
+        std::transform(m_DecodedNameLower.begin(), m_DecodedNameLower.end(), m_DecodedNameLower.begin(),
+            [](unsigned char c) { return std::tolower(c); });
+    }
 }
 
 IDnsResource::IDnsResource(uint8_t *emptyRawData)
@@ -28,6 +32,7 @@ IDnsResource::IDnsResource(uint8_t *emptyRawData)
     , m_OffsetInLayer(0)
     , m_NextResource(NULL)
     , m_DecodedName("")
+    , m_DecodedNameLower("")
     , m_NameLength(0)
     , m_ExternalRawData(emptyRawData)
 {
@@ -228,6 +233,9 @@ bool IDnsResource::setName(const std::string &newName)
     memcpy(getRawData(), encodedName, encodedNameLen);
     m_NameLength = encodedNameLen;
     m_DecodedName = newName;
+    m_DecodedNameLower = m_DecodedName;
+    std::transform(m_DecodedNameLower.begin(), m_DecodedNameLower.end(), m_DecodedNameLower.begin(),
+        [](unsigned char c) { return std::tolower(c); });
 
     return true;
 }
