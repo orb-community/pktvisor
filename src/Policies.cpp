@@ -178,7 +178,7 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
         }
 
         std::unique_ptr<Policy> input_resources_policy;
-        Policy *input_res_policy_ptr;
+        Policy *input_res_policy_ptr{nullptr};
         std::unique_ptr<StreamHandler> resources_module;
         if (input_stream) {
             // create new policy with resources handler for input stream
