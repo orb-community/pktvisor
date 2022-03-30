@@ -246,7 +246,7 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
         timespec timestamp = timespec();
         std::unique_ptr<DnsLayer> dnsLayer;
     };
-    static thread_local DnsCacheData cached_dns_layer;
+    static thread_local DnsCacheData _cached_dns_layer;
 
     // the input stream sources we support (only one will be in use at a time)
     PcapInputStream *_pcap_stream{nullptr};
