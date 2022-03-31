@@ -230,7 +230,7 @@ void PcapInputStream::stop()
 void PcapInputStream::tcp_message_ready(int8_t side, const pcpp::TcpStreamData &tcpData)
 {
     tcp_message_ready_signal(side, tcpData);
-    _lru_list.put(tcpData.getConnectionData().flowKey, tcpData.getTimeStamp());
+    _lru_list.put(tcpData.getConnectionData().flowKey, tcpData.getConnectionData().endTime);
 }
 
 void PcapInputStream::tcp_connection_start(const pcpp::ConnectionData &connectionData)
@@ -388,7 +388,7 @@ void PcapInputStream::process_raw_packet(pcpp::RawPacket *rawPacket)
                 break;
             }
             _tcp_reassembly.closeConnection(connection.first);
-            _lru_list.eraseElement(connection.first);
+            _lru_list.eraseLRUElement();
         }
     } else {
         // unsupported layer3 protocol

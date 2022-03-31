@@ -92,7 +92,7 @@ public:
      * Get the most recently used element (the one at the beginning of the list)
      * @return The most recently used element
      */
-    const std::pair<T, V> &getMRUElement() const
+    inline const std::pair<T, V> &getMRUElement() const
     {
         return m_CacheItemsList.front();
     }
@@ -101,7 +101,7 @@ public:
      * Get the least recently used element (the one at the end of the list)
      * @return The least recently used element
      */
-    const std::pair<T, V> &getLRUElement() const
+    inline const std::pair<T, V> &getLRUElement() const
     {
         return m_CacheItemsList.back();
     }
@@ -110,7 +110,7 @@ public:
      * Erase an element from the list. If element isn't found in the list nothing happens
      * @param[in] element The element to erase
      */
-    void eraseElement(const T &element)
+    inline void eraseElement(const T &element)
     {
         MapIterator iter = m_CacheItemsMap.find(element);
         if (iter == m_CacheItemsMap.end())
@@ -121,9 +121,35 @@ public:
     }
 
     /**
+     * Erase the most recently used element
+     */
+    inline void eraseMRUElement()
+    {
+        if (m_CacheItemsMap.empty()) {
+            return;
+        }
+        auto first = m_CacheItemsMap.begin();
+        m_CacheItemsList.erase(first->second);
+        m_CacheItemsMap.erase(first);
+    }
+
+    /**
+     * Erase the least recently used element
+     */
+    inline void eraseLRUElement()
+    {
+        if (m_CacheItemsMap.empty()) {
+            return;
+        }
+        auto last = std::prev(m_CacheItemsMap.end());
+        m_CacheItemsList.erase(last->second);
+        m_CacheItemsMap.erase(last);
+    }
+
+    /**
      * @return The max size of this list as determined in the c'tor
      */
-    size_t getMaxSize() const
+    inline size_t getMaxSize() const
     {
         return m_MaxSize;
     }
@@ -131,7 +157,7 @@ public:
     /**
      * @return The number of elements currently in this list
      */
-    size_t getSize() const
+    inline size_t getSize() const
     {
         return m_CacheItemsMap.size();
     }
