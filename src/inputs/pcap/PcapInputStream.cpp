@@ -236,12 +236,12 @@ void PcapInputStream::tcp_message_ready(int8_t side, const pcpp::TcpStreamData &
 void PcapInputStream::tcp_connection_start(const pcpp::ConnectionData &connectionData)
 {
     tcp_connection_start_signal(connectionData);
-    _lru_list.eraseElement(connectionData.flowKey);
 }
 
 void PcapInputStream::tcp_connection_end(const pcpp::ConnectionData &connectionData, pcpp::TcpReassembly::ConnectionEndReason reason)
 {
     tcp_connection_end_signal(connectionData, reason);
+    _lru_list.eraseElement(connectionData.flowKey);
 }
 
 void PcapInputStream::process_pcap_stats(const pcpp::IPcapDevice::PcapStats &stats)
