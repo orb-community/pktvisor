@@ -12,6 +12,7 @@
 #include <TcpReassembly.h>
 #include <UdpLayer.h>
 #pragma GCC diagnostic pop
+#include "LRUList.h"
 #include "utils.h"
 #include <functional>
 #include <memory>
@@ -40,8 +41,11 @@ class PcapInputStream : public visor::InputStream
 {
 
 private:
-    static const PcapSource DefaultPcapSource = PcapSource::libpcap;
+    static constexpr uint8_t TCP_TIMEOUT = 10;
+    static constexpr uint8_t MAX_TCP_CLEANUPS = 100;
 
+    static const PcapSource DefaultPcapSource = PcapSource::libpcap;
+    pcpp::LRUList<uint32_t, timeval> _lru_list;
     IPv4subnetList _hostIPv4;
     IPv6subnetList _hostIPv6;
 

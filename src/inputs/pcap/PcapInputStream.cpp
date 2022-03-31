@@ -71,7 +71,7 @@ PcapInputStream::PcapInputStream(const std::string &name)
           this,
           _tcp_connection_start_cb,
           _tcp_connection_end_cb,
-          {true, 5, 500, 50})
+          {true, 1, 1000, 50})
 {
     pcpp::Logger::getInstance().suppressLogs();
 }
@@ -230,11 +230,13 @@ void PcapInputStream::stop()
 void PcapInputStream::tcp_message_ready(int8_t side, const pcpp::TcpStreamData &tcpData)
 {
     tcp_message_ready_signal(side, tcpData);
+    _lru_list.put(tcpData.getConnectionData().flowKey, tcpData.getTimeStamp());
 }
 
 void PcapInputStream::tcp_connection_start(const pcpp::ConnectionData &connectionData)
 {
     tcp_connection_start_signal(connectionData);
+    _lru_list.eraseElement(connectionData.flowKey);
 }
 
 void PcapInputStream::tcp_connection_end(const pcpp::ConnectionData &connectionData, pcpp::TcpReassembly::ConnectionEndReason reason)
@@ -319,7 +321,6 @@ void PcapInputStream::_generate_mock_traffic()
 
 void PcapInputStream::process_raw_packet(pcpp::RawPacket *rawPacket)
 {
-
     pcpp::ProtocolType l3(pcpp::UnknownProtocol), l4(pcpp::UnknownProtocol);
     pcpp::Packet packet(rawPacket, pcpp::TCP | pcpp::UDP);
     if (packet.isPacketOfType(pcpp::IPv4)) {
@@ -359,18 +360,19 @@ void PcapInputStream::process_raw_packet(pcpp::RawPacket *rawPacket)
         }
     }
 
+    auto timestamp = rawPacket->getPacketTimeStamp();
     // interface to handlers
-    packet_signal(packet, dir, l3, l4, rawPacket->getPacketTimeStamp());
+    packet_signal(packet, dir, l3, l4, timestamp);
 
     if (l4 == pcpp::UDP) {
-        udp_signal(packet, dir, l3, pcpp::hash5Tuple(&packet), rawPacket->getPacketTimeStamp());
+        udp_signal(packet, dir, l3, pcpp::hash5Tuple(&packet), timestamp);
     } else if (l4 == pcpp::TCP) {
         auto result = _tcp_reassembly.reassemblePacket(packet);
         switch (result) {
         case pcpp::TcpReassembly::Error_PacketDoesNotMatchFlow:
         case pcpp::TcpReassembly::NonTcpPacket:
         case pcpp::TcpReassembly::NonIpPacket:
-            tcp_reassembly_error_signal(packet, dir, l3, rawPacket->getPacketTimeStamp());
+            tcp_reassembly_error_signal(packet, dir, l3, timestamp);
         case pcpp::TcpReassembly::TcpMessageHandled:
         case pcpp::TcpReassembly::OutOfOrderTcpMessageBuffered:
         case pcpp::TcpReassembly::FIN_RSTWithNoData:
@@ -378,6 +380,15 @@ void PcapInputStream::process_raw_packet(pcpp::RawPacket *rawPacket)
         case pcpp::TcpReassembly::Ignore_PacketOfClosedFlow:
         case pcpp::TcpReassembly::Ignore_Retransimission:
             break;
+        }
+
+        for (uint8_t counter = 0; counter < MAX_TCP_CLEANUPS; counter++) {
+            auto connection = _lru_list.getLRUElement();
+            if (timestamp.tv_sec < connection.second.tv_sec + TCP_TIMEOUT) {
+                break;
+            }
+            _tcp_reassembly.closeConnection(connection.first);
+            _lru_list.eraseElement(connection.first);
         }
     } else {
         // unsupported layer3 protocol
