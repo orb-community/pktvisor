@@ -378,9 +378,8 @@ TEST_CASE("DNS Filters: only_qname_suffix", "[pcap][dns]")
     nlohmann::json j;
     dns_handler.metrics()->bucket(0)->to_json(j);
 
-    CHECK(j["top_qname2"][0]["name"] == "play.google.com");
-    CHECK(j["top_qname2"][1]["name"] == "google.com");
-    CHECK(j["top_qname2"][2]["name"] == "nonexistent.google.com");
+    CHECK(j["top_qname2"][0]["name"].get<std::string>().find("google.com") != std::string::npos);
+    CHECK(j["top_qname3"][0]["name"] == nullptr);
 }
 
 TEST_CASE("DNS groups", "[pcap][dns]")
