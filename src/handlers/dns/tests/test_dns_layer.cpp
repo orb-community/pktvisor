@@ -374,6 +374,12 @@ TEST_CASE("DNS Filters: only_qname_suffix", "[pcap][dns]")
     CHECK(counters.REFUSED.value() == 0);
     CHECK(counters.NX.value() == 1);
     CHECK(counters.filtered.value() == 14);
+
+    nlohmann::json j;
+    dns_handler.metrics()->bucket(0)->to_json(j);
+
+    CHECK(j["top_qname2"][0]["name"].get<std::string>().find("google.com") != std::string::npos);
+    CHECK(j["top_qname3"][0]["name"] == nullptr);
 }
 
 TEST_CASE("DNS groups", "[pcap][dns]")
