@@ -21,16 +21,17 @@ namespace visor::handler::dns {
 
 void QueryResponsePairMgr::start_transaction(uint32_t flowKey, uint16_t queryID, timespec stamp)
 {
-    _dns_transactions[DnsXactID(flowKey, queryID)] = {stamp, {0, 0}};
+    _dns_transactions.put(DnsXactID(flowKey, queryID), {stamp, {0, 0}});
 }
 
 std::pair<bool, DnsTransaction> QueryResponsePairMgr::maybe_end_transaction(uint32_t flowKey, uint16_t queryID, timespec stamp)
 {
     auto key = DnsXactID(flowKey, queryID);
-    if (_dns_transactions.find(key) != _dns_transactions.end()) {
-        auto result = _dns_transactions[key];
+    auto value = _dns_transactions.getElement(key);
+    if (value.has_value()) {
+        auto result = value.value().second;
         timespec_diff(&stamp, &result.queryTS, &result.totalTS);
-        _dns_transactions.erase(key);
+        _dns_transactions.eraseElement(key);
         return std::pair<bool, DnsTransaction>(true, result);
     } else {
         return std::pair<bool, DnsTransaction>(false, DnsTransaction{{0, 0}, {0, 0}});
@@ -39,17 +40,16 @@ std::pair<bool, DnsTransaction> QueryResponsePairMgr::maybe_end_transaction(uint
 
 size_t QueryResponsePairMgr::purge_old_transactions(timespec now)
 {
-    // TODO this is a simple linear search, can optimize with some better data structures
-    std::vector<DnsXactID> timed_out;
-    for (auto i : _dns_transactions) {
-        if (now.tv_sec - i.second.queryTS.tv_sec >= _ttl_secs) {
-            timed_out.push_back(i.first);
+    size_t timed_out = 0;
+    for (;;) {
+        auto last_transaction = _dns_transactions.getLRUElement();
+        if (now.tv_sec < last_transaction.second.queryTS.tv_sec + _ttl_secs) {
+            break;
         }
+        _dns_transactions.eraseElement(last_transaction.first);
+        ++timed_out;
     }
-    for (auto i : timed_out) {
-        _dns_transactions.erase(i);
-    }
-    return timed_out.size();
+    return timed_out;
 }
 
 }
