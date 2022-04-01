@@ -241,6 +241,13 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
 {
     static constexpr size_t DNSTAP_TYPE_SIZE = 15;
 
+    struct DnsCacheData {
+        uint32_t flowKey = 0;
+        timespec timestamp = timespec();
+        std::unique_ptr<DnsLayer> dnsLayer;
+    };
+    static thread_local DnsCacheData _cached_dns_layer;
+
     // the input stream sources we support (only one will be in use at a time)
     PcapInputStream *_pcap_stream{nullptr};
     MockInputStream *_mock_stream{nullptr};

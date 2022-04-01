@@ -16,6 +16,7 @@ spdlog/1.9.2
 uvw/2.10.0
 yaml-cpp/0.7.0
 libpcap/1.10.1
+robin-hood-hashing/3.11.5
 
 [build_requires]
 corrade/2020.06
