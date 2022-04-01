@@ -389,7 +389,7 @@ void PcapInputStream::process_raw_packet(pcpp::RawPacket *rawPacket)
                 break;
             }
             _tcp_reassembly.closeConnection(connection.first);
-            _lru_list.eraseLRUElement();
+            _lru_list.eraseElement(connection.first);
         }
     } else {
         // unsupported layer3 protocol

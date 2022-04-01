@@ -121,32 +121,6 @@ public:
     }
 
     /**
-     * Erase the most recently used element
-     */
-    inline void eraseMRUElement()
-    {
-        if (m_CacheItemsMap.empty()) {
-            return;
-        }
-        auto first = m_CacheItemsMap.begin();
-        m_CacheItemsList.erase(first->second);
-        m_CacheItemsMap.erase(first);
-    }
-
-    /**
-     * Erase the least recently used element
-     */
-    inline void eraseLRUElement()
-    {
-        if (m_CacheItemsMap.empty()) {
-            return;
-        }
-        auto last = std::prev(m_CacheItemsMap.end());
-        m_CacheItemsList.erase(last->second);
-        m_CacheItemsMap.erase(last);
-    }
-
-    /**
      * @return The max size of this list as determined in the c'tor
      */
     inline size_t getMaxSize() const
