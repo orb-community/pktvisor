@@ -164,10 +164,10 @@ void DnsStreamHandler::process_udp_packet_cb(pcpp::Packet &payload, PacketDirect
         DnsLayer dnsLayer(udpLayer, &payload);
         if (!_filtering(dnsLayer, dir, l3, pcpp::UDP, metric_port, stamp)) {
             _metrics->process_dns_layer(dnsLayer, dir, l3, pcpp::UDP, flowkey, metric_port, _static_suffix_size, stamp);
-            _static_suffix_size = 0;
             // signal for chained stream handlers, if we have any
             udp_signal(payload, dir, l3, flowkey, stamp);
         }
+        _static_suffix_size = 0;
     }
 }
 
@@ -245,8 +245,8 @@ void DnsStreamHandler::tcp_message_ready_cb(int8_t side, const pcpp::TcpStreamDa
         DnsLayer dnsLayer(data.get(), size, nullptr, &dummy_packet);
         if (!_filtering(dnsLayer, dir, l3Type, pcpp::UDP, port, stamp)) {
             _metrics->process_dns_layer(dnsLayer, dir, l3Type, pcpp::TCP, flowKey, port, _static_suffix_size, stamp);
-            _static_suffix_size = 0;
         }
+        _static_suffix_size = 0;
         // data is freed upon return
     };
 
