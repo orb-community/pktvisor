@@ -20,6 +20,8 @@
 
 namespace visor::handler::dns {
 
+thread_local DnsStreamHandler::DnsCacheData DnsStreamHandler::_cached_dns_layer;
+
 DnsStreamHandler::DnsStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config, StreamHandler *handler)
     : visor::StreamMetricsHandler<DnsMetricsManager>(name, window_config)
 {
@@ -161,9 +163,14 @@ void DnsStreamHandler::process_udp_packet_cb(pcpp::Packet &payload, PacketDirect
         metric_port = dst_port;
     }
     if (metric_port) {
-        DnsLayer dnsLayer(udpLayer, &payload);
-        if (!_filtering(dnsLayer, dir, l3, pcpp::UDP, metric_port, stamp)) {
-            _metrics->process_dns_layer(dnsLayer, dir, l3, pcpp::UDP, flowkey, metric_port, _static_suffix_size, stamp);
+        if (flowkey != _cached_dns_layer.flowKey || stamp.tv_sec != _cached_dns_layer.timestamp.tv_sec || stamp.tv_nsec != _cached_dns_layer.timestamp.tv_nsec) {
+            _cached_dns_layer.flowKey = flowkey;
+            _cached_dns_layer.timestamp = stamp;
+            _cached_dns_layer.dnsLayer = std::make_unique<DnsLayer>(udpLayer, &payload);
+        }
+        auto dnsLayer = _cached_dns_layer.dnsLayer.get();
+        if (!_filtering(*dnsLayer, dir, l3, pcpp::UDP, metric_port, stamp)) {
+            _metrics->process_dns_layer(*dnsLayer, dir, l3, pcpp::UDP, flowkey, metric_port, _static_suffix_size, stamp);
             _static_suffix_size = 0;
             // signal for chained stream handlers, if we have any
             udp_signal(payload, dir, l3, flowkey, stamp);
@@ -317,10 +324,7 @@ bool DnsStreamHandler::_filtering(DnsLayer &payload, [[maybe_unused]] PacketDire
         if (!payload.parseResources(true) || payload.getFirstQuery() == nullptr) {
             goto will_filter;
         }
-        // we need an all lower case version of this, we can't get away without making a copy
-        std::string qname_ci{payload.getFirstQuery()->getName()};
-        std::transform(qname_ci.begin(), qname_ci.end(), qname_ci.begin(),
-            [](unsigned char c) { return std::tolower(c); });
+        std::string_view qname_ci = payload.getFirstQuery()->getNameLower();
         for (const auto &fqn : _f_qnames) {
             // if it matched, we know we are not filtering
             if (endsWith(qname_ci, fqn)) {
@@ -604,9 +608,7 @@ void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, pcpp::Pro
     auto query = payload.getFirstQuery();
     if (query) {
 
-        auto name = query->getName();
-        std::transform(name.begin(), name.end(), name.begin(),
-            [](unsigned char c) { return std::tolower(c); });
+        auto name = query->getNameLower();
 
         if (group_enabled(group::DnsMetrics::Cardinality)) {
             _dns_qnameCard.update(name);
