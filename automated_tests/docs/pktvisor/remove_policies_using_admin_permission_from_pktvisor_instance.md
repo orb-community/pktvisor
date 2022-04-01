@@ -22,7 +22,7 @@ One policy
 ## Steps:
 - Provide a pktvisor instance using `docker run --net=host -d ns1labs/pktvisor pktvisord --admin-api <net_interface>`
 - Create a policy with all handlers through a post request on the endpoint: `/api/v1/policies`
-  - Check our method `generate_pcap_policy_with_all_handlers` on ../../features/steps/policies.py in order to have examples of how to do it
+  - Check our method `generate_pcap_policy_with_all_handlers` on [policies.py](../../features/steps/policies.py) in order to have examples of how to do it
 - Remove one of the running policies using a DELETE request on the endpoint: `/api/v1/policies/{name_of_the_policy}`
 - Make a get request to the same endpoint
 
