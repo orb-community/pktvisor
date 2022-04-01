@@ -163,7 +163,8 @@ void DnsStreamHandler::process_udp_packet_cb(pcpp::Packet &payload, PacketDirect
     if (metric_port) {
         DnsLayer dnsLayer(udpLayer, &payload);
         if (!_filtering(dnsLayer, dir, l3, pcpp::UDP, metric_port, stamp)) {
-            _metrics->process_dns_layer(dnsLayer, dir, l3, pcpp::UDP, flowkey, metric_port, stamp);
+            _metrics->process_dns_layer(dnsLayer, dir, l3, pcpp::UDP, flowkey, metric_port, _static_suffix_size, stamp);
+            _static_suffix_size = 0;
             // signal for chained stream handlers, if we have any
             udp_signal(payload, dir, l3, flowkey, stamp);
         }
@@ -243,7 +244,8 @@ void DnsStreamHandler::tcp_message_ready_cb(int8_t side, const pcpp::TcpStreamDa
         pcpp::Packet dummy_packet;
         DnsLayer dnsLayer(data.get(), size, nullptr, &dummy_packet);
         if (!_filtering(dnsLayer, dir, l3Type, pcpp::UDP, port, stamp)) {
-            _metrics->process_dns_layer(dnsLayer, dir, l3Type, pcpp::TCP, flowKey, port, stamp);
+            _metrics->process_dns_layer(dnsLayer, dir, l3Type, pcpp::TCP, flowKey, port, _static_suffix_size, stamp);
+            _static_suffix_size = 0;
         }
         // data is freed upon return
     };
@@ -319,9 +321,10 @@ bool DnsStreamHandler::_filtering(DnsLayer &payload, [[maybe_unused]] PacketDire
         std::string qname_ci{payload.getFirstQuery()->getName()};
         std::transform(qname_ci.begin(), qname_ci.end(), qname_ci.begin(),
             [](unsigned char c) { return std::tolower(c); });
-        for (auto fqn : _f_qnames) {
+        for (const auto &fqn : _f_qnames) {
             // if it matched, we know we are not filtering
             if (endsWith(qname_ci, fqn)) {
+                _static_suffix_size = fqn.size();
                 goto will_not_filter;
             }
         }
@@ -532,7 +535,7 @@ void DnsMetricsBucket::process_dnstap(bool deep, const dnstap::Dnstap &payload)
         process_dns_layer(deep, dpayload, l3, l4, port);
     }
 }
-void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, pcpp::ProtocolType l3, Protocol l4, uint16_t port)
+void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, pcpp::ProtocolType l3, Protocol l4, uint16_t port, size_t suffix_size)
 {
     std::unique_lock lock(_mutex);
 
@@ -626,7 +629,7 @@ void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, pcpp::Pro
                 }
             }
 
-            auto aggDomain = aggregateDomain(name);
+            auto aggDomain = aggregateDomain(name, suffix_size);
             _dns_topQname2.update(std::string(aggDomain.first));
             if (aggDomain.second.size()) {
                 _dns_topQname3.update(std::string(aggDomain.second));
@@ -788,12 +791,12 @@ void DnsMetricsBucket::process_filtered()
 }
 
 // the general metrics manager entry point (both UDP and TCP)
-void DnsMetricsManager::process_dns_layer(DnsLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowkey, uint16_t port, timespec stamp)
+void DnsMetricsManager::process_dns_layer(DnsLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowkey, uint16_t port, size_t suffix_size, timespec stamp)
 {
     // base event
     new_event(stamp);
     // process in the "live" bucket. this will parse the resources if we are deep sampling
-    live_bucket()->process_dns_layer(_deep_sampling_now, payload, l3, static_cast<Protocol>(l4), port);
+    live_bucket()->process_dns_layer(_deep_sampling_now, payload, l3, static_cast<Protocol>(l4), port, suffix_size);
 
     if (group_enabled(group::DnsMetrics::DnsTransactions)) {
         // handle dns transactions (query/response pairs)
