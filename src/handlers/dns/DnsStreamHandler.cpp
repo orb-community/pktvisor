@@ -188,6 +188,10 @@ void TcpSessionData::receive_dns_wire_data(const uint8_t *data, size_t len)
     for (;;) {
         std::uint16_t size;
 
+        if (_buffer.size() < sizeof(size)) {
+            break;
+        }
+
         // dns packet size is in network byte order.
         size = static_cast<unsigned char>(_buffer[1]) | static_cast<unsigned char>(_buffer[0]) << 8;
 
