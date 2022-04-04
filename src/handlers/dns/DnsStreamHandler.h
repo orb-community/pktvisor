@@ -207,6 +207,7 @@ public:
 class TcpSessionData final
 {
 public:
+    static constexpr size_t MIN_DNS_QUERY_SIZE = 17;
     using got_msg_cb = std::function<void(std::unique_ptr<uint8_t[]> data, size_t size)>;
 
 private:
