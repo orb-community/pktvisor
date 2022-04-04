@@ -185,17 +185,13 @@ void TcpSessionData::receive_dns_wire_data(const uint8_t *data, size_t len)
     for (;;) {
         std::uint16_t size;
 
-        if (_buffer.size() < sizeof(size)) {
+        // if buffer size < min DNS size, we know we need more data
+        if (_buffer.size() < MIN_DNS_QUERY_SIZE) {
             break;
         }
 
         // dns packet size is in network byte order.
         size = static_cast<unsigned char>(_buffer[1]) | static_cast<unsigned char>(_buffer[0]) << 8;
-
-        // if size < min DNS size, we know we need more data
-        if (size < MIN_DNS_QUERY_SIZE) {
-            break;
-        }
 
         if (_buffer.size() >= sizeof(size) + size) {
             auto data = std::make_unique<uint8_t[]>(size);
