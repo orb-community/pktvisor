@@ -181,14 +181,12 @@ void DnsStreamHandler::process_udp_packet_cb(pcpp::Packet &payload, PacketDirect
 void TcpSessionData::receive_dns_wire_data(const uint8_t *data, size_t len)
 {
     _buffer.append(reinterpret_cast<const char *>(data), len);
-    // if buffer size < min DNS size, we know we need more data
-    if (_buffer.size() < MIN_DNS_QUERY_SIZE) {
-        return;
-    }
+
     for (;;) {
         std::uint16_t size;
 
-        if (_buffer.size() < sizeof(size)) {
+        // if buffer size < min DNS size, we know we need more data
+        if (_buffer.size() < MIN_DNS_QUERY_SIZE + sizeof(size)) {
             break;
         }
 
