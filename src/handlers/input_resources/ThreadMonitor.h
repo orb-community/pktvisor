@@ -39,7 +39,7 @@ public:
         std::ifstream system_stat("/proc/stat");
         std::string line;
         std::getline(system_stat, line); // remove first line
-        std::vector<uint64_t> current_cpus_time;
+        std::vector<uint64_t> cpus_current_time;
         for (uint8_t i = 0; i < sysconf(_SC_NPROCESSORS_ONLN); ++i) {
             std::getline(system_stat, line);
             std::stringstream cpu_times(line.erase(0, 5));
@@ -47,7 +47,7 @@ public:
             while (cpu_times >> stat) {
                 cpu_total_time += stat;
             }
-            current_cpus_time.push_back(cpu_total_time);
+            cpus_current_time.push_back(cpu_total_time);
         }
 
         std::vector<uint64_t> stats;
@@ -61,11 +61,11 @@ public:
 
         uint64_t current_thread_time = thread_total_time - _last_thread_time;
         _last_thread_time = thread_total_time;
-        double current_period_time = current_cpus_time[cpu_number];
+        double current_period_time = cpus_current_time[cpu_number];
         if (!_last_cpus_time.empty()) {
             current_period_time -= _last_cpus_time[cpu_number];
         }
-        _last_cpus_time = current_cpus_time;
+        _last_cpus_time = cpus_current_time;
 
         double cpu_usage = (current_thread_time / current_period_time) * 100.0;
         if (cpu_usage < 0.0) {
