@@ -207,16 +207,20 @@ public:
 class TcpSessionData final
 {
 public:
+    static constexpr size_t MIN_DNS_QUERY_SIZE = 17;
+    static constexpr size_t MAX_DNS_QUERY_SIZE = 512;
     using got_msg_cb = std::function<void(std::unique_ptr<uint8_t[]> data, size_t size)>;
 
 private:
     std::string _buffer;
     got_msg_cb _got_dns_msg;
+    bool _overflow;
 
 public:
     TcpSessionData(
         got_msg_cb got_data_handler)
         : _got_dns_msg{std::move(got_data_handler)}
+        , _overflow(false)
     {
     }
 
