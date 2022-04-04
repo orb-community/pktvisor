@@ -53,7 +53,6 @@ public:
         std::vector<uint64_t> stats;
         std::ifstream thread_stat("/proc/thread-self/stat");
         thread_stat.ignore(' ');
-
         while (thread_stat >> stat) {
             stats.push_back(stat);
         }
