@@ -416,8 +416,15 @@ int main(int argc, char *argv[])
     }
 
     // crashpad support
-    if (options.crashpad_info.token.first && options.crashpad_info.url.first && options.crashpad_info.path.first) {
-        crashpad::start_crashpad_handler(options.crashpad_info.token.second, options.crashpad_info.url.second, options.crashpad_info.path.second);
+    if (options.crashpad_info.token.first || options.crashpad_info.url.first || options.crashpad_info.path.first) {
+        if (options.crashpad_info.token.first && options.crashpad_info.url.first && options.crashpad_info.path.first) {
+            if (!crashpad::start_crashpad_handler(options.crashpad_info.token.second, options.crashpad_info.url.second, options.crashpad_info.path.second)) {
+                logger->error("falied to setup crashpad");
+            }
+        }
+        else {
+            logger->error("missing information to setup crashpad");
+        }
     }
 
     // modules
