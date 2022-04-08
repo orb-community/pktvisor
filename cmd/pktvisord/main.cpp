@@ -70,9 +70,9 @@ static const char USAGE[] =
       --config FILE               Use specified YAML configuration to configure options, Taps, and Collection Policies
                                   Please see https://pktvisor.dev for more information
     Crashpad:
-      --cp-token                  Specifies Crashpad information for tracing issues remote
-      --cp-url                    Crashpad server url
-      --cp-path                   Crashpad binary handler
+      --cp-token TOKEN            Specifies Crashpad information for tracing issues remote
+      --cp-url URL                Crashpad server url
+      --cp-path PATH              Crashpad binary handler
     Modules:
       --module-list               List all modules which have been loaded (builtin and dynamic).
       --module-dir DIR            Set module load path. All modules in this directory will be loaded.
@@ -419,7 +419,7 @@ int main(int argc, char *argv[])
     if (options.crashpad_info.token.first || options.crashpad_info.url.first || options.crashpad_info.path.first) {
         if (options.crashpad_info.token.first && options.crashpad_info.url.first && options.crashpad_info.path.first) {
             if (!crashpad::start_crashpad_handler(options.crashpad_info.token.second, options.crashpad_info.url.second, options.crashpad_info.path.second)) {
-                logger->error("falied to setup crashpad");
+                logger->error("failed to setup crashpad");
             }
         }
         else {
