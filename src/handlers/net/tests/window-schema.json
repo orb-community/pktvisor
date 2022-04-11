@@ -63,6 +63,12 @@
             "length": 31,
             "start_ts": 1614874231
           },
+          "size": {
+            "p50": 74,
+            "p90": 176,
+            "p95": 187,
+            "p99": 202
+          },
           "tcp": 13176,
           "top_ASN": [],
           "top_geoLoc": [],
@@ -86,6 +92,7 @@
         "other_l4",
         "out",
         "period",
+        "size",
         "tcp",
         "top_ASN",
         "top_geoLoc",
@@ -234,6 +241,16 @@
             }
           },
           "additionalProperties": false
+        },
+        "size": {
+          "$id": "#/properties/packets/properties/size",
+          "type": "object",
+          "title": "The size schema",
+          "description": "An explanation about the purpose of this instance.",
+          "default": {},
+          "examples": [
+            {}
+          ]
         },
         "tcp": {
           "$id": "#/properties/packets/properties/tcp",
