@@ -164,7 +164,6 @@ TEST_CASE("Parse net (dns) random UDP/TCP tests", "[pcap][net]")
     CHECK(j["top_ipv4"][0]["estimate"] == 16147);
     CHECK(j["top_ipv4"][0]["name"] == "8.8.8.8");
     CHECK(j["payload_size"]["p50"] == 74);
-    CHECK(j["payload_size"]["p99"] >= 200);
 }
 
 TEST_CASE("Parse net (dns) with DNS filter only_qname_suffix", "[pcap][dns][net]")
