@@ -137,7 +137,7 @@ void DnsStreamHandler::stop()
 }
 
 // callback from input module
-void DnsStreamHandler::process_dnstap_cb(const dnstap::Dnstap &d)
+void DnsStreamHandler::process_dnstap_cb(const dnstap::Dnstap &d, [[maybe_unused]] size_t size)
 {
     if (_f_enabled[Filters::DnstapMsgType] && !_f_dnstap_types[d.message().type()]) {
         _metrics->process_dnstap(d, true);
