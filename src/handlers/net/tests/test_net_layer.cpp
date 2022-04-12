@@ -163,8 +163,8 @@ TEST_CASE("Parse net (dns) random UDP/TCP tests", "[pcap][net]")
     CHECK(j["cardinality"]["src_ips_in"] == 1);
     CHECK(j["top_ipv4"][0]["estimate"] == 16147);
     CHECK(j["top_ipv4"][0]["name"] == "8.8.8.8");
-    CHECK(j["size"]["p50"] == 74);
-    CHECK(j["size"]["p99"] >= 200);
+    CHECK(j["payload_size"]["p50"] == 74);
+    CHECK(j["payload_size"]["p99"] >= 200);
 }
 
 TEST_CASE("Parse net (dns) with DNS filter only_qname_suffix", "[pcap][dns][net]")
@@ -247,8 +247,8 @@ TEST_CASE("Parse net (dns) sflow stream", "[sflow][net]")
     CHECK(j["cardinality"]["src_ips_in"] == 4);
     CHECK(j["top_ipv4"][0]["estimate"] == 27054);
     CHECK(j["top_ipv4"][0]["name"] == "10.4.2.2");
-    CHECK(j["size"]["p50"] == 1372);
-    CHECK(j["size"]["p99"] == 1392);
+    CHECK(j["payload_size"]["p50"] == 1372);
+    CHECK(j["payload_size"]["p99"] == 1392);
 }
 
 TEST_CASE("Parse net dnstap stream", "[dnstap][net]")
@@ -286,8 +286,8 @@ TEST_CASE("Parse net dnstap stream", "[dnstap][net]")
     CHECK(j["cardinality"]["src_ips_in"] == 1);
     CHECK(j["top_ipv4"][0]["estimate"] == 153);
     CHECK(j["top_ipv4"][0]["name"] == "192.168.0.54");
-    CHECK(j["size"]["p50"] == 100);
-    CHECK(j["size"]["p99"] == 350);
+    CHECK(j["payload_size"]["p50"] == 100);
+    CHECK(j["payload_size"]["p99"] == 350);
 }
 
 TEST_CASE("Net groups", "[pcap][net]")

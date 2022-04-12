@@ -63,7 +63,7 @@
             "length": 31,
             "start_ts": 1614874231
           },
-          "size": {
+          "payload_size": {
             "p50": 74,
             "p90": 176,
             "p95": 187,
@@ -92,7 +92,7 @@
         "other_l4",
         "out",
         "period",
-        "size",
+        "payload_size",
         "tcp",
         "top_ASN",
         "top_geoLoc",
@@ -242,10 +242,10 @@
           },
           "additionalProperties": false
         },
-        "size": {
-          "$id": "#/properties/packets/properties/size",
+        "payload_size": {
+          "$id": "#/properties/packets/properties/payload_size",
           "type": "object",
-          "title": "The size schema",
+          "title": "The payload_size schema",
           "description": "An explanation about the purpose of this instance.",
           "default": {},
           "examples": [

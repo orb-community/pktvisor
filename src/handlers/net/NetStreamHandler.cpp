@@ -169,7 +169,7 @@ void NetworkMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
         _topASN.merge(other._topASN);
     }
 
-    _size.merge(other._size);
+    _payload_size.merge(other._payload_size);
 }
 
 void NetworkMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap add_labels) const
@@ -215,7 +215,7 @@ void NetworkMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMa
         _topASN.to_prometheus(out, add_labels);
     }
 
-    _size.to_prometheus(out, add_labels);
+    _payload_size.to_prometheus(out, add_labels);
 }
 
 void NetworkMetricsBucket::to_json(json &j) const
@@ -263,7 +263,7 @@ void NetworkMetricsBucket::to_json(json &j) const
         _topASN.to_json(j);
     }
 
-    _size.to_json(j);
+    _payload_size.to_json(j);
 }
 
 // the main bucket analysis
@@ -426,18 +426,18 @@ void NetworkMetricsBucket::process_sflow(bool deep, const SFSample &payload)
     }
 }
 
-void NetworkMetricsBucket::process_net_layer(PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, size_t packet_size)
+void NetworkMetricsBucket::process_net_layer(PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, size_t payload_size)
 {
     std::unique_lock lock(_mutex);
 
     switch (dir) {
     case PacketDirection::fromHost:
         ++_rate_out;
-        _throughput_out += packet_size;
+        _throughput_out += payload_size;
         break;
     case PacketDirection::toHost:
         ++_rate_in;
-        _throughput_in += packet_size;
+        _throughput_in += payload_size;
         break;
     case PacketDirection::unknown:
         break;
@@ -479,21 +479,21 @@ void NetworkMetricsBucket::process_net_layer(PacketDirection dir, pcpp::Protocol
         }
     }
 
-    _size.update(packet_size);
+    _payload_size.update(payload_size);
 }
 
-void NetworkMetricsBucket::process_net_layer(PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, size_t packet_size, bool is_ipv6, pcpp::IPv4Address &ipv4_in, pcpp::IPv4Address &ipv4_out, pcpp::IPv6Address &ipv6_in, pcpp::IPv6Address &ipv6_out)
+void NetworkMetricsBucket::process_net_layer(PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, size_t payload_size, bool is_ipv6, pcpp::IPv4Address &ipv4_in, pcpp::IPv4Address &ipv4_out, pcpp::IPv6Address &ipv6_in, pcpp::IPv6Address &ipv6_out)
 {
     std::unique_lock lock(_mutex);
 
     switch (dir) {
     case PacketDirection::fromHost:
         ++_rate_out;
-        _throughput_out += packet_size;
+        _throughput_out += payload_size;
         break;
     case PacketDirection::toHost:
         ++_rate_in;
-        _throughput_in += packet_size;
+        _throughput_in += payload_size;
         break;
     case PacketDirection::unknown:
         break;
@@ -535,7 +535,7 @@ void NetworkMetricsBucket::process_net_layer(PacketDirection dir, pcpp::Protocol
         }
     }
 
-    _size.update(packet_size);
+    _payload_size.update(payload_size);
 
     struct sockaddr_in sa4;
     struct sockaddr_in6 sa6;

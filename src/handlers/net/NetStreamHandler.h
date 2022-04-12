@@ -67,7 +67,7 @@ protected:
     };
     counters _counters;
 
-    Quantile<std::size_t> _size;
+    Quantile<std::size_t> _payload_size;
 
     Rate _rate_in;
     Rate _rate_out;
@@ -82,11 +82,11 @@ public:
         , _topASN("packets", "asn", {"top_ASN"}, "Top ASNs by IP")
         , _topIPv4("packets", "ipv4", {"top_ipv4"}, "Top IPv4 IP addresses")
         , _topIPv6("packets", "ipv6", {"top_ipv6"}, "Top IPv6 IP addresses")
-        , _size("packets", {"size"}, "Quantiles of packets size")
+        , _payload_size("packets", {"payload_size"}, "Quantiles of payload sizes, in bytes")
         , _rate_in("packets", {"rates", "pps_in"}, "Rate of ingress in packets per second")
         , _rate_out("packets", {"rates", "pps_out"}, "Rate of egress in packets per second")
-        , _throughput_in("packets", {"rates", "bps_in"}, "Rate of ingress packets size in bytes per second")
-        , _throughput_out("packets", {"rates", "bps_out"}, "Rate of egress packets size in bytes per second")
+        , _throughput_in("payload", {"rates", "bps_in"}, "Rate of ingress packets size in bytes per second")
+        , _throughput_out("payload", {"rates", "bps_out"}, "Rate of egress packets size in bytes per second")
     {
         set_event_rate_info("packets", {"rates", "pps_total"}, "Rate of all packets (combined ingress and egress) in packets per second");
         set_num_events_info("packets", {"total"}, "Total packets processed");
@@ -118,8 +118,8 @@ public:
     void process_packet(bool deep, pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4);
     void process_dnstap(bool deep, const dnstap::Dnstap &payload, size_t size);
     void process_sflow(bool deep, const SFSample &payload);
-    void process_net_layer(PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, size_t packet_size);
-    void process_net_layer(PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, size_t packet_size, bool is_ipv6, pcpp::IPv4Address &ipv4_in, pcpp::IPv4Address &ipv4_out, pcpp::IPv6Address &ipv6_in, pcpp::IPv6Address &ipv6_out);
+    void process_net_layer(PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, size_t payload_size);
+    void process_net_layer(PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, size_t payload_size, bool is_ipv6, pcpp::IPv4Address &ipv4_in, pcpp::IPv4Address &ipv4_out, pcpp::IPv6Address &ipv6_in, pcpp::IPv6Address &ipv6_out);
 };
 
 class NetworkMetricsManager final : public visor::AbstractMetricsManager<NetworkMetricsBucket>
