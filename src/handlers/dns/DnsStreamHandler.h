@@ -213,11 +213,13 @@ public:
 private:
     std::string _buffer;
     got_msg_cb _got_dns_msg;
+    bool _invalid_data;
 
 public:
     TcpSessionData(
         got_msg_cb got_data_handler)
         : _got_dns_msg{std::move(got_data_handler)}
+        , _invalid_data(false)
     {
     }
 
