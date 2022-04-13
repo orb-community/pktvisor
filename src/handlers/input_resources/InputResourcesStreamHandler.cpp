@@ -98,7 +98,7 @@ void InputResourcesStreamHandler::process_sflow_cb([[maybe_unused]] const SFSamp
     }
 }
 
-void InputResourcesStreamHandler::process_dnstap_cb([[maybe_unused]] const dnstap::Dnstap &)
+void InputResourcesStreamHandler::process_dnstap_cb([[maybe_unused]] const dnstap::Dnstap &, [[maybe_unused]] size_t)
 {
     if (difftime(time(NULL), _timer) >= MEASURE_INTERVAL) {
         _timer = time(NULL);
