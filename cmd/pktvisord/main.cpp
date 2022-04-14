@@ -424,6 +424,7 @@ int main(int argc, char *argv[])
         }
         else {
             logger->error("missing information to setup crashpad");
+            exit(EXIT_FAILURE);
         }
     }
 
