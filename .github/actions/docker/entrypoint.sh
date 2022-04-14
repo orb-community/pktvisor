@@ -1,10 +1,4 @@
-#!/bin/sh -l
-
-function validateParams() {
-  echo "========================= Checking parameters ========================="
-  [[ -z $INPUT_REGISTRY_TOKEN ]] && echo "Registry token is required" && exit 1 || echo "Registry token present"
-  [[ -z $INPUT_NAME ]] && echo "Docker image name is required" && exit 1 || echo "Docker image name present"
-}
+#!/bin/bash
 
 function build() {
   echo "========================= Building pktvisor ========================="
