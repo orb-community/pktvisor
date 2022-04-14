@@ -1,0 +1,68 @@
+name: 'docker'
+author: 'Marcelo Pires <mpires@daitan.com>'
+description: 'Daitan Digital Solutions Docker Actions'
+
+inputs:
+  name:
+    description: "Docker image name"
+    required: true
+
+  flatten_image_name:
+    description: "Docker flatten image name"
+    required: false
+
+  context:
+    description: "Docker build context"
+    required: true
+    default: "./"
+
+  file:
+    description: "Dockerfile used to build the image"
+    required: true
+    default: "./Dockerfile"
+  
+  tag:
+    description: "Docker image tag"
+    required: true
+
+  build_args:
+    description: "Build arguments for Docker engine"
+    required: false
+
+
+  registry:
+    description: "Docker registry address"
+    required: true
+
+  registry_token:
+    description: "Docker registry authentication token"
+    required: true
+
+  test_path:
+    description: "Path for the Container structure test"
+    required: false
+  
+  user:
+    description: "The user name who initiated the workflow and will push image to registry."
+    required: true
+
+  token:
+    description: "Authentication token to add comment to PR. Use secrets.GITHUB_TOKEN"
+    required: false
+
+  push:
+    description: "Controls if image will be pushed to registry"
+    required: true
+    default: "true"
+
+outputs:
+  test-report:
+    description: "The complete Behave test report output"
+    
+  test-report-summary:
+    description: "Behave test report summary"
+
+runs:
+    using: 'docker'
+    image: 'Dockerfile'
+  
