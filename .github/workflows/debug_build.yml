@@ -13,6 +13,10 @@ jobs:
 
       - name: Build pktvisor + push backtrace.io
         uses: ./.github/actions/docker
+        with:
+          context: "."
+          file: "./Dockerfile"
+          push: true
 
   package:
     needs: build
