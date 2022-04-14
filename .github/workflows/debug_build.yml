@@ -6,33 +6,13 @@ on:
 
 jobs:
   build:
-    runs-on: ./.github/actions/docker
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v2
 
-      - name: Build pktvisor
-        run: |          
-          mkdir /pktvisor-src          
-          cp ./.git/ /pktvisor-src/.git/
-          cp ./src/ /pktvisor-src/src/
-          cp ./cmd/ /pktvisor-src/cmd/
-          cp ./3rd/ /pktvisor-src/3rd/
-          cp ./docker/ /pktvisor-src/docker/
-          cp ./golang/ /pktvisor-src/golang/
-          cp ./integration_tests/ /pktvisor-src/integration_tests/
-          cp ./cmake/ /pktvisor-src/cmake/
-          cp ./CMakeLists.txt /pktvisor-src/
-          cp ./conanfile.txt /pktvisor-src/
-          mkdir /tmp/build
-          cd /tmp/build
-          conan profile new --detect default && \
-          conan profile update settings.compiler.libcxx=libstdc++11 default && \
-          conan config set general.revisions_enabled=1          
-          PKG_CONFIG_PATH=/local/lib/pkgconfig cmake -DCMAKE_BUILD_TYPE=Debug -DASAN=ON /pktvisor-src && \
-          make all -j 4
-          zip pktvisord.zip /tmp/build/bin/pktvisord
-          curl --data-binary @pktvisord.zip -H "Expect: gzip" "https://pktvisortest.sp.backtrace.io:6098/post?format=symbols&token=b109dbe0fb5fe46c83de7b11ca5d47eb122a6803461fe277850b89eac153eac0"
+      - name: Build pktvisor + push backtrace.io
+        uses: ./.github/actions/docker
 
   package:
     needs: build
