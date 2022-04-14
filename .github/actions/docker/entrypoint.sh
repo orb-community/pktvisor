@@ -13,17 +13,26 @@ function build() {
   cp -rf /github/workspace/CMakeLists.txt /pktvisor-src/
   cp -rf /github/workspace/conanfile.txt /pktvisor-src/
   mkdir /tmp/build
-  cp /tmp/build
+  cd /tmp/build
   conan profile new --detect default && \
   conan profile update settings.compiler.libcxx=libstdc++11 default && \
   conan config set general.revisions_enabled=1
   PKG_CONFIG_PATH=/local/lib/pkgconfig cmake -DCMAKE_BUILD_TYPE=Debug -DASAN=ON /pktvisor-src && \
   make all -j 4
 }
+function compact() {
+  echo "========================= Compacting binary ========================="
+  cd /tmp/build
+  zip pktvisord.zip /tmp/build/bin/pktvisord
+}
 function publish() {
   echo "========================= Publishing to backtrace ========================="
-  zip pktvisord.zip /tmp/build/bin/pktvisord
+  cd /tmp/build
   curl --data-binary @pktvisord.zip -H "Expect: gzip" "https://pktvisortest.sp.backtrace.io:6098/post?format=symbols&token=b109dbe0fb5fe46c83de7b11ca5d47eb122a6803461fe277850b89eac153eac0"
 }
 build
+compact
+publish
 
+
+}
