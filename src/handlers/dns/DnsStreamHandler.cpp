@@ -137,7 +137,7 @@ void DnsStreamHandler::stop()
 }
 
 // callback from input module
-void DnsStreamHandler::process_dnstap_cb(const dnstap::Dnstap &d)
+void DnsStreamHandler::process_dnstap_cb(const dnstap::Dnstap &d, [[maybe_unused]] size_t size)
 {
     if (_f_enabled[Filters::DnstapMsgType] && !_f_dnstap_types[d.message().type()]) {
         _metrics->process_dnstap(d, true);
@@ -180,6 +180,10 @@ void DnsStreamHandler::process_udp_packet_cb(pcpp::Packet &payload, PacketDirect
 
 void TcpSessionData::receive_dns_wire_data(const uint8_t *data, size_t len)
 {
+    if (_invalid_data) {
+        return;
+    }
+
     _buffer.append(reinterpret_cast<const char *>(data), len);
 
     for (;;) {
@@ -192,6 +196,13 @@ void TcpSessionData::receive_dns_wire_data(const uint8_t *data, size_t len)
 
         // dns packet size is in network byte order.
         size = static_cast<unsigned char>(_buffer[1]) | static_cast<unsigned char>(_buffer[0]) << 8;
+
+        //if size is less than MIN_DNS_QUERY_SIZE, it is not a dns packet
+        if (size < MIN_DNS_QUERY_SIZE) {
+            _buffer.clear();
+            _invalid_data = true;
+            break;
+        }
 
         if (_buffer.size() >= sizeof(size) + size) {
             auto data = std::make_unique<uint8_t[]>(size);

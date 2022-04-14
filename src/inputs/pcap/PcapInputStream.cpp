@@ -384,6 +384,9 @@ void PcapInputStream::process_raw_packet(pcpp::RawPacket *rawPacket)
         }
 
         for (uint8_t counter = 0; counter < MAX_TCP_CLEANUPS; counter++) {
+            if (_lru_list.getSize() == 0) {
+                break;
+            }
             auto connection = _lru_list.getLRUElement();
             if (timestamp.tv_sec < connection.second.tv_sec + TCP_TIMEOUT) {
                 break;
