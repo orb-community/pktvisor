@@ -1,6 +1,16 @@
-FROM debian:bullseye-slim AS cppbuild
+FROM debian:bullseye-slim
+
+LABEL author="Everton Haise Taques <everton.taques@encora.com>"
+LABEL maintainer="Daitan Labs"
+LABEL version="1.0.0"
 
 ENV BUILD_DEPS "g++ cmake make git pkgconf jq python3-pip python3-setuptools ca-certificates libasan6"
+
+COPY ./entrypoint.sh /entrypoint.sh
+
+RUN mkdir -p /pktvisor-src
+
+WORKDIR /pktvisor-src
 
 RUN \
     apt-get update && \

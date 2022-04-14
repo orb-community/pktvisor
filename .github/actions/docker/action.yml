@@ -8,6 +8,11 @@ inputs:
     required: true
     default: "./"
 
+  workspace:
+    description: "Project workspace"
+    required: true
+    default: "/home/runner/work/pktvisor/pktvisor"
+
   file:
     description: "Dockerfile used to build the image"
     required: true

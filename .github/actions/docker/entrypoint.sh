@@ -1,23 +1,17 @@
-#!/bin/bash
-
-# this is the entry point to the docker container, and is only used there
-set -e
-
-export PATH=$PATH:/usr/local/bin/:/usr/local/sbin/
+#!/bin/sh -l
 
 function build() {
   echo "========================= Building pktvisor ========================="
-  mkdir /pktvisor-src/
-  cp -rf ${INPUT_CONTEXT}/.git/ /pktvisor-src/.git/
-  cp -rf ${INPUT_CONTEXT}/src/ /pktvisor-src/src/
-  cp -rf ${INPUT_CONTEXT}/cmd/ /pktvisor-src/cmd/
-  cp -rf ${INPUT_CONTEXT}/3rd/ /pktvisor-src/3rd/
-  cp -rf ${INPUT_CONTEXT}/docker/ /pktvisor-src/docker/
-  cp -rf ${INPUT_CONTEXT}/golang/ /pktvisor-src/golang/
-  cp -rf ${INPUT_CONTEXT}/integration_tests/ /pktvisor-src/integration_tests/
-  cp -rf ${INPUT_CONTEXT}/cmake/ /pktvisor-src/cmake/
-  cp -rf ${INPUT_CONTEXT}/CMakeLists.txt /pktvisor-src/
-  cp -rf ${INPUT_CONTEXT}/conanfile.txt /pktvisor-src/
+  cp -rf ${INPUT_WORKSPACE}/.git/ /pktvisor-src/.git/
+  cp -rf ${INPUT_WORKSPACE}/src/ /pktvisor-src/src/
+  cp -rf ${INPUT_WORKSPACE}/cmd/ /pktvisor-src/cmd/
+  cp -rf ${INPUT_WORKSPACE}/3rd/ /pktvisor-src/3rd/
+  cp -rf ${INPUT_WORKSPACE}/docker/ /pktvisor-src/docker/
+  cp -rf ${INPUT_WORKSPACE}/golang/ /pktvisor-src/golang/
+  cp -rf ${INPUT_WORKSPACE}/integration_tests/ /pktvisor-src/integration_tests/
+  cp -rf ${INPUT_WORKSPACE}/cmake/ /pktvisor-src/cmake/
+  cp -rf ${INPUT_WORKSPACE}/CMakeLists.txt /pktvisor-src/
+  cp -rf ${INPUT_WORKSPACE}/conanfile.txt /pktvisor-src/
   mkdir /tmp/build
   cp /tmp/build
   conan profile new --detect default && \
