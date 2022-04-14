@@ -6,13 +6,12 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ./.github/actions/docker
 
     steps:
       - uses: actions/checkout@v2
 
       - name: Build pktvisor
-        uses: ./.github/actions/docker
         run: |          
           mkdir /pktvisor-src          
           cp ./.git/ /pktvisor-src/.git/
