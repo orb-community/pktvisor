@@ -18,5 +18,7 @@ RUN \
     apt-get install --yes --force-yes --no-install-recommends ${BUILD_DEPS} && \
     pip3 install conan
 
+chmod +x /entrypoint.sh
+
 ENTRYPOINT [ "/entrypoint.sh" ]
 
