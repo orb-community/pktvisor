@@ -9,17 +9,16 @@ function validateParams() {
 function build() {
   echo "========================= Building pktvisor ========================="
   mkdir /pktvisor-src/
-  # need git for current hash for VERSION
-  cp -rf $INPUT_CONTEXT/.git/ /pktvisor-src/.git/
-  cp -rf $INPUT_CONTEXT/src/ /pktvisor-src/src/
-  cp -rf $INPUT_CONTEXT/cmd/ /pktvisor-src/cmd/
-  cp -rf $INPUT_CONTEXT/3rd/ /pktvisor-src/3rd/
-  cp -rf $INPUT_CONTEXT/docker/ /pktvisor-src/docker/
-  cp -rf $INPUT_CONTEXT/golang/ /pktvisor-src/golang/
-  cp -rf $INPUT_CONTEXT/integration_tests/ /pktvisor-src/integration_tests/
-  cp -rf $INPUT_CONTEXT/cmake/ /pktvisor-src/cmake/
-  cp -rf $INPUT_CONTEXT/CMakeLists.txt /pktvisor-src/
-  cp -rf $INPUT_CONTEXT/conanfile.txt /pktvisor-src/
+  cp -rf ${INPUT_CONTEXT}/.git/ /pktvisor-src/.git/
+  cp -rf ${INPUT_CONTEXT}/src/ /pktvisor-src/src/
+  cp -rf ${INPUT_CONTEXT}/cmd/ /pktvisor-src/cmd/
+  cp -rf ${INPUT_CONTEXT}/3rd/ /pktvisor-src/3rd/
+  cp -rf ${INPUT_CONTEXT}/docker/ /pktvisor-src/docker/
+  cp -rf ${INPUT_CONTEXT}/golang/ /pktvisor-src/golang/
+  cp -rf ${INPUT_CONTEXT}/integration_tests/ /pktvisor-src/integration_tests/
+  cp -rf ${INPUT_CONTEXT}/cmake/ /pktvisor-src/cmake/
+  cp -rf ${INPUT_CONTEXT}/CMakeLists.txt /pktvisor-src/
+  cp -rf ${INPUT_CONTEXT}/conanfile.txt /pktvisor-src/
   mkdir /tmp/build
   cp /tmp/build
   conan profile new --detect default && \
@@ -38,4 +37,4 @@ function publish() {
 }
 
 build
-publish
+
