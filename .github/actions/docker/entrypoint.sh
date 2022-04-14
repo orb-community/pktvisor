@@ -33,6 +33,3 @@ function publish() {
 build
 compact
 publish
-
-
-}
