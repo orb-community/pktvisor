@@ -8,7 +8,5 @@ RUN \
     apt-get install --yes --force-yes --no-install-recommends ${BUILD_DEPS} && \
     pip3 install conan
 
-RUN ls -lha /home/runner/work/
-
 ENTRYPOINT [ "entrypoint.sh" ]
 
