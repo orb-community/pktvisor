@@ -12,13 +12,12 @@ RUN mkdir -p /pktvisor-src
 
 WORKDIR /pktvisor-src
 
-RUN \
-    apt-get update && \
+RUN apt-get update && \
     apt-get upgrade --yes --force-yes && \
     apt-get install --yes --force-yes --no-install-recommends ${BUILD_DEPS} && \
     pip3 install conan
 
-chmod +x /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
 ENTRYPOINT [ "/entrypoint.sh" ]
 
