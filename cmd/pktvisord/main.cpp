@@ -70,6 +70,7 @@ static const char USAGE[] =
       --config FILE               Use specified YAML configuration to configure options, Taps, and Collection Policies
                                   Please see https://pktvisor.dev for more information
     Crashpad:
+      --cp-disable                Disable crashpad collector
       --cp-token TOKEN            Crashpad token for remote crash reporting
       --cp-url URL                Crashpad server url
       --cp-path PATH              Crashpad handler binary
@@ -128,6 +129,7 @@ struct CmdOptions {
     WebServer web_server;
 
     struct Crashpad {
+        bool disable{false};
         std::pair<bool, std::string> token{false, ""};
         std::pair<bool, std::string> url{false, ""};
         std::pair<bool, std::string> path{false, ""};
@@ -259,6 +261,8 @@ void fill_cmd_options(std::map<std::string, docopt::value> args, CmdOptions &opt
     } else if (config["module_dir"]) {
         options.module.dir = {true, config["module_dir"].as<std::string>()};
     }
+
+    options.crashpad_info.disable = (config["cp_disable"] && config["cp_disable"].as<bool>()) || args["--cp-disable"].asBool();
 
     if (args["--cp-token"]) {
         options.crashpad_info.token = {true, args["--cp-token"].asString()};
@@ -416,15 +420,16 @@ int main(int argc, char *argv[])
     }
 
     // crashpad support
-    if (options.crashpad_info.token.first || options.crashpad_info.url.first || options.crashpad_info.path.first) {
-        if (options.crashpad_info.token.first && options.crashpad_info.url.first && options.crashpad_info.path.first) {
-            if (!crashpad::start_crashpad_handler(options.crashpad_info.token.second, options.crashpad_info.url.second, options.crashpad_info.path.second)) {
-                logger->error("failed to setup crashpad");
+    if (!options.crashpad_info.disable) {
+        if (options.crashpad_info.token.first || options.crashpad_info.url.first || options.crashpad_info.path.first) {
+            if (options.crashpad_info.token.first && options.crashpad_info.url.first && options.crashpad_info.path.first) {
+                if (!crashpad::start_crashpad_handler(options.crashpad_info.token.second, options.crashpad_info.url.second, options.crashpad_info.path.second)) {
+                    logger->error("failed to setup crashpad");
+                }
+            } else {
+                logger->error("missing information to setup crashpad");
+                exit(EXIT_FAILURE);
             }
-        }
-        else {
-            logger->error("missing information to setup crashpad");
-            exit(EXIT_FAILURE);
         }
     }
 
