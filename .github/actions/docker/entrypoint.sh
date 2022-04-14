@@ -1,5 +1,10 @@
 #!/bin/bash
 
+# this is the entry point to the docker container, and is only used there
+set -e
+
+export PATH=$PATH:/usr/local/bin/:/usr/local/sbin/
+
 function build() {
   echo "========================= Building pktvisor ========================="
   mkdir /pktvisor-src/
