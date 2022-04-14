@@ -6,6 +6,7 @@
 #include <functional>
 
 #include "CoreServer.h"
+#include "CrashpadHandler.h"
 #include "HandlerManager.h"
 #include "InputStreamManager.h"
 #include "Policies.h"
@@ -68,6 +69,11 @@ static const char USAGE[] =
     Configuration:
       --config FILE               Use specified YAML configuration to configure options, Taps, and Collection Policies
                                   Please see https://pktvisor.dev for more information
+    Crashpad:
+      --cp-disable                Disable crashpad collector
+      --cp-token TOKEN            Crashpad token for remote crash reporting
+      --cp-url URL                Crashpad server url
+      --cp-path PATH              Crashpad handler binary
     Modules:
       --module-list               List all modules which have been loaded (builtin and dynamic).
       --module-dir DIR            Set module load path. All modules in this directory will be loaded.
@@ -121,6 +127,14 @@ struct CmdOptions {
         std::pair<bool, std::string> tls_key{false, ""};
     };
     WebServer web_server;
+
+    struct Crashpad {
+        bool disable{false};
+        std::pair<bool, std::string> token{false, ""};
+        std::pair<bool, std::string> url{false, ""};
+        std::pair<bool, std::string> path{false, ""};
+    };
+    Crashpad crashpad_info;
 
     struct Module {
         bool list{false};
@@ -246,6 +260,26 @@ void fill_cmd_options(std::map<std::string, docopt::value> args, CmdOptions &opt
         options.module.dir = {true, args["--module-dir"].asString()};
     } else if (config["module_dir"]) {
         options.module.dir = {true, config["module_dir"].as<std::string>()};
+    }
+
+    options.crashpad_info.disable = (config["cp_disable"] && config["cp_disable"].as<bool>()) || args["--cp-disable"].asBool();
+
+    if (args["--cp-token"]) {
+        options.crashpad_info.token = {true, args["--cp-token"].asString()};
+    } else if (config["cp_token"]) {
+        options.crashpad_info.token = {true, config["cp_token"].as<std::string>()};
+    }
+
+    if (args["--cp-url"]) {
+        options.crashpad_info.url = {true, args["--cp-url"].asString()};
+    } else if (config["cp_url"]) {
+        options.crashpad_info.url = {true, config["cp_url"].as<std::string>()};
+    }
+
+    if (args["--cp-path"]) {
+        options.crashpad_info.path = {true, args["--cp-path"].asString()};
+    } else if (config["cp_path"]) {
+        options.crashpad_info.path = {true, config["cp_path"].as<std::string>()};
     }
 }
 
@@ -383,6 +417,20 @@ int main(int argc, char *argv[])
     }
     if (options.verbose) {
         logger->set_level(spdlog::level::debug);
+    }
+
+    // crashpad support
+    if (!options.crashpad_info.disable) {
+        if (options.crashpad_info.token.first || options.crashpad_info.url.first || options.crashpad_info.path.first) {
+            if (options.crashpad_info.token.first && options.crashpad_info.url.first && options.crashpad_info.path.first) {
+                if (!crashpad::start_crashpad_handler(options.crashpad_info.token.second, options.crashpad_info.url.second, options.crashpad_info.path.second)) {
+                    logger->error("failed to setup crashpad");
+                }
+            } else {
+                logger->error("missing information to setup crashpad");
+                exit(EXIT_FAILURE);
+            }
+        }
     }
 
     // modules
