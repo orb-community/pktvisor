@@ -8,6 +8,8 @@ RUN \
     apt-get install --yes --force-yes --no-install-recommends ${BUILD_DEPS} && \
     pip3 install conan
 
+RUN ls -lha
+
 # need git for current hash for VERSION
 COPY ./.git/ /pktvisor-src/.git/
 COPY ./src/ /pktvisor-src/src/
