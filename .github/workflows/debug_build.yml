@@ -14,7 +14,7 @@ jobs:
       - name: Build pktvisor + push backtrace.io
         uses: ./.github/actions/docker
         with:
-          context: "."
+          context: ${{github.workspace}}
           file: "./Dockerfile"
           push: true
 
