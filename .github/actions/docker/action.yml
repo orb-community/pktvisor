@@ -1,17 +1,12 @@
 name: 'docker'
-author: 'Marcelo Pires <mpires@daitan.com>'
-description: 'Daitan Digital Solutions Docker Actions'
+author: 'Everton Haise Taques <everton.taques@encora.com>'
+description: 'Daitan Labs'
 
 inputs:
   context:
     description: "Docker build context"
     required: true
     default: "./"
-
-  workspace:
-    description: "Project workspace"
-    required: true
-    default: "/home/runner/work/pktvisor/pktvisor"
 
   file:
     description: "Dockerfile used to build the image"
