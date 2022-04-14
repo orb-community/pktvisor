@@ -1,5 +1,5 @@
-#!/bin/sh -l
-
+#!/bin/bash
+#
 function build() {
   echo "========================= Building pktvisor ========================="
   cp -rf /github/workspace/.git/ /pktvisor-src/.git/
@@ -19,15 +19,11 @@ function build() {
   conan config set general.revisions_enabled=1
   PKG_CONFIG_PATH=/local/lib/pkgconfig cmake -DCMAKE_BUILD_TYPE=Debug -DASAN=ON /pktvisor-src && \
   make all -j 4
-
 }
-
 function publish() {
   echo "========================= Publishing to backtrace ========================="
   zip pktvisord.zip /tmp/build/bin/pktvisord
   curl --data-binary @pktvisord.zip -H "Expect: gzip" "https://pktvisortest.sp.backtrace.io:6098/post?format=symbols&token=b109dbe0fb5fe46c83de7b11ca5d47eb122a6803461fe277850b89eac153eac0"
-
 }
-
 build
 
