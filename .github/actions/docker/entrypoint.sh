@@ -23,9 +23,11 @@ function build() {
 function compact() {
   echo "========================= Compacting binary ========================="
   cd /tmp/build
-  zip pktvisord.zip /tmp/build/bin/pktvisord
   cp -rf /tmp/build/bin/pktvisord /github/workspace/
   cp -rf /tmp/build/bin/crashpad_handler /github/workspace/
+  cp -rf /tmp/build/bin/pktvisor-reader /github/workspace/
+  cp -rf /tmp/build/bin/pktvisor-cli /github/workspace/
+  zip pktvisord.zip /tmp/build/bin/pktvisord
 }
 function publish() {
   echo "========================= Publishing to backtrace ========================="

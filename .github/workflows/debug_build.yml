@@ -17,15 +17,15 @@ jobs:
           file: "./Dockerfile"
 
       - name: Debug artifacts
-        run: ls -lha /tmp/build/bin/
+        run: ls -lha .
 
       - uses: actions/upload-artifact@v3
         with:
           name: binnaries
           path: |
-            /tmp/build/bin/pktvisord
-            /tmp/build/bin/pktvisor-reader
-            /tmp/build/bin/pktvisor-cli
+            ./pktvisord
+            ./pktvisor-reader
+            ./pktvisor-cli
 
   package:
     needs: build-symbol
