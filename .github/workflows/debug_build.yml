@@ -83,5 +83,5 @@ jobs:
         env:
           IMAGE_NAME: ns1labs/pktvisor
         run: |
-          docker build . --file docker/Dockerfile.debug --tag ${{ env.IMAGE_NAME }}:${{ env.REF_TAG }}
+          docker build . --file docker/Dockerfile.crashhandler --tag ${{ env.IMAGE_NAME }}:${{ env.REF_TAG }}
           docker push -a ${{ env.IMAGE_NAME }}

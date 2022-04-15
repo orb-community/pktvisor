@@ -1,0 +1,18 @@
+FROM debian:bullseye-slim
+
+ENV RUNTIME_DEPS "curl ca-certificates libasan6 gdb"
+
+RUN \
+    apt-get update && \
+    apt-get upgrade --yes --force-yes && \
+    apt-get install --yes --force-yes --no-install-recommends ${RUNTIME_DEPS} && \
+    rm -rf /var/lib/apt
+
+COPY ./pktvisord /usr/local/sbin/pktvisord
+COPY ./crashpad_handler /usr/local/sbin/crashpad_handler
+COPY ./pktvisor-reader /usr/local/sbin/pktvisor-reader
+COPY ./pktvisor-cli /usr/local/bin/pktvisor-cli
+COPY docker/entry.sh /usr/local/bin/
+
+ENTRYPOINT [ "entry.sh" ]
+
