@@ -28,29 +28,18 @@ jobs:
 
       - uses: actions/upload-artifact@v3
         with:
-          name: binnaries
+          name: pktvisor-artifacts
           path: |
-            ./pktvisord
-            ./pktvisor-reader
-            ./pktvisor-cli
-            ./crashpad_handler
+            ./            
 
   package:
     needs: build-symbol
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-
-      - name: Create Build Environment
-        run: cmake -E make_directory ${{github.workspace}}/build
-
-      - name: Get Conan
-        uses: turtlebrowser/get-conan@v1.0
-
-      - name: Configure CMake to generate VERSION
-        shell: bash
-        working-directory: ${{github.workspace}}/build
-        run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=Debug
+      - name: Attach to workspace
+        uses: actions/download-artifact@v2
+        with:
+          name: pktvisor-artifacts
 
       - name: Get branch name
         shell: bash
