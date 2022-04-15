@@ -12,11 +12,6 @@ inputs:
     description: "Dockerfile used to build the image"
     required: true
     default: "./Dockerfile"
-  
-  push:
-    description: "Controls if image will be pushed to registry"
-    required: true
-    default: "true"
 
 runs:
     using: 'docker'
