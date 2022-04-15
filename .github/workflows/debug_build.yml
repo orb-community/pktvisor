@@ -10,8 +10,15 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: Build pktvisor + push symbol to backtrace.io
-        uses: ./.github/actions/docker
+      - name: Build pktvisord + push symbol to backtrace.io
+        uses: ./.github/actions/build-cpp
+        with:
+          context: "."
+          backtrace_token: "b109dbe0fb5fe46c83de7b11ca5d47eb122a6803461fe277850b89eac153eac0"
+          file: "./Dockerfile"
+
+      - name: Build pktvisor-cli
+        uses: ./.github/actions/build-go
         with:
           context: "."
           file: "./Dockerfile"
