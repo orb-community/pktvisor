@@ -4,8 +4,11 @@
 function build() {
   echo "========================= Building pktvisor-cli ========================="
   ls -lha
-  cp -rf ./version.go /golang/pkg/client/version.go
+  cd /tmp/build
+  cp -rf golang/ /src/
+  cp -rf ./version.go /src/pkg/client/version.go
   go build -o pktvisor-cli cmd/pktvisor-cli/main.go
+  ls -lha
 }
 
 function copy() {
