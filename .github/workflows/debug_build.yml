@@ -26,17 +26,18 @@ jobs:
       - name: Debug artifacts
         run: ls -lha .
 
-      - uses: actions/upload-artifact@v3
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
         with:
           name: pktvisor-artifacts
-          path: |
-            ./            
+          path: ./
+          retention-days: 1
 
   package:
     needs: build-symbol
     runs-on: ubuntu-latest
     steps:
-      - name: Attach to workspace
+      - name: Download to workspace
         uses: actions/download-artifact@v2
         with:
           name: pktvisor-artifacts
@@ -79,7 +80,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build + push - pktvisor debug
+      - name: Build, push debug image + crashhandler
         env:
           IMAGE_NAME: ns1labs/pktvisor
         run: |
