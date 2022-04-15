@@ -5,7 +5,7 @@ on:
     branches: [ develop, master, release/**, crash_handler ]
 
 jobs:
-  build:
+  build-symbol:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
