@@ -15,4 +15,4 @@ function copy() {
 }
 
 build
-#copy
+copy
