@@ -1,5 +1,10 @@
 #!/bin/bash
 #
+function validateParams() {
+  echo "========================= Checking parameters ========================="
+  [[ -z $INPUT_BACKTRACE_TOKEN ]] && echo "Backtrace token is required" && exit 1 || echo "Backtrace token present"
+}
+
 function build() {
   echo "========================= Building pktvisor ========================="
   cp -rf /github/workspace/.git/ /pktvisor-src/.git/
@@ -24,11 +29,10 @@ function compact() {
   echo "========================= Compacting binary ========================="
   cd /tmp/build
   zip pktvisord.zip /tmp/build/bin/pktvisord
-  ls -lha
   cp -rf /tmp/build/bin/pktvisord /github/workspace/
   cp -rf /tmp/build/bin/crashpad_handler /github/workspace/
   cp -rf /tmp/build/bin/pktvisor-reader /github/workspace/
-  cp -rf /tmp/build/bin/pktvisor-cli /github/workspace/
+  cp -rf /src/pktvisor-cli /github/workspace/
 }
 function publish() {
   echo "========================= Publishing to backtrace ========================="
