@@ -117,7 +117,7 @@ jobs:
 
       - name: Install libs
         run: |
-          sudo apt-get install autoconf libtool gcc-multilib g++-multilib build-essential libc6-dev libc6
+          sudo apt-get install autoconf libtool gcc-multilib g++-multilib build-essential libc6-dev libc6 libc6-dev-i386
 
       - name: Install dependencies
         run: |
