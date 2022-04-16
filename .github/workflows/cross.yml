@@ -60,7 +60,6 @@ jobs:
         with:
           path: toolchain
           key: toolchain-test-${{matrix.toolchain}}
-
       - name: Install compiler toolchain
         if: steps.cache-toolchain.outputs.cache-hit != 'true'
         run: |
@@ -69,7 +68,6 @@ jobs:
 
       - name: Install Conan
         run: pip install --no-cache-dir conan
-
       - name: Create Conan configuration
         run: |
           # init config
@@ -78,7 +76,6 @@ jobs:
           conan remote add ns1labs https://ns1labs.jfrog.io/artifactory/api/conan/ns1labs-conan
           # add custom compiler settings for libc
           python3 -c 'import yaml; p = "${{env.CONAN_USER_HOME}}/.conan/settings.yml"; d = yaml.safe_load(open(p)); d["compiler"]["gcc"]["libc"] = ["None", "glibc", "musl"]; yaml.safe_dump(d, open(p, "w"))'
-
       - name: Create Conan host profile
         run: |
           cat > "${{env.CONAN_USER_HOME}}/.conan/profiles/host" << "EOF"
@@ -120,7 +117,6 @@ jobs:
           mkdir build
           cd build          
           conan install -pr:b default -pr:h host -g virtualenv --build=missing "${{github.workspace}}/src"
-
       - name: Configure
         run: |
           cd build
@@ -172,16 +168,13 @@ jobs:
         uses: actions/setup-go@v2
         with:
           go-version: 1.17
-
       - name: Checkout sources
         uses: actions/checkout@v2
         with:
           path: src
-
       - name: Configure
         run: |
           VERSION_ONLY=1 cmake src
-
       - name: Build
         run: |
           if [ "${{matrix.os}}" = macos ]; then
@@ -196,7 +189,6 @@ jobs:
 
           cd src/golang
           go build -o ${{github.workspace}}/pktvisor-cli ./cmd/pktvisor-cli
-
       - name: Upload pktvisor-cli
         uses: actions/upload-artifact@v2
         with:
