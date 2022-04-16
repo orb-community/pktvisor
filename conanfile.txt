@@ -1,5 +1,4 @@
 [requires]
-zlib/1.2.12
 benchmark/1.6.0
 catch2/2.13.8
 corrade/2020.06
@@ -22,7 +21,6 @@ crashpad/cci.20220219
 
 [build_requires]
 corrade/2020.06
-zlib/1.2.12
 protobuf/3.19.2
 
 [options]

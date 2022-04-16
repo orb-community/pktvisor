@@ -172,13 +172,16 @@ jobs:
         uses: actions/setup-go@v2
         with:
           go-version: 1.17
+
       - name: Checkout sources
         uses: actions/checkout@v2
         with:
           path: src
+
       - name: Configure
         run: |
           VERSION_ONLY=1 cmake src
+
       - name: Build
         run: |
           if [ "${{matrix.os}}" = macos ]; then
@@ -193,6 +196,7 @@ jobs:
 
           cd src/golang
           go build -o ${{github.workspace}}/pktvisor-cli ./cmd/pktvisor-cli
+
       - name: Upload pktvisor-cli
         uses: actions/upload-artifact@v2
         with:
