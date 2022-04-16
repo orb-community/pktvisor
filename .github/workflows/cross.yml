@@ -113,11 +113,11 @@ jobs:
           path: src
       - name: Install libcurl
         run: |
-          sudo apt-get install autoconf libtool
+          sudo apt-get install autoconf libtool g++-multilib
           git clone https://github.com/curl/curl.git
           cd curl
           autoreconf -fi
-          ./configure --with-openssl
+          ./configure
           sudo make
           sudo make install
 
