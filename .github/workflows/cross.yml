@@ -115,7 +115,7 @@ jobs:
       - name: Install dependencies
         run: |
           mkdir build
-          cd build          
+          cd build
           conan install -pr:b default -pr:h host -g virtualenv --build=missing "${{github.workspace}}/src"
       - name: Configure
         run: |
