@@ -116,7 +116,7 @@ jobs:
           mkdir build
           cd build
           sudo apt-get update -y
-          sudo apt-get install -y libcurl4-openssl-dev libcurl4 libcurlpp-dev libcurlpp0 g++ cmake make git pkgconf jq python3-pip python3-setuptools ca-certificates libasan6 zip curl ninja-build
+          sudo apt-get install -y pkg-config libcurl4-openssl-dev libcurl4 libcurlpp-dev libcurlpp0 g++ cmake make git pkgconf jq python3-pip python3-setuptools ca-certificates libasan6 zip curl ninja-build
           conan install -pr:b default -pr:h host -g virtualenv --build=missing "${{github.workspace}}/src"
       - name: Configure
         run: |
