@@ -118,8 +118,8 @@ jobs:
           cd curl
           autoreconf -fi
           ./configure --with-openssl
-          make
-          make install
+          sudo make
+          sudo make install
 
       - name: Install dependencies
         run: |
