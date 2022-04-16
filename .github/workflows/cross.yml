@@ -115,21 +115,16 @@ jobs:
         with:
           path: src
 
-      - name: Install libcurl
+      - name: Install libs
         run: |
-          sudo apt-get install autoconf libtool g++-multilib build-essential libc6-dev
-          git clone https://github.com/curl/curl.git
-          cd curl
-          autoreconf -fi
-          ./configure --with-openssl
-          sudo make
-          sudo make install
+          sudo apt-get install autoconf libtool gcc-multilib g++-multilib build-essential libc6-dev libc6
 
       - name: Install dependencies
         run: |
           mkdir build
           cd build          
           conan install -pr:b default -pr:h host -g virtualenv --build=missing "${{github.workspace}}/src"
+
       - name: Configure
         run: |
           cd build
