@@ -117,7 +117,7 @@ jobs:
 
       - name: Install libs
         run: |
-          sudo apt-get install autoconf libtool gcc-multilib g++-multilib build-essential libc6-dev libc6 libc6-dev-i386
+          sudo apt-get install autoconf libtool gcc-multilib g++-multilib build-essential libc6-dev libc6 libc6-dev-i386 g++-multilib-arm-linux-gnueabihf libc6-armel-armhf-cross libc6-dev-armel-armhf-cross pkg-config-arm-linux-gnueabihf
 
       - name: Install dependencies
         run: |
