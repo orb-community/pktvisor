@@ -117,10 +117,7 @@ jobs:
 
       - name: Install libs
         run: |
-          sudo apt-get install autoconf libtool build-essential libc6-dev-i386 \ 
-          g++-multilib-arm-linux-gnueabihf g++-9-arm-linux-gnueabihf g++-9-multilib-arm-linux-gnueabihf \
-          gcc-9-multilib-arm-linux-gnueabihf gcc-9-arm-linux-gnueabihf gcc-multilib-arm-linux-gnueabihf \
-          g++-arm-linux-gnueabihf gcc-arm-linux-gnueabihf pkg-config-arm-linux-gnueabihf
+          sudo apt-get install autoconf libtool build-essential libc6-dev-i386 g++-multilib-arm-linux-gnueabihf g++-9-arm-linux-gnueabihf g++-9-multilib-arm-linux-gnueabihf gcc-9-multilib-arm-linux-gnueabihf gcc-9-arm-linux-gnueabihf gcc-multilib-arm-linux-gnueabihf g++-arm-linux-gnueabihf gcc-arm-linux-gnueabihf pkg-config-arm-linux-gnueabihf
 
       - name: Install dependencies
         run: |
