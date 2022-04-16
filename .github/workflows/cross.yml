@@ -117,7 +117,7 @@ jobs:
           git clone https://github.com/curl/curl.git
           cd curl
           autoreconf -fi
-          ./configure
+          ./configure --with-openssl
           sudo make
           sudo make install
 
