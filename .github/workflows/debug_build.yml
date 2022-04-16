@@ -34,7 +34,7 @@ jobs:
           retention-days: 1
 
   package:
-    needs: build-symbol
+    needs: build
     runs-on: ubuntu-latest
     steps:
       - name: Download to workspace
