@@ -14,7 +14,7 @@ jobs:
         uses: ./.github/actions/build-cpp
         with:
           context: "."
-          backtrace_token: "b109dbe0fb5fe46c83de7b11ca5d47eb122a6803461fe277850b89eac153eac0"
+          backtrace_token: ${{BACKTRACE_TOKEN}}
           file: "./Dockerfile"
 
       - name: Build pktvisor-cli

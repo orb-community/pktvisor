@@ -1,6 +1,5 @@
 #!/bin/bash
 #
-
 function build() {
   echo "========================= Building pktvisor-cli ========================="
   cp -rf golang/ /src/
