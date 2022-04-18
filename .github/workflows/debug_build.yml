@@ -74,9 +74,12 @@ jobs:
       - name: Debug ref tag
         run: echo ${{ env.REF_TAG }}
 
-      - name: Replace secrets
+      - name: Replace secrets token
         run: |
           sed -i -e "s/CP_TOKEN/${{ secrets.CRASHPAD_TOKEN }}/g" docker/entry-cp.sh
+
+      - name: Replace secrets cp url
+        run: |
           sed -i -e "s/CP_URL/${{ secrets.CRASHPAD_URL }}/g" docker/entry-cp.sh
 
       - name: Debug entry-cp.sh
