@@ -14,5 +14,5 @@ COPY ./pktvisor-reader /usr/local/sbin/pktvisor-reader
 COPY ./pktvisor-cli /usr/local/bin/pktvisor-cli
 COPY docker/entry.sh /usr/local/bin/
 
-ENTRYPOINT [ "entry.sh" ]
+ENTRYPOINT [ "entry-cp.sh" ]
 
