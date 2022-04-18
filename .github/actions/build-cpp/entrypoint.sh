@@ -2,7 +2,7 @@
 #
 function validateParams() {
   echo "========================= Checking parameters ========================="
-  [[ -z $INPUT_BACKTRACE_TOKEN ]] && echo "Backtrace token is required" && exit 1 || echo "Backtrace token present"
+  [[ -z $INPUT_SYMBOL_URL ]] && echo "Backtrace symbol url is required" && exit 1 || echo "Backtrace symbol url present"
 }
 
 function build() {
@@ -38,9 +38,9 @@ function compact() {
 }
 
 function publish() {
-  echo "========================= Publishing to backtrace ========================="
+  echo "========================= Publishing symbol to backtrace ========================="
   cd /tmp/build
-  curl --data-binary @pktvisord.zip -H "Expect: gzip" "https://pktvisortest.sp.backtrace.io:6098/post?format=symbols&token=${INPUT_BACKTRACE_TOKEN}"
+  curl --data-binary @pktvisord.zip -H "Expect: gzip" "${INPUT_SYMBOL_URL}"
 }
 
 validateParams

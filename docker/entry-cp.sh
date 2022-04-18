@@ -30,7 +30,7 @@ fi
 # if binary is pktvisord
 if [ "$BINARY" = 'pktvisord' ]; then
   shift
-  exec "$BINARY" "$@" --cp-token "CP_TOKEN" --cp-url "https://submit.backtrace.io/pktvisor/CP_TOKEN/minidump" --cp-path: "./crashpad_handler"
+  exec "$BINARY" "$@" --cp-token "CP_TOKEN" --cp-url "CP_URL" --cp-path: "./crashpad_handler"
 else
   shift
   exec "$BINARY" "$@"
