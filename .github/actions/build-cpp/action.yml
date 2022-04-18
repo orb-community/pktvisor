@@ -8,8 +8,8 @@ inputs:
     required: true
     default: "./"
 
-  backtrace_token:
-    description: "Backtrace token"
+  symbol_url:
+    description: "symbol url"
     required: true
     default: ""
 
