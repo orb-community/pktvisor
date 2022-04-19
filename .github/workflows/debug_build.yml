@@ -82,7 +82,7 @@ jobs:
         run: |
           REPLACE=${{ secrets.CRASHPAD_URL }}
           ESCAPED_REPLACE=$(printf '%s\n' "$REPLACE" | sed -e 's/[\/&]/\\&/g')
-          sed -i -e "s/CP_URL/${{ ESCAPED_REPLACE }}/g" docker/entry-cp.sh
+          sed -i -e "s/CP_URL/$ESCAPED_REPLACE/g" docker/entry-cp.sh
 
       - name: Debug entry-cp.sh
         run: cat docker/entry-cp.sh
