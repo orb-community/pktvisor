@@ -1,6 +1,5 @@
 #!/bin/bash
 # this is the entry point to the docker container, and is only used there
-
 set -e
 
 export PATH=$PATH:/usr/local/bin/:/usr/local/sbin/
@@ -28,5 +27,11 @@ if [ "$BINARY" = 'pktvisor-cli' ]; then
   sleep 1
 fi
 
-shift
-exec "$BINARY" "$@"
+# if binary is pktvisord
+if [ "$BINARY" = 'pktvisord' ]; then
+  shift
+  exec "$BINARY" --cp-token "CP_TOKEN" --cp-url "CP_URL" --cp-path "/usr/local/sbin/crashpad_handler" "$@"
+else
+  shift
+  exec "$BINARY" "$@"
+fi
