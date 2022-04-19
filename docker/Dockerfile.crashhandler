@@ -19,7 +19,7 @@ COPY ./docker/entry-cp.sh /entry-cp.sh
 RUN chmod a+x /usr/local/sbin/pktvisord
 RUN chmod a+x /usr/local/sbin/crashpad_handler
 RUN chmod a+x /usr/local/sbin/pktvisor-reader
-RUN chmod a+x /usr/local/sbin/pktvisor-cli
+RUN chmod a+x /usr/local/bin/pktvisor-cli
 RUN chmod a+x /entry-cp.sh
 
 ENTRYPOINT [ "/entry-cp.sh" ]
