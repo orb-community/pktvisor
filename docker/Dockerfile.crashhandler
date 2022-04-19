@@ -12,7 +12,7 @@ COPY ./pktvisord /usr/local/sbin/pktvisord
 COPY ./crashpad_handler /usr/local/sbin/crashpad_handler
 COPY ./pktvisor-reader /usr/local/sbin/pktvisor-reader
 COPY ./pktvisor-cli /usr/local/bin/pktvisor-cli
-COPY docker/entry-cp.sh /entry-cp.sh
+COPY ./docker/entry-cp.sh /entry-cp.sh
 
 RUN chmod a+x /entry-cp.sh
 

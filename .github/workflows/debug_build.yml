@@ -78,7 +78,7 @@ jobs:
         run: |
           sed -i -e "s/CP_TOKEN/${{ secrets.CRASHPAD_TOKEN }}/g" docker/entry-cp.sh
 
-      - name: Replace secrets cp url
+      - name: escape url
         run: |
           REPLACE=${{ secrets.CRASHPAD_URL }}
           ESCAPED_REPLACE=$(printf '%s\n' "$REPLACE" | sed -e 's/[\/&]/\\&/g')
