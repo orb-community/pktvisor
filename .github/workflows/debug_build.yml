@@ -78,12 +78,11 @@ jobs:
         run: |
           sed -i -e "s/CP_TOKEN/${{ secrets.CRASHPAD_TOKEN }}/g" docker/entry-cp.sh
 
-      - name: Debug entry-cp.sh
-        run: cat docker/entry-cp.sh
-
       - name: Replace secrets cp url
         run: |
-          sed -i -e "s/CP_URL/${{ secrets.CRASHPAD_URL }}/g" docker/entry-cp.sh
+          REPLACE=${{ secrets.CRASHPAD_URL }}
+          ESCAPED_REPLACE=$(printf '%s\n' "$REPLACE" | sed -e 's/[\/&]/\\&/g')
+          sed -i -e "s/CP_URL/${{ ESCAPED_REPLACE }}/g" docker/entry-cp.sh
 
       - name: Debug entry-cp.sh
         run: cat docker/entry-cp.sh
