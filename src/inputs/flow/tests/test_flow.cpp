@@ -1,12 +1,12 @@
-#include "SflowInputStream.h"
+#include "FlowInputStream.h"
 #include <catch2/catch.hpp>
 
-using namespace visor::input::sflow;
+using namespace visor::input::flow;
 
-TEST_CASE("sflow pcap file", "[sflow][file]")
+TEST_CASE("sflow pcap file", "[flow][sflow][file]")
 {
 
-    SflowInputStream stream{"sflow-test"};
+    FlowInputStream stream{"sflow-test"};
     stream.config_set("pcap_file", "tests/fixtures/ecmp.pcap");
 
     CHECK_NOTHROW(stream.start());
@@ -27,7 +27,7 @@ TEST_CASE("sflow udp socket", "[sflow][udp]")
     std::string bind = "127.0.0.1";
     uint64_t port = 6343;
 
-    SflowInputStream stream{"sflow-test"};
+    FlowInputStream stream{"sflow-test"};
     stream.config_set("bind", bind);
     stream.config_set("port", port);
 
@@ -51,9 +51,9 @@ TEST_CASE("sflow udp socket", "[sflow][udp]")
     CHECK(j["sflow"]["packet_errors"] == 1);
 }
 
-TEST_CASE("sflow udp socket without bind", "[sflow][udp]")
+TEST_CASE("sflow udp socket without bind", "[flow][sflow][udp]")
 {
-    SflowInputStream stream{"sflow-test"};
+    FlowInputStream stream{"sflow-test"};
 
     CHECK_THROWS_WITH(stream.start(), "sflow config must specify port and bind");
 }

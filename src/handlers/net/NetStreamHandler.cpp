@@ -28,8 +28,8 @@ NetStreamHandler::NetStreamHandler(const std::string &name, InputStream *stream,
         _pcap_stream = dynamic_cast<PcapInputStream *>(stream);
         _dnstap_stream = dynamic_cast<DnstapInputStream *>(stream);
         _mock_stream = dynamic_cast<MockInputStream *>(stream);
-        _sflow_stream = dynamic_cast<SflowInputStream *>(stream);
-        if (!_pcap_stream && !_mock_stream && !_dnstap_stream && !_sflow_stream) {
+        _flow_stream = dynamic_cast<FlowInputStream *>(stream);
+        if (!_pcap_stream && !_mock_stream && !_dnstap_stream && !_flow_stream) {
             throw StreamHandlerException(fmt::format("NetStreamHandler: unsupported input stream {}", stream->name()));
         }
     }
@@ -66,8 +66,8 @@ void NetStreamHandler::start()
         _end_tstamp_connection = _pcap_stream->end_tstamp_signal.connect(&NetStreamHandler::set_end_tstamp, this);
     } else if (_dnstap_stream) {
         _dnstap_connection = _dnstap_stream->dnstap_signal.connect(&NetStreamHandler::process_dnstap_cb, this);
-    } else if (_sflow_stream) {
-        _sflow_connection = _sflow_stream->sflow_signal.connect(&NetStreamHandler::process_sflow_cb, this);
+    } else if (_flow_stream) {
+        _sflow_connection = _flow_stream->sflow_signal.connect(&NetStreamHandler::process_sflow_cb, this);
     } else if (_dns_handler) {
         _pkt_udp_connection = _dns_handler->udp_signal.connect(&NetStreamHandler::process_udp_packet_cb, this);
     }
@@ -87,7 +87,7 @@ void NetStreamHandler::stop()
         _end_tstamp_connection.disconnect();
     } else if (_dnstap_stream) {
         _dnstap_connection.disconnect();
-    } else if (_sflow_stream) {
+    } else if (_flow_stream) {
         _sflow_connection.disconnect();
     } else if (_dns_handler) {
         _pkt_udp_connection.disconnect();

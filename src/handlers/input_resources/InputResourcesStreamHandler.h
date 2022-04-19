@@ -6,9 +6,9 @@
 
 #include "AbstractMetricsManager.h"
 #include "DnstapInputStream.h"
+#include "FlowInputStream.h"
 #include "MockInputStream.h"
 #include "PcapInputStream.h"
-#include "SflowInputStream.h"
 #include "StreamHandler.h"
 #include "ThreadMonitor.h"
 #include <Corrade/Utility/Debug.h>
@@ -20,7 +20,7 @@ namespace visor::handler::resources {
 using namespace visor::input::pcap;
 using namespace visor::input::dnstap;
 using namespace visor::input::mock;
-using namespace visor::input::sflow;
+using namespace visor::input::flow;
 
 constexpr double MEASURE_INTERVAL = 5; // in seconds
 
@@ -87,7 +87,7 @@ class InputResourcesStreamHandler final : public visor::StreamMetricsHandler<Inp
     PcapInputStream *_pcap_stream{nullptr};
     DnstapInputStream *_dnstap_stream{nullptr};
     MockInputStream *_mock_stream{nullptr};
-    SflowInputStream *_sflow_stream{nullptr};
+    FlowInputStream *_flow_stream{nullptr};
 
     sigslot::connection _dnstap_connection;
     sigslot::connection _sflow_connection;

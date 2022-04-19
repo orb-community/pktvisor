@@ -9,9 +9,9 @@
 #include <spdlog/spdlog.h>
 #include <uvw.hpp>
 
-namespace visor::input::sflow {
+namespace visor::input::flow {
 
-class SflowInputStream : public visor::InputStream
+class FlowInputStream : public visor::InputStream
 {
     std::atomic<uint64_t> _error_count;
     std::shared_ptr<spdlog::logger> _logger;
@@ -25,8 +25,8 @@ class SflowInputStream : public visor::InputStream
     void _read_from_pcap_file();
     void _create_frame_stream_udp_socket();
 public:
-    SflowInputStream(const std::string &name);
-    ~SflowInputStream() = default;
+    FlowInputStream(const std::string &name);
+    ~FlowInputStream() = default;
 
     // visor::AbstractModule
     std::string schema_key() const override

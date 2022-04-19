@@ -2,14 +2,15 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-#include "SflowInputStream.h"
-#include "SflowException.h"
+#include "FlowInputStream.h"
+#include "FlowException.h"
 #include <Packet.h>
 #include <PcapFileDevice.h>
 #include <UdpLayer.h>
-namespace visor::input::sflow {
 
-SflowInputStream::SflowInputStream(const std::string &name)
+namespace visor::input::flow {
+
+FlowInputStream::FlowInputStream(const std::string &name)
     : visor::InputStream(name)
     , _error_count(0)
 {
@@ -17,7 +18,7 @@ SflowInputStream::SflowInputStream(const std::string &name)
     assert(_logger);
 }
 
-void SflowInputStream::start()
+void FlowInputStream::start()
 {
 
     if (_running) {
@@ -32,13 +33,13 @@ void SflowInputStream::start()
     } else if (config_exists("port") && config_exists("bind")) {
         _create_frame_stream_udp_socket();
     } else {
-        throw SflowException("sflow config must specify port and bind");
+        throw FlowException("sflow config must specify port and bind");
     }
 
     _running = true;
 }
 
-void SflowInputStream::_read_from_pcap_file()
+void FlowInputStream::_read_from_pcap_file()
 {
     pcpp::IFileReaderDevice *reader = pcpp::IFileReaderDevice::getReader(config_get<std::string>("pcap_file"));
     reader->open();
@@ -68,19 +69,19 @@ void SflowInputStream::_read_from_pcap_file()
     delete reader;
 }
 
-void SflowInputStream::_create_frame_stream_udp_socket()
+void FlowInputStream::_create_frame_stream_udp_socket()
 {
     auto bind = config_get<std::string>("bind");
     auto port = config_get<uint64_t>("port");
     // main io loop, run in its own thread
     _io_loop = uvw::Loop::create();
     if (!_io_loop) {
-        throw SflowException("unable to create io loop");
+        throw FlowException("unable to create io loop");
     }
     // AsyncHandle lets us stop the loop from its own thread
     _async_h = _io_loop->resource<uvw::AsyncHandle>();
     if (!_async_h) {
-        throw SflowException("unable to initialize AsyncHandle");
+        throw FlowException("unable to initialize AsyncHandle");
     }
     _async_h->once<uvw::AsyncEvent>([this](const auto &, auto &handle) {
         _udp_server_h->stop();
@@ -97,12 +98,12 @@ void SflowInputStream::_create_frame_stream_udp_socket()
     // setup server socket
     _udp_server_h = _io_loop->resource<uvw::UDPHandle>();
     if (!_udp_server_h) {
-        throw SflowException("unable to initialize server PipeHandle");
+        throw FlowException("unable to initialize server PipeHandle");
     }
 
     _udp_server_h->on<uvw::ErrorEvent>([this](const auto &err, auto &) {
         _logger->error("[{}] socket error: {}", _name, err.what());
-        throw SflowException(err.what());
+        throw FlowException(err.what());
     });
 
     // ListenEvent happens on client connection
@@ -133,7 +134,7 @@ void SflowInputStream::_create_frame_stream_udp_socket()
     });
 }
 
-void SflowInputStream::stop()
+void FlowInputStream::stop()
 {
     if (!_running) {
         return;
@@ -151,7 +152,7 @@ void SflowInputStream::stop()
     _running = false;
 }
 
-void SflowInputStream::info_json(json &j) const
+void FlowInputStream::info_json(json &j) const
 {
     common_info_json(j);
     j[schema_key()]["packet_errors"] = _error_count.load();

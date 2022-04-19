@@ -1,9 +1,9 @@
 #include <catch2/catch.hpp>
 
 #include "DnstapInputStream.h"
+#include "FlowInputStream.h"
 #include "InputResourcesStreamHandler.h"
 #include "PcapInputStream.h"
-#include "SflowInputStream.h"
 #include "Policies.h"
 
 using namespace visor::handler::resources;
@@ -79,7 +79,7 @@ TEST_CASE("Check resources for dnstap input", "[dnstap][resources]")
 
 TEST_CASE("Check resources for sflow input", "[sflow][resources]")
 {
-    SflowInputStream stream{"sflow-test"};
+    FlowInputStream stream{"sflow-test"};
     stream.config_set("pcap_file", "tests/fixtures/ecmp.pcap");
 
     visor::Config c;

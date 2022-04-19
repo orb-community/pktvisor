@@ -213,7 +213,7 @@ TEST_CASE("Parse net (dns) with DNS filter only_qname_suffix", "[pcap][dns][net]
 TEST_CASE("Parse net (dns) sflow stream", "[sflow][net]")
 {
 
-    SflowInputStream stream{"sflow-test"};
+    FlowInputStream stream{"sflow-test"};
     stream.config_set("pcap_file", "tests/fixtures/ecmp.pcap");
 
     visor::Config c;

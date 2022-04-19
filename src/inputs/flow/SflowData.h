@@ -19,7 +19,7 @@
 #define NFT_MAX_8023_LEN 1500
 #define WIFI_MIN_HDR_SIZ 24
 
-namespace visor::input::sflow {
+namespace visor::input::flow {
 
 enum DIRECTION {
     UNKNOWN = 0,

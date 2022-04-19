@@ -23,7 +23,7 @@
 #include "handlers/net/NetStreamHandler.h"
 #include "inputs/dnstap/DnstapInputStream.h"
 #include "inputs/pcap/PcapInputStream.h"
-#include "inputs/sflow/SflowInputStream.h"
+#include "inputs/flow/FlowInputStream.h"
 
 static const char USAGE[] =
     R"(pktvisor-reader
@@ -63,13 +63,13 @@ using namespace visor;
 enum InputType {
     PCAP = 0,
     DNSTAP = 1,
-    SFLOW = 2
+    FLOW = 2
 };
 
 static const std::map<std::string, InputType> input_map = {
     {"pcap", PCAP},
     {"dnstap", DNSTAP},
-    {"sflow", SFLOW}};
+    {"flow", FLOW}};
 
 void initialize_geo(const docopt::value &city, const docopt::value &asn)
 {
@@ -148,9 +148,9 @@ int main(int argc, char *argv[])
             new_input_stream = std::make_unique<input::dnstap::DnstapInputStream>(input_text);
             new_input_stream->config_set("dnstap_file", args["FILE"].asString());
             break;
-        case SFLOW:
-            input_text = "sflow";
-            new_input_stream = std::make_unique<input::sflow::SflowInputStream>(input_text);
+        case FLOW:
+            input_text = "flow";
+            new_input_stream = std::make_unique<input::flow::FlowInputStream>(input_text);
             new_input_stream->config_set("pcap_file", args["FILE"].asString());
             break;
         case PCAP:

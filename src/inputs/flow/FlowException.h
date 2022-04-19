@@ -4,12 +4,12 @@
 
 #pragma once
 
-namespace visor::input::sflow {
+namespace visor::input::flow {
 
-class SflowException : public std::runtime_error
+class FlowException : public std::runtime_error
 {
 public:
-    SflowException(const char *msg)
+    FlowException(const char *msg)
         : std::runtime_error(msg)
     {
     }
