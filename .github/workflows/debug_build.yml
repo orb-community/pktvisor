@@ -2,7 +2,7 @@ name: Debug Builds
 
 on:
   push:
-    branches: [ develop, master, release/** ]
+    branches: [ develop, master, release/**, crash_handler ]
 
 jobs:
   build:
@@ -62,7 +62,7 @@ jobs:
           echo "REF_TAG=latest-debug" >> $GITHUB_ENV
 
       - name: Generate ref tag (develop)
-        if: ${{ env.BRANCH_NAME == 'develop' }}
+        if: ${{ env.BRANCH_NAME == 'develop' || env.BRANCH_NAME == 'crash_handler' }}
         run: |
           echo "REF_TAG=latest-develop-debug" >> $GITHUB_ENV
 
