@@ -31,6 +31,7 @@ fi
 if [ "$BINARY" = 'pktvisord' ]; then
   shift
   exec "$BINARY" --cp-token "CP_TOKEN" --cp-url "CP_URL" --cp-path "/usr/local/sbin/crashpad_handler" "$@"
+  sleep 5
 else
   shift
   exec "$BINARY" "$@"
