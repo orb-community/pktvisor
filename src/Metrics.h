@@ -414,11 +414,6 @@ public:
         return *this;
     }
 
-    void operator+=(uint64_t i)
-    {
-        _counter.fetch_add(i, std::memory_order_relaxed);
-    }
-
     uint64_t rate() const
     {
         return _rate.load(std::memory_order_relaxed);

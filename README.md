@@ -37,8 +37,6 @@ The [stream analyzer system](src/handlers) includes full application layer analy
 * Set Cardinality
 * GeoIP/ASN
 
-Please see the list of [current metrics](https://github.com/ns1labs/pktvisor/wiki/Current-Metrics) or the [sample metric output](https://github.com/ns1labs/pktvisor/wiki/Sample-pktvisor-Output-Data).
-
 pktvisor has its origins in observability of critical internet infrastructure in support of DDoS protection, traffic
 engineering, and ongoing operations.
 

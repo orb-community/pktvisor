@@ -7,14 +7,16 @@ package client
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/hashicorp/go-version"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 	"io/ioutil"
 	"log"
 	"net/http"
-	"regexp"
 	"time"
+)
+
+const (
+	wantServerVersion = "3.3"
 )
 
 type Client interface {
@@ -33,7 +35,6 @@ type ClientConfig struct {
 type client struct {
 	config        ClientConfig
 	serverVersion string
-	periods       string
 }
 
 func (c *client) GetPolicy() string {
@@ -52,25 +53,15 @@ func (c *client) GetServerVersion() string {
 		return "unknown"
 	}
 	c.serverVersion = appMetrics.App.Version
-	serverVersion, err := version.NewVersion(c.serverVersion)
-	if err == nil {
-		clientVersion, err := version.NewVersion(VisorVersionNum)
-		if err == nil {
-			cMajor := clientVersion.Segments()[0]
-			sMajor := serverVersion.Segments()[0]
-			if sMajor != cMajor {
-				log.Println(fmt.Sprintf("WARNING: this version of pktvisor-cli was written for a different major pktvisord version (server:%d, client:%d)", cMajor, sMajor))
-				time.Sleep(3 * time.Second)
-			}
-		}
+	if c.serverVersion[0:3] != wantServerVersion {
+		log.Println(fmt.Sprintf("WARNING: this version of pktvisor-cli was written for pktvisord %s.x", wantServerVersion))
 	}
 	return c.serverVersion
 }
 
 func New(config ClientConfig) (Client, error) {
 	return &client{
-		config:  config,
-		periods: "5",
+		config: config,
 	}, nil
 }
 
@@ -98,16 +89,6 @@ func (c *client) getMetrics(url string, payload interface{}) error {
 			err := json.Unmarshal(body, &jsonBody)
 			if err == nil {
 				if errMsg, ok := jsonBody["error"]; ok {
-					if res.StatusCode == 425 {
-						// attempt to resolve a period exception
-						r, _ := regexp.Compile("invalid metrics period, specify \\[\\d, (\\d)\\]")
-						match := r.FindStringSubmatch(errMsg.(string))
-						if match != nil && match[1] != c.periods {
-							// try new period on next request
-							c.periods = match[1]
-							return nil
-						}
-					}
 					return errors.New(fmt.Sprintf("%d %s", res.StatusCode, errMsg))
 				}
 			}
@@ -124,7 +105,7 @@ func (c *client) getMetrics(url string, payload interface{}) error {
 
 func (c *client) GetStats() (*StatSnapshot, error) {
 	var rawStats map[string]map[string]map[string]interface{}
-	err := c.getMetrics(fmt.Sprintf("%s://%s:%d/api/v1/policies/%s/metrics/window/%s", c.config.Protocol, c.config.Host, c.config.Port, c.config.DefaultPolicy, c.periods), &rawStats)
+	err := c.getMetrics(fmt.Sprintf("%s://%s:%d/api/v1/policies/%s/metrics/window/5", c.config.Protocol, c.config.Host, c.config.Port, c.config.DefaultPolicy), &rawStats)
 	if err != nil {
 		return nil, err
 	}

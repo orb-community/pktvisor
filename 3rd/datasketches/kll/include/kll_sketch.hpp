@@ -153,23 +153,15 @@ template<typename A> using vector_u32 = std::vector<uint32_t, AllocU32<A>>;
 template<typename A> using AllocD = typename std::allocator_traits<A>::template rebind_alloc<double>;
 template<typename A> using vector_d = std::vector<double, AllocD<A>>;
 
-namespace kll_constants {
-  const uint16_t DEFAULT_K = 200;
-}
-
 template <typename T, typename C = std::less<T>, typename S = serde<T>, typename A = std::allocator<T>>
 class kll_sketch {
   public:
-    using value_type = T;
-    using comparator = C;
-
     static const uint8_t DEFAULT_M = 8;
-    // TODO: Redundant and deprecated. Will be remove din next major version.
-    static const uint16_t DEFAULT_K = kll_constants::DEFAULT_K;
+    static const uint16_t DEFAULT_K = 200;
     static const uint16_t MIN_K = DEFAULT_M;
     static const uint16_t MAX_K = (1 << 16) - 1;
 
-    explicit kll_sketch(uint16_t k = kll_constants::DEFAULT_K, const A& allocator = A());
+    explicit kll_sketch(uint16_t k = DEFAULT_K, const A& allocator = A());
     kll_sketch(const kll_sketch& other);
     kll_sketch(kll_sketch&& other) noexcept;
     ~kll_sketch();
@@ -209,12 +201,6 @@ class kll_sketch {
      * @return empty flag
      */
     bool is_empty() const;
-
-    /**
-     * Returns configured parameter k
-     * @return parameter k
-     */
-    uint16_t get_k() const;
 
     /**
      * Returns the length of the input stream.
@@ -304,7 +290,7 @@ class kll_sketch {
      *
      * @return array of approximations to the given number of evenly-spaced fractional ranks.
      */
-    std::vector<T, A> get_quantiles(uint32_t num) const;
+    std::vector<T, A> get_quantiles(size_t num) const;
 
     /**
      * Returns an approximation to the normalized (fractional) rank of the given value from 0 to 1,
@@ -392,33 +378,6 @@ class kll_sketch {
     size_t get_serialized_size_bytes() const;
 
     /**
-     * Returns upper bound on the serialized size of a sketch given a parameter <em>k</em> and stream
-     * length. The resulting size is an overestimate to make sure actual sketches don't exceed it.
-     * This method can be used if allocation of storage is necessary beforehand, but it is not
-     * optimal.
-     * This method is for arithmetic types (integral and floating point)
-     * @param k parameter that controls size of the sketch and accuracy of estimates
-     * @param n stream length
-     * @return upper bound on the serialized size
-     */
-    template<typename TT = T, typename std::enable_if<std::is_arithmetic<TT>::value, int>::type = 0>
-    static size_t get_max_serialized_size_bytes(uint16_t k, uint64_t n);
-
-    /**
-     * Returns upper bound on the serialized size of a sketch given a parameter <em>k</em> and stream
-     * length. The resulting size is an overestimate to make sure actual sketches don't exceed it.
-     * This method can be used if allocation of storage is necessary beforehand, but it is not
-     * optimal.
-     * This method is for all other non-arithmetic types, and it takes a max size of an item as input.
-     * @param k parameter that controls size of the sketch and accuracy of estimates
-     * @param n stream length
-     * @param max_item_size_bytes maximum size of an item in bytes
-     * @return upper bound on the serialized size
-     */
-    template<typename TT = T, typename std::enable_if<!std::is_arithmetic<TT>::value, int>::type = 0>
-    static size_t get_max_serialized_size_bytes(uint16_t k, uint64_t n, size_t max_item_size_bytes);
-
-    /**
      * This method serializes the sketch into a given stream in a binary form
      * @param os output stream
      */
@@ -426,7 +385,7 @@ class kll_sketch {
 
     // This is a convenience alias for users
     // The type returned by the following serialize method
-    using vector_bytes = vector_u8<A>;
+    typedef vector_u8<A> vector_bytes;
 
     /**
      * This method serializes the sketch as a vector of bytes.
@@ -514,8 +473,6 @@ class kll_sketch {
     T* min_value_;
     T* max_value_;
     bool is_level_zero_sorted_;
-
-    friend class kll_quantile_calculator<T, C, A>;
 
     // for deserialization
     class item_deleter;

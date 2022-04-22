@@ -6,7 +6,7 @@
 
 namespace visor::handler::dns {
 
-AggDomainResult aggregateDomain(const std::string &domain, size_t suffix_size)
+AggDomainResult aggregateDomain(const std::string &domain)
 {
 
     std::string_view qname2(domain);
@@ -18,9 +18,7 @@ AggDomainResult aggregateDomain(const std::string &domain, size_t suffix_size)
         return AggDomainResult(qname2, qname3);
     }
     std::size_t endDot = std::string::npos;
-    if (suffix_size > 0 && domain.size() > suffix_size) {
-        endDot = domain.size() - suffix_size;
-    } else if (domain.back() == '.') {
+    if (domain.back() == '.') {
         endDot = domain.size() - 2;
     }
     auto first_dot = domain.rfind('.', endDot);

@@ -12,6 +12,6 @@ target_link_libraries(unit-tests-handler-net
         Visor::Handler::Net)
 
 add_test(NAME unit-tests-handler-net
-        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/src
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/src
         COMMAND unit-tests-handler-net
         )

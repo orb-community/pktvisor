@@ -3,7 +3,6 @@
 //  * Changed input seed in MurmurHash3_x64_128 to uint64_t
 //  * Define and use HashState reference to return result
 //  * Made entire hash function defined inline
-//  * Added compute_seed_hash
 //-----------------------------------------------------------------------------
 // MurmurHash3 was written by Austin Appleby, and is placed in the public
 // domain. The author hereby disclaims copyright to this source code.
@@ -15,8 +14,6 @@
 
 #ifndef _MURMURHASH3_H_
 #define _MURMURHASH3_H_
-
-#include <cstring>
 
 //-----------------------------------------------------------------------------
 // Platform-specific functions and macros
@@ -78,11 +75,9 @@ typedef struct {
 // Block read - if your platform needs to do endian-swapping or can only
 // handle aligned reads, do the conversion here
 
-FORCE_INLINE uint64_t getblock64 ( const uint64_t * p, size_t i )
+FORCE_INLINE uint64_t getblock64 ( const uint64_t * p, int i )
 {
-  uint64_t res;
-  memcpy(&res, p + i, sizeof(res));
-  return res;
+  return p[i];
 }
 
 //-----------------------------------------------------------------------------
@@ -99,7 +94,7 @@ FORCE_INLINE uint64_t fmix64 ( uint64_t k )
   return k;
 }
 
-FORCE_INLINE void MurmurHash3_x64_128(const void* key, size_t lenBytes, uint64_t seed, HashState& out) {
+FORCE_INLINE void MurmurHash3_x64_128(const void* key, int lenBytes, uint64_t seed, HashState& out) {
   static const uint64_t c1 = BIG_CONSTANT(0x87c37b91114253d5);
   static const uint64_t c2 = BIG_CONSTANT(0x4cf5ad432745937f);
 
@@ -110,13 +105,13 @@ FORCE_INLINE void MurmurHash3_x64_128(const void* key, size_t lenBytes, uint64_t
 
   // Number of full 128-bit blocks of 16 bytes.
   // Possible exclusion of a remainder of up to 15 bytes.
-  const size_t nblocks = lenBytes >> 4; // bytes / 16 
+  const int nblocks = lenBytes >> 4; // bytes / 16 
 
   // Process the 128-bit blocks (the body) into the hash
   const uint64_t* blocks = (const uint64_t*)(data);
-  for (size_t i = 0; i < nblocks; ++i) { // 16 bytes per block
-    uint64_t k1 = getblock64(blocks, i * 2 + 0);
-    uint64_t k2 = getblock64(blocks, i * 2 + 1);
+  for (int i = 0; i < nblocks; ++i) { // 16 bytes per block
+    uint64_t k1 = getblock64(blocks,i*2+0);
+    uint64_t k2 = getblock64(blocks,i*2+1);
 
     k1 *= c1; k1  = ROTL64(k1,31); k1 *= c2; out.h1 ^= k1;
     out.h1 = ROTL64(out.h1,27);
@@ -174,11 +169,5 @@ FORCE_INLINE void MurmurHash3_x64_128(const void* key, size_t lenBytes, uint64_t
 }
 
 //-----------------------------------------------------------------------------
-
-FORCE_INLINE uint16_t compute_seed_hash(uint64_t seed) {
-  HashState hashes;
-  MurmurHash3_x64_128(&seed, sizeof(seed), 0, hashes);
-  return static_cast<uint16_t>(hashes.h1 & 0xffff);
-}
 
 #endif // _MURMURHASH3_H_

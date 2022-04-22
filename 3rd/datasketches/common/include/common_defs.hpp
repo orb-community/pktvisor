@@ -23,13 +23,10 @@
 #include <cstdint>
 #include <string>
 #include <memory>
-#include <iostream>
 
 namespace datasketches {
 
 static const uint64_t DEFAULT_SEED = 9001;
-
-enum resize_factor { X1 = 0, X2, X4, X8 };
 
 template<typename A> using AllocChar = typename std::allocator_traits<A>::template rebind_alloc<char>;
 template<typename A> using string = std::basic_string<char, std::char_traits<char>, AllocChar<A>>;
@@ -47,29 +44,6 @@ constexpr uint8_t log2(uint32_t n) {
 
 constexpr uint8_t lg_size_from_count(uint32_t n, double load_factor) {
   return log2(n) + ((n > static_cast<uint32_t>((1 << (log2(n) + 1)) * load_factor)) ? 2 : 1);
-}
-
-// stream helpers to hide casts
-template<typename T>
-static inline T read(std::istream& is) {
-  T value;
-  is.read(reinterpret_cast<char*>(&value), sizeof(T));
-  return value;
-}
-
-template<typename T>
-static inline void read(std::istream& is, T* ptr, size_t size_bytes) {
-  is.read(reinterpret_cast<char*>(ptr), size_bytes);
-}
-
-template<typename T>
-static inline void write(std::ostream& os, T& value) {
-  os.write(reinterpret_cast<const char*>(&value), sizeof(T));
-}
-
-template<typename T>
-static inline void write(std::ostream& os, const T* ptr, size_t size_bytes) {
-  os.write(reinterpret_cast<const char*>(ptr), size_bytes);
 }
 
 } // namespace

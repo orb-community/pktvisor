@@ -23,7 +23,6 @@ target_include_directories(VisorHandlerDns
 
 target_link_libraries(VisorHandlerDns
         PUBLIC
-        ${CONAN_LIBS_ROBIN-HOOD-HASHING}
         Visor::Input::Pcap
         Visor::Input::Dnstap
         Visor::Input::Mock

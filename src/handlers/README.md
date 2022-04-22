@@ -10,4 +10,3 @@ See the individual READMEs for more information:
 * [Mock](mock/)
 * [Network](net/)
 * [PCAP](pcap/)
-* [Resources](resources/)

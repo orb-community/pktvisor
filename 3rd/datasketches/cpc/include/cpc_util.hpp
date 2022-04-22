@@ -24,6 +24,12 @@
 
 namespace datasketches {
 
+static inline uint16_t compute_seed_hash(uint64_t seed) {
+  HashState hashes;
+  MurmurHash3_x64_128(&seed, sizeof(seed), 0, hashes);
+  return hashes.h1 & 0xffff;
+}
+
 static inline uint64_t divide_longs_rounding_up(uint64_t x, uint64_t y) {
   if (y == 0) throw std::invalid_argument("divide_longs_rounding_up: bad argument");
   const uint64_t quotient = x / y;
@@ -31,9 +37,9 @@ static inline uint64_t divide_longs_rounding_up(uint64_t x, uint64_t y) {
   else return quotient + 1;
 }
 
-static inline uint8_t floor_log2_of_long(uint64_t x) {
-  if (x < 1) throw std::invalid_argument("floor_log2_of_long: bad argument");
-  uint8_t p = 0;
+static inline uint64_t long_floor_log2_of_long(uint64_t x) {
+  if (x < 1) throw std::invalid_argument("long_floor_log2_of_long: bad argument");
+  uint64_t p = 0;
   uint64_t y = 1;
   while (true) {
     if (y == x) return p;
@@ -69,7 +75,7 @@ static inline uint64_t wegner_count_bits_set_in_matrix(const uint64_t* array, si
 // Note: this is an adaptation of the Java code,
 // which is apparently a variation of Figure 5-2 in "Hacker's Delight"
 // by Henry S. Warren.
-static inline uint32_t warren_bit_count(uint64_t i) {
+static inline uint64_t warren_bit_count(uint64_t i) {
   i = i - ((i >> 1) & 0x5555555555555555ULL);
   i = (i & 0x3333333333333333ULL) + ((i >> 2) & 0x3333333333333333ULL);
   i = (i + (i >> 4)) & 0x0f0f0f0f0f0f0f0fULL;
@@ -79,9 +85,9 @@ static inline uint32_t warren_bit_count(uint64_t i) {
   return i & 0x7f;
 }
 
-static inline uint32_t warren_count_bits_set_in_matrix(const uint64_t* array, uint32_t length) {
-  uint32_t count = 0;
-  for (uint32_t i = 0; i < length; i++) {
+static inline uint64_t warren_count_bits_set_in_matrix(const uint64_t* array, size_t length) {
+  uint64_t count = 0;
+  for (size_t i = 0; i < length; i++) {
     count += warren_bit_count(array[i]);
   }
   return count;
@@ -91,13 +97,13 @@ static inline uint32_t warren_count_bits_set_in_matrix(const uint64_t* array, ui
 
 #define CSA(h,l,a,b,c) {uint64_t u = a ^ b; uint64_t v = c; h = (a & b) | (u & v); l = u ^ v;}
 
-static inline uint32_t count_bits_set_in_matrix(const uint64_t* a, uint32_t length) {
+static inline uint64_t count_bits_set_in_matrix(const uint64_t* a, size_t length) {
   if ((length & 0x7) != 0) throw std::invalid_argument("the length of the array must be a multiple of 8");
-  uint32_t total = 0;
+  uint64_t total = 0;
   uint64_t ones, twos, twos_a, twos_b, fours, fours_a, fours_b, eights;
   fours = twos = ones = 0;
 
-  for (uint32_t i = 0; i <= length - 8; i += 8) {
+  for (size_t i = 0; i <= length - 8; i = i + 8) {
     CSA(twos_a, ones, ones, a[i+0], a[i+1]);
     CSA(twos_b, ones, ones, a[i+2], a[i+3]);
     CSA(fours_a, twos, twos, twos_a, twos_b);

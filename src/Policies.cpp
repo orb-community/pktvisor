@@ -146,7 +146,12 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
                 throw PolicyException(fmt::format("unable to instantiate tap '{}': {}", tap_name, e.what()));
             }
         }
-        // Handler type
+        // Create Policy
+        auto policy = std::make_unique<Policy>(policy_name, tap);
+        // if and only if policy succeeds, we will return this in result set
+        Policy *policy_ptr = policy.get();
+        policy->set_input_stream(input_ptr);
+        // Handler Section
         if (!it->second["handlers"] || !it->second["handlers"].IsMap()) {
             throw PolicyException("missing or invalid handler configuration at key 'handlers'");
         }
@@ -157,38 +162,12 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
         } else if (handler_node["modules"].IsSequence()) {
             handler_sequence = true;
         }
-
-        // Create Policy
-        auto policy = std::make_unique<Policy>(policy_name, tap, handler_sequence);
-        // if and only if policy succeeds, we will return this in result set
-        Policy *policy_ptr = policy.get();
-        policy->set_input_stream(input_ptr);
-
-        // Handler Section
         Config window_config;
         if (handler_node["window_config"] && handler_node["window_config"].IsMap()) {
             try {
                 window_config.config_set_yaml(handler_node["window_config"]);
             } catch (ConfigException &e) {
                 throw PolicyException(fmt::format("invalid stream handler window config: {}", e.what()));
-            }
-        } else {
-            window_config.config_set<uint64_t>("num_periods", _default_num_periods);
-            window_config.config_set<uint64_t>("deep_sample_rate", _default_deep_sample_rate);
-        }
-
-        std::unique_ptr<Policy> input_resources_policy;
-        Policy *input_res_policy_ptr{nullptr};
-        std::unique_ptr<StreamHandler> resources_module;
-        if (input_stream) {
-            // create new policy with resources handler for input stream
-            input_resources_policy = std::make_unique<Policy>(input_stream_module_name + "-resources", tap, false);
-            input_resources_policy->set_input_stream(input_ptr);
-            auto resources_handler_plugin = _registry->handler_plugins().find("input_resources");
-            if (resources_handler_plugin != _registry->handler_plugins().end()) {
-                resources_module = resources_handler_plugin->second->instantiate(input_stream_module_name + "-resources", input_ptr, &window_config);
-                input_resources_policy->add_module(resources_module.get());
-                input_res_policy_ptr = input_resources_policy.get();
             }
         }
 
@@ -216,12 +195,8 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
             if (!module.IsMap()) {
                 throw PolicyException("expecting Handler configuration map");
             }
-
             if (!module["type"] || !module["type"].IsScalar()) {
-                module = module[handler_module_name];
-                if (!module["type"] || !module["type"].IsScalar()) {
-                    throw PolicyException("missing or invalid stream handler type at key 'type'");
-                }
+                throw PolicyException("missing or invalid stream handler type at key 'type'");
             }
             auto handler_module_type = module["type"].as<std::string>();
             auto handler_plugin = _registry->handler_plugins().find(handler_module_type);
@@ -250,26 +225,9 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
                     throw PolicyException(fmt::format("invalid stream handler config for handler '{}': {}", handler_module_name, e.what()));
                 }
             }
-            Config handler_metrics;
-            if (module["metric_groups"]) {
-                if (!module["metric_groups"].IsMap()) {
-                    throw PolicyException("stream handler metric groups is not a map");
-                }
-
-                if (!module["metric_groups"]["enable"] && !module["metric_groups"]["disable"]) {
-                    throw PolicyException("stream handler metric groups should contain enable and/or disable tags");
-                }
-
-                try {
-                    handler_config.config_set_yaml(module["metric_groups"]);
-                } catch (ConfigException &e) {
-                    throw PolicyException(fmt::format("invalid stream handler metrics for handler '{}': {}", handler_module_name, e.what()));
-                }
-            }
             spdlog::get("visor")->info("policy [{}]: instantiating Handler {} of type {}", policy_name, handler_module_name, handler_module_type);
             // note, currently merging the handler config with the window config. do they need to be separate?
             // TODO separate filter config
-            handler_config.config_merge(handler_metrics);
             handler_config.config_merge(handler_filter);
             handler_config.config_merge(window_config);
 
@@ -287,9 +245,6 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
         // make sure policy starts before committing
         try {
             policy->start();
-            if (input_resources_policy) {
-                input_resources_policy->start();
-            }
         } catch (std::runtime_error &e) {
             throw PolicyException(fmt::format("policy [{}] failed to start: {}", policy_name, e.what()));
         }
@@ -299,9 +254,6 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
         // roll back during exception ensures no modules have been added to any of the managers
         try {
             module_add(std::move(policy));
-            if (input_resources_policy) {
-                module_add(std::move(input_resources_policy));
-            }
         } catch (ModuleException &e) {
             throw PolicyException(fmt::format("policy [{}] creation failed (policy): {}", policy_name, e.what()));
         }
@@ -312,9 +264,6 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
         } catch (ModuleException &e) {
             // note that if this call excepts, we are in an unknown state and the exception will propagate
             module_remove(policy_name);
-            if (input_res_policy_ptr) {
-                module_remove(input_res_policy_ptr->name());
-            }
             throw PolicyException(fmt::format("policy [{}] creation failed (input): {}", policy_name, e.what()));
         }
         std::vector<std::string> added_handlers;
@@ -325,18 +274,10 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
                 // if it did not except, add it to the list for rollback upon exception
                 added_handlers.push_back(hname);
             }
-            if (resources_module) {
-                auto hname = resources_module->name();
-                _registry->handler_manager()->module_add(std::move(resources_module));
-                added_handlers.push_back(hname);
-            }
         } catch (ModuleException &e) {
             // note that if any of these calls except, we are in an unknown state and the exception will propagate
             // nothing needs to be stopped because it was not started
             module_remove(policy_name);
-            if (input_res_policy_ptr) {
-                module_remove(input_res_policy_ptr->name());
-            }
             _registry->input_manager()->module_remove(input_stream_module_name);
             for (auto &m : added_handlers) {
                 _registry->handler_manager()->module_remove(m);
@@ -346,9 +287,6 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
         }
 
         // success
-        if (input_res_policy_ptr) {
-            input_ptr->add_policy(input_res_policy_ptr);
-        }
         input_ptr->add_policy(policy_ptr);
         result.push_back(policy_ptr);
     }
@@ -363,7 +301,6 @@ void PolicyManager::remove_policy(const std::string &name)
     }
 
     auto policy = _map[name].get();
-    auto input_stream = policy->input_stream();
     auto input_name = policy->input_stream()->name();
     std::vector<std::string> module_names;
     for (const auto &mod : policy->modules()) {
@@ -375,18 +312,7 @@ void PolicyManager::remove_policy(const std::string &name)
         _registry->handler_manager()->module_remove(name);
     }
 
-    if (input_stream->policies_count() == 1) {
-        // if there is only one policy left on the input stream, and that policy is the input resources policy, then remove it
-        auto input_resources_name = input_name + "-resources";
-        if (_map.count(input_resources_name) != 0) {
-            auto resources_policy = _map[input_resources_name].get();
-            resources_policy->stop();
-            _registry->handler_manager()->module_remove(input_resources_name);
-            _map.erase(input_resources_name);
-        }
-    }
-
-    if (!input_stream->policies_count()) {
+    if (!policy->input_stream()->policies_count()) {
         _registry->input_manager()->module_remove(input_name);
     }
 

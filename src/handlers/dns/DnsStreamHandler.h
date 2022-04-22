@@ -26,25 +26,6 @@ using namespace visor::input::pcap;
 using namespace visor::input::dnstap;
 using namespace visor::input::mock;
 
-// DNS Groups
-namespace group {
-enum DnsMetrics : visor::MetricGroupIntType {
-    Cardinality,
-    Counters,
-    DnsTransactions,
-    TopQnames
-};
-}
-
-enum Protocol : uint64_t {
-    DNSTAP_UDP = dnstap::SocketProtocol::UDP,
-    DNSTAP_TCP = dnstap::SocketProtocol::TCP,
-    DNSTAP_DOT = dnstap::SocketProtocol::DOT,
-    DNSTAP_DOH = dnstap::SocketProtocol::DOH,
-    PCPP_TCP = pcpp::TCP,
-    PCPP_UDP = pcpp::UDP
-};
-
 class DnsMetricsBucket final : public visor::AbstractMetricsBucket
 {
 protected:
@@ -158,8 +139,7 @@ public:
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override;
 
     void process_filtered();
-    void process_dns_layer(bool deep, DnsLayer &payload, pcpp::ProtocolType l3, Protocol l4, uint16_t port, size_t suffix_size = 0);
-    void process_dns_layer(pcpp::ProtocolType l3, Protocol l4, QR side, uint16_t port);
+    void process_dns_layer(bool deep, DnsLayer &payload, bool dnstapped, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint16_t port);
     void process_dnstap(bool deep, const dnstap::Dnstap &payload);
 
     void new_dns_transaction(bool deep, float to90th, float from90th, DnsLayer &dns, PacketDirection dir, DnsTransaction xact);
@@ -167,6 +147,7 @@ public:
 
 class DnsMetricsManager final : public visor::AbstractMetricsManager<DnsMetricsBucket>
 {
+
     QueryResponsePairMgr _qr_pair_manager;
     float _to90th{0.0};
     float _from90th{0.0};
@@ -200,26 +181,23 @@ public:
     }
 
     void process_filtered(timespec stamp);
-    void process_dns_layer(DnsLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowkey, uint16_t port, size_t suffix_size, timespec stamp);
-    void process_dnstap(const dnstap::Dnstap &payload, bool filtered);
+    void process_dns_layer(DnsLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowkey, uint16_t port, timespec stamp);
+    void process_dnstap(const dnstap::Dnstap &payload);
 };
 
 class TcpSessionData final
 {
 public:
-    static constexpr size_t MIN_DNS_QUERY_SIZE = 17;
     using got_msg_cb = std::function<void(std::unique_ptr<uint8_t[]> data, size_t size)>;
 
 private:
     std::string _buffer;
     got_msg_cb _got_dns_msg;
-    bool _invalid_data;
 
 public:
     TcpSessionData(
         got_msg_cb got_data_handler)
         : _got_dns_msg{std::move(got_data_handler)}
-        , _invalid_data(false)
     {
     }
 
@@ -242,14 +220,6 @@ struct TcpFlowData {
 
 class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsManager>
 {
-    static constexpr size_t DNSTAP_TYPE_SIZE = 15;
-
-    struct DnsCacheData {
-        uint32_t flowKey = 0;
-        timespec timestamp = timespec();
-        std::unique_ptr<DnsLayer> dnsLayer;
-    };
-    static thread_local DnsCacheData _cached_dns_layer;
 
     // the input stream sources we support (only one will be in use at a time)
     PcapInputStream *_pcap_stream{nullptr};
@@ -270,41 +240,22 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
     sigslot::connection _tcp_message_connection;
 
     void process_udp_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp);
-    void process_dnstap_cb(const dnstap::Dnstap &, size_t);
+    void process_dnstap_cb(const dnstap::Dnstap &);
     void tcp_message_ready_cb(int8_t side, const pcpp::TcpStreamData &tcpData);
     void tcp_connection_start_cb(const pcpp::ConnectionData &connectionData);
     void tcp_connection_end_cb(const pcpp::ConnectionData &connectionData, pcpp::TcpReassembly::ConnectionEndReason reason);
     void set_start_tstamp(timespec stamp);
     void set_end_tstamp(timespec stamp);
 
-    static const inline std::map<std::string, std::pair<int, int>> _dnstap_map_types = {
-        {"auth", {dnstap::Message_Type_AUTH_QUERY, dnstap::Message_Type_AUTH_RESPONSE}},
-        {"resolver", {dnstap::Message_Type_RESOLVER_QUERY, dnstap::Message_Type_RESOLVER_RESPONSE}},
-        {"client", {dnstap::Message_Type_CLIENT_QUERY, dnstap::Message_Type_CLIENT_RESPONSE}},
-        {"forwarder", {dnstap::Message_Type_FORWARDER_QUERY, dnstap::Message_Type_FORWARDER_RESPONSE}},
-        {"stub", {dnstap::Message_Type_STUB_QUERY, dnstap::Message_Type_STUB_RESPONSE}},
-        {"tool", {dnstap::Message_Type_TOOL_QUERY, dnstap::Message_Type_TOOL_RESPONSE}},
-        {"update", {dnstap::Message_Type_UPDATE_QUERY, dnstap::Message_Type_UPDATE_RESPONSE}}};
-
     // DNS Filters
     enum Filters {
         ExcludingRCode,
         OnlyRCode,
-        OnlyQNameSuffix,
-        DnstapMsgType,
-        FiltersMAX
+        OnlyQNameSuffix
     };
-    std::bitset<Filters::FiltersMAX> _f_enabled;
+    std::bitset<sizeof(Filters)> _f_enabled;
     uint16_t _f_rcode{0};
     std::vector<std::string> _f_qnames;
-    size_t _static_suffix_size{0};
-    std::bitset<DNSTAP_TYPE_SIZE> _f_dnstap_types;
-
-    static const inline StreamMetricsHandler::GroupDefType _group_defs = {
-        {"cardinality", group::DnsMetrics::Cardinality},
-        {"counters", group::DnsMetrics::Counters},
-        {"dns_transaction", group::DnsMetrics::DnsTransactions},
-        {"top_qnames", group::DnsMetrics::TopQnames}};
 
     bool _filtering(DnsLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint16_t port, timespec stamp);
 
@@ -317,12 +268,6 @@ public:
     {
         return "dns";
     }
-
-    size_t consumer_count() const override
-    {
-        return udp_signal.slot_count();
-    }
-
     void start() override;
     void stop() override;
     void info_json(json &j) const override;
