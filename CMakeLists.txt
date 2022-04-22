@@ -5,12 +5,12 @@ cmake_minimum_required(VERSION 3.13)
 #######################################################
 
 # this is the source of truth for semver version
-project(visor VERSION 4.1.0)
+project(visor VERSION 4.2.0)
 
 # for main line release, this is empty
 # for development release, this is "-develop"
 # for release candidate, this is "-rc"
-set(VISOR_PRERELEASE "")
+set(VISOR_PRERELEASE "-develop")
 
 #######################################################
 
