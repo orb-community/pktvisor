@@ -38,7 +38,7 @@ RUN go build -o pktvisor-cli cmd/pktvisor-cli/main.go
 
 FROM debian:bullseye-slim AS runtime
 
-ENV RUNTIME_DEPS "curl ca-certificates libasan6"
+ENV RUNTIME_DEPS "curl ca-certificates libasan6 gdb"
 
 RUN \
     apt-get update && \
@@ -49,7 +49,8 @@ RUN \
 COPY --from=cppbuild /tmp/build/bin/pktvisord /usr/local/sbin/pktvisord
 COPY --from=cppbuild /tmp/build/bin/pktvisor-reader /usr/local/sbin/pktvisor-reader
 COPY --from=gobuild /src/pktvisor-cli /usr/local/bin/pktvisor-cli
-COPY docker/entry.sh /usr/local/bin/
+COPY docker/entry.sh /entry.sh
+RUN chmod a+x /entry.sh
 
-ENTRYPOINT [ "entry.sh" ]
+ENTRYPOINT [ "/entry.sh" ]
 

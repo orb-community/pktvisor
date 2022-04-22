@@ -1,0 +1,7 @@
+test_config.ini
+reports/
+behave_test/
+/site
+/env_tests
+__pycache__/
+doc_generator.py

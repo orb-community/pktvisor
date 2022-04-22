@@ -35,6 +35,7 @@ class IDnsResource
 		size_t m_OffsetInLayer;
 		IDnsResource* m_NextResource;
 		std::string m_DecodedName;
+		std::string m_DecodedNameLower;
 		size_t m_NameLength;
 		uint8_t* m_ExternalRawData;
 
@@ -82,6 +83,11 @@ class IDnsResource
 		 * @return The name of this record
 		 */
 		const std::string& getName() const { return m_DecodedName; }
+
+		/**
+		 * @return The name of this record in lower case
+		 */
+		const std::string& getNameLower() const { return m_DecodedNameLower; }
 
 		/**
 		 * @return The record name's offset in the packet

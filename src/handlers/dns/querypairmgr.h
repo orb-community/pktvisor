@@ -6,7 +6,7 @@
 
 #include <chrono>
 #include <memory>
-#include <unordered_map>
+#include <robin_hood.h>
 
 namespace visor::handler::dns {
 
@@ -32,7 +32,7 @@ class QueryResponsePairMgr
 {
 
     using DnsXactID = std::pair<uint32_t, uint16_t>;
-    typedef std::unordered_map<DnsXactID, DnsTransaction, hash_pair> DnsXactMap;
+    typedef robin_hood::unordered_map<DnsXactID, DnsTransaction, hash_pair> DnsXactMap;
 
     unsigned int _ttl_secs;
     DnsXactMap _dns_transactions;

@@ -39,15 +39,15 @@ allocator_(allocator),
 lg_cur_size_(lg_cur_size),
 lg_max_size_(lg_max_size),
 num_active_(0),
-keys_(allocator_.allocate(1 << lg_cur_size)),
+keys_(allocator_.allocate(1ULL << lg_cur_size)),
 values_(nullptr),
 states_(nullptr)
 {
   AllocV av(allocator_);
-  values_ = av.allocate(1 << lg_cur_size);
+  values_ = av.allocate(1ULL << lg_cur_size);
   AllocU16 au16(allocator_);
-  states_ = au16.allocate(1 << lg_cur_size);
-  std::fill(states_, states_ + (1 << lg_cur_size), 0);
+  states_ = au16.allocate(1ULL << lg_cur_size);
+  std::fill(states_, states_ + (1ULL << lg_cur_size), static_cast<uint16_t>(0));
 }
 
 template<typename K, typename V, typename H, typename E, typename A>
@@ -56,14 +56,14 @@ allocator_(other.allocator_),
 lg_cur_size_(other.lg_cur_size_),
 lg_max_size_(other.lg_max_size_),
 num_active_(other.num_active_),
-keys_(allocator_.allocate(1 << lg_cur_size_)),
+keys_(allocator_.allocate(1ULL << lg_cur_size_)),
 values_(nullptr),
 states_(nullptr)
 {
   AllocV av(allocator_);
-  values_ = av.allocate(1 << lg_cur_size_);
+  values_ = av.allocate(1ULL << lg_cur_size_);
   AllocU16 au16(allocator_);
-  states_ = au16.allocate(1 << lg_cur_size_);
+  states_ = au16.allocate(1ULL << lg_cur_size_);
   const uint32_t size = 1 << lg_cur_size_;
   if (num_active_ > 0) {
     auto num = num_active_;
@@ -177,7 +177,7 @@ uint8_t reverse_purge_hash_map<K, V, H, E, A>::get_lg_max_size() const {
 
 template<typename K, typename V, typename H, typename E, typename A>
 uint32_t reverse_purge_hash_map<K, V, H, E, A>::get_capacity() const {
-  return (1 << lg_cur_size_) * LOAD_FACTOR;
+  return static_cast<uint32_t>((1 << lg_cur_size_) * LOAD_FACTOR);
 }
 
 template<typename K, typename V, typename H, typename E, typename A>
@@ -246,7 +246,7 @@ void reverse_purge_hash_map<K, V, H, E, A>::hash_delete(uint32_t delete_index) {
   // if none are found, the status is changed
   states_[delete_index] = 0; // mark as empty
   keys_[delete_index].~K();
-  uint32_t drift = 1;
+  uint16_t drift = 1;
   const uint32_t mask = (1 << lg_cur_size_) - 1;
   uint32_t probe = (delete_index + drift) & mask; // map length must be a power of 2
   // advance until we find a free location replacing locations as needed
@@ -322,7 +322,7 @@ void reverse_purge_hash_map<K, V, H, E, A>::resize(uint8_t lg_new_size) {
   values_ = av.allocate(new_size);
   AllocU16 au16(allocator_);
   states_ = au16.allocate(new_size);
-  std::fill(states_, states_ + new_size, 0);
+  std::fill(states_, states_ + new_size, static_cast<uint16_t>(0));
   num_active_ = 0;
   lg_cur_size_ = lg_new_size;
   for (uint32_t i = 0; i < old_size; i++) {
