@@ -93,7 +93,6 @@ TEST_CASE("bi-directional frame stream process", "[dnstap][frmstrm]")
 
 TEST_CASE("dnstap file", "[dnstap][file]")
 {
-
     DnstapInputStream stream{"dnstap-test"};
     stream.config_set("dnstap_file", "inputs/dnstap/tests/fixtures/fixture.dnstap");
 
@@ -103,9 +102,9 @@ TEST_CASE("dnstap file", "[dnstap][file]")
 
 TEST_CASE("dnstap tcp socket", "[dnstap][tcp]")
 {
-
     DnstapInputStream stream{"dnstap-test"};
     stream.config_set("tcp", "127.0.0.1:5353");
+    stream.config_set<visor::Configurable::StringList>("only_hosts", {"192.168.0.0/24", "2001:db8::/48"});
 
     stream.start();
     stream.stop();
@@ -113,10 +112,87 @@ TEST_CASE("dnstap tcp socket", "[dnstap][tcp]")
 
 TEST_CASE("dnstap unix socket", "[dnstap][unix]")
 {
-
     DnstapInputStream stream{"dnstap-test"};
     stream.config_set("socket", "/tmp/dnstap-test.sock");
 
     stream.start();
     stream.stop();
+}
+
+TEST_CASE("dnstap file filter by valid subnet", "[dnstap][file][filter]")
+{
+    DnstapInputStream stream{"dnstap-test"};
+    stream.config_set("dnstap_file", "inputs/dnstap/tests/fixtures/fixture.dnstap");
+    stream.config_set<visor::Configurable::StringList>("only_hosts", {"192.168.0.0/24"});
+    uint64_t count_callbacks = 0;
+
+    stream.dnstap_signal.connect([&]([[maybe_unused]] const ::dnstap::Dnstap &d, [[maybe_unused]] size_t size) {
+        ++count_callbacks;
+        return;
+    });
+
+    stream.start();
+    stream.stop();
+
+    CHECK(count_callbacks == 153);
+}
+
+TEST_CASE("dnstap file filter by invalid subnet", "[dnstap][file][filter]")
+{
+    DnstapInputStream stream{"dnstap-test"};
+    stream.config_set("dnstap_file", "inputs/dnstap/tests/fixtures/fixture.dnstap");
+    stream.config_set<visor::Configurable::StringList>("only_hosts", {"192.168.0.12/32"});
+    uint64_t count_callbacks = 0;
+
+    stream.dnstap_signal.connect([&]([[maybe_unused]] const ::dnstap::Dnstap &d, [[maybe_unused]] size_t size) {
+        ++count_callbacks;
+        return;
+    });
+
+    stream.start();
+    stream.stop();
+
+    CHECK(count_callbacks == 0);
+}
+
+TEST_CASE("dnstap invalid filters", "[dnstap][tcp][filter]")
+{
+    DnstapInputStream stream{"dnstap-test"};
+    stream.config_set("tcp", "127.0.0.1:5353");
+
+    SECTION("invalid ipv4 cidr")
+    {
+        stream.config_set<visor::Configurable::StringList>("only_hosts", {"192.168.0.0/24/12ac"});
+        REQUIRE_THROWS_WITH(stream.start(), "invalid CIDR: 192.168.0.0/24/12ac");
+    }
+
+    SECTION("ipv4 cidr over max value")
+    {
+        stream.config_set<visor::Configurable::StringList>("only_hosts", {"192.168.0.0/64"});
+        REQUIRE_THROWS_WITH(stream.start(), "invalid CIDR: 192.168.0.0/64");
+    }
+
+    SECTION("invalid ipv4 ip")
+    {
+        stream.config_set<visor::Configurable::StringList>("only_hosts", {"192.168.AE.0/24"});
+        REQUIRE_THROWS_WITH(stream.start(), "invalid IPv4 address: 192.168.AE.0");
+    }
+
+    SECTION("invalid ipv6 cidr")
+    {
+        stream.config_set<visor::Configurable::StringList>("only_hosts", {"2001:db8::/48/12ac"});
+        REQUIRE_THROWS_WITH(stream.start(), "invalid CIDR: 2001:db8::/48/12ac");
+    }
+
+    SECTION("ipv6 cidr over max value")
+    {
+        stream.config_set<visor::Configurable::StringList>("only_hosts", {"2001:db8::/256"});
+        REQUIRE_THROWS_WITH(stream.start(), "invalid CIDR: 2001:db8::/256");
+    }
+
+    SECTION("invalid ipv6 ip")
+    {
+        stream.config_set<visor::Configurable::StringList>("only_hosts", {"fe80:2030:31:24/12"});
+        REQUIRE_THROWS_WITH(stream.start(), "invalid IPv6 address: fe80:2030:31:24");
+    }
 }

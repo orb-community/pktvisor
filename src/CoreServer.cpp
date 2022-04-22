@@ -230,7 +230,7 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
             return;
         }
         auto content_type = req.get_header_value("Content-Type");
-        if (content_type != "application/x-yaml") {
+        if (content_type != "application/x-yaml" && content_type != "application/json") {
             res.status = 400;
             j["error"] = "Content-Type not supported";
             res.set_content(j.dump(), "text/json");

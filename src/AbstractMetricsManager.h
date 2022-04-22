@@ -4,8 +4,8 @@
 
 #pragma once
 
-#include <chrono>
 #include <atomic>
+#include <chrono>
 #include <deque>
 #include <exception>
 #include <nlohmann/json.hpp>
@@ -21,6 +21,9 @@
 #include <unordered_map>
 
 namespace visor {
+
+constexpr size_t GROUP_SIZE = 64;
+typedef uint32_t MetricGroupIntType;
 
 using json = nlohmann::json;
 
@@ -59,6 +62,8 @@ private:
     bool _recorded_stream = false;
 
 protected:
+    const std::bitset<GROUP_SIZE> *_groups;
+
     // merge the metrics of the specialized metric bucket
     virtual void specialized_merge(const AbstractMetricsBucket &other) = 0;
 
@@ -180,6 +185,7 @@ public:
                 _end_tstamp.tv_sec = other._end_tstamp.tv_sec;
             }
             _rate_events.merge(other._rate_events);
+            _groups = other._groups;
         }
         specialized_merge(other);
     }
@@ -193,6 +199,17 @@ public:
         if (deep) {
             ++_num_samples;
         }
+    }
+
+    void configure_groups(const std::bitset<GROUP_SIZE> *groups)
+    {
+        std::unique_lock lock(_base_mutex);
+        _groups = groups;
+    }
+
+    inline bool group_enabled(MetricGroupIntType g) const
+    {
+        return (*_groups)[g];
     }
 
     virtual void to_json(json &j) const = 0;
@@ -230,6 +247,8 @@ protected:
      */
     bool _recorded_stream = false;
 
+    const std::bitset<GROUP_SIZE> *_groups;
+
 private:
     /**
      * window maintenance
@@ -253,6 +272,7 @@ private:
         std::unique_ptr<MetricsBucketClass> expiring_bucket;
         // this changes the live bucket
         _metric_buckets.emplace_front(std::make_unique<MetricsBucketClass>());
+        _metric_buckets[0]->configure_groups(_groups);
         _metric_buckets[0]->set_start_tstamp(stamp);
         if (_recorded_stream) {
             _metric_buckets[0]->set_recorded_stream();
@@ -303,6 +323,11 @@ protected:
         _metric_buckets[0]->new_event(_deep_sampling_now);
     }
 
+    inline bool group_enabled(MetricGroupIntType g) const
+    {
+        return (*_groups)[g];
+    }
+
     /**
      * call back when the time window period shift
      *
@@ -320,7 +345,6 @@ public:
         , _last_shift_tstamp{0, 0}
         , _next_shift_tstamp{0, 0}
     {
-
         if (window_config->config_exists("deep_sample_rate")) {
             _deep_sample_rate = window_config->config_get<uint64_t>("deep_sample_rate");
         }
@@ -341,7 +365,6 @@ public:
         _next_shift_tstamp.tv_sec += AbstractMetricsManager::PERIOD_SEC;
 
         _metric_buckets.emplace_front(std::make_unique<MetricsBucketClass>());
-
     }
 
     virtual ~AbstractMetricsManager() = default;
@@ -405,6 +428,16 @@ public:
         std::shared_lock rl(_bucket_mutex);
         // bounds checked
         return _metric_buckets.at(period).get();
+    }
+
+    void configure_groups(const std::bitset<GROUP_SIZE> *groups)
+    {
+        std::unique_lock wl(_base_mutex);
+        std::shared_lock rl(_bucket_mutex);
+        _groups = groups;
+        for (const auto &bucket : _metric_buckets) {
+            bucket->configure_groups(groups);
+        }
     }
 
     MetricsBucketClass *live_bucket()

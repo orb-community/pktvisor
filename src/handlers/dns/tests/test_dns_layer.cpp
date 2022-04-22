@@ -374,4 +374,103 @@ TEST_CASE("DNS Filters: only_qname_suffix", "[pcap][dns]")
     CHECK(counters.REFUSED.value() == 0);
     CHECK(counters.NX.value() == 1);
     CHECK(counters.filtered.value() == 14);
+
+    nlohmann::json j;
+    dns_handler.metrics()->bucket(0)->to_json(j);
+
+    CHECK(j["top_qname2"][0]["name"].get<std::string>().find("google.com") != std::string::npos);
+    CHECK(j["top_qname3"][0]["name"] == nullptr);
+}
+
+TEST_CASE("DNS groups", "[pcap][dns]")
+{
+    PcapInputStream stream{"pcap-test"};
+    stream.config_set("pcap_file", "tests/fixtures/dns_udp_tcp_random.pcap");
+    stream.config_set("bpf", "");
+    stream.config_set("host_spec", "192.168.0.0/24");
+    stream.parse_host_spec();
+
+    visor::Config c;
+    c.config_set<uint64_t>("num_periods", 1);
+    DnsStreamHandler dns_handler{"dns-test", &stream, &c};
+
+    SECTION("disable cardinality and counters")
+    {
+        dns_handler.config_set<visor::Configurable::StringList>("disable", {"cardinality", "counters"});
+
+        dns_handler.start();
+        stream.start();
+        stream.stop();
+        dns_handler.stop();
+
+        auto counters = dns_handler.metrics()->bucket(0)->counters();
+        auto event_data = dns_handler.metrics()->bucket(0)->event_data_locked();
+
+        CHECK(event_data.num_events->value() == 5851);
+        CHECK(event_data.num_samples->value() == 5851);
+        CHECK(counters.TCP.value() == 0);
+        CHECK(counters.UDP.value() == 0);
+        CHECK(counters.IPv4.value() == 0);
+        CHECK(counters.IPv6.value() == 0);
+        CHECK(counters.queries.value() == 0);
+        CHECK(counters.replies.value() == 0);
+        CHECK(counters.xacts_total.value() == 2921);
+        CHECK(counters.xacts_in.value() == 0);
+        CHECK(counters.xacts_out.value() == 2921);
+        CHECK(counters.xacts_timed_out.value() == 0);
+
+        nlohmann::json j;
+        dns_handler.metrics()->bucket(0)->to_json(j);
+
+        CHECK(j["cardinality"]["qname"] == nullptr);
+        CHECK(j["top_qname2"][0]["name"] == ".test.com");
+        CHECK(j["top_udp_ports"][0]["name"] == "57975");
+        CHECK(j["top_udp_ports"][0]["estimate"] == 302);
+    }
+
+    SECTION("disable TopQname and Dns Transactions")
+    {
+        dns_handler.config_set<visor::Configurable::StringList>("disable", {"top_qnames", "dns_transaction"});
+
+        dns_handler.start();
+        stream.start();
+        stream.stop();
+        dns_handler.stop();
+
+        auto counters = dns_handler.metrics()->bucket(0)->counters();
+        auto event_data = dns_handler.metrics()->bucket(0)->event_data_locked();
+
+        CHECK(event_data.num_events->value() == 5851);
+        CHECK(event_data.num_samples->value() == 5851);
+        CHECK(counters.TCP.value() == 2880);
+        CHECK(counters.UDP.value() == 2971);
+        CHECK(counters.IPv4.value() == 5851);
+        CHECK(counters.IPv6.value() == 0);
+        CHECK(counters.queries.value() == 2930);
+        CHECK(counters.replies.value() == 2921);
+        CHECK(counters.xacts_total.value() == 0);
+        CHECK(counters.xacts_in.value() == 0);
+        CHECK(counters.xacts_out.value() == 0);
+        CHECK(counters.xacts_timed_out.value() == 0);
+
+        nlohmann::json j;
+        dns_handler.metrics()->bucket(0)->to_json(j);
+
+        CHECK(j["cardinality"]["qname"] == 2036);
+        CHECK(j["top_qname2"][0]["name"] == nullptr);
+        CHECK(j["top_udp_ports"][0]["name"] == "57975");
+        CHECK(j["top_udp_ports"][0]["estimate"] == 302);
+    }
+
+    SECTION("disable invalid dns group")
+    {
+        dns_handler.config_set<visor::Configurable::StringList>("disable", {"top_qnames", "dns_top_wired"});
+        REQUIRE_THROWS_WITH(dns_handler.start(), "dns_top_wired is an invalid/unsupported metric group. The valid groups are cardinality, counters, dns_transaction, top_qnames");
+    }
+
+    SECTION("enable invalid dns group")
+    {
+        dns_handler.config_set<visor::Configurable::StringList>("enable", {"top_qnames", "dns_top_wired"});
+        REQUIRE_THROWS_WITH(dns_handler.start(), "dns_top_wired is an invalid/unsupported metric group. The valid groups are cardinality, counters, dns_transaction, top_qnames");
+    }
 }

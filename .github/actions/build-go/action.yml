@@ -1,0 +1,19 @@
+name: 'docker'
+author: 'Everton Haise Taques <everton.taques@encora.com>'
+description: 'NS1 Labs'
+
+inputs:
+  context:
+    description: "Docker build context"
+    required: true
+    default: "./"
+
+  file:
+    description: "Dockerfile used to build the image"
+    required: true
+    default: "./Dockerfile"
+
+runs:
+    using: 'docker'
+    image: 'Dockerfile'
+  

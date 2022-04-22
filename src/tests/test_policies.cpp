@@ -53,6 +53,9 @@ visor:
 #              max_deep_sample: 75
           special_domain:
             type: dns
+            metric_groups:
+              disable:
+                - "top_qnames"
             filter:
               only_qname_suffix:
                 - ".google.com"
@@ -290,6 +293,65 @@ visor:
              config: not_a_map
 )";
 
+auto policies_config_bad10 = R"(
+version: "1.0"
+
+visor:
+  taps:
+    anycast:
+      input_type: mock
+      config:
+        iface: eth0
+  policies:
+    default_view:
+      kind: collection
+      input:
+        tap: anycast
+        input_type: mock
+      handlers:
+        window_config:
+          num_periods: 5
+          deep_sample_rate: 100
+        modules:
+          default_net:
+             type: net
+          default_dns:
+             type: dns
+             metric_groups:
+               - top_qnames
+               - counters
+)";
+
+auto policies_config_bad11 = R"(
+version: "1.0"
+
+visor:
+  taps:
+    anycast:
+      input_type: mock
+      config:
+        iface: eth0
+  policies:
+    default_view:
+      kind: collection
+      input:
+        tap: anycast
+        input_type: mock
+      handlers:
+        window_config:
+          num_periods: 5
+          deep_sample_rate: 100
+        modules:
+          default_net:
+             type: net
+          default_dns:
+             type: dns
+             metric_groups:
+               allow:
+                 - top_qnames
+                 - counters
+)";
+
 auto policies_config_hseq_bad1 = R"(
 version: "1.0"
 
@@ -508,6 +570,26 @@ TEST_CASE("Policies", "[policies]")
         REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["policies"]), "stream handler configuration is not a map");
     }
 
+    SECTION("Bad Config: handler module not map metric groups")
+    {
+        CoreRegistry registry;
+        registry.start(nullptr);
+        YAML::Node config_file = YAML::Load(policies_config_bad10);
+
+        REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
+        REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["policies"]), "stream handler metric groups is not a map");
+    }
+
+    SECTION("Bad Config: handler module metric groups not valid")
+    {
+        CoreRegistry registry;
+        registry.start(nullptr);
+        YAML::Node config_file = YAML::Load(policies_config_bad11);
+
+        REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
+        REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["policies"]), "stream handler metric groups should contain enable and/or disable tags");
+    }
+
     SECTION("Bad Config: invalid handler modules order")
     {
         CoreRegistry registry;
@@ -575,7 +657,7 @@ TEST_CASE("Policies", "[policies]")
         CHECK(policy->modules()[1]->running());
         CHECK(policy->modules()[2]->running());
         policy->stop();
-        CHECK(!policy->input_stream()->running());
+        CHECK(policy->input_stream()->running());
         CHECK(!policy->modules()[0]->running());
         CHECK(!policy->modules()[1]->running());
         CHECK(!policy->modules()[2]->running());
@@ -614,6 +696,39 @@ TEST_CASE("Policies", "[policies]")
         CHECK(new_policy->modules()[0]->running());
         CHECK(new_policy->modules()[1]->running());
         CHECK(new_policy->modules()[2]->running());
+        new_lock.unlock();
+        REQUIRE_NOTHROW(registry.policy_manager()->remove_policy("default_view"));
+    }
+
+    SECTION("Good Config, test remove sequence handler policy and add again")
+    {
+        CoreRegistry registry;
+        registry.start(nullptr);
+        YAML::Node config_file = YAML::Load(policies_config_hseq);
+
+        CHECK(config_file["visor"]["policies"]);
+        CHECK(config_file["visor"]["policies"].IsMap());
+
+        REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
+        REQUIRE_NOTHROW(registry.policy_manager()->load(config_file["visor"]["policies"]));
+
+        REQUIRE(registry.policy_manager()->module_exists("default_view"));
+        auto [policy, lock] = registry.policy_manager()->module_get_locked("default_view");
+        CHECK(policy->name() == "default_view");
+        CHECK(policy->input_stream()->running());
+        CHECK(policy->modules()[0]->running());
+        CHECK(policy->modules()[1]->running());
+        lock.unlock();
+
+        REQUIRE_NOTHROW(registry.policy_manager()->remove_policy("default_view"));
+
+        REQUIRE_NOTHROW(registry.policy_manager()->load(config_file["visor"]["policies"]));
+        REQUIRE(registry.policy_manager()->module_exists("default_view"));
+        auto [new_policy, new_lock] = registry.policy_manager()->module_get_locked("default_view");
+        CHECK(new_policy->name() == "default_view");
+        CHECK(new_policy->input_stream()->running());
+        CHECK(new_policy->modules()[0]->running());
+        CHECK(new_policy->modules()[1]->running());
         new_lock.unlock();
         REQUIRE_NOTHROW(registry.policy_manager()->remove_policy("default_view"));
     }

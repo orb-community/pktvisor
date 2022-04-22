@@ -381,7 +381,7 @@ private:
   // The following computes an approximation to the lower bound of a Frequentist
   // confidence interval based on the tails of the Binomial distribution.
   static double compute_approx_binomial_lower_bound(unsigned long long num_samples, double theta, unsigned num_std_devs) {
-    if (theta == 1) return num_samples;
+    if (theta == 1) return static_cast<double>(num_samples);
     if (num_samples == 0) return 0;
     if (num_samples == 1) {
       const double delta = delta_of_num_std_devs[num_std_devs];
@@ -395,24 +395,24 @@ private:
     }
     // at this point we know 2 <= num_samples <= 120
     if (theta > (1 - 1e-5)) { // empirically-determined threshold
-      return num_samples;
+      return static_cast<double>(num_samples);
     }
     if (theta < (num_samples / 360.0)) { // empirically-determined threshold
       // here we use the Gaussian approximation, but with a modified num_std_devs
-      const unsigned index = 3 * num_samples + (num_std_devs - 1);
+      const unsigned index = 3 * static_cast<unsigned>(num_samples) + (num_std_devs - 1);
       const double raw_lb = cont_classic_lb(num_samples, theta, lb_equiv_table[index]);
       return raw_lb - 0.5; // fake round down
     }
     // This is the most difficult range to approximate; we will compute an "exact" LB.
     // We know that est <= 360, so specialNStar() shouldn't be ridiculously slow.
     const double delta = delta_of_num_std_devs[num_std_devs];
-    return special_n_star(num_samples, theta, delta); // no need to round
+    return static_cast<double>(special_n_star(num_samples, theta, delta)); // no need to round
   }
 
   // The following computes an approximation to the upper bound of a Frequentist
   // confidence interval based on the tails of the Binomial distribution.
   static double compute_approx_binomial_upper_bound(unsigned long long num_samples, double theta, unsigned num_std_devs) {
-    if (theta == 1) return num_samples;
+    if (theta == 1) return static_cast<double>(num_samples);
     if (num_samples == 0) {
       const double delta = delta_of_num_std_devs[num_std_devs];
       const double raw_ub = std::log(delta) / std::log(1 - theta);
@@ -425,18 +425,18 @@ private:
     }
     // at this point we know 2 <= num_samples <= 120
     if (theta > (1 - 1e-5)) { // empirically-determined threshold
-      return num_samples + 1;
+      return static_cast<double>(num_samples + 1);
     }
     if (theta < (num_samples / 360.0)) { // empirically-determined threshold
       // here we use the Gaussian approximation, but with a modified num_std_devs
-      const unsigned index = 3 * num_samples + (num_std_devs - 1);
+      const unsigned index = 3 * static_cast<unsigned>(num_samples) + (num_std_devs - 1);
       const double raw_ub = cont_classic_ub(num_samples, theta, ub_equiv_table[index]);
       return raw_ub + 0.5; // fake round up
     }
     // This is the most difficult range to approximate; we will compute an "exact" UB.
     // We know that est <= 360, so specialNPrimeF() shouldn't be ridiculously slow.
     const double delta = delta_of_num_std_devs[num_std_devs];
-    return special_n_prime_f(num_samples, theta, delta); // no need to round
+    return static_cast<double>(special_n_prime_f(num_samples, theta, delta)); // no need to round
   }
 
   static void check_theta(double theta) {

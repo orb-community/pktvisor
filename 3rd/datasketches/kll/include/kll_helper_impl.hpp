@@ -55,28 +55,28 @@ uint32_t kll_helper::compute_total_capacity(uint16_t k, uint8_t m, uint8_t num_l
   return total;
 }
 
-uint32_t kll_helper::level_capacity(uint16_t k, uint8_t numLevels, uint8_t height, uint8_t min_wid) {
+uint16_t kll_helper::level_capacity(uint16_t k, uint8_t numLevels, uint8_t height, uint8_t min_wid) {
   if (height >= numLevels) throw std::invalid_argument("height >= numLevels");
   const uint8_t depth = numLevels - height - 1;
-  return std::max((uint32_t) min_wid, int_cap_aux(k, depth));
+  return std::max<uint16_t>(min_wid, int_cap_aux(k, depth));
 }
 
-uint32_t kll_helper::int_cap_aux(uint16_t k, uint8_t depth) {
+uint16_t kll_helper::int_cap_aux(uint16_t k, uint8_t depth) {
   if (depth > 60) throw std::invalid_argument("depth > 60");
   if (depth <= 30) return int_cap_aux_aux(k, depth);
   const uint8_t half = depth / 2;
   const uint8_t rest = depth - half;
-  const uint32_t tmp = int_cap_aux_aux(k, half);
+  const uint16_t tmp = int_cap_aux_aux(k, half);
   return int_cap_aux_aux(tmp, rest);
 }
 
-uint32_t kll_helper::int_cap_aux_aux(uint16_t k, uint8_t depth) {
+uint16_t kll_helper::int_cap_aux_aux(uint16_t k, uint8_t depth) {
   if (depth > 30) throw std::invalid_argument("depth > 30");
   const uint64_t twok = k << 1; // for rounding, we pre-multiply by 2
   const uint64_t tmp = (uint64_t) (((uint64_t) twok << depth) / powers_of_three[depth]);
   const uint64_t result = (tmp + 1) >> 1; // then here we add 1 and divide by 2
   if (result > k) throw std::logic_error("result > k");
-  return result;
+  return static_cast<uint16_t>(result);
 }
 
 uint64_t kll_helper::sum_the_sample_weights(uint8_t num_levels, const uint32_t* levels) {

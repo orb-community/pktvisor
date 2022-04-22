@@ -6,6 +6,7 @@
 #include <functional>
 
 #include "CoreServer.h"
+#include "CrashpadHandler.h"
 #include "HandlerManager.h"
 #include "InputStreamManager.h"
 #include "Policies.h"
@@ -54,8 +55,8 @@ static const char USAGE[] =
       --no-track                  Don't send lightweight, anonymous usage metrics
       --version                   Show version
     Web Server Options:
-      -l HOST                     Run web server on the given host or IP [default: localhost]
-      -p PORT                     Run web server on the given port [default: 10853]
+      -l HOST                     Run web server on the given host or IP (default: localhost)
+      -p PORT                     Run web server on the given port (default: 10853)
       --tls                       Enable TLS on the web server
       --tls-cert FILE             Use given TLS cert. Required if --tls is enabled.
       --tls-key FILE              Use given TLS private key. Required if --tls is enabled.
@@ -68,6 +69,11 @@ static const char USAGE[] =
     Configuration:
       --config FILE               Use specified YAML configuration to configure options, Taps, and Collection Policies
                                   Please see https://pktvisor.dev for more information
+    Crashpad:
+      --cp-disable                Disable crashpad collector
+      --cp-token TOKEN            Crashpad token for remote crash reporting
+      --cp-url URL                Crashpad server url
+      --cp-path PATH              Crashpad handler binary
     Modules:
       --module-list               List all modules which have been loaded (builtin and dynamic).
       --module-dir DIR            Set module load path. All modules in this directory will be loaded.
@@ -78,8 +84,8 @@ static const char USAGE[] =
       --prometheus                Ignored, Prometheus output always enabled (left for backwards compatibility)
       --prom-instance ID          Optionally set the 'instance' label to given ID
     Handler Module Defaults:
-      --max-deep-sample N         Never deep sample more than N% of streams (an int between 0 and 100) [default: 100]
-      --periods P                 Hold this many 60 second time periods of history in memory [default: 5]
+      --max-deep-sample N         Never deep sample more than N% of streams (an int between 0 and 100) (default: 100)
+      --periods P                 Hold this many 60 second time periods of history in memory (default: 5)
     pcap Input Module Options: (applicable to default policy when IFACE is specified only)
       -b BPF                      Filter packets using the given tcpdump compatible filter expression. Example: "port 53"
       -H HOSTSPEC                 Specify subnets (comma separated) to consider HOST, in CIDR form. In live capture this
@@ -122,6 +128,14 @@ struct CmdOptions {
     };
     WebServer web_server;
 
+    struct Crashpad {
+        bool disable{false};
+        std::pair<bool, std::string> token{false, ""};
+        std::pair<bool, std::string> url{false, ""};
+        std::pair<bool, std::string> path{false, ""};
+    };
+    Crashpad crashpad_info;
+
     struct Module {
         bool list{false};
         std::pair<bool, std::string> dir{false, ""};
@@ -150,7 +164,7 @@ void fill_cmd_options(std::map<std::string, docopt::value> args, CmdOptions &opt
                 exit(EXIT_FAILURE);
             }
 
-            options.config = std::make_pair(true, config_file);
+            options.config = {true, config_file};
 
             if (config_file["visor"]["config"] && config_file["visor"]["config"].IsMap()) {
                 config = config_file["visor"]["config"];
@@ -170,74 +184,102 @@ void fill_cmd_options(std::map<std::string, docopt::value> args, CmdOptions &opt
     options.prometheus = (config["prometheus"] && config["prometheus"].as<bool>()) || args["--prometheus"].asBool();
 
     if (args["--log-file"]) {
-        options.log_file = std::make_pair(true, args["--log-file"].asString());
+        options.log_file = {true, args["--log-file"].asString()};
     } else if (config["log_file"]) {
-        options.log_file = std::make_pair(true, config["log_file"].as<std::string>());
+        options.log_file = {true, config["log_file"].as<std::string>()};
     }
 
     if (args["--prom-instance"]) {
-        options.prom_instance = std::make_pair(true, args["--prom-instance"].asString());
+        options.prom_instance = {true, args["--prom-instance"].asString()};
     } else if (config["prom_instance"]) {
-        options.prom_instance = std::make_pair(true, config["prom_instance"].as<std::string>());
+        options.prom_instance = {true, config["prom_instance"].as<std::string>()};
     }
 
     if (args["--geo-city"]) {
-        options.geo_city = std::make_pair(true, args["--geo-city"].asString());
+        options.geo_city = {true, args["--geo-city"].asString()};
     } else if (config["geo_city"]) {
-        options.geo_city = std::make_pair(true, config["geo_city"].as<std::string>());
+        options.geo_city = {true, config["geo_city"].as<std::string>()};
     }
 
     if (args["--geo-asn"]) {
-        options.geo_asn = std::make_pair(true, args["--geo-asn"].asString());
+        options.geo_asn = {true, args["--geo-asn"].asString()};
     } else if (config["geo_asn"]) {
-        options.geo_asn = std::make_pair(true, config["geo_asn"].as<std::string>());
+        options.geo_asn = {true, config["geo_asn"].as<std::string>()};
     }
 
     if (args["--max-deep-sample"]) {
-        options.max_deep_sample = std::make_pair(true, static_cast<unsigned int>(args["--max-deep-sample"].asLong()));
+        options.max_deep_sample = {true, static_cast<unsigned int>(args["--max-deep-sample"].asLong())};
     } else if (config["max_deep_sample"]) {
-        options.max_deep_sample = std::make_pair(true, config["max_deep_sample"].as<unsigned int>());
+        options.max_deep_sample = {true, config["max_deep_sample"].as<unsigned int>()};
+    } else {
+        options.max_deep_sample = {false, 100};
     }
 
     if (args["--periods"]) {
-        options.periods = std::make_pair(true, static_cast<unsigned int>(args["--periods"].asLong()));
+        options.periods = {true, static_cast<unsigned int>(args["--periods"].asLong())};
     } else if (config["periods"]) {
-        options.periods = std::make_pair(true, config["periods"].as<unsigned int>());
+        options.periods = {true, config["periods"].as<unsigned int>()};
+    } else {
+        options.periods = {false, 5};
     }
 
     options.web_server.tls_support = (config["tls"] && config["tls"].as<bool>()) || args["--tls"].asBool();
     options.web_server.admin_api = (config["admin_api"] && config["admin_api"].as<bool>()) || args["--admin-api"].asBool();
 
     if (args["-p"]) {
-        options.web_server.port = std::make_pair(true, static_cast<unsigned int>(args["-p"].asLong()));
+        options.web_server.port = {true, static_cast<unsigned int>(args["-p"].asLong())};
     } else if (config["port"]) {
-        options.web_server.port = std::make_pair(true, config["port"].as<unsigned int>());
+        options.web_server.port = {true, config["port"].as<unsigned int>()};
+    } else {
+        options.web_server.port = {false, 10853};
     }
 
     if (args["-l"]) {
-        options.web_server.host = std::make_pair(true, args["-l"].asString());
+        options.web_server.host = {true, args["-l"].asString()};
     } else if (config["host"]) {
-        options.web_server.host = std::make_pair(true, config["host"].as<std::string>());
+        options.web_server.host = {true, config["host"].as<std::string>()};
+    } else {
+        options.web_server.host = {false, "localhost"};
     }
 
     if (args["--tls-cert"]) {
-        options.web_server.tls_cert = std::make_pair(true, args["--tls-cert"].asString());
+        options.web_server.tls_cert = {true, args["--tls-cert"].asString()};
     } else if (config["tls_cert"]) {
-        options.web_server.tls_cert = std::make_pair(true, config["tls_cert"].as<std::string>());
+        options.web_server.tls_cert = {true, config["tls_cert"].as<std::string>()};
     }
 
     if (args["--tls-key"]) {
-        options.web_server.tls_key = std::make_pair(true, args["--tls-key"].asString());
+        options.web_server.tls_key = {true, args["--tls-key"].asString()};
     } else if (config["tls_key"]) {
-        options.web_server.tls_key = std::make_pair(true, config["tls_key"].as<std::string>());
+        options.web_server.tls_key = {true, config["tls_key"].as<std::string>()};
     }
 
     options.module.list = (config["module_list"] && config["module_list"].as<bool>()) || args["--module-list"].asBool();
 
     if (args["--module-dir"]) {
-        options.module.dir = std::make_pair(true, args["--module-dir"].asString());
+        options.module.dir = {true, args["--module-dir"].asString()};
     } else if (config["module_dir"]) {
-        options.module.dir = std::make_pair(true, config["module_dir"].as<std::string>());
+        options.module.dir = {true, config["module_dir"].as<std::string>()};
+    }
+
+    options.crashpad_info.disable = (config["cp_disable"] && config["cp_disable"].as<bool>()) || args["--cp-disable"].asBool();
+
+    if (args["--cp-token"]) {
+        options.crashpad_info.token = {true, args["--cp-token"].asString()};
+    } else if (config["cp_token"]) {
+        options.crashpad_info.token = {true, config["cp_token"].as<std::string>()};
+    }
+
+    if (args["--cp-url"]) {
+        options.crashpad_info.url = {true, args["--cp-url"].asString()};
+    } else if (config["cp_url"]) {
+        options.crashpad_info.url = {true, config["cp_url"].as<std::string>()};
+    }
+
+    if (args["--cp-path"]) {
+        options.crashpad_info.path = {true, args["--cp-path"].asString()};
+    } else if (config["cp_path"]) {
+        options.crashpad_info.path = {true, config["cp_path"].as<std::string>()};
     }
 }
 
@@ -377,12 +419,30 @@ int main(int argc, char *argv[])
         logger->set_level(spdlog::level::debug);
     }
 
+    // crashpad support
+    if (!options.crashpad_info.disable) {
+        if (options.crashpad_info.token.first || options.crashpad_info.url.first || options.crashpad_info.path.first) {
+            if (options.crashpad_info.token.first && options.crashpad_info.url.first && options.crashpad_info.path.first) {
+                if (!crashpad::start_crashpad_handler(options.crashpad_info.token.second, options.crashpad_info.url.second, options.crashpad_info.path.second)) {
+                    logger->error("failed to setup crashpad");
+                }
+            } else {
+                logger->error("missing information to setup crashpad");
+                exit(EXIT_FAILURE);
+            }
+        }
+    }
+
     // modules
     CoreRegistry registry;
     if (options.module.dir.first) {
         registry.input_plugin_registry()->setPluginDirectory(options.module.dir.second);
         registry.handler_plugin_registry()->setPluginDirectory(options.module.dir.second);
     }
+
+    // window config defaults for all policies
+    registry.policy_manager()->set_default_deep_sample_rate(options.max_deep_sample.second);
+    registry.policy_manager()->set_default_num_periods(options.periods.second);
 
     logger->info("{} starting up", VISOR_VERSION);
 
