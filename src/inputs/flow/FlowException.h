@@ -13,6 +13,11 @@ public:
         : std::runtime_error(msg)
     {
     }
+
+    FlowException(std::string msg)
+        : std::runtime_error(msg)
+    {
+    }
 };
 
 }

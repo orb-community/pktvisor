@@ -80,6 +80,7 @@ TEST_CASE("Check resources for dnstap input", "[dnstap][resources]")
 TEST_CASE("Check resources for sflow input", "[sflow][resources]")
 {
     FlowInputStream stream{"sflow-test"};
+    stream.config_set("flow_type", "sflow");
     stream.config_set("pcap_file", "tests/fixtures/ecmp.pcap");
 
     visor::Config c;

@@ -1,14 +1,13 @@
-add_library(netflow
-        collector.c
-        ipfix.c
-        netflow_v1.c
-        netflow_v5_v7.c
-        netflow_v9.c
-        )
+add_library(netflow INTERFACE)
 
 target_include_directories(netflow
-        PUBLIC
+        INTERFACE
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
         )
 
 target_compile_features(netflow INTERFACE cxx_std_11)
+
+target_sources(netflow
+        INTERFACE
+        ${CMAKE_CURRENT_SOURCE_DIR}/netflow.h
+        )

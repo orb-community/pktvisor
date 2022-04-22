@@ -12,6 +12,7 @@ namespace visor::input::flow {
 
 FlowInputStream::FlowInputStream(const std::string &name)
     : visor::InputStream(name)
+    , _flow_type(Type::UNKNOWN)
     , _error_count(0)
 {
     _logger = spdlog::get("visor");
@@ -25,6 +26,19 @@ void FlowInputStream::start()
         return;
     }
 
+    if (config_exists("flow_type")) {
+        auto flow_type = config_get<std::string>("flow_type");
+        if (flow_type == "sflow") {
+            _flow_type = Type::SFLOW;
+        } else if (flow_type == "netflow") {
+            _flow_type = Type::NETFLOW;
+        } else {
+            throw FlowException(fmt::format("invalid flow type: {}", flow_type));
+        }
+    } else {
+        throw FlowException("flow config must specify flow_type");
+    }
+
     if (config_exists("pcap_file")) {
         // read sflow from pcap file. this is a special case from a command line utility
         _running = true;
@@ -33,7 +47,7 @@ void FlowInputStream::start()
     } else if (config_exists("port") && config_exists("bind")) {
         _create_frame_stream_udp_socket();
     } else {
-        throw FlowException("sflow config must specify port and bind");
+        throw FlowException("flow config must specify port and bind");
     }
 
     _running = true;
@@ -49,18 +63,34 @@ void FlowInputStream::_read_from_pcap_file()
     datasketches::frequent_items_sketch<uint16_t> sketch(3);
 
     while (reader->getNextPacket(rawPacket)) {
-        pcpp::Packet sflow_pkt(&rawPacket);
-        if (sflow_pkt.isPacketOfType(pcpp::UDP)) {
-            pcpp::UdpLayer *udpLayer = sflow_pkt.getLayerOfType<pcpp::UdpLayer>();
-            SFSample sample;
-            std::memset(&sample, 0, sizeof(sample));
-            sample.rawSample = udpLayer->getLayerPayload();
-            sample.rawSampleLen = udpLayer->getLayerPayloadSize();
-            try {
-                read_sflow_datagram(&sample);
-                sflow_signal(sample);
-            } catch (const std::exception &e) {
-                _logger->error(e.what());
+        if (_flow_type == Type::SFLOW) {
+            pcpp::Packet sflow_pkt(&rawPacket);
+            if (sflow_pkt.isPacketOfType(pcpp::UDP)) {
+                pcpp::UdpLayer *udpLayer = sflow_pkt.getLayerOfType<pcpp::UdpLayer>();
+                SFSample sample;
+                std::memset(&sample, 0, sizeof(sample));
+                sample.rawSample = udpLayer->getLayerPayload();
+                sample.rawSampleLen = udpLayer->getLayerPayloadSize();
+                try {
+                    read_sflow_datagram(&sample);
+                    sflow_signal(sample);
+                } catch (const std::exception &e) {
+                    _logger->error(e.what());
+                }
+            }
+        } else if (_flow_type == Type::NETFLOW) {
+            pcpp::Packet sflow_pkt(&rawPacket);
+            if (sflow_pkt.isPacketOfType(pcpp::UDP)) {
+                pcpp::UdpLayer *udpLayer = sflow_pkt.getLayerOfType<pcpp::UdpLayer>();
+                NFSample sample;
+                std::memset(&sample, 0, sizeof(sample));
+                sample.raw_sample = udpLayer->getLayerPayload();
+                sample.raw_sample_len = udpLayer->getLayerPayloadSize();
+                if (process_netflow_packet(&sample)) {
+                    netflow_signal(sample);
+                } else {
+                    _logger->error("invalid netflow packet");
+                }
             }
         }
     }
@@ -107,22 +137,27 @@ void FlowInputStream::_create_frame_stream_udp_socket()
     });
 
     // ListenEvent happens on client connection
-    _udp_server_h->on<uvw::UDPDataEvent>([this](const uvw::UDPDataEvent &event, uvw::UDPHandle &) {
-        SFSample sample;
-        std::memset(&sample, 0, sizeof(sample));
-        sample.rawSample = reinterpret_cast<uint8_t *>(event.data.get());
-        sample.rawSampleLen = event.length;
-        sample.sourceIP.type = SFLADDRESSTYPE_IP_V4;
-        struct sockaddr_in peer4;
-        inet_pton(AF_INET, event.sender.ip.c_str(), &(peer4.sin_addr));
-        std::memcpy(&sample.sourceIP.address.ip_v4.addr, &peer4.sin_addr, 4);
-        try {
-            read_sflow_datagram(&sample);
-            sflow_signal(sample);
-        } catch (const std::exception &e) {
-            ++_error_count;
-        }
-    });
+    if (_flow_type == Type::SFLOW) {
+        _udp_server_h->on<uvw::UDPDataEvent>([this](const uvw::UDPDataEvent &event, uvw::UDPHandle &) {
+            SFSample sample;
+            std::memset(&sample, 0, sizeof(sample));
+            sample.rawSample = reinterpret_cast<uint8_t *>(event.data.get());
+            sample.rawSampleLen = event.length;
+            sample.sourceIP.type = SFLADDRESSTYPE_IP_V4;
+            struct sockaddr_in peer4;
+            inet_pton(AF_INET, event.sender.ip.c_str(), &(peer4.sin_addr));
+            std::memcpy(&sample.sourceIP.address.ip_v4.addr, &peer4.sin_addr, 4);
+            try {
+                read_sflow_datagram(&sample);
+                sflow_signal(sample);
+            } catch (const std::exception &e) {
+                ++_error_count;
+            }
+        });
+    } else if (_flow_type == Type::NETFLOW) {
+        _udp_server_h->on<uvw::UDPDataEvent>([this](const uvw::UDPDataEvent &event, uvw::UDPHandle &) {
+        });
+    }
 
     _logger->info("[{}] binding sflow UDP server on {}:{}", _name, bind, port);
     _udp_server_h->bind(bind, port);
@@ -157,5 +192,4 @@ void FlowInputStream::info_json(json &j) const
     common_info_json(j);
     j[schema_key()]["packet_errors"] = _error_count.load();
 }
-
 }

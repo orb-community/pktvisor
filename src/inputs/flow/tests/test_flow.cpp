@@ -8,16 +8,17 @@ TEST_CASE("sflow pcap file", "[flow][sflow][file]")
 
     FlowInputStream stream{"sflow-test"};
     stream.config_set("pcap_file", "tests/fixtures/ecmp.pcap");
+    stream.config_set("flow_type", "sflow");
 
     CHECK_NOTHROW(stream.start());
     CHECK_NOTHROW(stream.stop());
 
-    CHECK(stream.schema_key() == "sflow");
+    CHECK(stream.schema_key() == "flow");
     CHECK(stream.consumer_count() == 0);
 
     nlohmann::json j;
     stream.info_json(j);
-    CHECK(j["sflow"]["packet_errors"] == 0);
+    CHECK(j["flow"]["packet_errors"] == 0);
     CHECK(j["module"]["config"]["pcap_file"] == "tests/fixtures/ecmp.pcap");
 }
 
@@ -28,6 +29,7 @@ TEST_CASE("sflow udp socket", "[sflow][udp]")
     uint64_t port = 6343;
 
     FlowInputStream stream{"sflow-test"};
+    stream.config_set("flow_type", "sflow");
     stream.config_set("bind", bind);
     stream.config_set("port", port);
 
@@ -48,12 +50,20 @@ TEST_CASE("sflow udp socket", "[sflow][udp]")
 
     nlohmann::json j;
     stream.info_json(j);
-    CHECK(j["sflow"]["packet_errors"] == 1);
+    CHECK(j["flow"]["packet_errors"] == 1);
+}
+
+TEST_CASE("flow without type", "[flow]")
+{
+    FlowInputStream stream{"sflow-test"};
+
+    CHECK_THROWS_WITH(stream.start(), "flow config must specify flow_type");
 }
 
 TEST_CASE("sflow udp socket without bind", "[flow][sflow][udp]")
 {
     FlowInputStream stream{"sflow-test"};
+    stream.config_set("flow_type", "sflow");
 
-    CHECK_THROWS_WITH(stream.start(), "sflow config must specify port and bind");
+    CHECK_THROWS_WITH(stream.start(), "flow config must specify port and bind");
 }
