@@ -5,6 +5,7 @@
 package client
 
 var (
-	VisorVersionNum = "${VISOR_VERSION_NUM}"
-	VisorVersion    = "${VISOR_VERSION}"
+    VisorVersionNum = "${VISOR_VERSION_NUM}"
+    VisorVersion = "${VISOR_VERSION}"
 )
+

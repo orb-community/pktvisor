@@ -24,27 +24,19 @@
 
 namespace datasketches {
 
-// forward declaration
-template<typename T, typename C, typename S, typename A> class kll_sketch;
-
 template <typename T, typename C, typename A>
 class kll_quantile_calculator {
   public:
-    using Entry = std::pair<T, uint64_t>;
-    using AllocEntry = typename std::allocator_traits<A>::template rebind_alloc<Entry>;
-    using Container = std::vector<Entry, AllocEntry>;
-    using const_iterator = typename Container::const_iterator;
-
-    template<typename S>
-    kll_quantile_calculator(const kll_sketch<T, C, S, A>& sketch);
-
+    // assumes that all levels are sorted including level 0
+    kll_quantile_calculator(const T* items, const uint32_t* levels, uint8_t num_levels, uint64_t n, const A& allocator);
     T get_quantile(double fraction) const;
-    const_iterator begin() const;
-    const_iterator end() const;
 
   private:
     using AllocU32 = typename std::allocator_traits<A>::template rebind_alloc<uint32_t>;
     using vector_u32 = std::vector<uint32_t, AllocU32>;
+    using Entry = std::pair<T, uint64_t>;
+    using AllocEntry = typename std::allocator_traits<A>::template rebind_alloc<Entry>;
+    using Container = std::vector<Entry, AllocEntry>;
     uint64_t n_;
     vector_u32 levels_;
     Container entries_;
@@ -53,7 +45,7 @@ class kll_quantile_calculator {
     T approximately_answer_positional_query(uint64_t pos) const;
     void convert_to_preceding_cummulative();
     uint32_t chunk_containing_pos(uint64_t pos) const;
-    uint32_t search_for_chunk_containing_pos(uint64_t pos, uint64_t l, uint64_t r) const;
+    uint32_t search_for_chunk_containing_pos(uint64_t pos, uint32_t l, uint32_t r) const;
     static void merge_sorted_blocks(Container& entries, const uint32_t* levels, uint8_t num_levels, uint32_t num_items);
     static void merge_sorted_blocks_direct(Container& orig, Container& temp, const uint32_t* levels, uint8_t starting_level, uint8_t num_levels);
     static void merge_sorted_blocks_reversed(Container& orig, Container& temp, const uint32_t* levels, uint8_t starting_level, uint8_t num_levels);

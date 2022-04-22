@@ -43,6 +43,6 @@ target_link_libraries(unit-tests-input-dnstap
         )
 
 add_test(NAME unit-tests-input-dnstap
-        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/src
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/src
         COMMAND unit-tests-input-dnstap
         )

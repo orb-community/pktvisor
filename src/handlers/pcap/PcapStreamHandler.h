@@ -100,12 +100,6 @@ public:
     {
         return "pcap";
     }
-
-    size_t consumer_count() const override
-    {
-        return 0;
-    }
-
     void start() override;
     void stop() override;
 };

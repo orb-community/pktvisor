@@ -71,9 +71,9 @@ PcapInputStream::PcapInputStream(const std::string &name)
           this,
           _tcp_connection_start_cb,
           _tcp_connection_end_cb,
-          {true, 1, 1000, 50})
+          {true, 5, 500, 50})
 {
-    pcpp::Logger::getInstance().suppressLogs();
+    pcpp::LoggerPP::getInstance().suppressErrors();
 }
 
 PcapInputStream::~PcapInputStream()
@@ -98,7 +98,7 @@ void PcapInputStream::start()
     }
 
     if (config_exists("debug")) {
-        pcpp::Logger::getInstance().setAllModlesToLogLevel(pcpp::Logger::LogLevel::Debug);
+        pcpp::LoggerPP::getInstance().setAllModlesToLogLevel(pcpp::LoggerPP::LogLevel::Debug);
     }
 
     _cur_pcap_source = PcapInputStream::DefaultPcapSource;
@@ -157,7 +157,30 @@ void PcapInputStream::start()
             }
         }
 
-        _pcapDevice = std::unique_ptr<pcpp::PcapLiveDevice>(pcapDevice->clone());
+        // PcapPlusPlus upstream incompatibility note: this block requires ns1 fork of PcapPlusPlus until upstream
+        // makes PcapLiveDevice constructor pubic
+        pcap_if_t *interfaceList;
+        char errbuf[PCAP_ERRBUF_SIZE];
+        int err = pcap_findalldevs(&interfaceList, errbuf);
+        if (err < 0) {
+            throw PcapException("Error searching for pcap devices: " + std::string(errbuf));
+        }
+
+        pcap_if_t *currInterface = interfaceList;
+        while (currInterface != NULL) {
+            if (currInterface->name != pcapDevice->getName()) {
+                currInterface = currInterface->next;
+                continue;
+            }
+            _pcapDevice = std::make_unique<pcpp::PcapLiveDevice>(currInterface, true, true, true);
+            break;
+        }
+
+        pcap_freealldevs(interfaceList);
+        if (_pcapDevice == nullptr) {
+            throw PcapException(fmt::format("Couldn't find interface by provided name: \"{}\". Available interfaces: {}", TARGET, ifNameList));
+        }
+        // end upstream PcapPlusPlus incompatibility block
 
         _get_hosts_from_libpcap_iface();
         _open_libpcap_iface(config_get<std::string>("bpf"));
@@ -205,7 +228,6 @@ void PcapInputStream::stop()
 
     if (!_pcapFile && _pcapDevice) {
         // stop capturing and close the live device
-        _pcapDevice->clearFilter();
         _pcapDevice->stopCapture();
         _pcapDevice->close();
     }
@@ -230,19 +252,16 @@ void PcapInputStream::stop()
 void PcapInputStream::tcp_message_ready(int8_t side, const pcpp::TcpStreamData &tcpData)
 {
     tcp_message_ready_signal(side, tcpData);
-    _lru_list.put(tcpData.getConnectionData().flowKey, tcpData.getConnectionData().endTime);
 }
 
 void PcapInputStream::tcp_connection_start(const pcpp::ConnectionData &connectionData)
 {
     tcp_connection_start_signal(connectionData);
-    _lru_list.put(connectionData.flowKey, connectionData.startTime);
 }
 
 void PcapInputStream::tcp_connection_end(const pcpp::ConnectionData &connectionData, pcpp::TcpReassembly::ConnectionEndReason reason)
 {
     tcp_connection_end_signal(connectionData, reason);
-    _lru_list.eraseElement(connectionData.flowKey);
 }
 
 void PcapInputStream::process_pcap_stats(const pcpp::IPcapDevice::PcapStats &stats)
@@ -322,6 +341,7 @@ void PcapInputStream::_generate_mock_traffic()
 
 void PcapInputStream::process_raw_packet(pcpp::RawPacket *rawPacket)
 {
+
     pcpp::ProtocolType l3(pcpp::UnknownProtocol), l4(pcpp::UnknownProtocol);
     pcpp::Packet packet(rawPacket, pcpp::TCP | pcpp::UDP);
     if (packet.isPacketOfType(pcpp::IPv4)) {
@@ -361,19 +381,18 @@ void PcapInputStream::process_raw_packet(pcpp::RawPacket *rawPacket)
         }
     }
 
-    auto timestamp = rawPacket->getPacketTimeStamp();
     // interface to handlers
-    packet_signal(packet, dir, l3, l4, timestamp);
+    packet_signal(packet, dir, l3, l4, rawPacket->getPacketTimeStamp());
 
     if (l4 == pcpp::UDP) {
-        udp_signal(packet, dir, l3, pcpp::hash5Tuple(&packet), timestamp);
+        udp_signal(packet, dir, l3, pcpp::hash5Tuple(&packet), rawPacket->getPacketTimeStamp());
     } else if (l4 == pcpp::TCP) {
         auto result = _tcp_reassembly.reassemblePacket(packet);
         switch (result) {
         case pcpp::TcpReassembly::Error_PacketDoesNotMatchFlow:
         case pcpp::TcpReassembly::NonTcpPacket:
         case pcpp::TcpReassembly::NonIpPacket:
-            tcp_reassembly_error_signal(packet, dir, l3, timestamp);
+            tcp_reassembly_error_signal(packet, dir, l3, rawPacket->getPacketTimeStamp());
         case pcpp::TcpReassembly::TcpMessageHandled:
         case pcpp::TcpReassembly::OutOfOrderTcpMessageBuffered:
         case pcpp::TcpReassembly::FIN_RSTWithNoData:
@@ -381,18 +400,6 @@ void PcapInputStream::process_raw_packet(pcpp::RawPacket *rawPacket)
         case pcpp::TcpReassembly::Ignore_PacketOfClosedFlow:
         case pcpp::TcpReassembly::Ignore_Retransimission:
             break;
-        }
-
-        for (uint8_t counter = 0; counter < MAX_TCP_CLEANUPS; counter++) {
-            if (_lru_list.getSize() == 0) {
-                break;
-            }
-            auto connection = _lru_list.getLRUElement();
-            if (timestamp.tv_sec < connection.second.tv_sec + TCP_TIMEOUT) {
-                break;
-            }
-            _tcp_reassembly.closeConnection(connection.first);
-            _lru_list.eraseElement(connection.first);
         }
     } else {
         // unsupported layer3 protocol

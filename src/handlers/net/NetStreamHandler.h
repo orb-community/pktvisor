@@ -22,15 +22,6 @@ using namespace visor::input::mock;
 using namespace visor::input::sflow;
 using namespace visor::handler::dns;
 
-namespace group {
-enum NetMetrics : visor::MetricGroupIntType {
-    Counters,
-    Cardinality,
-    TopGeo,
-    TopIps
-};
-}
-
 class NetworkMetricsBucket final : public visor::AbstractMetricsBucket
 {
 
@@ -67,12 +58,8 @@ protected:
     };
     counters _counters;
 
-    Quantile<std::size_t> _payload_size;
-
     Rate _rate_in;
     Rate _rate_out;
-    Rate _throughput_in;
-    Rate _throughput_out;
 
 public:
     NetworkMetricsBucket()
@@ -82,11 +69,8 @@ public:
         , _topASN("packets", "asn", {"top_ASN"}, "Top ASNs by IP")
         , _topIPv4("packets", "ipv4", {"top_ipv4"}, "Top IPv4 IP addresses")
         , _topIPv6("packets", "ipv6", {"top_ipv6"}, "Top IPv6 IP addresses")
-        , _payload_size("packets", {"payload_size"}, "Quantiles of payload sizes, in bytes")
         , _rate_in("packets", {"rates", "pps_in"}, "Rate of ingress in packets per second")
         , _rate_out("packets", {"rates", "pps_out"}, "Rate of egress in packets per second")
-        , _throughput_in("payload", {"rates", "bps_in"}, "Rate of ingress packets size in bytes per second")
-        , _throughput_out("payload", {"rates", "bps_out"}, "Rate of egress packets size in bytes per second")
     {
         set_event_rate_info("packets", {"rates", "pps_total"}, "Rate of all packets (combined ingress and egress) in packets per second");
         set_num_events_info("packets", {"total"}, "Total packets processed");
@@ -111,15 +95,11 @@ public:
         // stop rate collection
         _rate_in.cancel();
         _rate_out.cancel();
-        _throughput_in.cancel();
-        _throughput_out.cancel();
     }
 
     void process_packet(bool deep, pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4);
-    void process_dnstap(bool deep, const dnstap::Dnstap &payload, size_t size);
+    void process_dnstap(bool deep, const dnstap::Dnstap &payload);
     void process_sflow(bool deep, const SFSample &payload);
-    void process_net_layer(PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, size_t payload_size);
-    void process_net_layer(PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, size_t payload_size, bool is_ipv6, pcpp::IPv4Address &ipv4_in, pcpp::IPv4Address &ipv4_out, pcpp::IPv6Address &ipv6_in, pcpp::IPv6Address &ipv6_out);
 };
 
 class NetworkMetricsManager final : public visor::AbstractMetricsManager<NetworkMetricsBucket>
@@ -131,7 +111,7 @@ public:
     }
 
     void process_packet(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp);
-    void process_dnstap(const dnstap::Dnstap &payload, size_t size);
+    void process_dnstap(const dnstap::Dnstap &payload);
     void process_sflow(const SFSample &payload);
 };
 
@@ -157,14 +137,8 @@ class NetStreamHandler final : public visor::StreamMetricsHandler<NetworkMetrics
 
     sigslot::connection _pkt_udp_connection;
 
-    static const inline StreamMetricsHandler::GroupDefType _group_defs = {
-        {"cardinality", group::NetMetrics::Cardinality},
-        {"counters", group::NetMetrics::Counters},
-        {"top_geo", group::NetMetrics::TopGeo},
-        {"top_ips", group::NetMetrics::TopIps}};
-
     void process_sflow_cb(const SFSample &);
-    void process_dnstap_cb(const dnstap::Dnstap &, size_t);
+    void process_dnstap_cb(const dnstap::Dnstap &);
     void process_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp);
     void process_udp_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp);
     void set_start_tstamp(timespec stamp);
@@ -179,12 +153,6 @@ public:
     {
         return "packets";
     }
-
-    size_t consumer_count() const override
-    {
-        return 0;
-    }
-
     void start() override;
     void stop() override;
 };

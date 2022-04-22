@@ -53,7 +53,9 @@ first_interesting_column(0),
 kxp(1 << lg_k),
 hip_est_accum(0)
 {
-  check_lg_k(lg_k);
+  if (lg_k < CPC_MIN_LG_K || lg_k > CPC_MAX_LG_K) {
+    throw std::invalid_argument("lg_k must be >= " + std::to_string(CPC_MIN_LG_K) + " and <= " + std::to_string(CPC_MAX_LG_K) + ": " + std::to_string(lg_k));
+  }
 }
 
 template<typename A>
@@ -174,7 +176,7 @@ void cpc_sketch_alloc<A>::update(float value) {
 
 static inline uint32_t row_col_from_two_hashes(uint64_t hash0, uint64_t hash1, uint8_t lg_k) {
   if (lg_k > 26) throw std::logic_error("lg_k > 26");
-  const uint32_t k = 1 << lg_k;
+  const uint64_t k = 1 << lg_k;
   uint8_t col = count_leading_zeros_in_u64(hash1); // 0 <= col <= 64
   if (col > 63) col = 63; // clip so that 0 <= col <= 63
   const uint32_t row = hash0 & (k - 1);
@@ -186,7 +188,7 @@ static inline uint32_t row_col_from_two_hashes(uint64_t hash0, uint64_t hash1, u
 }
 
 template<typename A>
-void cpc_sketch_alloc<A>::update(const void* value, size_t size) {
+void cpc_sketch_alloc<A>::update(const void* value, int size) {
   HashState hashes;
   MurmurHash3_x64_128(value, size, seed, hashes);
   row_col_update(row_col_from_two_hashes(hashes.h1, hashes.h2, lg_k));
@@ -206,7 +208,7 @@ void cpc_sketch_alloc<A>::row_col_update(uint32_t row_col) {
 
 template<typename A>
 void cpc_sketch_alloc<A>::update_sparse(uint32_t row_col) {
-  const uint32_t k = 1 << lg_k;
+  const uint64_t k = 1 << lg_k;
   const uint64_t c32pre = static_cast<uint64_t>(num_coupons) << 5;
   if (c32pre >= 3 * k) throw std::logic_error("c32pre >= 3 * k"); // C < 3K/32, in other words flavor == SPARSE
   bool is_novel = surprising_value_table.maybe_insert(row_col);
@@ -222,7 +224,7 @@ void cpc_sketch_alloc<A>::update_sparse(uint32_t row_col) {
 template<typename A>
 void cpc_sketch_alloc<A>::update_windowed(uint32_t row_col) {
   if (window_offset > 56) throw std::logic_error("wrong window offset");
-  const uint32_t k = 1 << lg_k;
+  const uint64_t k = 1 << lg_k;
   const uint64_t c32pre = static_cast<uint64_t>(num_coupons) << 5;
   if (c32pre < 3 * k) throw std::logic_error("c32pre < 3 * k"); // C < 3K/32, in other words flavor >= HYBRID
   const uint64_t c8pre = static_cast<uint64_t>(num_coupons) << 3;
@@ -264,7 +266,7 @@ void cpc_sketch_alloc<A>::update_windowed(uint32_t row_col) {
 // Call this whenever a new coupon has been collected.
 template<typename A>
 void cpc_sketch_alloc<A>::update_hip(uint32_t row_col) {
-  const uint32_t k = 1 << lg_k;
+  const uint64_t k = 1 << lg_k;
   const uint8_t col = row_col & 63;
   const double one_over_p = static_cast<double>(k) / kxp;
   hip_est_accum += one_over_p;
@@ -274,7 +276,7 @@ void cpc_sketch_alloc<A>::update_hip(uint32_t row_col) {
 // In terms of flavor, this promotes SPARSE to HYBRID
 template<typename A>
 void cpc_sketch_alloc<A>::promote_sparse_to_windowed() {
-  const uint32_t k = 1 << lg_k;
+  const uint64_t k = 1 << lg_k;
   const uint64_t c32 = static_cast<uint64_t>(num_coupons) << 5;
   if (!(c32 == 3 * k || (lg_k == 4 && c32 > 3 * k))) throw std::logic_error("wrong c32");
 
@@ -283,16 +285,16 @@ void cpc_sketch_alloc<A>::promote_sparse_to_windowed() {
   u32_table<A> new_table(2, 6 + lg_k, sliding_window.get_allocator());
 
   const uint32_t* old_slots = surprising_value_table.get_slots();
-  const uint32_t old_num_slots = 1 << surprising_value_table.get_lg_size();
+  const size_t old_num_slots = 1 << surprising_value_table.get_lg_size();
 
   if (window_offset != 0) throw std::logic_error("window_offset != 0");
 
-  for (uint32_t i = 0; i < old_num_slots; i++) {
+  for (size_t i = 0; i < old_num_slots; i++) {
     const uint32_t row_col = old_slots[i];
     if (row_col != UINT32_MAX) {
       const uint8_t col = row_col & 63;
       if (col < 8) {
-        const uint32_t row = row_col >> 6;
+        const size_t row = row_col >> 6;
         sliding_window[row] |= 1 << col;
       } else {
         // cannot use u32_table::must_insert(), because it doesn't provide for growth
@@ -312,7 +314,7 @@ void cpc_sketch_alloc<A>::move_window() {
   if (new_offset != determine_correct_offset(lg_k, num_coupons)) throw std::logic_error("new_offset is wrong");
 
   if (sliding_window.size() == 0) throw std::logic_error("no sliding window");
-  const uint32_t k = 1 << lg_k;
+  const uint64_t k = 1 << lg_k;
 
   // Construct the full-sized bit matrix that corresponds to the sketch
   vector_u64<A> bit_matrix = build_bit_matrix();
@@ -326,7 +328,7 @@ void cpc_sketch_alloc<A>::move_window() {
   const uint64_t mask_for_flipping_early_zone = (static_cast<uint64_t>(1) << new_offset) - 1;
   uint64_t all_surprises_ored = 0;
 
-  for (uint32_t i = 0; i < k; i++) {
+  for (size_t i = 0; i < k; i++) {
     uint64_t pattern = bit_matrix[i];
     sliding_window[i] = (pattern >> new_offset) & 0xff;
     pattern &= mask_for_clearing_window;
@@ -355,7 +357,7 @@ void cpc_sketch_alloc<A>::move_window() {
 // so that it will reflect changes that were previously outside the mantissa.
 template<typename A>
 void cpc_sketch_alloc<A>::refresh_kxp(const uint64_t* bit_matrix) {
-  const uint32_t k = 1 << lg_k;
+  const uint64_t k = 1 << lg_k;
 
   // for improved numerical accuracy, we separately sum the bytes of the U64's
   double byte_sums[8]; // allocating on the stack
@@ -381,9 +383,7 @@ void cpc_sketch_alloc<A>::refresh_kxp(const uint64_t* bit_matrix) {
 
 template<typename A>
 string<A> cpc_sketch_alloc<A>::to_string() const {
-  // Using a temporary stream for implementation here does not comply with AllocatorAwareContainer requirements.
-  // The stream does not support passing an allocator instance, and alternatives are complicated.
-  std::ostringstream os;
+  std::basic_ostringstream<char, std::char_traits<char>, AllocChar<A>> os;
   os << "### CPC sketch summary:" << std::endl;
   os << "   lg_k           : " << std::to_string(lg_k) << std::endl;
   os << "   seed hash      : " << std::hex << compute_seed_hash(seed) << std::dec << std::endl;
@@ -394,14 +394,14 @@ string<A> cpc_sketch_alloc<A>::to_string() const {
     os << "   HIP estimate   : " << hip_est_accum << std::endl;
     os << "   kxp            : " << kxp << std::endl;
   }
-  os << "   interesting col: " << std::to_string(first_interesting_column) << std::endl;
+  os << "   intresting col : " << std::to_string(first_interesting_column) << std::endl;
   os << "   table entries  : " << surprising_value_table.get_num_items() << std::endl;
   os << "   window         : " << (sliding_window.size() == 0 ? "not " : "") <<  "allocated" << std::endl;
   if (sliding_window.size() > 0) {
     os << "   window offset  : " << std::to_string(window_offset) << std::endl;
   }
   os << "### End sketch summary" << std::endl;
-  return string<A>(os.str().c_str(), sliding_window.get_allocator());
+  return os.str();
 }
 
 template<typename A>
@@ -415,44 +415,44 @@ void cpc_sketch_alloc<A>::serialize(std::ostream& os) const {
   const bool has_table = compressed.table_data.size() > 0;
   const bool has_window = compressed.window_data.size() > 0;
   const uint8_t preamble_ints = get_preamble_ints(num_coupons, has_hip, has_table, has_window);
-  write(os, preamble_ints);
+  os.write(reinterpret_cast<const char*>(&preamble_ints), sizeof(preamble_ints));
   const uint8_t serial_version = SERIAL_VERSION;
-  write(os, serial_version);
+  os.write(reinterpret_cast<const char*>(&serial_version), sizeof(serial_version));
   const uint8_t family = FAMILY;
-  write(os, family);
-  write(os, lg_k);
-  write(os, first_interesting_column);
+  os.write(reinterpret_cast<const char*>(&family), sizeof(family));
+  os.write(reinterpret_cast<const char*>(&lg_k), sizeof(lg_k));
+  os.write(reinterpret_cast<const char*>(&first_interesting_column), sizeof(first_interesting_column));
   const uint8_t flags_byte(
     (1 << flags::IS_COMPRESSED)
     | (has_hip ? 1 << flags::HAS_HIP : 0)
     | (has_table ? 1 << flags::HAS_TABLE : 0)
     | (has_window ? 1 << flags::HAS_WINDOW : 0)
   );
-  write(os, flags_byte);
+  os.write(reinterpret_cast<const char*>(&flags_byte), sizeof(flags_byte));
   const uint16_t seed_hash(compute_seed_hash(seed));
-  write(os, seed_hash);
+  os.write((char*)&seed_hash, sizeof(seed_hash));
   if (!is_empty()) {
-    write(os, num_coupons);
+    os.write((char*)&num_coupons, sizeof(num_coupons));
     if (has_table && has_window) {
       // if there is no window it is the same as number of coupons
-      write(os, compressed.table_num_entries);
+      os.write((char*)&compressed.table_num_entries, sizeof(compressed.table_num_entries));
       // HIP values can be in two different places in the sequence of fields
       // this is the first HIP decision point
       if (has_hip) write_hip(os);
     }
     if (has_table) {
-      write(os, compressed.table_data_words);
+      os.write((char*)&compressed.table_data_words, sizeof(compressed.table_data_words));
     }
     if (has_window) {
-      write(os, compressed.window_data_words);
+      os.write((char*)&compressed.window_data_words, sizeof(compressed.window_data_words));
     }
     // this is the second HIP decision point
     if (has_hip && !(has_table && has_window)) write_hip(os);
     if (has_window) {
-      write(os, compressed.window_data.data(), compressed.window_data_words * sizeof(uint32_t));
+      os.write((char*)compressed.window_data.data(), compressed.window_data_words * sizeof(uint32_t));
     }
     if (has_table) {
-      write(os, compressed.table_data.data(), compressed.table_data_words * sizeof(uint32_t));
+      os.write((char*)compressed.table_data.data(), compressed.table_data_words * sizeof(uint32_t));
     }
   }
 }
@@ -471,36 +471,36 @@ vector_u8<A> cpc_sketch_alloc<A>::serialize(unsigned header_size_bytes) const {
   const size_t size = header_size_bytes + (preamble_ints + compressed.table_data_words + compressed.window_data_words) * sizeof(uint32_t);
   vector_u8<A> bytes(size, 0, sliding_window.get_allocator());
   uint8_t* ptr = bytes.data() + header_size_bytes;
-  ptr += copy_to_mem(preamble_ints, ptr);
+  ptr += copy_to_mem(&preamble_ints, ptr, sizeof(preamble_ints));
   const uint8_t serial_version = SERIAL_VERSION;
-  ptr += copy_to_mem(serial_version, ptr);
+  ptr += copy_to_mem(&serial_version, ptr, sizeof(serial_version));
   const uint8_t family = FAMILY;
-  ptr += copy_to_mem(family, ptr);
-  ptr += copy_to_mem(lg_k, ptr);
-  ptr += copy_to_mem(first_interesting_column, ptr);
+  ptr += copy_to_mem(&family, ptr, sizeof(family));
+  ptr += copy_to_mem(&lg_k, ptr, sizeof(lg_k));
+  ptr += copy_to_mem(&first_interesting_column, ptr, sizeof(first_interesting_column));
   const uint8_t flags_byte(
     (1 << flags::IS_COMPRESSED)
     | (has_hip ? 1 << flags::HAS_HIP : 0)
     | (has_table ? 1 << flags::HAS_TABLE : 0)
     | (has_window ? 1 << flags::HAS_WINDOW : 0)
   );
-  ptr += copy_to_mem(flags_byte, ptr);
+  ptr += copy_to_mem(&flags_byte, ptr, sizeof(flags_byte));
   const uint16_t seed_hash = compute_seed_hash(seed);
-  ptr += copy_to_mem(seed_hash, ptr);
+  ptr += copy_to_mem(&seed_hash, ptr, sizeof(seed_hash));
   if (!is_empty()) {
-    ptr += copy_to_mem(num_coupons, ptr);
+    ptr += copy_to_mem(&num_coupons, ptr, sizeof(num_coupons));
     if (has_table && has_window) {
       // if there is no window it is the same as number of coupons
-      ptr += copy_to_mem(compressed.table_num_entries, ptr);
+      ptr += copy_to_mem(&compressed.table_num_entries, ptr, sizeof(compressed.table_num_entries));
       // HIP values can be in two different places in the sequence of fields
       // this is the first HIP decision point
       if (has_hip) ptr += copy_hip_to_mem(ptr);
     }
     if (has_table) {
-      ptr += copy_to_mem(compressed.table_data_words, ptr);
+      ptr += copy_to_mem(&compressed.table_data_words, ptr, sizeof(compressed.table_data_words));
     }
     if (has_window) {
-      ptr += copy_to_mem(compressed.window_data_words, ptr);
+      ptr += copy_to_mem(&compressed.window_data_words, ptr, sizeof(compressed.window_data_words));
     }
     // this is the second HIP decision point
     if (has_hip && !(has_table && has_window)) ptr += copy_hip_to_mem(ptr);
@@ -517,13 +517,20 @@ vector_u8<A> cpc_sketch_alloc<A>::serialize(unsigned header_size_bytes) const {
 
 template<typename A>
 cpc_sketch_alloc<A> cpc_sketch_alloc<A>::deserialize(std::istream& is, uint64_t seed, const A& allocator) {
-  const auto preamble_ints = read<uint8_t>(is);
-  const auto serial_version = read<uint8_t>(is);
-  const auto family_id = read<uint8_t>(is);
-  const auto lg_k = read<uint8_t>(is);
-  const auto first_interesting_column = read<uint8_t>(is);
-  const auto flags_byte = read<uint8_t>(is);
-  const auto seed_hash = read<uint16_t>(is);
+  uint8_t preamble_ints;
+  is.read((char*)&preamble_ints, sizeof(preamble_ints));
+  uint8_t serial_version;
+  is.read((char*)&serial_version, sizeof(serial_version));
+  uint8_t family_id;
+  is.read((char*)&family_id, sizeof(family_id));
+  uint8_t lg_k;
+  is.read((char*)&lg_k, sizeof(lg_k));
+  uint8_t first_interesting_column;
+  is.read((char*)&first_interesting_column, sizeof(first_interesting_column));
+  uint8_t flags_byte;
+  is.read((char*)&flags_byte, sizeof(flags_byte));
+  uint16_t seed_hash;
+  is.read((char*)&seed_hash, sizeof(seed_hash));
   const bool has_hip = flags_byte & (1 << flags::HAS_HIP);
   const bool has_table = flags_byte & (1 << flags::HAS_TABLE);
   const bool has_window = flags_byte & (1 << flags::HAS_WINDOW);
@@ -535,31 +542,31 @@ cpc_sketch_alloc<A> cpc_sketch_alloc<A>::deserialize(std::istream& is, uint64_t 
   double kxp = 0;
   double hip_est_accum = 0;
   if (has_table || has_window) {
-    num_coupons = read<uint32_t>(is);
+    is.read((char*)&num_coupons, sizeof(num_coupons));
     if (has_table && has_window) {
-      compressed.table_num_entries = read<uint32_t>(is);
+      is.read((char*)&compressed.table_num_entries, sizeof(compressed.table_num_entries));
       if (has_hip) {
-        kxp = read<double>(is);
-        hip_est_accum = read<double>(is);
+        is.read((char*)&kxp, sizeof(kxp));
+        is.read((char*)&hip_est_accum, sizeof(hip_est_accum));
       }
     }
     if (has_table) {
-      compressed.table_data_words = read<uint32_t>(is);
+      is.read((char*)&compressed.table_data_words, sizeof(compressed.table_data_words));
     }
     if (has_window) {
-      compressed.window_data_words = read<uint32_t>(is);
+      is.read((char*)&compressed.window_data_words, sizeof(compressed.window_data_words));
     }
     if (has_hip && !(has_table && has_window)) {
-      kxp = read<double>(is);
-      hip_est_accum = read<double>(is);
+      is.read((char*)&kxp, sizeof(kxp));
+      is.read((char*)&hip_est_accum, sizeof(hip_est_accum));
     }
     if (has_window) {
       compressed.window_data.resize(compressed.window_data_words);
-      read(is, compressed.window_data.data(), compressed.window_data_words * sizeof(uint32_t));
+      is.read((char*)compressed.window_data.data(), compressed.window_data_words * sizeof(uint32_t));
     }
     if (has_table) {
       compressed.table_data.resize(compressed.table_data_words);
-      read(is, compressed.table_data.data(), compressed.table_data_words * sizeof(uint32_t));
+      is.read((char*)compressed.table_data.data(), compressed.table_data_words * sizeof(uint32_t));
     }
     if (!has_window) compressed.table_num_entries = num_coupons;
   }
@@ -595,19 +602,19 @@ cpc_sketch_alloc<A> cpc_sketch_alloc<A>::deserialize(const void* bytes, size_t s
   const char* ptr = static_cast<const char*>(bytes);
   const char* base = static_cast<const char*>(bytes);
   uint8_t preamble_ints;
-  ptr += copy_from_mem(ptr, preamble_ints);
+  ptr += copy_from_mem(ptr, &preamble_ints, sizeof(preamble_ints));
   uint8_t serial_version;
-  ptr += copy_from_mem(ptr, serial_version);
+  ptr += copy_from_mem(ptr, &serial_version, sizeof(serial_version));
   uint8_t family_id;
-  ptr += copy_from_mem(ptr, family_id);
+  ptr += copy_from_mem(ptr, &family_id, sizeof(family_id));
   uint8_t lg_k;
-  ptr += copy_from_mem(ptr, lg_k);
+  ptr += copy_from_mem(ptr, &lg_k, sizeof(lg_k));
   uint8_t first_interesting_column;
-  ptr += copy_from_mem(ptr, first_interesting_column);
+  ptr += copy_from_mem(ptr, &first_interesting_column, sizeof(first_interesting_column));
   uint8_t flags_byte;
-  ptr += copy_from_mem(ptr, flags_byte);
+  ptr += copy_from_mem(ptr, &flags_byte, sizeof(flags_byte));
   uint16_t seed_hash;
-  ptr += copy_from_mem(ptr, seed_hash);
+  ptr += copy_from_mem(ptr, &seed_hash, sizeof(seed_hash));
   const bool has_hip = flags_byte & (1 << flags::HAS_HIP);
   const bool has_table = flags_byte & (1 << flags::HAS_TABLE);
   const bool has_window = flags_byte & (1 << flags::HAS_WINDOW);
@@ -621,28 +628,28 @@ cpc_sketch_alloc<A> cpc_sketch_alloc<A>::deserialize(const void* bytes, size_t s
   double hip_est_accum = 0;
   if (has_table || has_window) {
     check_memory_size(ptr - base + sizeof(num_coupons), size);
-    ptr += copy_from_mem(ptr, num_coupons);
+    ptr += copy_from_mem(ptr, &num_coupons, sizeof(num_coupons));
     if (has_table && has_window) {
       check_memory_size(ptr - base + sizeof(compressed.table_num_entries), size);
-      ptr += copy_from_mem(ptr, compressed.table_num_entries);
+      ptr += copy_from_mem(ptr, &compressed.table_num_entries, sizeof(compressed.table_num_entries));
       if (has_hip) {
         check_memory_size(ptr - base + sizeof(kxp) + sizeof(hip_est_accum), size);
-        ptr += copy_from_mem(ptr, kxp);
-        ptr += copy_from_mem(ptr, hip_est_accum);
+        ptr += copy_from_mem(ptr, &kxp, sizeof(kxp));
+        ptr += copy_from_mem(ptr, &hip_est_accum, sizeof(hip_est_accum));
       }
     }
     if (has_table) {
       check_memory_size(ptr - base + sizeof(compressed.table_data_words), size);
-      ptr += copy_from_mem(ptr, compressed.table_data_words);
+      ptr += copy_from_mem(ptr, &compressed.table_data_words, sizeof(compressed.table_data_words));
     }
     if (has_window) {
       check_memory_size(ptr - base + sizeof(compressed.window_data_words), size);
-      ptr += copy_from_mem(ptr, compressed.window_data_words);
+      ptr += copy_from_mem(ptr, &compressed.window_data_words, sizeof(compressed.window_data_words));
     }
     if (has_hip && !(has_table && has_window)) {
       check_memory_size(ptr - base + sizeof(kxp) + sizeof(hip_est_accum), size);
-      ptr += copy_from_mem(ptr, kxp);
-      ptr += copy_from_mem(ptr, hip_est_accum);
+      ptr += copy_from_mem(ptr, &kxp, sizeof(kxp));
+      ptr += copy_from_mem(ptr, &hip_est_accum, sizeof(hip_est_accum));
     }
     if (has_window) {
       compressed.window_data.resize(compressed.window_data_words);
@@ -681,49 +688,6 @@ cpc_sketch_alloc<A> cpc_sketch_alloc<A>::deserialize(const void* bytes, size_t s
       std::move(uncompressed.window), has_hip, kxp, hip_est_accum, seed);
 }
 
-/*
- * These empirical values for the 99.9th percentile of size in bytes were measured using 100,000
- * trials. The value for each trial is the maximum of 5*16=80 measurements that were equally
- * spaced over values of the quantity C/K between 3.0 and 8.0. This table does not include the
- * worst-case space for the preamble, which is added by the function.
- */
-static const uint8_t CPC_EMPIRICAL_SIZE_MAX_LGK = 19;
-static const size_t CPC_EMPIRICAL_MAX_SIZE_BYTES[]  = {
-    24,     // lg_k = 4
-    36,     // lg_k = 5
-    56,     // lg_k = 6
-    100,    // lg_k = 7
-    180,    // lg_k = 8
-    344,    // lg_k = 9
-    660,    // lg_k = 10
-    1292,   // lg_k = 11
-    2540,   // lg_k = 12
-    5020,   // lg_k = 13
-    9968,   // lg_k = 14
-    19836,  // lg_k = 15
-    39532,  // lg_k = 16
-    78880,  // lg_k = 17
-    157516, // lg_k = 18
-    314656  // lg_k = 19
-};
-static const double CPC_EMPIRICAL_MAX_SIZE_FACTOR = 0.6; // 0.6 = 4.8 / 8.0
-static const size_t CPC_MAX_PREAMBLE_SIZE_BYTES = 40;
-
-template<typename A>
-size_t cpc_sketch_alloc<A>::get_max_serialized_size_bytes(uint8_t lg_k) {
-  check_lg_k(lg_k);
-  if (lg_k <= CPC_EMPIRICAL_SIZE_MAX_LGK) return CPC_EMPIRICAL_MAX_SIZE_BYTES[lg_k - CPC_MIN_LG_K] + CPC_MAX_PREAMBLE_SIZE_BYTES;
-  const uint32_t k = 1 << lg_k;
-  return (int) (CPC_EMPIRICAL_MAX_SIZE_FACTOR * k) + CPC_MAX_PREAMBLE_SIZE_BYTES;
-}
-
-template<typename A>
-void cpc_sketch_alloc<A>::check_lg_k(uint8_t lg_k) {
-  if (lg_k < CPC_MIN_LG_K || lg_k > CPC_MAX_LG_K) {
-    throw std::invalid_argument("lg_k must be >= " + std::to_string(CPC_MIN_LG_K) + " and <= " + std::to_string(CPC_MAX_LG_K) + ": " + std::to_string(lg_k));
-  }
-}
-
 template<typename A>
 uint32_t cpc_sketch_alloc<A>::get_num_coupons() const {
   return num_coupons;
@@ -732,7 +696,7 @@ uint32_t cpc_sketch_alloc<A>::get_num_coupons() const {
 template<typename A>
 bool cpc_sketch_alloc<A>::validate() const {
   vector_u64<A> bit_matrix = build_bit_matrix();
-  const uint64_t num_bits_set = count_bits_set_in_matrix(bit_matrix.data(), 1ULL << lg_k);
+  const uint64_t num_bits_set = count_bits_set_in_matrix(bit_matrix.data(), 1 << lg_k);
   return num_bits_set == num_coupons;
 }
 
@@ -780,7 +744,7 @@ typename cpc_sketch_alloc<A>::flavor cpc_sketch_alloc<A>::determine_flavor() con
 
 template<typename A>
 typename cpc_sketch_alloc<A>::flavor cpc_sketch_alloc<A>::determine_flavor(uint8_t lg_k, uint64_t c) {
-  const uint32_t k = 1 << lg_k;
+  const uint64_t k = 1 << lg_k;
   const uint64_t c2 = c << 1;
   const uint64_t c8 = c << 3;
   const uint64_t c32 = c << 5;
@@ -793,15 +757,15 @@ typename cpc_sketch_alloc<A>::flavor cpc_sketch_alloc<A>::determine_flavor(uint8
 
 template<typename A>
 uint8_t cpc_sketch_alloc<A>::determine_correct_offset(uint8_t lg_k, uint64_t c) {
-  const uint32_t k = 1 << lg_k;
+  const uint64_t k = 1 << lg_k;
   const int64_t tmp = static_cast<int64_t>(c << 3) - static_cast<int64_t>(19 * k); // 8C - 19K
   if (tmp < 0) return 0;
-  return static_cast<uint8_t>(tmp >> (lg_k + 3)); // tmp / 8K
+  return tmp >> (lg_k + 3); // tmp / 8K
 }
 
 template<typename A>
 vector_u64<A> cpc_sketch_alloc<A>::build_bit_matrix() const {
-  const uint32_t k = 1 << lg_k;
+  const size_t k = 1 << lg_k;
   if (window_offset > 56) throw std::logic_error("offset > 56");
 
   // Fill the matrix with default rows in which the "early zone" is filled with ones.
@@ -818,12 +782,12 @@ vector_u64<A> cpc_sketch_alloc<A>::build_bit_matrix() const {
   }
 
   const uint32_t* slots = surprising_value_table.get_slots();
-  const uint32_t num_slots = 1 << surprising_value_table.get_lg_size();
+  const size_t num_slots = 1 << surprising_value_table.get_lg_size();
   for (size_t i = 0; i < num_slots; i++) {
     const uint32_t row_col = slots[i];
     if (row_col != UINT32_MAX) {
       const uint8_t col = row_col & 63;
-      const uint32_t row = row_col >> 6;
+      const size_t row = row_col >> 6;
       // Flip the specified matrix bit from its default value.
       // In the "early" zone the bit changes from 1 to 0.
       // In the "late" zone the bit changes from 0 to 1.
@@ -835,8 +799,8 @@ vector_u64<A> cpc_sketch_alloc<A>::build_bit_matrix() const {
 
 template<typename A>
 void cpc_sketch_alloc<A>::write_hip(std::ostream& os) const {
-  write(os, kxp);
-  write(os, hip_est_accum);
+  os.write(reinterpret_cast<const char*>(&kxp), sizeof(kxp));
+  os.write(reinterpret_cast<const char*>(&hip_est_accum), sizeof(hip_est_accum));
 }
 
 template<typename A>

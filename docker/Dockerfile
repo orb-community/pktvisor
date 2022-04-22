@@ -49,8 +49,7 @@ RUN \
 COPY --from=cppbuild /tmp/build/bin/pktvisord /usr/local/sbin/pktvisord
 COPY --from=cppbuild /tmp/build/bin/pktvisor-reader /usr/local/sbin/pktvisor-reader
 COPY --from=gobuild /src/pktvisor-cli /usr/local/bin/pktvisor-cli
-COPY docker/entry.sh /entry.sh
-RUN chmod a+x /entry.sh
+COPY docker/entry.sh /usr/local/bin/
 
-ENTRYPOINT [ "/entry.sh" ]
+ENTRYPOINT [ "entry.sh" ]
 
