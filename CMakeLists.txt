@@ -10,7 +10,7 @@ project(visor VERSION 4.1.0)
 # for main line release, this is empty
 # for development release, this is "-develop"
 # for release candidate, this is "-rc"
-set(VISOR_PRERELEASE "-develop")
+set(VISOR_PRERELEASE "-rc")
 
 #######################################################
 
