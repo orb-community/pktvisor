@@ -68,6 +68,7 @@ void NetStreamHandler::start()
         _dnstap_connection = _dnstap_stream->dnstap_signal.connect(&NetStreamHandler::process_dnstap_cb, this);
     } else if (_flow_stream) {
         _sflow_connection = _flow_stream->sflow_signal.connect(&NetStreamHandler::process_sflow_cb, this);
+        _sflow_connection = _flow_stream->netflow_signal.connect(&NetStreamHandler::process_netflow_cb, this);
     } else if (_dns_handler) {
         _pkt_udp_connection = _dns_handler->udp_signal.connect(&NetStreamHandler::process_udp_packet_cb, this);
     }
@@ -119,6 +120,11 @@ void NetStreamHandler::set_end_tstamp(timespec stamp)
 void NetStreamHandler::process_sflow_cb(const SFSample &payload)
 {
     _metrics->process_sflow(payload);
+}
+
+void NetStreamHandler::process_netflow_cb(const NFSample &payload)
+{
+    _metrics->process_netflow(payload);
 }
 
 void NetStreamHandler::process_dnstap_cb(const dnstap::Dnstap &payload, size_t size)
@@ -426,6 +432,63 @@ void NetworkMetricsBucket::process_sflow(bool deep, const SFSample &payload)
     }
 }
 
+void NetworkMetricsBucket::process_netflow(bool deep, const NFSample &payload)
+{
+    for (const auto &sample : payload.flows) {
+        pcpp::ProtocolType l3;
+        if (sample.src_ipv6 && sample.dst_ipv6) {
+            l3 = pcpp::IPv6;
+        } else {
+            l3 = pcpp::IPv4;
+        }
+
+        pcpp::ProtocolType l4;
+        switch (sample.protocol) {
+        case IP_PROTOCOL::TCP:
+            l4 = pcpp::TCP;
+            break;
+        case IP_PROTOCOL::UDP:
+            l4 = pcpp::UDP;
+            break;
+        }
+
+        PacketDirection dir;
+        if (sample.if_index_in) {
+            dir = PacketDirection::toHost;
+        } else if (sample.if_index_out) {
+            dir = PacketDirection::fromHost;
+        }
+
+        if (!deep) {
+            process_net_layer(dir, l3, l4, payload.raw_sample_len);
+            return;
+        }
+
+        bool is_ipv6{false};
+        pcpp::IPv4Address ipv4_in, ipv4_out;
+        pcpp::IPv6Address ipv6_in, ipv6_out;
+
+        if (sample.src_ipv6) {
+            is_ipv6 = true;
+            ipv6_in = pcpp::IPv6Address(reinterpret_cast<uint8_t *>(sample.src_ip));
+        } else {
+            is_ipv6 = false;
+            ipv4_in = pcpp::IPv4Address(sample.src_ip);
+        }
+
+        if (sample.dst_ipv6) {
+            is_ipv6 = true;
+            ipv6_out = pcpp::IPv6Address(reinterpret_cast<uint8_t *>(sample.dst_ip));
+
+        } else {
+            is_ipv6 = false;
+            ipv4_out = pcpp::IPv4Address(sample.dst_ip);
+        }
+
+        process_net_layer(dir, l3, l4, payload.raw_sample_len, is_ipv6, ipv4_in, ipv4_out, ipv6_in, ipv6_out);
+    }
+}
+
 void NetworkMetricsBucket::process_net_layer(PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, size_t payload_size)
 {
     std::unique_lock lock(_mutex);
@@ -649,4 +712,21 @@ void NetworkMetricsManager::process_sflow(const SFSample &payload)
     // process in the "live" bucket
     live_bucket()->process_sflow(_deep_sampling_now, payload);
 }
+
+void NetworkMetricsManager::process_netflow(const NFSample &payload)
+{
+    timespec stamp;
+    if (payload.time_sec || payload.time_nanosec) {
+        stamp.tv_sec = payload.time_sec;
+        stamp.tv_nsec = payload.time_nanosec;
+    } else {
+        // use now()
+        std::timespec_get(&stamp, TIME_UTC);
+    }
+    // base event
+    new_event(stamp);
+    // process in the "live" bucket
+    live_bucket()->process_netflow(_deep_sampling_now, payload);
+}
+
 }

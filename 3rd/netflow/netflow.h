@@ -235,4 +235,25 @@ struct peer_nf9_template {
     std::vector<peer_nf9_record> records;
 };
 
+/* A record in a NetFlow v.10 template record */
+struct peer_nf10_record {
+    uint32_t type = 0;
+    uint32_t len = 0;
+
+    peer_nf10_record(uint32_t type, uint32_t len)
+        : type(type)
+        , len(len)
+    {
+    }
+};
+
+/* A NetFlow v.10 template record */
+struct peer_nf10_template {
+    uint16_t template_id;
+    uint32_t source_id;
+    uint32_t num_records;
+    uint32_t total_len;
+    std::vector<peer_nf10_record> records;
+};
+
 #endif /* _NETFLOW_H */

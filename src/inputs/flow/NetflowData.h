@@ -6,6 +6,7 @@
 
 #include "EndianPortable.h"
 #include <netflow.h>
+#include <robin_hood.h>
 #include <vector>
 
 namespace visor::input::flow {
@@ -21,22 +22,39 @@ struct NFSample {
 
     /* most common header */
     uint32_t uptime_ms;
-    uint32_t time_sec;
-    uint32_t time_nanosec;
+    uint32_t time_sec = 0;
+    uint32_t time_nanosec = 0;
     uint32_t flow_sequence;
-    uint32_t package_sequence;
     uint32_t source_id;
 
-    struct __attribute__((__packed__)) Flows {
+    struct Flows {
+        bool src_ipv6 = false;
+        bool dst_ipv6 = false;
+        bool gateway_ipv6 = false;
         uint32_t src_ip, dst_ip, gateway_ip;
         uint16_t if_index_in, if_index_out;
         uint32_t flow_packets, flow_octets;
         uint32_t flow_start, flow_finish;
         uint16_t src_port, dst_port;
         uint8_t protocol, tos, tcp_flags;
-    } f;
+    };
     std::vector<Flows> flows;
 };
+
+// A hash function used to hash a pair of any kind
+struct hash_pair {
+    template <class T1, class T2>
+    size_t operator()(const std::pair<T1, T2> &p) const
+    {
+        auto hash1 = std::hash<T1>{}(p.first);
+        auto hash2 = std::hash<T2>{}(p.second);
+        return hash1 ^ hash2;
+    }
+};
+
+using NfMapID = std::pair<uint32_t, uint16_t>;
+static robin_hood::unordered_map<NfMapID, peer_nf9_template, hash_pair> nf9_template_map;
+static robin_hood::unordered_map<NfMapID, peer_nf10_template, hash_pair> nf10_template_map;
 
 static bool process_netflow_v1(NFSample *sample)
 {
@@ -47,7 +65,7 @@ static bool process_netflow_v1(NFSample *sample)
     if (sample->raw_sample_len < sizeof(*nf1_hdr)) {
         return false;
     }
-    sample->nflows = be16toh(nf1_hdr->c.flows);
+
     if (sample->nflows == 0 || sample->nflows > NF1_MAXFLOWS || sample->raw_sample_len != NF1_PACKET_SIZE(sample->nflows)) {
         return false;
     }
@@ -58,7 +76,7 @@ static bool process_netflow_v1(NFSample *sample)
 
     for (uint16_t flow = 0; flow < sample->nflows; flow++) {
         offset = NF1_PACKET_SIZE(flow);
-        nf1_flow = (struct NF1_FLOW *)(sample->raw_sample + offset);
+        nf1_flow = reinterpret_cast<struct NF1_FLOW *>(sample->raw_sample + offset);
         NFSample::Flows flow_sample;
 
         flow_sample.tcp_flags = nf1_flow->tcp_flags;
@@ -75,8 +93,8 @@ static bool process_netflow_v1(NFSample *sample)
         flow_sample.flow_start = nf1_flow->flow_start;
         flow_sample.flow_finish = nf1_flow->flow_finish;
 
-        flow_sample.if_index_in = htobe32(be16toh(nf1_flow->if_index_in));
-        flow_sample.if_index_out = htobe32(be16toh(nf1_flow->if_index_out));
+        flow_sample.if_index_in = be16toh(nf1_flow->if_index_in);
+        flow_sample.if_index_out = be16toh(nf1_flow->if_index_out);
         flow_sample.flow_octets = be32toh(nf1_flow->flow_octets);
         flow_sample.flow_packets = be32toh(nf1_flow->flow_packets);
 
@@ -95,7 +113,7 @@ static bool process_netflow_v5(NFSample *sample)
     if (sample->raw_sample_len < sizeof(*nf5_hdr)) {
         return false;
     }
-    sample->nflows = be16toh(nf5_hdr->c.flows);
+
     if (sample->nflows == 0 || sample->nflows > NF5_MAXFLOWS || sample->raw_sample_len != NF5_PACKET_SIZE(sample->nflows)) {
         return false;
     }
@@ -124,8 +142,8 @@ static bool process_netflow_v5(NFSample *sample)
         flow_sample.flow_start = nf5_flow->flow_start;
         flow_sample.flow_finish = nf5_flow->flow_finish;
 
-        flow_sample.if_index_in = htobe32(be16toh(nf5_flow->if_index_in));
-        flow_sample.if_index_out = htobe32(be16toh(nf5_flow->if_index_out));
+        flow_sample.if_index_in = be16toh(nf5_flow->if_index_in);
+        flow_sample.if_index_out = be16toh(nf5_flow->if_index_out);
         flow_sample.flow_octets = be32toh(nf5_flow->flow_octets);
         flow_sample.flow_packets = be32toh(nf5_flow->flow_packets);
 
@@ -144,7 +162,7 @@ static bool process_netflow_v7(NFSample *sample)
     if (sample->raw_sample_len < sizeof(*nf7_hdr)) {
         return false;
     }
-    sample->nflows = be16toh(nf7_hdr->c.flows);
+
     if (sample->nflows == 0 || sample->nflows > NF7_MAXFLOWS || sample->raw_sample_len != NF7_PACKET_SIZE(sample->nflows)) {
         return false;
     }
@@ -173,8 +191,8 @@ static bool process_netflow_v7(NFSample *sample)
         flow_sample.flow_start = nf7_flow->flow_start;
         flow_sample.flow_finish = nf7_flow->flow_finish;
 
-        flow_sample.if_index_in = htobe32(be16toh(nf7_flow->if_index_in));
-        flow_sample.if_index_out = htobe32(be16toh(nf7_flow->if_index_out));
+        flow_sample.if_index_in = be16toh(nf7_flow->if_index_in);
+        flow_sample.if_index_out = be16toh(nf7_flow->if_index_out);
         flow_sample.flow_octets = be32toh(nf7_flow->flow_octets);
         flow_sample.flow_packets = be32toh(nf7_flow->flow_packets);
 
@@ -184,7 +202,15 @@ static bool process_netflow_v7(NFSample *sample)
     return true;
 }
 
-static bool process_netflow_v9_template(u_int8_t *pkt, size_t len, u_int32_t source_id, std::vector<peer_nf9_template> *templates)
+static inline void be_copy(uint8_t *data, uint8_t *target, uint32_t target_length, uint32_t rec_length)
+{
+    if (target_length < rec_length) {
+        return;
+    }
+    memcpy(target + (target_length - rec_length), data, rec_length);
+}
+
+static bool process_netflow_v9_template(u_int8_t *pkt, size_t len, u_int32_t source_id)
 {
     struct NF9_FLOWSET_HEADER_COMMON *template_header;
     struct NF9_TEMPLATE_FLOWSET_HEADER *tmplh;
@@ -192,7 +218,7 @@ static bool process_netflow_v9_template(u_int8_t *pkt, size_t len, u_int32_t sou
     uint32_t i, count, offset, template_id, total_size;
     peer_nf9_template nf9_template;
 
-    template_header = (struct NF9_FLOWSET_HEADER_COMMON *)pkt;
+    template_header = reinterpret_cast<struct NF9_FLOWSET_HEADER_COMMON *>(pkt);
     if (len < sizeof(*template_header)) {
         return false;
     }
@@ -215,36 +241,29 @@ static bool process_netflow_v9_template(u_int8_t *pkt, size_t len, u_int32_t sou
                 break;
             }
 
+            tmplr = reinterpret_cast<struct NF9_TEMPLATE_FLOWSET_RECORD *>(pkt + offset);
             uint32_t rec_length = be16toh(tmplr->length);
+            uint32_t rec_type = be16toh(tmplr->type);
 
-            tmplr = (struct NF9_TEMPLATE_FLOWSET_RECORD *)(pkt + offset);
-            peer_nf9_record recs(be16toh(tmplr->type), rec_length);
+            peer_nf9_record recs(rec_type, rec_length);
             offset += sizeof(*tmplr);
-
+            template_recs.push_back(recs);
             total_size += rec_length;
         }
         nf9_template.template_id = template_id;
-        nf9_template.template_id = source_id;
+        nf9_template.source_id = source_id;
         nf9_template.num_records = count;
         nf9_template.records = template_recs;
         nf9_template.num_records = i;
-        nf9_template.total_len += total_size;
+        nf9_template.total_len = total_size;
 
-        templates->push_back(nf9_template);
+        nf9_template_map[NfMapID(source_id, template_id)] = nf9_template;
     }
 
     return true;
 }
 
-static inline void be_copy(uint8_t *data, uint8_t *target, uint32_t target_length, uint32_t rec_length)
-{
-    if (target_length < rec_length) {
-        return;
-    }
-    memcpy(target + (target_length - rec_length), data, rec_length);
-}
-
-static int nf9_rec_to_flow(NFSample::Flows *flow, struct peer_nf9_record *rec, uint8_t *data)
+static void nf9_rec_to_flow(NFSample::Flows *flow, struct peer_nf9_record *rec, uint8_t *data)
 {
     /* XXX: use a table-based interpreter */
     switch (rec->type) {
@@ -253,75 +272,88 @@ static int nf9_rec_to_flow(NFSample::Flows *flow, struct peer_nf9_record *rec, u
     case v9_field:                                                                   \
         be_copy(data, reinterpret_cast<uint8_t *>(target), target_length, rec->len); \
         break
+#define V9_FIELD_16(v9_field, target, target_length)                                 \
+    case v9_field:                                                                   \
+        be_copy(data, reinterpret_cast<uint8_t *>(target), target_length, rec->len); \
+        *(target) = be16toh(*target);                                                \
+        break
+#define V9_FIELD_32(v9_field, target, target_length)                                 \
+    case v9_field:                                                                   \
+        be_copy(data, reinterpret_cast<uint8_t *>(target), target_length, rec->len); \
+        *(target) = be32toh(*target);                                                \
+        break
 
-        V9_FIELD(NF9_IN_BYTES, &flow->flow_octets, sizeof(flow->flow_octets));
-        V9_FIELD(NF9_IN_PACKETS, &flow->flow_packets, sizeof(flow->flow_octets));
+        V9_FIELD_32(NF9_IN_BYTES, &flow->flow_octets, sizeof(flow->flow_octets));
+        V9_FIELD_32(NF9_IN_PACKETS, &flow->flow_packets, sizeof(flow->flow_octets));
         V9_FIELD(NF9_IN_PROTOCOL, &flow->protocol, sizeof(flow->protocol));
         V9_FIELD(NF9_SRC_TOS, &flow->tos, sizeof(flow->tos));
         V9_FIELD(NF9_TCP_FLAGS, &flow->tcp_flags, sizeof(flow->tcp_flags));
-        V9_FIELD(NF9_L4_SRC_PORT, &flow->src_port, sizeof(flow->src_port));
+        V9_FIELD_16(NF9_L4_SRC_PORT, &flow->src_port, sizeof(flow->src_port));
         // V9_FIELD(NF9_SRC_MASK, &flow->src_mask, sizeof(flow->src_mask));
-        V9_FIELD(NF9_INPUT_SNMP, &flow->if_index_in, sizeof(flow->if_index_in));
-        V9_FIELD(NF9_L4_DST_PORT, &flow->dst_port, sizeof(flow->dst_port));
+        V9_FIELD_16(NF9_INPUT_SNMP, &flow->if_index_in, sizeof(flow->if_index_in));
+        V9_FIELD_16(NF9_L4_DST_PORT, &flow->dst_port, sizeof(flow->dst_port));
         // V9_FIELD(NF9_DST_MASK, &flow->dst_mask, sizeof(flow->dst_mask));
-        V9_FIELD(NF9_OUTPUT_SNMP, &flow->if_index_out, sizeof(flow->if_index_out));
+        V9_FIELD_16(NF9_OUTPUT_SNMP, &flow->if_index_out, sizeof(flow->if_index_out));
         // V9_FIELD(NF9_SRC_AS, AS_INFO, asinf.src_as);
         // V9_FIELD(NF9_DST_AS, AS_INFO, asinf.dst_as);
-        V9_FIELD(NF9_LAST_SWITCHED, &flow->flow_finish, sizeof(flow->flow_finish));
-        V9_FIELD(NF9_FIRST_SWITCHED, &flow->flow_start, sizeof(flow->flow_start));
+        V9_FIELD_32(NF9_LAST_SWITCHED, &flow->flow_finish, sizeof(flow->flow_finish));
+        V9_FIELD_32(NF9_FIRST_SWITCHED, &flow->flow_start, sizeof(flow->flow_start));
         // V9_FIELD(NF9_IPV6_SRC_MASK, AS_INFO, asinf.src_mask);
         // V9_FIELD(NF9_IPV6_DST_MASK, AS_INFO, asinf.dst_mask);
         // V9_FIELD(NF9_ENGINE_TYPE, FLOW_ENGINE_INFO, finf.engine_type);
         // V9_FIELD(NF9_ENGINE_ID, FLOW_ENGINE_INFO, finf.engine_id);
         V9_FIELD(NF9_IPV4_SRC_ADDR, &flow->src_ip, sizeof(flow->src_ip));
-        V9_FIELD(NF9_IPV6_SRC_ADDR, &flow->src_ip, sizeof(flow->src_ip));
         V9_FIELD(NF9_IPV4_DST_ADDR, &flow->dst_ip, sizeof(flow->dst_ip));
-        V9_FIELD(NF9_IPV6_DST_ADDR, &flow->dst_ip, sizeof(flow->dst_ip));
         V9_FIELD(NF9_IPV4_NEXT_HOP, &flow->gateway_ip, sizeof(flow->gateway_ip));
-        V9_FIELD(NF9_IPV6_NEXT_HOP, &flow->gateway_ip, sizeof(flow->gateway_ip));
 
+    case NF9_IPV6_SRC_ADDR:
+        be_copy(data, reinterpret_cast<uint8_t *>(flow->src_ip), sizeof(flow->src_ip), rec->len);
+        flow->src_ipv6 = true;
+        break;
+    case NF9_IPV6_DST_ADDR:
+        be_copy(data, reinterpret_cast<uint8_t *>(flow->dst_ip), sizeof(flow->dst_ip), rec->len);
+        flow->dst_ipv6 = true;
+        break;
+    case NF9_IPV6_NEXT_HOP:
+        be_copy(data, reinterpret_cast<uint8_t *>(flow->gateway_ip), sizeof(flow->gateway_ip), rec->len);
+        flow->gateway_ipv6 = true;
+        break;
+#undef V9_FIELD_32
+#undef V9_FIELD_16
 #undef V9_FIELD
     }
-    return (0);
 }
 
-static bool process_netflow_v9_data(std::vector<NFSample::Flows> *flows, uint8_t *pkt, size_t len, uint32_t source_id, struct NF9_HEADER *nf9_hdr, uint32_t *num_flows, std::vector<peer_nf9_template> *templates)
+static bool process_netflow_v9_data(std::vector<NFSample::Flows> *flows, uint8_t *pkt, size_t len, uint32_t source_id, uint32_t *num_flows)
 {
-    struct peer_nf9_template *templates1;
     struct NF9_DATA_FLOWSET_HEADER *dath;
-    uint16_t flowset_id, i, offset, num_flowsets;
+    uint16_t flowset_id, i, j, offset, num_flowsets;
 
-    if (templates->empty()) {
+    if (nf9_template_map.empty()) {
         return false;
     }
 
     *num_flows = 0;
 
-    dath = (struct NF9_DATA_FLOWSET_HEADER *)pkt;
+    dath = reinterpret_cast<struct NF9_DATA_FLOWSET_HEADER *>(pkt);
     if (len < sizeof(*dath)) {
         return false;
     }
 
     flowset_id = be16toh(dath->c.flowset_id);
 
-    auto nf9_template = templates->rbegin();
-    for (auto it = templates->rbegin(); it != templates->rend(); ++it) {
-        if (it->template_id == flowset_id && it->source_id == source_id) {
-            nf9_template = it;
-            break;
-        }
+    auto iter = nf9_template_map.find(NfMapID(source_id, flowset_id));
+    if (iter == nf9_template_map.end()) {
+        return false;
     }
 
-    if (nf9_template == templates->rbegin()) {
-        return true;
-    }
-
-    if (nf9_template->records.empty()) {
+    auto nf9_template = iter->second;
+    if (nf9_template.records.empty()) {
         return false;
     }
 
     offset = sizeof(*dath);
-    num_flowsets = (len - offset) / nf9_template->total_len;
+    num_flowsets = (len - offset) / nf9_template.total_len;
 
     if (num_flowsets == 0 || num_flowsets > 0x4000) {
         return false;
@@ -330,15 +362,15 @@ static bool process_netflow_v9_data(std::vector<NFSample::Flows> *flows, uint8_t
     for (i = 0; i < num_flowsets; i++) {
         uint32_t offset_recs = 0;
         NFSample::Flows flow;
-        for (i = 0; i < nf9_template->num_records; i++) {
-            nf9_rec_to_flow(&flow, &nf9_template->records[i], pkt + offset);
-            offset_recs += nf9_template->records[i].len;
+        for (j = 0; j < nf9_template.num_records; j++) {
+            nf9_rec_to_flow(&flow, &nf9_template.records[j], pkt + offset + offset_recs);
+            offset_recs += nf9_template.records[j].len;
         }
         flows->push_back(flow);
-        offset += nf9_template->total_len;
+        offset += nf9_template.total_len;
     }
 
-    *num_flows = i;
+    *num_flows = j;
 
     return true;
 }
@@ -350,19 +382,19 @@ static bool process_netflow_v9(NFSample *sample)
     if (sample->raw_sample_len < sizeof(*nf9_hdr)) {
         return false;
     }
+
     struct NF9_FLOWSET_HEADER_COMMON *flowset;
     uint32_t i, flowset_id, flowset_len, flowset_flows;
     uint32_t offset, total_flows;
 
     sample->uptime_ms = nf9_hdr->uptime_ms;
     sample->time_sec = nf9_hdr->time_sec;
-    sample->package_sequence = nf9_hdr->package_sequence;
+    sample->flow_sequence = be32toh(nf9_hdr->package_sequence);
     sample->source_id = be32toh(nf9_hdr->source_id);
 
     offset = sizeof(*nf9_hdr);
     total_flows = 0;
 
-    std::vector<peer_nf9_template> templates;
     std::vector<NFSample::Flows> flows;
     for (i = 0;; i++) {
         /* Make sure we don't run off the end of the flow */
@@ -381,7 +413,7 @@ static bool process_netflow_v9(NFSample *sample)
 
         switch (flowset_id) {
         case NF9_TEMPLATE_FLOWSET_ID:
-            if (!process_netflow_v9_template(sample->raw_sample + offset, flowset_len, sample->source_id, &templates)) {
+            if (!process_netflow_v9_template(sample->raw_sample + offset, flowset_len, sample->source_id)) {
                 return false;
             }
             break;
@@ -393,7 +425,7 @@ static bool process_netflow_v9(NFSample *sample)
                 /* XXX ratelimit */
                 break;
             }
-            if (!process_netflow_v9_data(&flows, sample->raw_sample + offset, flowset_len, sample->source_id, nf9_hdr, &flowset_flows, &templates)) {
+            if (!process_netflow_v9_data(&flows, sample->raw_sample + offset, flowset_len, sample->source_id, &flowset_flows)) {
                 return false;
             }
             total_flows += flowset_flows;
@@ -413,17 +445,245 @@ static bool process_netflow_v9(NFSample *sample)
     return false;
 }
 
+static void nf10_rec_to_flow(NFSample::Flows *flow, struct peer_nf10_record *rec, uint8_t *data)
+{
+    /* XXX: use a table-based interpreter */
+    switch (rec->type) {
+
+#define V10_FIELD(v10_field, target, target_length)                                  \
+    case v10_field:                                                                  \
+        be_copy(data, reinterpret_cast<uint8_t *>(target), target_length, rec->len); \
+        break
+#define V10_FIELD_16(v10_field, target, target_length)                               \
+    case v10_field:                                                                  \
+        be_copy(data, reinterpret_cast<uint8_t *>(target), target_length, rec->len); \
+        *(target) = be16toh(*target);                                                \
+        break
+#define V10_FIELD_32(v10_field, target, target_length)                               \
+    case v10_field:                                                                  \
+        be_copy(data, reinterpret_cast<uint8_t *>(target), target_length, rec->len); \
+        *(target) = be32toh(*target);                                                \
+        break
+
+        V10_FIELD_32(NF10_IN_BYTES, &flow->flow_octets, sizeof(flow->flow_octets));
+        V10_FIELD_32(NF10_IN_PACKETS, &flow->flow_packets, sizeof(flow->flow_octets));
+        V10_FIELD(NF10_IN_PROTOCOL, &flow->protocol, sizeof(flow->protocol));
+        V10_FIELD(NF10_SRC_TOS, &flow->tos, sizeof(flow->tos));
+        V10_FIELD(NF10_TCP_FLAGS, &flow->tcp_flags, sizeof(flow->tcp_flags));
+        V10_FIELD_16(NF10_L4_SRC_PORT, &flow->src_port, sizeof(flow->src_port));
+        // V10_FIELD(NF10_SRC_MASK, &flow->src_mask, sizeof(flow->src_mask));
+        V10_FIELD_16(NF10_INPUT_SNMP, &flow->if_index_in, sizeof(flow->if_index_in));
+        V10_FIELD_16(NF10_L4_DST_PORT, &flow->dst_port, sizeof(flow->dst_port));
+        // V10_FIELD(NF10_DST_MASK, &flow->dst_mask, sizeof(flow->dst_mask));
+        V10_FIELD_16(NF10_OUTPUT_SNMP, &flow->if_index_out, sizeof(flow->if_index_out));
+        // V10_FIELD(NF10_SRC_AS, AS_INFO, asinf.src_as);
+        // V10_FIELD(NF10_DST_AS, AS_INFO, asinf.dst_as);
+        V10_FIELD_32(NF10_LAST_SWITCHED, &flow->flow_finish, sizeof(flow->flow_finish));
+        V10_FIELD_32(NF10_FIRST_SWITCHED, &flow->flow_start, sizeof(flow->flow_start));
+        // V10_FIELD(NF10_IPV6_SRC_MASK, AS_INFO, asinf.src_mask);
+        // V10_FIELD(NF10_IPV6_DST_MASK, AS_INFO, asinf.dst_mask);
+        // V10_FIELD(NF10_ENGINE_TYPE, FLOW_ENGINE_INFO, finf.engine_type);
+        // V10_FIELD(NF10_ENGINE_ID, FLOW_ENGINE_INFO, finf.engine_id);
+        V10_FIELD(NF10_IPV4_SRC_ADDR, &flow->src_ip, sizeof(flow->src_ip));
+        V10_FIELD(NF10_IPV4_DST_ADDR, &flow->dst_ip, sizeof(flow->dst_ip));
+        V10_FIELD(NF10_IPV4_NEXT_HOP, &flow->gateway_ip, sizeof(flow->gateway_ip));
+
+    case NF10_IPV6_SRC_ADDR:
+        be_copy(data, reinterpret_cast<uint8_t *>(flow->src_ip), sizeof(flow->src_ip), rec->len);
+        flow->src_ipv6 = true;
+        break;
+    case NF10_IPV6_DST_ADDR:
+        be_copy(data, reinterpret_cast<uint8_t *>(flow->dst_ip), sizeof(flow->dst_ip), rec->len);
+        flow->dst_ipv6 = true;
+        break;
+    case NF10_IPV6_NEXT_HOP:
+        be_copy(data, reinterpret_cast<uint8_t *>(flow->gateway_ip), sizeof(flow->gateway_ip), rec->len);
+        flow->gateway_ipv6 = true;
+        break;
+#undef V10_FIELD_32
+#undef V10_FIELD_16
+#undef V10_FIELD
+    }
+}
+
+static bool process_netflow_v10_data(std::vector<NFSample::Flows> *flows, uint8_t *pkt, size_t len, uint32_t source_id, uint32_t *num_flows)
+{
+    struct NF10_DATA_FLOWSET_HEADER *dath;
+    uint16_t flowset_id, i, j, offset, num_flowsets;
+
+    if (nf10_template_map.empty()) {
+        return false;
+    }
+
+    *num_flows = 0;
+
+    dath = reinterpret_cast<struct NF10_DATA_FLOWSET_HEADER *>(pkt);
+    if (len < sizeof(*dath)) {
+        return false;
+    }
+
+    flowset_id = be16toh(dath->c.flowset_id);
+
+    auto iter = nf10_template_map.find(NfMapID(source_id, flowset_id));
+    if (iter == nf10_template_map.end()) {
+        return false;
+    }
+
+    auto nf10_template = iter->second;
+    if (nf10_template.records.empty()) {
+        return false;
+    }
+
+    offset = sizeof(*dath);
+    num_flowsets = (len - offset) / nf10_template.total_len;
+
+    if (num_flowsets == 0 || num_flowsets > 0x4000) {
+        return false;
+    }
+
+    for (i = 0; i < num_flowsets; i++) {
+        uint32_t offset_recs = 0;
+        NFSample::Flows flow;
+        for (j = 0; j < nf10_template.num_records; j++) {
+            nf10_rec_to_flow(&flow, &nf10_template.records[j], pkt + offset + offset_recs);
+            offset_recs += nf10_template.records[j].len;
+        }
+        flows->push_back(flow);
+        offset += nf10_template.total_len;
+    }
+
+    *num_flows = j;
+    return true;
+}
+
+static bool process_netflow_v10_template(u_int8_t *pkt, size_t len, u_int32_t source_id)
+{
+    struct NF10_FLOWSET_HEADER_COMMON *template_header;
+    struct NF10_TEMPLATE_FLOWSET_HEADER *tmplh;
+    struct NF10_TEMPLATE_FLOWSET_RECORD *tmplr;
+    uint32_t i, count, offset, template_id, total_size;
+    peer_nf10_template nf10_template;
+
+    template_header = reinterpret_cast<struct NF10_FLOWSET_HEADER_COMMON *>(pkt);
+    if (len < sizeof(*template_header)) {
+        return false;
+    }
+
+    if (be16toh(template_header->flowset_id) != NF10_TEMPLATE_FLOWSET_ID) {
+        return false;
+    }
+
+    for (offset = sizeof(*template_header); offset < len;) {
+        tmplh = reinterpret_cast<struct NF10_TEMPLATE_FLOWSET_HEADER *>(pkt + offset);
+
+        template_id = be16toh(tmplh->template_id);
+        count = be16toh(tmplh->count);
+        offset += sizeof(*tmplh);
+
+        total_size = 0;
+        std::vector<peer_nf10_record> template_recs;
+        for (i = 0; i < count; i++) {
+            if (offset >= len) {
+                break;
+            }
+
+            tmplr = reinterpret_cast<struct NF10_TEMPLATE_FLOWSET_RECORD *>(pkt + offset);
+            uint32_t rec_length = be16toh(tmplr->length);
+            uint32_t rec_type = be16toh(tmplr->type);
+
+            peer_nf10_record recs(rec_type, rec_length);
+            offset += sizeof(*tmplr);
+            template_recs.push_back(recs);
+            total_size += rec_length;
+        }
+        nf10_template.template_id = template_id;
+        nf10_template.source_id = source_id;
+        nf10_template.num_records = count;
+        nf10_template.records = template_recs;
+        nf10_template.num_records = i;
+        nf10_template.total_len = total_size;
+
+        nf10_template_map[NfMapID(source_id, template_id)] = nf10_template;
+    }
+
+    return true;
+}
+
 static bool process_netflow_v10(NFSample *sample)
 {
+    struct NF10_HEADER *nf10_hdr = reinterpret_cast<struct NF10_HEADER *>(sample->raw_sample);
+
+    if (sample->raw_sample_len < sizeof(*nf10_hdr)) {
+        return false;
+    }
+
+    struct NF10_FLOWSET_HEADER_COMMON *flowset;
+    uint32_t i, flowset_id, flowset_len, flowset_flows;
+    uint32_t offset, total_flows;
+
+    sample->time_sec = nf10_hdr->time_sec;
+    sample->flow_sequence = be32toh(nf10_hdr->package_sequence);
+    sample->source_id = be32toh(nf10_hdr->source_id);
+
+    offset = sizeof(*nf10_hdr);
+    total_flows = 0;
+
+    std::vector<NFSample::Flows> flows;
+    for (i = 0;; i++) {
+        /* Make sure we don't run off the end of the flow */
+        if (offset >= sample->raw_sample_len) {
+            break;
+        }
+
+        flowset = reinterpret_cast<struct NF10_FLOWSET_HEADER_COMMON *>(sample->raw_sample + offset);
+        flowset_id = be16toh(flowset->flowset_id);
+        flowset_len = be16toh(flowset->length);
+
+        /* Make sure we don't run off the end of the flow */
+        if (offset + flowset_len > sample->raw_sample_len) {
+            break;
+        }
+
+        switch (flowset_id) {
+        case NF10_TEMPLATE_FLOWSET_ID:
+            if (!process_netflow_v10_template(sample->raw_sample + offset, flowset_len, sample->source_id)) {
+                return false;
+            }
+            break;
+        case NF10_OPTIONS_FLOWSET_ID:
+            /* XXX: implement this (maybe) */
+            break;
+        default:
+            if (flowset_id < NF10_MIN_RECORD_FLOWSET_ID) {
+                /* XXX ratelimit */
+                break;
+            }
+            if (!process_netflow_v10_data(&flows, sample->raw_sample + offset, flowset_len, sample->source_id, &flowset_flows)) {
+                return false;
+            }
+            total_flows += flowset_flows;
+            break;
+        }
+        offset += flowset_len;
+        if (offset == sample->raw_sample_len)
+            break;
+        /* XXX check header->count against what we got */
+    }
+
+    sample->flows = flows;
+
+    if (total_flows > 0) {
+        return true;
+    }
     return false;
 }
 
 static bool process_netflow_packet(NFSample *sample)
 {
     struct NF_HEADER_COMMON *hdr = reinterpret_cast<struct NF_HEADER_COMMON *>(sample->raw_sample);
-    sample->version = be16toh(hdr->version);
 
-    std::cerr << sample->version << '\n';
+    sample->version = be16toh(hdr->version);
+    sample->nflows = be16toh(hdr->flows);
 
     switch (sample->version) {
     case 1:
