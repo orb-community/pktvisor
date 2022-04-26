@@ -156,6 +156,8 @@ struct __attribute__((__packed__)) NF9_DATA_FLOWSET_HEADER {
 #define NF9_ENGINE_TYPE 38
 #define NF9_ENGINE_ID 39
 /* ... */
+#define NF9_IP_PROTOCOL_VERSION 60
+#define NF9_DIRECTION 61
 #define NF9_IPV6_NEXT_HOP 62
 
 /* Netflow v.10 */
@@ -212,6 +214,8 @@ struct __attribute__((__packed__)) NF10_DATA_FLOWSET_HEADER {
 #define NF10_ENGINE_TYPE 38
 #define NF10_ENGINE_ID 39
 /* ... */
+#define NF10_IP_PROTOCOL_VERSION 60
+#define NF10_DIRECTION 61
 #define NF10_IPV6_NEXT_HOP 62
 
 /* A record in a NetFlow v.9 template record */

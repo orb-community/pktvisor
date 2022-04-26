@@ -156,6 +156,15 @@ void FlowInputStream::_create_frame_stream_udp_socket()
         });
     } else if (_flow_type == Type::NETFLOW) {
         _udp_server_h->on<uvw::UDPDataEvent>([this](const uvw::UDPDataEvent &event, uvw::UDPHandle &) {
+            NFSample sample;
+            std::memset(&sample, 0, sizeof(sample));
+            sample.raw_sample = reinterpret_cast<uint8_t *>(event.data.get());
+            sample.raw_sample_len = event.length;
+            if (process_netflow_packet(&sample)) {
+                netflow_signal(sample);
+            } else {
+                ++_error_count;
+            }
         });
     }
 

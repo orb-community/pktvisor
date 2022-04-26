@@ -28,15 +28,15 @@ struct NFSample {
     uint32_t source_id;
 
     struct Flows {
-        bool src_ipv6 = false;
-        bool dst_ipv6 = false;
-        bool gateway_ipv6 = false;
-        uint32_t src_ip, dst_ip, gateway_ip;
+        bool is_ipv6 = false;
+        uint32_t src_ip, dst_ip, nexthop_ip;
         uint16_t if_index_in, if_index_out;
         uint32_t flow_packets, flow_octets;
         uint32_t flow_start, flow_finish;
         uint16_t src_port, dst_port;
         uint8_t protocol, tos, tcp_flags;
+        uint16_t src_as, dst_as;
+        uint8_t src_mask, dst_mask;
     };
     std::vector<Flows> flows;
 };
@@ -85,7 +85,7 @@ static bool process_netflow_v1(NFSample *sample)
 
         flow_sample.src_ip = nf1_flow->src_ip;
         flow_sample.dst_ip = nf1_flow->dest_ip;
-        flow_sample.gateway_ip = nf1_flow->nexthop_ip;
+        flow_sample.nexthop_ip = nf1_flow->nexthop_ip;
 
         flow_sample.src_port = nf1_flow->src_port;
         flow_sample.dst_port = nf1_flow->dest_port;
@@ -134,7 +134,7 @@ static bool process_netflow_v5(NFSample *sample)
 
         flow_sample.src_ip = nf5_flow->src_ip;
         flow_sample.dst_ip = nf5_flow->dest_ip;
-        flow_sample.gateway_ip = nf5_flow->nexthop_ip;
+        flow_sample.nexthop_ip = nf5_flow->nexthop_ip;
 
         flow_sample.src_port = nf5_flow->src_port;
         flow_sample.dst_port = nf5_flow->dest_port;
@@ -146,6 +146,11 @@ static bool process_netflow_v5(NFSample *sample)
         flow_sample.if_index_out = be16toh(nf5_flow->if_index_out);
         flow_sample.flow_octets = be32toh(nf5_flow->flow_octets);
         flow_sample.flow_packets = be32toh(nf5_flow->flow_packets);
+
+        flow_sample.src_as = be16toh(nf5_flow->src_as);
+        flow_sample.dst_as = be16toh(nf5_flow->dest_as);
+        flow_sample.src_mask = nf5_flow->src_mask;
+        flow_sample.dst_mask = nf5_flow->dst_mask;
 
         sample->flows.push_back(flow_sample);
     }
@@ -183,7 +188,7 @@ static bool process_netflow_v7(NFSample *sample)
 
         flow_sample.src_ip = nf7_flow->src_ip;
         flow_sample.dst_ip = nf7_flow->dest_ip;
-        flow_sample.gateway_ip = nf7_flow->nexthop_ip;
+        flow_sample.nexthop_ip = nf7_flow->nexthop_ip;
 
         flow_sample.src_port = nf7_flow->src_port;
         flow_sample.dst_port = nf7_flow->dest_port;
@@ -195,6 +200,11 @@ static bool process_netflow_v7(NFSample *sample)
         flow_sample.if_index_out = be16toh(nf7_flow->if_index_out);
         flow_sample.flow_octets = be32toh(nf7_flow->flow_octets);
         flow_sample.flow_packets = be32toh(nf7_flow->flow_packets);
+
+        flow_sample.src_as = be16toh(nf7_flow->src_as);
+        flow_sample.dst_as = be16toh(nf7_flow->dest_as);
+        flow_sample.src_mask = nf7_flow->src_mask;
+        flow_sample.dst_mask = nf7_flow->dst_mask;
 
         sample->flows.push_back(flow_sample);
     }
@@ -288,35 +298,31 @@ static void nf9_rec_to_flow(NFSample::Flows *flow, struct peer_nf9_record *rec, 
         V9_FIELD(NF9_IN_PROTOCOL, &flow->protocol, sizeof(flow->protocol));
         V9_FIELD(NF9_SRC_TOS, &flow->tos, sizeof(flow->tos));
         V9_FIELD(NF9_TCP_FLAGS, &flow->tcp_flags, sizeof(flow->tcp_flags));
+        V9_FIELD(NF9_SRC_MASK, &flow->src_mask, sizeof(flow->src_mask));
+        V9_FIELD(NF9_DST_MASK, &flow->dst_mask, sizeof(flow->dst_mask));
         V9_FIELD_16(NF9_L4_SRC_PORT, &flow->src_port, sizeof(flow->src_port));
-        // V9_FIELD(NF9_SRC_MASK, &flow->src_mask, sizeof(flow->src_mask));
         V9_FIELD_16(NF9_INPUT_SNMP, &flow->if_index_in, sizeof(flow->if_index_in));
         V9_FIELD_16(NF9_L4_DST_PORT, &flow->dst_port, sizeof(flow->dst_port));
-        // V9_FIELD(NF9_DST_MASK, &flow->dst_mask, sizeof(flow->dst_mask));
         V9_FIELD_16(NF9_OUTPUT_SNMP, &flow->if_index_out, sizeof(flow->if_index_out));
-        // V9_FIELD(NF9_SRC_AS, AS_INFO, asinf.src_as);
-        // V9_FIELD(NF9_DST_AS, AS_INFO, asinf.dst_as);
+        V9_FIELD_16(NF9_SRC_AS, &flow->src_as, sizeof(flow->src_as));
+        V9_FIELD_16(NF9_DST_AS, &flow->dst_as, sizeof(flow->dst_as));
         V9_FIELD_32(NF9_LAST_SWITCHED, &flow->flow_finish, sizeof(flow->flow_finish));
         V9_FIELD_32(NF9_FIRST_SWITCHED, &flow->flow_start, sizeof(flow->flow_start));
-        // V9_FIELD(NF9_IPV6_SRC_MASK, AS_INFO, asinf.src_mask);
-        // V9_FIELD(NF9_IPV6_DST_MASK, AS_INFO, asinf.dst_mask);
-        // V9_FIELD(NF9_ENGINE_TYPE, FLOW_ENGINE_INFO, finf.engine_type);
-        // V9_FIELD(NF9_ENGINE_ID, FLOW_ENGINE_INFO, finf.engine_id);
+        V9_FIELD(NF9_IPV6_SRC_MASK, &flow->src_mask, sizeof(flow->src_mask));
+        V9_FIELD(NF9_IPV6_DST_MASK, &flow->dst_mask, sizeof(flow->dst_mask));
         V9_FIELD(NF9_IPV4_SRC_ADDR, &flow->src_ip, sizeof(flow->src_ip));
+        V9_FIELD(NF9_IPV6_SRC_ADDR, &flow->src_ip, sizeof(flow->src_ip));
         V9_FIELD(NF9_IPV4_DST_ADDR, &flow->dst_ip, sizeof(flow->dst_ip));
-        V9_FIELD(NF9_IPV4_NEXT_HOP, &flow->gateway_ip, sizeof(flow->gateway_ip));
+        V9_FIELD(NF9_IPV6_DST_ADDR, &flow->dst_ip, sizeof(flow->dst_ip));
+        V9_FIELD(NF9_IPV4_NEXT_HOP, &flow->nexthop_ip, sizeof(flow->nexthop_ip));
+        V9_FIELD(NF9_IPV6_NEXT_HOP, &flow->nexthop_ip, sizeof(flow->nexthop_ip));
 
-    case NF9_IPV6_SRC_ADDR:
-        be_copy(data, reinterpret_cast<uint8_t *>(flow->src_ip), sizeof(flow->src_ip), rec->len);
-        flow->src_ipv6 = true;
-        break;
-    case NF9_IPV6_DST_ADDR:
-        be_copy(data, reinterpret_cast<uint8_t *>(flow->dst_ip), sizeof(flow->dst_ip), rec->len);
-        flow->dst_ipv6 = true;
-        break;
-    case NF9_IPV6_NEXT_HOP:
-        be_copy(data, reinterpret_cast<uint8_t *>(flow->gateway_ip), sizeof(flow->gateway_ip), rec->len);
-        flow->gateway_ipv6 = true;
+    case NF9_IP_PROTOCOL_VERSION:
+        uint8_t version = 0;
+        be_copy(data, reinterpret_cast<uint8_t *>(version), sizeof(version), rec->len);
+        if (version == 6) {
+            flow->is_ipv6 = true;
+        }
         break;
 #undef V9_FIELD_32
 #undef V9_FIELD_16
@@ -470,35 +476,31 @@ static void nf10_rec_to_flow(NFSample::Flows *flow, struct peer_nf10_record *rec
         V10_FIELD(NF10_IN_PROTOCOL, &flow->protocol, sizeof(flow->protocol));
         V10_FIELD(NF10_SRC_TOS, &flow->tos, sizeof(flow->tos));
         V10_FIELD(NF10_TCP_FLAGS, &flow->tcp_flags, sizeof(flow->tcp_flags));
+        V10_FIELD(NF10_SRC_MASK, &flow->src_mask, sizeof(flow->src_mask));
+        V10_FIELD(NF10_DST_MASK, &flow->dst_mask, sizeof(flow->dst_mask));
         V10_FIELD_16(NF10_L4_SRC_PORT, &flow->src_port, sizeof(flow->src_port));
-        // V10_FIELD(NF10_SRC_MASK, &flow->src_mask, sizeof(flow->src_mask));
         V10_FIELD_16(NF10_INPUT_SNMP, &flow->if_index_in, sizeof(flow->if_index_in));
         V10_FIELD_16(NF10_L4_DST_PORT, &flow->dst_port, sizeof(flow->dst_port));
-        // V10_FIELD(NF10_DST_MASK, &flow->dst_mask, sizeof(flow->dst_mask));
         V10_FIELD_16(NF10_OUTPUT_SNMP, &flow->if_index_out, sizeof(flow->if_index_out));
-        // V10_FIELD(NF10_SRC_AS, AS_INFO, asinf.src_as);
-        // V10_FIELD(NF10_DST_AS, AS_INFO, asinf.dst_as);
+        V10_FIELD_16(NF10_SRC_AS, &flow->src_as, sizeof(flow->src_as));
+        V10_FIELD_16(NF10_DST_AS, &flow->dst_as, sizeof(flow->dst_as));
         V10_FIELD_32(NF10_LAST_SWITCHED, &flow->flow_finish, sizeof(flow->flow_finish));
         V10_FIELD_32(NF10_FIRST_SWITCHED, &flow->flow_start, sizeof(flow->flow_start));
-        // V10_FIELD(NF10_IPV6_SRC_MASK, AS_INFO, asinf.src_mask);
-        // V10_FIELD(NF10_IPV6_DST_MASK, AS_INFO, asinf.dst_mask);
-        // V10_FIELD(NF10_ENGINE_TYPE, FLOW_ENGINE_INFO, finf.engine_type);
-        // V10_FIELD(NF10_ENGINE_ID, FLOW_ENGINE_INFO, finf.engine_id);
+        V10_FIELD(NF10_IPV6_SRC_MASK, &flow->src_mask, sizeof(flow->src_mask));
+        V10_FIELD(NF10_IPV6_DST_MASK, &flow->dst_mask, sizeof(flow->dst_mask));
         V10_FIELD(NF10_IPV4_SRC_ADDR, &flow->src_ip, sizeof(flow->src_ip));
+        V10_FIELD(NF10_IPV6_SRC_ADDR, &flow->src_ip, sizeof(flow->src_ip));
         V10_FIELD(NF10_IPV4_DST_ADDR, &flow->dst_ip, sizeof(flow->dst_ip));
-        V10_FIELD(NF10_IPV4_NEXT_HOP, &flow->gateway_ip, sizeof(flow->gateway_ip));
+        V10_FIELD(NF10_IPV6_DST_ADDR, &flow->dst_ip, sizeof(flow->dst_ip));
+        V10_FIELD(NF10_IPV4_NEXT_HOP, &flow->nexthop_ip, sizeof(flow->nexthop_ip));
+        V10_FIELD(NF10_IPV6_NEXT_HOP, &flow->nexthop_ip, sizeof(flow->nexthop_ip));
 
-    case NF10_IPV6_SRC_ADDR:
-        be_copy(data, reinterpret_cast<uint8_t *>(flow->src_ip), sizeof(flow->src_ip), rec->len);
-        flow->src_ipv6 = true;
-        break;
-    case NF10_IPV6_DST_ADDR:
-        be_copy(data, reinterpret_cast<uint8_t *>(flow->dst_ip), sizeof(flow->dst_ip), rec->len);
-        flow->dst_ipv6 = true;
-        break;
-    case NF10_IPV6_NEXT_HOP:
-        be_copy(data, reinterpret_cast<uint8_t *>(flow->gateway_ip), sizeof(flow->gateway_ip), rec->len);
-        flow->gateway_ipv6 = true;
+    case NF10_IP_PROTOCOL_VERSION:
+        uint8_t version = 0;
+        be_copy(data, reinterpret_cast<uint8_t *>(version), sizeof(version), rec->len);
+        if (version == 6) {
+            flow->is_ipv6 = true;
+        }
         break;
 #undef V10_FIELD_32
 #undef V10_FIELD_16

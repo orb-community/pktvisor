@@ -436,7 +436,7 @@ void NetworkMetricsBucket::process_netflow(bool deep, const NFSample &payload)
 {
     for (const auto &sample : payload.flows) {
         pcpp::ProtocolType l3;
-        if (sample.src_ipv6 && sample.dst_ipv6) {
+        if (sample.is_ipv6) {
             l3 = pcpp::IPv6;
         } else {
             l3 = pcpp::IPv4;
@@ -452,12 +452,7 @@ void NetworkMetricsBucket::process_netflow(bool deep, const NFSample &payload)
             break;
         }
 
-        PacketDirection dir;
-        if (sample.if_index_in) {
-            dir = PacketDirection::toHost;
-        } else if (sample.if_index_out) {
-            dir = PacketDirection::fromHost;
-        }
+        PacketDirection dir = PacketDirection::unknown;
 
         if (!deep) {
             process_net_layer(dir, l3, l4, payload.raw_sample_len);
@@ -468,20 +463,12 @@ void NetworkMetricsBucket::process_netflow(bool deep, const NFSample &payload)
         pcpp::IPv4Address ipv4_in, ipv4_out;
         pcpp::IPv6Address ipv6_in, ipv6_out;
 
-        if (sample.src_ipv6) {
+        if (sample.is_ipv6) {
             is_ipv6 = true;
             ipv6_in = pcpp::IPv6Address(reinterpret_cast<uint8_t *>(sample.src_ip));
-        } else {
-            is_ipv6 = false;
-            ipv4_in = pcpp::IPv4Address(sample.src_ip);
-        }
-
-        if (sample.dst_ipv6) {
-            is_ipv6 = true;
             ipv6_out = pcpp::IPv6Address(reinterpret_cast<uint8_t *>(sample.dst_ip));
-
         } else {
-            is_ipv6 = false;
+            ipv4_in = pcpp::IPv4Address(sample.src_ip);
             ipv4_out = pcpp::IPv4Address(sample.dst_ip);
         }
 
