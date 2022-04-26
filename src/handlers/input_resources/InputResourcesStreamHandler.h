@@ -91,10 +91,12 @@ class InputResourcesStreamHandler final : public visor::StreamMetricsHandler<Inp
 
     sigslot::connection _dnstap_connection;
     sigslot::connection _sflow_connection;
+    sigslot::connection _netflow_connection;
     sigslot::connection _pkt_connection;
     sigslot::connection _policies_connection;
 
     void process_sflow_cb(const SFSample &);
+    void process_netflow_cb(const NFSample &);
     void process_dnstap_cb(const dnstap::Dnstap &, size_t);
     void process_policies_cb(const Policy *policy, InputStream::Action action);
     void process_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp);

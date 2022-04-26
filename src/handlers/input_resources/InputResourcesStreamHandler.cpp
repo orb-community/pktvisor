@@ -47,6 +47,7 @@ void InputResourcesStreamHandler::start()
         _policies_connection = _dnstap_stream->policy_signal.connect(&InputResourcesStreamHandler::process_policies_cb, this);
     } else if (_flow_stream) {
         _sflow_connection = _flow_stream->sflow_signal.connect(&InputResourcesStreamHandler::process_sflow_cb, this);
+        _sflow_connection = _flow_stream->netflow_signal.connect(&InputResourcesStreamHandler::process_netflow_cb, this);
         _policies_connection = _flow_stream->policy_signal.connect(&InputResourcesStreamHandler::process_policies_cb, this);
     }
 
@@ -91,6 +92,14 @@ void InputResourcesStreamHandler::process_policies_cb(const Policy *policy, Inpu
 }
 
 void InputResourcesStreamHandler::process_sflow_cb([[maybe_unused]] const SFSample &)
+{
+    if (difftime(time(NULL), _timer) >= MEASURE_INTERVAL) {
+        _timer = time(NULL);
+        _metrics->process_resources(_monitor.cpu_percentage(), _monitor.memory_usage());
+    }
+}
+
+void InputResourcesStreamHandler::process_netflow_cb([[maybe_unused]] const NFSample &)
 {
     if (difftime(time(NULL), _timer) >= MEASURE_INTERVAL) {
         _timer = time(NULL);
