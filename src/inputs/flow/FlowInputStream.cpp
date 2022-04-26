@@ -168,7 +168,7 @@ void FlowInputStream::_create_frame_stream_udp_socket()
         });
     }
 
-    _logger->info("[{}] binding sflow UDP server on {}:{}", _name, bind, port);
+    _logger->info("[{}] binding flow UDP server on {}:{}", _name, bind, port);
     _udp_server_h->bind(bind, port);
     _udp_server_h->recv();
 

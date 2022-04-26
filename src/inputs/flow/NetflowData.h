@@ -319,7 +319,7 @@ static void nf9_rec_to_flow(NFSample::Flows *flow, struct peer_nf9_record *rec, 
 
     case NF9_IP_PROTOCOL_VERSION:
         uint8_t version = 0;
-        be_copy(data, reinterpret_cast<uint8_t *>(version), sizeof(version), rec->len);
+        be_copy(data, reinterpret_cast<uint8_t *>(&version), sizeof(version), rec->len);
         if (version == 6) {
             flow->is_ipv6 = true;
         }
@@ -497,7 +497,7 @@ static void nf10_rec_to_flow(NFSample::Flows *flow, struct peer_nf10_record *rec
 
     case NF10_IP_PROTOCOL_VERSION:
         uint8_t version = 0;
-        be_copy(data, reinterpret_cast<uint8_t *>(version), sizeof(version), rec->len);
+        be_copy(data, reinterpret_cast<uint8_t *>(&version), sizeof(version), rec->len);
         if (version == 6) {
             flow->is_ipv6 = true;
         }

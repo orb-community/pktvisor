@@ -36,7 +36,7 @@ static const char USAGE[] =
     to stderr.
 
     Options:
-      -i INPUT              Input type (pcap|dnstap|sflow). If not set, default is pcap input
+      -i INPUT              Input type (pcap|dnstap|sflow|netflow). If not set, default is pcap input
       --max-deep-sample N   Never deep sample more than N% of streams (an int between 0 and 100) [default: 100]
       --periods P           Hold this many 60 second time periods of history in memory. Use 1 to summarize all data. [default: 5]
       -h --help             Show this screen
@@ -63,13 +63,15 @@ using namespace visor;
 enum InputType {
     PCAP = 0,
     DNSTAP = 1,
-    FLOW = 2
+    SFLOW = 2,
+    NETFLOW = 3,
 };
 
 static const std::map<std::string, InputType> input_map = {
     {"pcap", PCAP},
     {"dnstap", DNSTAP},
-    {"flow", FLOW}};
+    {"sflow", SFLOW},
+    {"netflow", NETFLOW}};
 
 void initialize_geo(const docopt::value &city, const docopt::value &asn)
 {
@@ -148,9 +150,16 @@ int main(int argc, char *argv[])
             new_input_stream = std::make_unique<input::dnstap::DnstapInputStream>(input_text);
             new_input_stream->config_set("dnstap_file", args["FILE"].asString());
             break;
-        case FLOW:
+        case SFLOW:
             input_text = "flow";
             new_input_stream = std::make_unique<input::flow::FlowInputStream>(input_text);
+            new_input_stream->config_set("flow_type", "sflow");
+            new_input_stream->config_set("pcap_file", args["FILE"].asString());
+            break;
+        case NETFLOW:
+            input_text = "flow";
+            new_input_stream = std::make_unique<input::flow::FlowInputStream>(input_text);
+            new_input_stream->config_set("flow_type", "netflow");
             new_input_stream->config_set("pcap_file", args["FILE"].asString());
             break;
         case PCAP:
