@@ -403,7 +403,7 @@ void NetworkMetricsBucket::process_sflow(bool deep, const SFSample &payload)
         }
 
         if (!deep) {
-            process_net_layer(dir, l3, l4, payload.rawSampleLen);
+            process_net_layer(dir, l3, l4, sample.sampledPacketSize);
             return;
         }
 
@@ -428,7 +428,7 @@ void NetworkMetricsBucket::process_sflow(bool deep, const SFSample &payload)
             ipv6_out = pcpp::IPv6Address(sample.ipdst.address.ip_v6.addr);
         }
 
-        process_net_layer(dir, l3, l4, payload.rawSampleLen, is_ipv6, ipv4_in, ipv4_out, ipv6_in, ipv6_out);
+        process_net_layer(dir, l3, l4, sample.sampledPacketSize, is_ipv6, ipv4_in, ipv4_out, ipv6_in, ipv6_out);
     }
 }
 
@@ -455,7 +455,7 @@ void NetworkMetricsBucket::process_netflow(bool deep, const NFSample &payload)
         PacketDirection dir = PacketDirection::unknown;
 
         if (!deep) {
-            process_net_layer(dir, l3, l4, payload.raw_sample_len);
+            process_net_layer(dir, l3, l4, sample.flow_octets);
             return;
         }
 
@@ -472,7 +472,7 @@ void NetworkMetricsBucket::process_netflow(bool deep, const NFSample &payload)
             ipv4_out = pcpp::IPv4Address(sample.dst_ip);
         }
 
-        process_net_layer(dir, l3, l4, payload.raw_sample_len, is_ipv6, ipv4_in, ipv4_out, ipv6_in, ipv6_out);
+        process_net_layer(dir, l3, l4, sample.flow_octets, is_ipv6, ipv4_in, ipv4_out, ipv6_in, ipv6_out);
     }
 }
 

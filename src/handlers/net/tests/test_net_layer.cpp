@@ -247,7 +247,7 @@ TEST_CASE("Parse net (dns) sflow stream", "[sflow][net]")
     CHECK(j["cardinality"]["src_ips_in"] == 4);
     CHECK(j["top_ipv4"][0]["estimate"] == 27054);
     CHECK(j["top_ipv4"][0]["name"] == "10.4.2.2");
-    CHECK(j["payload_size"]["p50"] == 1372);
+    CHECK(j["payload_size"]["p50"] == 1518);
 }
 
 TEST_CASE("Parse net dnstap stream", "[dnstap][net]")
