@@ -68,7 +68,7 @@ void NetStreamHandler::start()
         _dnstap_connection = _dnstap_stream->dnstap_signal.connect(&NetStreamHandler::process_dnstap_cb, this);
     } else if (_flow_stream) {
         _sflow_connection = _flow_stream->sflow_signal.connect(&NetStreamHandler::process_sflow_cb, this);
-        _sflow_connection = _flow_stream->netflow_signal.connect(&NetStreamHandler::process_netflow_cb, this);
+        _netflow_connection = _flow_stream->netflow_signal.connect(&NetStreamHandler::process_netflow_cb, this);
     } else if (_dns_handler) {
         _pkt_udp_connection = _dns_handler->udp_signal.connect(&NetStreamHandler::process_udp_packet_cb, this);
     }
@@ -90,6 +90,7 @@ void NetStreamHandler::stop()
         _dnstap_connection.disconnect();
     } else if (_flow_stream) {
         _sflow_connection.disconnect();
+        _netflow_connection.disconnect();
     } else if (_dns_handler) {
         _pkt_udp_connection.disconnect();
     }

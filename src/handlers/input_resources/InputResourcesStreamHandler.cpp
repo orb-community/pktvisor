@@ -47,7 +47,7 @@ void InputResourcesStreamHandler::start()
         _policies_connection = _dnstap_stream->policy_signal.connect(&InputResourcesStreamHandler::process_policies_cb, this);
     } else if (_flow_stream) {
         _sflow_connection = _flow_stream->sflow_signal.connect(&InputResourcesStreamHandler::process_sflow_cb, this);
-        _sflow_connection = _flow_stream->netflow_signal.connect(&InputResourcesStreamHandler::process_netflow_cb, this);
+        _netflow_connection = _flow_stream->netflow_signal.connect(&InputResourcesStreamHandler::process_netflow_cb, this);
         _policies_connection = _flow_stream->policy_signal.connect(&InputResourcesStreamHandler::process_policies_cb, this);
     }
 
@@ -66,6 +66,7 @@ void InputResourcesStreamHandler::stop()
         _dnstap_connection.disconnect();
     } else if (_flow_stream) {
         _sflow_connection.disconnect();
+        _netflow_connection.disconnect();
     }
     _policies_connection.disconnect();
 
