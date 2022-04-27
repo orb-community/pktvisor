@@ -1,29 +1,46 @@
 name: Debug Builds
 
 on:
-  workflow_dispatch:
   push:
-    branches:
-      - develop
-      - release
+    branches: [ develop, master, release/** ]
 
 jobs:
-  package:
+  build:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v2
 
-      - name: Create Build Environment
-        run: cmake -E make_directory ${{github.workspace}}/build
+      - name: Build pktvisord + push symbol to backtrace.io
+        uses: ./.github/actions/build-cpp
+        with:
+          context: "."
+          symbol_url: ${{secrets.SYMBOL_URL}}
+          file: "./Dockerfile"
 
-      - name: Get Conan
-        uses: turtlebrowser/get-conan@v1.0
+      - name: Build pktvisor-cli
+        uses: ./.github/actions/build-go
+        with:
+          context: "."
+          file: "./Dockerfile"
 
-      - name: Configure CMake to generate VERSION
-        shell: bash
-        working-directory: ${{github.workspace}}/build
-        run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=Debug
+      - name: Debug artifacts
+        run: ls -lha .
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: pktvisor-artifacts
+          path: ./
+          retention-days: 1
+
+  package:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download to workspace
+        uses: actions/download-artifact@v2
+        with:
+          name: pktvisor-artifacts
 
       - name: Get branch name
         shell: bash
@@ -57,15 +74,25 @@ jobs:
       - name: Debug ref tag
         run: echo ${{ env.REF_TAG }}
 
+      - name: Replace secrets token
+        run: |
+          sed -i -e "s/CP_TOKEN/${{ secrets.CRASHPAD_TOKEN }}/g" docker/entry-cp.sh
+
+      - name: escape url
+        run: |
+          REPLACE=${{ secrets.CRASHPAD_URL }}
+          ESCAPED_REPLACE=$(printf '%s\n' "$REPLACE" | sed -e 's/[\/&]/\\&/g')
+          sed -i -e "s/CP_URL/$ESCAPED_REPLACE/g" docker/entry-cp.sh
+
       - name: Login to Docker Hub
         uses: docker/login-action@v1
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build + push - pktvisor debug
+      - name: Build, push debug image + crashhandler
         env:
           IMAGE_NAME: ns1labs/pktvisor
         run: |
-          docker build . --file docker/Dockerfile.debug --tag ${{ env.IMAGE_NAME }}:${{ env.REF_TAG }}
+          docker build . --file docker/Dockerfile.crashhandler --tag ${{ env.IMAGE_NAME }}:${{ env.REF_TAG }}
           docker push -a ${{ env.IMAGE_NAME }}
