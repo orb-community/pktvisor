@@ -5,6 +5,7 @@ corrade/2020.06
 cpp-httplib/0.10.1
 docopt.cpp/0.6.3
 fmt/8.1.1
+zlib/1.2.12
 json-schema-validator/2.1.0
 libmaxminddb/1.6.0
 nlohmann_json/3.10.5
@@ -17,7 +18,7 @@ uvw/2.10.0
 yaml-cpp/0.7.0
 libpcap/1.10.1
 robin-hood-hashing/3.11.5
-crashpad/cci.20220219
+crashpad/ns1-dev
 
 [build_requires]
 corrade/2020.06
