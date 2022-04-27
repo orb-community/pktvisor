@@ -12,7 +12,7 @@ namespace visor::input::flow {
 
 FlowInputStream::FlowInputStream(const std::string &name)
     : visor::InputStream(name)
-    , _flow_type(Type::UNKNOWN)
+    , _flow_type(Type::SFLOW)
     , _error_count(0)
 {
     _logger = spdlog::get("visor");
@@ -33,10 +33,10 @@ void FlowInputStream::start()
         } else if (flow_type == "netflow") {
             _flow_type = Type::NETFLOW;
         } else {
-            throw FlowException(fmt::format("invalid flow type: {}", flow_type));
+            throw FlowException(fmt::format("invalid flow_type \"{}\". Supported types: \"sflow\" and \"netflow\"", flow_type));
         }
     } else {
-        throw FlowException("flow config must specify flow_type");
+        _logger->warn("flow_type not specified, using sflow");
     }
 
     if (config_exists("pcap_file")) {

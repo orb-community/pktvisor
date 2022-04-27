@@ -8,7 +8,6 @@ TEST_CASE("sflow pcap file", "[flow][sflow][file]")
 
     FlowInputStream stream{"sflow-test"};
     stream.config_set("pcap_file", "tests/fixtures/ecmp.pcap");
-    stream.config_set("flow_type", "sflow");
 
     CHECK_NOTHROW(stream.start());
     CHECK_NOTHROW(stream.stop());
@@ -101,13 +100,6 @@ TEST_CASE("netflow udp socket", "[netflow][udp]")
     nlohmann::json j;
     stream.info_json(j);
     CHECK(j["flow"]["packet_errors"] == 1);
-}
-
-TEST_CASE("flow without type", "[flow]")
-{
-    FlowInputStream stream{"flow-test"};
-
-    CHECK_THROWS_WITH(stream.start(), "flow config must specify flow_type");
 }
 
 TEST_CASE("sflow udp socket without bind", "[flow][sflow][udp]")
