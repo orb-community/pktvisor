@@ -17,6 +17,7 @@ jobs:
     name: pktvisor
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         include:
           - arch: x86_64
