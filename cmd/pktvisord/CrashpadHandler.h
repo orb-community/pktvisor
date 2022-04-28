@@ -45,8 +45,10 @@ static bool start_crashpad_handler(base::FilePath::StringType token, base::FileP
 }
 }
 #else
-static bool start_crashpad_handler(base::FilePath::StringType token, base::FilePath::StringType url, base::FilePath::StringType handler_path)
+namespace crashpad {
+static bool start_crashpad_handler([[maybe_unused]] std::string token, [[maybe_unused]] std::string url, [[maybe_unused]] std::string handler_path)
 {
     return false;
+}
 }
 #endif
