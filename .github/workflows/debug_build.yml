@@ -74,15 +74,15 @@ jobs:
       - name: Debug ref tag
         run: echo ${{ env.REF_TAG }}
 
-      - name: Replace secrets token
+      - name: Replace token
         run: |
-          sed -i -e "s/CP_TOKEN/${{ secrets.CRASHPAD_TOKEN }}/g" docker/entry-cp.sh
+          sed -i -e "s/CP_TOKEN/${{ secrets.CRASHPAD_TOKEN }}/g" docker/run.sh
 
-      - name: escape url
+      - name: Replace escape url
         run: |
           REPLACE=${{ secrets.CRASHPAD_URL }}
           ESCAPED_REPLACE=$(printf '%s\n' "$REPLACE" | sed -e 's/[\/&]/\\&/g')
-          sed -i -e "s/CP_URL/$ESCAPED_REPLACE/g" docker/entry-cp.sh
+          sed -i -e "s/CP_URL/$ESCAPED_REPLACE/g" docker/run.sh
 
       - name: Login to Docker Hub
         uses: docker/login-action@v1
