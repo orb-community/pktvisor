@@ -21,6 +21,13 @@
 #ifndef _NETFLOW_H
 #define _NETFLOW_H
 
+#if not __has_include(<unistd.h>)
+// System is not posix-compliant
+typedef uint16_t u_int16_t;
+typedef uint32_t u_int32_t;
+typedef uint8_t u_int8_t;
+#endif
+
 /*
  * These are Cisco Netflow(tm) packet formats
  * Based on:

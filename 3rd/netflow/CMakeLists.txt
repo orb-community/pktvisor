@@ -5,7 +5,7 @@ target_include_directories(netflow
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
         )
 
-target_compile_features(netflow INTERFACE cxx_std_11)
+target_compile_features(netflow INTERFACE cxx_std_17)
 
 target_sources(netflow
         INTERFACE
