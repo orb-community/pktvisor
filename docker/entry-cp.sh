@@ -29,9 +29,26 @@ fi
 
 # if binary is pktvisord
 if [ "$BINARY" = 'pktvisord' ]; then
-  shift
-  exec "$BINARY" --cp-token "CP_TOKEN" --cp-url "CP_URL" --cp-path "/usr/local/sbin/crashpad_handler" "$@"
-  sleep 5
+  # eternal loop
+  while true
+  do
+    # pid file dont exist
+    if [ ! -f "/var/run/pktvisord.pid"  ]; then
+      # running pktvisord in background
+      nohup /run.sh "$@" &
+      sleep 2
+      tail -f /nohup.out &
+    else
+      PID=$(cat /var/run/pktvisord.pid)
+      if [ ! -d "/proc/$PID" ]; then
+         # stop container
+         echo "$PID is not running"
+         rm /var/run/pktvisord.pid
+         exit 1
+      fi
+      sleep 10
+    fi
+  done
 else
   shift
   exec "$BINARY" "$@"
