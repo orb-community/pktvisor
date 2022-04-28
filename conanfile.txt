@@ -22,7 +22,7 @@ crashpad/ns1-dev
 
 [build_requires]
 corrade/2020.06
-protobuf/3.19.2
+protobuf/3.20.0
 
 [options]
 pcapplusplus:immediate_mode=True
