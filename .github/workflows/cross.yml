@@ -114,7 +114,7 @@ jobs:
           path: src
       - name: Remove crashpad from conanfile
         run: |
-          sed -i -e "s/crashpad.*//g" conanfile.txt
+          sed -i -e "s/crashpad.*//g" ${{github.workspace}}/src/conanfile.txt
       - name: Install dependencies
         run: |
           mkdir build
