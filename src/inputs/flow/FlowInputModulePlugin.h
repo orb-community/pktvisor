@@ -5,18 +5,18 @@
 #pragma once
 
 #include "InputModulePlugin.h"
-#include "SflowInputStream.h"
+#include "FlowInputStream.h"
 
-namespace visor::input::sflow {
+namespace visor::input::flow {
 
-class SflowInputModulePlugin : public visor::InputModulePlugin
+class FlowInputModulePlugin : public visor::InputModulePlugin
 {
 
 protected:
     void setup_routes(HttpServer *svr) override;
 
 public:
-    explicit SflowInputModulePlugin(Corrade::PluginManager::AbstractManager &manager, const std::string &plugin)
+    explicit FlowInputModulePlugin(Corrade::PluginManager::AbstractManager &manager, const std::string &plugin)
         : visor::InputModulePlugin{manager, plugin}
     {
     }

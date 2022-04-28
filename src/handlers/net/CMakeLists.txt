@@ -19,7 +19,7 @@ target_link_libraries(VisorHandlerNet
         Visor::Input::Pcap
         Visor::Input::Dnstap
         Visor::Input::Mock
-        Visor::Input::Sflow
+        Visor::Input::Flow
         Visor::Handler::Dns
         )
 

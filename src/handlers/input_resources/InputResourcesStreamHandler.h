@@ -6,9 +6,9 @@
 
 #include "AbstractMetricsManager.h"
 #include "DnstapInputStream.h"
+#include "FlowInputStream.h"
 #include "MockInputStream.h"
 #include "PcapInputStream.h"
-#include "SflowInputStream.h"
 #include "StreamHandler.h"
 #include "ThreadMonitor.h"
 #include <Corrade/Utility/Debug.h>
@@ -20,7 +20,7 @@ namespace visor::handler::resources {
 using namespace visor::input::pcap;
 using namespace visor::input::dnstap;
 using namespace visor::input::mock;
-using namespace visor::input::sflow;
+using namespace visor::input::flow;
 
 constexpr double MEASURE_INTERVAL = 5; // in seconds
 
@@ -87,14 +87,16 @@ class InputResourcesStreamHandler final : public visor::StreamMetricsHandler<Inp
     PcapInputStream *_pcap_stream{nullptr};
     DnstapInputStream *_dnstap_stream{nullptr};
     MockInputStream *_mock_stream{nullptr};
-    SflowInputStream *_sflow_stream{nullptr};
+    FlowInputStream *_flow_stream{nullptr};
 
     sigslot::connection _dnstap_connection;
     sigslot::connection _sflow_connection;
+    sigslot::connection _netflow_connection;
     sigslot::connection _pkt_connection;
     sigslot::connection _policies_connection;
 
     void process_sflow_cb(const SFSample &);
+    void process_netflow_cb(const NFSample &);
     void process_dnstap_cb(const dnstap::Dnstap &, size_t);
     void process_policies_cb(const Policy *policy, InputStream::Action action);
     void process_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp);

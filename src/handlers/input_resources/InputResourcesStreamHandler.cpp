@@ -22,8 +22,8 @@ InputResourcesStreamHandler::InputResourcesStreamHandler(const std::string &name
         _pcap_stream = dynamic_cast<PcapInputStream *>(stream);
         _dnstap_stream = dynamic_cast<DnstapInputStream *>(stream);
         _mock_stream = dynamic_cast<MockInputStream *>(stream);
-        _sflow_stream = dynamic_cast<SflowInputStream *>(stream);
-        if (!_pcap_stream && !_mock_stream && !_dnstap_stream && !_sflow_stream) {
+        _flow_stream = dynamic_cast<FlowInputStream *>(stream);
+        if (!_pcap_stream && !_mock_stream && !_dnstap_stream && !_flow_stream) {
             throw StreamHandlerException(fmt::format("NetStreamHandler: unsupported input stream {}", stream->name()));
         }
     }
@@ -45,9 +45,10 @@ void InputResourcesStreamHandler::start()
     } else if (_dnstap_stream) {
         _dnstap_connection = _dnstap_stream->dnstap_signal.connect(&InputResourcesStreamHandler::process_dnstap_cb, this);
         _policies_connection = _dnstap_stream->policy_signal.connect(&InputResourcesStreamHandler::process_policies_cb, this);
-    } else if (_sflow_stream) {
-        _sflow_connection = _sflow_stream->sflow_signal.connect(&InputResourcesStreamHandler::process_sflow_cb, this);
-        _policies_connection = _sflow_stream->policy_signal.connect(&InputResourcesStreamHandler::process_policies_cb, this);
+    } else if (_flow_stream) {
+        _sflow_connection = _flow_stream->sflow_signal.connect(&InputResourcesStreamHandler::process_sflow_cb, this);
+        _netflow_connection = _flow_stream->netflow_signal.connect(&InputResourcesStreamHandler::process_netflow_cb, this);
+        _policies_connection = _flow_stream->policy_signal.connect(&InputResourcesStreamHandler::process_policies_cb, this);
     }
 
     _running = true;
@@ -63,8 +64,9 @@ void InputResourcesStreamHandler::stop()
         _pkt_connection.disconnect();
     } else if (_dnstap_stream) {
         _dnstap_connection.disconnect();
-    } else if (_sflow_stream) {
+    } else if (_flow_stream) {
         _sflow_connection.disconnect();
+        _netflow_connection.disconnect();
     }
     _policies_connection.disconnect();
 
@@ -91,6 +93,14 @@ void InputResourcesStreamHandler::process_policies_cb(const Policy *policy, Inpu
 }
 
 void InputResourcesStreamHandler::process_sflow_cb([[maybe_unused]] const SFSample &)
+{
+    if (difftime(time(NULL), _timer) >= MEASURE_INTERVAL) {
+        _timer = time(NULL);
+        _metrics->process_resources(_monitor.cpu_percentage(), _monitor.memory_usage());
+    }
+}
+
+void InputResourcesStreamHandler::process_netflow_cb([[maybe_unused]] const NFSample &)
 {
     if (difftime(time(NULL), _timer) >= MEASURE_INTERVAL) {
         _timer = time(NULL);

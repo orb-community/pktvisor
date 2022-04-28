@@ -25,7 +25,7 @@ both on-node via command line UI (for localized, hyper real-time actions)
 as well as centrally collected into industry standard observability stacks like Prometheus and Grafana.
 
 The [input stream system](src/inputs) is designed to _tap into_ data streams. It currently supports [packet capture](https://en.wikipedia.org/wiki/Packet_analyzer),
-[dnstap](https://dnstap.info/) and [sFlow](https://en.wikipedia.org/wiki/SFlow) and will soon support additional taps such as [Netflow](https://en.wikipedia.org/wiki/NetFlow),
+[dnstap](https://dnstap.info/), [sFlow](https://en.wikipedia.org/wiki/SFlow) and [Netflow](https://en.wikipedia.org/wiki/NetFlow)/[IPFIX](https://en.wikipedia.org/wiki/IP_Flow_Information_Export) and will soon support additional taps such as
 [envoy taps](https://www.envoyproxy.io/docs/envoy/latest/operations/traffic_tapping), and [eBPF](https://ebpf.io/).
 
 The [stream analyzer system](src/handlers) includes full application layer analysis, and [efficiently](https://en.wikipedia.org/wiki/Streaming_algorithm) summarizes to:
@@ -343,7 +343,7 @@ pcap files can come from many sources, the most famous of which is [tcpdump](htt
 can be generated from most DNS server software that support dnstap logging, either directly or 
 using a tool such as [golang-dnstap](https://github.com/dnstap/golang-dnstap).
 
-Both take many of the same options, and do all of the same analysis, as `pktvisord` for live capture. pcap files may include sFlow capture data.
+Both take many of the same options, and do all of the same analysis, as `pktvisord` for live capture. pcap files may include Flow capture data.
 
 ```
 docker run --rm ns1labs/pktvisor pktvisor-reader --help
@@ -364,7 +364,7 @@ docker run --rm ns1labs/pktvisor pktvisor-reader --help
     to stderr.
 
     Options:
-      -i INPUT              Input type (pcap|dnstap|sflow). If not set, default is pcap input
+      -i INPUT              Input type (pcap|dnstap|sflow|netflow). If not set, default is pcap input
       --max-deep-sample N   Never deep sample more than N% of streams (an int between 0 and 100) [default: 100]
       --periods P           Hold this many 60 second time periods of history in memory. Use 1 to summarize all data. [default: 5]
       -h --help             Show this screen
