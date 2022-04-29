@@ -5,31 +5,32 @@
 #pragma once
 
 #include "AbstractMetricsManager.h"
-#include "DnsStreamHandler.h"
-#include "DnstapInputStream.h"
+#include "FlowInputStream.h"
 #include "MockInputStream.h"
-#include "PcapInputStream.h"
 #include "StreamHandler.h"
 #include <Corrade/Utility/Debug.h>
 #include <string>
 
-namespace visor::handler::net {
+namespace visor::handler::flow {
 
-using namespace visor::input::pcap;
-using namespace visor::input::dnstap;
 using namespace visor::input::mock;
-using namespace visor::handler::dns;
+using namespace visor::input::flow;
 
 namespace group {
-enum NetMetrics : visor::MetricGroupIntType {
+enum FlowMetrics : visor::MetricGroupIntType {
     Counters,
     Cardinality,
-    TopGeo,
     TopIps
 };
 }
 
-class NetworkMetricsBucket final : public visor::AbstractMetricsBucket
+enum class PacketDirection {
+    toHost,
+    fromHost,
+    unknown
+};
+
+class FlowMetricsBucket final : public visor::AbstractMetricsBucket
 {
 
 protected:
@@ -73,7 +74,7 @@ protected:
     Rate _throughput_out;
 
 public:
-    NetworkMetricsBucket()
+    FlowMetricsBucket()
         : _srcIPCard("packets", {"cardinality", "src_ips_in"}, "Source IP cardinality")
         , _dstIPCard("packets", {"cardinality", "dst_ips_out"}, "Destination IP cardinality")
         , _topGeoLoc("packets", "geo_loc", {"top_geoLoc"}, "Top GeoIP locations")
@@ -113,63 +114,50 @@ public:
         _throughput_out.cancel();
     }
 
-    void process_packet(bool deep, pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4);
-    void process_dnstap(bool deep, const dnstap::Dnstap &payload, size_t size);
-    void process_net_layer(PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, size_t payload_size);
-    void process_net_layer(PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, size_t payload_size, bool is_ipv6, pcpp::IPv4Address &ipv4_in, pcpp::IPv4Address &ipv4_out, pcpp::IPv6Address &ipv6_in, pcpp::IPv6Address &ipv6_out);
+    void process_sflow(bool deep, const SFSample &payload);
+    void process_netflow(bool deep, const NFSample &payload);
 };
 
-class NetworkMetricsManager final : public visor::AbstractMetricsManager<NetworkMetricsBucket>
+class FlowMetricsManager final : public visor::AbstractMetricsManager<FlowMetricsBucket>
 {
 public:
-    NetworkMetricsManager(const Configurable *window_config)
-        : visor::AbstractMetricsManager<NetworkMetricsBucket>(window_config)
+    FlowMetricsManager(const Configurable *window_config)
+        : visor::AbstractMetricsManager<FlowMetricsBucket>(window_config)
     {
     }
 
-    void process_packet(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp);
-    void process_dnstap(const dnstap::Dnstap &payload, size_t size);
+    void process_sflow(const SFSample &payload);
+    void process_netflow(const NFSample &payload);
 };
 
-class NetStreamHandler final : public visor::StreamMetricsHandler<NetworkMetricsManager>
+class FlowStreamHandler final : public visor::StreamMetricsHandler<FlowMetricsManager>
 {
 
     // the input stream sources we support (only one will be in use at a time)
-    PcapInputStream *_pcap_stream{nullptr};
-    DnstapInputStream *_dnstap_stream{nullptr};
     MockInputStream *_mock_stream{nullptr};
+    FlowInputStream *_flow_stream{nullptr};
 
-    // the stream handlers sources we support (only one will be in use at a time)
-    DnsStreamHandler *_dns_handler{nullptr};
-
-    sigslot::connection _dnstap_connection;
-
-    sigslot::connection _pkt_connection;
-    sigslot::connection _start_tstamp_connection;
-    sigslot::connection _end_tstamp_connection;
-
-    sigslot::connection _pkt_udp_connection;
+    sigslot::connection _sflow_connection;
+    sigslot::connection _netflow_connection;
 
     static const inline StreamMetricsHandler::GroupDefType _group_defs = {
-        {"cardinality", group::NetMetrics::Cardinality},
-        {"counters", group::NetMetrics::Counters},
-        {"top_geo", group::NetMetrics::TopGeo},
-        {"top_ips", group::NetMetrics::TopIps}};
+        {"cardinality", group::FlowMetrics::Cardinality},
+        {"counters", group::FlowMetrics::Counters},
+        {"top_ips", group::FlowMetrics::TopIps}};
 
-    void process_dnstap_cb(const dnstap::Dnstap &, size_t);
-    void process_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp);
-    void process_udp_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp);
+    void process_sflow_cb(const SFSample &);
+    void process_netflow_cb(const NFSample &);
     void set_start_tstamp(timespec stamp);
     void set_end_tstamp(timespec stamp);
 
 public:
-    NetStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config, StreamHandler *handler = nullptr);
-    ~NetStreamHandler() override;
+    FlowStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config, StreamHandler *handler = nullptr);
+    ~FlowStreamHandler() override;
 
     // visor::AbstractModule
     std::string schema_key() const override
     {
-        return "packets";
+        return "flow";
     }
 
     size_t consumer_count() const override
