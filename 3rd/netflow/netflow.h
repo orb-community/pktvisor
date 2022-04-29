@@ -48,7 +48,7 @@ struct __attribute__((__packed__)) NF1_FLOW {
     uint8_t pad2, pad3, pad4;
     uint32_t reserved1;
 #if 0
- 	u_int8_t reserved2; /* XXX: no longer used */
+ 	uint8_t reserved2; /* XXX: no longer used */
 #endif
 };
 
