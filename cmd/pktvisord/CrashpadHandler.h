@@ -3,6 +3,8 @@
 #define NOMINMAX
 
 #include "visor_config.h"
+
+#ifndef CRASHPAD_NOT_SUPPORTED
 #include <client/crash_report_database.h>
 #include <client/crashpad_client.h>
 #include <client/settings.h>
@@ -42,3 +44,11 @@ static bool start_crashpad_handler(base::FilePath::StringType token, base::FileP
     return true;
 }
 }
+#else
+namespace crashpad {
+static bool start_crashpad_handler([[maybe_unused]] std::string token, [[maybe_unused]] std::string url, [[maybe_unused]] std::string handler_path)
+{
+    return false;
+}
+}
+#endif

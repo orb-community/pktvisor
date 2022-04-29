@@ -220,7 +220,7 @@ static inline void be_copy(uint8_t *data, uint8_t *target, uint32_t target_lengt
     memcpy(target + (target_length - rec_length), data, rec_length);
 }
 
-static bool process_netflow_v9_template(u_int8_t *pkt, size_t len, u_int32_t source_id)
+static bool process_netflow_v9_template(uint8_t *pkt, size_t len, uint32_t source_id)
 {
     struct NF9_FLOWSET_HEADER_COMMON *template_header;
     struct NF9_TEMPLATE_FLOWSET_HEADER *tmplh;
@@ -558,7 +558,7 @@ static bool process_netflow_v10_data(std::vector<NFSample::Flows> *flows, uint8_
     return true;
 }
 
-static bool process_netflow_v10_template(u_int8_t *pkt, size_t len, u_int32_t source_id)
+static bool process_netflow_v10_template(uint8_t *pkt, size_t len, uint32_t source_id)
 {
     struct NF10_FLOWSET_HEADER_COMMON *template_header;
     struct NF10_TEMPLATE_FLOWSET_HEADER *tmplh;
