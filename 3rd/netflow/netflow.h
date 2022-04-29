@@ -21,13 +21,6 @@
 #ifndef _NETFLOW_H
 #define _NETFLOW_H
 
-#if not __has_include(<unistd.h>)
-// System is not posix-compliant
-typedef uint16_t u_int16_t;
-typedef uint32_t u_int32_t;
-typedef uint8_t u_int8_t;
-#endif
-
 /*
  * These are Cisco Netflow(tm) packet formats
  * Based on:
@@ -36,24 +29,24 @@ typedef uint8_t u_int8_t;
 
 /* Common header fields */
 struct __attribute__((__packed__)) NF_HEADER_COMMON {
-    u_int16_t version, flows;
+    uint16_t version, flows;
 };
 
 /* Netflow v.1 */
 struct __attribute__((__packed__)) NF1_HEADER {
     struct NF_HEADER_COMMON c;
-    u_int32_t uptime_ms, time_sec, time_nanosec;
+    uint32_t uptime_ms, time_sec, time_nanosec;
 };
 struct __attribute__((__packed__)) NF1_FLOW {
-    u_int32_t src_ip, dest_ip, nexthop_ip;
-    u_int16_t if_index_in, if_index_out;
-    u_int32_t flow_packets, flow_octets;
-    u_int32_t flow_start, flow_finish;
-    u_int16_t src_port, dest_port;
-    u_int16_t pad1;
-    u_int8_t protocol, tos, tcp_flags;
-    u_int8_t pad2, pad3, pad4;
-    u_int32_t reserved1;
+    uint32_t src_ip, dest_ip, nexthop_ip;
+    uint16_t if_index_in, if_index_out;
+    uint32_t flow_packets, flow_octets;
+    uint32_t flow_start, flow_finish;
+    uint16_t src_port, dest_port;
+    uint16_t pad1;
+    uint8_t protocol, tos, tcp_flags;
+    uint8_t pad2, pad3, pad4;
+    uint32_t reserved1;
 #if 0
  	u_int8_t reserved2; /* XXX: no longer used */
 #endif
@@ -67,20 +60,20 @@ struct __attribute__((__packed__)) NF1_FLOW {
 /* Netflow v.5 */
 struct __attribute__((__packed__)) NF5_HEADER {
     struct NF_HEADER_COMMON c;
-    u_int32_t uptime_ms, time_sec, time_nanosec, flow_sequence;
-    u_int8_t engine_type, engine_id, reserved1, reserved2;
+    uint32_t uptime_ms, time_sec, time_nanosec, flow_sequence;
+    uint8_t engine_type, engine_id, reserved1, reserved2;
 };
 struct __attribute__((__packed__)) NF5_FLOW {
-    u_int32_t src_ip, dest_ip, nexthop_ip;
-    u_int16_t if_index_in, if_index_out;
-    u_int32_t flow_packets, flow_octets;
-    u_int32_t flow_start, flow_finish;
-    u_int16_t src_port, dest_port;
-    u_int8_t pad1;
-    u_int8_t tcp_flags, protocol, tos;
-    u_int16_t src_as, dest_as;
-    u_int8_t src_mask, dst_mask;
-    u_int16_t pad2;
+    uint32_t src_ip, dest_ip, nexthop_ip;
+    uint16_t if_index_in, if_index_out;
+    uint32_t flow_packets, flow_octets;
+    uint32_t flow_start, flow_finish;
+    uint16_t src_port, dest_port;
+    uint8_t pad1;
+    uint8_t tcp_flags, protocol, tos;
+    uint16_t src_as, dest_as;
+    uint8_t src_mask, dst_mask;
+    uint16_t pad2;
 };
 /* Maximum of 24 flows per packet */
 #define NF5_MAXFLOWS 30
@@ -90,21 +83,21 @@ struct __attribute__((__packed__)) NF5_FLOW {
 /* Netflow v.7 */
 struct __attribute__((__packed__)) NF7_HEADER {
     struct NF_HEADER_COMMON c;
-    u_int32_t uptime_ms, time_sec, time_nanosec, flow_sequence;
-    u_int32_t reserved1;
+    uint32_t uptime_ms, time_sec, time_nanosec, flow_sequence;
+    uint32_t reserved1;
 };
 struct __attribute__((__packed__)) NF7_FLOW {
-    u_int32_t src_ip, dest_ip, nexthop_ip;
-    u_int16_t if_index_in, if_index_out;
-    u_int32_t flow_packets, flow_octets;
-    u_int32_t flow_start, flow_finish;
-    u_int16_t src_port, dest_port;
-    u_int8_t flags1;
-    u_int8_t tcp_flags, protocol, tos;
-    u_int16_t src_as, dest_as;
-    u_int8_t src_mask, dst_mask;
-    u_int16_t flags2;
-    u_int32_t router_sc;
+    uint32_t src_ip, dest_ip, nexthop_ip;
+    uint16_t if_index_in, if_index_out;
+    uint32_t flow_packets, flow_octets;
+    uint32_t flow_start, flow_finish;
+    uint16_t src_port, dest_port;
+    uint8_t flags1;
+    uint8_t tcp_flags, protocol, tos;
+    uint16_t src_as, dest_as;
+    uint8_t src_mask, dst_mask;
+    uint16_t flags2;
+    uint32_t router_sc;
 };
 /* Maximum of 24 flows per packet */
 #define NF7_MAXFLOWS 30
@@ -114,17 +107,17 @@ struct __attribute__((__packed__)) NF7_FLOW {
 /* Netflow v.9 */
 struct __attribute__((__packed__)) NF9_HEADER {
     struct NF_HEADER_COMMON c;
-    u_int32_t uptime_ms, time_sec;
-    u_int32_t package_sequence, source_id;
+    uint32_t uptime_ms, time_sec;
+    uint32_t package_sequence, source_id;
 };
 struct __attribute__((__packed__)) NF9_FLOWSET_HEADER_COMMON {
-    u_int16_t flowset_id, length;
+    uint16_t flowset_id, length;
 };
 struct __attribute__((__packed__)) NF9_TEMPLATE_FLOWSET_HEADER {
-    u_int16_t template_id, count;
+    uint16_t template_id, count;
 };
 struct __attribute__((__packed__)) NF9_TEMPLATE_FLOWSET_RECORD {
-    u_int16_t type, length;
+    uint16_t type, length;
 };
 struct __attribute__((__packed__)) NF9_DATA_FLOWSET_HEADER {
     struct NF9_FLOWSET_HEADER_COMMON c;
@@ -170,17 +163,17 @@ struct __attribute__((__packed__)) NF9_DATA_FLOWSET_HEADER {
 /* Netflow v.10 */
 struct __attribute__((__packed__)) NF10_HEADER {
     struct NF_HEADER_COMMON c;
-    u_int32_t time_sec;
-    u_int32_t package_sequence, source_id;
+    uint32_t time_sec;
+    uint32_t package_sequence, source_id;
 };
 struct __attribute__((__packed__)) NF10_FLOWSET_HEADER_COMMON {
-    u_int16_t flowset_id, length;
+    uint16_t flowset_id, length;
 };
 struct __attribute__((__packed__)) NF10_TEMPLATE_FLOWSET_HEADER {
-    u_int16_t template_id, count;
+    uint16_t template_id, count;
 };
 struct __attribute__((__packed__)) NF10_TEMPLATE_FLOWSET_RECORD {
-    u_int16_t type, length;
+    uint16_t type, length;
 };
 struct __attribute__((__packed__)) NF10_DATA_FLOWSET_HEADER {
     struct NF10_FLOWSET_HEADER_COMMON c;
