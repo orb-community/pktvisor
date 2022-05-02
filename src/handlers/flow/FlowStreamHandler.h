@@ -9,6 +9,8 @@
 #include "MockInputStream.h"
 #include "StreamHandler.h"
 #include <Corrade/Utility/Debug.h>
+#include <IPv4Layer.h>
+#include <IPv6Layer.h>
 #include <string>
 
 namespace visor::handler::flow {
@@ -20,14 +22,23 @@ namespace group {
 enum FlowMetrics : visor::MetricGroupIntType {
     Counters,
     Cardinality,
+    TopGeo,
     TopIps
 };
 }
 
-enum class PacketDirection {
-    toHost,
-    fromHost,
-    unknown
+struct FlowData {
+    bool is_ipv6;
+    IP_PROTOCOL l4;
+    size_t payload_size;
+    pcpp::IPv4Address ipv4_in;
+    pcpp::IPv4Address ipv4_out;
+    pcpp::IPv6Address ipv6_in;
+    pcpp::IPv6Address ipv6_out;
+    uint16_t src_port;
+    uint16_t dst_port;
+    uint32_t if_in_index;
+    uint32_t if_out_index;
 };
 
 class FlowMetricsBucket final : public visor::AbstractMetricsBucket
@@ -41,8 +52,11 @@ protected:
 
     TopN<std::string> _topGeoLoc;
     TopN<std::string> _topASN;
-    TopN<uint32_t> _topIPv4;
-    TopN<std::string> _topIPv6;
+    TopN<std::string> _topSrcIP;
+    TopN<std::string> _topDstIP;
+    TopN<uint16_t> _topSrcPort;
+    TopN<uint16_t> _topDstPort;
+    TopN<uint32_t> _topIfIndex;
 
     // total numPackets is tracked in base class num_events
     struct counters {
@@ -51,16 +65,14 @@ protected:
         Counter OtherL4;
         Counter IPv4;
         Counter IPv6;
-        Counter total_in;
-        Counter total_out;
+        Counter total;
         counters()
-            : UDP("packets", {"udp"}, "Count of UDP packets")
-            , TCP("packets", {"tcp"}, "Count of TCP packets")
-            , OtherL4("packets", {"other_l4"}, "Count of packets which are not UDP or TCP")
-            , IPv4("packets", {"ipv4"}, "Count of IPv4 packets")
-            , IPv6("packets", {"ipv6"}, "Count of IPv6 packets")
-            , total_in("packets", {"in"}, "Count of total ingress packets")
-            , total_out("packets", {"out"}, "Count of total egress packets")
+            : UDP("flows", {"udp"}, "Count of UDP packets")
+            , TCP("flows", {"tcp"}, "Count of TCP packets")
+            , OtherL4("flows", {"other_l4"}, "Count of packets which are not UDP or TCP")
+            , IPv4("flows", {"ipv4"}, "Count of IPv4 packets")
+            , IPv6("flows", {"ipv6"}, "Count of IPv6 packets")
+            , total("flows", {"flows"}, "Count of total flows")
         {
         }
     };
@@ -68,28 +80,27 @@ protected:
 
     Quantile<std::size_t> _payload_size;
 
-    Rate _rate_in;
-    Rate _rate_out;
-    Rate _throughput_in;
-    Rate _throughput_out;
+    Rate _rate;
+    Rate _throughput;
 
 public:
     FlowMetricsBucket()
-        : _srcIPCard("packets", {"cardinality", "src_ips_in"}, "Source IP cardinality")
-        , _dstIPCard("packets", {"cardinality", "dst_ips_out"}, "Destination IP cardinality")
-        , _topGeoLoc("packets", "geo_loc", {"top_geoLoc"}, "Top GeoIP locations")
-        , _topASN("packets", "asn", {"top_ASN"}, "Top ASNs by IP")
-        , _topIPv4("packets", "ipv4", {"top_ipv4"}, "Top IPv4 IP addresses")
-        , _topIPv6("packets", "ipv6", {"top_ipv6"}, "Top IPv6 IP addresses")
-        , _payload_size("packets", {"payload_size"}, "Quantiles of payload sizes, in bytes")
-        , _rate_in("packets", {"rates", "pps_in"}, "Rate of ingress in packets per second")
-        , _rate_out("packets", {"rates", "pps_out"}, "Rate of egress in packets per second")
-        , _throughput_in("payload", {"rates", "bps_in"}, "Rate of ingress packets size in bytes per second")
-        , _throughput_out("payload", {"rates", "bps_out"}, "Rate of egress packets size in bytes per second")
+        : _srcIPCard("flows", {"cardinality", "src_ips_in"}, "Source IP cardinality")
+        , _dstIPCard("flows", {"cardinality", "dst_ips_out"}, "Destination IP cardinality")
+        , _topGeoLoc("flows", "geo_loc", {"top_geoLoc"}, "Top GeoIP locations")
+        , _topASN("flows", "asn", {"top_ASN"}, "Top ASNs by IP")
+        , _topSrcIP("flows", "ip", {"top_src_ip"}, "Top source IP addresses")
+        , _topDstIP("flows", "ip", {"top_dst_ip"}, "Top destination IP addresses")
+        , _topSrcPort("flows", "port", {"top_src_ports"}, "Top source ports")
+        , _topDstPort("flows", "port", {"top_dst_ports"}, "Top destination ports")
+        , _topIfIndex("flows", "index", {"top_if_index"}, "Top interface indexes")
+        , _payload_size("flows", {"payload_size"}, "Quantiles of payload sizes, in bytes")
+        , _rate("flows", {"rates", "pps"}, "Rate of flow packets per second")
+        , _throughput("payload", {"rates", "bps"}, "Rate of flow packets size in bytes per second")
     {
-        set_event_rate_info("packets", {"rates", "pps_total"}, "Rate of all packets (combined ingress and egress) in packets per second");
-        set_num_events_info("packets", {"total"}, "Total packets processed");
-        set_num_sample_info("packets", {"deep_samples"}, "Total packets that were sampled for deep inspection");
+        set_event_rate_info("flows", {"rates", "pps_total"}, "Rate of all packets (combined ingress and egress) in packets per second");
+        set_num_events_info("flows", {"total"}, "Total packets processed");
+        set_num_sample_info("flows", {"deep_samples"}, "Total packets that were sampled for deep inspection");
     }
 
     // get a copy of the counters
@@ -108,14 +119,14 @@ public:
     void on_set_read_only() override
     {
         // stop rate collection
-        _rate_in.cancel();
-        _rate_out.cancel();
-        _throughput_in.cancel();
-        _throughput_out.cancel();
+        _rate.cancel();
+        _throughput.cancel();
     }
 
     void process_sflow(bool deep, const SFSample &payload);
     void process_netflow(bool deep, const NFSample &payload);
+    void process_flow(bool deep, FlowData &flow);
+    //void process_flow(bool is_ipv6, IP_PROTOCOL l4, size_t payload_size, pcpp::IPv4Address &ipv4_in, pcpp::IPv4Address &ipv4_out, pcpp::IPv6Address &ipv6_in, pcpp::IPv6Address &ipv6_out);
 };
 
 class FlowMetricsManager final : public visor::AbstractMetricsManager<FlowMetricsBucket>
@@ -143,6 +154,7 @@ class FlowStreamHandler final : public visor::StreamMetricsHandler<FlowMetricsMa
     static const inline StreamMetricsHandler::GroupDefType _group_defs = {
         {"cardinality", group::FlowMetrics::Cardinality},
         {"counters", group::FlowMetrics::Counters},
+        {"top_geo", group::FlowMetrics::TopGeo},
         {"top_ips", group::FlowMetrics::TopIps}};
 
     void process_sflow_cb(const SFSample &);
@@ -157,7 +169,7 @@ public:
     // visor::AbstractModule
     std::string schema_key() const override
     {
-        return "flow";
+        return "flows";
     }
 
     size_t consumer_count() const override
