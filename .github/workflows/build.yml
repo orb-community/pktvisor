@@ -6,10 +6,12 @@ on:
     branches:
       - develop
       - release
+      - multi-arch-images
   push:
     branches:
       - develop
       - release
+      - multi-arch-images
 
 env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
@@ -119,7 +121,7 @@ jobs:
           echo "DRAFT=true" >> $GITHUB_ENV
 
       - name: Generate ref tag (develop)
-        if: ${{ env.BRANCH_NAME == 'develop' }}
+        if: ${{ env.BRANCH_NAME == 'develop' || env.BRANCH_NAME == 'multi-arch-images'}}
         run: |
           echo "REF_TAG=latest-develop" >> $GITHUB_ENV
           echo "PRERELEASE=true" >> $GITHUB_ENV
@@ -162,56 +164,21 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build + push - pktvisor
-        env:
-          IMAGE_NAME: ns1labs/pktvisor
-        run: |
-          docker build . --file docker/Dockerfile --tag ${{ env.IMAGE_NAME }}:${{ env.VERSION }} --tag ${{ env.IMAGE_NAME }}:${{ env.REF_TAG }}
-          docker push -a ${{ env.IMAGE_NAME }}
-
-      - name: Build + push - pktvisor-cli
-        env:
-          CLI_BINARY: pktvisor-cli
-          IMAGE_NAME: ns1labs/pktvisor-cli
-        run: |
-          docker build . --file docker/Dockerfile.pktvisor-cli --tag ${{ env.IMAGE_NAME }}:${{ env.VERSION }} --tag ${{ env.IMAGE_NAME }}:${{ env.REF_TAG }}
-          docker push -a ${{ env.IMAGE_NAME }}
-          echo "CONT_ID=$(docker create --name ${{ env.CLI_BINARY }}-slim-tmp ${{ env.IMAGE_NAME }}:${{ env.REF_TAG }})" >> $GITHUB_ENV
-
-      - name: Extract static pktvisor-cli asset
-        env:
-          CLI_BINARY: pktvisor-cli
-          IMAGE_NAME: ns1labs/pktvisor-cli
-        run: |
-          docker cp ${{ env.CONT_ID }}:/${{ env.CLI_BINARY }} ${{github.workspace}}/${{ env.CLI_BINARY }}-linux-x86_64-${{ env.VERSION }}
-
-      - name: Upload pktvisor-cli artifact
-        env:
-          BINARY_NAME: pktvisor-cli-linux-x86_64-${{ env.VERSION }}
-        uses: actions/upload-artifact@v2
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@master
         with:
-          name: ${{ env.BINARY_NAME }}
-          path: ${{github.workspace}}/${{ env.BINARY_NAME }}
+          platforms: all
 
-      - name: Build + push - pktvisor-prom-write
-        env:
-          IMAGE_NAME: ns1labs/pktvisor-prom-write
-        working-directory: ${{github.workspace}}/centralized_collection/prometheus/docker-grafana-agent
-        run: |
-          docker build . --file Dockerfile --build-arg PKTVISOR_TAG=${{ env.REF_TAG }} --tag ${{ env.IMAGE_NAME }}:${{ env.VERSION }} --tag ${{ env.IMAGE_NAME }}:${{ env.REF_TAG }}
-          docker push -a ${{ env.IMAGE_NAME }}
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@master
 
-      - name: Generate AppImage
-        env:
-          IMAGE_NAME: ns1labs/pktvisor
-        working-directory: ${{github.workspace}}/appimage
-        run: |
-          DEV_IMAGE="${{ env.IMAGE_NAME }}:${{ env.VERSION }}" DEV_MODE=t make pktvisor-x86_64.AppImage
-          mv pktvisor-x86_64.AppImage pktvisor-x86_64-${{ env.VERSION }}.AppImage
-
-      - name: Upload AppImage artifact
-        uses: actions/upload-artifact@v2
+      - name: Build + push - pktvisor (multi-arch)
+        uses: docker/build-push-action@v2
         with:
-          name: pktvisor-x86_64-${{ env.VERSION }}.AppImage
-          path: ${{github.workspace}}/appimage/pktvisor-x86_64-${{ env.VERSION }}.AppImage
-
+          builder: ${{ steps.buildx.outputs.name }}
+          context: .
+          file: ./docker/Dockerfile
+          platforms: linux/amd64,linux/arm64,linux/ppc64le
+          push: true
+          tags: ${{ env.IMAGE_NAME }}:${{ env.REF_TAG }}
