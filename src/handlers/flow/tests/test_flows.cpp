@@ -30,21 +30,21 @@ TEST_CASE("Parse sflow stream", "[sflow][flow]")
     CHECK(event_data.num_samples->value() == 9279);
     CHECK(counters.TCP.value() == 52785);
     CHECK(counters.UDP.value() == 0);
-    CHECK(counters.IPv4.value() == 56467);
+    CHECK(counters.IPv4.value() == 52785);
     CHECK(counters.IPv6.value() == 0);
-    CHECK(counters.OtherL4.value() == 3682);
-    CHECK(counters.total.value() == 56467);
+    CHECK(counters.OtherL4.value() == 0);
+    CHECK(counters.total.value() == 52785);
 
     nlohmann::json j;
     flow_handler.metrics()->bucket(0)->to_json(j);
 
     CHECK(j["cardinality"]["dst_ips_out"] == 4);
     CHECK(j["cardinality"]["src_ips_in"] == 4);
-    CHECK(j["top_src_ip"][0]["estimate"] == 27054);
-    CHECK(j["top_src_ip"][0]["name"] == "10.4.2.2");
-    CHECK(j["top_dst_ip"][0]["estimate"] == 27054);
+    CHECK(j["top_src_ip"][0]["estimate"] == 25853);
+    CHECK(j["top_src_ip"][0]["name"] == "10.4.1.2");
+    CHECK(j["top_dst_ip"][0]["estimate"] == 25853);
     CHECK(j["top_dst_ip"][0]["name"] == "10.4.2.2");
-    CHECK(j["payload_size"]["p50"] == 1518);
+    CHECK(j["payload_size"]["p50"] == 128);
 }
 
 TEST_CASE("Parse netflow stream", "[netflow][flow]")
