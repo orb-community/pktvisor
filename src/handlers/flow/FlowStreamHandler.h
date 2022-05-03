@@ -31,6 +31,7 @@ struct FlowData {
     bool is_ipv6;
     IP_PROTOCOL l4;
     size_t payload_size;
+    uint32_t packets;
     pcpp::IPv4Address ipv4_in;
     pcpp::IPv4Address ipv4_out;
     pcpp::IPv6Address ipv6_in;

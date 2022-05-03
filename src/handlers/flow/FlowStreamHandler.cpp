@@ -240,6 +240,12 @@ void FlowMetricsBucket::to_json(json &j) const
 void FlowMetricsBucket::process_sflow(bool deep, const SFSample &payload)
 {
     for (const auto &sample : payload.elements) {
+
+        if (sample.sampleType == SFLCOUNTERS_SAMPLE || sample.sampleType == SFLCOUNTERS_SAMPLE_EXPANDED) {
+            //skip counter flows
+            continue;
+        }
+
         FlowData flow = {};
         pcpp::ProtocolType l3;
         if (sample.gotIPV6) {
@@ -256,6 +262,9 @@ void FlowMetricsBucket::process_sflow(bool deep, const SFSample &payload)
             break;
         }
 
+        flow.packets = 1;
+        flow.payload_size = sample.headerLen;
+
         if (!deep) {
             process_flow(deep, flow);
             return;
@@ -263,7 +272,8 @@ void FlowMetricsBucket::process_sflow(bool deep, const SFSample &payload)
 
         flow.src_port = sample.dcd_sport;
         flow.dst_port = sample.dcd_dport;
-        flow.if_out_index = sample.ds_index;
+        flow.if_in_index = sample.inputPort;
+        flow.if_out_index = sample.outputPort;
 
         if (sample.ipsrc.type == SFLADDRESSTYPE_IP_V4) {
             flow.is_ipv6 = false;
@@ -304,6 +314,9 @@ void FlowMetricsBucket::process_netflow(bool deep, const NFSample &payload)
             break;
         }
 
+        flow.packets = sample.flow_packets;
+        flow.payload_size = sample.flow_octets;
+
         if (!deep) {
             process_flow(deep, flow);
             return;
@@ -329,7 +342,7 @@ void FlowMetricsBucket::process_netflow(bool deep, const NFSample &payload)
 void FlowMetricsBucket::process_flow(bool deep, FlowData &flow)
 {
     std::unique_lock lock(_mutex);
-    ++_rate;
+    _rate += flow.packets;
     _throughput += flow.payload_size;
 
     if (group_enabled(group::FlowMetrics::Counters)) {
