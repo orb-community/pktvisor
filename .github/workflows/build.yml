@@ -82,6 +82,7 @@ jobs:
   package:
     needs: build
     runs-on: ubuntu-latest
+    timeout-minutes: 720
     # if this is a push into one of our main branches (rather than just a pull request), we will also package
     if: github.event_name != 'pull_request'
 
@@ -181,6 +182,6 @@ jobs:
           builder: ${{ steps.buildx.outputs.name }}
           context: .
           file: ./docker/Dockerfile
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/arm64
           push: true
           tags: ${{ env.IMAGE_NAME }}:${{ env.REF_TAG }}

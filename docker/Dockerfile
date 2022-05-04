@@ -1,11 +1,11 @@
 FROM debian:bullseye-slim AS cppbuild
 
-ENV BUILD_DEPS "g++ cmake make git pkgconf jq python3-pip python3-setuptools ca-certificates python python3"
+ENV BUILD_DEPS "g++ cmake make git pkgconf jq python3-pip python3-setuptools ca-certificates python python3 g++-multilib"
 
 RUN \
     apt-get update && \
-    apt-get upgrade --yes --force-yes && \
-    apt-get install --yes --force-yes --no-install-recommends ${BUILD_DEPS} && \
+    apt-get upgrade -y && \
+    apt-get install -y --no-install-recommends ${BUILD_DEPS} && \
     pip3 install conan
 
 # need git for current hash for VERSION
@@ -42,8 +42,8 @@ ENV RUNTIME_DEPS "curl ca-certificates"
 
 RUN \
     apt-get update && \
-    apt-get upgrade --yes --force-yes && \
-    apt-get install --yes --force-yes --no-install-recommends ${RUNTIME_DEPS} && \
+    apt-get upgrade -y && \
+    apt-get install -y --no-install-recommends ${RUNTIME_DEPS} && \
     rm -rf /var/lib/apt
 
 COPY --from=cppbuild /tmp/build/bin/pktvisord /usr/local/sbin/pktvisord
