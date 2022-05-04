@@ -1,6 +1,6 @@
 FROM debian:bullseye-slim AS cppbuild
 
-ENV BUILD_DEPS "g++ cmake make git pkgconf jq python3-pip python3-setuptools ca-certificates python python3 g++-multilib"
+ENV BUILD_DEPS "g++ cmake make git pkgconf jq python3-pip python3-setuptools ca-certificates python python3"
 
 RUN \
     apt-get update && \
