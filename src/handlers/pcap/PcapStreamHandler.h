@@ -85,6 +85,8 @@ class PcapStreamHandler final : public visor::StreamMetricsHandler<PcapMetricsMa
     sigslot::connection _pcap_tcp_reassembly_errors_connection;
     sigslot::connection _pcap_stats_connection;
 
+    sigslot::connection _running_connection;
+
     void process_pcap_tcp_reassembly_error(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, timespec stamp);
     void process_pcap_stats(const pcpp::IPcapDevice::PcapStats &stats);
 

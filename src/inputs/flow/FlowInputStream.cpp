@@ -125,6 +125,21 @@ void FlowInputStream::_create_frame_stream_udp_socket()
         handle.close();
     });
 
+    _timer = _io_loop->resource<uvw::TimerHandle>();
+    if (!_timer) {
+        throw FlowException("unable to initialize TimerHandle");
+    }
+    _timer->on<uvw::TimerEvent>([this](const auto &, auto &handle) {
+        timespec stamp;
+        // use now()
+        std::timespec_get(&stamp, TIME_UTC);
+        running_signal(stamp);
+    });
+    _timer->on<uvw::ErrorEvent>([this](const auto &err, auto &handle) {
+        _logger->error("[{}] TimerEvent error: {}", _name, err.what());
+        handle.close();
+    });
+
     // setup server socket
     _udp_server_h = _io_loop->resource<uvw::UDPHandle>();
     if (!_udp_server_h) {
@@ -174,6 +189,7 @@ void FlowInputStream::_create_frame_stream_udp_socket()
 
     // spawn the loop
     _io_thread = std::make_unique<std::thread>([this] {
+        _timer->start(uvw::TimerHandle::Time{1000}, uvw::TimerHandle::Time{10000});
         _io_loop->run();
     });
 }

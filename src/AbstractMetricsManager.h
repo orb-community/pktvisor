@@ -440,6 +440,16 @@ public:
         }
     }
 
+    void shift_bucket(timespec stamp)
+    {
+        std::shared_lock rlb(_base_mutex);
+        bool will_shift = _num_periods > 1 && stamp.tv_sec >= _next_shift_tstamp.tv_sec;
+        rlb.unlock();
+        if (will_shift) {
+            _period_shift(stamp);
+        }
+    }
+
     MetricsBucketClass *live_bucket()
     {
         // CRITICAL PATH

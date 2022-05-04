@@ -269,6 +269,8 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
     sigslot::connection _tcp_end_connection;
     sigslot::connection _tcp_message_connection;
 
+    sigslot::connection _running_connection;
+
     void process_udp_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp);
     void process_dnstap_cb(const dnstap::Dnstap &, size_t);
     void tcp_message_ready_cb(int8_t side, const pcpp::TcpStreamData &tcpData);

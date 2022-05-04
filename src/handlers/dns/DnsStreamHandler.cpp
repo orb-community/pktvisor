@@ -109,8 +109,10 @@ void DnsStreamHandler::start()
         _tcp_start_connection = _pcap_stream->tcp_connection_start_signal.connect(&DnsStreamHandler::tcp_connection_start_cb, this);
         _tcp_end_connection = _pcap_stream->tcp_connection_end_signal.connect(&DnsStreamHandler::tcp_connection_end_cb, this);
         _tcp_message_connection = _pcap_stream->tcp_message_ready_signal.connect(&DnsStreamHandler::tcp_message_ready_cb, this);
+        _running_connection = _pcap_stream->running_signal.connect(&DnsStreamHandler::shift_bucket, this);
     } else if (_dnstap_stream) {
         _dnstap_connection = _dnstap_stream->dnstap_signal.connect(&DnsStreamHandler::process_dnstap_cb, this);
+        _running_connection = _dnstap_stream->running_signal.connect(&DnsStreamHandler::shift_bucket, this);
     }
 
     _running = true;
@@ -132,6 +134,7 @@ void DnsStreamHandler::stop()
     } else if (_dnstap_stream) {
         _dnstap_connection.disconnect();
     }
+    _running_connection.disconnect();
 
     _running = false;
 }
@@ -197,7 +200,7 @@ void TcpSessionData::receive_dns_wire_data(const uint8_t *data, size_t len)
         // dns packet size is in network byte order.
         size = static_cast<unsigned char>(_buffer[1]) | static_cast<unsigned char>(_buffer[0]) << 8;
 
-        //if size is less than MIN_DNS_QUERY_SIZE, it is not a dns packet
+        // if size is less than MIN_DNS_QUERY_SIZE, it is not a dns packet
         if (size < MIN_DNS_QUERY_SIZE) {
             _buffer.clear();
             _invalid_data = true;

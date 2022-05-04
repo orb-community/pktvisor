@@ -141,6 +141,11 @@ public:
         }
     }
 
+    void shift_bucket(timespec stamp)
+    {
+        _metrics->shift_bucket(stamp);
+    }
+
     virtual ~StreamMetricsHandler(){};
 };
 

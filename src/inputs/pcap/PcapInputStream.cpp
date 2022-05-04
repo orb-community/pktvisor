@@ -248,6 +248,17 @@ void PcapInputStream::tcp_connection_end(const pcpp::ConnectionData &connectionD
 void PcapInputStream::process_pcap_stats(const pcpp::IPcapDevice::PcapStats &stats)
 {
     pcap_stats_signal(stats);
+    if (!repeat_counter) {
+        // use now()
+        timespec stamp;
+        std::timespec_get(&stamp, TIME_UTC);
+        running_signal(stamp);
+        repeat_counter++;
+    } else if (repeat_counter < RUNNING_REPEAT) {
+        repeat_counter++;
+    } else {
+        repeat_counter = 0;
+    }
 }
 
 void PcapInputStream::_generate_mock_traffic()

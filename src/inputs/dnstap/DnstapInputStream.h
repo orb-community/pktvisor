@@ -17,6 +17,7 @@ class Loop;
 class AsyncHandle;
 class PipeHandle;
 class TCPHandle;
+class TimerHandle;
 }
 
 struct fstrm_reader;
@@ -35,6 +36,7 @@ class DnstapInputStream : public visor::InputStream
     std::unique_ptr<std::thread> _io_thread;
     std::shared_ptr<uvw::Loop> _io_loop;
     std::shared_ptr<uvw::AsyncHandle> _async_h;
+    std::shared_ptr<uvw::TimerHandle> _timer;
 
     std::shared_ptr<uvw::PipeHandle> _unix_server_h;
     std::unordered_map<uv_os_fd_t, std::unique_ptr<FrameSessionData<uvw::PipeHandle>>> _unix_sessions;
@@ -95,7 +97,7 @@ public:
     void info_json(json &j) const override;
     size_t consumer_count() const override
     {
-        return policy_signal.slot_count() + dnstap_signal.slot_count();
+        return policy_signal.slot_count() + running_signal.slot_count() + dnstap_signal.slot_count();
     }
 
     // handler functionality

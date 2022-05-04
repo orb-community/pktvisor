@@ -51,6 +51,7 @@ void DhcpStreamHandler::start()
         _pkt_udp_connection = _pcap_stream->udp_signal.connect(&DhcpStreamHandler::process_udp_packet_cb, this);
         _start_tstamp_connection = _pcap_stream->start_tstamp_signal.connect(&DhcpStreamHandler::set_start_tstamp, this);
         _end_tstamp_connection = _pcap_stream->end_tstamp_signal.connect(&DhcpStreamHandler::set_end_tstamp, this);
+        _running_connection = _pcap_stream->running_signal.connect(&DhcpStreamHandler::shift_bucket, this);
     }
 
     _running = true;
@@ -66,6 +67,7 @@ void DhcpStreamHandler::stop()
         _pkt_udp_connection.disconnect();
         _start_tstamp_connection.disconnect();
         _end_tstamp_connection.disconnect();
+        _running_connection.disconnect();
     }
 
     _running = false;

@@ -50,7 +50,7 @@ public:
 
     virtual size_t consumer_count() const
     {
-        return policy_signal.slot_count();
+        return policy_signal.slot_count() + running_signal.slot_count();
     }
 
     void common_info_json(json &j) const
@@ -61,6 +61,7 @@ public:
     }
 
     mutable sigslot::signal<const Policy *, Action> policy_signal;
+    mutable sigslot::signal<const timespec> running_signal;
 };
 
 }

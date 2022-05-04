@@ -11,6 +11,7 @@
 #include <uvw/pipe.h>
 #include <uvw/stream.h>
 #include <uvw/tcp.h>
+#include <uvw/timer.h>
 
 namespace visor::input::dnstap {
 
@@ -147,6 +148,21 @@ void DnstapInputStream::_create_frame_stream_tcp_socket()
         handle.close();
     });
 
+    _timer = _io_loop->resource<uvw::TimerHandle>();
+    if (!_timer) {
+        throw DnstapException("unable to initialize TimerHandle");
+    }
+    _timer->on<uvw::TimerEvent>([this](const auto &, auto &handle) {
+        timespec stamp;
+        // use now()
+        std::timespec_get(&stamp, TIME_UTC);
+        running_signal(stamp);
+    });
+    _timer->on<uvw::ErrorEvent>([this](const auto &err, auto &handle) {
+        _logger->error("[{}] TimerEvent error: {}", _name, err.what());
+        handle.close();
+    });
+
     // setup server socket
     _tcp_server_h = _io_loop->resource<uvw::TCPHandle>();
     if (!_tcp_server_h) {
@@ -224,6 +240,7 @@ void DnstapInputStream::_create_frame_stream_tcp_socket()
 
     // spawn the loop
     _io_thread = std::make_unique<std::thread>([this] {
+        _timer->start(uvw::TimerHandle::Time{1000}, uvw::TimerHandle::Time{10000});
         _io_loop->run();
     });
 }
@@ -250,6 +267,21 @@ void DnstapInputStream::_create_frame_stream_unix_socket()
     });
     _async_h->on<uvw::ErrorEvent>([this](const auto &err, auto &handle) {
         _logger->error("[{}] AsyncEvent error: {}", _name, err.what());
+        handle.close();
+    });
+
+    _timer = _io_loop->resource<uvw::TimerHandle>();
+    if (!_timer) {
+        throw DnstapException("unable to initialize TimerHandle");
+    }
+    _timer->on<uvw::TimerEvent>([this](const auto &, auto &handle) {
+        timespec stamp;
+        // use now()
+        std::timespec_get(&stamp, TIME_UTC);
+        running_signal(stamp);
+    });
+    _timer->on<uvw::ErrorEvent>([this](const auto &err, auto &handle) {
+        _logger->error("[{}] TimerEvent error: {}", _name, err.what());
         handle.close();
     });
 
@@ -332,6 +364,7 @@ void DnstapInputStream::_create_frame_stream_unix_socket()
 
     // spawn the loop
     _io_thread = std::make_unique<std::thread>([this] {
+        _timer->start(uvw::TimerHandle::Time{1000}, uvw::TimerHandle::Time{10000});
         _io_loop->run();
     });
 }
