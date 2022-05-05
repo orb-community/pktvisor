@@ -1,6 +1,10 @@
 import random
 import string
 from json import loads, JSONDecodeError
+import threading
+from datetime import datetime
+from hamcrest import *
+import socket
 
 
 def random_string(k=10):
@@ -58,3 +62,44 @@ def remove_empty_from_json(json_file):
         elif isinstance(value, dict):
             remove_empty_from_json(value)
     return json_file
+
+
+def threading_wait_until(func):
+    def wait_event(*args, wait_time=0.5, timeout=10, start_func_value=False, **kwargs):
+        event = threading.Event()
+        func_value = start_func_value
+        start = datetime.now().timestamp()
+        time_running = 0
+        while not event.is_set() and time_running < int(timeout):
+            func_value = func(*args, event=event, **kwargs)
+            event.wait(wait_time)
+            time_running = datetime.now().timestamp() - start
+        return func_value
+
+    return wait_event
+
+
+def check_port_is_available(availability=True):
+    """
+
+    :param (str) availability: Status of the port on which pktvisor must try to run. Default: available.
+    :return: (int) port number
+    """
+    assert_that(availability, any_of(equal_to(True), equal_to(False)), "Unexpected value for availability")
+    available_port = None
+    port_options = range(10853, 10900)
+    for port in port_options:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        result = sock.connect_ex(('127.0.0.1', port))
+        sock.close()
+        if result == 0:
+            available_port = port
+            if availability is True:
+                continue
+            else:
+                return available_port
+        else:
+            available_port = port
+            break
+    assert_that(available_port, is_not(equal_to(None)), "No available ports to bind")
+    return available_port

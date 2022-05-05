@@ -48,20 +48,20 @@ Output:
 Feature: pktvisor tests # features/pktvisor.feature:1
 
   Scenario: pktvisor bootstrap                         # features/pktvisor.feature:3
-    When run pktvisor instance on port default         # features/steps/pktvisor.py:33 0.150s
+    When run pktvisor instance on port available         # features/steps/pktvisor.py:33 0.150s
     Then the pktvisor container status must be running # features/steps/pktvisor.py:39 0.007s
     And pktvisor API must be enabled                   # features/steps/pktvisor.py:75 1.123s
 
   Scenario: run multiple pktvisors instances using different ports  # features/pktvisor.feature:8
-    When run pktvisor instance on port default            # features/steps/pktvisor.py:33 0.156s
+    When run pktvisor instance on port available            # features/steps/pktvisor.py:33 0.156s
     And run pktvisor instance on port 10854               # features/steps/pktvisor.py:33 0.127s
     And run pktvisor instance on port 10855               # features/steps/pktvisor.py:33 0.146s
     Then all the pktvisor containers must be running      # features/steps/pktvisor.py:47 0.011s
     And 3 pktvisor's containers must be running           # features/steps/pktvisor.py:59 0.012s
 
   Scenario: run multiple pktvisors instances using the same port  # features/pktvisor.feature:15
-    When run pktvisor instance on port default                    # features/steps/pktvisor.py:33 0.194s
-    And run pktvisor instance on port default                     # features/steps/pktvisor.py:33 0.149s
+    When run pktvisor instance on port available                    # features/steps/pktvisor.py:33 0.194s
+    And run pktvisor instance on port available                     # features/steps/pktvisor.py:33 0.149s
     Then 1 pktvisor's containers must be running                  # features/steps/pktvisor.py:59 0.226s
     And 1 pktvisor's containers must be exited                    # features/steps/pktvisor.py:59 0.011s
 
