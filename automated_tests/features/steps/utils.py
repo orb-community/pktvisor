@@ -5,6 +5,7 @@ import threading
 from datetime import datetime
 from hamcrest import *
 import socket
+import requests
 
 
 def random_string(k=10):
@@ -103,3 +104,23 @@ def check_port_is_available(availability=True):
             break
     assert_that(available_port, is_not(equal_to(None)), "No available ports to bind")
     return available_port
+
+
+@threading_wait_until
+def make_get_request(end_point, pkt_port=10853, expected_status_code=200, event=None):
+    """
+
+    :param end_point: endpoint to which the request must be sent
+    :param pkt_port: port on which pktvisor is running
+    :param expected_status_code: expected status from response
+    :param event: threading.event
+    :return: response
+    """
+    pkt_base_api = 'http://localhost:' + str(pkt_port) + '/api/v1/'
+    path = pkt_base_api + end_point
+    response = requests.get(path)
+    if response.status_code == int(expected_status_code):
+        event.set()
+    assert_that(response.status_code, equal_to(int(expected_status_code)),
+                f"Get request to endpoint {path} failed with status {response.status_code}")
+    return response
