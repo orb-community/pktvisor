@@ -254,7 +254,7 @@ void PcapInputStream::process_pcap_stats(const pcpp::IPcapDevice::PcapStats &sta
         std::timespec_get(&stamp, TIME_UTC);
         running_signal(stamp);
         repeat_counter++;
-    } else if (repeat_counter < RUNNING_REPEAT) {
+    } else if (repeat_counter < RUNNING_NOTIFY_INTERVAL) {
         repeat_counter++;
     } else {
         repeat_counter = 0;

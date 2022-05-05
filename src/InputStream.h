@@ -15,6 +15,9 @@ class InputStream : public AbstractRunnableModule
     mutable std::shared_mutex _input_mutex;
     std::vector<const Policy *> _policies;
 
+protected:
+    static constexpr uint8_t RUNNING_NOTIFY_INTERVAL = 30; // in seconds
+
 public:
     enum class Action {
         AddPolicy,

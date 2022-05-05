@@ -240,7 +240,7 @@ void DnstapInputStream::_create_frame_stream_tcp_socket()
 
     // spawn the loop
     _io_thread = std::make_unique<std::thread>([this] {
-        _timer->start(uvw::TimerHandle::Time{1000}, uvw::TimerHandle::Time{10000});
+        _timer->start(uvw::TimerHandle::Time{1000}, uvw::TimerHandle::Time{RUNNING_NOTIFY_INTERVAL * 1000});
         _io_loop->run();
     });
 }
@@ -364,7 +364,7 @@ void DnstapInputStream::_create_frame_stream_unix_socket()
 
     // spawn the loop
     _io_thread = std::make_unique<std::thread>([this] {
-        _timer->start(uvw::TimerHandle::Time{1000}, uvw::TimerHandle::Time{10000});
+        _timer->start(uvw::TimerHandle::Time{1000}, uvw::TimerHandle::Time{RUNNING_NOTIFY_INTERVAL * 1000});
         _io_loop->run();
     });
 }

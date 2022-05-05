@@ -41,7 +41,6 @@ class PcapInputStream : public visor::InputStream
 {
 
 private:
-    static constexpr uint8_t RUNNING_REPEAT = 10;
     static constexpr uint8_t TCP_TIMEOUT = 30;
     static constexpr uint8_t MAX_TCP_CLEANUPS = 100;
 
