@@ -23,7 +23,8 @@ enum FlowMetrics : visor::MetricGroupIntType {
     Counters,
     Cardinality,
     TopGeo,
-    TopIps
+    TopByPackets,
+    TopByBytes
 };
 }
 
@@ -53,11 +54,27 @@ protected:
 
     TopN<std::string> _topGeoLoc;
     TopN<std::string> _topASN;
-    TopN<std::string> _topSrcIP;
-    TopN<std::string> _topDstIP;
-    TopN<uint16_t> _topSrcPort;
-    TopN<uint16_t> _topDstPort;
-    TopN<uint32_t> _topIfIndex;
+
+    struct topns {
+        TopN<std::string> topSrcIP;
+        TopN<std::string> topDstIP;
+        TopN<uint16_t> topSrcPort;
+        TopN<uint16_t> topDstPort;
+        TopN<uint32_t> topInIfIndex;
+        TopN<uint32_t> topOutIfIndex;
+        topns(std::string metric)
+            : topSrcIP("flows", "ip", {"top_src_ip_" + metric}, "Top source IP addresses by " + metric)
+            , topDstIP("flows", "ip", {"top_dst_ip_" + metric}, "Top destination IP addresses by " + metric)
+            , topSrcPort("flows", "port", {"top_src_ports_" + metric}, "Top source ports by " + metric)
+            , topDstPort("flows", "port", {"top_dst_ports_" + metric}, "Top destination ports by " + metric)
+            , topInIfIndex("flows", "index", {"top_in_if_index_" + metric}, "Top input interface indexes  by " + metric)
+            , topOutIfIndex("flows", "index", {"top_out_if_index_" + metric}, "Top output interface indexes by " + metric)
+        {
+        }
+    };
+
+    topns _topByBytes;
+    topns _topByPackets;
 
     // total numPackets is tracked in base class num_events
     struct counters {
@@ -90,11 +107,8 @@ public:
         , _dstIPCard("flows", {"cardinality", "dst_ips_out"}, "Destination IP cardinality")
         , _topGeoLoc("flows", "geo_loc", {"top_geoLoc"}, "Top GeoIP locations")
         , _topASN("flows", "asn", {"top_ASN"}, "Top ASNs by IP")
-        , _topSrcIP("flows", "ip", {"top_src_ip"}, "Top source IP addresses")
-        , _topDstIP("flows", "ip", {"top_dst_ip"}, "Top destination IP addresses")
-        , _topSrcPort("flows", "port", {"top_src_ports"}, "Top source ports")
-        , _topDstPort("flows", "port", {"top_dst_ports"}, "Top destination ports")
-        , _topIfIndex("flows", "index", {"top_if_index"}, "Top interface indexes")
+        , _topByBytes("bytes")
+        , _topByPackets("packets")
         , _payload_size("flows", {"payload_size"}, "Quantiles of payload sizes, in bytes")
         , _rate("flows", {"rates", "pps"}, "Rate of flow packets per second")
         , _throughput("payload", {"rates", "bps"}, "Rate of flow packets size in bytes per second")
@@ -127,7 +141,7 @@ public:
     void process_sflow(bool deep, const SFSample &payload);
     void process_netflow(bool deep, const NFSample &payload);
     void process_flow(bool deep, FlowData &flow);
-    //void process_flow(bool is_ipv6, IP_PROTOCOL l4, size_t payload_size, pcpp::IPv4Address &ipv4_in, pcpp::IPv4Address &ipv4_out, pcpp::IPv6Address &ipv6_in, pcpp::IPv6Address &ipv6_out);
+    // void process_flow(bool is_ipv6, IP_PROTOCOL l4, size_t payload_size, pcpp::IPv4Address &ipv4_in, pcpp::IPv4Address &ipv4_out, pcpp::IPv6Address &ipv6_in, pcpp::IPv6Address &ipv6_out);
 };
 
 class FlowMetricsManager final : public visor::AbstractMetricsManager<FlowMetricsBucket>
@@ -156,7 +170,8 @@ class FlowStreamHandler final : public visor::StreamMetricsHandler<FlowMetricsMa
         {"cardinality", group::FlowMetrics::Cardinality},
         {"counters", group::FlowMetrics::Counters},
         {"top_geo", group::FlowMetrics::TopGeo},
-        {"top_ips", group::FlowMetrics::TopIps}};
+        {"top_by_bytes", group::FlowMetrics::TopByBytes},
+        {"top_by_packets", group::FlowMetrics::TopByPackets}};
 
     void process_sflow_cb(const SFSample &);
     void process_netflow_cb(const NFSample &);

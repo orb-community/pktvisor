@@ -1,8 +1,8 @@
 #include <catch2/catch.hpp>
 
-#include "GeoDB.h"
-#include "FlowStreamHandler.h"
 #include "FlowInputStream.h"
+#include "FlowStreamHandler.h"
+#include "GeoDB.h"
 
 using namespace visor::handler::flow;
 
@@ -40,10 +40,10 @@ TEST_CASE("Parse sflow stream", "[sflow][flow]")
 
     CHECK(j["cardinality"]["dst_ips_out"] == 4);
     CHECK(j["cardinality"]["src_ips_in"] == 4);
-    CHECK(j["top_src_ip"][0]["estimate"] == 25853);
-    CHECK(j["top_src_ip"][0]["name"] == "10.4.1.2");
-    CHECK(j["top_dst_ip"][0]["estimate"] == 25853);
-    CHECK(j["top_dst_ip"][0]["name"] == "10.4.2.2");
+    CHECK(j["top_src_ip_bytes"][0]["estimate"] == 3309184);
+    CHECK(j["top_src_ip_bytes"][0]["name"] == "10.4.1.2");
+    CHECK(j["top_src_ip_packets"][0]["estimate"] == 25853);
+    CHECK(j["top_src_ip_packets"][0]["name"] == "10.4.1.2");
     CHECK(j["payload_size"]["p50"] == 128);
 }
 
@@ -81,7 +81,7 @@ TEST_CASE("Parse netflow stream", "[netflow][flow]")
 
     CHECK(j["cardinality"]["dst_ips_out"] == 24);
     CHECK(j["cardinality"]["src_ips_in"] == 24);
-    CHECK(j["top_src_ip"][0]["estimate"] == 1);
-    CHECK(j["top_dst_ip"][0]["estimate"] == 1);
+    CHECK(j["top_src_ip_bytes"][0]["estimate"] == 6066232);
+    CHECK(j["top_src_ip_packets"][0]["estimate"] == 7858);
     CHECK(j["payload_size"]["p50"] == 5926641);
 }

@@ -244,14 +244,14 @@ public:
     {
     }
 
-    void update(const T &value)
+    void update(const T &value, uint64_t weight = 1)
     {
-        _fi.update(value);
+        _fi.update(value, weight);
     }
 
-    void update(T &&value)
+    void update(T &&value, uint64_t weight = 1)
     {
-        _fi.update(value);
+        _fi.update(value, weight);
     }
 
     void merge(const TopN &other)
