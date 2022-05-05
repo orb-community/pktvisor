@@ -1,23 +1,23 @@
 Feature: pktvisor tests
 
-#Scenario: pktvisor bootstrap
-#  When run pktvisor instance on port available with user permission
-#  Then the pktvisor container status must be running
-#    And pktvisor API must be enabled
-#    And 2 policies must be running
-#
-#Scenario: run multiple pktvisors instances using different ports
-#  When run pktvisor instance on port available with user permission
-#    And run pktvisor instance on port available with user permission
-#    And run pktvisor instance on port available with user permission
-#  Then all the pktvisor containers must be running
-#    And 3 pktvisor's containers must be running
-#
-#Scenario: run multiple pktvisors instances using the same port
-#  When run pktvisor instance on port available with user permission
-#    And run pktvisor instance on port unavailable with user permission
-#  Then 1 pktvisor's containers must be running
-#    And 1 pktvisor's containers must be exited
+Scenario: pktvisor bootstrap
+  When run pktvisor instance on port available with user permission
+  Then the pktvisor container status must be running
+    And pktvisor API must be enabled
+    And 2 policies must be running
+
+Scenario: run multiple pktvisors instances using different ports
+  When run pktvisor instance on port available with user permission
+    And run pktvisor instance on port available with user permission
+    And run pktvisor instance on port available with user permission
+  Then all the pktvisor containers must be running
+    And 3 pktvisor's containers must be running
+
+Scenario: run multiple pktvisors instances using the same port
+  When run pktvisor instance on port available with user permission
+    And run pktvisor instance on port unavailable with user permission
+  Then 1 pktvisor's containers must be running
+    And 1 pktvisor's containers must be exited
 
 
 Scenario: create a policy with all handlers using admin permission
