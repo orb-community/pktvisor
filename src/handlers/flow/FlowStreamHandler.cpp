@@ -500,8 +500,6 @@ void FlowMetricsBucket::process_flow(bool deep, FlowData &flow)
         (flow.if_in_index > 0) ? _topByPackets.topOutIfIndex.update(flow.if_out_index, flow.packets) : void();
     }
 
-
-
     struct sockaddr_in sa4;
     struct sockaddr_in6 sa6;
 
