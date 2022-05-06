@@ -109,10 +109,10 @@ void DnsStreamHandler::start()
         _tcp_start_connection = _pcap_stream->tcp_connection_start_signal.connect(&DnsStreamHandler::tcp_connection_start_cb, this);
         _tcp_end_connection = _pcap_stream->tcp_connection_end_signal.connect(&DnsStreamHandler::tcp_connection_end_cb, this);
         _tcp_message_connection = _pcap_stream->tcp_message_ready_signal.connect(&DnsStreamHandler::tcp_message_ready_cb, this);
-        _running_connection = _pcap_stream->running_signal.connect(&DnsStreamHandler::shift_bucket, this);
+        _heartbeat_connection = _pcap_stream->heartbeat_signal.connect(&DnsStreamHandler::check_period_shift, this);
     } else if (_dnstap_stream) {
         _dnstap_connection = _dnstap_stream->dnstap_signal.connect(&DnsStreamHandler::process_dnstap_cb, this);
-        _running_connection = _dnstap_stream->running_signal.connect(&DnsStreamHandler::shift_bucket, this);
+        _heartbeat_connection = _dnstap_stream->heartbeat_signal.connect(&DnsStreamHandler::check_period_shift, this);
     }
 
     _running = true;
@@ -134,7 +134,7 @@ void DnsStreamHandler::stop()
     } else if (_dnstap_stream) {
         _dnstap_connection.disconnect();
     }
-    _running_connection.disconnect();
+    _heartbeat_connection.disconnect();
 
     _running = false;
 }

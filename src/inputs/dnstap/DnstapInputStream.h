@@ -97,7 +97,7 @@ public:
     void info_json(json &j) const override;
     size_t consumer_count() const override
     {
-        return policy_signal.slot_count() + running_signal.slot_count() + dnstap_signal.slot_count();
+        return policy_signal.slot_count() + heartbeat_signal.slot_count() + dnstap_signal.slot_count();
     }
 
     // handler functionality

@@ -88,7 +88,7 @@ class DhcpStreamHandler final : public visor::StreamMetricsHandler<DhcpMetricsMa
     sigslot::connection _start_tstamp_connection;
     sigslot::connection _end_tstamp_connection;
 
-    sigslot::connection _running_connection;
+    sigslot::connection _heartbeat_connection;
 
     void process_udp_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp);
 

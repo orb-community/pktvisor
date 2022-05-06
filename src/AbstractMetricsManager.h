@@ -440,7 +440,7 @@ public:
         }
     }
 
-    void shift_bucket(timespec stamp)
+    void check_period_shift(timespec stamp)
     {
         std::shared_lock rlb(_base_mutex);
         bool will_shift = _num_periods > 1 && stamp.tv_sec >= _next_shift_tstamp.tv_sec;

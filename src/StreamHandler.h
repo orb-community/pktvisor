@@ -141,9 +141,9 @@ public:
         }
     }
 
-    void shift_bucket(timespec stamp)
+    void check_period_shift(timespec stamp)
     {
-        _metrics->shift_bucket(stamp);
+        _metrics->check_period_shift(stamp);
     }
 
     virtual ~StreamMetricsHandler(){};

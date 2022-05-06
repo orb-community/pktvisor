@@ -95,7 +95,7 @@ class InputResourcesStreamHandler final : public visor::StreamMetricsHandler<Inp
     sigslot::connection _pkt_connection;
     sigslot::connection _policies_connection;
 
-    sigslot::connection _running_connection;
+    sigslot::connection _heartbeat_connection;
 
     void process_sflow_cb(const SFSample &);
     void process_netflow_cb(const NFSample &);

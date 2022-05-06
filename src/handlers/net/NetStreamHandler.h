@@ -160,7 +160,7 @@ class NetStreamHandler final : public visor::StreamMetricsHandler<NetworkMetrics
 
     sigslot::connection _pkt_udp_connection;
 
-    sigslot::connection _running_connection;
+    sigslot::connection _heartbeat_connection;
 
     static const inline StreamMetricsHandler::GroupDefType _group_defs = {
         {"cardinality", group::NetMetrics::Cardinality},

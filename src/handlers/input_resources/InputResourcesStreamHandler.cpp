@@ -42,16 +42,16 @@ void InputResourcesStreamHandler::start()
     if (_pcap_stream) {
         _pkt_connection = _pcap_stream->packet_signal.connect(&InputResourcesStreamHandler::process_packet_cb, this);
         _policies_connection = _pcap_stream->policy_signal.connect(&InputResourcesStreamHandler::process_policies_cb, this);
-        _running_connection = _pcap_stream->running_signal.connect(&InputResourcesStreamHandler::shift_bucket, this);
+        _heartbeat_connection = _pcap_stream->heartbeat_signal.connect(&InputResourcesStreamHandler::check_period_shift, this);
     } else if (_dnstap_stream) {
         _dnstap_connection = _dnstap_stream->dnstap_signal.connect(&InputResourcesStreamHandler::process_dnstap_cb, this);
         _policies_connection = _dnstap_stream->policy_signal.connect(&InputResourcesStreamHandler::process_policies_cb, this);
-        _running_connection = _dnstap_stream->running_signal.connect(&InputResourcesStreamHandler::shift_bucket, this);
+        _heartbeat_connection = _dnstap_stream->heartbeat_signal.connect(&InputResourcesStreamHandler::check_period_shift, this);
     } else if (_flow_stream) {
         _sflow_connection = _flow_stream->sflow_signal.connect(&InputResourcesStreamHandler::process_sflow_cb, this);
         _netflow_connection = _flow_stream->netflow_signal.connect(&InputResourcesStreamHandler::process_netflow_cb, this);
         _policies_connection = _flow_stream->policy_signal.connect(&InputResourcesStreamHandler::process_policies_cb, this);
-        _running_connection = _flow_stream->running_signal.connect(&InputResourcesStreamHandler::shift_bucket, this);
+        _heartbeat_connection = _flow_stream->heartbeat_signal.connect(&InputResourcesStreamHandler::check_period_shift, this);
     }
 
     _running = true;
@@ -72,6 +72,7 @@ void InputResourcesStreamHandler::stop()
         _netflow_connection.disconnect();
     }
     _policies_connection.disconnect();
+    _heartbeat_connection.disconnect();
 
     _running = false;
 }

@@ -37,7 +37,7 @@ void PcapStreamHandler::start()
 
         _pcap_tcp_reassembly_errors_connection = _pcap_stream->tcp_reassembly_error_signal.connect(&PcapStreamHandler::process_pcap_tcp_reassembly_error, this);
         _pcap_stats_connection = _pcap_stream->pcap_stats_signal.connect(&PcapStreamHandler::process_pcap_stats, this);
-        _running_connection = _pcap_stream->running_signal.connect(&PcapStreamHandler::shift_bucket, this);
+        _heartbeat_connection = _pcap_stream->heartbeat_signal.connect(&PcapStreamHandler::check_period_shift, this);
     }
 
     _running = true;
@@ -55,7 +55,7 @@ void PcapStreamHandler::stop()
         _pcap_tcp_reassembly_errors_connection.disconnect();
         _pcap_stats_connection.disconnect();
     }
-    _running_connection.disconnect();
+    _heartbeat_connection.disconnect();
 
     _running = false;
 }
