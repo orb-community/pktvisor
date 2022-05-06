@@ -48,6 +48,11 @@ void FlowStreamHandler::start()
 
     process_groups(_group_defs);
 
+    if (config_exists("only_hosts")) {
+        _parse_host_specs(config_get<StringList>("only_hosts"));
+        _f_enabled.set(Filters::OnlyHosts);
+    }
+
     if (config_exists("recorded_stream")) {
         _metrics->set_recorded_stream();
     }
@@ -98,6 +103,86 @@ void FlowStreamHandler::process_netflow_cb(const NFSample &payload)
 {
     _metrics->process_netflow(payload);
 }
+
+void FlowStreamHandler::_parse_host_specs(const std::vector<std::string> &host_list)
+{
+    for (const auto &host : host_list) {
+        auto delimiter = host.find('/');
+        if (delimiter == host.npos) {
+            throw StreamHandlerException(fmt::format("invalid CIDR: {}", host));
+        }
+        auto ip = host.substr(0, delimiter);
+        auto cidr = host.substr(++delimiter);
+        auto not_number = std::count_if(cidr.begin(), cidr.end(),
+            [](unsigned char c) { return !std::isdigit(c); });
+        if (not_number) {
+            throw StreamHandlerException(fmt::format("invalid CIDR: {}", host));
+        }
+
+        auto cidr_number = std::stoi(cidr);
+        if (ip.find(':') != ip.npos) {
+            if (cidr_number < 0 || cidr_number > 128) {
+                throw StreamHandlerException(fmt::format("invalid CIDR: {}", host));
+            }
+            in6_addr ipv6;
+            if (inet_pton(AF_INET6, ip.c_str(), &ipv6) != 1) {
+                throw StreamHandlerException(fmt::format("invalid IPv6 address: {}", ip));
+            }
+            _IPv6_host_list.emplace_back(ipv6, cidr_number);
+        } else {
+            if (cidr_number < 0 || cidr_number > 32) {
+                throw StreamHandlerException(fmt::format("invalid CIDR: {}", host));
+            }
+            in_addr ipv4;
+            if (inet_pton(AF_INET, ip.c_str(), &ipv4) != 1) {
+                throw StreamHandlerException(fmt::format("invalid IPv4 address: {}", ip));
+            }
+            _IPv4_host_list.emplace_back(ipv4, cidr_number);
+        }
+    }
+}
+
+bool FlowStreamHandler::_match_subnet(const std::string &flow_ip)
+{
+    if (flow_ip.size() == 16 && _IPv6_host_list.size() > 0) {
+        in6_addr ipv6;
+        std::memcpy(&ipv6, flow_ip.c_str(), sizeof(in6_addr));
+        for (const auto &net : _IPv6_host_list) {
+            uint8_t prefixLength = net.second;
+            auto network = net.first;
+            uint8_t compareByteCount = prefixLength / 8;
+            uint8_t compareBitCount = prefixLength % 8;
+            bool result = false;
+            if (compareByteCount > 0) {
+                result = std::memcmp(&network.s6_addr, &ipv6.s6_addr, compareByteCount) == 0;
+            }
+            if ((result || prefixLength < 8) && compareBitCount > 0) {
+                uint8_t subSubnetByte = network.s6_addr[compareByteCount] >> (8 - compareBitCount);
+                uint8_t subThisByte = ipv6.s6_addr[compareByteCount] >> (8 - compareBitCount);
+                result = subSubnetByte == subThisByte;
+            }
+            if (result) {
+                return true;
+            }
+        }
+    } else if (flow_ip.size() == 4 && _IPv4_host_list.size() > 0) {
+        in_addr ipv4;
+        std::memcpy(&ipv4, flow_ip.c_str(), sizeof(in_addr));
+        for (const auto &net : _IPv4_host_list) {
+            uint8_t cidr = net.second;
+            if (cidr == 0) {
+                return true;
+            }
+            uint32_t mask = htonl((0xFFFFFFFFu) << (32 - cidr));
+            if (!((ipv4.s_addr ^ net.first.s_addr) & mask)) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
 
 void FlowMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
 {
@@ -291,7 +376,7 @@ void FlowMetricsBucket::process_sflow(bool deep, const SFSample &payload)
         }
 
         flow.packets = 1;
-        flow.payload_size = sample.headerLen;
+        flow.payload_size = sample.sampledPacketSize;
 
         if (!deep) {
             process_flow(deep, flow);

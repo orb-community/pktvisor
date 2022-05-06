@@ -18,6 +18,9 @@ namespace visor::handler::flow {
 using namespace visor::input::mock;
 using namespace visor::input::flow;
 
+typedef std::pair<in_addr, uint8_t> Ipv4Subnet;
+typedef std::pair<in6_addr, uint8_t> Ipv6Subnet;
+
 namespace group {
 enum FlowMetrics : visor::MetricGroupIntType {
     Counters,
@@ -41,6 +44,11 @@ struct FlowData {
     uint16_t dst_port;
     uint32_t if_in_index;
     uint32_t if_out_index;
+};
+
+struct FlowPacket {
+    timespec stamp;
+    std::vector<FlowData> flow_data;
 };
 
 class FlowMetricsBucket final : public visor::AbstractMetricsBucket
@@ -166,6 +174,15 @@ class FlowStreamHandler final : public visor::StreamMetricsHandler<FlowMetricsMa
     sigslot::connection _sflow_connection;
     sigslot::connection _netflow_connection;
 
+    std::vector<Ipv4Subnet> _IPv4_host_list;
+    std::vector<Ipv6Subnet> _IPv6_host_list;
+
+    enum Filters {
+        OnlyHosts,
+        FiltersMAX
+    };
+    std::bitset<Filters::FiltersMAX> _f_enabled;
+
     static const inline StreamMetricsHandler::GroupDefType _group_defs = {
         {"cardinality", group::FlowMetrics::Cardinality},
         {"counters", group::FlowMetrics::Counters},
@@ -177,6 +194,9 @@ class FlowStreamHandler final : public visor::StreamMetricsHandler<FlowMetricsMa
     void process_netflow_cb(const NFSample &);
     void set_start_tstamp(timespec stamp);
     void set_end_tstamp(timespec stamp);
+
+    void _parse_host_specs(const std::vector<std::string> &host_list);
+    bool _match_subnet(const std::string &flow_ip);
 
 public:
     FlowStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config, StreamHandler *handler = nullptr);
