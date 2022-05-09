@@ -49,6 +49,11 @@ struct FlowData {
 struct FlowPacket {
     timespec stamp;
     std::vector<FlowData> flow_data;
+
+    FlowPacket(timespec stamp)
+        : stamp(stamp)
+    {
+    }
 };
 
 class FlowMetricsBucket final : public visor::AbstractMetricsBucket
@@ -146,10 +151,7 @@ public:
         _throughput.cancel();
     }
 
-    void process_sflow(bool deep, const SFSample &payload);
-    void process_netflow(bool deep, const NFSample &payload);
-    void process_flow(bool deep, FlowData &flow);
-    // void process_flow(bool is_ipv6, IP_PROTOCOL l4, size_t payload_size, pcpp::IPv4Address &ipv4_in, pcpp::IPv4Address &ipv4_out, pcpp::IPv6Address &ipv6_in, pcpp::IPv6Address &ipv6_out);
+    void process_flow(bool deep, const FlowPacket &payload);
 };
 
 class FlowMetricsManager final : public visor::AbstractMetricsManager<FlowMetricsBucket>
@@ -160,8 +162,7 @@ public:
     {
     }
 
-    void process_sflow(const SFSample &payload);
-    void process_netflow(const NFSample &payload);
+    void process_flow(const FlowPacket &payload);
 };
 
 class FlowStreamHandler final : public visor::StreamMetricsHandler<FlowMetricsManager>
@@ -196,7 +197,8 @@ class FlowStreamHandler final : public visor::StreamMetricsHandler<FlowMetricsMa
     void set_end_tstamp(timespec stamp);
 
     void _parse_host_specs(const std::vector<std::string> &host_list);
-    bool _match_subnet(const std::string &flow_ip);
+    bool _match_subnet(uint32_t ipv4 = 0, const uint8_t* ipv6 = nullptr);
+    bool _filtering(const FlowData &flow);
 
 public:
     FlowStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config, StreamHandler *handler = nullptr);

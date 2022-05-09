@@ -96,12 +96,128 @@ void FlowStreamHandler::set_end_tstamp(timespec stamp)
 
 void FlowStreamHandler::process_sflow_cb(const SFSample &payload)
 {
-    _metrics->process_sflow(payload);
+    timespec stamp;
+    // use now()
+    std::timespec_get(&stamp, TIME_UTC);
+    FlowPacket packet(stamp);
+
+    for (const auto &sample : payload.elements) {
+
+        if (sample.sampleType == SFLCOUNTERS_SAMPLE || sample.sampleType == SFLCOUNTERS_SAMPLE_EXPANDED) {
+            // skip counter flows
+            continue;
+        }
+
+        FlowData flow = {};
+        pcpp::ProtocolType l3;
+        if (sample.gotIPV6) {
+            flow.is_ipv6 = true;
+        }
+
+        flow.l4 = IP_PROTOCOL::UNKNOWN_IP;
+        switch (sample.dcd_ipProtocol) {
+        case IP_PROTOCOL::TCP:
+            flow.l4 = IP_PROTOCOL::TCP;
+            break;
+        case IP_PROTOCOL::UDP:
+            flow.l4 = IP_PROTOCOL::UDP;
+            break;
+        }
+
+        flow.packets = 1;
+        flow.payload_size = sample.sampledPacketSize;
+
+        flow.src_port = sample.dcd_sport;
+        flow.dst_port = sample.dcd_dport;
+        flow.if_in_index = sample.inputPort;
+        flow.if_out_index = sample.outputPort;
+
+        if (sample.ipsrc.type == SFLADDRESSTYPE_IP_V4) {
+            flow.is_ipv6 = false;
+            flow.ipv4_in = pcpp::IPv4Address(sample.ipsrc.address.ip_v4.addr);
+
+        } else if (sample.ipsrc.type == SFLADDRESSTYPE_IP_V6) {
+            flow.is_ipv6 = true;
+            flow.ipv6_in = pcpp::IPv6Address(sample.ipsrc.address.ip_v6.addr);
+        }
+
+        if (sample.ipdst.type == SFLADDRESSTYPE_IP_V4) {
+            flow.is_ipv6 = false;
+            flow.ipv4_out = pcpp::IPv4Address(sample.ipdst.address.ip_v4.addr);
+        } else if (sample.ipdst.type == SFLADDRESSTYPE_IP_V6) {
+            flow.is_ipv6 = true;
+            flow.ipv6_out = pcpp::IPv6Address(sample.ipdst.address.ip_v6.addr);
+        }
+
+        if (!_filtering(flow)) {
+            packet.flow_data.push_back(flow);
+        }
+    }
+    _metrics->process_flow(packet);
 }
 
 void FlowStreamHandler::process_netflow_cb(const NFSample &payload)
 {
-    _metrics->process_netflow(payload);
+    timespec stamp;
+    if (payload.time_sec || payload.time_nanosec) {
+        stamp.tv_sec = payload.time_sec;
+        stamp.tv_nsec = payload.time_nanosec;
+    } else {
+        // use now()
+        std::timespec_get(&stamp, TIME_UTC);
+    }
+    FlowPacket packet(stamp);
+
+    for (const auto &sample : payload.flows) {
+        FlowData flow = {};
+        if (sample.is_ipv6) {
+            flow.is_ipv6 = true;
+        }
+
+        flow.l4 = IP_PROTOCOL::UNKNOWN_IP;
+        switch (sample.protocol) {
+        case IP_PROTOCOL::TCP:
+            flow.l4 = IP_PROTOCOL::TCP;
+            break;
+        case IP_PROTOCOL::UDP:
+            flow.l4 = IP_PROTOCOL::UDP;
+            break;
+        }
+
+        flow.packets = sample.flow_packets;
+        flow.payload_size = sample.flow_octets;
+
+        flow.src_port = sample.src_port;
+        flow.dst_port = sample.dst_port;
+        flow.if_out_index = sample.if_index_out;
+        flow.if_in_index = sample.if_index_in;
+
+        if (sample.is_ipv6) {
+            flow.ipv6_in = pcpp::IPv6Address(reinterpret_cast<uint8_t *>(sample.src_ip));
+            flow.ipv6_out = pcpp::IPv6Address(reinterpret_cast<uint8_t *>(sample.dst_ip));
+        } else {
+            flow.ipv4_in = pcpp::IPv4Address(sample.src_ip);
+            flow.ipv4_out = pcpp::IPv4Address(sample.dst_ip);
+        }
+
+        if (!_filtering(flow)) {
+            packet.flow_data.push_back(flow);
+        }
+    }
+
+    _metrics->process_flow(packet);
+}
+
+bool FlowStreamHandler::_filtering(const FlowData &flow)
+{
+    if (_f_enabled[Filters::OnlyHosts]) {
+        if (flow.is_ipv6 && !_match_subnet(0, flow.ipv6_in.toBytes()) && !_match_subnet(0, flow.ipv6_out.toBytes())) {
+            return true;
+        } else if (!_match_subnet(flow.ipv4_in.toInt()) && !_match_subnet(flow.ipv4_out.toInt())) {
+            return true;
+        }
+    }
+    return false;
 }
 
 void FlowStreamHandler::_parse_host_specs(const std::vector<std::string> &host_list)
@@ -142,11 +258,24 @@ void FlowStreamHandler::_parse_host_specs(const std::vector<std::string> &host_l
     }
 }
 
-bool FlowStreamHandler::_match_subnet(const std::string &flow_ip)
+bool FlowStreamHandler::_match_subnet(uint32_t ipv4_val, const uint8_t* ipv6_val)
 {
-    if (flow_ip.size() == 16 && _IPv6_host_list.size() > 0) {
+    if (ipv4_val && _IPv4_host_list.size() > 0) {
+        in_addr ipv4;
+        std::memcpy(&ipv4, &ipv4_val, sizeof(in_addr));
+        for (const auto &net : _IPv4_host_list) {
+            uint8_t cidr = net.second;
+            if (cidr == 0) {
+                return true;
+            }
+            uint32_t mask = htonl((0xFFFFFFFFu) << (32 - cidr));
+            if (!((ipv4.s_addr ^ net.first.s_addr) & mask)) {
+                return true;
+            }
+        }
+    } else if (ipv6_val && _IPv6_host_list.size() > 0) {
         in6_addr ipv6;
-        std::memcpy(&ipv6, flow_ip.c_str(), sizeof(in6_addr));
+        std::memcpy(&ipv6, ipv6_val, sizeof(in6_addr));
         for (const auto &net : _IPv6_host_list) {
             uint8_t prefixLength = net.second;
             auto network = net.first;
@@ -165,24 +294,10 @@ bool FlowStreamHandler::_match_subnet(const std::string &flow_ip)
                 return true;
             }
         }
-    } else if (flow_ip.size() == 4 && _IPv4_host_list.size() > 0) {
-        in_addr ipv4;
-        std::memcpy(&ipv4, flow_ip.c_str(), sizeof(in_addr));
-        for (const auto &net : _IPv4_host_list) {
-            uint8_t cidr = net.second;
-            if (cidr == 0) {
-                return true;
-            }
-            uint32_t mask = htonl((0xFFFFFFFFu) << (32 - cidr));
-            if (!((ipv4.s_addr ^ net.first.s_addr) & mask)) {
-                return true;
-            }
-        }
     }
 
     return false;
 }
-
 
 void FlowMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
 {
@@ -350,245 +465,125 @@ void FlowMetricsBucket::to_json(json &j) const
     _payload_size.to_json(j);
 }
 
-void FlowMetricsBucket::process_sflow(bool deep, const SFSample &payload)
+void FlowMetricsBucket::process_flow(bool deep, const FlowPacket &payload)
 {
-    for (const auto &sample : payload.elements) {
+    std::unique_lock lock(_mutex);
 
-        if (sample.sampleType == SFLCOUNTERS_SAMPLE || sample.sampleType == SFLCOUNTERS_SAMPLE_EXPANDED) {
-            //skip counter flows
+    for (const auto &flow : payload.flow_data) {
+        _rate += flow.packets;
+        _throughput += flow.payload_size;
+
+        if (group_enabled(group::FlowMetrics::Counters)) {
+            ++_counters.total;
+
+            if (flow.is_ipv6) {
+                ++_counters.IPv6;
+            } else {
+                ++_counters.IPv4;
+            }
+
+            switch (flow.l4) {
+            case IP_PROTOCOL::UDP:
+                ++_counters.UDP;
+                break;
+            case IP_PROTOCOL::TCP:
+                ++_counters.TCP;
+                break;
+            default:
+                ++_counters.OtherL4;
+                break;
+            }
+        }
+
+        _payload_size.update(flow.payload_size);
+
+        if (!deep) {
             continue;
         }
 
-        FlowData flow = {};
-        pcpp::ProtocolType l3;
-        if (sample.gotIPV6) {
-            flow.is_ipv6 = true;
+        if (group_enabled(group::FlowMetrics::TopByBytes)) {
+            (flow.src_port > 0) ? _topByBytes.topSrcPort.update(flow.src_port, flow.payload_size) : void();
+            (flow.dst_port > 0) ? _topByBytes.topDstPort.update(flow.dst_port, flow.payload_size) : void();
+            (flow.if_out_index > 0) ? _topByBytes.topInIfIndex.update(flow.if_in_index, flow.payload_size) : void();
+            (flow.if_in_index > 0) ? _topByBytes.topOutIfIndex.update(flow.if_out_index, flow.payload_size) : void();
         }
 
-        flow.l4 = IP_PROTOCOL::UNKNOWN_IP;
-        switch (sample.dcd_ipProtocol) {
-        case IP_PROTOCOL::TCP:
-            flow.l4 = IP_PROTOCOL::TCP;
-            break;
-        case IP_PROTOCOL::UDP:
-            flow.l4 = IP_PROTOCOL::UDP;
-            break;
+        if (group_enabled(group::FlowMetrics::TopByPackets)) {
+            (flow.src_port > 0) ? _topByPackets.topSrcPort.update(flow.src_port, flow.packets) : void();
+            (flow.dst_port > 0) ? _topByPackets.topDstPort.update(flow.dst_port, flow.packets) : void();
+            (flow.if_out_index > 0) ? _topByPackets.topInIfIndex.update(flow.if_in_index, flow.packets) : void();
+            (flow.if_in_index > 0) ? _topByPackets.topOutIfIndex.update(flow.if_out_index, flow.packets) : void();
         }
 
-        flow.packets = 1;
-        flow.payload_size = sample.sampledPacketSize;
+        struct sockaddr_in sa4;
+        struct sockaddr_in6 sa6;
 
-        if (!deep) {
-            process_flow(deep, flow);
-            return;
-        }
-
-        flow.src_port = sample.dcd_sport;
-        flow.dst_port = sample.dcd_dport;
-        flow.if_in_index = sample.inputPort;
-        flow.if_out_index = sample.outputPort;
-
-        if (sample.ipsrc.type == SFLADDRESSTYPE_IP_V4) {
-            flow.is_ipv6 = false;
-            flow.ipv4_in = pcpp::IPv4Address(sample.ipsrc.address.ip_v4.addr);
-
-        } else if (sample.ipsrc.type == SFLADDRESSTYPE_IP_V6) {
-            flow.is_ipv6 = true;
-            flow.ipv6_in = pcpp::IPv6Address(sample.ipsrc.address.ip_v6.addr);
-        }
-
-        if (sample.ipdst.type == SFLADDRESSTYPE_IP_V4) {
-            flow.is_ipv6 = false;
-            flow.ipv4_out = pcpp::IPv4Address(sample.ipdst.address.ip_v4.addr);
-        } else if (sample.ipdst.type == SFLADDRESSTYPE_IP_V6) {
-            flow.is_ipv6 = true;
-            flow.ipv6_out = pcpp::IPv6Address(sample.ipdst.address.ip_v6.addr);
-        }
-
-        process_flow(deep, flow);
-    }
-}
-
-void FlowMetricsBucket::process_netflow(bool deep, const NFSample &payload)
-{
-    for (const auto &sample : payload.flows) {
-        FlowData flow = {};
-        if (sample.is_ipv6) {
-            flow.is_ipv6 = true;
-        }
-
-        flow.l4 = IP_PROTOCOL::UNKNOWN_IP;
-        switch (sample.protocol) {
-        case IP_PROTOCOL::TCP:
-            flow.l4 = IP_PROTOCOL::TCP;
-            break;
-        case IP_PROTOCOL::UDP:
-            flow.l4 = IP_PROTOCOL::UDP;
-            break;
-        }
-
-        flow.packets = sample.flow_packets;
-        flow.payload_size = sample.flow_octets;
-
-        if (!deep) {
-            process_flow(deep, flow);
-            return;
-        }
-
-        flow.src_port = sample.src_port;
-        flow.dst_port = sample.dst_port;
-        flow.if_out_index = sample.if_index_out;
-        flow.if_in_index = sample.if_index_in;
-
-        if (sample.is_ipv6) {
-            flow.ipv6_in = pcpp::IPv6Address(reinterpret_cast<uint8_t *>(sample.src_ip));
-            flow.ipv6_out = pcpp::IPv6Address(reinterpret_cast<uint8_t *>(sample.dst_ip));
-        } else {
-            flow.ipv4_in = pcpp::IPv4Address(sample.src_ip);
-            flow.ipv4_out = pcpp::IPv4Address(sample.dst_ip);
-        }
-
-        process_flow(deep, flow);
-    }
-}
-
-void FlowMetricsBucket::process_flow(bool deep, FlowData &flow)
-{
-    std::unique_lock lock(_mutex);
-    _rate += flow.packets;
-    _throughput += flow.payload_size;
-
-    if (group_enabled(group::FlowMetrics::Counters)) {
-        ++_counters.total;
-
-        if (flow.is_ipv6) {
-            ++_counters.IPv6;
-        } else {
-            ++_counters.IPv4;
-        }
-
-        switch (flow.l4) {
-        case IP_PROTOCOL::UDP:
-            ++_counters.UDP;
-            break;
-        case IP_PROTOCOL::TCP:
-            ++_counters.TCP;
-            break;
-        default:
-            ++_counters.OtherL4;
-            break;
-        }
-    }
-
-    _payload_size.update(flow.payload_size);
-
-    if (!deep) {
-        return;
-    }
-
-    if (group_enabled(group::FlowMetrics::TopByBytes)) {
-        (flow.src_port > 0) ? _topByBytes.topSrcPort.update(flow.src_port, flow.payload_size) : void();
-        (flow.dst_port > 0) ? _topByBytes.topDstPort.update(flow.dst_port, flow.payload_size) : void();
-        (flow.if_out_index > 0) ? _topByBytes.topInIfIndex.update(flow.if_in_index, flow.payload_size) : void();
-        (flow.if_in_index > 0) ? _topByBytes.topOutIfIndex.update(flow.if_out_index, flow.payload_size) : void();
-    }
-
-    if (group_enabled(group::FlowMetrics::TopByPackets)) {
-        (flow.src_port > 0) ? _topByPackets.topSrcPort.update(flow.src_port, flow.packets) : void();
-        (flow.dst_port > 0) ? _topByPackets.topDstPort.update(flow.dst_port, flow.packets) : void();
-        (flow.if_out_index > 0) ? _topByPackets.topInIfIndex.update(flow.if_in_index, flow.packets) : void();
-        (flow.if_in_index > 0) ? _topByPackets.topOutIfIndex.update(flow.if_out_index, flow.packets) : void();
-    }
-
-    struct sockaddr_in sa4;
-    struct sockaddr_in6 sa6;
-
-    if (!flow.is_ipv6 && flow.ipv4_in.isValid()) {
-        group_enabled(group::FlowMetrics::Cardinality) ? _srcIPCard.update(flow.ipv4_in.toInt()) : void();
-        group_enabled(group::FlowMetrics::TopByBytes) ? _topByBytes.topSrcIP.update(flow.ipv4_in.toString(), flow.payload_size) : void();
-        group_enabled(group::FlowMetrics::TopByPackets) ? _topByPackets.topSrcIP.update(flow.ipv4_in.toString(), flow.packets) : void();
-        if (geo::enabled() && group_enabled(group::FlowMetrics::TopGeo)) {
-            if (IPv4_to_sockaddr(flow.ipv4_in, &sa4)) {
-                if (geo::GeoIP().enabled()) {
-                    _topGeoLoc.update(geo::GeoIP().getGeoLocString(reinterpret_cast<struct sockaddr *>(&sa4)));
+        if (!flow.is_ipv6 && flow.ipv4_in.isValid()) {
+            group_enabled(group::FlowMetrics::Cardinality) ? _srcIPCard.update(flow.ipv4_in.toInt()) : void();
+            group_enabled(group::FlowMetrics::TopByBytes) ? _topByBytes.topSrcIP.update(flow.ipv4_in.toString(), flow.payload_size) : void();
+            group_enabled(group::FlowMetrics::TopByPackets) ? _topByPackets.topSrcIP.update(flow.ipv4_in.toString(), flow.packets) : void();
+            if (geo::enabled() && group_enabled(group::FlowMetrics::TopGeo)) {
+                if (IPv4_to_sockaddr(flow.ipv4_in, &sa4)) {
+                    if (geo::GeoIP().enabled()) {
+                        _topGeoLoc.update(geo::GeoIP().getGeoLocString(reinterpret_cast<struct sockaddr *>(&sa4)));
+                    }
+                    if (geo::GeoASN().enabled()) {
+                        _topASN.update(geo::GeoASN().getASNString(reinterpret_cast<struct sockaddr *>(&sa4)));
+                    }
                 }
-                if (geo::GeoASN().enabled()) {
-                    _topASN.update(geo::GeoASN().getASNString(reinterpret_cast<struct sockaddr *>(&sa4)));
+            }
+        } else if (flow.is_ipv6 && flow.ipv6_in.isValid()) {
+            group_enabled(group::FlowMetrics::Cardinality) ? _srcIPCard.update(reinterpret_cast<const void *>(flow.ipv6_in.toBytes()), 16) : void();
+            group_enabled(group::FlowMetrics::TopByBytes) ? _topByBytes.topSrcIP.update(flow.ipv6_in.toString(), flow.payload_size) : void();
+            group_enabled(group::FlowMetrics::TopByPackets) ? _topByPackets.topSrcIP.update(flow.ipv6_in.toString(), flow.packets) : void();
+            if (geo::enabled() && group_enabled(group::FlowMetrics::TopGeo)) {
+                if (IPv6_to_sockaddr(flow.ipv6_in, &sa6)) {
+                    if (geo::GeoIP().enabled()) {
+                        _topGeoLoc.update(geo::GeoIP().getGeoLocString(reinterpret_cast<struct sockaddr *>(&sa6)));
+                    }
+                    if (geo::GeoASN().enabled()) {
+                        _topASN.update(geo::GeoASN().getASNString(reinterpret_cast<struct sockaddr *>(&sa6)));
+                    }
                 }
             }
         }
-    } else if (flow.is_ipv6 && flow.ipv6_in.isValid()) {
-        group_enabled(group::FlowMetrics::Cardinality) ? _srcIPCard.update(reinterpret_cast<const void *>(flow.ipv6_in.toBytes()), 16) : void();
-        group_enabled(group::FlowMetrics::TopByBytes) ? _topByBytes.topSrcIP.update(flow.ipv6_in.toString(), flow.payload_size) : void();
-        group_enabled(group::FlowMetrics::TopByPackets) ? _topByPackets.topSrcIP.update(flow.ipv6_in.toString(), flow.packets) : void();
-        if (geo::enabled() && group_enabled(group::FlowMetrics::TopGeo)) {
-            if (IPv6_to_sockaddr(flow.ipv6_in, &sa6)) {
-                if (geo::GeoIP().enabled()) {
-                    _topGeoLoc.update(geo::GeoIP().getGeoLocString(reinterpret_cast<struct sockaddr *>(&sa6)));
-                }
-                if (geo::GeoASN().enabled()) {
-                    _topASN.update(geo::GeoASN().getASNString(reinterpret_cast<struct sockaddr *>(&sa6)));
-                }
-            }
-        }
-    }
 
-    if (!flow.is_ipv6 && flow.ipv4_out.isValid()) {
-        group_enabled(group::FlowMetrics::Cardinality) ? _dstIPCard.update(flow.ipv4_out.toInt()) : void();
-        group_enabled(group::FlowMetrics::TopByBytes) ? _topByBytes.topDstIP.update(flow.ipv4_out.toString(), flow.payload_size) : void();
-        group_enabled(group::FlowMetrics::TopByPackets) ? _topByPackets.topDstIP.update(flow.ipv4_out.toString(), flow.packets) : void();
-        if (geo::enabled() && group_enabled(group::FlowMetrics::TopGeo)) {
-            if (IPv4_to_sockaddr(flow.ipv4_out, &sa4)) {
-                if (geo::GeoIP().enabled()) {
-                    _topGeoLoc.update(geo::GeoIP().getGeoLocString(reinterpret_cast<struct sockaddr *>(&sa4)));
-                }
-                if (geo::GeoASN().enabled()) {
-                    _topASN.update(geo::GeoASN().getASNString(reinterpret_cast<struct sockaddr *>(&sa4)));
+        if (!flow.is_ipv6 && flow.ipv4_out.isValid()) {
+            group_enabled(group::FlowMetrics::Cardinality) ? _dstIPCard.update(flow.ipv4_out.toInt()) : void();
+            group_enabled(group::FlowMetrics::TopByBytes) ? _topByBytes.topDstIP.update(flow.ipv4_out.toString(), flow.payload_size) : void();
+            group_enabled(group::FlowMetrics::TopByPackets) ? _topByPackets.topDstIP.update(flow.ipv4_out.toString(), flow.packets) : void();
+            if (geo::enabled() && group_enabled(group::FlowMetrics::TopGeo)) {
+                if (IPv4_to_sockaddr(flow.ipv4_out, &sa4)) {
+                    if (geo::GeoIP().enabled()) {
+                        _topGeoLoc.update(geo::GeoIP().getGeoLocString(reinterpret_cast<struct sockaddr *>(&sa4)));
+                    }
+                    if (geo::GeoASN().enabled()) {
+                        _topASN.update(geo::GeoASN().getASNString(reinterpret_cast<struct sockaddr *>(&sa4)));
+                    }
                 }
             }
-        }
-    } else if (flow.is_ipv6 && flow.ipv6_out.isValid()) {
-        group_enabled(group::FlowMetrics::Cardinality) ? _dstIPCard.update(reinterpret_cast<const void *>(flow.ipv6_out.toBytes()), 16) : void();
-        group_enabled(group::FlowMetrics::TopByBytes) ? _topByBytes.topDstIP.update(flow.ipv6_out.toString(), flow.payload_size) : void();
-        group_enabled(group::FlowMetrics::TopByPackets) ? _topByPackets.topDstIP.update(flow.ipv6_out.toString(), flow.packets) : void();
-        if (geo::enabled() && group_enabled(group::FlowMetrics::TopGeo)) {
-            if (IPv6_to_sockaddr(flow.ipv6_out, &sa6)) {
-                if (geo::GeoIP().enabled()) {
-                    _topGeoLoc.update(geo::GeoIP().getGeoLocString(reinterpret_cast<struct sockaddr *>(&sa6)));
-                }
-                if (geo::GeoASN().enabled()) {
-                    _topASN.update(geo::GeoASN().getASNString(reinterpret_cast<struct sockaddr *>(&sa6)));
+        } else if (flow.is_ipv6 && flow.ipv6_out.isValid()) {
+            group_enabled(group::FlowMetrics::Cardinality) ? _dstIPCard.update(reinterpret_cast<const void *>(flow.ipv6_out.toBytes()), 16) : void();
+            group_enabled(group::FlowMetrics::TopByBytes) ? _topByBytes.topDstIP.update(flow.ipv6_out.toString(), flow.payload_size) : void();
+            group_enabled(group::FlowMetrics::TopByPackets) ? _topByPackets.topDstIP.update(flow.ipv6_out.toString(), flow.packets) : void();
+            if (geo::enabled() && group_enabled(group::FlowMetrics::TopGeo)) {
+                if (IPv6_to_sockaddr(flow.ipv6_out, &sa6)) {
+                    if (geo::GeoIP().enabled()) {
+                        _topGeoLoc.update(geo::GeoIP().getGeoLocString(reinterpret_cast<struct sockaddr *>(&sa6)));
+                    }
+                    if (geo::GeoASN().enabled()) {
+                        _topASN.update(geo::GeoASN().getASNString(reinterpret_cast<struct sockaddr *>(&sa6)));
+                    }
                 }
             }
         }
     }
 }
 
-void FlowMetricsManager::process_sflow(const SFSample &payload)
+void FlowMetricsManager::process_flow(const FlowPacket &payload)
 {
-    timespec stamp;
-    // use now()
-    std::timespec_get(&stamp, TIME_UTC);
-    // base event
-    new_event(stamp);
+    new_event(payload.stamp);
     // process in the "live" bucket
-    live_bucket()->process_sflow(_deep_sampling_now, payload);
+    live_bucket()->process_flow(_deep_sampling_now, payload);
 }
-
-void FlowMetricsManager::process_netflow(const NFSample &payload)
-{
-    timespec stamp;
-    if (payload.time_sec || payload.time_nanosec) {
-        stamp.tv_sec = payload.time_sec;
-        stamp.tv_nsec = payload.time_nanosec;
-    } else {
-        // use now()
-        std::timespec_get(&stamp, TIME_UTC);
-    }
-    // base event
-    new_event(stamp);
-    // process in the "live" bucket
-    live_bucket()->process_netflow(_deep_sampling_now, payload);
-}
-
 }
