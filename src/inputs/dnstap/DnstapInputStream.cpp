@@ -11,6 +11,7 @@
 #include <uvw/pipe.h>
 #include <uvw/stream.h>
 #include <uvw/tcp.h>
+#include <uvw/timer.h>
 
 namespace visor::input::dnstap {
 
@@ -136,6 +137,8 @@ void DnstapInputStream::_create_frame_stream_tcp_socket()
         throw DnstapException("unable to initialize AsyncHandle");
     }
     _async_h->once<uvw::AsyncEvent>([this](const auto &, auto &handle) {
+        _timer->stop();
+        _timer->close();
         _tcp_server_h->stop();
         _tcp_server_h->close();
         _io_loop->stop();
@@ -144,6 +147,21 @@ void DnstapInputStream::_create_frame_stream_tcp_socket()
     });
     _async_h->on<uvw::ErrorEvent>([this](const auto &err, auto &handle) {
         _logger->error("[{}] AsyncEvent error: {}", _name, err.what());
+        handle.close();
+    });
+
+    _timer = _io_loop->resource<uvw::TimerHandle>();
+    if (!_timer) {
+        throw DnstapException("unable to initialize TimerHandle");
+    }
+    _timer->on<uvw::TimerEvent>([this](const auto &, auto &handle) {
+        timespec stamp;
+        // use now()
+        std::timespec_get(&stamp, TIME_UTC);
+        heartbeat_signal(stamp);
+    });
+    _timer->on<uvw::ErrorEvent>([this](const auto &err, auto &handle) {
+        _logger->error("[{}] TimerEvent error: {}", _name, err.what());
         handle.close();
     });
 
@@ -224,6 +242,7 @@ void DnstapInputStream::_create_frame_stream_tcp_socket()
 
     // spawn the loop
     _io_thread = std::make_unique<std::thread>([this] {
+        _timer->start(uvw::TimerHandle::Time{1000}, uvw::TimerHandle::Time{HEARTBEAT_INTERVAL * 1000});
         _io_loop->run();
     });
 }
@@ -242,6 +261,8 @@ void DnstapInputStream::_create_frame_stream_unix_socket()
         throw DnstapException("unable to initialize AsyncHandle");
     }
     _async_h->once<uvw::AsyncEvent>([this](const auto &, auto &handle) {
+        _timer->stop();
+        _timer->close();
         _unix_server_h->stop();
         _unix_server_h->close();
         _io_loop->stop();
@@ -250,6 +271,21 @@ void DnstapInputStream::_create_frame_stream_unix_socket()
     });
     _async_h->on<uvw::ErrorEvent>([this](const auto &err, auto &handle) {
         _logger->error("[{}] AsyncEvent error: {}", _name, err.what());
+        handle.close();
+    });
+
+    _timer = _io_loop->resource<uvw::TimerHandle>();
+    if (!_timer) {
+        throw DnstapException("unable to initialize TimerHandle");
+    }
+    _timer->on<uvw::TimerEvent>([this](const auto &, auto &handle) {
+        timespec stamp;
+        // use now()
+        std::timespec_get(&stamp, TIME_UTC);
+        heartbeat_signal(stamp);
+    });
+    _timer->on<uvw::ErrorEvent>([this](const auto &err, auto &handle) {
+        _logger->error("[{}] TimerEvent error: {}", _name, err.what());
         handle.close();
     });
 
@@ -332,6 +368,7 @@ void DnstapInputStream::_create_frame_stream_unix_socket()
 
     // spawn the loop
     _io_thread = std::make_unique<std::thread>([this] {
+        _timer->start(uvw::TimerHandle::Time{1000}, uvw::TimerHandle::Time{HEARTBEAT_INTERVAL * 1000});
         _io_loop->run();
     });
 }
@@ -425,7 +462,9 @@ void DnstapInputStream::stop()
         // we have to use AsyncHandle to stop the loop from the same thread the loop is running in
         _async_h->send();
         // waits for _io_loop->run() to return
-        _io_thread->join();
+        if (_io_thread->joinable()) {
+            _io_thread->join();
+        }
     }
 
     _running = false;

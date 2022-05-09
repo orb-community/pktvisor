@@ -63,8 +63,10 @@ void NetStreamHandler::start()
         _pkt_connection = _pcap_stream->packet_signal.connect(&NetStreamHandler::process_packet_cb, this);
         _start_tstamp_connection = _pcap_stream->start_tstamp_signal.connect(&NetStreamHandler::set_start_tstamp, this);
         _end_tstamp_connection = _pcap_stream->end_tstamp_signal.connect(&NetStreamHandler::set_end_tstamp, this);
+        _heartbeat_connection = _pcap_stream->heartbeat_signal.connect(&NetStreamHandler::check_period_shift, this);
     } else if (_dnstap_stream) {
         _dnstap_connection = _dnstap_stream->dnstap_signal.connect(&NetStreamHandler::process_dnstap_cb, this);
+        _heartbeat_connection = _dnstap_stream->heartbeat_signal.connect(&NetStreamHandler::check_period_shift, this);
     } else if (_dns_handler) {
         _pkt_udp_connection = _dns_handler->udp_signal.connect(&NetStreamHandler::process_udp_packet_cb, this);
     }
@@ -87,6 +89,7 @@ void NetStreamHandler::stop()
     } else if (_dns_handler) {
         _pkt_udp_connection.disconnect();
     }
+    _heartbeat_connection.disconnect();
 
     _running = false;
 }

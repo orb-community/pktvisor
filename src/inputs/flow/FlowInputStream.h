@@ -26,6 +26,7 @@ class FlowInputStream : public visor::InputStream
     std::unique_ptr<std::thread> _io_thread;
     std::shared_ptr<uvw::Loop> _io_loop;
     std::shared_ptr<uvw::AsyncHandle> _async_h;
+    std::shared_ptr<uvw::TimerHandle> _timer;
 
     std::shared_ptr<uvw::UDPHandle> _udp_server_h;
 
@@ -46,7 +47,7 @@ public:
     void info_json(json &j) const override;
     size_t consumer_count() const override
     {
-        return policy_signal.slot_count() + sflow_signal.slot_count();
+        return policy_signal.slot_count() + heartbeat_signal.slot_count() + sflow_signal.slot_count() + netflow_signal.slot_count();
     }
 
     // handler functionality
