@@ -1,0 +1,287 @@
+{
+    "default": {
+        "default-dhcp": {
+            "dhcp": {
+                "period": {
+                    "length": 2,
+                    "start_ts": 1652143707
+                },
+                "rates": {
+                    "total": {
+                        "live": 0,
+                        "p50": 0,
+                        "p90": 0,
+                        "p95": 0,
+                        "p99": 0
+                    }
+                },
+                "wire_packets": {
+                    "ack": 0,
+                    "deep_samples": 0,
+                    "discover": 0,
+                    "filtered": 0,
+                    "offer": 0,
+                    "request": 0,
+                    "total": 0
+                }
+            }
+        },
+        "default-dns": {
+            "dns": {
+                "cardinality": {
+                    "qname": 69
+                },
+                "period": {
+                    "length": 2,
+                    "start_ts": 1652143707
+                },
+                "rates": {
+                    "total": {
+                        "live": 0,
+                        "p50": 0,
+                        "p90": 0,
+                        "p95": 0,
+                        "p99": 0
+                    }
+                },
+                "top_nxdomain": [],
+                "top_qname2": [
+                    {
+                        "estimate": 140,
+                        "name": ".test.com"
+                    }
+                ],
+                "top_qname3": [
+                    {
+                        "estimate": 2,
+                        "name": ".motsoaqm.test.com"
+                    },
+                    {
+                        "estimate": 2,
+                        "name": "qp-0cxbxx.test.com"
+                    },
+                    {
+                        "estimate": 2,
+                        "name": ".yga.test.com"
+                    },
+                    {
+                        "estimate": 2,
+                        "name": ".n5v-ruqc.test.com"
+                    },
+                    {
+                        "estimate": 2,
+                        "name": ".qtyszy3.test.com"
+                    },
+                    {
+                        "estimate": 2,
+                        "name": ".3pyb.test.com"
+                    },
+                    {
+                        "estimate": 2,
+                        "name": ".kmc5.test.com"
+                    },
+                    {
+                        "estimate": 2,
+                        "name": ".iqczk1kls.test.com"
+                    },
+                    {
+                        "estimate": 2,
+                        "name": ".pwk6.test.com"
+                    },
+                    {
+                        "estimate": 2,
+                        "name": ".8s0n_ksgp.test.com"
+                    }
+                ],
+                "top_qtype": [
+                    {
+                        "estimate": 34,
+                        "name": "AAAA"
+                    },
+                    {
+                        "estimate": 24,
+                        "name": "NS"
+                    },
+                    {
+                        "estimate": 18,
+                        "name": "SOA"
+                    },
+                    {
+                        "estimate": 18,
+                        "name": "TXT"
+                    },
+                    {
+                        "estimate": 16,
+                        "name": "A"
+                    },
+                    {
+                        "estimate": 16,
+                        "name": "CNAME"
+                    },
+                    {
+                        "estimate": 14,
+                        "name": "MX"
+                    }
+                ],
+                "top_rcode": [
+                    {
+                        "estimate": 70,
+                        "name": "NOTIMP"
+                    }
+                ],
+                "top_refused": [],
+                "top_srvfail": [],
+                "top_udp_ports": [
+                    {
+                        "estimate": 14,
+                        "name": "38352"
+                    },
+                    {
+                        "estimate": 14,
+                        "name": "59755"
+                    },
+                    {
+                        "estimate": 14,
+                        "name": "45478"
+                    },
+                    {
+                        "estimate": 14,
+                        "name": "55945"
+                    },
+                    {
+                        "estimate": 14,
+                        "name": "37253"
+                    },
+                    {
+                        "estimate": 14,
+                        "name": "46297"
+                    },
+                    {
+                        "estimate": 14,
+                        "name": "37371"
+                    },
+                    {
+                        "estimate": 14,
+                        "name": "53819"
+                    },
+                    {
+                        "estimate": 14,
+                        "name": "39485"
+                    },
+                    {
+                        "estimate": 14,
+                        "name": "38302"
+                    }
+                ],
+                "wire_packets": {
+                    "deep_samples": 140,
+                    "filtered": 0,
+                    "ipv4": 140,
+                    "ipv6": 0,
+                    "noerror": 0,
+                    "nxdomain": 0,
+                    "queries": 70,
+                    "refused": 0,
+                    "replies": 70,
+                    "srvfail": 0,
+                    "tcp": 0,
+                    "total": 140,
+                    "udp": 140
+                },
+                "xact": {
+                    "counts": {
+                        "timed_out": 0,
+                        "total": 70
+                    },
+                    "in": {
+                        "top_slow": [],
+                        "total": 0
+                    },
+                    "out": {
+                        "top_slow": [],
+                        "total": 0
+                    }
+                }
+            }
+        },
+        "default-net": {
+            "packets": {
+                "cardinality": {
+                    "dst_ips_out": 0,
+                    "src_ips_in": 0
+                },
+                "deep_samples": 140,
+                "in": 0,
+                "ipv4": 140,
+                "ipv6": 0,
+                "other_l4": 0,
+                "out": 0,
+                "payload_size": {
+                    "p50": 95,
+                    "p90": 112,
+                    "p95": 115,
+                    "p99": 125
+                },
+                "period": {
+                    "length": 2,
+                    "start_ts": 1652143707
+                },
+                "rates": {
+                    "bps_in": {
+                        "live": 0,
+                        "p50": 0,
+                        "p90": 0,
+                        "p95": 0,
+                        "p99": 0
+                    },
+                    "bps_out": {
+                        "live": 0,
+                        "p50": 0,
+                        "p90": 0,
+                        "p95": 0,
+                        "p99": 0
+                    },
+                    "pps_in": {
+                        "live": 0,
+                        "p50": 0,
+                        "p90": 0,
+                        "p95": 0,
+                        "p99": 0
+                    },
+                    "pps_out": {
+                        "live": 0,
+                        "p50": 0,
+                        "p90": 0,
+                        "p95": 0,
+                        "p99": 0
+                    },
+                    "pps_total": {
+                        "live": 0,
+                        "p50": 0,
+                        "p90": 0,
+                        "p95": 0,
+                        "p99": 0
+                    }
+                },
+                "tcp": 0,
+                "top_ASN": [],
+                "top_geoLoc": [],
+                "top_ipv4": [],
+                "top_ipv6": [],
+                "total": 140,
+                "udp": 140
+            }
+        },
+        "default-pcap_stats": {
+            "pcap": {
+                "if_drops": 0,
+                "os_drops": 0,
+                "period": {
+                    "length": 2,
+                    "start_ts": 1652143707
+                },
+                "tcp_reassembly_errors": 0
+            }
+        }
+    }
+}

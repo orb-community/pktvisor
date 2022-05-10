@@ -1,0 +1,281 @@
+{
+    "default": {
+        "default-dhcp": {
+            "dhcp": {
+                "period": {
+                    "length": 2,
+                    "start_ts": 1652143718
+                },
+                "rates": {
+                    "total": {
+                        "live": 0,
+                        "p50": 0,
+                        "p90": 0,
+                        "p95": 0,
+                        "p99": 0
+                    }
+                },
+                "wire_packets": {
+                    "ack": 0,
+                    "deep_samples": 0,
+                    "discover": 0,
+                    "filtered": 0,
+                    "offer": 0,
+                    "request": 0,
+                    "total": 0
+                }
+            }
+        },
+        "default-dns": {
+            "dns": {
+                "cardinality": {
+                    "qname": 6
+                },
+                "period": {
+                    "length": 2,
+                    "start_ts": 1652143718
+                },
+                "rates": {
+                    "total": {
+                        "live": 0,
+                        "p50": 0,
+                        "p90": 0,
+                        "p95": 0,
+                        "p99": 0
+                    }
+                },
+                "top_nxdomain": [
+                    {
+                        "estimate": 1,
+                        "name": "nonexistent.google.com"
+                    }
+                ],
+                "top_qname2": [
+                    {
+                        "estimate": 8,
+                        "name": ".mwbsys.com"
+                    },
+                    {
+                        "estimate": 6,
+                        "name": ".google.com"
+                    },
+                    {
+                        "estimate": 4,
+                        "name": ".nsone.net"
+                    },
+                    {
+                        "estimate": 4,
+                        "name": "google.com"
+                    },
+                    {
+                        "estimate": 2,
+                        "name": "refused.com"
+                    }
+                ],
+                "top_qname3": [
+                    {
+                        "estimate": 8,
+                        "name": "sirius.mwbsys.com"
+                    },
+                    {
+                        "estimate": 4,
+                        "name": "play.google.com"
+                    },
+                    {
+                        "estimate": 4,
+                        "name": ".p01.nsone.net"
+                    },
+                    {
+                        "estimate": 2,
+                        "name": "nonexistent.google.com"
+                    }
+                ],
+                "top_qtype": [
+                    {
+                        "estimate": 14,
+                        "name": "A"
+                    },
+                    {
+                        "estimate": 8,
+                        "name": "HTTPS"
+                    },
+                    {
+                        "estimate": 2,
+                        "name": "AAAA"
+                    }
+                ],
+                "top_rcode": [
+                    {
+                        "estimate": 10,
+                        "name": "NOERROR"
+                    },
+                    {
+                        "estimate": 1,
+                        "name": "NXDOMAIN"
+                    },
+                    {
+                        "estimate": 1,
+                        "name": "REFUSED"
+                    }
+                ],
+                "top_refused": [
+                    {
+                        "estimate": 1,
+                        "name": "refused.com"
+                    }
+                ],
+                "top_srvfail": [],
+                "top_udp_ports": [
+                    {
+                        "estimate": 2,
+                        "name": "9307"
+                    },
+                    {
+                        "estimate": 2,
+                        "name": "22387"
+                    },
+                    {
+                        "estimate": 2,
+                        "name": "40022"
+                    },
+                    {
+                        "estimate": 2,
+                        "name": "55363"
+                    },
+                    {
+                        "estimate": 2,
+                        "name": "60923"
+                    },
+                    {
+                        "estimate": 2,
+                        "name": "1759"
+                    },
+                    {
+                        "estimate": 2,
+                        "name": "37286"
+                    },
+                    {
+                        "estimate": 2,
+                        "name": "34763"
+                    },
+                    {
+                        "estimate": 2,
+                        "name": "53728"
+                    },
+                    {
+                        "estimate": 2,
+                        "name": "25824"
+                    }
+                ],
+                "wire_packets": {
+                    "deep_samples": 24,
+                    "filtered": 0,
+                    "ipv4": 24,
+                    "ipv6": 0,
+                    "noerror": 10,
+                    "nxdomain": 1,
+                    "queries": 12,
+                    "refused": 1,
+                    "replies": 12,
+                    "srvfail": 0,
+                    "tcp": 0,
+                    "total": 24,
+                    "udp": 24
+                },
+                "xact": {
+                    "counts": {
+                        "timed_out": 0,
+                        "total": 12
+                    },
+                    "in": {
+                        "top_slow": [],
+                        "total": 0
+                    },
+                    "out": {
+                        "top_slow": [],
+                        "total": 0
+                    }
+                }
+            }
+        },
+        "default-net": {
+            "packets": {
+                "cardinality": {
+                    "dst_ips_out": 0,
+                    "src_ips_in": 0
+                },
+                "deep_samples": 24,
+                "in": 0,
+                "ipv4": 24,
+                "ipv6": 0,
+                "other_l4": 0,
+                "out": 0,
+                "payload_size": {
+                    "p50": 94,
+                    "p90": 161,
+                    "p95": 205,
+                    "p99": 353
+                },
+                "period": {
+                    "length": 2,
+                    "start_ts": 1652143718
+                },
+                "rates": {
+                    "bps_in": {
+                        "live": 0,
+                        "p50": 0,
+                        "p90": 0,
+                        "p95": 0,
+                        "p99": 0
+                    },
+                    "bps_out": {
+                        "live": 0,
+                        "p50": 0,
+                        "p90": 0,
+                        "p95": 0,
+                        "p99": 0
+                    },
+                    "pps_in": {
+                        "live": 0,
+                        "p50": 0,
+                        "p90": 0,
+                        "p95": 0,
+                        "p99": 0
+                    },
+                    "pps_out": {
+                        "live": 0,
+                        "p50": 0,
+                        "p90": 0,
+                        "p95": 0,
+                        "p99": 0
+                    },
+                    "pps_total": {
+                        "live": 0,
+                        "p50": 0,
+                        "p90": 0,
+                        "p95": 0,
+                        "p99": 0
+                    }
+                },
+                "tcp": 0,
+                "top_ASN": [],
+                "top_geoLoc": [],
+                "top_ipv4": [],
+                "top_ipv6": [],
+                "total": 24,
+                "udp": 24
+            }
+        },
+        "default-pcap_stats": {
+            "pcap": {
+                "if_drops": 0,
+                "os_drops": 0,
+                "period": {
+                    "length": 2,
+                    "start_ts": 1652143718
+                },
+                "tcp_reassembly_errors": 0
+            }
+        }
+    }
+}

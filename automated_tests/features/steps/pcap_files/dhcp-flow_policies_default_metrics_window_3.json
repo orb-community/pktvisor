@@ -1,0 +1,166 @@
+{
+    "default": {
+        "default-dhcp": {
+            "dhcp": {
+                "period": {
+                    "length": 1,
+                    "start_ts": 1652143715
+                },
+                "rates": {
+                    "total": {
+                        "live": 0,
+                        "p50": 0,
+                        "p90": 0,
+                        "p95": 0,
+                        "p99": 0
+                    }
+                },
+                "wire_packets": {
+                    "ack": 3,
+                    "deep_samples": 8,
+                    "discover": 1,
+                    "filtered": 0,
+                    "offer": 1,
+                    "request": 3,
+                    "total": 8
+                }
+            }
+        },
+        "default-dns": {
+            "dns": {
+                "cardinality": {
+                    "qname": 0
+                },
+                "period": {
+                    "length": 1,
+                    "start_ts": 1652143715
+                },
+                "rates": {
+                    "total": {
+                        "live": 0,
+                        "p50": 0,
+                        "p90": 0,
+                        "p95": 0,
+                        "p99": 0
+                    }
+                },
+                "top_nxdomain": [],
+                "top_qname2": [],
+                "top_qname3": [],
+                "top_qtype": [],
+                "top_rcode": [],
+                "top_refused": [],
+                "top_srvfail": [],
+                "top_udp_ports": [],
+                "wire_packets": {
+                    "deep_samples": 0,
+                    "filtered": 0,
+                    "ipv4": 0,
+                    "ipv6": 0,
+                    "noerror": 0,
+                    "nxdomain": 0,
+                    "queries": 0,
+                    "refused": 0,
+                    "replies": 0,
+                    "srvfail": 0,
+                    "tcp": 0,
+                    "total": 0,
+                    "udp": 0
+                },
+                "xact": {
+                    "counts": {
+                        "timed_out": 0,
+                        "total": 0
+                    },
+                    "in": {
+                        "top_slow": [],
+                        "total": 0
+                    },
+                    "out": {
+                        "top_slow": [],
+                        "total": 0
+                    }
+                }
+            }
+        },
+        "default-net": {
+            "packets": {
+                "cardinality": {
+                    "dst_ips_out": 0,
+                    "src_ips_in": 0
+                },
+                "deep_samples": 8,
+                "in": 0,
+                "ipv4": 8,
+                "ipv6": 0,
+                "other_l4": 0,
+                "out": 0,
+                "payload_size": {
+                    "p50": 342,
+                    "p90": 348,
+                    "p95": 348,
+                    "p99": 348
+                },
+                "period": {
+                    "length": 1,
+                    "start_ts": 1652143715
+                },
+                "rates": {
+                    "bps_in": {
+                        "live": 0,
+                        "p50": 0,
+                        "p90": 0,
+                        "p95": 0,
+                        "p99": 0
+                    },
+                    "bps_out": {
+                        "live": 0,
+                        "p50": 0,
+                        "p90": 0,
+                        "p95": 0,
+                        "p99": 0
+                    },
+                    "pps_in": {
+                        "live": 0,
+                        "p50": 0,
+                        "p90": 0,
+                        "p95": 0,
+                        "p99": 0
+                    },
+                    "pps_out": {
+                        "live": 0,
+                        "p50": 0,
+                        "p90": 0,
+                        "p95": 0,
+                        "p99": 0
+                    },
+                    "pps_total": {
+                        "live": 0,
+                        "p50": 0,
+                        "p90": 0,
+                        "p95": 0,
+                        "p99": 0
+                    }
+                },
+                "tcp": 0,
+                "top_ASN": [],
+                "top_geoLoc": [],
+                "top_ipv4": [],
+                "top_ipv6": [],
+                "total": 8,
+                "udp": 8
+            }
+        },
+        "default-pcap_stats": {
+            "pcap": {
+                "if_drops": 0,
+                "os_drops": 0,
+                "period": {
+                    "length": 1,
+                    "start_ts": 1652143715
+                },
+                "tcp_reassembly_errors": 0
+            }
+        }
+    }
+}
