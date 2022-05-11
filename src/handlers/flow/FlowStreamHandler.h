@@ -64,6 +64,8 @@ protected:
 
     Cardinality _srcIPCard;
     Cardinality _dstIPCard;
+    Cardinality _srcPortCard;
+    Cardinality _dstPortCard;
 
     TopN<std::string> _topGeoLoc;
     TopN<std::string> _topASN;
@@ -76,12 +78,12 @@ protected:
         TopN<uint32_t> topInIfIndex;
         TopN<uint32_t> topOutIfIndex;
         topns(std::string metric)
-            : topSrcIP("flows", "ip", {"top_src_ip_" + metric}, "Top source IP addresses by " + metric)
-            , topDstIP("flows", "ip", {"top_dst_ip_" + metric}, "Top destination IP addresses by " + metric)
-            , topSrcPort("flows", "port", {"top_src_ports_" + metric}, "Top source ports by " + metric)
-            , topDstPort("flows", "port", {"top_dst_ports_" + metric}, "Top destination ports by " + metric)
-            , topInIfIndex("flows", "index", {"top_in_if_index_" + metric}, "Top input interface indexes  by " + metric)
-            , topOutIfIndex("flows", "index", {"top_out_if_index_" + metric}, "Top output interface indexes by " + metric)
+            : topSrcIP("flow", "ip", {"top_src_ips_" + metric}, "Top source IP addresses by " + metric)
+            , topDstIP("flow", "ip", {"top_dst_ips_" + metric}, "Top destination IP addresses by " + metric)
+            , topSrcPort("flow", "port", {"top_src_ports_" + metric}, "Top source ports by " + metric)
+            , topDstPort("flow", "port", {"top_dst_ports_" + metric}, "Top destination ports by " + metric)
+            , topInIfIndex("flow", "index", {"top_in_if_index_" + metric}, "Top input interface indexes by " + metric)
+            , topOutIfIndex("flow", "index", {"top_out_if_index_" + metric}, "Top output interface indexes by " + metric)
         {
         }
     };
@@ -98,12 +100,12 @@ protected:
         Counter IPv6;
         Counter total;
         counters()
-            : UDP("flows", {"udp"}, "Count of UDP packets")
-            , TCP("flows", {"tcp"}, "Count of TCP packets")
-            , OtherL4("flows", {"other_l4"}, "Count of packets which are not UDP or TCP")
-            , IPv4("flows", {"ipv4"}, "Count of IPv4 packets")
-            , IPv6("flows", {"ipv6"}, "Count of IPv6 packets")
-            , total("flows", {"flows"}, "Count of total flows")
+            : UDP("flow", {"udp"}, "Count of UDP packets")
+            , TCP("flow", {"tcp"}, "Count of TCP packets")
+            , OtherL4("flow", {"other_l4"}, "Count of packets which are not UDP or TCP")
+            , IPv4("flow", {"ipv4"}, "Count of IPv4 packets")
+            , IPv6("flow", {"ipv6"}, "Count of IPv6 packets")
+            , total("flow", {"flows"}, "Count of total flows")
         {
         }
     };
@@ -116,19 +118,21 @@ protected:
 
 public:
     FlowMetricsBucket()
-        : _srcIPCard("flows", {"cardinality", "src_ips_in"}, "Source IP cardinality")
-        , _dstIPCard("flows", {"cardinality", "dst_ips_out"}, "Destination IP cardinality")
-        , _topGeoLoc("flows", "geo_loc", {"top_geoLoc"}, "Top GeoIP locations")
-        , _topASN("flows", "asn", {"top_ASN"}, "Top ASNs by IP")
+        : _srcIPCard("flow", {"cardinality", "src_ips_in"}, "Source IP cardinality")
+        , _dstIPCard("flow", {"cardinality", "dst_ips_out"}, "Destination IP cardinality")
+        , _srcPortCard("flow", {"cardinality", "src_ports_in"}, "Source ports cardinality")
+        , _dstPortCard("flow", {"cardinality", "dst_ports_out"}, "Destination ports cardinality")
+        , _topGeoLoc("flow", "geo_loc", {"top_geoLoc"}, "Top GeoIP locations")
+        , _topASN("flow", "asn", {"top_ASN"}, "Top ASNs by IP")
         , _topByBytes("bytes")
         , _topByPackets("packets")
-        , _payload_size("flows", {"payload_size"}, "Quantiles of payload sizes, in bytes")
-        , _rate("flows", {"rates", "pps"}, "Rate of flow packets per second")
-        , _throughput("payload", {"rates", "bps"}, "Rate of flow packets size in bytes per second")
+        , _payload_size("flow", {"payload_size"}, "Quantiles of payload sizes, in bytes")
+        , _rate("flow", {"rates", "pps"}, "Rate of inner flow data packets per second")
+        , _throughput("payload", {"rates", "bps"}, "Rate of inner flow data packets size in bytes per second")
     {
-        set_event_rate_info("flows", {"rates", "pps_total"}, "Rate of all packets (combined ingress and egress) in packets per second");
-        set_num_events_info("flows", {"total"}, "Total packets processed");
-        set_num_sample_info("flows", {"deep_samples"}, "Total packets that were sampled for deep inspection");
+        set_event_rate_info("flow", {"rates", "pps_total"}, "Rate of all packets (combined ingress and egress) in packets per second");
+        set_num_events_info("flow", {"total"}, "Total packets processed");
+        set_num_sample_info("flow", {"deep_samples"}, "Total packets that were sampled for deep inspection");
     }
 
     // get a copy of the counters

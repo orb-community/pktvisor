@@ -258,7 +258,7 @@ void FlowStreamHandler::_parse_host_specs(const std::vector<std::string> &host_l
     }
 }
 
-bool FlowStreamHandler::_match_subnet(uint32_t ipv4_val, const uint8_t* ipv6_val)
+bool FlowStreamHandler::_match_subnet(uint32_t ipv4_val, const uint8_t *ipv6_val)
 {
     if (ipv4_val && _IPv4_host_list.size() > 0) {
         in_addr ipv4;
@@ -323,6 +323,8 @@ void FlowMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
     if (group_enabled(group::FlowMetrics::Cardinality)) {
         _srcIPCard.merge(other._srcIPCard);
         _dstIPCard.merge(other._dstIPCard);
+        _srcPortCard.merge(other._srcPortCard);
+        _dstPortCard.merge(other._dstPortCard);
     }
 
     if (group_enabled(group::FlowMetrics::TopByBytes)) {
@@ -379,6 +381,8 @@ void FlowMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap a
     if (group_enabled(group::FlowMetrics::Cardinality)) {
         _srcIPCard.to_prometheus(out, add_labels);
         _dstIPCard.to_prometheus(out, add_labels);
+        _srcPortCard.to_prometheus(out, add_labels);
+        _dstPortCard.to_prometheus(out, add_labels);
     }
 
     if (group_enabled(group::FlowMetrics::TopByBytes)) {
@@ -437,6 +441,8 @@ void FlowMetricsBucket::to_json(json &j) const
     if (group_enabled(group::FlowMetrics::Cardinality)) {
         _srcIPCard.to_json(j);
         _dstIPCard.to_json(j);
+        _srcPortCard.to_json(j);
+        _dstPortCard.to_json(j);
     }
 
     if (group_enabled(group::FlowMetrics::TopByBytes)) {
@@ -513,6 +519,11 @@ void FlowMetricsBucket::process_flow(bool deep, const FlowPacket &payload)
             (flow.dst_port > 0) ? _topByPackets.topDstPort.update(flow.dst_port, flow.packets) : void();
             (flow.if_out_index > 0) ? _topByPackets.topInIfIndex.update(flow.if_in_index, flow.packets) : void();
             (flow.if_in_index > 0) ? _topByPackets.topOutIfIndex.update(flow.if_out_index, flow.packets) : void();
+        }
+
+        if (group_enabled(group::FlowMetrics::Cardinality)) {
+            (flow.src_port > 0) ? _srcPortCard.update(flow.src_port) : void();
+            (flow.dst_port > 0) ? _dstPortCard.update(flow.dst_port) : void();
         }
 
         struct sockaddr_in sa4;

@@ -40,10 +40,12 @@ TEST_CASE("Parse sflow stream", "[sflow][flow]")
 
     CHECK(j["cardinality"]["dst_ips_out"] == 4);
     CHECK(j["cardinality"]["src_ips_in"] == 4);
-    CHECK(j["top_src_ip_bytes"][0]["estimate"] == 39241798);
-    CHECK(j["top_src_ip_bytes"][0]["name"] == "10.4.1.2");
-    CHECK(j["top_src_ip_packets"][0]["estimate"] == 25853);
-    CHECK(j["top_src_ip_packets"][0]["name"] == "10.4.1.2");
+    CHECK(j["cardinality"]["dst_ports_out"] == 31);
+    CHECK(j["cardinality"]["src_ports_in"] == 31);
+    CHECK(j["top_src_ips_bytes"][0]["estimate"] == 39241798);
+    CHECK(j["top_src_ips_bytes"][0]["name"] == "10.4.1.2");
+    CHECK(j["top_src_ips_packets"][0]["estimate"] == 25853);
+    CHECK(j["top_src_ips_packets"][0]["name"] == "10.4.1.2");
     CHECK(j["payload_size"]["p50"] == 1518);
 }
 
@@ -82,10 +84,12 @@ TEST_CASE("Parse sflow stream with host filter", "[sflow][flow]")
 
     CHECK(j["cardinality"]["dst_ips_out"] == 2);
     CHECK(j["cardinality"]["src_ips_in"] == 2);
-    CHECK(j["top_src_ip_bytes"][0]["estimate"] == 37409542);
-    CHECK(j["top_src_ip_bytes"][0]["name"] == "10.4.3.2");
-    CHECK(j["top_src_ip_packets"][0]["estimate"] == 24649);
-    CHECK(j["top_src_ip_packets"][0]["name"] == "10.4.3.2");
+    CHECK(j["cardinality"]["dst_ports_out"] == 16);
+    CHECK(j["cardinality"]["src_ports_in"] == 16);
+    CHECK(j["top_src_ips_bytes"][0]["estimate"] == 37409542);
+    CHECK(j["top_src_ips_bytes"][0]["name"] == "10.4.3.2");
+    CHECK(j["top_src_ips_packets"][0]["estimate"] == 24649);
+    CHECK(j["top_src_ips_packets"][0]["name"] == "10.4.3.2");
     CHECK(j["payload_size"]["p50"] == 1518);
 }
 
@@ -123,7 +127,9 @@ TEST_CASE("Parse netflow stream", "[netflow][flow]")
 
     CHECK(j["cardinality"]["dst_ips_out"] == 24);
     CHECK(j["cardinality"]["src_ips_in"] == 24);
-    CHECK(j["top_src_ip_bytes"][0]["estimate"] == 6066232);
-    CHECK(j["top_src_ip_packets"][0]["estimate"] == 7858);
+    CHECK(j["cardinality"]["dst_ports_out"] == 0);
+    CHECK(j["cardinality"]["src_ports_in"] == 0);
+    CHECK(j["top_src_ips_bytes"][0]["estimate"] == 6066232);
+    CHECK(j["top_src_ips_packets"][0]["estimate"] == 7858);
     CHECK(j["payload_size"]["p50"] == 5926641);
 }
