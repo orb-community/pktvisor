@@ -3,8 +3,8 @@
         "default-dhcp": {
             "dhcp": {
                 "period": {
-                    "length": 2,
-                    "start_ts": 1652143722
+                    "length": 1,
+                    "start_ts": 1652273509
                 },
                 "rates": {
                     "total": {
@@ -29,11 +29,11 @@
         "default-dns": {
             "dns": {
                 "cardinality": {
-                    "qname": 1895
+                    "qname": 1914
                 },
                 "period": {
-                    "length": 2,
-                    "start_ts": 1652143722
+                    "length": 1,
+                    "start_ts": 1652273509
                 },
                 "rates": {
                     "total": {
@@ -47,7 +47,7 @@
                 "top_nxdomain": [],
                 "top_qname2": [
                     {
-                        "estimate": 4386,
+                        "estimate": 4395,
                         "name": ".test.com"
                     }
                 ],
@@ -57,8 +57,12 @@
                         "name": ".jk.test.com"
                     },
                     {
-                        "estimate": 8,
+                        "estimate": 7,
                         "name": ".m6.test.com"
+                    },
+                    {
+                        "estimate": 6,
+                        "name": ".ag.test.com"
                     },
                     {
                         "estimate": 6,
@@ -66,66 +70,62 @@
                     },
                     {
                         "estimate": 5,
-                        "name": ".az.test.com"
-                    },
-                    {
-                        "estimate": 5,
-                        "name": ".ml.test.com"
+                        "name": ".up.test.com"
                     },
                     {
                         "estimate": 4,
-                        "name": ".qwpl.test.com"
+                        "name": ".49lwbc.test.com"
                     },
                     {
                         "estimate": 4,
-                        "name": ".r8.test.com"
+                        "name": ".ygl9d.test.com"
                     },
                     {
                         "estimate": 4,
-                        "name": ".k3fqx.test.com"
+                        "name": "rw7-skv.test.com"
                     },
                     {
                         "estimate": 4,
-                        "name": "get.test.com"
+                        "name": ".szf.test.com"
                     },
                     {
                         "estimate": 4,
-                        "name": ".kve4.test.com"
+                        "name": ".3sne.test.com"
                     }
                 ],
                 "top_qtype": [
                     {
-                        "estimate": 1113,
+                        "estimate": 1094,
                         "name": "AAAA"
                     },
                     {
-                        "estimate": 623,
+                        "estimate": 631,
                         "name": "CNAME"
                     },
                     {
-                        "estimate": 579,
+                        "estimate": 588,
                         "name": "SOA"
                     },
                     {
-                        "estimate": 567,
+                        "estimate": 575,
                         "name": "MX"
                     },
                     {
-                        "estimate": 549,
+                        "estimate": 534,
                         "name": "A"
                     },
                     {
-                        "estimate": 483,
+                        "estimate": 500,
                         "name": "NS"
                     },
                     {
-                        "estimate": 472,
+                        "estimate": 473,
                         "name": "TXT"
                     }
                 ],
                 "top_rcode": [
                     {
-                        "estimate": 2172,
+                        "estimate": 2155,
                         "name": "NOERROR"
                     }
                 ],
@@ -133,85 +133,85 @@
                 "top_srvfail": [],
                 "top_udp_ports": [
                     {
-                        "estimate": 241,
-                        "name": "54916"
-                    },
-                    {
-                        "estimate": 237,
-                        "name": "57975"
-                    },
-                    {
                         "estimate": 234,
-                        "name": "64767"
-                    },
-                    {
-                        "estimate": 233,
-                        "name": "56323"
-                    },
-                    {
-                        "estimate": 233,
-                        "name": "63354"
-                    },
-                    {
-                        "estimate": 230,
                         "name": "64406"
                     },
                     {
-                        "estimate": 227,
-                        "name": "52301"
+                        "estimate": 232,
+                        "name": "54916"
                     },
                     {
-                        "estimate": 224,
-                        "name": "59371"
+                        "estimate": 231,
+                        "name": "57975"
                     },
                     {
-                        "estimate": 224,
+                        "estimate": 225,
+                        "name": "49867"
+                    },
+                    {
+                        "estimate": 223,
+                        "name": "63354"
+                    },
+                    {
+                        "estimate": 223,
+                        "name": "64767"
+                    },
+                    {
+                        "estimate": 221,
                         "name": "53476"
                     },
                     {
-                        "estimate": 218,
-                        "name": "49867"
+                        "estimate": 220,
+                        "name": "59371"
+                    },
+                    {
+                        "estimate": 210,
+                        "name": "52301"
+                    },
+                    {
+                        "estimate": 210,
+                        "name": "56323"
                     }
                 ],
                 "wire_packets": {
-                    "deep_samples": 4386,
+                    "deep_samples": 4395,
                     "filtered": 0,
-                    "ipv4": 4386,
+                    "ipv4": 4395,
                     "ipv6": 0,
-                    "noerror": 2172,
+                    "noerror": 2155,
                     "nxdomain": 0,
-                    "queries": 2214,
+                    "queries": 2240,
                     "refused": 0,
-                    "replies": 2172,
+                    "replies": 2155,
                     "srvfail": 0,
-                    "tcp": 2086,
-                    "total": 4386,
-                    "udp": 2300
+                    "tcp": 2169,
+                    "total": 4395,
+                    "udp": 2226
                 },
                 "xact": {
                     "counts": {
                         "timed_out": 0,
-                        "total": 1817
+                        "total": 1829
                     },
                     "in": {
                         "quantiles_us": {
-                            "p50": 203,
-                            "p90": 251,
-                            "p95": 256,
-                            "p99": 285
+                            "p50": 113,
+                            "p90": 131,
+                            "p95": 133,
+                            "p99": 219
                         },
                         "top_slow": [],
-                        "total": 53
+                        "total": 58
                     },
                     "out": {
                         "quantiles_us": {
-                            "p50": 299,
-                            "p90": 447,
-                            "p95": 597,
-                            "p99": 1652143723507045
+                            "p50": 130,
+                            "p90": 190,
+                            "p95": 1652273510285059,
+                            "p99": 1652273510288256
                         },
                         "top_slow": [],
-                        "total": 764
+                        "total": 810
                     }
                 }
             }
@@ -222,21 +222,21 @@
                     "dst_ips_out": 0,
                     "src_ips_in": 0
                 },
-                "deep_samples": 13128,
+                "deep_samples": 13212,
                 "in": 0,
-                "ipv4": 13128,
+                "ipv4": 13212,
                 "ipv6": 0,
                 "other_l4": 0,
                 "out": 0,
                 "payload_size": {
                     "p50": 66,
-                    "p90": 172,
-                    "p95": 185,
-                    "p99": 200
+                    "p90": 175,
+                    "p95": 186,
+                    "p99": 199
                 },
                 "period": {
-                    "length": 2,
-                    "start_ts": 1652143722
+                    "length": 1,
+                    "start_ts": 1652273509
                 },
                 "rates": {
                     "bps_in": {
@@ -275,13 +275,13 @@
                         "p99": 0
                     }
                 },
-                "tcp": 10828,
+                "tcp": 10986,
                 "top_ASN": [],
                 "top_geoLoc": [],
                 "top_ipv4": [],
                 "top_ipv6": [],
-                "total": 13128,
-                "udp": 2300
+                "total": 13212,
+                "udp": 2226
             }
         },
         "default-pcap_stats": {
@@ -289,8 +289,8 @@
                 "if_drops": 0,
                 "os_drops": 0,
                 "period": {
-                    "length": 2,
-                    "start_ts": 1652143722
+                    "length": 1,
+                    "start_ts": 1652273509
                 },
                 "tcp_reassembly_errors": 0
             }

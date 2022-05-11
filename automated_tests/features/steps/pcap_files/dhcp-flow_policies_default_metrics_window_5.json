@@ -4,7 +4,7 @@
             "dhcp": {
                 "period": {
                     "length": 1,
-                    "start_ts": 1652143715
+                    "start_ts": 1652273502
                 },
                 "rates": {
                     "total": {
@@ -33,7 +33,7 @@
                 },
                 "period": {
                     "length": 1,
-                    "start_ts": 1652143715
+                    "start_ts": 1652273502
                 },
                 "rates": {
                     "total": {
@@ -103,7 +103,7 @@
                 },
                 "period": {
                     "length": 1,
-                    "start_ts": 1652143715
+                    "start_ts": 1652273502
                 },
                 "rates": {
                     "bps_in": {
@@ -157,7 +157,7 @@
                 "os_drops": 0,
                 "period": {
                     "length": 1,
-                    "start_ts": 1652143715
+                    "start_ts": 1652273502
                 },
                 "tcp_reassembly_errors": 0
             }

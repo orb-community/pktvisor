@@ -84,4 +84,3 @@ Scenario Outline: pktvisor metrics
     | available   | user | dns_ipv4_tcp.pcap | running    |
     | available   | user | dhcp-flow.pcap | running    |
     | available   | user | dns_udp_mixed_rcode.pcap | running    |
-    | available   | user | dns_udp_tcp_random.pcap | running    |

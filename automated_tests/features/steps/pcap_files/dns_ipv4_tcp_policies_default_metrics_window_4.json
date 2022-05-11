@@ -4,7 +4,7 @@
             "dhcp": {
                 "period": {
                     "length": 2,
-                    "start_ts": 1652143711
+                    "start_ts": 1652273498
                 },
                 "rates": {
                     "total": {
@@ -33,7 +33,7 @@
                 },
                 "period": {
                     "length": 2,
-                    "start_ts": 1652143711
+                    "start_ts": 1652273498
                 },
                 "rates": {
                     "total": {
@@ -199,10 +199,10 @@
                     },
                     "out": {
                         "quantiles_us": {
-                            "p50": 6,
-                            "p90": 15,
-                            "p95": 21,
-                            "p99": 44
+                            "p50": 3,
+                            "p90": 9,
+                            "p95": 13,
+                            "p99": 23
                         },
                         "top_slow": [],
                         "total": 210
@@ -224,13 +224,13 @@
                 "out": 0,
                 "payload_size": {
                     "p50": 66,
-                    "p90": 119,
-                    "p95": 128,
-                    "p99": 141
+                    "p90": 120,
+                    "p95": 127,
+                    "p99": 142
                 },
                 "period": {
                     "length": 2,
-                    "start_ts": 1652143711
+                    "start_ts": 1652273498
                 },
                 "rates": {
                     "bps_in": {
@@ -284,7 +284,7 @@
                 "os_drops": 0,
                 "period": {
                     "length": 2,
-                    "start_ts": 1652143711
+                    "start_ts": 1652273498
                 },
                 "tcp_reassembly_errors": 0
             }

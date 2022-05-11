@@ -111,7 +111,7 @@ def create_policy(yaml_data, pkt_port=10853, expected_status_code=201, event=Non
     :param event: threading.event
     :return: response
     """
-    event.wait(0.5)
+    event.wait(1)
     pkt_api = f"http://localhost:{pkt_port}/api/v1/policies"
     headers_request = {'Content-type': 'application/x-yaml'}
     response = requests.post(pkt_api, data=yaml_data, headers=headers_request)

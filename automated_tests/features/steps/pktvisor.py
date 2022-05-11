@@ -94,6 +94,8 @@ def run_mocked_data(context, file_name):
         assert_that(os.path.exists(path_to_file), equal_to(True), f"Nonexistent file {path_to_file}.")
         run_mocked_data_command = f"tcpreplay -i {iface} -tK {context.directory_of_network_data_files}{network_file}"
         tcpreplay_return = send_terminal_commands(run_mocked_data_command, sudo=True)
+        check_successful_packets(tcpreplay_return[0])
+
         assert_that(tcpreplay_return[1], not_(contains_string("command not found")), f"{tcpreplay_return[1]}."
                                                                                      f"Please, install tcpreplay.")
 
@@ -103,31 +105,30 @@ def check_metrics(context):
     pkt_api_get_endpoints = ['policies/default/metrics/window/2',
                              'policies/default/metrics/window/3',
                              'policies/default/metrics/window/4',
-                             'policies/default/metrics/window/5'] #todo insert bucket 0
+                             'policies/default/metrics/window/5']
     event = threading.Event()
     event.wait(0.5)
     for network_file in context.network_data_files:
         for endpoint in pkt_api_get_endpoints:
 
             response_json, json_of_network_data, diff = check_metrics_per_endpoint(endpoint, context.pkt_port,
-                                                                             context.directory_of_network_data_files,
-                                                                             network_file, timeout=10)
-            assert_that(diff, equal_to({}), f"Wrog data generated for {network_file}_{endpoint.replace('/','_')}")
+                                                                                   context.directory_of_network_data_files,
+                                                                                   network_file, timeout=10)
+            assert_that(diff, equal_to({}), f"Wrong data generated for {network_file}_{endpoint.replace('/','_')}")
 
 
 @threading_wait_until
 def check_metrics_per_endpoint(endpoint, pkt_port, path_to_file, file_name, event=None):
     endpoint_replaced = endpoint.replace("/", "_")
     response = make_get_request(endpoint, pkt_port)
-    # with open(f"/home/arodrigues/Documents/pktvisor/automated_tests/features/steps/pcap_files/{file_name[:-5]}_{endpoint_replaced}.json", "w") as f:
-    #     json.dump(response.json(), f, indent=4, sort_keys=True)
-    #     f.close()
     file = open(f"{path_to_file}{file_name[:-5]}_{endpoint_replaced}.json", "r")
     json_of_network_data = json.load(file)
     response_json = json.loads(json.dumps(response.json(), sort_keys=True))
-    response_json = remove_period_from_json(response_json)
+    for key_to_be_removed in ['period', 'rates', 'quantiles_us', 'payload_size']:
+        response_json = remove_key_from_json(response_json, key_to_be_removed)
     json_of_network_data = json.loads(json.dumps(json_of_network_data, sort_keys=True))
-    json_of_network_data = remove_period_from_json(json_of_network_data)
+    for key_to_be_removed in ['period', 'rates', 'quantiles_us', 'payload_size']:
+        json_of_network_data = remove_key_from_json(json_of_network_data, key_to_be_removed)
     diff = DeepDiff(response_json, json_of_network_data)
     if diff == {}:
         event.set()
@@ -135,16 +136,15 @@ def check_metrics_per_endpoint(endpoint, pkt_port, path_to_file, file_name, even
     return response_json, json_of_network_data, diff
 
 
-def remove_period_from_json(json_file):
+def remove_key_from_json(json_file, key_to_be_removed):
     """
-    Delete keys with the value "None" in a dictionary, recursively.
 
     """
     for key, value in list(json_file.items()):
-        if key == "period":
+        if key == key_to_be_removed:
             del json_file[key]
         elif isinstance(value, dict):
-            remove_period_from_json(value)
+            remove_key_from_json(value, key_to_be_removed)
     return json_file
 
 
@@ -188,3 +188,19 @@ def check_amount_of_pkt_with_status(amount_of_pktvisor, pkt_status, event=None):
                 event.set()
                 return containers_with_expected_status
     return containers_with_expected_status
+
+
+def check_successful_packets(return_command_tcpreplay):
+
+    return_command_tcpreplay = return_command_tcpreplay.replace("\t", "")
+    return_command_tcpreplay = return_command_tcpreplay.replace("\n", "\",\"")
+    return_command_tcpreplay = return_command_tcpreplay.replace(":", "\":\"")
+    return_command_tcpreplay = return_command_tcpreplay.replace(" ", "")
+    return_command_tcpreplay = return_command_tcpreplay[:-2]
+    return_command_tcpreplay = "{\"" + return_command_tcpreplay + "}"
+    return_command_tcpreplay = json.loads(return_command_tcpreplay)
+
+    assert_that(int(return_command_tcpreplay['Actual'].split("packets")[0]),
+                equal_to(int(return_command_tcpreplay['Successfulpackets'])), "Some packet may have failure")
+
+    return return_command_tcpreplay
