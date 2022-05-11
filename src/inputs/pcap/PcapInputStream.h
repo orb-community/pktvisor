@@ -55,6 +55,8 @@ private:
     std::unique_ptr<pcpp::PcapLiveDevice> _pcapDevice;
     bool _pcapFile = false;
 
+    uint8_t repeat_counter = 0;
+
     // mock source
     std::unique_ptr<std::thread> _mock_generator_thread;
 
@@ -90,7 +92,7 @@ public:
     void info_json(json &j) const override;
     size_t consumer_count() const override
     {
-        return policy_signal.slot_count() + packet_signal.slot_count() + udp_signal.slot_count() + start_tstamp_signal.slot_count() + tcp_message_ready_signal.slot_count() + tcp_connection_start_signal.slot_count() + tcp_connection_end_signal.slot_count() + tcp_reassembly_error_signal.slot_count() + pcap_stats_signal.slot_count();
+        return policy_signal.slot_count() + heartbeat_signal.slot_count() + packet_signal.slot_count() + udp_signal.slot_count() + start_tstamp_signal.slot_count() + tcp_message_ready_signal.slot_count() + tcp_connection_start_signal.slot_count() + tcp_connection_end_signal.slot_count() + tcp_reassembly_error_signal.slot_count() + pcap_stats_signal.slot_count();
     }
 
     // utilities

@@ -114,6 +114,8 @@ void FlowInputStream::_create_frame_stream_udp_socket()
         throw FlowException("unable to initialize AsyncHandle");
     }
     _async_h->once<uvw::AsyncEvent>([this](const auto &, auto &handle) {
+        _timer->stop();
+        _timer->close();
         _udp_server_h->stop();
         _udp_server_h->close();
         _io_loop->stop();
@@ -122,6 +124,21 @@ void FlowInputStream::_create_frame_stream_udp_socket()
     });
     _async_h->on<uvw::ErrorEvent>([this](const auto &err, auto &handle) {
         _logger->error("[{}] AsyncEvent error: {}", _name, err.what());
+        handle.close();
+    });
+
+    _timer = _io_loop->resource<uvw::TimerHandle>();
+    if (!_timer) {
+        throw FlowException("unable to initialize TimerHandle");
+    }
+    _timer->on<uvw::TimerEvent>([this](const auto &, auto &handle) {
+        timespec stamp;
+        // use now()
+        std::timespec_get(&stamp, TIME_UTC);
+        heartbeat_signal(stamp);
+    });
+    _timer->on<uvw::ErrorEvent>([this](const auto &err, auto &handle) {
+        _logger->error("[{}] TimerEvent error: {}", _name, err.what());
         handle.close();
     });
 
@@ -174,6 +191,7 @@ void FlowInputStream::_create_frame_stream_udp_socket()
 
     // spawn the loop
     _io_thread = std::make_unique<std::thread>([this] {
+        _timer->start(uvw::TimerHandle::Time{1000}, uvw::TimerHandle::Time{HEARTBEAT_INTERVAL * 1000});
         _io_loop->run();
     });
 }

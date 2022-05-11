@@ -141,6 +141,11 @@ public:
         }
     }
 
+    void check_period_shift(timespec stamp)
+    {
+        _metrics->check_period_shift(stamp);
+    }
+
     virtual ~StreamMetricsHandler(){};
 };
 

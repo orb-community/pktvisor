@@ -15,6 +15,9 @@ class InputStream : public AbstractRunnableModule
     mutable std::shared_mutex _input_mutex;
     std::vector<const Policy *> _policies;
 
+protected:
+    static constexpr uint8_t HEARTBEAT_INTERVAL = 30; // in seconds
+
 public:
     enum class Action {
         AddPolicy,
@@ -50,7 +53,7 @@ public:
 
     virtual size_t consumer_count() const
     {
-        return policy_signal.slot_count();
+        return policy_signal.slot_count() + heartbeat_signal.slot_count();
     }
 
     void common_info_json(json &j) const
@@ -61,6 +64,7 @@ public:
     }
 
     mutable sigslot::signal<const Policy *, Action> policy_signal;
+    mutable sigslot::signal<const timespec> heartbeat_signal;
 };
 
 }

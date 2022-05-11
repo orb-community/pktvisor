@@ -378,7 +378,7 @@ void PolicyManager::remove_policy(const std::string &name)
     if (input_stream->policies_count() == 1) {
         // if there is only one policy left on the input stream, and that policy is the input resources policy, then remove it
         auto input_resources_name = input_name + "-resources";
-        if (_map.count(input_resources_name) != 0) {
+        if (name != input_resources_name && _map.count(input_resources_name) != 0) {
             auto resources_policy = _map[input_resources_name].get();
             resources_policy->stop();
             _registry->handler_manager()->module_remove(input_resources_name);
