@@ -1,87 +1,40 @@
-from utils import random_string
+from utils import random_string, threading_wait_until
 import docker
 from behave import step
+from test_config import TestConfig, send_terminal_commands
+from utils import check_port_is_available, make_get_request
+import threading
 from hamcrest import *
-import requests
-import yaml
-from yaml.loader import SafeLoader
-from retry import retry
-import random
-from policies import *
+import os
+import json
+from jsonschema import validate
+import jsonschema
+
+
+configs = TestConfig.configs()
 
 PKTVISOR_CONTAINER_NAME = "pktvisor-test"
 
 
-@step("run pktvisor instance on port {pkt_port} with {role} permission")
-def run_pktvisor(context, pkt_port, role):
-    if pkt_port.isdigit() is False and pkt_port.lower() == "default":
-        context.pkt_port = 10853
-    elif pkt_port.isdigit() is True:
-        context.pkt_port = int(pkt_port)
-    context.container_id = run_pktvisor_container("ns1labs/pktvisor", pkt_port, role)
+@step("run pktvisor instance on port {status_port} with {role} permission")
+def run_pktvisor(context, status_port, role):
+    availability = {"available": True, "unavailable": False}
+
+    context.pkt_port = check_port_is_available(availability[status_port])
+    context.container_id = run_pktvisor_container("ns1labs/pktvisor", context.pkt_port, role)
+    assert_that(context.container_id, not_(equal_to(None)), "Failed to provision pktvisor container")
+    event = threading.Event()
+    event.wait(1)
 
 
-@step("that a pktvisor instance is running on port {pkt_port} with {role} permission")
-def pkt_running(context, pkt_port, role):
-    run_pktvisor(context, pkt_port, role)
-
-
-@step("{amount_of_policies} policies {status_condition} be running")
-def amount_of_policies_per_status(context, amount_of_policies, status_condition):
-    assert_that(status_condition, any_of(equal_to("must"), equal_to("must not")),
-                'Unexpect condition for policy status')
-    status_condition_dict = {"must": True, "must not": False}
-    all_policies = make_get_request('policies', context.pkt_port).json()
-    amount_of_policies_per_status = list()
-    for key, value in all_policies.items():
-        if value['input'][list(value['input'].keys())[0]]['input']['running'] is status_condition_dict[
-            status_condition]:
-            amount_of_policies_per_status.append(key)
-    assert_that(len(amount_of_policies_per_status), equal_to(int(amount_of_policies)),
-                f"Unexpect amount of policies that {status_condition} be running")
-
-
-@step("create a new policy with {handler} handler(s)")
-def create_new_policy(context, handler, **kwargs):
-    policy_yaml = policies.generate_policy(handler, random_string(10))
-    policy_yaml_parsed = yaml.load(policy_yaml, Loader=SafeLoader)
-    yaml_policy_data = yaml.dump(policy_yaml_parsed)
-    if "pkt_port" and "expected_status_code" in kwargs:
-        context.response = create_policy(yaml_policy_data, kwargs["pkt_port"], kwargs["expected_status_code"])
-    elif "pkt_port" in kwargs:
-        context.response = create_policy(yaml_policy_data, kwargs["pkt_port"])
-    elif "expected_status_code" in kwargs:
-        context.response = create_policy(yaml_policy_data, context.pkt_port, kwargs["expected_status_code"])
-    else:
-        context.response = create_policy(yaml_policy_data, context.pkt_port)
-
-
-@step("try to create a new policy with {handler} handler(s)")
-def try_to_create_new_policy(context, handler):
-    create_new_policy(context, handler, pkt_port=context.pkt_port, expected_status_code=404)
+@step("that a pktvisor instance is running on port {status_port} with {role} permission")
+def pkt_running(context, status_port, role):
+    run_pktvisor(context, status_port, role)
 
 
 @step("status code returned on response must be {status_code}")
 def check_response_status_code(context, status_code):
     assert_that(context.response.status_code, equal_to(int(status_code)), "Wrong status code on response")
-
-
-@step("delete {amount_of_policies} policies")
-def remove_policies(context, amount_of_policies):
-    names_of_all_policies = make_get_request('policies', context.pkt_port).json().keys()
-    policies_to_remove = random.sample(names_of_all_policies, int(amount_of_policies))
-    for policy in policies_to_remove:
-        remove_policy(policy, context.pkt_port)
-        response = get_policy(policy, 10853, 404)
-        assert_that(response.json(), has_key('error'), "Unexpected message for non existing policy")
-        assert_that(response.json(), has_value('policy does not exists'), "Unexpected message for non existing policy")
-
-
-@step("try to delete a policy")
-def try_to_delete_policies(context):
-    names_of_all_policies = make_get_request('policies', context.pkt_port).json().keys()
-    sample_policy = random.sample(names_of_all_policies, 1)[0]
-    context.response = remove_policy(sample_policy, context.pkt_port, 404)
 
 
 @step("the pktvisor container status must be {pkt_status}")
@@ -93,7 +46,7 @@ def check_pkt_status(context, pkt_status):
 
 
 @step("all the pktvisor containers must be {pkt_status}")
-def check_pkt_status(context, pkt_status):
+def check_pktvisors_status(context, pkt_status):
     docker_client = docker.from_env()
 
     containers = docker_client.containers.list(all=True)
@@ -105,75 +58,79 @@ def check_pkt_status(context, pkt_status):
 
 
 @step("{amount_of_pktvisor} pktvisor's containers must be {pkt_status}")
-@retry(tries=5, delay=0.2)
-def check_amount_of_pkt_with_status(context, amount_of_pktvisor, pkt_status):
-    docker_client = docker.from_env()
-    containers = docker_client.containers.list(all=True)
-    containers_with_expected_status = list()
-    for container in containers:
-        is_test_container = container.name.startswith(PKTVISOR_CONTAINER_NAME)
-        if is_test_container is True:
-            status = container.status
-            if status == pkt_status:
-                containers_with_expected_status.append(container)
+def assert_amount_of_pkt_with_status(context, amount_of_pktvisor, pkt_status):
+    containers_with_expected_status = check_amount_of_pkt_with_status(amount_of_pktvisor, pkt_status)
     assert_that(len(set(containers_with_expected_status)), equal_to(int(amount_of_pktvisor)),
                 f"Amount of pktvisor container with referred status failed")
 
 
 @step("pktvisor API must be enabled")
 def check_pkt_base_API(context):
-    pkt_api_get_endpoints = ['metrics/app',
-                             'metrics/bucket/0',
-                             'metrics/window/2',
-                             'metrics/window/3',
-                             'metrics/window/4',
-                             'metrics/window/5',
-                             'taps',
-                             'policies',
+    pkt_api_get_endpoints = ['policies',
+                             'policies/__all/metrics/bucket/0',
                              'policies/__all/metrics/window/2',
                              'policies/__all/metrics/window/3',
                              'policies/__all/metrics/window/4',
                              'policies/__all/metrics/window/5',
                              'policies/__all/metrics/prometheus']
+    event = threading.Event()
+    event.wait(0.5)
     for endpoint in pkt_api_get_endpoints:
         make_get_request(endpoint, context.pkt_port)
 
 
-@retry(tries=3, delay=1)
-def create_policy(yaml_data, pkt_port=10853, expected_status_code=201):
-    """
+@step("run mocked data {file_name} for this network")
+def run_mocked_data(context, file_name):
+    iface = configs.get('iface', 'dummy0')
+    cwd = os.getcwd()
+    dir_path = os.path.dirname(cwd)
+    context.directory_of_network_data_files = f"{dir_path}/automated_tests/features/steps/pcap_files/"
+    network_data_files = file_name
+    # network_data_files = configs.get("network_data_files") #todo improve logic for multiple files
+    assert_that(network_data_files, is_not(None), "Missing values for network_data_files."
+                                                  "Please check your test_config.ini file.")
+    context.network_data_files = network_data_files.split(", ")
 
-    :param yaml_data: policy configurations
-    :param pkt_port: port on which pktvisor is running
-    :param expected_status_code: expected status from response
-    :return: response
-    """
-    pkt_api = 'http://localhost:' + str(pkt_port) + '/api/v1/policies'
-    headers_request = {'Content-type': 'application/x-yaml'}
-    response = requests.post(pkt_api, data=yaml_data, headers=headers_request)
-    assert_that(response.status_code, equal_to(int(expected_status_code)),
-                f"Post request to create a policy failed with status {response.status_code}")
-    return response
+    for network_file in context.network_data_files:
+        path_to_file = f"{context.directory_of_network_data_files}{network_file}"
+        assert_that(os.path.exists(path_to_file), equal_to(True), f"Nonexistent file {path_to_file}.")
+        run_mocked_data_command = f"tcpreplay -i {iface} -tK {context.directory_of_network_data_files}{network_file}"
+        tcpreplay_return = send_terminal_commands(run_mocked_data_command, sudo=True)
+        check_successful_packets(tcpreplay_return[0])
 
-
-@retry(tries=3, delay=1)
-def make_get_request(end_point, pkt_port=10853, expected_status_code=200):
-    """
-
-    :param end_point: endpoint to which the request must be sent
-    :param pkt_port: port on which pktvisor is running
-    :param expected_status_code: expected status from response
-    :return: response
-    """
-    pkt_base_api = 'http://localhost:' + str(pkt_port) + '/api/v1/'
-    path = pkt_base_api + end_point
-    response = requests.get(path)
-    assert_that(response.status_code, equal_to(int(expected_status_code)),
-                f"Get request to endpoint {path} failed with status {response.status_code}")
-    return response
+        assert_that(tcpreplay_return[1], not_(contains_string("command not found")), f"{tcpreplay_return[1]}."
+                                                                                     f"Please, install tcpreplay.")
 
 
-def run_pktvisor_container(container_image, port="default", role="user", container_name=PKTVISOR_CONTAINER_NAME):
+@step("metrics must be correctly generated")
+def check_metrics(context):
+    pkt_api_get_endpoints = ['policies/default/metrics/window/2',
+                             'policies/default/metrics/window/3',
+                             'policies/default/metrics/window/4',
+                             'policies/default/metrics/window/5']
+    event = threading.Event()
+    event.wait(1)
+    schema_file_name = configs.get("schema_file_name", "metrics_schema.json")
+    schema_file_path = f"{context.directory_of_network_data_files}schemas/{schema_file_name}"
+    for network_file in context.network_data_files:
+        for endpoint in pkt_api_get_endpoints:
+
+            response_json, is_json_valid = check_metrics_per_endpoint(endpoint, context.pkt_port,
+                                                                      schema_file_path, timeout=10)
+            assert_that(is_json_valid, equal_to(True), f"Wrong data generated for {network_file}_{endpoint.replace('/','_')}")
+
+
+@threading_wait_until
+def check_metrics_per_endpoint(endpoint, pkt_port, path_to_schema_file, event=None):
+    response = make_get_request(endpoint, pkt_port)
+    is_json_valid = validate_json(response.json(), path_to_schema_file)
+    if is_json_valid is True:
+        event.set()
+    assert_that(is_json_valid, equal_to(True), f"Failed to {endpoint}")
+    return response.json(), is_json_valid
+
+
+def run_pktvisor_container(container_image, port=10853, role="user", container_name=PKTVISOR_CONTAINER_NAME):
     """
     Run a pktvisor container
 
@@ -186,10 +143,11 @@ def run_pktvisor_container(container_image, port="default", role="user", contain
     assert_that(role, any_of(equal_to('user'), equal_to('admin')), "Unexpect permission role")
     PKTVISOR_CONTAINER_NAME = container_name + random_string(3)
     client = docker.from_env()
-    pkt_command = ["pktvisord", "wlo1"]
-    if port != "default":
+    iface = configs.get('iface', 'dummy0')
+    pkt_command = ["pktvisord", iface]
+    if port != 10853:
         pkt_command.insert(-1, '-p')
-        pkt_command.insert(-1, port)
+        pkt_command.insert(-1, str(port))
     if role == "admin":
         pkt_command.insert(-1, '--admin-api')
     container = client.containers.run(container_image, name=PKTVISOR_CONTAINER_NAME, detach=True,
@@ -197,29 +155,67 @@ def run_pktvisor_container(container_image, port="default", role="user", contain
     return container.id
 
 
-def get_policy(policy_name, pkt_port=10853, expected_status_code=200):
+@threading_wait_until
+def check_amount_of_pkt_with_status(amount_of_pktvisor, pkt_status, event=None):
+    docker_client = docker.from_env()
+    containers = docker_client.containers.list(all=True)
+    containers_with_expected_status = list()
+    for container in containers:
+        is_test_container = container.name.startswith(PKTVISOR_CONTAINER_NAME)
+        if is_test_container is True:
+            status = container.status
+            if status == pkt_status:
+                containers_with_expected_status.append(container)
+            if len(set(containers_with_expected_status)) == int(amount_of_pktvisor):
+                event.set()
+                return containers_with_expected_status
+    return containers_with_expected_status
+
+
+def check_successful_packets(return_command_tcpreplay):
+
+    return_command_tcpreplay = return_command_tcpreplay.replace("\t", "")
+    return_command_tcpreplay = return_command_tcpreplay.replace("\n", "\",\"")
+    return_command_tcpreplay = return_command_tcpreplay.replace(":", "\":\"")
+    return_command_tcpreplay = return_command_tcpreplay.replace(" ", "")
+    return_command_tcpreplay = return_command_tcpreplay[:-2]
+    return_command_tcpreplay = "{\"" + return_command_tcpreplay + "}"
+    return_command_tcpreplay = json.loads(return_command_tcpreplay)
+
+    assert_that(int(return_command_tcpreplay['Actual'].split("packets")[0]),
+                equal_to(int(return_command_tcpreplay['Successfulpackets'])), "Some packet may have failure")
+
+    return return_command_tcpreplay
+
+
+def get_schema(path_to_file):
+    """
+        Loads the given schema available
+
+    :param path_to_file: path to schema json file
+    :return: schema json
+    """
+    with open(path_to_file, 'r') as file:
+        schema = json.load(file)
+    return schema
+
+
+def validate_json(json_data, path_to_file):
+
+    """
+        Compare a file with the schema and validate if the structure is correct
+    :param json_data: json to be validated
+    :param path_to_file: path to schema json file
+    :return: bool. False if the json is not valid according to the schema and True if it is
     """
 
-    :param (str) policy_name: name of the policy to be fetched
-    :param pkt_port: port on which pktvisor is running
-    :param expected_status_code: expected status from response
-    :return: (dict) referred policy data
-    """
-    endpoint = f"policies/{policy_name}"
-    return make_get_request(endpoint, pkt_port, expected_status_code)
+    execute_api_schema = get_schema(path_to_file)
 
+    try:
+        validate(instance=json_data, schema=execute_api_schema)
+    except jsonschema.exceptions.ValidationError as err:
+        print(err)
+        return False
 
-def remove_policy(policy_name, pkt_port=10853, expected_status_code=204):
+    return True
 
-    """
-    :param (str) policy_name: name of the policy to be fetched
-    :param pkt_port: port on which pktvisor is . Default: 10853
-    :param expected_status_code: expected status from response. Default: 204
-    :return: response
-    """
-    pkt_base_api = 'http://localhost:' + str(pkt_port) + '/api/v1/policies/'
-    path = pkt_base_api + policy_name
-    response = requests.delete(path)
-    assert_that(response.status_code, equal_to(int(expected_status_code)),
-                f"Delete request of policy {policy_name} failed with status {response.status_code}")
-    return response
