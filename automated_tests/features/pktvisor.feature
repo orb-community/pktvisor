@@ -71,6 +71,7 @@ Scenario: delete 1 policy using user permission
     And 2 policies must be running
 
 
+@dev
 Scenario Outline: pktvisor metrics
   When run pktvisor instance on port <status_port> with <role> permission
     And run mocked data <file_name> for this network

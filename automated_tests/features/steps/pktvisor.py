@@ -7,7 +7,9 @@ import threading
 from hamcrest import *
 import os
 import json
-from deepdiff import DeepDiff
+from jsonschema import validate
+import jsonschema
+
 
 configs = TestConfig.configs()
 
@@ -107,45 +109,25 @@ def check_metrics(context):
                              'policies/default/metrics/window/4',
                              'policies/default/metrics/window/5']
     event = threading.Event()
-    event.wait(0.5)
+    event.wait(1)
+    schema_file_name = configs.get("schema_file_name", "metrics_schema.json")
+    schema_file_path = f"{context.directory_of_network_data_files}schemas/{schema_file_name}"
     for network_file in context.network_data_files:
         for endpoint in pkt_api_get_endpoints:
 
-            response_json, json_of_network_data, diff = check_metrics_per_endpoint(endpoint, context.pkt_port,
-                                                                                   context.directory_of_network_data_files,
-                                                                                   network_file, timeout=10)
-            assert_that(diff, equal_to({}), f"Wrong data generated for {network_file}_{endpoint.replace('/','_')}")
+            response_json, is_json_valid = check_metrics_per_endpoint(endpoint, context.pkt_port,
+                                                                      schema_file_path, timeout=10)
+            assert_that(is_json_valid, equal_to(True), f"Wrong data generated for {network_file}_{endpoint.replace('/','_')}")
 
 
 @threading_wait_until
-def check_metrics_per_endpoint(endpoint, pkt_port, path_to_file, file_name, event=None):
-    endpoint_replaced = endpoint.replace("/", "_")
+def check_metrics_per_endpoint(endpoint, pkt_port, path_to_schema_file, event=None):
     response = make_get_request(endpoint, pkt_port)
-    file = open(f"{path_to_file}{file_name[:-5]}_{endpoint_replaced}.json", "r")
-    json_of_network_data = json.load(file)
-    response_json = json.loads(json.dumps(response.json(), sort_keys=True))
-    for key_to_be_removed in ['period', 'rates', 'quantiles_us', 'payload_size']:
-        response_json = remove_key_from_json(response_json, key_to_be_removed)
-    json_of_network_data = json.loads(json.dumps(json_of_network_data, sort_keys=True))
-    for key_to_be_removed in ['period', 'rates', 'quantiles_us', 'payload_size']:
-        json_of_network_data = remove_key_from_json(json_of_network_data, key_to_be_removed)
-    diff = DeepDiff(response_json, json_of_network_data)
-    if diff == {}:
+    is_json_valid = validate_json(response.json(), path_to_schema_file)
+    if is_json_valid is True:
         event.set()
-        return response_json, json_of_network_data, diff
-    return response_json, json_of_network_data, diff
-
-
-def remove_key_from_json(json_file, key_to_be_removed):
-    """
-
-    """
-    for key, value in list(json_file.items()):
-        if key == key_to_be_removed:
-            del json_file[key]
-        elif isinstance(value, dict):
-            remove_key_from_json(value, key_to_be_removed)
-    return json_file
+    assert_that(is_json_valid, equal_to(True), f"Failed to {endpoint}")
+    return response.json(), is_json_valid
 
 
 def run_pktvisor_container(container_image, port=10853, role="user", container_name=PKTVISOR_CONTAINER_NAME):
@@ -204,3 +186,36 @@ def check_successful_packets(return_command_tcpreplay):
                 equal_to(int(return_command_tcpreplay['Successfulpackets'])), "Some packet may have failure")
 
     return return_command_tcpreplay
+
+
+def get_schema(path_to_file):
+    """
+        Loads the given schema available
+
+    :param path_to_file: path to schema json file
+    :return: schema json
+    """
+    with open(path_to_file, 'r') as file:
+        schema = json.load(file)
+    return schema
+
+
+def validate_json(json_data, path_to_file):
+
+    """
+        Compare a file with the schema and validate if the structure is correct
+    :param json_data: json to be validated
+    :param path_to_file: path to schema json file
+    :return: bool. False if the json is not valid according to the schema and True if it is
+    """
+
+    execute_api_schema = get_schema(path_to_file)
+
+    try:
+        validate(instance=json_data, schema=execute_api_schema)
+    except jsonschema.exceptions.ValidationError as err:
+        print(err)
+        return False
+
+    return True
+
