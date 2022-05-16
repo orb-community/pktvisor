@@ -161,7 +161,7 @@ jobs:
 
       - name: Build + push - pktvisor (multi-arch)
         env:
-          IMAGE_NAME: ghcr.io/pktvisor
+          IMAGE_NAME: ghcr.io/ns1labs/pktvisor
         uses: docker/build-push-action@v2
         with:
           builder: ${{ steps.buildx.outputs.name }}
@@ -230,7 +230,7 @@ jobs:
 
       - name: Build + push - pktvisor (multi-arch)
         env:
-          IMAGE_NAME: ghcr.io/pktvisor
+          IMAGE_NAME: ghcr.io/ns1labs/pktvisor
         uses: docker/build-push-action@v2
         with:
           builder: ${{ steps.buildx.outputs.name }}
@@ -299,7 +299,7 @@ jobs:
 
       - name: Build + push - pktvisor (multi-arch)
         env:
-          IMAGE_NAME: ghcr.io/pktvisor
+          IMAGE_NAME: ghcr.io/ns1labs/pktvisor
         uses: docker/build-push-action@v2
         with:
           builder: ${{ steps.buildx.outputs.name }}
@@ -320,10 +320,10 @@ jobs:
     steps:
       - name: Create docker manifest
         run: |
-          docker manifest create ghcr.io/pktvisor:latest \
-          ghcr.io/pktvisor:amd64 \
-          ghcr.io/pktvisor:armv7 \
-          ghcr.io/pktvisor:arm64
+          docker manifest create ghcr.io/ns1labs/pktvisor:latest \
+          ghcr.io/ns1labs/pktvisor:amd64 \
+          ghcr.io/ns1labs/pktvisor:armv7 \
+          ghcr.io/ns1labs/pktvisor:arm64
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v1
@@ -334,7 +334,7 @@ jobs:
 
       - name: Push manifest to ghcr.io
         run: |
-          docker manifest push ghcr.io/pktvisor:latest
+          docker manifest push ghcr.io/ns1labs/pktvisor:latest
 
       - name: Install skopeo
         run: |
@@ -352,7 +352,7 @@ jobs:
         run: |
           skopeo copy \
           --all \
-          docker://ghcr.io/pktvisor:latest \
+          docker://ghcr.io/ns1labs/pktvisor:latest \
           docker://docker.io/ns1labs/pktvisor:latest
 
   clean-ghcr-amd64:
