@@ -313,6 +313,44 @@ jobs:
           push: true
           tags: ${{ env.IMAGE_NAME }}:armv7
 
+  pushing-manifests:
+    needs:
+      - package-amd64
+      - package-arm64
+      - package-armv7
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
+    steps:
+      - name: Create docker manifest
+        run: |
+          docker manifest create ghcr.io/pktvisor:latest \
+          ghcr.io/pktvisor:amd64 \
+          ghcr.io/pktvisor:armv7 \
+          ghcr.io/pktvisor:arm64
+
+      - name: Push manifest to ghcr.io
+        run: |
+          docker manifest push ghcr.io/pktvisor:latest
+
+      - name: Install skopeo
+        run: |
+          OS="x$(lsb_release --id -s)_$(lsb_release --release -s)"
+          echo "deb http://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/${OS}/ /" > /etc/apt/sources.list.d/skopeop.kubic.list
+          wget -qO- "https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/${OS}/Release.key" | apt-key add -
+          apt-get update
+          apt-get install -y skopeo
+
+      - name: Login skopeo to dockerhub
+        run: |
+          skopeo login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }} docker.io
+
+      - name: Copy from ghcr.io to docker.io
+        run: |
+          skopeo copy \
+          --all \
+          docker://ghcr.io/pktvisor:latest \
+          docker://docker.io/ns1labs/pktvisor:latest
+
   clean-ghcr-amd64:
     needs: package-amd64
     runs-on: ubuntu-latest
