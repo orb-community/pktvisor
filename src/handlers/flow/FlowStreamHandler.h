@@ -48,10 +48,12 @@ struct FlowData {
 
 struct FlowPacket {
     timespec stamp;
+    uint64_t filtered;
     std::vector<FlowData> flow_data;
 
     FlowPacket(timespec stamp)
         : stamp(stamp)
+        , filtered(0)
     {
     }
 };
@@ -91,13 +93,13 @@ protected:
     topns _topByBytes;
     topns _topByPackets;
 
-    // total numPackets is tracked in base class num_events
     struct counters {
         Counter UDP;
         Counter TCP;
         Counter OtherL4;
         Counter IPv4;
         Counter IPv6;
+        Counter filtered;
         Counter total;
         counters()
             : UDP("flow", {"udp"}, "Count of UDP packets")
@@ -105,7 +107,8 @@ protected:
             , OtherL4("flow", {"other_l4"}, "Count of packets which are not UDP or TCP")
             , IPv4("flow", {"ipv4"}, "Count of IPv4 packets")
             , IPv6("flow", {"ipv6"}, "Count of IPv6 packets")
-            , total("flow", {"flows"}, "Count of total flows")
+            , filtered("flow", {"filtered"}, "Count of total flows seen that did not match the configured filter(s) (if any)")
+            , total("flow", {"flows"}, "Count of total flows that match the configured filter(s) (if any)")
         {
         }
     };
@@ -127,12 +130,9 @@ public:
         , _topByBytes("bytes")
         , _topByPackets("packets")
         , _payload_size("flow", {"payload_size"}, "Quantiles of payload sizes, in bytes")
-        , _rate("flow", {"rates", "pps"}, "Rate of inner flow data packets per second")
-        , _throughput("payload", {"rates", "bps"}, "Rate of inner flow data packets size in bytes per second")
+        , _rate("flow", {"rates", "pps"}, "Rate of combined flow packets per second")
+        , _throughput("payload", {"rates", "bps"}, "Rate of combined flow bytes per second")
     {
-        set_event_rate_info("flow", {"rates", "pps_total"}, "Rate of all packets (combined ingress and egress) in packets per second");
-        set_num_events_info("flow", {"total"}, "Total packets processed");
-        set_num_sample_info("flow", {"deep_samples"}, "Total packets that were sampled for deep inspection");
     }
 
     // get a copy of the counters
@@ -171,6 +171,7 @@ public:
 
 class FlowStreamHandler final : public visor::StreamMetricsHandler<FlowMetricsManager>
 {
+    static constexpr const char *_flow_schema{"flow"};
 
     // the input stream sources we support (only one will be in use at a time)
     MockInputStream *_mock_stream{nullptr};
@@ -201,7 +202,7 @@ class FlowStreamHandler final : public visor::StreamMetricsHandler<FlowMetricsMa
     void set_end_tstamp(timespec stamp);
 
     void _parse_host_specs(const std::vector<std::string> &host_list);
-    bool _match_subnet(uint32_t ipv4 = 0, const uint8_t* ipv6 = nullptr);
+    bool _match_subnet(uint32_t ipv4 = 0, const uint8_t *ipv6 = nullptr);
     bool _filtering(const FlowData &flow);
 
 public:
@@ -211,7 +212,7 @@ public:
     // visor::AbstractModule
     std::string schema_key() const override
     {
-        return "flows";
+        return _flow_schema;
     }
 
     size_t consumer_count() const override

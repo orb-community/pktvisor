@@ -33,6 +33,7 @@ TEST_CASE("Parse sflow stream", "[sflow][flow]")
     CHECK(counters.IPv4.value() == 52785);
     CHECK(counters.IPv6.value() == 0);
     CHECK(counters.OtherL4.value() == 0);
+    CHECK(counters.filtered.value() == 0);
     CHECK(counters.total.value() == 52785);
 
     nlohmann::json j;
@@ -77,6 +78,7 @@ TEST_CASE("Parse sflow stream with host filter", "[sflow][flow]")
     CHECK(counters.IPv4.value() == 25731);
     CHECK(counters.IPv6.value() == 0);
     CHECK(counters.OtherL4.value() == 0);
+    CHECK(counters.filtered.value() == 27054);
     CHECK(counters.total.value() == 25731);
 
     nlohmann::json j;

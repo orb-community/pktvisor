@@ -151,6 +151,8 @@ void FlowStreamHandler::process_sflow_cb(const SFSample &payload)
 
         if (!_filtering(flow)) {
             packet.flow_data.push_back(flow);
+        } else {
+            ++packet.filtered;
         }
     }
     _metrics->process_flow(packet);
@@ -202,6 +204,8 @@ void FlowStreamHandler::process_netflow_cb(const NFSample &payload)
 
         if (!_filtering(flow)) {
             packet.flow_data.push_back(flow);
+        } else {
+            ++packet.filtered;
         }
     }
 
@@ -317,6 +321,7 @@ void FlowMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
         _counters.OtherL4 += other._counters.OtherL4;
         _counters.IPv4 += other._counters.IPv4;
         _counters.IPv6 += other._counters.IPv6;
+        _counters.filtered += other._counters.filtered;
         _counters.total += other._counters.total;
     }
 
@@ -375,6 +380,7 @@ void FlowMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap a
         _counters.OtherL4.to_prometheus(out, add_labels);
         _counters.IPv4.to_prometheus(out, add_labels);
         _counters.IPv6.to_prometheus(out, add_labels);
+        _counters.filtered.to_prometheus(out, add_labels);
         _counters.total.to_prometheus(out, add_labels);
     }
 
@@ -435,6 +441,7 @@ void FlowMetricsBucket::to_json(json &j) const
         _counters.OtherL4.to_json(j);
         _counters.IPv4.to_json(j);
         _counters.IPv6.to_json(j);
+        _counters.filtered.to_json(j);
         _counters.total.to_json(j);
     }
 
@@ -474,6 +481,10 @@ void FlowMetricsBucket::to_json(json &j) const
 void FlowMetricsBucket::process_flow(bool deep, const FlowPacket &payload)
 {
     std::unique_lock lock(_mutex);
+
+    if (group_enabled(group::FlowMetrics::Counters)) {
+        _counters.filtered += payload.filtered;
+    }
 
     for (const auto &flow : payload.flow_data) {
         _rate += flow.packets;
