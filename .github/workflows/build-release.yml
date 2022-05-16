@@ -81,7 +81,6 @@ jobs:
   prebuild-package:
     needs: build
     runs-on: ubuntu-latest
-    # if this is a push into one of our main branches (rather than just a pull request), we will also package
     if: github.event_name != 'pull_request'
     steps:
       - uses: actions/checkout@v2
@@ -106,7 +105,6 @@ jobs:
   package-amd64:
     needs: prebuild-package
     runs-on: ubuntu-latest
-    # if this is a push into one of our main branches (rather than just a pull request), we will also package
     if: github.event_name != 'pull_request'
     steps:
       - name: Attach to workspace
@@ -176,7 +174,6 @@ jobs:
   package-arm64:
     needs: prebuild-package
     runs-on: ubuntu-latest
-    # if this is a push into one of our main branches (rather than just a pull request), we will also package
     if: github.event_name != 'pull_request'
     steps:
       - name: Attach to workspace
@@ -246,7 +243,6 @@ jobs:
   package-armv7:
     needs: prebuild-package
     runs-on: ubuntu-latest
-    # if this is a push into one of our main branches (rather than just a pull request), we will also package
     if: github.event_name != 'pull_request'
     steps:
       - name: Attach to workspace
@@ -315,6 +311,7 @@ jobs:
 
   pushing-manifests:
     needs:
+      - prebuild-package
       - package-amd64
       - package-arm64
       - package-armv7
