@@ -350,7 +350,6 @@ jobs:
 
   clean-ghcr-amd64:
     needs:
-      - package-amd64
       - pushing-manifests
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
@@ -365,7 +364,6 @@ jobs:
 
   clean-ghcr-arm64:
     needs:
-      - package-arm64
       - pushing-manifests
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
@@ -380,7 +378,6 @@ jobs:
 
   clean-ghcr-armv7:
     needs:
-      - package-armv7
       - pushing-manifests
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
