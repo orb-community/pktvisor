@@ -1,0 +1,352 @@
+name: Build
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - release
+      - master
+      - multi-arch-images
+  push:
+    branches:
+      - release
+      - master
+      - multi-arch-images
+
+env:
+  # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
+  BUILD_TYPE: Release
+  CTEST_OUTPUT_ON_FAILURE: 1
+  CONAN_NON_INTERACTIVE: 1
+  CONAN_REVISIONS_ENABLED: 1
+
+jobs:
+  build:
+    # The CMake configure and build commands are platform agnostic and should work equally
+    # well on Windows or Mac.  You can convert this to a matrix build if you need
+    # cross-platform coverage.
+    # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
+    strategy:
+      matrix:
+        os: [ ubuntu-latest, macos-latest ]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Create Build Environment
+        # Some projects don't allow in-source building, so create a separate build directory
+        # We'll use this as our working directory for all subsequent commands
+        run: cmake -E make_directory ${{github.workspace}}/build
+
+      - name: Get Conan
+        # You may pin to the exact commit or the version.
+        # uses: turtlebrowser/get-conan@4dc7e6dd45c8b1e02e909979d7cfc5ebba6ddbe2
+        uses: turtlebrowser/get-conan@v1.0
+
+      - name: linux package install
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends jq
+
+      - name: Configure CMake
+        # Use a bash shell so we can use the same syntax for environment variable
+        # access regardless of the host operating system
+        shell: bash
+        working-directory: ${{github.workspace}}/build
+        # Note the current convention is to use the -S and -B options here to specify source
+        # and build directories, but this is only available with CMake 3.13 and higher.
+        # The CMake binaries on the Github Actions machines are (as of this writing) 3.12
+        run: PKG_CONFIG_PATH=${{github.workspace}}/local/lib/pkgconfig cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE
+
+      - name: Build
+        working-directory: ${{github.workspace}}/build
+        shell: bash
+        # Execute the build.  You can specify a specific target with "--target <NAME>"
+        run: cmake --build . --config $BUILD_TYPE -- -j 2
+
+      - name: Test
+        working-directory: ${{github.workspace}}/build
+        shell: bash
+        # Execute tests defined by the CMake configuration.
+        # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
+        run: ctest -C $BUILD_TYPE
+
+      - name: Login to ns1labs conan
+        run: CONAN_USER_HOME=${{github.workspace}}/build/conan_home conan user -p ${{ secrets.CONAN_LABS_PASSWORD }} -r ns1labs ${{ secrets.CONAN_LABS_USERNAME }}
+
+      - name: Cache conan packages
+        run: CONAN_USER_HOME=${{github.workspace}}/build/conan_home conan upload "*" --all -r ns1labs -c
+
+  prebuild-package:
+    needs: build
+    runs-on: ubuntu-latest
+    # if this is a push into one of our main branches (rather than just a pull request), we will also package
+    if: github.event_name != 'pull_request'
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Create Build Environment
+        run: cmake -E make_directory ${{github.workspace}}/build
+
+      - name: Get Conan
+        uses: turtlebrowser/get-conan@v1.0
+
+      - name: Configure CMake to generate VERSION
+        shell: bash
+        working-directory: ${{github.workspace}}/build
+        run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE
+
+      - name: Persist to workspace
+        uses: actions/upload-artifact@v2
+        with:
+          name: workspace
+
+  package-amd64:
+    needs: prebuild-package
+    runs-on: ubuntu-latest
+    # if this is a push into one of our main branches (rather than just a pull request), we will also package
+    if: github.event_name != 'pull_request'
+    steps:
+      - name: Attach to workspace
+        uses: actions/download-artifact@v2
+        with:
+          name: workspace
+
+      - name: Get branch name
+        shell: bash
+        run: echo "BRANCH_NAME=$(echo ${GITHUB_REF#refs/heads/} | tr / -)" >> $GITHUB_ENV
+
+      - name: Debug branch name
+        run: echo ${{ env.BRANCH_NAME }}
+
+      - name: Get VERSION
+        run: |
+          echo "VERSION=`cat ${{github.workspace}}/build/VERSION`" >> $GITHUB_ENV
+
+      - name: Debug version
+        run: echo ${{ env.VERSION }}
+
+      - name: Generate ref tag (master)
+        if: ${{ env.BRANCH_NAME == 'master' || env.BRANCH_NAME == 'multi-arch-images' }}
+        run: |
+          echo "REF_TAG=latest" >> $GITHUB_ENV
+          echo "PRERELEASE=false" >> $GITHUB_ENV
+          echo "DRAFT=true" >> $GITHUB_ENV
+
+      - name: Generate ref tag (release candidate)
+        if: ${{ env.BRANCH_NAME == 'release' }}
+        run: |
+          echo "REF_TAG=latest-rc" >> $GITHUB_ENV
+          echo "PRERELEASE=true" >> $GITHUB_ENV
+          echo "DRAFT=false" >> $GITHUB_ENV
+
+      - name: Debug ref tag
+        run: echo ${{ env.REF_TAG }}
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@master
+        with:
+          platforms: linux/amd64
+
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@master
+
+      - name: Build + push - pktvisor (multi-arch)
+        env:
+          IMAGE_NAME: ns1labs/pktvisor
+        uses: docker/build-push-action@v2
+        with:
+          builder: ${{ steps.buildx.outputs.name }}
+          context: .
+          file: ./docker/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ env.IMAGE_NAME }}:amd64
+
+  package-arm64:
+    needs: prebuild-package
+    runs-on: ubuntu-latest
+    # if this is a push into one of our main branches (rather than just a pull request), we will also package
+    if: github.event_name != 'pull_request'
+    steps:
+      - name: Attach to workspace
+        uses: actions/download-artifact@v2
+        with:
+          name: workspace
+
+      - name: Get branch name
+        shell: bash
+        run: echo "BRANCH_NAME=$(echo ${GITHUB_REF#refs/heads/} | tr / -)" >> $GITHUB_ENV
+
+      - name: Debug branch name
+        run: echo ${{ env.BRANCH_NAME }}
+
+      - name: Get VERSION
+        run: |
+          echo "VERSION=`cat ${{github.workspace}}/build/VERSION`" >> $GITHUB_ENV
+
+      - name: Debug version
+        run: echo ${{ env.VERSION }}
+
+      - name: Generate ref tag (master)
+        if: ${{ env.BRANCH_NAME == 'master' || env.BRANCH_NAME == 'multi-arch-images' }}
+        run: |
+          echo "REF_TAG=latest" >> $GITHUB_ENV
+          echo "PRERELEASE=false" >> $GITHUB_ENV
+          echo "DRAFT=true" >> $GITHUB_ENV
+
+      - name: Generate ref tag (release candidate)
+        if: ${{ env.BRANCH_NAME == 'release' }}
+        run: |
+          echo "REF_TAG=latest-rc" >> $GITHUB_ENV
+          echo "PRERELEASE=true" >> $GITHUB_ENV
+          echo "DRAFT=false" >> $GITHUB_ENV
+
+      - name: Debug ref tag
+        run: echo ${{ env.REF_TAG }}
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@master
+        with:
+          platforms: linux/arm64
+
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@master
+
+      - name: Build + push - pktvisor (multi-arch)
+        env:
+          IMAGE_NAME: ghcr.io/pktvisor
+        uses: docker/build-push-action@v2
+        with:
+          builder: ${{ steps.buildx.outputs.name }}
+          context: .
+          file: ./docker/Dockerfile
+          platforms: linux/arm64
+          push: true
+          tags: ${{ env.IMAGE_NAME }}:arm64
+
+  package-armv7:
+    needs: prebuild-package
+    runs-on: ubuntu-latest
+    # if this is a push into one of our main branches (rather than just a pull request), we will also package
+    if: github.event_name != 'pull_request'
+    steps:
+      - name: Attach to workspace
+        uses: actions/download-artifact@v2
+        with:
+          name: workspace
+
+      - name: Get branch name
+        shell: bash
+        run: echo "BRANCH_NAME=$(echo ${GITHUB_REF#refs/heads/} | tr / -)" >> $GITHUB_ENV
+
+      - name: Debug branch name
+        run: echo ${{ env.BRANCH_NAME }}
+
+      - name: Get VERSION
+        run: |
+          echo "VERSION=`cat ${{github.workspace}}/build/VERSION`" >> $GITHUB_ENV
+
+      - name: Debug version
+        run: echo ${{ env.VERSION }}
+
+      - name: Generate ref tag (master)
+        if: ${{ env.BRANCH_NAME == 'master' || env.BRANCH_NAME == 'multi-arch-images' }}
+        run: |
+          echo "REF_TAG=latest" >> $GITHUB_ENV
+          echo "PRERELEASE=false" >> $GITHUB_ENV
+          echo "DRAFT=true" >> $GITHUB_ENV
+
+      - name: Generate ref tag (release candidate)
+        if: ${{ env.BRANCH_NAME == 'release' }}
+        run: |
+          echo "REF_TAG=latest-rc" >> $GITHUB_ENV
+          echo "PRERELEASE=true" >> $GITHUB_ENV
+          echo "DRAFT=false" >> $GITHUB_ENV
+
+      - name: Debug ref tag
+        run: echo ${{ env.REF_TAG }}
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@master
+        with:
+          platforms: linux/arm/v7
+
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@master
+
+      - name: Build + push - pktvisor (multi-arch)
+        env:
+          IMAGE_NAME: ghcr.io/pktvisor
+        uses: docker/build-push-action@v2
+        with:
+          builder: ${{ steps.buildx.outputs.name }}
+          context: .
+          file: ./docker/Dockerfile
+          platforms: linux/arm/v7
+          push: true
+          tags: ${{ env.IMAGE_NAME }}:armv7
+
+  clean-ghcr-amd64:
+    needs: package-amd64
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
+    steps:
+      - name: Delete image from ghcr.io
+        uses: bots-house/ghcr-delete-image-action@v1.0.0
+        with:
+          owner: ns1labs
+          name: pktvisor
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag: amd64
+
+  clean-ghcr-arm64:
+    needs: package-arm64
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
+    steps:
+      - name: Delete image from ghcr.io
+        uses: bots-house/ghcr-delete-image-action@v1.0.0
+        with:
+          owner: ns1labs
+          name: pktvisor
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag: arm64
+
+  clean-ghcr-armv7:
+    needs: package-armv7
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
+    steps:
+      - name: Delete image from ghcr.io
+        uses: bots-house/ghcr-delete-image-action@v1.0.0
+        with:
+          owner: ns1labs
+          name: pktvisor
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag: armv7

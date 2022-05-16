@@ -36,7 +36,31 @@ WORKDIR /src/
 COPY --from=cppbuild /pktvisor-src/golang/pkg/client/version.go /src/pkg/client/version.go
 RUN go build -o pktvisor-cli cmd/pktvisor-cli/main.go
 
-FROM debian:bullseye-slim AS runtime
+FROM debian:bullseye-slim AS binary_publisher
+
+ARG ghtoken
+ARG TARGETARCH
+
+ENV RUNTIME_DEPS "curl ca-certificates"
+
+RUN \
+    apt-get update && \
+    apt-get upgrade -y && \
+    apt-get install -y --no-install-recommends ${RUNTIME_DEPS}
+
+COPY --from=cppbuild /tmp/build/bin/pktvisord /usr/local/sbin/pktvisord
+COPY --from=cppbuild /tmp/build/bin/pktvisor-reader /usr/local/sbin/pktvisor-reader
+COPY --from=gobuild /src/pktvisor-cli /usr/local/bin/pktvisor-cli
+COPY docker/upload-gh-asset.sh /upload-gh-asset.sh
+RUN chmod a+x /upload-gh-asset.sh
+
+#zip binaries
+RUN tar -czvf "pktvisor-${TARGETARCH}.tar.gz"  /usr/local/sbin/pktvisord /usr/local/sbin/pktvisor-reader /usr/local/bin/pktvisor-cli
+
+#push asset to release assets
+RUN /upload-gh-asset.sh github_api_token=${ghtoken} owner=ns1labs repo=pktvisor tag=LATEST filename=pktvisor-${TARGETARCH}.tar.gz
+
+FROM debian:bullseye-slim
 
 ENV RUNTIME_DEPS "curl ca-certificates"
 
