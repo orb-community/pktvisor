@@ -349,7 +349,9 @@ jobs:
           docker://docker.io/ns1labs/pktvisor:latest
 
   clean-ghcr-amd64:
-    needs: package-amd64
+    needs:
+      - package-amd64
+      - pushing-manifests
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
     steps:
@@ -362,7 +364,9 @@ jobs:
           tag: amd64
 
   clean-ghcr-arm64:
-    needs: package-arm64
+    needs:
+      - package-arm64
+      - pushing-manifests
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
     steps:
@@ -375,7 +379,9 @@ jobs:
           tag: arm64
 
   clean-ghcr-armv7:
-    needs: package-armv7
+    needs:
+      - package-armv7
+      - pushing-manifests
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
     steps:
