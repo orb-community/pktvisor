@@ -350,9 +350,6 @@ jobs:
 
       - name: Install skopeo
         run: |
-          OS="x$(lsb_release --id -s)_$(lsb_release --release -s)"
-          echo "deb http://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/${OS}/ /" > /etc/apt/sources.list.d/skopeop.kubic.list
-          wget -qO- "https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/${OS}/Release.key" | apt-key add -
           apt-get update
           apt-get install -y skopeo
 
