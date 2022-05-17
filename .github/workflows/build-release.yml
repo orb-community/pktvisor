@@ -170,9 +170,11 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: ${{ env.IMAGE_NAME }}:amd64
+          build-args: |
+            ghtoken=${{ secrets.GITHUB_TOKEN }}
 
   package-arm64:
-    needs: prebuild-package
+    needs: package-amd64
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
     steps:
@@ -239,9 +241,11 @@ jobs:
           platforms: linux/arm64
           push: true
           tags: ${{ env.IMAGE_NAME }}:arm64
+          build-args: |
+            ghtoken=${{ secrets.GITHUB_TOKEN }}
 
   package-armv7:
-    needs: prebuild-package
+    needs: package-arm64
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
     steps:
@@ -308,6 +312,8 @@ jobs:
           platforms: linux/arm/v7
           push: true
           tags: ${{ env.IMAGE_NAME }}:armv7
+          build-args: |
+            ghtoken=${{ secrets.GITHUB_TOKEN }}
 
   pushing-manifests:
     needs:
@@ -396,3 +402,17 @@ jobs:
           name: pktvisor
           token: ${{ secrets.GITHUB_TOKEN }}
           tag: armv7
+
+  clean-ghcr-latest:
+    needs:
+      - pushing-manifests
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
+    steps:
+      - name: Delete image from ghcr.io
+        uses: bots-house/ghcr-delete-image-action@v1.0.0
+        with:
+          owner: ns1labs
+          name: pktvisor
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag: latest
