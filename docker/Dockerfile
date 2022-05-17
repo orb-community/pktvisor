@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM debian:bullseye-slim AS cppbuild
+FROM debian:bullseye-slim AS cppbuild
 
 ENV BUILD_DEPS "g++ cmake make git pkgconf jq python3-pip python3-setuptools ca-certificates python python3"
 
@@ -29,7 +29,7 @@ RUN \
 RUN PKG_CONFIG_PATH=/local/lib/pkgconfig cmake -DCMAKE_BUILD_TYPE=Release /pktvisor-src
 RUN make all -j 4
 
-FROM --platform=$BUILDPLATFORM golang:latest AS gobuild
+FROM golang:latest AS gobuild
 ARG TARGETOS
 ARG TARGETARCH
 COPY golang/ /src/
@@ -37,7 +37,7 @@ WORKDIR /src/
 COPY --from=cppbuild /pktvisor-src/golang/pkg/client/version.go /src/pkg/client/version.go
 RUN GOOS=$TARGETOS GOARCH=$TARGETARCH go build -o pktvisor-cli cmd/pktvisor-cli/main.go
 
-FROM --platform=$BUILDPLATFORM debian:bullseye-slim AS binary_publisher
+FROM debian:bullseye-slim AS binary_publisher
 
 ARG ghtoken
 ARG TARGETOS
@@ -62,7 +62,7 @@ RUN tar -czvf "pktvisor-${TARGETARCH}.tar.gz"  /usr/local/sbin/pktvisord /usr/lo
 #push asset to release assets
 RUN /upload-gh-asset.sh github_api_token=${ghtoken} owner=ns1labs repo=pktvisor tag=LATEST filename=pktvisor-${TARGETARCH}.tar.gz
 
-FROM --platform=$BUILDPLATFORM debian:bullseye-slim
+FROM debian:bullseye-slim
 
 ENV RUNTIME_DEPS "curl ca-certificates"
 
