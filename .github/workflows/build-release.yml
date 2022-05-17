@@ -330,19 +330,19 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
     steps:
-      - name: Create docker manifest
-        run: |
-          docker manifest create ghcr.io/ns1labs/pktvisor:latest \
-          ghcr.io/ns1labs/pktvisor:amd64 \
-          ghcr.io/ns1labs/pktvisor:armv7 \
-          ghcr.io/ns1labs/pktvisor:arm64
-
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v1
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create docker manifest
+        run: |
+          docker manifest create ghcr.io/ns1labs/pktvisor:latest \
+          ghcr.io/ns1labs/pktvisor:amd64 \
+          ghcr.io/ns1labs/pktvisor:armv7 \
+          ghcr.io/ns1labs/pktvisor:arm64
 
       - name: Push manifest to ghcr.io
         run: |
