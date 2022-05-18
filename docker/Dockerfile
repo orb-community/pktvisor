@@ -8,10 +8,10 @@ ARG TARGETOS
 ARG TARGETARCH
 ARG TARGETPLATFORM
 
-ENV BUILD_DEPS "cmake make git jq python3-pip python3-setuptools ca-certificates python python3"
+ENV BUILD_DEPS "cmake make git jq python3-pip python3-setuptools ca-certificates python python3 clang lld"
 
 RUN xx-apt-get update && \
-    xx-apt-get install -y libstdc++-10-dev zlib1g-dev binutils clang
+    xx-apt-get install -y libstdc++-10-dev zlib1g-dev
 
 RUN apt-get update && \
     apt-get upgrade -y && \
@@ -36,7 +36,7 @@ RUN \
     conan profile update settings.compiler.libcxx=libstdc++11 default && \
     conan config set general.revisions_enabled=1
 
-RUN cmake $(xx-clang --print-cmake-defines) -DCMAKE_BUILD_TYPE=Release /pktvisor-src
+RUN cmake $(xx-clang++ --print-cmake-defines) -DCMAKE_BUILD_TYPE=Release /pktvisor-src
 RUN make all -j 4
 
 FROM --platform=$BUILDPLATFORM golang:latest AS gobuild
