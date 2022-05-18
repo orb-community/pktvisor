@@ -1,9 +1,18 @@
-FROM debian:bullseye-slim AS cppbuild
+FROM --platform=$BUILDPLATFORM tonistiigi/xx AS xx
 
-ENV BUILD_DEPS "g++ cmake make git pkgconf jq python3-pip python3-setuptools ca-certificates python python3"
+FROM --platform=$BUILDPLATFORM debian:bullseye-slim AS cppbuild
+# copy xx scripts to your build stage
+COPY --from=xx / /
 
-RUN \
-    apt-get update && \
+ARG TARGETOS
+ARG TARGETARCH
+ARG TARGETPLATFORM
+
+ENV BUILD_DEPS "cmake make git jq python3-pip python3-setuptools ca-certificates python python3"
+
+RUN xx-apt-get install -y libc6-dev zlib1g-dev xx-c-essentials xx-cxx-essentials g++
+
+RUN apt-get update && \
     apt-get upgrade -y && \
     apt-get install -y --no-install-recommends ${BUILD_DEPS} && \
     pip3 install conan
@@ -26,22 +35,24 @@ RUN \
     conan profile update settings.compiler.libcxx=libstdc++11 default && \
     conan config set general.revisions_enabled=1
 
-RUN PKG_CONFIG_PATH=/local/lib/pkgconfig cmake -DCMAKE_BUILD_TYPE=Release /pktvisor-src
+RUN cmake $(xx-clang --print-cmake-defines) -DCMAKE_BUILD_TYPE=Release /pktvisor-src
 RUN make all -j 4
 
-FROM golang:latest AS gobuild
+FROM --platform=$BUILDPLATFORM golang:latest AS gobuild
 ARG TARGETOS
 ARG TARGETARCH
+ARG TARGETPLATFORM
+
 COPY golang/ /src/
 WORKDIR /src/
 COPY --from=cppbuild /pktvisor-src/golang/pkg/client/version.go /src/pkg/client/version.go
 RUN GOOS=$TARGETOS GOARCH=$TARGETARCH go build -o pktvisor-cli cmd/pktvisor-cli/main.go
 
-FROM debian:bullseye-slim AS binary_publisher
-
+FROM --platform=$BUILDPLATFORM debian:bullseye-slim AS binary_publisher
 ARG ghtoken
 ARG TARGETOS
 ARG TARGETARCH
+ARG TARGETPLATFORM
 
 ENV RUNTIME_DEPS "curl ca-certificates"
 

@@ -350,8 +350,8 @@ jobs:
 
       - name: Install skopeo
         run: |
-          apt-get update
-          apt-get install -y skopeo
+          sudo apt-get update
+          sudo apt-get install -y skopeo
 
       - name: Login skopeo to dockerhub
         run: |
