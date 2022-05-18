@@ -39,10 +39,10 @@ ARG TARGETOS
 ARG TARGETARCH
 ARG TARGETPLATFORM
 
-ENV BUILD_DEPS "cmake make git pkgconf jq python3-pip python3-setuptools ca-certificates python python3"
+ENV BUILD_DEPS "cmake git pkgconf jq python3-pip python3-setuptools ca-certificates python python3"
 
 RUN xx-apt-get update && \
-    xx-apt-get install -y build-essential clang
+    xx-apt-get install -y build-essential clang gcc g++ make clang-7 make
 
 RUN apt-get update && \
     apt-get upgrade -y && \
@@ -57,6 +57,7 @@ COPY --from=conanbuild /tmp/build/ /tmp/build/
 
 WORKDIR /tmp/build
 
+RUN xx-info env
 # run make
 RUN cmake $(xx-clang --print-cmake-defines) -DCMAKE_BUILD_TYPE=Release /pktvisor-src
 RUN make all -j 4
