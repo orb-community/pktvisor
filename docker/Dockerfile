@@ -11,7 +11,7 @@ ARG TARGETPLATFORM
 ENV BUILD_DEPS "cmake make git jq python3-pip python3-setuptools ca-certificates python python3 clang lld"
 
 RUN xx-apt-get update && \
-    xx-apt-get install -y libstdc++-11-dev zlib1g-dev
+    xx-apt-get install -y libstdc++-10-dev zlib1g-dev
 
 RUN apt-get update && \
     apt-get upgrade -y && \
@@ -33,7 +33,7 @@ COPY ./conanfile.txt /pktvisor-src/
 WORKDIR /tmp/build
 RUN \
     conan profile new --detect default && \
-    conan profile update settings.compiler.libcxx=libstdc++11 default && \
+#    conan profile update settings.compiler.libcxx=libstdc++11 default && \
     conan profile update settings.os=$TARGETOS default && \
     conan profile update settings.arch=$TARGETARCH default && \
     conan config set general.revisions_enabled=1
