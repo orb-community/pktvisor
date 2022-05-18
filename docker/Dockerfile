@@ -11,7 +11,7 @@ ARG TARGETPLATFORM
 ENV BUILD_DEPS "cmake make git jq python3-pip python3-setuptools ca-certificates python python3"
 
 RUN xx-apt-get update && \
-    xx-apt-get install -y libc6-dev zlib1g-dev xx-cxx-essentials g++
+    xx-apt-get install -y libc6-dev zlib1g-dev g++
 
 RUN apt-get update && \
     apt-get upgrade -y && \
