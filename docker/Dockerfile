@@ -42,7 +42,7 @@ ARG TARGETPLATFORM
 ENV BUILD_DEPS "clang lld git pkgconf jq python3-pip python3-setuptools ca-certificates python python3"
 
 RUN xx-apt-get update && \
-    xx-apt-get install -y musl-dev
+    xx-apt-get install -y musl-dev gcc
 
 RUN apt-get update && \
     apt-get upgrade -y && \
@@ -59,7 +59,7 @@ WORKDIR /tmp/build
 
 RUN xx-info env
 # run make
-RUN cmake $(xx-clang++ --print-cmake-defines) -DCMAKE_BUILD_TYPE=Release /pktvisor-src
+RUN cmake $(xx-clang --print-cmake-defines) -DCMAKE_BUILD_TYPE=Release /pktvisor-src
 RUN make all -j 4
 
 FROM --platform=$BUILDPLATFORM golang:latest AS gobuild
