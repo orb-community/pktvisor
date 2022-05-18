@@ -249,6 +249,11 @@ visor:
   # optionally define global configuration (see command line options)
   config:
     verbose: true
+  # optionally define tags
+  tags:
+    region: EU
+    pop: ams02
+    node_type: dns
   # optionally define taps
   taps:
     default_pcap:
