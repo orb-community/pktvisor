@@ -104,7 +104,7 @@ jobs:
           retention-days: 1
 
   package-arm64:
-    needs: package-amd64
+    needs: prebuild-package
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
     steps:
@@ -177,7 +177,7 @@ jobs:
             ghtoken=${{ secrets.GITHUB_TOKEN }}
 
   package-amd64:
-    needs: prebuild-package
+    needs: package-arm64
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
     steps:
