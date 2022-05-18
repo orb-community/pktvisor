@@ -39,7 +39,7 @@ ARG TARGETOS
 ARG TARGETARCH
 ARG TARGETPLATFORM
 
-ENV BUILD_DEPS "git pkgconf jq python3-pip python3-setuptools ca-certificates python python3"
+ENV BUILD_DEPS "clang lld git pkgconf jq python3-pip python3-setuptools ca-certificates python python3"
 
 RUN xx-apt-get update && \
     xx-apt-get install -y clang make cmake
