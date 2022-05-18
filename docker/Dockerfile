@@ -39,10 +39,10 @@ ARG TARGETOS
 ARG TARGETARCH
 ARG TARGETPLATFORM
 
-ENV BUILD_DEPS "cmake make git jq pkgconf python3-pip python3-setuptools ca-certificates python python3 clang lld"
+ENV BUILD_DEPS "binutils cmake make git pkgconf jq python3-pip python3-setuptools ca-certificates python python3"
 
 RUN xx-apt-get update && \
-    xx-apt-get install -y libstdc++-10-dev zlib1g-dev
+    xx-apt-get install -y g++ libc6-dev clang
 
 RUN apt-get update && \
     apt-get upgrade -y && \
@@ -58,7 +58,7 @@ COPY --from=conanbuild /tmp/build/ /tmp/build/
 WORKDIR /tmp/build
 
 # run make
-RUN PKG_CONFIG_PATH=/local/lib/pkgconfig cmake $(xx-clang++ --print-cmake-defines) -DCMAKE_BUILD_TYPE=Release /pktvisor-src
+RUN cmake $(xx-clang --print-cmake-defines) -DCMAKE_BUILD_TYPE=Release /pktvisor-src
 RUN make all -j 4
 
 FROM --platform=$BUILDPLATFORM golang:latest AS gobuild
