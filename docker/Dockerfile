@@ -34,6 +34,8 @@ WORKDIR /tmp/build
 RUN \
     conan profile new --detect default && \
     conan profile update settings.compiler.libcxx=libstdc++11 default && \
+    conan profile update settings.os=$TARGETOS default && \
+    conan profile update settings.arch=$TARGETARCH default && \
     conan config set general.revisions_enabled=1
 
 RUN cmake $(xx-clang++ --print-cmake-defines) -DCMAKE_BUILD_TYPE=Release /pktvisor-src
