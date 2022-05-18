@@ -1,17 +1,10 @@
-FROM --platform=$BUILDPLATFORM tonistiigi/xx AS xx
-
-FROM --platform=$BUILDPLATFORM debian:bullseye-slim AS cppbuild
-# copy xx scripts to your build stage
-COPY --from=xx / /
+FROM debian:bullseye-slim AS conanbuild
 
 ARG TARGETOS
 ARG TARGETARCH
 ARG TARGETPLATFORM
 
-ENV BUILD_DEPS "cmake make git jq python3-pip python3-setuptools ca-certificates python python3 clang lld"
-
-RUN xx-apt-get update && \
-    xx-apt-get install -y libstdc++-10-dev zlib1g-dev
+ENV BUILD_DEPS "cmake make git jq python3-pip python3-setuptools ca-certificates python python3 clang lld g++"
 
 RUN apt-get update && \
     apt-get upgrade -y && \
@@ -33,11 +26,38 @@ COPY ./conanfile.txt /pktvisor-src/
 WORKDIR /tmp/build
 RUN \
     conan profile new --detect default && \
-#    conan profile update settings.compiler.libcxx=libstdc++11 default && \
-    conan profile update settings.os=$TARGETOS default && \
-    conan profile update settings.arch=$TARGETARCH default && \
+    conan profile update settings.compiler.libcxx=libstdc++11 default && \
     conan config set general.revisions_enabled=1
 
+FROM --platform=$BUILDPLATFORM tonistiigi/xx AS xx
+
+FROM --platform=$BUILDPLATFORM debian:bullseye-slim AS cppbuild
+# copy xx scripts to your build stage
+COPY --from=xx / /
+
+ARG TARGETOS
+ARG TARGETARCH
+ARG TARGETPLATFORM
+
+ENV BUILD_DEPS "cmake make git jq python3-pip python3-setuptools ca-certificates python python3 clang lld g++"
+
+RUN xx-apt-get update && \
+    xx-apt-get install -y libstdc++-10-dev zlib1g-dev
+
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    apt-get install -y --no-install-recommends ${BUILD_DEPS} && \
+    pip3 install conan
+
+# getting project files
+COPY --from=conanbuild /pktvisor-src/ /pktvisor-src/
+
+WORKDIR /tmp/build
+
+# getting conan files
+COPY --from=conanbuild /tmp/build/ /tmp/build/
+
+# run make
 RUN cmake $(xx-clang++ --print-cmake-defines) -DCMAKE_BUILD_TYPE=Release /pktvisor-src
 RUN make all -j 4
 
