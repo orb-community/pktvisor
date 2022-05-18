@@ -42,7 +42,7 @@ ARG TARGETPLATFORM
 ENV BUILD_DEPS "git pkgconf jq python3-pip python3-setuptools ca-certificates python python3"
 
 RUN xx-apt-get update && \
-    xx-apt-get install -y clang make cmake clang-7
+    xx-apt-get install -y clang make cmake
 
 RUN apt-get update && \
     apt-get upgrade -y && \
