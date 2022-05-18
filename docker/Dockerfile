@@ -39,10 +39,10 @@ ARG TARGETOS
 ARG TARGETARCH
 ARG TARGETPLATFORM
 
-ENV BUILD_DEPS "binutils cmake make git pkgconf jq python3-pip python3-setuptools ca-certificates python python3"
+ENV BUILD_DEPS "cmake make git pkgconf jq python3-pip python3-setuptools ca-certificates python python3"
 
 RUN xx-apt-get update && \
-    xx-apt-get install -y g++ libc6-dev clang
+    xx-apt-get install -y g++ libc6-dev clang binutils
 
 RUN apt-get update && \
     apt-get upgrade -y && \
