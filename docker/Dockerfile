@@ -31,7 +31,7 @@ RUN \
 
 FROM --platform=$BUILDPLATFORM tonistiigi/xx AS xx
 
-FROM --platform=$BUILDPLATFORM debian:bullseye AS cppbuild
+FROM --platform=$BUILDPLATFORM debian:buster AS cppbuild
 # copy xx scripts to your build stage
 COPY --from=xx / /
 
@@ -42,7 +42,7 @@ ARG TARGETPLATFORM
 ENV BUILD_DEPS "cmake make git pkgconf jq python3-pip python3-setuptools ca-certificates python python3"
 
 RUN xx-apt-get update && \
-    xx-apt-get install -y xx-cxx-essentials clang
+    xx-apt-get install -y build-essential clang
 
 RUN apt-get update && \
     apt-get upgrade -y && \
