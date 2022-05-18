@@ -6,6 +6,7 @@
 #include "HandlerManager.h"
 #include "Metrics.h"
 #include "Policies.h"
+#include "Tags.h"
 #include "Taps.h"
 #include "visor_config.h"
 #include <chrono>
@@ -325,6 +326,11 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
                 }
                 _logger->debug("{} policy json metrics elapsed time: {}", policy->name(), psw);
             }
+            auto tag_list = _registry->tag_manager()->module_get_keys();
+            for (const auto &tag_name : tag_list) {
+                auto [tag, lock] = _registry->tag_manager()->module_get_locked(tag_name);
+                tag->info_json(j["tags"]);
+            }
             res.set_content(j.dump(), "text/json");
         } catch (const PeriodException &e) {
             res.status = 425; // 425 Too Early
@@ -352,6 +358,12 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
             }
         }
         std::stringstream output;
+        auto tag_list = _registry->tag_manager()->module_get_keys();
+        Metric::LabelMap tag_map;
+        for (const auto &tag_name : tag_list) {
+            auto [tag, lock] = _registry->tag_manager()->module_get_locked(tag_name);
+            tag_map[tag->name()] = tag->value();
+        }
         for (const auto &p_mname : plist) {
             try {
                 auto [policy, lock] = _registry->policy_manager()->module_get_locked(p_mname);
@@ -359,7 +371,10 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
                     auto hmod = dynamic_cast<StreamHandler *>(mod);
                     if (hmod) {
                         spdlog::stopwatch sw;
-                        hmod->window_prometheus(output, {{"policy", p_mname}, {"module", hmod->name()}});
+                        auto labels = tag_map;
+                        labels.insert({"policy", p_mname});
+                        labels.insert({"module", hmod->name()});
+                        hmod->window_prometheus(output, labels);
                         _logger->debug("{} window_prometheus elapsed time: {}", hmod->name(), sw);
                     }
                 }
