@@ -41,12 +41,12 @@ ARG TARGETPLATFORM
 
 ENV BUILD_DEPS "cmake clang lld"
 
-RUN xx-apt-get update && \
-    xx-apt-get install -y musl-dev gcc
-
 RUN apt-get update && \
     apt-get upgrade -y && \
     apt-get install -y --no-install-recommends ${BUILD_DEPS}
+
+RUN xx-apt-get update && \
+    xx-apt-get install -y musl-dev gcc
 
 # getting project files
 COPY --from=conanbuild /pktvisor-src/ /pktvisor-src/
