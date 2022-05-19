@@ -26,7 +26,7 @@ COPY ./conanfile.txt /pktvisor-src/
 WORKDIR /tmp/build
 RUN \
     conan profile new --detect default && \
-    conan profile update settings.compiler.libcxx=libstdc++11 default && \
+    conan profile update settings.compiler.libcxx=libstdc++10 default && \
     conan config set general.revisions_enabled=1
 
 FROM --platform=$BUILDPLATFORM tonistiigi/xx AS xx
@@ -46,7 +46,7 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends ${BUILD_DEPS}
 
 RUN xx-apt-get update && \
-    xx-apt-get install -y musl-dev gcc
+    xx-apt-get install -y musl-dev gcc g++ libstdc++10-dev
 
 # getting project files
 COPY --from=conanbuild /pktvisor-src/ /pktvisor-src/
