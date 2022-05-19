@@ -21,6 +21,8 @@ using namespace visor::input::flow;
 typedef std::pair<in_addr, uint8_t> Ipv4Subnet;
 typedef std::pair<in6_addr, uint8_t> Ipv6Subnet;
 
+static constexpr const char *FLOW_SCHEMA{"flow"};
+
 namespace group {
 enum FlowMetrics : visor::MetricGroupIntType {
     Counters,
@@ -121,16 +123,16 @@ protected:
 
 public:
     FlowMetricsBucket()
-        : _srcIPCard("flow", {"cardinality", "src_ips_in"}, "Source IP cardinality")
-        , _dstIPCard("flow", {"cardinality", "dst_ips_out"}, "Destination IP cardinality")
-        , _srcPortCard("flow", {"cardinality", "src_ports_in"}, "Source ports cardinality")
-        , _dstPortCard("flow", {"cardinality", "dst_ports_out"}, "Destination ports cardinality")
-        , _topGeoLoc("flow", "geo_loc", {"top_geoLoc"}, "Top GeoIP locations")
-        , _topASN("flow", "asn", {"top_ASN"}, "Top ASNs by IP")
+        : _srcIPCard(FLOW_SCHEMA, {"cardinality", "src_ips_in"}, "Source IP cardinality")
+        , _dstIPCard(FLOW_SCHEMA, {"cardinality", "dst_ips_out"}, "Destination IP cardinality")
+        , _srcPortCard(FLOW_SCHEMA, {"cardinality", "src_ports_in"}, "Source ports cardinality")
+        , _dstPortCard(FLOW_SCHEMA, {"cardinality", "dst_ports_out"}, "Destination ports cardinality")
+        , _topGeoLoc(FLOW_SCHEMA, "geo_loc", {"top_geoLoc"}, "Top GeoIP locations")
+        , _topASN(FLOW_SCHEMA, "asn", {"top_ASN"}, "Top ASNs by IP")
         , _topByBytes("bytes")
         , _topByPackets("packets")
-        , _payload_size("flow", {"payload_size"}, "Quantiles of payload sizes, in bytes")
-        , _rate("flow", {"rates", "pps"}, "Rate of combined flow packets per second")
+        , _payload_size(FLOW_SCHEMA, {"payload_size"}, "Quantiles of payload sizes, in bytes")
+        , _rate(FLOW_SCHEMA, {"rates", "pps"}, "Rate of combined flow packets per second")
         , _throughput("payload", {"rates", "bps"}, "Rate of combined flow bytes per second")
     {
     }
@@ -171,7 +173,6 @@ public:
 
 class FlowStreamHandler final : public visor::StreamMetricsHandler<FlowMetricsManager>
 {
-    static constexpr const char *_flow_schema{"flow"};
 
     // the input stream sources we support (only one will be in use at a time)
     MockInputStream *_mock_stream{nullptr};
@@ -212,7 +213,7 @@ public:
     // visor::AbstractModule
     std::string schema_key() const override
     {
-        return _flow_schema;
+        return FLOW_SCHEMA;
     }
 
     size_t consumer_count() const override
