@@ -46,7 +46,7 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends ${BUILD_DEPS}
 
 RUN xx-apt-get update && \
-    xx-apt-get install -y musl-dev gcc g++ libstdc++10-dev
+    xx-apt-get install -y musl-dev gcc g++ libstdc++-10-dev
 
 # getting project files
 COPY --from=conanbuild /pktvisor-src/ /pktvisor-src/
