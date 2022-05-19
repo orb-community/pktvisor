@@ -39,7 +39,7 @@ ARG TARGETOS
 ARG TARGETARCH
 ARG TARGETPLATFORM
 
-ENV BUILD_DEPS "cmake clang make git lld pkgconf jq python3-pip python3-setuptools ca-certificates python python3"
+ENV BUILD_DEPS "cmake clang make git pkgconf jq python3-pip python3-setuptools ca-certificates python python3"
 
 RUN apt-get update && \
     apt-get upgrade -y && \
@@ -47,7 +47,7 @@ RUN apt-get update && \
     pip3 install conan
 
 RUN xx-apt-get update && \
-    xx-apt-get install -y musl-dev gcc g++ libstdc++-10-dev
+    xx-apt-get install -y musl-dev gcc g++ libstdc++-10-dev lld
 
 # getting project files
 COPY --from=conanbuild /pktvisor-src/ /pktvisor-src/
