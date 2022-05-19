@@ -8,7 +8,7 @@ ARG TARGETOS
 ARG TARGETARCH
 ARG TARGETPLATFORM
 
-ENV BUILD_DEPS "cmake ldd make git pkgconf jq python3-pip python3-setuptools ca-certificates python python3"
+ENV BUILD_DEPS "cmake clang ldd make git pkgconf jq python3-pip python3-setuptools ca-certificates python python3"
 
 RUN apt-get update && \
     apt-get upgrade -y && \
@@ -33,15 +33,15 @@ COPY ./conanfile.txt /pktvisor-src/
 # getting conan files
 RUN \
     conan profile new --detect default && \
-    conan profile update settings.compiler.libcxx=libstdc++10 default && \
+    conan profile update settings.compiler.libcxx=libstdc++11 default && \
     conan config set general.revisions_enabled=1
 
 WORKDIR /tmp/build
 
 RUN xx-info env
 # run make
-RUN PKG_CONFIG_PATH=/local/lib/pkgconfig cmake $(xx-clang++ --print-cmake-defines) -DCMAKE_BUILD_TYPE=Release /pktvisor-src ARCH=$TARGETARCH
-RUN make all
+RUN PKG_CONFIG_PATH=/local/lib/pkgconfig cmake $(xx-clang++ --print-cmake-defines) -DCMAKE_BUILD_TYPE=Release /pktvisor-src
+RUN make all -j 4
 
 FROM --platform=$BUILDPLATFORM golang:latest AS gobuild
 ARG TARGETOS
