@@ -39,15 +39,14 @@ ARG TARGETOS
 ARG TARGETARCH
 ARG TARGETPLATFORM
 
-ENV BUILD_DEPS "cmake clang lld git pkgconf jq python3-pip python3-setuptools ca-certificates python python3"
+ENV BUILD_DEPS "cmake clang lld"
 
 RUN xx-apt-get update && \
     xx-apt-get install -y musl-dev gcc
 
 RUN apt-get update && \
     apt-get upgrade -y && \
-    apt-get install -y --no-install-recommends ${BUILD_DEPS} && \
-    pip3 install conan
+    apt-get install -y --no-install-recommends ${BUILD_DEPS}
 
 # getting project files
 COPY --from=conanbuild /pktvisor-src/ /pktvisor-src/
@@ -59,8 +58,8 @@ WORKDIR /tmp/build
 
 RUN xx-info env
 # run make
-RUN cmake $(xx-clang --print-cmake-defines) -DCMAKE_BUILD_TYPE=Release /pktvisor-src
-RUN make all -j 4
+RUN cmake $(xx-clang++ --print-cmake-defines) -DCMAKE_BUILD_TYPE=Release /pktvisor-src
+RUN make all
 
 FROM --platform=$BUILDPLATFORM golang:latest AS gobuild
 ARG TARGETOS
