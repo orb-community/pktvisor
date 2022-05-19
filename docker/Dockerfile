@@ -4,7 +4,7 @@ ARG TARGETOS
 ARG TARGETARCH
 ARG TARGETPLATFORM
 
-ENV BUILD_DEPS "g++ cmake make git pkgconf jq python3-pip python3-setuptools ca-certificates python python3"
+ENV BUILD_DEPS "g++ clang cmake make git pkgconf jq python3-pip python3-setuptools ca-certificates python python3"
 
 RUN apt-get update && \
     apt-get upgrade -y && \
@@ -39,7 +39,7 @@ ARG TARGETOS
 ARG TARGETARCH
 ARG TARGETPLATFORM
 
-ENV BUILD_DEPS "cmake clang lld"
+ENV BUILD_DEPS "cmake clang make lld"
 
 RUN apt-get update && \
     apt-get upgrade -y && \
