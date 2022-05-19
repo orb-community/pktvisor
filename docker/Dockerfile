@@ -1,17 +1,24 @@
-FROM debian:bullseye-slim AS conanbuild
+FROM --platform=$BUILDPLATFORM tonistiigi/xx AS xx
+
+FROM --platform=$BUILDPLATFORM debian:bullseye AS cppbuild
+# copy xx scripts to your build stage
+COPY --from=xx / /
 
 ARG TARGETOS
 ARG TARGETARCH
 ARG TARGETPLATFORM
 
-ENV BUILD_DEPS "g++ clang cmake make git pkgconf jq python3-pip python3-setuptools ca-certificates python python3"
+ENV BUILD_DEPS "cmake ldd make git pkgconf jq python3-pip python3-setuptools ca-certificates python python3"
 
 RUN apt-get update && \
     apt-get upgrade -y && \
     apt-get install -y --no-install-recommends ${BUILD_DEPS} && \
     pip3 install conan
 
-# need git for current hash for VERSION
+RUN xx-apt-get update && \
+    xx-apt-get install -y musl-dev gcc g++ libstdc++-10-dev clang
+
+# getting project files
 COPY ./.git/ /pktvisor-src/.git/
 COPY ./src/ /pktvisor-src/src/
 COPY ./cmd/ /pktvisor-src/cmd/
@@ -23,43 +30,17 @@ COPY ./cmake/ /pktvisor-src/cmake/
 COPY ./CMakeLists.txt /pktvisor-src/
 COPY ./conanfile.txt /pktvisor-src/
 
-WORKDIR /tmp/build
+# getting conan files
 RUN \
     conan profile new --detect default && \
     conan profile update settings.compiler.libcxx=libstdc++10 default && \
     conan config set general.revisions_enabled=1
 
-FROM --platform=$BUILDPLATFORM tonistiigi/xx AS xx
-
-FROM --platform=$BUILDPLATFORM debian:bullseye AS cppbuild
-# copy xx scripts to your build stage
-COPY --from=xx / /
-
-ARG TARGETOS
-ARG TARGETARCH
-ARG TARGETPLATFORM
-
-ENV BUILD_DEPS "cmake clang make git pkgconf jq python3-pip python3-setuptools ca-certificates python python3"
-
-RUN apt-get update && \
-    apt-get upgrade -y && \
-    apt-get install -y --no-install-recommends ${BUILD_DEPS} && \
-    pip3 install conan
-
-RUN xx-apt-get update && \
-    xx-apt-get install -y musl-dev gcc g++ libstdc++-10-dev lld
-
-# getting project files
-COPY --from=conanbuild /pktvisor-src/ /pktvisor-src/
-
-# getting conan files
-COPY --from=conanbuild /tmp/build/ /tmp/build/
-
 WORKDIR /tmp/build
 
 RUN xx-info env
 # run make
-RUN PKG_CONFIG_PATH=/local/lib/pkgconfig cmake $(xx-clang++ --print-cmake-defines) -DCMAKE_BUILD_TYPE=Release /pktvisor-src
+RUN PKG_CONFIG_PATH=/local/lib/pkgconfig cmake $(xx-clang++ --print-cmake-defines) -DCMAKE_BUILD_TYPE=Release /pktvisor-src ARCH=$TARGETARCH
 RUN make all
 
 FROM --platform=$BUILDPLATFORM golang:latest AS gobuild
