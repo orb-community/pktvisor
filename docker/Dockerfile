@@ -1,24 +1,14 @@
-FROM --platform=$BUILDPLATFORM tonistiigi/xx AS xx
+FROM debian:bullseye-slim AS cppbuild
 
-FROM --platform=$BUILDPLATFORM debian:bullseye AS cppbuild
-# copy xx scripts to your build stage
-COPY --from=xx / /
+ENV BUILD_DEPS "g++ cmake make git pkgconf jq python3-pip python3-setuptools ca-certificates python python3"
 
-ARG TARGETOS
-ARG TARGETARCH
-ARG TARGETPLATFORM
-
-ENV BUILD_DEPS "cmake clang ldd make git pkgconf jq python3-pip python3-setuptools ca-certificates python python3"
-
-RUN apt-get update && \
-    apt-get upgrade -y && \
-    apt-get install -y --no-install-recommends ${BUILD_DEPS} && \
+RUN \
+    apt-get update && \
+    apt-get upgrade --yes --force-yes && \
+    apt-get install --yes --force-yes --no-install-recommends ${BUILD_DEPS} && \
     pip3 install conan
 
-RUN xx-apt-get update && \
-    xx-apt-get install -y musl-dev gcc g++ libstdc++-10-dev clang
-
-# getting project files
+# need git for current hash for VERSION
 COPY ./.git/ /pktvisor-src/.git/
 COPY ./src/ /pktvisor-src/src/
 COPY ./cmd/ /pktvisor-src/cmd/
@@ -30,18 +20,15 @@ COPY ./cmake/ /pktvisor-src/cmake/
 COPY ./CMakeLists.txt /pktvisor-src/
 COPY ./conanfile.txt /pktvisor-src/
 
-# getting conan files
+WORKDIR /tmp/build
 RUN \
     conan profile new --detect default && \
     conan profile update settings.compiler.libcxx=libstdc++11 default && \
     conan config set general.revisions_enabled=1
 
-WORKDIR /tmp/build
-
-RUN xx-info env
-# run make
-RUN PKG_CONFIG_PATH=/local/lib/pkgconfig cmake $(xx-clang++ --print-cmake-defines) -DCMAKE_BUILD_TYPE=Release /pktvisor-src
-RUN make all -j 4
+RUN \
+    PKG_CONFIG_PATH=/local/lib/pkgconfig cmake -DCMAKE_BUILD_TYPE=Release /pktvisor-src && \
+    make all -j 4
 
 FROM --platform=$BUILDPLATFORM golang:latest AS gobuild
 ARG TARGETOS
