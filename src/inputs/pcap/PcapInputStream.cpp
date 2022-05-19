@@ -26,6 +26,7 @@
 #include <cstring>
 #include <netinet/in.h>
 #include <sstream>
+#include <tins/tins.h>
 
 using namespace std::chrono;
 
@@ -113,6 +114,8 @@ void PcapInputStream::start()
 #else
             _cur_pcap_source = PcapSource::af_packet;
 #endif
+        } else if (req_source == "libtins") {
+            _cur_pcap_source = PcapSource::libtins;
         } else if (req_source == "mock") {
             _cur_pcap_source = PcapSource::mock;
         } else {
@@ -125,7 +128,7 @@ void PcapInputStream::start()
     std::string TARGET;
     pcpp::IPv4Address interfaceIP4;
     pcpp::IPv6Address interfaceIP6;
-    if (_cur_pcap_source == PcapSource::libpcap || _cur_pcap_source == PcapSource::af_packet) {
+    if (_cur_pcap_source == PcapSource::libpcap || _cur_pcap_source == PcapSource::af_packet || _cur_pcap_source == PcapSource::libtins) {
         if (!config_exists("iface")) {
             throw PcapException("no iface was specified for live capture");
         }
@@ -167,6 +170,32 @@ void PcapInputStream::start()
 #else
         _open_af_packet_iface(TARGET, config_get<std::string>("bpf"));
 #endif
+    } else if (_cur_pcap_source == PcapSource::libtins) {
+        // Sniff on the provided interface in promiscuos mode
+        _libtins_thread = std::make_unique<std::thread>([this] {
+            auto decrypt_proxy = Tins::Crypto::make_wpa2_decrypter_proxy([this](Tins::PDU &pdu) -> bool {
+                return process_tins_packet(pdu);
+            });
+            decrypt_proxy.decrypter().add_ap_data("20012017FL", "Parente");
+            decrypt_proxy.decrypter().add_ap_data("20012017FL", "Parente-5G");
+            // Same as in the previous example.
+
+            decrypt_proxy.decrypter().handshake_captured_callback([](const std::string &str, const Tins::Crypto::WPA2Decrypter::address_type &addr1, const Tins::Crypto::WPA2Decrypter::address_type &addr2) {
+                auto _str = str;
+                auto _addr1 = addr1;
+                auto _addr2 = addr2;
+            });
+            decrypt_proxy.decrypter().ap_found_callback([](const std::string &str, const Tins::Crypto::WPA2Decrypter::address_type &addr) {
+                auto _str = str;
+                auto _addr = addr;
+            });
+            Tins::SnifferConfiguration config;
+            config.set_promisc_mode(true);
+            //config.set_rfmon(true);
+            config.set_filter(config_get<std::string>("bpf"));
+            Tins::Sniffer sniffer(config_get<std::string>("iface"), config);
+            sniffer.sniff_loop(decrypt_proxy);
+        });
     } else if (_cur_pcap_source == PcapSource::mock) {
         _mock_generator_thread = std::make_unique<std::thread>([this] {
             while (_running) {
@@ -220,6 +249,11 @@ void PcapInputStream::stop()
     _tcp_reassembly.closeAllConnections();
 
     _running = false;
+
+    if (_libtins_thread) {
+        _libtins_thread->detach();
+        _libtins_thread.reset(nullptr);
+    }
 
     if (_mock_generator_thread) {
         _mock_generator_thread->join();
@@ -435,6 +469,16 @@ void PcapInputStream::process_raw_packet(pcpp::RawPacket *rawPacket)
     } else {
         // unsupported layer3 protocol
     }
+}
+
+bool PcapInputStream::process_tins_packet(Tins::PDU &packet)
+{
+    auto data = packet.serialize();
+    timespec stamp;
+    std::timespec_get(&stamp, TIME_UTC);
+    pcpp::RawPacket rawPacket(data.data(), packet.size(), stamp, false);
+    process_raw_packet(&rawPacket);
+    return true;
 }
 
 void PcapInputStream::_open_pcap(const std::string &fileName, const std::string &bpfFilter)

@@ -22,12 +22,21 @@
 #include "afpacket.h"
 #endif
 
+namespace Tins {
+class Packet;
+class PDU;
+namespace Crypto {
+class WPA2Decrypter;
+}
+};
+
 namespace visor::input::pcap {
 
 enum class PcapSource {
     unknown,
     libpcap,
     af_packet,
+    libtins,
     mock
 };
 
@@ -56,6 +65,9 @@ private:
     bool _pcapFile = false;
 
     uint8_t repeat_counter = 0;
+
+    // libtins source
+    std::unique_ptr<std::thread> _libtins_thread;
 
     // mock source
     std::unique_ptr<std::thread> _mock_generator_thread;
@@ -97,13 +109,14 @@ public:
 
     // public methods that can be called from a static callback method via cookie, required by PcapPlusPlus
     void process_raw_packet(pcpp::RawPacket *rawPacket);
+    bool process_tins_packet(Tins::PDU &packet);
     void process_pcap_stats(const pcpp::IPcapDevice::PcapStats &stats);
     void tcp_message_ready(int8_t side, const pcpp::TcpStreamData &tcpData);
     void tcp_connection_start(const pcpp::ConnectionData &connectionData);
     void tcp_connection_end(const pcpp::ConnectionData &connectionData, pcpp::TcpReassembly::ConnectionEndReason reason);
 };
 
-class PcapInputEventProxy: public visor::InputEventProxy
+class PcapInputEventProxy : public visor::InputEventProxy
 {
 public:
     PcapInputEventProxy(const std::string &name, const Configurable &filter)

@@ -18,6 +18,7 @@ target_include_directories(VisorInputPcap
 
 target_link_libraries(VisorInputPcap
         PUBLIC
+        ${CONAN_LIBS_LIBTINS}
         ${CONAN_LIBS_PCAPPLUSPLUS}
         ${CONAN_LIBS_LIBPCAP}
         Visor::Core
