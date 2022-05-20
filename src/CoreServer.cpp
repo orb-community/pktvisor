@@ -4,9 +4,9 @@
 
 #include "CoreServer.h"
 #include "HandlerManager.h"
+#include "Labels.h"
 #include "Metrics.h"
 #include "Policies.h"
-#include "Tags.h"
 #include "Taps.h"
 #include "visor_config.h"
 #include <chrono>
@@ -326,11 +326,6 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
                 }
                 _logger->debug("{} policy json metrics elapsed time: {}", policy->name(), psw);
             }
-            auto tag_list = _registry->tag_manager()->module_get_keys();
-            for (const auto &tag_name : tag_list) {
-                auto [tag, lock] = _registry->tag_manager()->module_get_locked(tag_name);
-                tag->info_json(j["tags"]);
-            }
             res.set_content(j.dump(), "text/json");
         } catch (const PeriodException &e) {
             res.status = 425; // 425 Too Early
@@ -358,11 +353,11 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
             }
         }
         std::stringstream output;
-        auto tag_list = _registry->tag_manager()->module_get_keys();
-        Metric::LabelMap tag_map;
-        for (const auto &tag_name : tag_list) {
-            auto [tag, lock] = _registry->tag_manager()->module_get_locked(tag_name);
-            tag_map[tag->name()] = tag->value();
+        auto label_list = _registry->label_manager()->module_get_keys();
+        Metric::LabelMap label_map;
+        for (const auto &label_name : label_list) {
+            auto [label, lock] = _registry->label_manager()->module_get_locked(label_name);
+            label_map[label->name()] = label->value();
         }
         for (const auto &p_mname : plist) {
             try {
@@ -371,7 +366,7 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
                     auto hmod = dynamic_cast<StreamHandler *>(mod);
                     if (hmod) {
                         spdlog::stopwatch sw;
-                        auto labels = tag_map;
+                        auto labels = label_map;
                         labels.insert({"policy", p_mname});
                         labels.insert({"module", hmod->name()});
                         hmod->window_prometheus(output, labels);

@@ -249,8 +249,8 @@ visor:
   # optionally define global configuration (see command line options)
   config:
     verbose: true
-  # optionally define tags
-  tags:
+  # optionally define labels
+  labels:
     region: EU
     pop: ams02
     node_type: dns

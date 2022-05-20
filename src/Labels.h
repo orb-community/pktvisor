@@ -14,44 +14,44 @@ namespace visor {
 
 class Policy;
 
-class Tag : public AbstractModule
+class Label : public AbstractModule
 {
-    std::string _tag_value;
+    std::string _label_value;
 
 public:
-    Tag(const std::string &name, const std::string &value)
+    Label(const std::string &name, const std::string &value)
         : AbstractModule(name)
-        , _tag_value(value)
+        , _label_value(value)
     {
     }
 
     const std::string &value() const
     {
-        return _tag_value;
+        return _label_value;
     }
 
     void info_json(json &j) const override
     {
-        j[_name] = _tag_value;
+        j[_name] = _label_value;
     }
 };
 
-class TagManager : public AbstractManager<Tag>
+class LabelManager : public AbstractManager<Label>
 {
 
     const CoreRegistry *_registry;
 
 public:
-    TagManager(const CoreRegistry *registry)
+    LabelManager(const CoreRegistry *registry)
         : _registry(registry)
     {
     }
 
-    virtual ~TagManager()
+    virtual ~LabelManager()
     {
     }
 
-    void load(const YAML::Node &tag_yaml);
+    void load(const YAML::Node &label_yaml);
 };
 
 }

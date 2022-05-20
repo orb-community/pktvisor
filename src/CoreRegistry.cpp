@@ -5,8 +5,8 @@
 #include "CoreRegistry.h"
 #include "HandlerManager.h"
 #include "InputStreamManager.h"
+#include "Labels.h"
 #include "Policies.h"
-#include "Tags.h"
 #include "Taps.h"
 #include <Corrade/Utility/ConfigurationGroup.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
@@ -28,8 +28,8 @@ CoreRegistry::CoreRegistry()
     // handlers
     _handler_manager = std::make_unique<HandlerManager>();
 
-    // tags
-    _tag_manager = std::make_unique<TagManager>(this);
+    // labels
+    _label_manager = std::make_unique<LabelManager>(this);
 
     // taps
     _tap_manager = std::make_unique<TapManager>(this);
@@ -119,9 +119,9 @@ void CoreRegistry::configure_from_yaml(YAML::Node &node)
         throw ConfigException("missing or unsupported version");
     }
 
-    // tags
-    if (node["visor"]["tags"] && node["visor"]["tags"].IsMap()) {
-        _tag_manager->load(node["visor"]["tags"]);
+    // labels
+    if (node["visor"]["labels"] && node["visor"]["labels"].IsMap()) {
+        _label_manager->load(node["visor"]["labels"]);
     }
 
     // taps

@@ -13,7 +13,7 @@ namespace visor {
 
 class InputStreamManager;
 class HandlerManager;
-class TagManager;
+class LabelManager;
 class TapManager;
 class PolicyManager;
 
@@ -43,8 +43,8 @@ private:
     std::unique_ptr<InputStreamManager> _input_manager;
     std::unique_ptr<HandlerManager> _handler_manager;
 
-    // tags, taps and policies
-    std::unique_ptr<TagManager> _tag_manager;
+    // labels, taps and policies
+    std::unique_ptr<LabelManager> _label_manager;
     std::unique_ptr<TapManager> _tap_manager;
     std::unique_ptr<PolicyManager> _policy_manager;
 
@@ -78,9 +78,9 @@ public:
     {
         return _handler_manager.get();
     }
-    [[nodiscard]] const TagManager *tag_manager() const
+    [[nodiscard]] const LabelManager *label_manager() const
     {
-        return _tag_manager.get();
+        return _label_manager.get();
     }
     [[nodiscard]] const TapManager *tap_manager() const
     {
@@ -126,9 +126,9 @@ public:
         return _handler_manager.get();
     }
 
-    [[nodiscard]] TagManager *tag_manager()
+    [[nodiscard]] LabelManager *label_manager()
     {
-        return _tag_manager.get();
+        return _label_manager.get();
     }
 
     [[nodiscard]] TapManager *tap_manager()
