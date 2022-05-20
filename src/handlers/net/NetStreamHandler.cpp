@@ -28,8 +28,7 @@ NetStreamHandler::NetStreamHandler(const std::string &name, InputStream *stream,
         _pcap_stream = dynamic_cast<PcapInputStream *>(stream);
         _dnstap_stream = dynamic_cast<DnstapInputStream *>(stream);
         _mock_stream = dynamic_cast<MockInputStream *>(stream);
-        _flow_stream = dynamic_cast<FlowInputStream *>(stream);
-        if (!_pcap_stream && !_mock_stream && !_dnstap_stream && !_flow_stream) {
+        if (!_pcap_stream && !_mock_stream && !_dnstap_stream) {
             throw StreamHandlerException(fmt::format("NetStreamHandler: unsupported input stream {}", stream->name()));
         }
     }
@@ -68,10 +67,6 @@ void NetStreamHandler::start()
     } else if (_dnstap_stream) {
         _dnstap_connection = _dnstap_stream->dnstap_signal.connect(&NetStreamHandler::process_dnstap_cb, this);
         _heartbeat_connection = _dnstap_stream->heartbeat_signal.connect(&NetStreamHandler::check_period_shift, this);
-    } else if (_flow_stream) {
-        _sflow_connection = _flow_stream->sflow_signal.connect(&NetStreamHandler::process_sflow_cb, this);
-        _netflow_connection = _flow_stream->netflow_signal.connect(&NetStreamHandler::process_netflow_cb, this);
-        _heartbeat_connection = _flow_stream->heartbeat_signal.connect(&NetStreamHandler::check_period_shift, this);
     } else if (_dns_handler) {
         _pkt_udp_connection = _dns_handler->udp_signal.connect(&NetStreamHandler::process_udp_packet_cb, this);
     }
@@ -91,9 +86,6 @@ void NetStreamHandler::stop()
         _end_tstamp_connection.disconnect();
     } else if (_dnstap_stream) {
         _dnstap_connection.disconnect();
-    } else if (_flow_stream) {
-        _sflow_connection.disconnect();
-        _netflow_connection.disconnect();
     } else if (_dns_handler) {
         _pkt_udp_connection.disconnect();
     }
@@ -120,16 +112,6 @@ void NetStreamHandler::set_start_tstamp(timespec stamp)
 void NetStreamHandler::set_end_tstamp(timespec stamp)
 {
     _metrics->set_end_tstamp(stamp);
-}
-
-void NetStreamHandler::process_sflow_cb(const SFSample &payload)
-{
-    _metrics->process_sflow(payload);
-}
-
-void NetStreamHandler::process_netflow_cb(const NFSample &payload)
-{
-    _metrics->process_netflow(payload);
 }
 
 void NetStreamHandler::process_dnstap_cb(const dnstap::Dnstap &payload, size_t size)
@@ -380,107 +362,6 @@ void NetworkMetricsBucket::process_dnstap(bool deep, const dnstap::Dnstap &paylo
     process_net_layer(dir, l3, l4, size, is_ipv6, ipv4_in, ipv4_out, ipv6_in, ipv6_out);
 }
 
-void NetworkMetricsBucket::process_sflow(bool deep, const SFSample &payload)
-{
-    for (const auto &sample : payload.elements) {
-        pcpp::ProtocolType l3;
-        if (sample.gotIPV4) {
-            l3 = pcpp::IPv4;
-        } else if (sample.gotIPV6) {
-            l3 = pcpp::IPv6;
-        }
-
-        pcpp::ProtocolType l4;
-        switch (sample.dcd_ipProtocol) {
-        case IP_PROTOCOL::TCP:
-            l4 = pcpp::TCP;
-            break;
-        case IP_PROTOCOL::UDP:
-            l4 = pcpp::UDP;
-            break;
-        }
-
-        PacketDirection dir;
-        if (sample.ifCounters.ifDirection == DIRECTION::IN) {
-            dir = PacketDirection::toHost;
-        } else if (sample.ifCounters.ifDirection == DIRECTION::OUT) {
-            dir = PacketDirection::fromHost;
-        }
-
-        if (!deep) {
-            process_net_layer(dir, l3, l4, sample.sampledPacketSize);
-            return;
-        }
-
-        bool is_ipv6{false};
-        pcpp::IPv4Address ipv4_in, ipv4_out;
-        pcpp::IPv6Address ipv6_in, ipv6_out;
-
-        if (sample.ipsrc.type == SFLADDRESSTYPE_IP_V4) {
-            is_ipv6 = false;
-            ipv4_in = pcpp::IPv4Address(sample.ipsrc.address.ip_v4.addr);
-
-        } else if (sample.ipsrc.type == SFLADDRESSTYPE_IP_V6) {
-            is_ipv6 = true;
-            ipv6_in = pcpp::IPv6Address(sample.ipsrc.address.ip_v6.addr);
-        }
-
-        if (sample.ipdst.type == SFLADDRESSTYPE_IP_V4) {
-            is_ipv6 = false;
-            ipv4_out = pcpp::IPv4Address(sample.ipdst.address.ip_v4.addr);
-        } else if (sample.ipdst.type == SFLADDRESSTYPE_IP_V6) {
-            is_ipv6 = true;
-            ipv6_out = pcpp::IPv6Address(sample.ipdst.address.ip_v6.addr);
-        }
-
-        process_net_layer(dir, l3, l4, sample.sampledPacketSize, is_ipv6, ipv4_in, ipv4_out, ipv6_in, ipv6_out);
-    }
-}
-
-void NetworkMetricsBucket::process_netflow(bool deep, const NFSample &payload)
-{
-    for (const auto &sample : payload.flows) {
-        pcpp::ProtocolType l3;
-        if (sample.is_ipv6) {
-            l3 = pcpp::IPv6;
-        } else {
-            l3 = pcpp::IPv4;
-        }
-
-        pcpp::ProtocolType l4;
-        switch (sample.protocol) {
-        case IP_PROTOCOL::TCP:
-            l4 = pcpp::TCP;
-            break;
-        case IP_PROTOCOL::UDP:
-            l4 = pcpp::UDP;
-            break;
-        }
-
-        PacketDirection dir = PacketDirection::unknown;
-
-        if (!deep) {
-            process_net_layer(dir, l3, l4, sample.flow_octets);
-            return;
-        }
-
-        bool is_ipv6{false};
-        pcpp::IPv4Address ipv4_in, ipv4_out;
-        pcpp::IPv6Address ipv6_in, ipv6_out;
-
-        if (sample.is_ipv6) {
-            is_ipv6 = true;
-            ipv6_in = pcpp::IPv6Address(reinterpret_cast<uint8_t *>(sample.src_ip));
-            ipv6_out = pcpp::IPv6Address(reinterpret_cast<uint8_t *>(sample.dst_ip));
-        } else {
-            ipv4_in = pcpp::IPv4Address(sample.src_ip);
-            ipv4_out = pcpp::IPv4Address(sample.dst_ip);
-        }
-
-        process_net_layer(dir, l3, l4, sample.flow_octets, is_ipv6, ipv4_in, ipv4_out, ipv6_in, ipv6_out);
-    }
-}
-
 void NetworkMetricsBucket::process_net_layer(PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, size_t payload_size)
 {
     std::unique_lock lock(_mutex);
@@ -692,33 +573,6 @@ void NetworkMetricsManager::process_dnstap(const dnstap::Dnstap &payload, size_t
     new_event(stamp);
     // process in the "live" bucket. this will parse the resources if we are deep sampling
     live_bucket()->process_dnstap(_deep_sampling_now, payload, size);
-}
-
-void NetworkMetricsManager::process_sflow(const SFSample &payload)
-{
-    timespec stamp;
-    // use now()
-    std::timespec_get(&stamp, TIME_UTC);
-    // base event
-    new_event(stamp);
-    // process in the "live" bucket
-    live_bucket()->process_sflow(_deep_sampling_now, payload);
-}
-
-void NetworkMetricsManager::process_netflow(const NFSample &payload)
-{
-    timespec stamp;
-    if (payload.time_sec || payload.time_nanosec) {
-        stamp.tv_sec = payload.time_sec;
-        stamp.tv_nsec = payload.time_nanosec;
-    } else {
-        // use now()
-        std::timespec_get(&stamp, TIME_UTC);
-    }
-    // base event
-    new_event(stamp);
-    // process in the "live" bucket
-    live_bucket()->process_netflow(_deep_sampling_now, payload);
 }
 
 }
