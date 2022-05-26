@@ -18,7 +18,7 @@
 
 namespace visor::handler::flow {
 
-FlowStreamHandler::FlowStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config, StreamHandler *handler)
+FlowStreamHandler::FlowStreamHandler(const std::string &name, InputCallback *stream, const Configurable *window_config, StreamHandler *handler)
     : visor::StreamMetricsHandler<FlowMetricsManager>(name, window_config)
 {
     if (handler) {
@@ -26,8 +26,8 @@ FlowStreamHandler::FlowStreamHandler(const std::string &name, InputStream *strea
     }
     // figure out which input stream we have
     if (stream) {
-        _mock_stream = dynamic_cast<MockInputStream *>(stream);
-        _flow_stream = dynamic_cast<FlowInputStream *>(stream);
+        _mock_stream = dynamic_cast<MockInputStreamCallback *>(stream);
+        _flow_stream = dynamic_cast<FlowInputStreamCallback *>(stream);
         if (!_mock_stream && !_flow_stream) {
             throw StreamHandlerException(fmt::format("FlowStreamHandler: unsupported input stream {}", stream->name()));
         }

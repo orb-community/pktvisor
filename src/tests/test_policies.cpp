@@ -34,7 +34,6 @@ visor:
         input_type: mock
         config:
           sample: value
-        filter:
           bpf: "tcp or udp"
       # stream handlers to attach to this input stream
       # these decide exactly which data to summarize and expose for collection
@@ -620,8 +619,10 @@ TEST_CASE("Policies", "[policies]")
 
         // force a roll back by creating a conflict with a handler module name that already exists
         Config config;
-        auto input_stream = registry.input_plugins()["mock"]->instantiate("mymock", &config);
-        auto mod = registry.handler_plugins()["net"]->instantiate("default_view-default_net", input_stream.get(), &config);
+        Config filter;
+        auto input_stream = registry.input_plugins()["mock"]->instantiate("mymock", &config, &filter);
+        auto stream_cb = input_stream->add_callback(filter);
+        auto mod = registry.handler_plugins()["net"]->instantiate("default_view-default_net", stream_cb, &config, &filter);
         registry.handler_manager()->module_add(std::move(mod));
         REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["policies"]), "policy [default_view-default_net] creation failed (handler: default_view): module name 'default_view-default_net' already exists");
 

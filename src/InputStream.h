@@ -10,10 +10,29 @@
 
 namespace visor {
 
+class InputCallback : public Configurable
+{
+protected:
+    std::string _input_name;
+
+public:
+    InputCallback(const Configurable &filter)
+    {
+        config_merge(filter);
+    };
+    virtual ~InputCallback() = default;
+
+    const std::string &name() const
+    {
+        return _input_name;
+    }
+};
+
 class InputStream : public AbstractRunnableModule
 {
     mutable std::shared_mutex _input_mutex;
     std::vector<const Policy *> _policies;
+    std::map<std::string, std::unique_ptr<InputCallback>> _callbacks;
 
 protected:
     static constexpr uint8_t HEARTBEAT_INTERVAL = 30; // in seconds
@@ -50,6 +69,20 @@ public:
         std::unique_lock lock(_input_mutex);
         return _policies.size();
     }
+
+    InputCallback *add_callback(const Configurable &filter)
+    {
+        std::unique_lock lock(_input_mutex);
+        auto hash = filter.config_hash();
+        auto it = _callbacks.find(hash);
+        if (it != _callbacks.end()) {
+            return it->second.get();
+        }
+        _callbacks[hash] = create_callback(filter);
+        return _callbacks[hash].get();
+    }
+
+    virtual std::unique_ptr<InputCallback> create_callback(const Configurable &filter) = 0;
 
     virtual size_t consumer_count() const
     {

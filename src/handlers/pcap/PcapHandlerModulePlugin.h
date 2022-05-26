@@ -20,7 +20,7 @@ public:
         : visor::HandlerModulePlugin{manager, plugin}
     {
     }
-    std::unique_ptr<StreamHandler> instantiate(const std::string &name, InputStream *input_stream, const Configurable *config,  StreamHandler *stream_handler = nullptr) override;
+    std::unique_ptr<StreamHandler> instantiate(const std::string &name, InputCallback *input_stream_cb, const Configurable *config, const Configurable *filter, StreamHandler *stream_handler = nullptr) override;
 };
 }
 

@@ -20,14 +20,14 @@
 
 namespace visor::handler::net {
 
-NetStreamHandler::NetStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config, StreamHandler *handler)
+NetStreamHandler::NetStreamHandler(const std::string &name, InputCallback *stream, const Configurable *window_config, StreamHandler *handler)
     : visor::StreamMetricsHandler<NetworkMetricsManager>(name, window_config)
 {
     // figure out which input stream we have
     if (stream) {
-        _pcap_stream = dynamic_cast<PcapInputStream *>(stream);
-        _dnstap_stream = dynamic_cast<DnstapInputStream *>(stream);
-        _mock_stream = dynamic_cast<MockInputStream *>(stream);
+        _pcap_stream = dynamic_cast<PcapInputStreamCallback *>(stream);
+        _dnstap_stream = dynamic_cast<DnstapInputStreamCallback *>(stream);
+        _mock_stream = dynamic_cast<MockInputStreamCallback *>(stream);
         if (!_pcap_stream && !_mock_stream && !_dnstap_stream) {
             throw StreamHandlerException(fmt::format("NetStreamHandler: unsupported input stream {}", stream->name()));
         }

@@ -56,8 +56,9 @@ TEST_CASE("Parse DNS UDP IPv4 tests", "[pcap][ipv4][udp][dns]")
     stream.config_set("bpf", "");
 
     visor::Config c;
+    auto stream_cb = stream.add_callback(c);
     c.config_set<uint64_t>("num_periods", 1);
-    DnsStreamHandler dns_handler{"dns-test", &stream, &c};
+    DnsStreamHandler dns_handler{"dns-test", stream_cb, &c};
 
     dns_handler.start();
     stream.start();
@@ -97,8 +98,9 @@ TEST_CASE("Parse DNS TCP IPv4 tests", "[pcap][ipv4][tcp][dns]")
     stream.config_set("bpf", "");
 
     visor::Config c;
+    auto stream_cb = stream.add_callback(c);
     c.config_set<uint64_t>("num_periods", 1);
-    DnsStreamHandler dns_handler{"dns-test", &stream, &c};
+    DnsStreamHandler dns_handler{"dns-test", stream_cb, &c};
 
     dns_handler.start();
     stream.start();
@@ -128,8 +130,9 @@ TEST_CASE("Parse DNS UDP IPv6 tests", "[pcap][ipv6][udp][dns]")
     stream.config_set("bpf", "");
 
     visor::Config c;
+    auto stream_cb = stream.add_callback(c);
     c.config_set<uint64_t>("num_periods", 1);
-    DnsStreamHandler dns_handler{"dns-test", &stream, &c};
+    DnsStreamHandler dns_handler{"dns-test", stream_cb, &c};
 
     dns_handler.start();
     stream.start();
@@ -159,8 +162,9 @@ TEST_CASE("Parse DNS TCP IPv6 tests", "[pcap][ipv6][tcp][dns]")
     stream.config_set("bpf", "");
 
     visor::Config c;
+    auto stream_cb = stream.add_callback(c);
     c.config_set<uint64_t>("num_periods", 1);
-    DnsStreamHandler dns_handler{"dns-test", &stream, &c};
+    DnsStreamHandler dns_handler{"dns-test", stream_cb, &c};
 
     dns_handler.start();
     stream.start();
@@ -192,8 +196,9 @@ TEST_CASE("Parse DNS random UDP/TCP tests", "[pcap][dns]")
     stream.parse_host_spec();
 
     visor::Config c;
+    auto stream_cb = stream.add_callback(c);
     c.config_set<uint64_t>("num_periods", 1);
-    DnsStreamHandler dns_handler{"dns-test", &stream, &c};
+    DnsStreamHandler dns_handler{"dns-test", stream_cb, &c};
 
     dns_handler.start();
     stream.start();
@@ -263,8 +268,9 @@ TEST_CASE("DNS Filters: exclude_noerror", "[pcap][dns]")
     stream.parse_host_spec();
 
     visor::Config c;
+    auto stream_cb = stream.add_callback(c);
     c.config_set<uint64_t>("num_periods", 1);
-    DnsStreamHandler dns_handler{"dns-test", &stream, &c};
+    DnsStreamHandler dns_handler{"dns-test", stream_cb, &c};
 
     dns_handler.config_set<bool>("exclude_noerror", true);
 
@@ -294,8 +300,9 @@ TEST_CASE("DNS Filters: only_rcode nx", "[pcap][net]")
     stream.parse_host_spec();
 
     visor::Config c;
+    auto stream_cb = stream.add_callback(c);
     c.config_set<uint64_t>("num_periods", 1);
-    DnsStreamHandler dns_handler{"dns-test", &stream, &c};
+    DnsStreamHandler dns_handler{"dns-test", stream_cb, &c};
 
     dns_handler.config_set<uint64_t>("only_rcode", NXDomain);
 
@@ -325,8 +332,9 @@ TEST_CASE("DNS Filters: only_rcode refused", "[pcap][dns]")
     stream.parse_host_spec();
 
     visor::Config c;
+    auto stream_cb = stream.add_callback(c);
     c.config_set<uint64_t>("num_periods", 1);
-    DnsStreamHandler dns_handler{"dns-test", &stream, &c};
+    DnsStreamHandler dns_handler{"dns-test", stream_cb, &c};
 
     dns_handler.config_set<uint64_t>("only_rcode", Refused);
 
@@ -356,8 +364,9 @@ TEST_CASE("DNS Filters: only_qname_suffix", "[pcap][dns]")
     stream.parse_host_spec();
 
     visor::Config c;
+    auto stream_cb = stream.add_callback(c);
     c.config_set<uint64_t>("num_periods", 1);
-    DnsStreamHandler dns_handler{"dns-test", &stream, &c};
+    DnsStreamHandler dns_handler{"dns-test", stream_cb, &c};
 
     // notice, case insensitive
     dns_handler.config_set<visor::Configurable::StringList>("only_qname_suffix", {"GooGle.com"});
@@ -391,8 +400,9 @@ TEST_CASE("DNS groups", "[pcap][dns]")
     stream.parse_host_spec();
 
     visor::Config c;
+    auto stream_cb = stream.add_callback(c);
     c.config_set<uint64_t>("num_periods", 1);
-    DnsStreamHandler dns_handler{"dns-test", &stream, &c};
+    DnsStreamHandler dns_handler{"dns-test", stream_cb, &c};
 
     SECTION("disable cardinality and counters")
     {

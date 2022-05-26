@@ -6,7 +6,7 @@
 
 namespace visor::handler::pcap {
 
-PcapStreamHandler::PcapStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config, StreamHandler *handler)
+PcapStreamHandler::PcapStreamHandler(const std::string &name, InputCallback *stream, const Configurable *window_config, StreamHandler *handler)
     : visor::StreamMetricsHandler<PcapMetricsManager>(name, window_config)
 {
     if (handler) {
@@ -15,7 +15,7 @@ PcapStreamHandler::PcapStreamHandler(const std::string &name, InputStream *strea
 
     assert(stream);
     // figure out which input stream we have
-    _pcap_stream = dynamic_cast<PcapInputStream *>(stream);
+    _pcap_stream = dynamic_cast<PcapInputStreamCallback *>(stream);
     if (!_pcap_stream) {
         throw StreamHandlerException(fmt::format("PcapStreamHandler: unsupported input stream {}", stream->name()));
     }

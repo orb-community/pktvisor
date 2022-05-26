@@ -118,10 +118,8 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
                 throw PolicyException(fmt::format("invalid input config for tap '{}': {}", tap_name, e.what()));
             }
         }
-        // TODO separate config and filter. for now, they merge
-        tap_filter.config_merge(tap_config);
 
-        std::string input_stream_module_name = tap_filter.config_hash();
+        std::string input_stream_module_name = tap_config.config_hash();
         input_stream_module_name.insert(0, tap->name() + "-");
 
         std::unique_ptr<InputStream> input_stream;
@@ -136,7 +134,7 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
             // Instantiate stream from tap
             try {
                 spdlog::get("visor")->info("policy [{}]: instantiating Tap: {}", policy_name, tap_name);
-                input_stream = tap->instantiate(&tap_filter, input_stream_module_name);
+                input_stream = tap->instantiate(&tap_config, &tap_filter, input_stream_module_name);
                 // ensure tap input type matches policy input tap
                 if (input_node["input_type"].as<std::string>() != tap->input_plugin()->plugin()) {
                     throw PolicyException(fmt::format("input_type for policy specified tap '{}' doesn't match tap's defined input type: {}/{}", tap_name, input_node["input_type"].as<std::string>(), tap->input_plugin()->plugin()));
@@ -146,6 +144,9 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
                 throw PolicyException(fmt::format("unable to instantiate tap '{}': {}", tap_name, e.what()));
             }
         }
+
+        auto input_callback = input_ptr->add_callback(tap_filter);
+
         // Handler type
         if (!it->second["handlers"] || !it->second["handlers"].IsMap()) {
             throw PolicyException("missing or invalid handler configuration at key 'handlers'");
@@ -186,7 +187,7 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
             input_resources_policy->set_input_stream(input_ptr);
             auto resources_handler_plugin = _registry->handler_plugins().find("input_resources");
             if (resources_handler_plugin != _registry->handler_plugins().end()) {
-                resources_module = resources_handler_plugin->second->instantiate(input_stream_module_name + "-resources", input_ptr, &window_config);
+                resources_module = resources_handler_plugin->second->instantiate(input_stream_module_name + "-resources", input_callback, &window_config, nullptr);
                 input_resources_policy->add_module(resources_module.get());
                 input_res_policy_ptr = input_resources_policy.get();
             }
@@ -268,17 +269,15 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
             }
             spdlog::get("visor")->info("policy [{}]: instantiating Handler {} of type {}", policy_name, handler_module_name, handler_module_type);
             // note, currently merging the handler config with the window config. do they need to be separate?
-            // TODO separate filter config
-            handler_config.config_merge(handler_metrics);
-            handler_config.config_merge(handler_filter);
             handler_config.config_merge(window_config);
+            handler_filter.config_merge(handler_metrics);
 
             std::unique_ptr<StreamHandler> handler_module;
             if (!handler_sequence || handler_modules.empty()) {
-                handler_module = handler_plugin->second->instantiate(policy_name + "-" + handler_module_name, input_ptr, &handler_config);
+                handler_module = handler_plugin->second->instantiate(policy_name + "-" + handler_module_name, input_callback, &handler_config, &handler_filter);
             } else {
                 // for sequence, use only previous handler
-                handler_module = handler_plugin->second->instantiate(policy_name + "-" + handler_module_name, nullptr, &handler_config, handler_modules.back().get());
+                handler_module = handler_plugin->second->instantiate(policy_name + "-" + handler_module_name, nullptr, &handler_config, &handler_filter, handler_modules.back().get());
             }
             policy_ptr->add_module(handler_module.get());
             handler_modules.emplace_back(std::move(handler_module));

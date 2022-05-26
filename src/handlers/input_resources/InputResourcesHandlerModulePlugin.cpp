@@ -20,10 +20,10 @@ using json = nlohmann::json;
 void InputResourcesHandlerModulePlugin::setup_routes(HttpServer *svr)
 {
 }
-std::unique_ptr<StreamHandler> InputResourcesHandlerModulePlugin::instantiate(const std::string &name, InputStream *input_stream, const Configurable *config, StreamHandler *stream_handler)
+std::unique_ptr<StreamHandler> InputResourcesHandlerModulePlugin::instantiate(const std::string &name, InputCallback *input_stream_cb, const Configurable *config, const Configurable *filter, StreamHandler *stream_handler)
 {
     // TODO using config as both window config and module config
-    auto handler_module = std::make_unique<InputResourcesStreamHandler>(name, input_stream, config, stream_handler);
+    auto handler_module = std::make_unique<InputResourcesStreamHandler>(name, input_stream_cb, config, stream_handler);
     handler_module->config_merge(*config);
     return handler_module;
 }

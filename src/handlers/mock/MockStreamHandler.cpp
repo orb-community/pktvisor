@@ -7,7 +7,7 @@
 
 namespace visor::handler::mock {
 
-MockStreamHandler::MockStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config, StreamHandler *handler)
+MockStreamHandler::MockStreamHandler(const std::string &name, InputCallback *stream, const Configurable *window_config, StreamHandler *handler)
     : visor::StreamMetricsHandler<MockMetricsManager>(name, window_config)
 {
     if (handler) {
@@ -22,7 +22,7 @@ MockStreamHandler::MockStreamHandler(const std::string &name, InputStream *strea
     }
     assert(_logger);
     // figure out which input stream we have
-    _mock_stream = dynamic_cast<MockInputStream *>(stream);
+    _mock_stream = dynamic_cast<MockInputStreamCallback *>(stream);
     if (!_mock_stream) {
         throw StreamHandlerException(fmt::format("MockStreamHandler: unsupported input stream {}", stream->name()));
     }

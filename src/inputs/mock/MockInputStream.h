@@ -28,6 +28,7 @@ public:
     void start() override;
     void stop() override;
     void info_json(json &j) const override;
+    std::unique_ptr<InputCallback> create_callback(const Configurable &filter) override;
     size_t consumer_count() const override
     {
         return policy_signal.slot_count() + heartbeat_signal.slot_count() + random_int_signal.slot_count();
@@ -37,6 +38,45 @@ public:
     // IF THIS changes, see consumer_count()
     // note: these are mutable because consumer_count() calls slot_count() which is not const (unclear if it could/should be)
     mutable sigslot::signal<uint64_t> random_int_signal;
+};
+
+class MockInputStreamCallback : public visor::InputCallback
+{
+    MockInputStream *_mock_stream{nullptr};
+
+    sigslot::connection _mock_connection;
+    sigslot::connection _heartbeat_connection;
+
+    void _random_int_cb(uint64_t value)
+    {
+        random_int_signal(value);
+    }
+
+    void _heartbeat_cb(timespec stamp)
+    {
+        heartbeat_signal(stamp);
+    }
+
+public:
+    MockInputStreamCallback(const Configurable &filter, MockInputStream *mock)
+        : InputCallback(filter)
+    {
+        _mock_stream = mock;
+        _input_name = mock->name();
+        _mock_connection = _mock_stream->random_int_signal.connect(&MockInputStreamCallback::_random_int_cb, this);
+        _heartbeat_connection = _mock_stream->heartbeat_signal.connect(&MockInputStreamCallback::_heartbeat_cb, this);
+    }
+
+    ~MockInputStreamCallback()
+    {
+        if (_mock_stream) {
+            _mock_connection.disconnect();
+            _heartbeat_connection.disconnect();
+        }
+    }
+
+    mutable sigslot::signal<uint64_t> random_int_signal;
+    mutable sigslot::signal<const timespec> heartbeat_signal;
 };
 
 }

@@ -22,7 +22,7 @@ namespace visor::handler::dns {
 
 thread_local DnsStreamHandler::DnsCacheData DnsStreamHandler::_cached_dns_layer;
 
-DnsStreamHandler::DnsStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config, StreamHandler *handler)
+DnsStreamHandler::DnsStreamHandler(const std::string &name, InputCallback *stream, const Configurable *window_config, StreamHandler *handler)
     : visor::StreamMetricsHandler<DnsMetricsManager>(name, window_config)
 {
     if (handler) {
@@ -31,8 +31,8 @@ DnsStreamHandler::DnsStreamHandler(const std::string &name, InputStream *stream,
 
     assert(stream);
     // figure out which input stream we have
-    _pcap_stream = dynamic_cast<PcapInputStream *>(stream);
-    _mock_stream = dynamic_cast<MockInputStream *>(stream);
+    _pcap_stream = dynamic_cast<PcapInputStreamCallback *>(stream);
+    _mock_stream = dynamic_cast<MockInputStreamCallback *>(stream);
     _dnstap_stream = dynamic_cast<DnstapInputStream *>(stream);
     if (!_pcap_stream && !_mock_stream && !_dnstap_stream) {
         throw StreamHandlerException(fmt::format("DnsStreamHandler: unsupported input stream {}", stream->name()));

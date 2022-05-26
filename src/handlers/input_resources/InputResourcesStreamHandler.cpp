@@ -7,7 +7,7 @@
 
 namespace visor::handler::resources {
 
-InputResourcesStreamHandler::InputResourcesStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config, StreamHandler *handler)
+InputResourcesStreamHandler::InputResourcesStreamHandler(const std::string &name, InputCallback *stream, const Configurable *window_config, StreamHandler *handler)
     : visor::StreamMetricsHandler<InputResourcesMetricsManager>(name, window_config)
     , _timer(0)
     , _timestamp(timespec())
@@ -19,10 +19,10 @@ InputResourcesStreamHandler::InputResourcesStreamHandler(const std::string &name
     assert(stream);
     // figure out which input stream we have
     if (stream) {
-        _pcap_stream = dynamic_cast<PcapInputStream *>(stream);
-        _dnstap_stream = dynamic_cast<DnstapInputStream *>(stream);
-        _mock_stream = dynamic_cast<MockInputStream *>(stream);
-        _flow_stream = dynamic_cast<FlowInputStream *>(stream);
+        _pcap_stream = dynamic_cast<PcapInputStreamCallback *>(stream);
+        _dnstap_stream = dynamic_cast<DnstapInputStreamCallback *>(stream);
+        _mock_stream = dynamic_cast<MockInputStreamCallback *>(stream);
+        _flow_stream = dynamic_cast<FlowInputStreamCallback *>(stream);
         if (!_pcap_stream && !_mock_stream && !_dnstap_stream && !_flow_stream) {
             throw StreamHandlerException(fmt::format("NetStreamHandler: unsupported input stream {}", stream->name()));
         }

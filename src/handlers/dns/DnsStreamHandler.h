@@ -252,8 +252,8 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
     static thread_local DnsCacheData _cached_dns_layer;
 
     // the input stream sources we support (only one will be in use at a time)
-    PcapInputStream *_pcap_stream{nullptr};
-    MockInputStream *_mock_stream{nullptr};
+    PcapInputStreamCallback *_pcap_stream{nullptr};
+    MockInputStreamCallback *_mock_stream{nullptr};
     DnstapInputStream *_dnstap_stream{nullptr};
 
     typedef uint32_t flowKey;
@@ -311,7 +311,7 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
     bool _filtering(DnsLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint16_t port, timespec stamp);
 
 public:
-    DnsStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config, StreamHandler *handler = nullptr);
+    DnsStreamHandler(const std::string &name, InputCallback *stream, const Configurable *window_config, StreamHandler *handler = nullptr);
     ~DnsStreamHandler() = default;
 
     // visor::AbstractModule

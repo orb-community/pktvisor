@@ -17,7 +17,7 @@ void DnstapInputModulePlugin::setup_routes([[maybe_unused]] HttpServer *svr)
 {
 }
 
-std::unique_ptr<InputStream> DnstapInputModulePlugin::instantiate(const std::string name, const Configurable *config)
+std::unique_ptr<InputStream> DnstapInputModulePlugin::instantiate(const std::string name, const Configurable *config, const Configurable *filter)
 {
     auto input_stream = std::make_unique<DnstapInputStream>(name);
     input_stream->config_merge(*config);

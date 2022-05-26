@@ -43,7 +43,7 @@ void PcapInputModulePlugin::_read(const httplib::Request &req, httplib::Response
 }
 */
 
-std::unique_ptr<InputStream> PcapInputModulePlugin::instantiate(const std::string name, const Configurable *config)
+std::unique_ptr<InputStream> PcapInputModulePlugin::instantiate(const std::string name, const Configurable *config, const Configurable *filter)
 {
     auto input_stream = std::make_unique<PcapInputStream>(name);
     input_stream->config_merge(*config);

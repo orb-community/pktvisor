@@ -219,4 +219,9 @@ void FlowInputStream::info_json(json &j) const
     common_info_json(j);
     j[schema_key()]["packet_errors"] = _error_count.load();
 }
+
+std::unique_ptr<InputCallback> FlowInputStream::create_callback(const Configurable &filter)
+{
+    return std::make_unique<FlowInputStreamCallback>(filter, this);
+}
 }

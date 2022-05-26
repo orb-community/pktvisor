@@ -585,6 +585,11 @@ void PcapInputStream::info_json(json &j) const
     j[schema_key()] = info;
 }
 
+std::unique_ptr<InputCallback> PcapInputStream::create_callback(const Configurable &filter)
+{
+    return std::make_unique<PcapInputStreamCallback>(filter, this);
+}
+
 void PcapInputStream::parse_host_spec()
 {
     if (config_exists("host_spec")) {

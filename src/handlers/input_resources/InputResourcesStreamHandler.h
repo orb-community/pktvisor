@@ -84,10 +84,10 @@ class InputResourcesStreamHandler final : public visor::StreamMetricsHandler<Inp
     time_t _timer;
     timespec _timestamp;
 
-    PcapInputStream *_pcap_stream{nullptr};
-    DnstapInputStream *_dnstap_stream{nullptr};
-    MockInputStream *_mock_stream{nullptr};
-    FlowInputStream *_flow_stream{nullptr};
+    PcapInputStreamCallback *_pcap_stream{nullptr};
+    DnstapInputStreamCallback *_dnstap_stream{nullptr};
+    MockInputStreamCallback *_mock_stream{nullptr};
+    FlowInputStreamCallback *_flow_stream{nullptr};
 
     sigslot::connection _dnstap_connection;
     sigslot::connection _sflow_connection;
@@ -104,7 +104,7 @@ class InputResourcesStreamHandler final : public visor::StreamMetricsHandler<Inp
     void process_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp);
 
 public:
-    InputResourcesStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config, StreamHandler *handler = nullptr);
+    InputResourcesStreamHandler(const std::string &name, InputCallback *stream, const Configurable *window_config, StreamHandler *handler = nullptr);
     ~InputResourcesStreamHandler() = default;
 
     // visor::AbstractModule

@@ -61,4 +61,9 @@ void MockInputStream::info_json(json &j) const
     common_info_json(j);
 }
 
+std::unique_ptr<InputCallback> MockInputStream::create_callback(const Configurable &filter)
+{
+    return std::make_unique<MockInputStreamCallback>(filter, this);
+}
+
 }

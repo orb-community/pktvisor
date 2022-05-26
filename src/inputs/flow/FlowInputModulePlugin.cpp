@@ -16,7 +16,7 @@ void FlowInputModulePlugin::setup_routes([[maybe_unused]] HttpServer *svr)
 {
 }
 
-std::unique_ptr<InputStream> FlowInputModulePlugin::instantiate(const std::string name, const Configurable *config)
+std::unique_ptr<InputStream> FlowInputModulePlugin::instantiate(const std::string name, const Configurable *config, const Configurable *filter)
 {
     auto input_stream = std::make_unique<FlowInputStream>(name);
     input_stream->config_merge(*config);
