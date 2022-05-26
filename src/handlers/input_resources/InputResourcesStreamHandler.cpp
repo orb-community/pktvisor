@@ -77,17 +77,17 @@ void InputResourcesStreamHandler::stop()
     _running = false;
 }
 
-void InputResourcesStreamHandler::process_policies_cb(const Policy *policy, InputStream::Action action)
+void InputResourcesStreamHandler::process_policies_cb(const Policy *policy, Action action)
 {
     int16_t policies_number = 0;
     int16_t handlers_count = 0;
 
     switch (action) {
-    case InputStream::Action::AddPolicy:
+    case Action::AddPolicy:
         policies_number = 1;
         handlers_count = policy->get_handlers_list_size();
         break;
-    case InputStream::Action::RemovePolicy:
+    case Action::RemovePolicy:
         policies_number = -1;
         handlers_count = -policy->get_handlers_list_size();
         break;

@@ -100,7 +100,7 @@ class InputResourcesStreamHandler final : public visor::StreamMetricsHandler<Inp
     void process_sflow_cb(const SFSample &);
     void process_netflow_cb(const NFSample &);
     void process_dnstap_cb(const dnstap::Dnstap &, size_t);
-    void process_policies_cb(const Policy *policy, InputStream::Action action);
+    void process_policies_cb(const Policy *policy, Action action);
     void process_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp);
 
 public:

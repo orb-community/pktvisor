@@ -113,6 +113,7 @@ class DnstapInputStreamCallback : public visor::InputCallback
 
     sigslot::connection _dnstap_connection;
     sigslot::connection _heartbeat_connection;
+    sigslot::connection _policy_connection;
 
     void _dnstap_cb(const ::dnstap::Dnstap &dnstap, size_t size)
     {
@@ -124,6 +125,11 @@ class DnstapInputStreamCallback : public visor::InputCallback
         heartbeat_signal(stamp);
     }
 
+    void _policy_cb(const Policy *policy, Action action)
+    {
+        policy_signal(policy, action);
+    }
+
 public:
     DnstapInputStreamCallback(const Configurable &filter, DnstapInputStream *dnstap)
         : InputCallback(filter)
@@ -132,6 +138,7 @@ public:
         _input_name = dnstap->name();
         _dnstap_connection = _dnstap_stream->dnstap_signal.connect(&DnstapInputStreamCallback::_dnstap_cb, this);
         _heartbeat_connection = _dnstap_stream->heartbeat_signal.connect(&DnstapInputStreamCallback::_heartbeat_cb, this);
+        _policy_connection = _dnstap_stream->policy_signal.connect(&DnstapInputStreamCallback::_policy_cb, this);
     }
 
     ~DnstapInputStreamCallback()
@@ -139,11 +146,13 @@ public:
         if (_dnstap_stream) {
             _dnstap_connection.disconnect();
             _heartbeat_connection.disconnect();
+            _policy_connection.disconnect();
         }
     }
 
     mutable sigslot::signal<const ::dnstap::Dnstap &, size_t> dnstap_signal;
     mutable sigslot::signal<const timespec> heartbeat_signal;
+    mutable sigslot::signal<const Policy *, Action> policy_signal;
 };
 
 }

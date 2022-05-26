@@ -134,6 +134,7 @@ class PcapInputStreamCallback : public visor::InputCallback
     sigslot::connection _pcap_tcp_reassembly_errors_connection;
     sigslot::connection _pcap_stats_connection;
     sigslot::connection _heartbeat_connection;
+    sigslot::connection _policy_connection;
 
     void _process_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp)
     {
@@ -180,6 +181,11 @@ class PcapInputStreamCallback : public visor::InputCallback
         heartbeat_signal(stamp);
     }
 
+    void _policy_cb(const Policy *policy, Action action)
+    {
+        policy_signal(policy, action);
+    }
+
 public:
     PcapInputStreamCallback(const Configurable &filter, PcapInputStream *pcap)
         : InputCallback(filter)
@@ -196,6 +202,7 @@ public:
         _pcap_tcp_reassembly_errors_connection = _pcap_stream->tcp_reassembly_error_signal.connect(&PcapInputStreamCallback::_process_pcap_tcp_reassembly_error, this);
         _pcap_stats_connection = _pcap_stream->pcap_stats_signal.connect(&PcapInputStreamCallback::_process_pcap_stats, this);
         _heartbeat_connection = _pcap_stream->heartbeat_signal.connect(&PcapInputStreamCallback::_heartbeat_cb, this);
+        _policy_connection = _pcap_stream->policy_signal.connect(&PcapInputStreamCallback::_policy_cb, this);
     }
 
     ~PcapInputStreamCallback()
@@ -211,6 +218,7 @@ public:
             _pcap_tcp_reassembly_errors_connection.disconnect();
             _pcap_stats_connection.disconnect();
             _heartbeat_connection.disconnect();
+            _policy_connection.disconnect();
         }
     }
 
@@ -224,6 +232,7 @@ public:
     mutable sigslot::signal<pcpp::Packet &, PacketDirection, pcpp::ProtocolType, timespec> tcp_reassembly_error_signal;
     mutable sigslot::signal<const pcpp::IPcapDevice::PcapStats &> pcap_stats_signal;
     mutable sigslot::signal<const timespec> heartbeat_signal;
+    mutable sigslot::signal<const Policy *, Action> policy_signal;
 };
 
 }

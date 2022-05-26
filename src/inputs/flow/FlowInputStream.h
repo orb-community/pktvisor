@@ -65,6 +65,7 @@ class FlowInputStreamCallback : public visor::InputCallback
     sigslot::connection _sflow_connection;
     sigslot::connection _netflow_connection;
     sigslot::connection _heartbeat_connection;
+    sigslot::connection _policy_connection;
 
     void _sflow_cb(const SFSample &sflow)
     {
@@ -81,6 +82,11 @@ class FlowInputStreamCallback : public visor::InputCallback
         heartbeat_signal(stamp);
     }
 
+    void _policy_cb(const Policy *policy, Action action)
+    {
+        policy_signal(policy, action);
+    }
+
 public:
     FlowInputStreamCallback(const Configurable &filter, FlowInputStream *flow)
         : InputCallback(filter)
@@ -90,6 +96,7 @@ public:
         _sflow_connection = _flow_stream->sflow_signal.connect(&FlowInputStreamCallback::_sflow_cb, this);
         _netflow_connection = _flow_stream->netflow_signal.connect(&FlowInputStreamCallback::_netflow_cb, this);
         _heartbeat_connection = _flow_stream->heartbeat_signal.connect(&FlowInputStreamCallback::_heartbeat_cb, this);
+        _policy_connection = _flow_stream->policy_signal.connect(&FlowInputStreamCallback::_policy_cb, this);
     }
 
     ~FlowInputStreamCallback()
@@ -98,12 +105,14 @@ public:
             _sflow_connection.disconnect();
             _netflow_connection.disconnect();
             _heartbeat_connection.disconnect();
+            _policy_connection.disconnect();
         }
     }
 
     mutable sigslot::signal<const SFSample &> sflow_signal;
     mutable sigslot::signal<const NFSample &> netflow_signal;
     mutable sigslot::signal<const timespec> heartbeat_signal;
+    mutable sigslot::signal<const Policy *, Action> policy_signal;
 };
 
 }

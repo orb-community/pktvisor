@@ -10,6 +10,11 @@
 
 namespace visor {
 
+enum class Action {
+    AddPolicy,
+    RemovePolicy
+};
+
 class InputCallback : public Configurable
 {
 protected:
@@ -38,10 +43,6 @@ protected:
     static constexpr uint8_t HEARTBEAT_INTERVAL = 30; // in seconds
 
 public:
-    enum class Action {
-        AddPolicy,
-        RemovePolicy
-    };
 
     InputStream(const std::string &name)
         : AbstractRunnableModule(name)
