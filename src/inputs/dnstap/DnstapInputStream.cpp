@@ -64,7 +64,10 @@ void DnstapInputStream::_read_frame_stream_file()
 
             // Emit signal to handlers
             if (!_filtering(d)) {
-                dnstap_signal(d, len_data);
+                std::unique_lock lock(_input_mutex);
+                for (auto &callback : _callbacks) {
+                    dynamic_cast<DnstapInputStreamCallback *>(callback.get())->dnstap_cb(d, len_data);
+                }
             }
         } else if (result == fstrm_res_stop) {
             // Normal end of data stream
@@ -158,7 +161,10 @@ void DnstapInputStream::_create_frame_stream_tcp_socket()
         timespec stamp;
         // use now()
         std::timespec_get(&stamp, TIME_UTC);
-        heartbeat_signal(stamp);
+        std::unique_lock lock(_input_mutex);
+        for (auto &callback : _callbacks) {
+            dynamic_cast<DnstapInputStreamCallback *>(callback.get())->heartbeat_cb(stamp);
+        }
     });
     _timer->on<uvw::ErrorEvent>([this](const auto &err, auto &handle) {
         _logger->error("[{}] TimerEvent error: {}", _name, err.what());
@@ -197,7 +203,10 @@ void DnstapInputStream::_create_frame_stream_tcp_socket()
 
             // Emit signal to handlers
             if (!_filtering(d)) {
-                dnstap_signal(d, len_data);
+                std::unique_lock lock(_input_mutex);
+                for (auto &callback : _callbacks) {
+                    dynamic_cast<DnstapInputStreamCallback *>(callback.get())->dnstap_cb(d, len_data);
+                }
             }
         };
 
@@ -282,7 +291,10 @@ void DnstapInputStream::_create_frame_stream_unix_socket()
         timespec stamp;
         // use now()
         std::timespec_get(&stamp, TIME_UTC);
-        heartbeat_signal(stamp);
+        std::unique_lock lock(_input_mutex);
+        for (auto &callback : _callbacks) {
+            dynamic_cast<DnstapInputStreamCallback *>(callback.get())->heartbeat_cb(stamp);
+        }
     });
     _timer->on<uvw::ErrorEvent>([this](const auto &err, auto &handle) {
         _logger->error("[{}] TimerEvent error: {}", _name, err.what());
@@ -320,7 +332,10 @@ void DnstapInputStream::_create_frame_stream_unix_socket()
             }
             // Emit signal to handlers
             if (!_filtering(d)) {
-                dnstap_signal(d, len_data);
+                std::unique_lock lock(_input_mutex);
+                for (auto &callback : _callbacks) {
+                    dynamic_cast<DnstapInputStreamCallback *>(callback.get())->dnstap_cb(d, len_data);
+                }
             }
         };
 
@@ -477,6 +492,6 @@ void DnstapInputStream::info_json(json &j) const
 
 std::unique_ptr<InputCallback> DnstapInputStream::create_callback(const Configurable &filter)
 {
-    return std::make_unique<DnstapInputStreamCallback>(filter, this);
+    return std::make_unique<DnstapInputStreamCallback>(_name, filter);
 }
 }

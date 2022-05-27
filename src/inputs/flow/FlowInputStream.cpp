@@ -73,7 +73,10 @@ void FlowInputStream::_read_from_pcap_file()
                 sample.rawSampleLen = udpLayer->getLayerPayloadSize();
                 try {
                     read_sflow_datagram(&sample);
-                    sflow_signal(sample);
+                    std::unique_lock lock(_input_mutex);
+                    for (auto &callback : _callbacks) {
+                        dynamic_cast<FlowInputStreamCallback *>(callback.get())->sflow_cb(sample);
+                    }
                 } catch (const std::exception &e) {
                     _logger->error(e.what());
                 }
@@ -87,7 +90,10 @@ void FlowInputStream::_read_from_pcap_file()
                 sample.raw_sample = udpLayer->getLayerPayload();
                 sample.raw_sample_len = udpLayer->getLayerPayloadSize();
                 if (process_netflow_packet(&sample)) {
-                    netflow_signal(sample);
+                    std::unique_lock lock(_input_mutex);
+                    for (auto &callback : _callbacks) {
+                        dynamic_cast<FlowInputStreamCallback *>(callback.get())->netflow_cb(sample);
+                    }
                 } else {
                     _logger->error("invalid netflow packet");
                 }
@@ -135,7 +141,10 @@ void FlowInputStream::_create_frame_stream_udp_socket()
         timespec stamp;
         // use now()
         std::timespec_get(&stamp, TIME_UTC);
-        heartbeat_signal(stamp);
+        std::unique_lock lock(_input_mutex);
+        for (auto &callback : _callbacks) {
+            dynamic_cast<FlowInputStreamCallback *>(callback.get())->heartbeat_cb(stamp);
+        }
     });
     _timer->on<uvw::ErrorEvent>([this](const auto &err, auto &handle) {
         _logger->error("[{}] TimerEvent error: {}", _name, err.what());
@@ -166,7 +175,10 @@ void FlowInputStream::_create_frame_stream_udp_socket()
             std::memcpy(&sample.sourceIP.address.ip_v4.addr, &peer4.sin_addr, 4);
             try {
                 read_sflow_datagram(&sample);
-                sflow_signal(sample);
+                std::unique_lock lock(_input_mutex);
+                for (auto &callback : _callbacks) {
+                    dynamic_cast<FlowInputStreamCallback *>(callback.get())->sflow_cb(sample);
+                }
             } catch (const std::exception &e) {
                 ++_error_count;
             }
@@ -178,7 +190,10 @@ void FlowInputStream::_create_frame_stream_udp_socket()
             sample.raw_sample = reinterpret_cast<uint8_t *>(event.data.get());
             sample.raw_sample_len = event.length;
             if (process_netflow_packet(&sample)) {
-                netflow_signal(sample);
+                std::unique_lock lock(_input_mutex);
+                for (auto &callback : _callbacks) {
+                    dynamic_cast<FlowInputStreamCallback *>(callback.get())->netflow_cb(sample);
+                }
             } else {
                 ++_error_count;
             }
@@ -222,6 +237,6 @@ void FlowInputStream::info_json(json &j) const
 
 std::unique_ptr<InputCallback> FlowInputStream::create_callback(const Configurable &filter)
 {
-    return std::make_unique<FlowInputStreamCallback>(filter, this);
+    return std::make_unique<FlowInputStreamCallback>(_name, filter);
 }
 }

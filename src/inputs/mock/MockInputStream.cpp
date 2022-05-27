@@ -37,7 +37,10 @@ void MockInputStream::start()
     _mock_work = timer_thread.set_interval(1s, [this] {
         auto i = std::rand();
         _logger->info("mock input sends random int signal: {}", i);
-        random_int_signal(i);
+        std::unique_lock lock(_input_mutex);
+        for (auto &callback : _callbacks) {
+            dynamic_cast<MockInputStreamCallback *>(callback.get())->random_int_cb(i);
+        }
     });
 
     _running = true;
@@ -63,7 +66,7 @@ void MockInputStream::info_json(json &j) const
 
 std::unique_ptr<InputCallback> MockInputStream::create_callback(const Configurable &filter)
 {
-    return std::make_unique<MockInputStreamCallback>(filter, this);
+    return std::make_unique<MockInputStreamCallback>(_name, filter);
 }
 
 }

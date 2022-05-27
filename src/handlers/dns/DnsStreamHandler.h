@@ -17,7 +17,7 @@
 #include <string>
 
 namespace visor::input::dnstap {
-class DnstapInputStream;
+class DnstapInputStreamCallback;
 }
 
 namespace visor::handler::dns {
@@ -254,7 +254,7 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
     // the input stream sources we support (only one will be in use at a time)
     PcapInputStreamCallback *_pcap_stream{nullptr};
     MockInputStreamCallback *_mock_stream{nullptr};
-    DnstapInputStream *_dnstap_stream{nullptr};
+    DnstapInputStreamCallback *_dnstap_stream{nullptr};
 
     typedef uint32_t flowKey;
     std::unordered_map<flowKey, TcpFlowData> _tcp_connections;

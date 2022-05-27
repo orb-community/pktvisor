@@ -106,7 +106,6 @@ visor:
         input_type: mock
         config:
           sample: value
-        filter:
           bpf: "tcp or udp"
       handlers:
         window_config:
@@ -627,12 +626,9 @@ TEST_CASE("Policies", "[policies]")
         REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["policies"]), "policy [default_view-default_net] creation failed (handler: default_view): module name 'default_view-default_net' already exists");
 
         auto input_node = config_file["visor"]["policies"]["default_view"]["input"];
-        Config input_filter;
-        input_filter.config_set_yaml(input_node["filter"]);
         Config input_config;
         input_config.config_set_yaml(input_node["config"]);
-        input_filter.config_merge(input_config);
-        auto hash = input_filter.config_hash();
+        auto hash = input_config.config_hash();
 
         // ensure the modules were rolled back
         REQUIRE(!registry.policy_manager()->module_exists("default_view"));

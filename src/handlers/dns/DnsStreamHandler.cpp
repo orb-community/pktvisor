@@ -33,7 +33,7 @@ DnsStreamHandler::DnsStreamHandler(const std::string &name, InputCallback *strea
     // figure out which input stream we have
     _pcap_stream = dynamic_cast<PcapInputStreamCallback *>(stream);
     _mock_stream = dynamic_cast<MockInputStreamCallback *>(stream);
-    _dnstap_stream = dynamic_cast<DnstapInputStream *>(stream);
+    _dnstap_stream = dynamic_cast<DnstapInputStreamCallback *>(stream);
     if (!_pcap_stream && !_mock_stream && !_dnstap_stream) {
         throw StreamHandlerException(fmt::format("DnsStreamHandler: unsupported input stream {}", stream->name()));
     }

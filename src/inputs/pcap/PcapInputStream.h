@@ -91,10 +91,6 @@ public:
     void stop() override;
     void info_json(json &j) const override;
     std::unique_ptr<InputCallback> create_callback(const Configurable &filter) override;
-    size_t consumer_count() const override
-    {
-        return policy_signal.slot_count() + heartbeat_signal.slot_count() + packet_signal.slot_count() + udp_signal.slot_count() + start_tstamp_signal.slot_count() + tcp_message_ready_signal.slot_count() + tcp_connection_start_signal.slot_count() + tcp_connection_end_signal.slot_count() + tcp_reassembly_error_signal.slot_count() + pcap_stats_signal.slot_count();
-    }
 
     // utilities
     void parse_host_spec();
@@ -105,6 +101,62 @@ public:
     void tcp_message_ready(int8_t side, const pcpp::TcpStreamData &tcpData);
     void tcp_connection_start(const pcpp::ConnectionData &connectionData);
     void tcp_connection_end(const pcpp::ConnectionData &connectionData, pcpp::TcpReassembly::ConnectionEndReason reason);
+};
+
+class PcapInputStreamCallback : public visor::InputCallback
+{
+public:
+    PcapInputStreamCallback(const std::string &name, const Configurable &filter)
+        : InputCallback(name, filter)
+    {
+    }
+
+    ~PcapInputStreamCallback() = default;
+
+    size_t consumer_count() const override
+    {
+        return policy_signal.slot_count() + heartbeat_signal.slot_count() + packet_signal.slot_count() + udp_signal.slot_count() + start_tstamp_signal.slot_count() + tcp_message_ready_signal.slot_count() + tcp_connection_start_signal.slot_count() + tcp_connection_end_signal.slot_count() + tcp_reassembly_error_signal.slot_count() + pcap_stats_signal.slot_count();
+    }
+
+    void process_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp)
+    {
+        packet_signal(payload, dir, l3, l4, stamp);
+    }
+
+    void process_udp_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp)
+    {
+        udp_signal(payload, dir, l3, flowkey, stamp);
+    }
+    void tcp_message_ready_cb(int8_t side, const pcpp::TcpStreamData &tcpData)
+    {
+        tcp_message_ready_signal(side, tcpData);
+    }
+    void tcp_connection_start_cb(const pcpp::ConnectionData &connectionData)
+    {
+        tcp_connection_start_signal(connectionData);
+    }
+    void tcp_connection_end_cb(const pcpp::ConnectionData &connectionData, pcpp::TcpReassembly::ConnectionEndReason reason)
+    {
+        tcp_connection_end_signal(connectionData, reason);
+    }
+    void start_tstamp_cb(timespec stamp)
+    {
+        start_tstamp_signal(stamp);
+    }
+    void end_tstamp_cb(timespec stamp)
+    {
+        end_tstamp_signal(stamp);
+    }
+
+    void process_pcap_tcp_reassembly_error(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, timespec stamp)
+    {
+        tcp_reassembly_error_signal(payload, dir, l3, stamp);
+    }
+
+    void process_pcap_stats(const pcpp::IPcapDevice::PcapStats &stats)
+    {
+        pcap_stats_signal(stats);
+    }
 
     // handler functionality
     // IF THIS changes, see consumer_count()
@@ -118,121 +170,6 @@ public:
     mutable sigslot::signal<const pcpp::ConnectionData &, pcpp::TcpReassembly::ConnectionEndReason> tcp_connection_end_signal;
     mutable sigslot::signal<pcpp::Packet &, PacketDirection, pcpp::ProtocolType, timespec> tcp_reassembly_error_signal;
     mutable sigslot::signal<const pcpp::IPcapDevice::PcapStats &> pcap_stats_signal;
-};
-
-class PcapInputStreamCallback : public visor::InputCallback
-{
-    PcapInputStream *_pcap_stream{nullptr};
-
-    sigslot::connection _pkt_connection;
-    sigslot::connection _pkt_udp_connection;
-    sigslot::connection _start_tstamp_connection;
-    sigslot::connection _end_tstamp_connection;
-    sigslot::connection _tcp_start_connection;
-    sigslot::connection _tcp_end_connection;
-    sigslot::connection _tcp_message_connection;
-    sigslot::connection _pcap_tcp_reassembly_errors_connection;
-    sigslot::connection _pcap_stats_connection;
-    sigslot::connection _heartbeat_connection;
-    sigslot::connection _policy_connection;
-
-    void _process_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp)
-    {
-        packet_signal(payload, dir, l3, l4, stamp);
-    }
-
-    void _process_udp_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp)
-    {
-        udp_signal(payload, dir, l3, flowkey, stamp);
-    }
-    void _tcp_message_ready_cb(int8_t side, const pcpp::TcpStreamData &tcpData)
-    {
-        tcp_message_ready_signal(side, tcpData);
-    }
-    void _tcp_connection_start_cb(const pcpp::ConnectionData &connectionData)
-    {
-        tcp_connection_start_signal(connectionData);
-    }
-    void _tcp_connection_end_cb(const pcpp::ConnectionData &connectionData, pcpp::TcpReassembly::ConnectionEndReason reason)
-    {
-        tcp_connection_end_signal(connectionData, reason);
-    }
-    void _start_tstamp_cb(timespec stamp)
-    {
-        start_tstamp_signal(stamp);
-    }
-    void _end_tstamp_cb(timespec stamp)
-    {
-        end_tstamp_signal(stamp);
-    }
-
-    void _process_pcap_tcp_reassembly_error(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, timespec stamp)
-    {
-        tcp_reassembly_error_signal(payload, dir, l3, stamp);
-    }
-
-    void _process_pcap_stats(const pcpp::IPcapDevice::PcapStats &stats)
-    {
-        pcap_stats_signal(stats);
-    }
-
-    void _heartbeat_cb(timespec stamp)
-    {
-        heartbeat_signal(stamp);
-    }
-
-    void _policy_cb(const Policy *policy, Action action)
-    {
-        policy_signal(policy, action);
-    }
-
-public:
-    PcapInputStreamCallback(const Configurable &filter, PcapInputStream *pcap)
-        : InputCallback(filter)
-    {
-        _pcap_stream = pcap;
-        _input_name = pcap->name();
-        _pkt_connection = _pcap_stream->packet_signal.connect(&PcapInputStreamCallback::_process_packet_cb, this);
-        _pkt_udp_connection = _pcap_stream->udp_signal.connect(&PcapInputStreamCallback::_process_udp_packet_cb, this);
-        _start_tstamp_connection = _pcap_stream->start_tstamp_signal.connect(&PcapInputStreamCallback::_start_tstamp_cb, this);
-        _end_tstamp_connection = _pcap_stream->end_tstamp_signal.connect(&PcapInputStreamCallback::_end_tstamp_cb, this);
-        _tcp_start_connection = _pcap_stream->tcp_connection_start_signal.connect(&PcapInputStreamCallback::_tcp_connection_start_cb, this);
-        _tcp_end_connection = _pcap_stream->tcp_connection_end_signal.connect(&PcapInputStreamCallback::_tcp_connection_end_cb, this);
-        _tcp_message_connection = _pcap_stream->tcp_message_ready_signal.connect(&PcapInputStreamCallback::_tcp_message_ready_cb, this);
-        _pcap_tcp_reassembly_errors_connection = _pcap_stream->tcp_reassembly_error_signal.connect(&PcapInputStreamCallback::_process_pcap_tcp_reassembly_error, this);
-        _pcap_stats_connection = _pcap_stream->pcap_stats_signal.connect(&PcapInputStreamCallback::_process_pcap_stats, this);
-        _heartbeat_connection = _pcap_stream->heartbeat_signal.connect(&PcapInputStreamCallback::_heartbeat_cb, this);
-        _policy_connection = _pcap_stream->policy_signal.connect(&PcapInputStreamCallback::_policy_cb, this);
-    }
-
-    ~PcapInputStreamCallback()
-    {
-        if (_pcap_stream) {
-            _pkt_connection.disconnect();
-            _pkt_udp_connection.disconnect();
-            _start_tstamp_connection.disconnect();
-            _end_tstamp_connection.disconnect();
-            _tcp_start_connection.disconnect();
-            _tcp_end_connection.disconnect();
-            _tcp_message_connection.disconnect();
-            _pcap_tcp_reassembly_errors_connection.disconnect();
-            _pcap_stats_connection.disconnect();
-            _heartbeat_connection.disconnect();
-            _policy_connection.disconnect();
-        }
-    }
-
-    mutable sigslot::signal<pcpp::Packet &, PacketDirection, pcpp::ProtocolType, pcpp::ProtocolType, timespec> packet_signal;
-    mutable sigslot::signal<pcpp::Packet &, PacketDirection, pcpp::ProtocolType, uint32_t, timespec> udp_signal;
-    mutable sigslot::signal<timespec> start_tstamp_signal;
-    mutable sigslot::signal<timespec> end_tstamp_signal;
-    mutable sigslot::signal<int8_t, const pcpp::TcpStreamData &> tcp_message_ready_signal;
-    mutable sigslot::signal<const pcpp::ConnectionData &> tcp_connection_start_signal;
-    mutable sigslot::signal<const pcpp::ConnectionData &, pcpp::TcpReassembly::ConnectionEndReason> tcp_connection_end_signal;
-    mutable sigslot::signal<pcpp::Packet &, PacketDirection, pcpp::ProtocolType, timespec> tcp_reassembly_error_signal;
-    mutable sigslot::signal<const pcpp::IPcapDevice::PcapStats &> pcap_stats_signal;
-    mutable sigslot::signal<const timespec> heartbeat_signal;
-    mutable sigslot::signal<const Policy *, Action> policy_signal;
 };
 
 }

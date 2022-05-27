@@ -96,63 +96,32 @@ public:
     void stop() override;
     void info_json(json &j) const override;
     std::unique_ptr<InputCallback> create_callback(const Configurable &filter) override;
+};
+
+class DnstapInputStreamCallback : public visor::InputCallback
+{
+public:
+    DnstapInputStreamCallback(const std::string &name, const Configurable &filter)
+        : InputCallback(name, filter)
+    {
+    }
+
+    ~DnstapInputStreamCallback() = default;
+
     size_t consumer_count() const override
     {
         return policy_signal.slot_count() + heartbeat_signal.slot_count() + dnstap_signal.slot_count();
+    }
+
+    void dnstap_cb(const ::dnstap::Dnstap &dnstap, size_t size)
+    {
+        dnstap_signal(dnstap, size);
     }
 
     // handler functionality
     // IF THIS changes, see consumer_count()
     // note: these are mutable because consumer_count() calls slot_count() which is not const (unclear if it could/should be)
     mutable sigslot::signal<const ::dnstap::Dnstap &, size_t> dnstap_signal;
-};
-
-class DnstapInputStreamCallback : public visor::InputCallback
-{
-    DnstapInputStream *_dnstap_stream{nullptr};
-
-    sigslot::connection _dnstap_connection;
-    sigslot::connection _heartbeat_connection;
-    sigslot::connection _policy_connection;
-
-    void _dnstap_cb(const ::dnstap::Dnstap &dnstap, size_t size)
-    {
-        dnstap_signal(dnstap, size);
-    }
-
-    void _heartbeat_cb(timespec stamp)
-    {
-        heartbeat_signal(stamp);
-    }
-
-    void _policy_cb(const Policy *policy, Action action)
-    {
-        policy_signal(policy, action);
-    }
-
-public:
-    DnstapInputStreamCallback(const Configurable &filter, DnstapInputStream *dnstap)
-        : InputCallback(filter)
-    {
-        _dnstap_stream = dnstap;
-        _input_name = dnstap->name();
-        _dnstap_connection = _dnstap_stream->dnstap_signal.connect(&DnstapInputStreamCallback::_dnstap_cb, this);
-        _heartbeat_connection = _dnstap_stream->heartbeat_signal.connect(&DnstapInputStreamCallback::_heartbeat_cb, this);
-        _policy_connection = _dnstap_stream->policy_signal.connect(&DnstapInputStreamCallback::_policy_cb, this);
-    }
-
-    ~DnstapInputStreamCallback()
-    {
-        if (_dnstap_stream) {
-            _dnstap_connection.disconnect();
-            _heartbeat_connection.disconnect();
-            _policy_connection.disconnect();
-        }
-    }
-
-    mutable sigslot::signal<const ::dnstap::Dnstap &, size_t> dnstap_signal;
-    mutable sigslot::signal<const timespec> heartbeat_signal;
-    mutable sigslot::signal<const Policy *, Action> policy_signal;
 };
 
 }

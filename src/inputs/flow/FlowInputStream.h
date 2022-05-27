@@ -46,9 +46,31 @@ public:
     void stop() override;
     void info_json(json &j) const override;
     std::unique_ptr<InputCallback> create_callback(const Configurable &filter) override;
+};
+
+class FlowInputStreamCallback : public visor::InputCallback
+{
+public:
+    FlowInputStreamCallback(const std::string &name, const Configurable &filter)
+        : InputCallback(name, filter)
+    {
+    }
+
+    ~FlowInputStreamCallback() = default;
+
     size_t consumer_count() const override
     {
         return policy_signal.slot_count() + heartbeat_signal.slot_count() + sflow_signal.slot_count() + netflow_signal.slot_count();
+    }
+
+    void sflow_cb(const SFSample &sflow)
+    {
+        sflow_signal(sflow);
+    }
+
+    void netflow_cb(const NFSample &netflow)
+    {
+        netflow_signal(netflow);
     }
 
     // handler functionality
@@ -56,63 +78,6 @@ public:
     // note: these are mutable because consumer_count() calls slot_count() which is not const (unclear if it could/should be)
     mutable sigslot::signal<const SFSample &> sflow_signal;
     mutable sigslot::signal<const NFSample &> netflow_signal;
-};
-
-class FlowInputStreamCallback : public visor::InputCallback
-{
-    FlowInputStream *_flow_stream{nullptr};
-
-    sigslot::connection _sflow_connection;
-    sigslot::connection _netflow_connection;
-    sigslot::connection _heartbeat_connection;
-    sigslot::connection _policy_connection;
-
-    void _sflow_cb(const SFSample &sflow)
-    {
-        sflow_signal(sflow);
-    }
-
-    void _netflow_cb(const NFSample &netflow)
-    {
-        netflow_signal(netflow);
-    }
-
-    void _heartbeat_cb(timespec stamp)
-    {
-        heartbeat_signal(stamp);
-    }
-
-    void _policy_cb(const Policy *policy, Action action)
-    {
-        policy_signal(policy, action);
-    }
-
-public:
-    FlowInputStreamCallback(const Configurable &filter, FlowInputStream *flow)
-        : InputCallback(filter)
-    {
-        _flow_stream = flow;
-        _input_name = flow->name();
-        _sflow_connection = _flow_stream->sflow_signal.connect(&FlowInputStreamCallback::_sflow_cb, this);
-        _netflow_connection = _flow_stream->netflow_signal.connect(&FlowInputStreamCallback::_netflow_cb, this);
-        _heartbeat_connection = _flow_stream->heartbeat_signal.connect(&FlowInputStreamCallback::_heartbeat_cb, this);
-        _policy_connection = _flow_stream->policy_signal.connect(&FlowInputStreamCallback::_policy_cb, this);
-    }
-
-    ~FlowInputStreamCallback()
-    {
-        if (_flow_stream) {
-            _sflow_connection.disconnect();
-            _netflow_connection.disconnect();
-            _heartbeat_connection.disconnect();
-            _policy_connection.disconnect();
-        }
-    }
-
-    mutable sigslot::signal<const SFSample &> sflow_signal;
-    mutable sigslot::signal<const NFSample &> netflow_signal;
-    mutable sigslot::signal<const timespec> heartbeat_signal;
-    mutable sigslot::signal<const Policy *, Action> policy_signal;
 };
 
 }
