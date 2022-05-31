@@ -29,6 +29,29 @@ enum NetMetrics : visor::MetricGroupIntType {
 };
 }
 
+struct NetworkPacket {
+    PacketDirection dir;
+    pcpp::ProtocolType l3;
+    pcpp::ProtocolType l4;
+    size_t payload_size;
+    bool syn_flag;
+    bool is_ipv6;
+    pcpp::IPv4Address ipv4_in;
+    pcpp::IPv4Address ipv4_out;
+    pcpp::IPv6Address ipv6_in;
+    pcpp::IPv6Address ipv6_out;
+
+    NetworkPacket(PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, size_t payload_size, bool syn_flag, bool is_ipv6)
+        : dir(dir)
+        , l3(l3)
+        , l4(l4)
+        , payload_size(payload_size)
+        , syn_flag(syn_flag)
+        , is_ipv6(is_ipv6)
+    {
+    }
+};
+
 class NetworkMetricsBucket final : public visor::AbstractMetricsBucket
 {
 
@@ -50,6 +73,7 @@ protected:
         Counter OtherL4;
         Counter IPv4;
         Counter IPv6;
+        Counter SYN;
         Counter total_in;
         Counter total_out;
         counters()
@@ -58,6 +82,7 @@ protected:
             , OtherL4("packets", {"other_l4"}, "Count of packets which are not UDP or TCP")
             , IPv4("packets", {"ipv4"}, "Count of IPv4 packets")
             , IPv6("packets", {"ipv6"}, "Count of IPv6 packets")
+            , SYN("packets", {"syn"}, "Count of SYN packets")
             , total_in("packets", {"in"}, "Count of total ingress packets")
             , total_out("packets", {"out"}, "Count of total egress packets")
         {
@@ -116,7 +141,7 @@ public:
     void process_packet(bool deep, pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4);
     void process_dnstap(bool deep, const dnstap::Dnstap &payload, size_t size);
     void process_net_layer(PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, size_t payload_size);
-    void process_net_layer(PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, size_t payload_size, bool is_ipv6, pcpp::IPv4Address &ipv4_in, pcpp::IPv4Address &ipv4_out, pcpp::IPv6Address &ipv6_in, pcpp::IPv6Address &ipv6_out);
+    void process_net_layer(NetworkPacket &packet);
 };
 
 class NetworkMetricsManager final : public visor::AbstractMetricsManager<NetworkMetricsBucket>
