@@ -142,6 +142,7 @@ void NetworkMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
     if (group_enabled(group::NetMetrics::Counters)) {
         _counters.UDP += other._counters.UDP;
         _counters.TCP += other._counters.TCP;
+        _counters.TCP_SYN += other._counters.TCP_SYN;
         _counters.OtherL4 += other._counters.OtherL4;
         _counters.IPv4 += other._counters.IPv4;
         _counters.IPv6 += other._counters.IPv6;
@@ -187,6 +188,7 @@ void NetworkMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMa
     if (group_enabled(group::NetMetrics::Counters)) {
         _counters.UDP.to_prometheus(out, add_labels);
         _counters.TCP.to_prometheus(out, add_labels);
+        _counters.TCP_SYN.to_prometheus(out, add_labels);
         _counters.OtherL4.to_prometheus(out, add_labels);
         _counters.IPv4.to_prometheus(out, add_labels);
         _counters.IPv6.to_prometheus(out, add_labels);
@@ -235,6 +237,7 @@ void NetworkMetricsBucket::to_json(json &j) const
     if (group_enabled(group::NetMetrics::Counters)) {
         _counters.UDP.to_json(j);
         _counters.TCP.to_json(j);
+        _counters.TCP_SYN.to_json(j);
         _counters.OtherL4.to_json(j);
         _counters.IPv4.to_json(j);
         _counters.IPv6.to_json(j);
@@ -470,7 +473,7 @@ void NetworkMetricsBucket::process_net_layer(NetworkPacket &packet)
         case pcpp::TCP:
             ++_counters.TCP;
             if (packet.syn_flag) {
-                ++_counters.SYN;
+                ++_counters.TCP_SYN;
             }
             break;
         default:

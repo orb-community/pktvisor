@@ -73,7 +73,7 @@ protected:
         Counter OtherL4;
         Counter IPv4;
         Counter IPv6;
-        Counter SYN;
+        Counter TCP_SYN;
         Counter total_in;
         Counter total_out;
         counters()
@@ -82,7 +82,7 @@ protected:
             , OtherL4("packets", {"other_l4"}, "Count of packets which are not UDP or TCP")
             , IPv4("packets", {"ipv4"}, "Count of IPv4 packets")
             , IPv6("packets", {"ipv6"}, "Count of IPv6 packets")
-            , SYN("packets", {"syn"}, "Count of SYN packets")
+            , TCP_SYN("packets", {"protocol", "tcp", "syn"}, "Count of TCP SYN packets")
             , total_in("packets", {"in"}, "Count of total ingress packets")
             , total_out("packets", {"out"}, "Count of total egress packets")
         {
