@@ -79,7 +79,7 @@ public:
 
     void add_policy(const Policy *policy)
     {
-        std::shared_lock lock(_input_mutex);
+        std::unique_lock lock(_input_mutex);
         _policies.push_back(policy);
         for (auto const &event : _events) {
             event->policy_cb(policy, Action::AddPolicy);
@@ -130,6 +130,7 @@ public:
     {
         AbstractModule::common_info_json(j);
         j["input"]["running"] = running();
+        j["input"]["consumers"] = consumer_count();
     }
 };
 
