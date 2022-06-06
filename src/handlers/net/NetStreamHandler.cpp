@@ -11,7 +11,7 @@
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #pragma clang diagnostic ignored "-Wc99-extensions"
 #pragma GCC diagnostic ignored "-Wpedantic"
-#include "TCPLayer.h"
+#include "TcpLayer.h"
 #include <IPv4Layer.h>
 #include <IPv6Layer.h>
 #pragma GCC diagnostic pop

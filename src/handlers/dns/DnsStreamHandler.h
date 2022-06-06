@@ -5,7 +5,6 @@
 #pragma once
 
 #include "AbstractMetricsManager.h"
-#include "DnstapInputStream.h"
 #include "MockInputStream.h"
 #include "PcapInputStream.h"
 #include "StreamHandler.h"
@@ -16,6 +15,10 @@
 #include <bitset>
 #include <limits>
 #include <string>
+
+namespace visor::input::dnstap {
+class DnstapInputEventProxy;
+}
 
 namespace visor::handler::dns {
 
