@@ -18,18 +18,18 @@
 
 namespace visor::handler::flow {
 
-FlowStreamHandler::FlowStreamHandler(const std::string &name, InputCallback *stream, const Configurable *window_config, StreamHandler *handler)
+FlowStreamHandler::FlowStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config, StreamHandler *handler)
     : visor::StreamMetricsHandler<FlowMetricsManager>(name, window_config)
 {
     if (handler) {
         throw StreamHandlerException(fmt::format("FlowStreamHandler: unsupported upstream chained stream handler {}", handler->name()));
     }
-    // figure out which input stream we have
-    if (stream) {
-        _mock_stream = dynamic_cast<MockInputStreamCallback *>(stream);
-        _flow_stream = dynamic_cast<FlowInputStreamCallback *>(stream);
-        if (!_mock_stream && !_flow_stream) {
-            throw StreamHandlerException(fmt::format("FlowStreamHandler: unsupported input stream {}", stream->name()));
+    // figure out which input event proxy we have
+    if (proxy) {
+        _mock_proxy = dynamic_cast<MockInputEventProxy *>(proxy);
+        _flow_proxy = dynamic_cast<FlowInputEventProxy *>(proxy);
+        if (!_mock_proxy && !_flow_proxy) {
+            throw StreamHandlerException(fmt::format("FlowStreamHandler: unsupported input event proxy {}", proxy->name()));
         }
     }
 }
@@ -57,9 +57,9 @@ void FlowStreamHandler::start()
         _metrics->set_recorded_stream();
     }
 
-    if (_flow_stream) {
-        _sflow_connection = _flow_stream->sflow_signal.connect(&FlowStreamHandler::process_sflow_cb, this);
-        _netflow_connection = _flow_stream->netflow_signal.connect(&FlowStreamHandler::process_netflow_cb, this);
+    if (_flow_proxy) {
+        _sflow_connection = _flow_proxy->sflow_signal.connect(&FlowStreamHandler::process_sflow_cb, this);
+        _netflow_connection = _flow_proxy->netflow_signal.connect(&FlowStreamHandler::process_netflow_cb, this);
     }
 
     _running = true;
@@ -71,7 +71,7 @@ void FlowStreamHandler::stop()
         return;
     }
 
-    if (_flow_stream) {
+    if (_flow_proxy) {
         _sflow_connection.disconnect();
         _netflow_connection.disconnect();
     }

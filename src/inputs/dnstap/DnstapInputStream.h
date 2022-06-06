@@ -95,18 +95,18 @@ public:
     void start() override;
     void stop() override;
     void info_json(json &j) const override;
-    std::unique_ptr<InputCallback> create_callback(const Configurable &filter) override;
+    std::unique_ptr<InputEventProxy> create_event_proxy(const Configurable &filter) override;
 };
 
-class DnstapInputStreamCallback : public visor::InputCallback
+class DnstapInputEventProxy : public visor::InputEventProxy
 {
 public:
-    DnstapInputStreamCallback(const std::string &name, const Configurable &filter)
-        : InputCallback(name, filter)
+    DnstapInputEventProxy(const std::string &name, const Configurable &filter)
+        : InputEventProxy(name, filter)
     {
     }
 
-    ~DnstapInputStreamCallback() = default;
+    ~DnstapInputEventProxy() = default;
 
     size_t consumer_count() const override
     {

@@ -30,8 +30,8 @@ TEST_CASE("Pcap JSON Schema", "[pcap][iface][json]")
 
 
         visor::Config c;
-        auto stream_cb = stream.add_callback(c);
-        PcapStreamHandler pcap_handler{"pcap-test", stream_cb, &c};
+        auto stream_proxy = stream.add_event_proxy(c);
+        PcapStreamHandler pcap_handler{"pcap-test", stream_proxy, &c};
         pcap_handler.config_set("recorded_stream", true);
 
         pcap_handler.start();

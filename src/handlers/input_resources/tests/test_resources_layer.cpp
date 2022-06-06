@@ -15,9 +15,9 @@ TEST_CASE("Check resources for pcap input", "[pcap][resources]")
     stream.config_set("bpf", std::string());
 
     visor::Config c;
-    auto stream_cb = stream.add_callback(c);
+    auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
-    InputResourcesStreamHandler resources_handler{"resource-test", stream_cb, &c};
+    InputResourcesStreamHandler resources_handler{"resource-test", stream_proxy, &c};
 
     resources_handler.start();
     stream.start();
@@ -56,9 +56,9 @@ TEST_CASE("Check resources for dnstap input", "[dnstap][resources]")
     stream.config_set("dnstap_file", "inputs/dnstap/tests/fixtures/fixture.dnstap");
     stream.config_set<visor::Configurable::StringList>("only_hosts", {"192.168.0.0/24", "2001:db8::/48"});
     visor::Config c;
-    auto stream_cb = stream.add_callback(c);
+    auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
-    InputResourcesStreamHandler resources_handler{"resource-test", stream_cb, &c};
+    InputResourcesStreamHandler resources_handler{"resource-test", stream_proxy, &c};
 
     resources_handler.start();
     stream.start();
@@ -86,9 +86,9 @@ TEST_CASE("Check resources for sflow input", "[sflow][resources]")
     stream.config_set("pcap_file", "tests/fixtures/ecmp.pcap");
 
     visor::Config c;
-    auto stream_cb = stream.add_callback(c);
+    auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
-    InputResourcesStreamHandler resources_handler{"resource-test", stream_cb, &c};
+    InputResourcesStreamHandler resources_handler{"resource-test", stream_proxy, &c};
 
     resources_handler.start();
     stream.start();

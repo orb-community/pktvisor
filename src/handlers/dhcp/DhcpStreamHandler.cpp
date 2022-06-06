@@ -6,18 +6,18 @@
 
 namespace visor::handler::dhcp {
 
-DhcpStreamHandler::DhcpStreamHandler(const std::string &name, InputCallback *stream, const Configurable *window_config, StreamHandler *handler)
+DhcpStreamHandler::DhcpStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config, StreamHandler *handler)
     : visor::StreamMetricsHandler<DhcpMetricsManager>(name, window_config)
 {
     if (handler) {
         throw StreamHandlerException(fmt::format("DhcpStreamHandler: unsupported upstream chained stream handler {}", handler->name()));
     }
 
-    assert(stream);
-    // figure out which input stream we have
-    _pcap_stream = dynamic_cast<PcapInputStreamCallback *>(stream);
-    if (!_pcap_stream) {
-        throw StreamHandlerException(fmt::format("DhcpStreamHandler: unsupported input stream {}", stream->name()));
+    assert(proxy);
+    // figure out which input event proxy we have
+    _pcap_proxy = dynamic_cast<PcapInputEventProxy *>(proxy);
+    if (!_pcap_proxy) {
+        throw StreamHandlerException(fmt::format("DhcpStreamHandler: unsupported input event proxy {}", proxy->name()));
     }
 }
 
@@ -47,11 +47,11 @@ void DhcpStreamHandler::start()
         _metrics->set_recorded_stream();
     }
 
-    if (_pcap_stream) {
-        _pkt_udp_connection = _pcap_stream->udp_signal.connect(&DhcpStreamHandler::process_udp_packet_cb, this);
-        _start_tstamp_connection = _pcap_stream->start_tstamp_signal.connect(&DhcpStreamHandler::set_start_tstamp, this);
-        _end_tstamp_connection = _pcap_stream->end_tstamp_signal.connect(&DhcpStreamHandler::set_end_tstamp, this);
-        _heartbeat_connection = _pcap_stream->heartbeat_signal.connect(&DhcpStreamHandler::check_period_shift, this);
+    if (_pcap_proxy) {
+        _pkt_udp_connection = _pcap_proxy->udp_signal.connect(&DhcpStreamHandler::process_udp_packet_cb, this);
+        _start_tstamp_connection = _pcap_proxy->start_tstamp_signal.connect(&DhcpStreamHandler::set_start_tstamp, this);
+        _end_tstamp_connection = _pcap_proxy->end_tstamp_signal.connect(&DhcpStreamHandler::set_end_tstamp, this);
+        _heartbeat_connection = _pcap_proxy->heartbeat_signal.connect(&DhcpStreamHandler::check_period_shift, this);
     }
 
     _running = true;
@@ -63,7 +63,7 @@ void DhcpStreamHandler::stop()
         return;
     }
 
-    if (_pcap_stream) {
+    if (_pcap_proxy) {
         _pkt_udp_connection.disconnect();
         _start_tstamp_connection.disconnect();
         _end_tstamp_connection.disconnect();

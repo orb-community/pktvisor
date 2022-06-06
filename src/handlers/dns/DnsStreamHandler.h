@@ -5,6 +5,7 @@
 #pragma once
 
 #include "AbstractMetricsManager.h"
+#include "DnstapInputStream.h"
 #include "MockInputStream.h"
 #include "PcapInputStream.h"
 #include "StreamHandler.h"
@@ -15,10 +16,6 @@
 #include <bitset>
 #include <limits>
 #include <string>
-
-namespace visor::input::dnstap {
-class DnstapInputStreamCallback;
-}
 
 namespace visor::handler::dns {
 
@@ -251,10 +248,10 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
     };
     static thread_local DnsCacheData _cached_dns_layer;
 
-    // the input stream sources we support (only one will be in use at a time)
-    PcapInputStreamCallback *_pcap_stream{nullptr};
-    MockInputStreamCallback *_mock_stream{nullptr};
-    DnstapInputStreamCallback *_dnstap_stream{nullptr};
+    // the input event proxy we support (only one will be in use at a time)
+    PcapInputEventProxy *_pcap_proxy{nullptr};
+    MockInputEventProxy *_mock_proxy{nullptr};
+    DnstapInputEventProxy *_dnstap_proxy{nullptr};
 
     typedef uint32_t flowKey;
     std::unordered_map<flowKey, TcpFlowData> _tcp_connections;
@@ -311,7 +308,7 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
     bool _filtering(DnsLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint16_t port, timespec stamp);
 
 public:
-    DnsStreamHandler(const std::string &name, InputCallback *stream, const Configurable *window_config, StreamHandler *handler = nullptr);
+    DnsStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config, StreamHandler *handler = nullptr);
     ~DnsStreamHandler() = default;
 
     // visor::AbstractModule

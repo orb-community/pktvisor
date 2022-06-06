@@ -90,7 +90,7 @@ public:
     void start() override;
     void stop() override;
     void info_json(json &j) const override;
-    std::unique_ptr<InputCallback> create_callback(const Configurable &filter) override;
+    std::unique_ptr<InputEventProxy> create_event_proxy(const Configurable &filter) override;
 
     // utilities
     void parse_host_spec();
@@ -103,15 +103,15 @@ public:
     void tcp_connection_end(const pcpp::ConnectionData &connectionData, pcpp::TcpReassembly::ConnectionEndReason reason);
 };
 
-class PcapInputStreamCallback : public visor::InputCallback
+class PcapInputEventProxy: public visor::InputEventProxy
 {
 public:
-    PcapInputStreamCallback(const std::string &name, const Configurable &filter)
-        : InputCallback(name, filter)
+    PcapInputEventProxy(const std::string &name, const Configurable &filter)
+        : InputEventProxy(name, filter)
     {
     }
 
-    ~PcapInputStreamCallback() = default;
+    ~PcapInputEventProxy() = default;
 
     size_t consumer_count() const override
     {

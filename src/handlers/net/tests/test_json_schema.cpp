@@ -29,8 +29,8 @@ TEST_CASE("Net JSON Schema", "[net][iface][json]")
         stream.parse_host_spec();
 
         visor::Config c;
-        auto stream_cb = stream.add_callback(c);
-        NetStreamHandler net_handler{"net-test", stream_cb, &c};
+        auto stream_proxy = stream.add_event_proxy(c);
+        NetStreamHandler net_handler{"net-test", stream_proxy, &c};
         net_handler.config_set("recorded_stream", true);
 
         net_handler.start();

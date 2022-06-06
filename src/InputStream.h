@@ -15,20 +15,20 @@ enum class Action {
     RemovePolicy
 };
 
-class InputCallback : public Configurable
+class InputEventProxy : public Configurable
 {
 protected:
     std::string _input_name;
     std::string _filter_hash;
 
 public:
-    InputCallback(const std::string &name, const Configurable &filter)
+    InputEventProxy(const std::string &name, const Configurable &filter)
         : _input_name(name)
     {
         config_merge(filter);
         _filter_hash = config_hash();
     };
-    virtual ~InputCallback() = default;
+    virtual ~InputEventProxy() = default;
 
     const std::string &name() const
     {
@@ -67,7 +67,7 @@ class InputStream : public AbstractRunnableModule
 protected:
     static constexpr uint8_t HEARTBEAT_INTERVAL = 30; // in seconds
     mutable std::shared_mutex _input_mutex;
-    std::vector<std::unique_ptr<InputCallback>> _callbacks;
+    std::vector<std::unique_ptr<InputEventProxy>> _events;
 
 public:
     InputStream(const std::string &name)
@@ -79,10 +79,10 @@ public:
 
     void add_policy(const Policy *policy)
     {
-        std::unique_lock lock(_input_mutex);
+        std::shared_lock lock(_input_mutex);
         _policies.push_back(policy);
-        for (auto const &callback : _callbacks) {
-            callback->policy_cb(policy, Action::AddPolicy);
+        for (auto const &event : _events) {
+            event->policy_cb(policy, Action::AddPolicy);
         }
     }
 
@@ -90,41 +90,41 @@ public:
     {
         std::unique_lock lock(_input_mutex);
         _policies.erase(std::remove(_policies.begin(), _policies.end(), policy), _policies.end());
-        for (auto const &callback : _callbacks) {
-            callback->policy_cb(policy, Action::RemovePolicy);
+        for (auto const &event : _events) {
+            event->policy_cb(policy, Action::RemovePolicy);
         }
     }
 
     size_t policies_count() const
     {
-        std::unique_lock lock(_input_mutex);
+        std::shared_lock lock(_input_mutex);
         return _policies.size();
     }
 
     size_t consumer_count() const
     {
-        std::unique_lock lock(_input_mutex);
+        std::shared_lock lock(_input_mutex);
         size_t count = 0;
-        for (auto const &callback : _callbacks) {
-            count = callback->consumer_count();
+        for (auto const &event : _events) {
+            count = event->consumer_count();
         }
         return count;
     }
 
-    InputCallback *add_callback(const Configurable &filter)
+    InputEventProxy *add_event_proxy(const Configurable &filter)
     {
         std::unique_lock lock(_input_mutex);
         auto hash = filter.config_hash();
-        for (auto const &callback : _callbacks) {
-            if (callback->hash() == hash) {
-                return callback.get();
+        for (auto const &event : _events) {
+            if (event->hash() == hash) {
+                return event.get();
             }
         }
-        _callbacks.push_back(create_callback(filter));
-        return _callbacks.back().get();
+        _events.push_back(create_event_proxy(filter));
+        return _events.back().get();
     }
 
-    virtual std::unique_ptr<InputCallback> create_callback(const Configurable &filter) = 0;
+    virtual std::unique_ptr<InputEventProxy> create_event_proxy(const Configurable &filter) = 0;
 
     void common_info_json(json &j) const
     {

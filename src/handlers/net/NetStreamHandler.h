@@ -159,10 +159,10 @@ public:
 class NetStreamHandler final : public visor::StreamMetricsHandler<NetworkMetricsManager>
 {
 
-    // the input stream sources we support (only one will be in use at a time)
-    PcapInputStreamCallback *_pcap_stream{nullptr};
-    DnstapInputStreamCallback *_dnstap_stream{nullptr};
-    MockInputStreamCallback *_mock_stream{nullptr};
+    // the input event proxy we support (only one will be in use at a time)
+    PcapInputEventProxy *_pcap_proxy{nullptr};
+    DnstapInputEventProxy *_dnstap_proxy{nullptr};
+    MockInputEventProxy *_mock_proxy{nullptr};
 
     // the stream handlers sources we support (only one will be in use at a time)
     DnsStreamHandler *_dns_handler{nullptr};
@@ -190,7 +190,7 @@ class NetStreamHandler final : public visor::StreamMetricsHandler<NetworkMetrics
     void set_end_tstamp(timespec stamp);
 
 public:
-    NetStreamHandler(const std::string &name, InputCallback *stream, const Configurable *window_config, StreamHandler *handler = nullptr);
+    NetStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config, StreamHandler *handler = nullptr);
     ~NetStreamHandler() override;
 
     // visor::AbstractModule

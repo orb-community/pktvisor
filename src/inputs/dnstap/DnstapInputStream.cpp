@@ -64,9 +64,9 @@ void DnstapInputStream::_read_frame_stream_file()
 
             // Emit signal to handlers
             if (!_filtering(d)) {
-                std::unique_lock lock(_input_mutex);
-                for (auto &callback : _callbacks) {
-                    dynamic_cast<DnstapInputStreamCallback *>(callback.get())->dnstap_cb(d, len_data);
+                std::shared_lock lock(_input_mutex);
+                for (auto &event : _events) {
+                    static_cast<DnstapInputEventProxy *>(event.get())->dnstap_cb(d, len_data);
                 }
             }
         } else if (result == fstrm_res_stop) {
@@ -161,9 +161,9 @@ void DnstapInputStream::_create_frame_stream_tcp_socket()
         timespec stamp;
         // use now()
         std::timespec_get(&stamp, TIME_UTC);
-        std::unique_lock lock(_input_mutex);
-        for (auto &callback : _callbacks) {
-            dynamic_cast<DnstapInputStreamCallback *>(callback.get())->heartbeat_cb(stamp);
+        std::shared_lock lock(_input_mutex);
+        for (auto &event : _events) {
+            static_cast<DnstapInputEventProxy *>(event.get())->heartbeat_cb(stamp);
         }
     });
     _timer->on<uvw::ErrorEvent>([this](const auto &err, auto &handle) {
@@ -203,9 +203,9 @@ void DnstapInputStream::_create_frame_stream_tcp_socket()
 
             // Emit signal to handlers
             if (!_filtering(d)) {
-                std::unique_lock lock(_input_mutex);
-                for (auto &callback : _callbacks) {
-                    dynamic_cast<DnstapInputStreamCallback *>(callback.get())->dnstap_cb(d, len_data);
+                std::shared_lock lock(_input_mutex);
+                for (auto &event : _events) {
+                    static_cast<DnstapInputEventProxy *>(event.get())->dnstap_cb(d, len_data);
                 }
             }
         };
@@ -291,9 +291,9 @@ void DnstapInputStream::_create_frame_stream_unix_socket()
         timespec stamp;
         // use now()
         std::timespec_get(&stamp, TIME_UTC);
-        std::unique_lock lock(_input_mutex);
-        for (auto &callback : _callbacks) {
-            dynamic_cast<DnstapInputStreamCallback *>(callback.get())->heartbeat_cb(stamp);
+        std::shared_lock lock(_input_mutex);
+        for (auto &event : _events) {
+            static_cast<DnstapInputEventProxy *>(event.get())->heartbeat_cb(stamp);
         }
     });
     _timer->on<uvw::ErrorEvent>([this](const auto &err, auto &handle) {
@@ -332,9 +332,9 @@ void DnstapInputStream::_create_frame_stream_unix_socket()
             }
             // Emit signal to handlers
             if (!_filtering(d)) {
-                std::unique_lock lock(_input_mutex);
-                for (auto &callback : _callbacks) {
-                    dynamic_cast<DnstapInputStreamCallback *>(callback.get())->dnstap_cb(d, len_data);
+                std::shared_lock lock(_input_mutex);
+                for (auto &event : _events) {
+                    static_cast<DnstapInputEventProxy *>(event.get())->dnstap_cb(d, len_data);
                 }
             }
         };
@@ -490,8 +490,8 @@ void DnstapInputStream::info_json(json &j) const
     common_info_json(j);
 }
 
-std::unique_ptr<InputCallback> DnstapInputStream::create_callback(const Configurable &filter)
+std::unique_ptr<InputEventProxy> DnstapInputStream::create_event_proxy(const Configurable &filter)
 {
-    return std::make_unique<DnstapInputStreamCallback>(_name, filter);
+    return std::make_unique<DnstapInputEventProxy>(_name, filter);
 }
 }

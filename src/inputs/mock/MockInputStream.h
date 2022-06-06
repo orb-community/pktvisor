@@ -28,19 +28,19 @@ public:
     void start() override;
     void stop() override;
     void info_json(json &j) const override;
-    std::unique_ptr<InputCallback> create_callback(const Configurable &filter) override;
+    std::unique_ptr<InputEventProxy> create_event_proxy(const Configurable &filter) override;
 };
 
-class MockInputStreamCallback : public visor::InputCallback
+class MockInputEventProxy : public visor::InputEventProxy
 {
 
 public:
-    MockInputStreamCallback(const std::string &name, const Configurable &filter)
-        : InputCallback(name, filter)
+    MockInputEventProxy(const std::string &name, const Configurable &filter)
+        : InputEventProxy(name, filter)
     {
     }
 
-    ~MockInputStreamCallback() = default;
+    ~MockInputEventProxy() = default;
 
     size_t consumer_count() const override
     {

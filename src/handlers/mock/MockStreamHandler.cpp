@@ -7,24 +7,24 @@
 
 namespace visor::handler::mock {
 
-MockStreamHandler::MockStreamHandler(const std::string &name, InputCallback *stream, const Configurable *window_config, StreamHandler *handler)
+MockStreamHandler::MockStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config, StreamHandler *handler)
     : visor::StreamMetricsHandler<MockMetricsManager>(name, window_config)
 {
     if (handler) {
         throw StreamHandlerException(fmt::format("MockStreamHandler: unsupported upstream chained stream handler {}", handler->name()));
     }
 
-    assert(stream);
+    assert(proxy);
 
     _logger = spdlog::get("dyn-mock-handler");
     if (!_logger) {
         _logger = spdlog::stderr_color_mt("dyn-mock-handler");
     }
     assert(_logger);
-    // figure out which input stream we have
-    _mock_stream = dynamic_cast<MockInputStreamCallback *>(stream);
-    if (!_mock_stream) {
-        throw StreamHandlerException(fmt::format("MockStreamHandler: unsupported input stream {}", stream->name()));
+    // figure out which input event proxy we have
+    _mock_proxy = dynamic_cast<MockInputEventProxy *>(proxy);
+    if (!_mock_proxy) {
+        throw StreamHandlerException(fmt::format("MockStreamHandler: unsupported input event proxy {}", proxy->name()));
     }
 
     _logger->info("mock handler created");
@@ -48,7 +48,7 @@ void MockStreamHandler::start()
 
     _logger->info("mock handler start()");
 
-    _random_int_connection = _mock_stream->random_int_signal.connect(&MockStreamHandler::process_random_int, this);
+    _random_int_connection = _mock_proxy->random_int_signal.connect(&MockStreamHandler::process_random_int, this);
 
     _running = true;
 }

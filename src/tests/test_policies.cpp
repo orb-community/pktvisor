@@ -620,8 +620,8 @@ TEST_CASE("Policies", "[policies]")
         Config config;
         Config filter;
         auto input_stream = registry.input_plugins()["mock"]->instantiate("mymock", &config, &filter);
-        auto stream_cb = input_stream->add_callback(filter);
-        auto mod = registry.handler_plugins()["net"]->instantiate("default_view-default_net", stream_cb, &config, &filter);
+        auto stream_proxy = input_stream->add_event_proxy(filter);
+        auto mod = registry.handler_plugins()["net"]->instantiate("default_view-default_net", stream_proxy, &config, &filter);
         registry.handler_manager()->module_add(std::move(mod));
         REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["policies"]), "policy [default_view-default_net] creation failed (handler: default_view): module name 'default_view-default_net' already exists");
 

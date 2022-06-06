@@ -14,9 +14,9 @@ TEST_CASE("Parse sflow stream", "[sflow][flow]")
     stream.config_set("pcap_file", "tests/fixtures/ecmp.pcap");
 
     visor::Config c;
-    auto stream_cb = stream.add_callback(c);
+    auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
-    FlowStreamHandler flow_handler{"flow-test", stream_cb, &c};
+    FlowStreamHandler flow_handler{"flow-test", stream_proxy, &c};
 
     flow_handler.start();
     stream.start();
@@ -59,9 +59,9 @@ TEST_CASE("Parse sflow stream with host filter", "[sflow][flow]")
     stream.config_set("pcap_file", "tests/fixtures/ecmp.pcap");
 
     visor::Config c;
-    auto stream_cb = stream.add_callback(c);
+    auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
-    FlowStreamHandler flow_handler{"flow-test", stream_cb, &c};
+    FlowStreamHandler flow_handler{"flow-test", stream_proxy, &c};
     flow_handler.config_set<visor::Configurable::StringList>("only_hosts", {"10.4.3.2/24"});
 
     flow_handler.start();
@@ -105,9 +105,9 @@ TEST_CASE("Parse netflow stream", "[netflow][flow]")
     stream.config_set("pcap_file", "tests/fixtures/nf9.pcap");
 
     visor::Config c;
-    auto stream_cb = stream.add_callback(c);
+    auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
-    FlowStreamHandler flow_handler{"flow-test", stream_cb, &c};
+    FlowStreamHandler flow_handler{"flow-test", stream_proxy, &c};
 
     flow_handler.start();
     stream.start();

@@ -20,6 +20,6 @@ public:
     {
     }
 
-    std::unique_ptr<StreamHandler> instantiate(const std::string &name, InputCallback *input_stream_cb, const Configurable *config, const Configurable *filter, StreamHandler *stream_handler = nullptr) override;
+    std::unique_ptr<StreamHandler> instantiate(const std::string &name, InputEventProxy *proxy, const Configurable *config, const Configurable *filter, StreamHandler *stream_handler = nullptr) override;
 };
 }

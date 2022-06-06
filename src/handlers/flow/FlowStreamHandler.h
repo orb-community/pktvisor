@@ -174,9 +174,9 @@ public:
 class FlowStreamHandler final : public visor::StreamMetricsHandler<FlowMetricsManager>
 {
 
-    // the input stream sources we support (only one will be in use at a time)
-    MockInputStreamCallback *_mock_stream{nullptr};
-    FlowInputStreamCallback *_flow_stream{nullptr};
+    // the input stream event proxy we support (only one will be in use at a time)
+    MockInputEventProxy *_mock_proxy{nullptr};
+    FlowInputEventProxy *_flow_proxy{nullptr};
 
     sigslot::connection _sflow_connection;
     sigslot::connection _netflow_connection;
@@ -207,7 +207,7 @@ class FlowStreamHandler final : public visor::StreamMetricsHandler<FlowMetricsMa
     bool _filtering(const FlowData &flow);
 
 public:
-    FlowStreamHandler(const std::string &name, InputCallback *stream, const Configurable *window_config, StreamHandler *handler = nullptr);
+    FlowStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config, StreamHandler *handler = nullptr);
     ~FlowStreamHandler() override;
 
     // visor::AbstractModule

@@ -126,8 +126,8 @@ TEST_CASE("dnstap file filter by valid subnet", "[dnstap][file][filter]")
     stream.config_set<visor::Configurable::StringList>("only_hosts", {"192.168.0.0/24"});
     uint64_t count_callbacks = 0;
     visor::Config filter;
-    auto stream_cb = stream.add_callback(filter);
-    DnstapInputStreamCallback *callback = dynamic_cast<DnstapInputStreamCallback *>(stream_cb);
+    auto stream_proxy = stream.add_event_proxy(filter);
+    DnstapInputEventProxy *callback = static_cast<DnstapInputEventProxy *>(stream_proxy);
 
     callback->dnstap_signal.connect([&]([[maybe_unused]] const ::dnstap::Dnstap &d, [[maybe_unused]] size_t size) {
         ++count_callbacks;
@@ -147,8 +147,8 @@ TEST_CASE("dnstap file filter by invalid subnet", "[dnstap][file][filter]")
     stream.config_set<visor::Configurable::StringList>("only_hosts", {"192.168.0.12/32"});
     uint64_t count_callbacks = 0;
     visor::Config filter;
-    auto stream_cb = stream.add_callback(filter);
-    DnstapInputStreamCallback *callback = dynamic_cast<DnstapInputStreamCallback *>(stream_cb);
+    auto stream_proxy = stream.add_event_proxy(filter);
+    DnstapInputEventProxy *callback = static_cast<DnstapInputEventProxy *>(stream_proxy);
 
     callback->dnstap_signal.connect([&]([[maybe_unused]] const ::dnstap::Dnstap &d, [[maybe_unused]] size_t size) {
         ++count_callbacks;

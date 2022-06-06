@@ -6,18 +6,18 @@
 
 namespace visor::handler::pcap {
 
-PcapStreamHandler::PcapStreamHandler(const std::string &name, InputCallback *stream, const Configurable *window_config, StreamHandler *handler)
+PcapStreamHandler::PcapStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config, StreamHandler *handler)
     : visor::StreamMetricsHandler<PcapMetricsManager>(name, window_config)
 {
     if (handler) {
         throw StreamHandlerException(fmt::format("PcapStreamHandler: unsupported upstream chained stream handler {}", handler->name()));
     }
 
-    assert(stream);
-    // figure out which input stream we have
-    _pcap_stream = dynamic_cast<PcapInputStreamCallback *>(stream);
-    if (!_pcap_stream) {
-        throw StreamHandlerException(fmt::format("PcapStreamHandler: unsupported input stream {}", stream->name()));
+    assert(proxy);
+    // figure out which input event proxy we have
+    _pcap_proxy = dynamic_cast<PcapInputEventProxy *>(proxy);
+    if (!_pcap_proxy) {
+        throw StreamHandlerException(fmt::format("PcapStreamHandler: unsupported input event proxy {}", proxy->name()));
     }
 }
 
@@ -31,13 +31,13 @@ void PcapStreamHandler::start()
         _metrics->set_recorded_stream();
     }
 
-    if (_pcap_stream) {
-        _start_tstamp_connection = _pcap_stream->start_tstamp_signal.connect(&PcapStreamHandler::set_start_tstamp, this);
-        _end_tstamp_connection = _pcap_stream->end_tstamp_signal.connect(&PcapStreamHandler::set_end_tstamp, this);
+    if (_pcap_proxy) {
+        _start_tstamp_connection = _pcap_proxy->start_tstamp_signal.connect(&PcapStreamHandler::set_start_tstamp, this);
+        _end_tstamp_connection = _pcap_proxy->end_tstamp_signal.connect(&PcapStreamHandler::set_end_tstamp, this);
 
-        _pcap_tcp_reassembly_errors_connection = _pcap_stream->tcp_reassembly_error_signal.connect(&PcapStreamHandler::process_pcap_tcp_reassembly_error, this);
-        _pcap_stats_connection = _pcap_stream->pcap_stats_signal.connect(&PcapStreamHandler::process_pcap_stats, this);
-        _heartbeat_connection = _pcap_stream->heartbeat_signal.connect(&PcapStreamHandler::check_period_shift, this);
+        _pcap_tcp_reassembly_errors_connection = _pcap_proxy->tcp_reassembly_error_signal.connect(&PcapStreamHandler::process_pcap_tcp_reassembly_error, this);
+        _pcap_stats_connection = _pcap_proxy->pcap_stats_signal.connect(&PcapStreamHandler::process_pcap_stats, this);
+        _heartbeat_connection = _pcap_proxy->heartbeat_signal.connect(&PcapStreamHandler::check_period_shift, this);
     }
 
     _running = true;
@@ -49,7 +49,7 @@ void PcapStreamHandler::stop()
         return;
     }
 
-    if (_pcap_stream) {
+    if (_pcap_proxy) {
         _start_tstamp_connection.disconnect();
         _end_tstamp_connection.disconnect();
         _pcap_tcp_reassembly_errors_connection.disconnect();

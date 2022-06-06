@@ -145,7 +145,7 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
             }
         }
 
-        auto input_callback = input_ptr->add_callback(tap_filter);
+        auto input_event_proxy = input_ptr->add_event_proxy(tap_filter);
 
         // Handler type
         if (!it->second["handlers"] || !it->second["handlers"].IsMap()) {
@@ -187,7 +187,7 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
             input_resources_policy->set_input_stream(input_ptr);
             auto resources_handler_plugin = _registry->handler_plugins().find("input_resources");
             if (resources_handler_plugin != _registry->handler_plugins().end()) {
-                resources_module = resources_handler_plugin->second->instantiate(input_stream_module_name + "-resources", input_callback, &window_config, nullptr);
+                resources_module = resources_handler_plugin->second->instantiate(input_stream_module_name + "-resources", input_event_proxy, &window_config, nullptr);
                 input_resources_policy->add_module(resources_module.get());
                 input_res_policy_ptr = input_resources_policy.get();
             }
@@ -274,7 +274,7 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
 
             std::unique_ptr<StreamHandler> handler_module;
             if (!handler_sequence || handler_modules.empty()) {
-                handler_module = handler_plugin->second->instantiate(policy_name + "-" + handler_module_name, input_callback, &handler_config, &handler_filter);
+                handler_module = handler_plugin->second->instantiate(policy_name + "-" + handler_module_name, input_event_proxy, &handler_config, &handler_filter);
             } else {
                 // for sequence, use only previous handler
                 handler_module = handler_plugin->second->instantiate(policy_name + "-" + handler_module_name, nullptr, &handler_config, &handler_filter, handler_modules.back().get());

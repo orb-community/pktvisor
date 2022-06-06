@@ -17,9 +17,9 @@ TEST_CASE("Parse net (dns) random UDP/TCP tests", "[pcap][net]")
     stream.parse_host_spec();
 
     visor::Config c;
-    auto stream_cb = stream.add_callback(c);
+    auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
-    PcapStreamHandler pcap_handler{"pcap-handler-test", stream_cb, &c};
+    PcapStreamHandler pcap_handler{"pcap-handler-test", stream_proxy, &c};
 
     pcap_handler.start();
     stream.start();

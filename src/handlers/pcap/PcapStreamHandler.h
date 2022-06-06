@@ -77,7 +77,7 @@ public:
 class PcapStreamHandler final : public visor::StreamMetricsHandler<PcapMetricsManager>
 {
 
-    PcapInputStreamCallback *_pcap_stream;
+    PcapInputEventProxy *_pcap_proxy;
 
     sigslot::connection _start_tstamp_connection;
     sigslot::connection _end_tstamp_connection;
@@ -94,7 +94,7 @@ class PcapStreamHandler final : public visor::StreamMetricsHandler<PcapMetricsMa
     void set_end_tstamp(timespec stamp);
 
 public:
-    PcapStreamHandler(const std::string &name, InputCallback *stream, const Configurable *window_config, StreamHandler *handler = nullptr);
+    PcapStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config, StreamHandler *handler = nullptr);
     ~PcapStreamHandler() = default;
 
     // visor::AbstractModule
