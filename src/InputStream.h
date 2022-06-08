@@ -67,7 +67,7 @@ class InputStream : public AbstractRunnableModule
 protected:
     static constexpr uint8_t HEARTBEAT_INTERVAL = 30; // in seconds
     mutable std::shared_mutex _input_mutex;
-    std::vector<std::unique_ptr<InputEventProxy>> _events;
+    std::vector<std::unique_ptr<InputEventProxy>> _event_proxies;
 
 public:
     InputStream(const std::string &name)
@@ -81,8 +81,8 @@ public:
     {
         std::unique_lock lock(_input_mutex);
         _policies.push_back(policy);
-        for (auto const &event : _events) {
-            event->policy_cb(policy, Action::AddPolicy);
+        for (auto const &proxy : _event_proxies) {
+            proxy->policy_cb(policy, Action::AddPolicy);
         }
     }
 
@@ -90,8 +90,8 @@ public:
     {
         std::unique_lock lock(_input_mutex);
         _policies.erase(std::remove(_policies.begin(), _policies.end(), policy), _policies.end());
-        for (auto const &event : _events) {
-            event->policy_cb(policy, Action::RemovePolicy);
+        for (auto const &proxy : _event_proxies) {
+            proxy->policy_cb(policy, Action::RemovePolicy);
         }
     }
 
@@ -105,8 +105,8 @@ public:
     {
         std::shared_lock lock(_input_mutex);
         size_t count = 0;
-        for (auto const &event : _events) {
-            count = event->consumer_count();
+        for (auto const &proxy : _event_proxies) {
+            count = proxy->consumer_count();
         }
         return count;
     }
@@ -115,13 +115,13 @@ public:
     {
         std::unique_lock lock(_input_mutex);
         auto hash = filter.config_hash();
-        for (auto const &event : _events) {
-            if (event->hash() == hash) {
-                return event.get();
+        for (auto const &proxy : _event_proxies) {
+            if (proxy->hash() == hash) {
+                return proxy.get();
             }
         }
-        _events.push_back(create_event_proxy(filter));
-        return _events.back().get();
+        _event_proxies.push_back(create_event_proxy(filter));
+        return _event_proxies.back().get();
     }
 
     virtual std::unique_ptr<InputEventProxy> create_event_proxy(const Configurable &filter) = 0;

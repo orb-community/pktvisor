@@ -65,8 +65,8 @@ void DnstapInputStream::_read_frame_stream_file()
             // Emit signal to handlers
             if (!_filtering(d)) {
                 std::shared_lock lock(_input_mutex);
-                for (auto &event : _events) {
-                    static_cast<DnstapInputEventProxy *>(event.get())->dnstap_cb(d, len_data);
+                for (auto &proxy : _event_proxies) {
+                    static_cast<DnstapInputEventProxy *>(proxy.get())->dnstap_cb(d, len_data);
                 }
             }
         } else if (result == fstrm_res_stop) {
@@ -162,8 +162,8 @@ void DnstapInputStream::_create_frame_stream_tcp_socket()
         // use now()
         std::timespec_get(&stamp, TIME_UTC);
         std::shared_lock lock(_input_mutex);
-        for (auto &event : _events) {
-            static_cast<DnstapInputEventProxy *>(event.get())->heartbeat_cb(stamp);
+        for (auto &proxy : _event_proxies) {
+            static_cast<DnstapInputEventProxy *>(proxy.get())->heartbeat_cb(stamp);
         }
     });
     _timer->on<uvw::ErrorEvent>([this](const auto &err, auto &handle) {
@@ -204,8 +204,8 @@ void DnstapInputStream::_create_frame_stream_tcp_socket()
             // Emit signal to handlers
             if (!_filtering(d)) {
                 std::shared_lock lock(_input_mutex);
-                for (auto &event : _events) {
-                    static_cast<DnstapInputEventProxy *>(event.get())->dnstap_cb(d, len_data);
+                for (auto &proxy : _event_proxies) {
+                    static_cast<DnstapInputEventProxy *>(proxy.get())->dnstap_cb(d, len_data);
                 }
             }
         };
@@ -292,8 +292,8 @@ void DnstapInputStream::_create_frame_stream_unix_socket()
         // use now()
         std::timespec_get(&stamp, TIME_UTC);
         std::shared_lock lock(_input_mutex);
-        for (auto &event : _events) {
-            static_cast<DnstapInputEventProxy *>(event.get())->heartbeat_cb(stamp);
+        for (auto &proxy : _event_proxies) {
+            static_cast<DnstapInputEventProxy *>(proxy.get())->heartbeat_cb(stamp);
         }
     });
     _timer->on<uvw::ErrorEvent>([this](const auto &err, auto &handle) {
@@ -333,8 +333,8 @@ void DnstapInputStream::_create_frame_stream_unix_socket()
             // Emit signal to handlers
             if (!_filtering(d)) {
                 std::shared_lock lock(_input_mutex);
-                for (auto &event : _events) {
-                    static_cast<DnstapInputEventProxy *>(event.get())->dnstap_cb(d, len_data);
+                for (auto &proxy : _event_proxies) {
+                    static_cast<DnstapInputEventProxy *>(proxy.get())->dnstap_cb(d, len_data);
                 }
             }
         };

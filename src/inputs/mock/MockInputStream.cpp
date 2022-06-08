@@ -38,8 +38,8 @@ void MockInputStream::start()
         auto i = std::rand();
         _logger->info("mock input sends random int signal: {}", i);
         std::shared_lock lock(_input_mutex);
-        for (auto &event : _events) {
-            static_cast<MockInputEventProxy *>(event.get())->random_int_cb(i);
+        for (auto &proxy : _event_proxies) {
+            static_cast<MockInputEventProxy *>(proxy.get())->random_int_cb(i);
         }
     });
 
