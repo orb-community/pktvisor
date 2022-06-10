@@ -119,8 +119,7 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
             }
         }
 
-        std::string input_stream_module_name = tap_config.config_hash();
-        input_stream_module_name.insert(0, tap->name() + "-");
+        std::string input_stream_module_name = tap->get_input_name(tap_config, tap_filter);
 
         std::unique_ptr<InputStream> input_stream;
         InputStream *input_ptr;
@@ -145,7 +144,12 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
             }
         }
 
-        auto input_event_proxy = input_ptr->add_event_proxy(tap_filter);
+        InputEventProxy *input_event_proxy = nullptr;
+        try {
+            input_event_proxy = input_ptr->add_event_proxy(tap_filter);
+        } catch (ConfigException &e) {
+            throw PolicyException(fmt::format("invalid input filter config: {}", e.what()));
+        }
 
         // Handler type
         if (!it->second["handlers"] || !it->second["handlers"].IsMap()) {

@@ -58,6 +58,11 @@ void TapManager::load(const YAML::Node &tap_yaml, bool strict)
     }
 }
 
+std::string Tap::get_input_name(const Configurable &config, const Configurable &filter)
+{
+       return _input_plugin->generate_input_name(name(), config, filter);
+}
+
 std::unique_ptr<InputStream> Tap::instantiate(const Configurable *config, const Configurable *filter, std::string input_name)
 {
     Config c;

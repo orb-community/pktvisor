@@ -28,6 +28,8 @@ public:
         assert(input_plugin);
     }
 
+    std::string get_input_name(const Configurable &config, const Configurable &filter);
+
     std::unique_ptr<InputStream> instantiate(const Configurable *config, const Configurable *filter, std::string input_name);
 
     const InputModulePlugin *input_plugin() const

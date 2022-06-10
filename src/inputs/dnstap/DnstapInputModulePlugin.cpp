@@ -24,4 +24,8 @@ std::unique_ptr<InputStream> DnstapInputModulePlugin::instantiate(const std::str
     return input_stream;
 }
 
+std::string DnstapInputModulePlugin::generate_input_name(std::string prefix, const Configurable &config, [[maybe_unused]] const Configurable &filter)
+{
+    return prefix + "-" + config.config_hash();
+}
 }

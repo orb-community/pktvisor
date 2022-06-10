@@ -24,4 +24,9 @@ std::unique_ptr<InputStream> MockInputModulePlugin::instantiate(const std::strin
     return input_stream;
 }
 
+std::string MockInputModulePlugin::generate_input_name(std::string prefix, const Configurable &config, [[maybe_unused]] const Configurable &filter)
+{
+    return prefix + "-" + config.config_hash();
+}
+
 }

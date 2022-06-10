@@ -21,6 +21,8 @@ public:
     {
     }
     std::unique_ptr<InputStream> instantiate(const std::string name, const Configurable *config, const Configurable *filter) override;
+
+    std::string generate_input_name(std::string prefix, const Configurable &config, const Configurable &filter) override;
 };
 
 }

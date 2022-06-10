@@ -44,42 +44,12 @@ class DnstapInputStream : public visor::InputStream
     std::shared_ptr<uvw::TCPHandle> _tcp_server_h;
     std::unordered_map<uv_os_fd_t, std::unique_ptr<FrameSessionData<uvw::TCPHandle>>> _tcp_sessions;
 
-    std::vector<Ipv4Subnet> _IPv4_host_list;
-    std::vector<Ipv6Subnet> _IPv6_host_list;
-
-    enum Filters {
-        OnlyHosts,
-        FiltersMAX
-    };
-    std::bitset<Filters::FiltersMAX> _f_enabled;
-
     void _read_frame_stream_file();
     void _create_frame_stream_unix_socket();
     void _create_frame_stream_tcp_socket();
 
-    void _parse_host_specs(const std::vector<std::string> &host_list);
-    bool _match_subnet(const std::string &dnstap_ip);
-
-    inline bool _filtering(const ::dnstap::Dnstap &d)
+    inline bool _filtering([[maybe_unused]] const ::dnstap::Dnstap &d)
     {
-        if (_f_enabled[Filters::OnlyHosts]) {
-            if (d.message().has_query_address() && d.message().has_response_address()) {
-                if (!_match_subnet(d.message().query_address()) && !_match_subnet(d.message().response_address())) {
-                    // message had both query and response address, and neither matched, so filter
-                    return true;
-                }
-            } else if (d.message().has_query_address() && !_match_subnet(d.message().query_address())) {
-                // message had only query address and it didn't match, so filter
-                return true;
-            } else if (d.message().has_response_address() && !_match_subnet(d.message().response_address())) {
-                // message had only response address and it didn't match, so filter
-                return true;
-            } else {
-                // message had neither query nor response address, so filter
-                return true;
-            }
-        }
-
         return false;
     }
 
@@ -100,10 +70,28 @@ public:
 
 class DnstapInputEventProxy : public visor::InputEventProxy
 {
+
+    enum Filters {
+        OnlyHosts,
+        FiltersMAX
+    };
+    std::bitset<Filters::FiltersMAX> _f_enabled;
+
+    std::vector<Ipv4Subnet> _IPv4_host_list;
+    std::vector<Ipv6Subnet> _IPv6_host_list;
+
+    bool _match_subnet(const std::string &dnstap_ip);
+
+    void _parse_host_specs(const std::vector<std::string> &host_list);
+
 public:
     DnstapInputEventProxy(const std::string &name, const Configurable &filter)
         : InputEventProxy(name, filter)
     {
+        if (config_exists("only_hosts")) {
+            _parse_host_specs(config_get<StringList>("only_hosts"));
+            _f_enabled.set(Filters::OnlyHosts);
+        }
     }
 
     ~DnstapInputEventProxy() = default;
@@ -115,6 +103,24 @@ public:
 
     void dnstap_cb(const ::dnstap::Dnstap &dnstap, size_t size)
     {
+        if (_f_enabled[Filters::OnlyHosts]) {
+            if (dnstap.message().has_query_address() && dnstap.message().has_response_address()) {
+                if (!_match_subnet(dnstap.message().query_address()) && !_match_subnet(dnstap.message().response_address())) {
+                    // message had both query and response address, and neither matched, so filter
+                    return;
+                }
+            } else if (dnstap.message().has_query_address() && !_match_subnet(dnstap.message().query_address())) {
+                // message had only query address and it didn't match, so filter
+                return;
+            } else if (dnstap.message().has_response_address() && !_match_subnet(dnstap.message().response_address())) {
+                // message had only response address and it didn't match, so filter
+                return;
+            } else {
+                // message had neither query nor response address, so filter
+                return;
+            }
+        }
+
         dnstap_signal(dnstap, size);
     }
 
