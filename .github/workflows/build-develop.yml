@@ -5,11 +5,9 @@ on:
   pull_request:
     branches:
       - develop
-      - release
   push:
     branches:
       - develop
-      - release
 
 env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)

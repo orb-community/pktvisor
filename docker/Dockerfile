@@ -1,6 +1,6 @@
 FROM debian:bullseye-slim AS cppbuild
 
-ENV BUILD_DEPS "g++ cmake make git pkgconf jq python3-pip python3-setuptools ca-certificates"
+ENV BUILD_DEPS "g++ cmake make git pkgconf jq python3-pip python3-setuptools ca-certificates python python3"
 
 RUN \
     apt-get update && \
@@ -28,22 +28,51 @@ RUN \
 
 RUN \
     PKG_CONFIG_PATH=/local/lib/pkgconfig cmake -DCMAKE_BUILD_TYPE=Release /pktvisor-src && \
-    make all test -j 4
+    make all -j 4
 
-FROM golang:latest AS gobuild
+FROM --platform=$BUILDPLATFORM golang:latest AS gobuild
+ARG TARGETOS
+ARG TARGETARCH
+ARG TARGETPLATFORM
+
 COPY golang/ /src/
 WORKDIR /src/
 COPY --from=cppbuild /pktvisor-src/golang/pkg/client/version.go /src/pkg/client/version.go
-RUN go build -o pktvisor-cli cmd/pktvisor-cli/main.go
+RUN GOOS=$TARGETOS GOARCH=$TARGETARCH go build -o pktvisor-cli cmd/pktvisor-cli/main.go
 
-FROM debian:bullseye-slim AS runtime
+FROM --platform=$BUILDPLATFORM debian:bullseye-slim AS binary_publisher
+ARG ghtoken
+ARG TARGETOS
+ARG TARGETARCH
+ARG TARGETPLATFORM
 
 ENV RUNTIME_DEPS "curl ca-certificates"
 
 RUN \
     apt-get update && \
-    apt-get upgrade --yes --force-yes && \
-    apt-get install --yes --force-yes --no-install-recommends ${RUNTIME_DEPS} && \
+    apt-get upgrade -y && \
+    apt-get install -y --no-install-recommends ${RUNTIME_DEPS}
+
+COPY --from=cppbuild /tmp/build/bin/pktvisord /usr/local/sbin/pktvisord
+COPY --from=cppbuild /tmp/build/bin/pktvisor-reader /usr/local/sbin/pktvisor-reader
+COPY --from=gobuild /src/pktvisor-cli /usr/local/bin/pktvisor-cli
+COPY docker/upload-gh-asset.sh /upload-gh-asset.sh
+RUN chmod a+x /upload-gh-asset.sh
+
+#zip binaries
+RUN tar -czvf "pktvisor-${TARGETARCH}.tar.gz"  /usr/local/sbin/pktvisord /usr/local/sbin/pktvisor-reader /usr/local/bin/pktvisor-cli
+
+#push asset to release assets
+RUN /upload-gh-asset.sh github_api_token=${ghtoken} owner=ns1labs repo=pktvisor tag=LATEST filename=pktvisor-${TARGETARCH}.tar.gz
+
+FROM debian:bullseye-slim
+
+ENV RUNTIME_DEPS "curl ca-certificates"
+
+RUN \
+    apt-get update && \
+    apt-get upgrade -y && \
+    apt-get install -y --no-install-recommends ${RUNTIME_DEPS} && \
     rm -rf /var/lib/apt
 
 COPY --from=cppbuild /tmp/build/bin/pktvisord /usr/local/sbin/pktvisord
