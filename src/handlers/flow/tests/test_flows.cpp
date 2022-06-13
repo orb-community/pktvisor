@@ -62,7 +62,7 @@ TEST_CASE("Parse sflow stream without sampling", "[sflow][flow]")
     visor::Config c;
     c.config_set<uint64_t>("num_periods", 1);
     FlowStreamHandler flow_handler{"flow-test", &stream, &c};
-    flow_handler.config_set<bool>("sflow_sampling_rate", false);
+    flow_handler.config_set<bool>("sample_rate_scaling", false);
 
     flow_handler.start();
     stream.start();

@@ -20,7 +20,7 @@ namespace visor::handler::flow {
 
 FlowStreamHandler::FlowStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config, StreamHandler *handler)
     : visor::StreamMetricsHandler<FlowMetricsManager>(name, window_config)
-    , _sflow_sampling_rate(true)
+    , _sample_rate_scaling(true)
 {
     if (handler) {
         throw StreamHandlerException(fmt::format("FlowStreamHandler: unsupported upstream chained stream handler {}", handler->name()));
@@ -54,8 +54,8 @@ void FlowStreamHandler::start()
         _f_enabled.set(Filters::OnlyHosts);
     }
 
-    if (config_exists("sflow_sampling_rate") && !config_get<bool>("sflow_sampling_rate")) {
-        _sflow_sampling_rate = false;
+    if (config_exists("sample_rate_scaling") && !config_get<bool>("sample_rate_scaling")) {
+        _sample_rate_scaling = false;
     }
 
     if (config_exists("recorded_stream")) {
@@ -129,7 +129,7 @@ void FlowStreamHandler::process_sflow_cb(const SFSample &payload)
             break;
         }
 
-        if (_sflow_sampling_rate) {
+        if (_sample_rate_scaling) {
             flow.packets = sample.meanSkipCount;
             flow.payload_size = sample.meanSkipCount * sample.sampledPacketSize;
         } else {
