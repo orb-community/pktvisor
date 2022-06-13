@@ -103,9 +103,74 @@ jobs:
           path: ./
           retention-days: 1
 
-  package-arm64:
-    needs: prebuild-package
+  spinup-self-runner:
+    needs:
+      - prebuild-package
     runs-on: ubuntu-latest
+#    if: ${{ needs.pre-test.outputs.stg == 'true' || needs.pre-test.outputs.prd == 'true' }}
+    outputs:
+      runner_token: ${{ steps.token.outputs.runner }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Generate runner token
+        id: token
+        run: |
+          curl -X POST -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/ns1labs/pktvisor/actions/runners/registration-token -o token.json
+          echo "::set-output name=runner::$(cat token.json | jq .token --raw-output )"
+          cat token.json
+
+      - name: Inject runner token in user_data.sh
+        run: |
+          cd hosted-runner/arm64/
+          ESCAPED_REPLACE_RUNNER_TOKEN=$(printf '%s\n' "${{ steps.token.outputs.runner }}" | sed -e 's/[\/&]/\\&/g')
+          sed -i -e "s/RUNNER_TOKEN/$ESCAPED_REPLACE_RUNNER_TOKEN/g" user_data.sh
+
+      - name: Inject AWS key
+        run: |
+          cd hosted-runner/arm64/
+          ESCAPED_REPLACE_KEY_ID=$(printf '%s\n' "${{ secrets.AWS_ACCESS_KEY_ID }}" | sed -e 's/[\/&]/\\&/g')
+          sed -i -e "s/AWSID/$ESCAPED_REPLACE_KEY_ID/g" vars.tf
+          ESCAPED_REPLACE_ACCESS_KEY=$(printf '%s\n' "${{ secrets.AWS_SECRET_ACCESS_KEY }}" | sed -e 's/[\/&]/\\&/g')
+          sed -i -e "s/AWSSECRET/$ESCAPED_REPLACE_ACCESS_KEY/g" vars.tf
+
+      - name: setup terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.1.7
+
+      - name: Terraform Init
+        run: |
+          cd hosted-runner/arm64/
+          terraform init -input=false
+
+      - name: Terraform plan
+        run: |
+          cd hosted-runner/arm64/
+          terraform plan -out=tfplan
+
+      - name: Terraform apply
+        run: |
+          cd hosted-runner/arm64/
+          terraform apply -auto-approve tfplan
+
+      - name: Terraform output
+        run: |
+          cd hosted-runner/arm64/
+          terraform output -raw ip
+
+      - name: Persist to workspace
+        uses: actions/upload-artifact@v2
+        with:
+          name: terraform
+          path: |
+            ./hosted-runner/arm64/terraform.tfstate
+          retention-days: 1
+
+  package-arm64:
+    needs: spinup-self-runner
+    runs-on: self-hosted
     if: github.event_name != 'pull_request'
     steps:
       - name: Attach to workspace
@@ -177,8 +242,8 @@ jobs:
             ghtoken=${{ secrets.GITHUB_TOKEN }}
 
   package-armv7:
-    needs: package-arm64
-    runs-on: ubuntu-latest
+    needs: spinup-self-runner
+    runs-on: self-hosted
     if: github.event_name != 'pull_request'
     steps:
       - name: Attach to workspace
@@ -250,7 +315,7 @@ jobs:
             ghtoken=${{ secrets.GITHUB_TOKEN }}
 
   package-amd64:
-    needs: package-armv7
+    needs: spinup-self-runner
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
     steps:
@@ -322,9 +387,60 @@ jobs:
           build-args: |
             ghtoken=${{ secrets.GITHUB_TOKEN }}
 
+  remove-self-runner:
+    needs:
+      - package-armv7
+      - package-arm64
+    runs-on: ubuntu-latest
+#    if: ${{ needs.pre-test.outputs.stg == 'true' || needs.pre-test.outputs.prd == 'true' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Attach to workspace
+        uses: actions/download-artifact@v2
+        with:
+          name: terraform
+          path: hosted-runner/arm64/
+
+      - name: Inject AWS key
+        run: |
+          cd hosted-runner/arm64/
+          ESCAPED_REPLACE_KEY_ID=$(printf '%s\n' "${{ secrets.AWS_ACCESS_KEY_ID }}" | sed -e 's/[\/&]/\\&/g')
+          sed -i -e "s/AWSID/$ESCAPED_REPLACE_KEY_ID/g" vars.tf
+          ESCAPED_REPLACE_ACCESS_KEY=$(printf '%s\n' "${{ secrets.AWS_SECRET_ACCESS_KEY }}" | sed -e 's/[\/&]/\\&/g')
+          sed -i -e "s/AWSSECRET/$ESCAPED_REPLACE_ACCESS_KEY/g" vars.tf
+
+      - name: setup terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.1.7
+
+      - name: Terraform Init
+        run: |
+          cd hosted-runner/arm64/
+          terraform init -input=false
+
+      - name: Terraform plan destroy
+        run: |
+          cd hosted-runner/arm64/
+          terraform plan -destroy
+        continue-on-error: true
+
+      - name: Terraform destroy
+        run: |
+          cd hosted-runner/arm64/
+          terraform destroy -auto-approve
+
+      - name: Remove runner from github
+        run: |
+          curl -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/ns1labs/pktvisor/actions/runners | jq '.runners[].id' --raw-output > runner_id.txt
+          RUNNER_ID=$(cat runner_id.txt)
+          curl -X DELETE -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/ns1labs/pktvisor/actions/runners/$RUNNER_ID
+
   pushing-manifests:
     needs:
-      - prebuild-package
+      - remove-self-runner
       - package-amd64
       - package-arm64
       - package-armv7
