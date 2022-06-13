@@ -47,6 +47,7 @@ std::unique_ptr<InputStream> PcapInputModulePlugin::instantiate(const std::strin
 {
     auto input_stream = std::make_unique<PcapInputStream>(name);
     input_stream->config_merge(*config);
+    input_stream->config_merge(*filter);
     return input_stream;
 }
 

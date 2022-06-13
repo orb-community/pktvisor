@@ -20,6 +20,7 @@ std::unique_ptr<InputStream> FlowInputModulePlugin::instantiate(const std::strin
 {
     auto input_stream = std::make_unique<FlowInputStream>(name);
     input_stream->config_merge(*config);
+    input_stream->config_merge(*filter);
     return input_stream;
 }
 

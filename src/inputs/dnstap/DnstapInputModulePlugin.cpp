@@ -21,6 +21,7 @@ std::unique_ptr<InputStream> DnstapInputModulePlugin::instantiate(const std::str
 {
     auto input_stream = std::make_unique<DnstapInputStream>(name);
     input_stream->config_merge(*config);
+    input_stream->config_merge(*filter);
     return input_stream;
 }
 

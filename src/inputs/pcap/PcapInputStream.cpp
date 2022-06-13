@@ -229,6 +229,7 @@ void PcapInputStream::stop()
 
 void PcapInputStream::tcp_message_ready(int8_t side, const pcpp::TcpStreamData &tcpData)
 {
+    std::shared_lock lock(_input_mutex);
     for (auto &proxy : _event_proxies) {
         dynamic_cast<PcapInputEventProxy *>(proxy.get())->tcp_message_ready_cb(side, tcpData);
     }
@@ -237,6 +238,7 @@ void PcapInputStream::tcp_message_ready(int8_t side, const pcpp::TcpStreamData &
 
 void PcapInputStream::tcp_connection_start(const pcpp::ConnectionData &connectionData)
 {
+    std::shared_lock lock(_input_mutex);
     for (auto &proxy : _event_proxies) {
         dynamic_cast<PcapInputEventProxy *>(proxy.get())->tcp_connection_start_cb(connectionData);
     }
@@ -245,6 +247,7 @@ void PcapInputStream::tcp_connection_start(const pcpp::ConnectionData &connectio
 
 void PcapInputStream::tcp_connection_end(const pcpp::ConnectionData &connectionData, pcpp::TcpReassembly::ConnectionEndReason reason)
 {
+    std::shared_lock lock(_input_mutex);
     for (auto &proxy : _event_proxies) {
         static_cast<PcapInputEventProxy *>(proxy.get())->tcp_connection_end_cb(connectionData, reason);
     }

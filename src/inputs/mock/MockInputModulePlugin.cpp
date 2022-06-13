@@ -21,6 +21,7 @@ std::unique_ptr<InputStream> MockInputModulePlugin::instantiate(const std::strin
 {
     auto input_stream = std::make_unique<MockInputStream>(name);
     input_stream->config_merge(*config);
+    input_stream->config_merge(*filter);
     return input_stream;
 }
 
