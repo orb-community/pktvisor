@@ -123,13 +123,13 @@ jobs:
 
       - name: Inject runner token in user_data.sh
         run: |
-          cd hosted-runner/amd64/
+          cd hosted-runner/arm64/
           ESCAPED_REPLACE_RUNNER_TOKEN=$(printf '%s\n' "${{ steps.token.outputs.runner }}" | sed -e 's/[\/&]/\\&/g')
           sed -i -e "s/RUNNER_TOKEN/$ESCAPED_REPLACE_RUNNER_TOKEN/g" user_data.sh
 
       - name: Inject AWS key
         run: |
-          cd hosted-runner/amd64/
+          cd hosted-runner/arm64/
           ESCAPED_REPLACE_KEY_ID=$(printf '%s\n' "${{ secrets.AWS_ACCESS_KEY_ID }}" | sed -e 's/[\/&]/\\&/g')
           sed -i -e "s/AWSID/$ESCAPED_REPLACE_KEY_ID/g" vars.tf
           ESCAPED_REPLACE_ACCESS_KEY=$(printf '%s\n' "${{ secrets.AWS_SECRET_ACCESS_KEY }}" | sed -e 's/[\/&]/\\&/g')
@@ -142,22 +142,22 @@ jobs:
 
       - name: Terraform Init
         run: |
-          cd hosted-runner/amd64/
+          cd hosted-runner/arm64/
           terraform init -input=false
 
       - name: Terraform plan
         run: |
-          cd hosted-runner/amd64/
+          cd hosted-runner/arm64/
           terraform plan -out=tfplan
 
       - name: Terraform apply
         run: |
-          cd hosted-runner/amd64/
+          cd hosted-runner/arm64/
           terraform apply -auto-approve tfplan
 
       - name: Terraform output
         run: |
-          cd hosted-runner/amd64/
+          cd hosted-runner/arm64/
           terraform output -raw ip
 
       - name: Persist to workspace
@@ -165,7 +165,7 @@ jobs:
         with:
           name: terraform
           path: |
-            ./hosted-runner/amd64/terraform.tfstate
+            ./hosted-runner/arm64/terraform.tfstate
           retention-days: 1
 
   package-arm64:
@@ -222,7 +222,7 @@ jobs:
       - name: Set up Docker Buildx
         id: buildx
         uses: docker/setup-buildx-action@v2
-        
+
       - name: "Append ARM buildx builder from AWS"
         uses: baschny/append-buildx-action@v1
         with:
