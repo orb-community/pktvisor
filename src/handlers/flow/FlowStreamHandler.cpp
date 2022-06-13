@@ -394,19 +394,19 @@ void FlowMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap a
     if (group_enabled(group::FlowMetrics::TopByBytes)) {
         _topByBytes.topSrcIP.to_prometheus(out, add_labels);
         _topByBytes.topDstIP.to_prometheus(out, add_labels);
-        _topByBytes.topSrcPort.to_prometheus(out, add_labels);
-        _topByBytes.topDstPort.to_prometheus(out, add_labels);
-        _topByBytes.topInIfIndex.to_prometheus(out, add_labels);
-        _topByBytes.topOutIfIndex.to_prometheus(out, add_labels);
+        _topByBytes.topSrcPort.to_prometheus(out, add_labels, [](const uint16_t &val) { return std::to_string(val); });
+        _topByBytes.topDstPort.to_prometheus(out, add_labels, [](const uint16_t &val) { return std::to_string(val); });
+        _topByBytes.topInIfIndex.to_prometheus(out, add_labels, [](const uint32_t &val) { return std::to_string(val); });
+        _topByBytes.topOutIfIndex.to_prometheus(out, add_labels, [](const uint32_t &val) { return std::to_string(val); });
     }
 
     if (group_enabled(group::FlowMetrics::TopByPackets)) {
         _topByPackets.topSrcIP.to_prometheus(out, add_labels);
         _topByPackets.topDstIP.to_prometheus(out, add_labels);
-        _topByPackets.topSrcPort.to_prometheus(out, add_labels);
-        _topByPackets.topDstPort.to_prometheus(out, add_labels);
-        _topByPackets.topInIfIndex.to_prometheus(out, add_labels);
-        _topByPackets.topOutIfIndex.to_prometheus(out, add_labels);
+        _topByPackets.topSrcPort.to_prometheus(out, add_labels, [](const uint16_t &val) { return std::to_string(val); });
+        _topByPackets.topDstPort.to_prometheus(out, add_labels, [](const uint16_t &val) { return std::to_string(val); });
+        _topByPackets.topInIfIndex.to_prometheus(out, add_labels, [](const uint32_t &val) { return std::to_string(val); });
+        _topByPackets.topOutIfIndex.to_prometheus(out, add_labels, [](const uint32_t &val) { return std::to_string(val); });
     }
 
     if (group_enabled(group::FlowMetrics::TopGeo)) {
@@ -455,19 +455,19 @@ void FlowMetricsBucket::to_json(json &j) const
     if (group_enabled(group::FlowMetrics::TopByBytes)) {
         _topByBytes.topSrcIP.to_json(j);
         _topByBytes.topDstIP.to_json(j);
-        _topByBytes.topSrcPort.to_json(j);
-        _topByBytes.topDstPort.to_json(j);
-        _topByBytes.topInIfIndex.to_json(j);
-        _topByBytes.topOutIfIndex.to_json(j);
+        _topByBytes.topSrcPort.to_json(j, [](const uint16_t &val) { return std::to_string(val); });
+        _topByBytes.topDstPort.to_json(j, [](const uint16_t &val) { return std::to_string(val); });
+        _topByBytes.topInIfIndex.to_json(j, [](const uint32_t &val) { return std::to_string(val); });
+        _topByBytes.topOutIfIndex.to_json(j, [](const uint32_t &val) { return std::to_string(val); });
     }
 
     if (group_enabled(group::FlowMetrics::TopByPackets)) {
         _topByPackets.topSrcIP.to_json(j);
         _topByPackets.topDstIP.to_json(j);
-        _topByPackets.topSrcPort.to_json(j);
-        _topByPackets.topDstPort.to_json(j);
-        _topByPackets.topInIfIndex.to_json(j);
-        _topByPackets.topOutIfIndex.to_json(j);
+        _topByPackets.topSrcPort.to_json(j, [](const uint16_t &val) { return std::to_string(val); });
+        _topByPackets.topDstPort.to_json(j, [](const uint16_t &val) { return std::to_string(val); });
+        _topByPackets.topInIfIndex.to_json(j, [](const uint32_t &val) { return std::to_string(val); });
+        _topByPackets.topOutIfIndex.to_json(j, [](const uint32_t &val) { return std::to_string(val); });
     }
 
     if (group_enabled(group::FlowMetrics::TopGeo)) {

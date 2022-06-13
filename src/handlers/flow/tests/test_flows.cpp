@@ -48,6 +48,8 @@ TEST_CASE("Parse sflow stream", "[sflow][flow]")
     CHECK(j["top_src_ips_bytes"][0]["name"] == "10.4.1.2");
     CHECK(j["top_src_ips_packets"][0]["estimate"] == 25853);
     CHECK(j["top_src_ips_packets"][0]["name"] == "10.4.1.2");
+    CHECK(j["top_dst_ports_bytes"][0]["estimate"] == 76651340);
+    CHECK(j["top_dst_ports_bytes"][0]["name"] == "5001");
     CHECK(j["payload_size"]["p50"] == 1518);
 }
 
@@ -94,6 +96,8 @@ TEST_CASE("Parse sflow stream with host filter", "[sflow][flow]")
     CHECK(j["top_src_ips_bytes"][0]["name"] == "10.4.3.2");
     CHECK(j["top_src_ips_packets"][0]["estimate"] == 24649);
     CHECK(j["top_src_ips_packets"][0]["name"] == "10.4.3.2");
+    CHECK(j["top_dst_ports_bytes"][0]["estimate"] == 37409542);
+    CHECK(j["top_dst_ports_bytes"][0]["name"] == "5001");
     CHECK(j["payload_size"]["p50"] == 1518);
 }
 
