@@ -404,11 +404,11 @@ void PcapInputStream::process_raw_packet(pcpp::RawPacket *rawPacket)
     } else if (l4 == pcpp::TCP) {
         lock.unlock();
         auto result = _tcp_reassembly.reassemblePacket(packet);
+        lock.lock();
         switch (result) {
         case pcpp::TcpReassembly::Error_PacketDoesNotMatchFlow:
         case pcpp::TcpReassembly::NonTcpPacket:
         case pcpp::TcpReassembly::NonIpPacket:
-            lock.lock();
             for (auto &proxy : _event_proxies) {
                 static_cast<PcapInputEventProxy *>(proxy.get())->process_pcap_tcp_reassembly_error(packet, dir, l3, timestamp);
             }
