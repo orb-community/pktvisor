@@ -184,6 +184,8 @@ class FlowStreamHandler final : public visor::StreamMetricsHandler<FlowMetricsMa
     std::vector<Ipv4Subnet> _IPv4_host_list;
     std::vector<Ipv6Subnet> _IPv6_host_list;
 
+    bool _sample_rate_scaling;
+
     enum Filters {
         OnlyHosts,
         FiltersMAX

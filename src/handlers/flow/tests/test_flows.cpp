@@ -44,6 +44,53 @@ TEST_CASE("Parse sflow stream", "[sflow][flow]")
     CHECK(j["cardinality"]["src_ips_in"] == 4);
     CHECK(j["cardinality"]["dst_ports_out"] == 31);
     CHECK(j["cardinality"]["src_ports_in"] == 31);
+    CHECK(j["top_src_ips_bytes"][0]["estimate"] == 784835960000);
+    CHECK(j["top_src_ips_bytes"][0]["name"] == "10.4.1.2");
+    CHECK(j["top_src_ips_packets"][0]["estimate"] == 517060000);
+    CHECK(j["top_src_ips_packets"][0]["name"] == "10.4.1.2");
+    CHECK(j["top_dst_ports_bytes"][0]["estimate"] == 1533026800000);
+    CHECK(j["top_dst_ports_bytes"][0]["name"] == "5001");
+    CHECK(j["payload_size"]["p50"] == 30360000);
+}
+
+TEST_CASE("Parse sflow stream without sampling", "[sflow][flow]")
+{
+
+    FlowInputStream stream{"sflow-test"};
+    stream.config_set("flow_type", "sflow");
+    stream.config_set("pcap_file", "tests/fixtures/ecmp.pcap");
+
+    visor::Config c;
+    c.config_set<uint64_t>("num_periods", 1);
+    FlowStreamHandler flow_handler{"flow-test", &stream, &c};
+    flow_handler.config_set<bool>("sample_rate_scaling", false);
+
+    flow_handler.start();
+    stream.start();
+    stream.stop();
+    flow_handler.stop();
+
+    auto counters = flow_handler.metrics()->bucket(0)->counters();
+    auto event_data = flow_handler.metrics()->bucket(0)->event_data_locked();
+
+    // confirmed with wireshark
+    CHECK(event_data.num_events->value() == 9279);
+    CHECK(event_data.num_samples->value() == 9279);
+    CHECK(counters.TCP.value() == 52785);
+    CHECK(counters.UDP.value() == 0);
+    CHECK(counters.IPv4.value() == 52785);
+    CHECK(counters.IPv6.value() == 0);
+    CHECK(counters.OtherL4.value() == 0);
+    CHECK(counters.filtered.value() == 0);
+    CHECK(counters.total.value() == 52785);
+
+    nlohmann::json j;
+    flow_handler.metrics()->bucket(0)->to_json(j);
+
+    CHECK(j["cardinality"]["dst_ips_out"] == 4);
+    CHECK(j["cardinality"]["src_ips_in"] == 4);
+    CHECK(j["cardinality"]["dst_ports_out"] == 31);
+    CHECK(j["cardinality"]["src_ports_in"] == 31);
     CHECK(j["top_src_ips_bytes"][0]["estimate"] == 39241798);
     CHECK(j["top_src_ips_bytes"][0]["name"] == "10.4.1.2");
     CHECK(j["top_src_ips_packets"][0]["estimate"] == 25853);
@@ -92,13 +139,13 @@ TEST_CASE("Parse sflow stream with host filter", "[sflow][flow]")
     CHECK(j["cardinality"]["src_ips_in"] == 2);
     CHECK(j["cardinality"]["dst_ports_out"] == 16);
     CHECK(j["cardinality"]["src_ports_in"] == 16);
-    CHECK(j["top_src_ips_bytes"][0]["estimate"] == 37409542);
+    CHECK(j["top_src_ips_bytes"][0]["estimate"] == 748190840000);
     CHECK(j["top_src_ips_bytes"][0]["name"] == "10.4.3.2");
-    CHECK(j["top_src_ips_packets"][0]["estimate"] == 24649);
+    CHECK(j["top_src_ips_packets"][0]["estimate"] == 492980000);
     CHECK(j["top_src_ips_packets"][0]["name"] == "10.4.3.2");
-    CHECK(j["top_dst_ports_bytes"][0]["estimate"] == 37409542);
+    CHECK(j["top_dst_ports_bytes"][0]["estimate"] == 748190840000);
     CHECK(j["top_dst_ports_bytes"][0]["name"] == "5001");
-    CHECK(j["payload_size"]["p50"] == 1518);
+    CHECK(j["payload_size"]["p50"] == 30360000);
 }
 
 TEST_CASE("Parse netflow stream", "[netflow][flow]")
