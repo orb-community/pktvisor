@@ -5,8 +5,7 @@ resource "aws_instance" "orb-devops" {
   key_name        = var.key_name
   user_data       = file("user_data.sh")
   associate_public_ip_address = true
-  subnet_id       = "subnet-086909352c7cc4e61"
-  availability_zone = "us-east-1a"
+  subnet_id       = "subnet-090c967a67234e472"
 
   tags = {
     Name            = "orb-pktvisor-self-runner"
