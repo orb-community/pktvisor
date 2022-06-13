@@ -21,65 +21,65 @@ env:
   CONAN_REVISIONS_ENABLED: 1
 
 jobs:
-#  build:
-#    # The CMake configure and build commands are platform agnostic and should work equally
-#    # well on Windows or Mac.  You can convert this to a matrix build if you need
-#    # cross-platform coverage.
-#    # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
-#    strategy:
-#      matrix:
-#        os: [ ubuntu-latest, macos-latest ]
-#    runs-on: ${{ matrix.os }}
-#    steps:
-#      - uses: actions/checkout@v2
-#
-#      - name: Create Build Environment
-#        # Some projects don't allow in-source building, so create a separate build directory
-#        # We'll use this as our working directory for all subsequent commands
-#        run: cmake -E make_directory ${{github.workspace}}/build
-#
-#      - name: Get Conan
-#        # You may pin to the exact commit or the version.
-#        # uses: turtlebrowser/get-conan@4dc7e6dd45c8b1e02e909979d7cfc5ebba6ddbe2
-#        uses: turtlebrowser/get-conan@v1.0
-#
-#      - name: linux package install
-#        if: matrix.os == 'ubuntu-latest'
-#        run: |
-#          sudo apt-get update
-#          sudo apt-get install --yes --no-install-recommends jq
-#
-#      - name: Configure CMake
-#        # Use a bash shell so we can use the same syntax for environment variable
-#        # access regardless of the host operating system
-#        shell: bash
-#        working-directory: ${{github.workspace}}/build
-#        # Note the current convention is to use the -S and -B options here to specify source
-#        # and build directories, but this is only available with CMake 3.13 and higher.
-#        # The CMake binaries on the Github Actions machines are (as of this writing) 3.12
-#        run: PKG_CONFIG_PATH=${{github.workspace}}/local/lib/pkgconfig cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE
-#
-#      - name: Build
-#        working-directory: ${{github.workspace}}/build
-#        shell: bash
-#        # Execute the build.  You can specify a specific target with "--target <NAME>"
-#        run: cmake --build . --config $BUILD_TYPE -- -j 2
-#
-#      - name: Test
-#        working-directory: ${{github.workspace}}/build
-#        shell: bash
-#        # Execute tests defined by the CMake configuration.
-#        # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
-#        run: ctest -C $BUILD_TYPE
-#
-#      - name: Login to ns1labs conan
-#        run: CONAN_USER_HOME=${{github.workspace}}/build/conan_home conan user -p ${{ secrets.CONAN_LABS_PASSWORD }} -r ns1labs ${{ secrets.CONAN_LABS_USERNAME }}
-#
-#      - name: Cache conan packages
-#        run: CONAN_USER_HOME=${{github.workspace}}/build/conan_home conan upload "*" --all -r ns1labs -c
+  #  build:
+  #    # The CMake configure and build commands are platform agnostic and should work equally
+  #    # well on Windows or Mac.  You can convert this to a matrix build if you need
+  #    # cross-platform coverage.
+  #    # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
+  #    strategy:
+  #      matrix:
+  #        os: [ ubuntu-latest, macos-latest ]
+  #    runs-on: ${{ matrix.os }}
+  #    steps:
+  #      - uses: actions/checkout@v2
+  #
+  #      - name: Create Build Environment
+  #        # Some projects don't allow in-source building, so create a separate build directory
+  #        # We'll use this as our working directory for all subsequent commands
+  #        run: cmake -E make_directory ${{github.workspace}}/build
+  #
+  #      - name: Get Conan
+  #        # You may pin to the exact commit or the version.
+  #        # uses: turtlebrowser/get-conan@4dc7e6dd45c8b1e02e909979d7cfc5ebba6ddbe2
+  #        uses: turtlebrowser/get-conan@v1.0
+  #
+  #      - name: linux package install
+  #        if: matrix.os == 'ubuntu-latest'
+  #        run: |
+  #          sudo apt-get update
+  #          sudo apt-get install --yes --no-install-recommends jq
+  #
+  #      - name: Configure CMake
+  #        # Use a bash shell so we can use the same syntax for environment variable
+  #        # access regardless of the host operating system
+  #        shell: bash
+  #        working-directory: ${{github.workspace}}/build
+  #        # Note the current convention is to use the -S and -B options here to specify source
+  #        # and build directories, but this is only available with CMake 3.13 and higher.
+  #        # The CMake binaries on the Github Actions machines are (as of this writing) 3.12
+  #        run: PKG_CONFIG_PATH=${{github.workspace}}/local/lib/pkgconfig cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE
+  #
+  #      - name: Build
+  #        working-directory: ${{github.workspace}}/build
+  #        shell: bash
+  #        # Execute the build.  You can specify a specific target with "--target <NAME>"
+  #        run: cmake --build . --config $BUILD_TYPE -- -j 2
+  #
+  #      - name: Test
+  #        working-directory: ${{github.workspace}}/build
+  #        shell: bash
+  #        # Execute tests defined by the CMake configuration.
+  #        # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
+  #        run: ctest -C $BUILD_TYPE
+  #
+  #      - name: Login to ns1labs conan
+  #        run: CONAN_USER_HOME=${{github.workspace}}/build/conan_home conan user -p ${{ secrets.CONAN_LABS_PASSWORD }} -r ns1labs ${{ secrets.CONAN_LABS_USERNAME }}
+  #
+  #      - name: Cache conan packages
+  #        run: CONAN_USER_HOME=${{github.workspace}}/build/conan_home conan upload "*" --all -r ns1labs -c
 
   prebuild-package:
-#    needs: build
+    #    needs: build
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
     steps:
@@ -107,7 +107,7 @@ jobs:
     needs:
       - prebuild-package
     runs-on: ubuntu-latest
-#    if: ${{ needs.pre-test.outputs.stg == 'true' || needs.pre-test.outputs.prd == 'true' }}
+    #    if: ${{ needs.pre-test.outputs.stg == 'true' || needs.pre-test.outputs.prd == 'true' }}
     outputs:
       runner_token: ${{ steps.token.outputs.runner }}
     steps:
@@ -123,13 +123,13 @@ jobs:
 
       - name: Inject runner token in user_data.sh
         run: |
-          cd hosted-runner/arm64/
+          cd hosted-runner/amd64/
           ESCAPED_REPLACE_RUNNER_TOKEN=$(printf '%s\n' "${{ steps.token.outputs.runner }}" | sed -e 's/[\/&]/\\&/g')
           sed -i -e "s/RUNNER_TOKEN/$ESCAPED_REPLACE_RUNNER_TOKEN/g" user_data.sh
 
       - name: Inject AWS key
         run: |
-          cd hosted-runner/arm64/
+          cd hosted-runner/amd64/
           ESCAPED_REPLACE_KEY_ID=$(printf '%s\n' "${{ secrets.AWS_ACCESS_KEY_ID }}" | sed -e 's/[\/&]/\\&/g')
           sed -i -e "s/AWSID/$ESCAPED_REPLACE_KEY_ID/g" vars.tf
           ESCAPED_REPLACE_ACCESS_KEY=$(printf '%s\n' "${{ secrets.AWS_SECRET_ACCESS_KEY }}" | sed -e 's/[\/&]/\\&/g')
@@ -142,22 +142,22 @@ jobs:
 
       - name: Terraform Init
         run: |
-          cd hosted-runner/arm64/
+          cd hosted-runner/amd64/
           terraform init -input=false
 
       - name: Terraform plan
         run: |
-          cd hosted-runner/arm64/
+          cd hosted-runner/amd64/
           terraform plan -out=tfplan
 
       - name: Terraform apply
         run: |
-          cd hosted-runner/arm64/
+          cd hosted-runner/amd64/
           terraform apply -auto-approve tfplan
 
       - name: Terraform output
         run: |
-          cd hosted-runner/arm64/
+          cd hosted-runner/amd64/
           terraform output -raw ip
 
       - name: Persist to workspace
@@ -165,7 +165,7 @@ jobs:
         with:
           name: terraform
           path: |
-            ./hosted-runner/arm64/terraform.tfstate
+            ./hosted-runner/amd64/terraform.tfstate
           retention-days: 1
 
   package-arm64:
@@ -218,12 +218,16 @@ jobs:
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
-        with:
-          platforms: linux/arm64
 
       - name: Set up Docker Buildx
         id: buildx
         uses: docker/setup-buildx-action@v2
+        
+      - name: "Append ARM buildx builder from AWS"
+        uses: baschny/append-buildx-action@v1
+        with:
+          builder: ${{ steps.buildx.outputs.name }}
+          endpoint: "unix:///var/run/docker.sock"
 
       - name: Build + push - pktvisor (multi-arch)
         env:
@@ -292,7 +296,7 @@ jobs:
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
         with:
-          platforms: linux/arm/v7
+          platforms: all
 
       - name: Set up Docker Buildx
         id: buildx
@@ -365,7 +369,7 @@ jobs:
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
         with:
-          platforms: linux/amd64
+          platforms: all
 
       - name: Set up Docker Buildx
         id: buildx
@@ -392,7 +396,7 @@ jobs:
       - package-armv7
       - package-arm64
     runs-on: ubuntu-latest
-#    if: ${{ needs.pre-test.outputs.stg == 'true' || needs.pre-test.outputs.prd == 'true' }}
+    #    if: ${{ needs.pre-test.outputs.stg == 'true' || needs.pre-test.outputs.prd == 'true' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -490,7 +494,7 @@ jobs:
       - name: Delete image from ghcr.io
         uses: bots-house/ghcr-delete-image-action@v1.0.0
         with:
-          owner: ns1labs
+          owner: etaques
           name: pktvisor
           token: ${{ secrets.GITHUB_TOKEN }}
           tag: amd64
@@ -504,7 +508,7 @@ jobs:
       - name: Delete image from ghcr.io
         uses: bots-house/ghcr-delete-image-action@v1.0.0
         with:
-          owner: ns1labs
+          owner: etaques
           name: pktvisor
           token: ${{ secrets.GITHUB_TOKEN }}
           tag: arm64
@@ -518,7 +522,7 @@ jobs:
       - name: Delete image from ghcr.io
         uses: bots-house/ghcr-delete-image-action@v1.0.0
         with:
-          owner: ns1labs
+          owner: etaques
           name: pktvisor
           token: ${{ secrets.GITHUB_TOKEN }}
           tag: armv7
@@ -532,7 +536,7 @@ jobs:
       - name: Delete image from ghcr.io
         uses: bots-house/ghcr-delete-image-action@v1.0.0
         with:
-          owner: ns1labs
+          owner: etaques
           name: pktvisor
           token: ${{ secrets.GITHUB_TOKEN }}
           tag: latest
