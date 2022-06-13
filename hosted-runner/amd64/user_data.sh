@@ -1,5 +1,5 @@
 #!/bin/sh
-#scaling privileges
+# scaling privileges
 sudo su
 
 #installing packages
