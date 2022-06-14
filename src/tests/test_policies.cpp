@@ -34,7 +34,6 @@ visor:
         input_type: mock
         config:
           sample: value
-        filter:
           bpf: "tcp or udp"
       # stream handlers to attach to this input stream
       # these decide exactly which data to summarize and expose for collection
@@ -107,7 +106,6 @@ visor:
         input_type: mock
         config:
           sample: value
-        filter:
           bpf: "tcp or udp"
       handlers:
         window_config:
@@ -620,18 +618,17 @@ TEST_CASE("Policies", "[policies]")
 
         // force a roll back by creating a conflict with a handler module name that already exists
         Config config;
-        auto input_stream = registry.input_plugins()["mock"]->instantiate("mymock", &config);
-        auto mod = registry.handler_plugins()["net"]->instantiate("default_view-default_net", input_stream.get(), &config);
+        Config filter;
+        auto input_stream = registry.input_plugins()["mock"]->instantiate("mymock", &config, &filter);
+        auto stream_proxy = input_stream->add_event_proxy(filter);
+        auto mod = registry.handler_plugins()["net"]->instantiate("default_view-default_net", stream_proxy, &config, &filter);
         registry.handler_manager()->module_add(std::move(mod));
         REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["policies"]), "policy [default_view-default_net] creation failed (handler: default_view): module name 'default_view-default_net' already exists");
 
         auto input_node = config_file["visor"]["policies"]["default_view"]["input"];
-        Config input_filter;
-        input_filter.config_set_yaml(input_node["filter"]);
         Config input_config;
         input_config.config_set_yaml(input_node["config"]);
-        input_filter.config_merge(input_config);
-        auto hash = input_filter.config_hash();
+        auto hash = input_config.config_hash();
 
         // ensure the modules were rolled back
         REQUIRE(!registry.policy_manager()->module_exists("default_view"));

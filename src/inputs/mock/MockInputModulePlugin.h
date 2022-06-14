@@ -4,7 +4,6 @@
 
 #pragma once
 
-
 #include "InputModulePlugin.h"
 #include "MockInputStream.h"
 
@@ -21,8 +20,9 @@ public:
         : visor::InputModulePlugin{manager, plugin}
     {
     }
-    std::unique_ptr<InputStream> instantiate(const std::string name, const Configurable *config) override;
+    std::unique_ptr<InputStream> instantiate(const std::string name, const Configurable *config, const Configurable *filter) override;
+
+    std::string generate_input_name(std::string prefix, const Configurable &config, const Configurable &filter) override;
 };
 
 }
-

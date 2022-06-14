@@ -5,8 +5,8 @@
 #pragma once
 
 #include "AbstractMetricsManager.h"
-#include "PcapInputStream.h"
 #include "DhcpLayer.h"
+#include "PcapInputStream.h"
 #include "StreamHandler.h"
 #include <Corrade/Utility/Debug.h>
 #include <limits>
@@ -64,7 +64,6 @@ public:
 
     void process_filtered();
     void process_dhcp_layer(bool deep, pcpp::DhcpLayer *payload, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint16_t src_port, uint16_t dst_port);
-
 };
 
 class DhcpMetricsManager final : public visor::AbstractMetricsManager<DhcpMetricsBucket>
@@ -82,7 +81,7 @@ public:
 class DhcpStreamHandler final : public visor::StreamMetricsHandler<DhcpMetricsManager>
 {
 
-    PcapInputStream *_pcap_stream;
+    PcapInputEventProxy *_pcap_proxy;
 
     sigslot::connection _pkt_udp_connection;
     sigslot::connection _start_tstamp_connection;
@@ -98,7 +97,7 @@ class DhcpStreamHandler final : public visor::StreamMetricsHandler<DhcpMetricsMa
     bool _filtering(pcpp::DhcpLayer *payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint16_t src_port, uint16_t dst_port, timespec stamp);
 
 public:
-    DhcpStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config, StreamHandler *handler = nullptr);
+    DhcpStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config, StreamHandler *handler = nullptr);
     ~DhcpStreamHandler() = default;
 
     // visor::AbstractModule

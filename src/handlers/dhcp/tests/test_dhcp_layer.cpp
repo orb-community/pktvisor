@@ -15,7 +15,8 @@ TEST_CASE("Parse DHCP tests", "[pcap][dhcp]")
 
     visor::Config c;
     c.config_set<uint64_t>("num_periods", 1);
-    DhcpStreamHandler dhcp_handler{"dhcp-test", &stream, &c};
+    auto stream_proxy = stream.add_event_proxy(c);
+    DhcpStreamHandler dhcp_handler{"dhcp-test", stream_proxy, &c};
 
     dhcp_handler.start();
     stream.start();

@@ -13,7 +13,7 @@ namespace visor {
 
 class Configurable;
 class StreamHandler;
-class InputStream;
+class InputEventProxy;
 
 class HandlerModulePlugin : public AbstractPlugin
 {
@@ -37,7 +37,7 @@ public:
     /**
      * Instantiate a new StreamHandler
      */
-    virtual std::unique_ptr<StreamHandler> instantiate(const std::string &name, InputStream *input_stream, const Configurable *config, StreamHandler *stream_handler = nullptr) = 0;
+    virtual std::unique_ptr<StreamHandler> instantiate(const std::string &name, InputEventProxy *proxy, const Configurable *config, const Configurable *filter, StreamHandler *stream_handler = nullptr) = 0;
 };
 
 typedef Corrade::PluginManager::Manager<HandlerModulePlugin> HandlerPluginRegistry;

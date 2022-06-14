@@ -90,10 +90,7 @@ public:
     void start() override;
     void stop() override;
     void info_json(json &j) const override;
-    size_t consumer_count() const override
-    {
-        return policy_signal.slot_count() + heartbeat_signal.slot_count() + packet_signal.slot_count() + udp_signal.slot_count() + start_tstamp_signal.slot_count() + tcp_message_ready_signal.slot_count() + tcp_connection_start_signal.slot_count() + tcp_connection_end_signal.slot_count() + tcp_reassembly_error_signal.slot_count() + pcap_stats_signal.slot_count();
-    }
+    std::unique_ptr<InputEventProxy> create_event_proxy(const Configurable &filter) override;
 
     // utilities
     void parse_host_spec();
@@ -104,6 +101,62 @@ public:
     void tcp_message_ready(int8_t side, const pcpp::TcpStreamData &tcpData);
     void tcp_connection_start(const pcpp::ConnectionData &connectionData);
     void tcp_connection_end(const pcpp::ConnectionData &connectionData, pcpp::TcpReassembly::ConnectionEndReason reason);
+};
+
+class PcapInputEventProxy: public visor::InputEventProxy
+{
+public:
+    PcapInputEventProxy(const std::string &name, const Configurable &filter)
+        : InputEventProxy(name, filter)
+    {
+    }
+
+    ~PcapInputEventProxy() = default;
+
+    size_t consumer_count() const override
+    {
+        return policy_signal.slot_count() + heartbeat_signal.slot_count() + packet_signal.slot_count() + udp_signal.slot_count() + start_tstamp_signal.slot_count() + tcp_message_ready_signal.slot_count() + tcp_connection_start_signal.slot_count() + tcp_connection_end_signal.slot_count() + tcp_reassembly_error_signal.slot_count() + pcap_stats_signal.slot_count();
+    }
+
+    void process_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp)
+    {
+        packet_signal(payload, dir, l3, l4, stamp);
+    }
+
+    void process_udp_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp)
+    {
+        udp_signal(payload, dir, l3, flowkey, stamp);
+    }
+    void tcp_message_ready_cb(int8_t side, const pcpp::TcpStreamData &tcpData)
+    {
+        tcp_message_ready_signal(side, tcpData);
+    }
+    void tcp_connection_start_cb(const pcpp::ConnectionData &connectionData)
+    {
+        tcp_connection_start_signal(connectionData);
+    }
+    void tcp_connection_end_cb(const pcpp::ConnectionData &connectionData, pcpp::TcpReassembly::ConnectionEndReason reason)
+    {
+        tcp_connection_end_signal(connectionData, reason);
+    }
+    void start_tstamp_cb(timespec stamp)
+    {
+        start_tstamp_signal(stamp);
+    }
+    void end_tstamp_cb(timespec stamp)
+    {
+        end_tstamp_signal(stamp);
+    }
+
+    void process_pcap_tcp_reassembly_error(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, timespec stamp)
+    {
+        tcp_reassembly_error_signal(payload, dir, l3, stamp);
+    }
+
+    void process_pcap_stats(const pcpp::IPcapDevice::PcapStats &stats)
+    {
+        pcap_stats_signal(stats);
+    }
 
     // handler functionality
     // IF THIS changes, see consumer_count()

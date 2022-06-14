@@ -15,8 +15,9 @@ TEST_CASE("Parse net (dns) UDP IPv4 tests", "[pcap][ipv4][udp][net]")
     stream.config_set("bpf", std::string());
 
     visor::Config c;
+    auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
-    NetStreamHandler net_handler{"net-test", &stream, &c};
+    NetStreamHandler net_handler{"net-test", stream_proxy, &c};
 
     net_handler.start();
     stream.start();
@@ -48,8 +49,9 @@ TEST_CASE("Parse net (dns) TCP IPv4 tests", "[pcap][ipv4][tcp][net]")
     stream.config_set("bpf", "");
 
     visor::Config c;
+    auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
-    NetStreamHandler net_handler{"net-test", &stream, &c};
+    NetStreamHandler net_handler{"net-test", stream_proxy, &c};
 
     net_handler.start();
     stream.start();
@@ -76,8 +78,9 @@ TEST_CASE("Parse net (dns) UDP IPv6 tests", "[pcap][ipv6][udp][net]")
     stream.config_set("bpf", "");
 
     visor::Config c;
+    auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
-    NetStreamHandler net_handler{"net-test", &stream, &c};
+    NetStreamHandler net_handler{"net-test", stream_proxy, &c};
 
     net_handler.start();
     stream.start();
@@ -103,8 +106,9 @@ TEST_CASE("Parse net (dns) TCP IPv6 tests", "[pcap][ipv6][tcp][net]")
     stream.config_set("bpf", "");
 
     visor::Config c;
+    auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
-    NetStreamHandler net_handler{"net-test", &stream, &c};
+    NetStreamHandler net_handler{"net-test", stream_proxy, &c};
 
     net_handler.start();
     stream.start();
@@ -133,8 +137,9 @@ TEST_CASE("Parse net (dns) random UDP/TCP tests", "[pcap][net]")
     stream.parse_host_spec();
 
     visor::Config c;
+    auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
-    NetStreamHandler net_handler{"net-test", &stream, &c};
+    NetStreamHandler net_handler{"net-test", stream_proxy, &c};
 
     net_handler.start();
     stream.start();
@@ -179,8 +184,9 @@ TEST_CASE("Parse net (dns) with DNS filter only_qname_suffix", "[pcap][dns][net]
     stream.parse_host_spec();
 
     visor::Config c;
+    auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
-    DnsStreamHandler dns_handler{"dns-test", &stream, &c};
+    DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
     NetStreamHandler net_handler{"net-test", nullptr, &c, &dns_handler};
 
     dns_handler.config_set<visor::Configurable::StringList>("only_qname_suffix", {"google.com"});
@@ -220,8 +226,9 @@ TEST_CASE("Parse net dnstap stream", "[dnstap][net]")
     stream.config_set("dnstap_file", "inputs/dnstap/tests/fixtures/fixture.dnstap");
     stream.config_set<visor::Configurable::StringList>("only_hosts", {"192.168.0.0/24", "2001:db8::/48"});
     visor::Config c;
+    auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
-    NetStreamHandler net_handler{"dns-test", &stream, &c};
+    NetStreamHandler net_handler{"dns-test", stream_proxy, &c};
 
     net_handler.start();
     stream.start();
@@ -262,8 +269,9 @@ TEST_CASE("Net groups", "[pcap][net]")
     stream.parse_host_spec();
 
     visor::Config c;
+    auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
-    NetStreamHandler net_handler{"net-test", &stream, &c};
+    NetStreamHandler net_handler{"net-test", stream_proxy, &c};
 
     SECTION("disable cardinality and counters")
     {

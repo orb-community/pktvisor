@@ -21,16 +21,16 @@
 
 namespace visor::handler::net {
 
-NetStreamHandler::NetStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config, StreamHandler *handler)
+NetStreamHandler::NetStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config, StreamHandler *handler)
     : visor::StreamMetricsHandler<NetworkMetricsManager>(name, window_config)
 {
-    // figure out which input stream we have
-    if (stream) {
-        _pcap_stream = dynamic_cast<PcapInputStream *>(stream);
-        _dnstap_stream = dynamic_cast<DnstapInputStream *>(stream);
-        _mock_stream = dynamic_cast<MockInputStream *>(stream);
-        if (!_pcap_stream && !_mock_stream && !_dnstap_stream) {
-            throw StreamHandlerException(fmt::format("NetStreamHandler: unsupported input stream {}", stream->name()));
+    // figure out which input event proxy we have
+    if (proxy) {
+        _pcap_proxy = dynamic_cast<PcapInputEventProxy *>(proxy);
+        _dnstap_proxy = dynamic_cast<DnstapInputEventProxy *>(proxy);
+        _mock_proxy = dynamic_cast<MockInputEventProxy *>(proxy);
+        if (!_pcap_proxy && !_dnstap_proxy && !_mock_proxy) {
+            throw StreamHandlerException(fmt::format("NetStreamHandler: unsupported input event proxy {}", proxy->name()));
         }
     }
 
@@ -60,14 +60,14 @@ void NetStreamHandler::start()
         _metrics->set_recorded_stream();
     }
 
-    if (_pcap_stream) {
-        _pkt_connection = _pcap_stream->packet_signal.connect(&NetStreamHandler::process_packet_cb, this);
-        _start_tstamp_connection = _pcap_stream->start_tstamp_signal.connect(&NetStreamHandler::set_start_tstamp, this);
-        _end_tstamp_connection = _pcap_stream->end_tstamp_signal.connect(&NetStreamHandler::set_end_tstamp, this);
-        _heartbeat_connection = _pcap_stream->heartbeat_signal.connect(&NetStreamHandler::check_period_shift, this);
-    } else if (_dnstap_stream) {
-        _dnstap_connection = _dnstap_stream->dnstap_signal.connect(&NetStreamHandler::process_dnstap_cb, this);
-        _heartbeat_connection = _dnstap_stream->heartbeat_signal.connect(&NetStreamHandler::check_period_shift, this);
+    if (_pcap_proxy) {
+        _pkt_connection = _pcap_proxy->packet_signal.connect(&NetStreamHandler::process_packet_cb, this);
+        _start_tstamp_connection = _pcap_proxy->start_tstamp_signal.connect(&NetStreamHandler::set_start_tstamp, this);
+        _end_tstamp_connection = _pcap_proxy->end_tstamp_signal.connect(&NetStreamHandler::set_end_tstamp, this);
+        _heartbeat_connection = _pcap_proxy->heartbeat_signal.connect(&NetStreamHandler::check_period_shift, this);
+    } else if (_dnstap_proxy) {
+        _dnstap_connection = _dnstap_proxy->dnstap_signal.connect(&NetStreamHandler::process_dnstap_cb, this);
+        _heartbeat_connection = _dnstap_proxy->heartbeat_signal.connect(&NetStreamHandler::check_period_shift, this);
     } else if (_dns_handler) {
         _pkt_udp_connection = _dns_handler->udp_signal.connect(&NetStreamHandler::process_udp_packet_cb, this);
     }
@@ -81,11 +81,11 @@ void NetStreamHandler::stop()
         return;
     }
 
-    if (_pcap_stream) {
+    if (_pcap_proxy) {
         _pkt_connection.disconnect();
         _start_tstamp_connection.disconnect();
         _end_tstamp_connection.disconnect();
-    } else if (_dnstap_stream) {
+    } else if (_dnstap_proxy) {
         _dnstap_connection.disconnect();
     } else if (_dns_handler) {
         _pkt_udp_connection.disconnect();
