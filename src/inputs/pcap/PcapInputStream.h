@@ -103,11 +103,19 @@ public:
     void tcp_connection_end(const pcpp::ConnectionData &connectionData, pcpp::TcpReassembly::ConnectionEndReason reason);
 };
 
-class PcapInputEventProxy: public visor::InputEventProxy
+class PcapInputEventProxy : public visor::InputEventProxy
 {
+    typedef std::function<void(pcpp::Packet &, PacketDirection, pcpp::ProtocolType, pcpp::ProtocolType, timespec)> UdpSignal;
+    bool _any_match;
+    std::string _metadata;
+    std::map<std::string, std::string> _registered_matchers;
+    std::map<std::string, std::vector<UdpSignal>> predicate_udp_signals;
+    mutable std::shared_mutex _pcap_proxy_mutex;
+
 public:
     PcapInputEventProxy(const std::string &name, const Configurable &filter)
         : InputEventProxy(name, filter)
+        , _any_match(false)
     {
     }
 
@@ -126,6 +134,16 @@ public:
     void process_udp_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp)
     {
         udp_signal(payload, dir, l3, flowkey, stamp);
+
+        if (_any_match) {
+            std::shared_lock lock(_pcap_proxy_mutex);
+            if (const auto it = predicate_udp_signals.find(_metadata); it != predicate_udp_signals.end()) {
+                for (auto signal : it->second) {
+                    signal(payload, dir, l3, flowkey, stamp);
+                }
+            }
+            _any_match = false;
+        }
     }
     void tcp_message_ready_cb(int8_t side, const pcpp::TcpStreamData &tcpData)
     {
@@ -156,6 +174,33 @@ public:
     void process_pcap_stats(const pcpp::IPcapDevice::PcapStats &stats)
     {
         pcap_stats_signal(stats);
+    }
+
+    void register_matcher(const std::string &key, const std::string &schema)
+    {
+        std::unique_lock lock(_pcap_proxy_mutex);
+        if (_registered_matchers.count(key) != 0) {
+            throw PcapException(fmt::format("matcher with key [{}] is already registered", key));
+        }
+        _registered_matchers[key] = schema;
+    }
+
+    void register_udp_predicate_signal(const std::string &schema, const std::string &key, const std::string &value, UdpSignal callback)
+    {
+        std::unique_lock lock(_pcap_proxy_mutex);
+        if (const auto it = _registered_matchers.find(key); it == _registered_matchers.end()) {
+            throw PcapException(fmt::format("there is no matcher registered with key [{}]", key));
+        } else if (it->second != schema) {
+            throw PcapException(fmt::format("matcher schema [{}] does not match predicate schema [{}], they must be the same.", it->second, schema));
+        }
+        auto hash = key + value;
+        predicate_udp_signals[hash].push_back(callback);
+    }
+
+    void send_metadata(const std::string &key, const std::string &value)
+    {
+        _metadata = key + value;
+        _any_match = true;
     }
 
     // handler functionality
