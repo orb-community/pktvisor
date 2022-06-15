@@ -300,7 +300,6 @@ jobs:
           IMAGE_NAME: ghcr.io/etaques/pktvisor
         uses: docker/build-push-action@v3
         with:
-          builder: ${{ steps.buildx.outputs.name }}
           context: .
           file: ./docker/Dockerfile
           platforms: linux/arm/v7
