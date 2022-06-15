@@ -79,6 +79,8 @@ protected:
         TopN<std::string> topDstIP;
         TopN<uint16_t> topSrcPort;
         TopN<uint16_t> topDstPort;
+        TopN<std::string> topSrcIPandPort;
+        TopN<std::string> topDstIPandPort;
         TopN<uint32_t> topInIfIndex;
         TopN<uint32_t> topOutIfIndex;
         topns(std::string metric)
@@ -86,6 +88,8 @@ protected:
             , topDstIP("flow", "ip", {"top_dst_ips_" + metric}, "Top destination IP addresses by " + metric)
             , topSrcPort("flow", "port", {"top_src_ports_" + metric}, "Top source ports by " + metric)
             , topDstPort("flow", "port", {"top_dst_ports_" + metric}, "Top destination ports by " + metric)
+            , topSrcIPandPort("flow", "ip_port", {"top_src_ips_and_port_" + metric}, "Top source IP addresses and port by " + metric)
+            , topDstIPandPort("flow", "ip_port", {"top_dst_ips_and_port_" + metric}, "Top destination IP addresses and port by " + metric)
             , topInIfIndex("flow", "index", {"top_in_if_index_" + metric}, "Top input interface indexes by " + metric)
             , topOutIfIndex("flow", "index", {"top_out_if_index_" + metric}, "Top output interface indexes by " + metric)
         {
