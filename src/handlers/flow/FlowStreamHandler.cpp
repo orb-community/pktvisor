@@ -347,6 +347,8 @@ void FlowMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
         _topByBytes.topDstIP.merge(other._topByBytes.topDstIP);
         _topByBytes.topSrcPort.merge(other._topByBytes.topSrcPort);
         _topByBytes.topDstPort.merge(other._topByBytes.topDstPort);
+        _topByBytes.topSrcIPandPort.merge(other._topByBytes.topSrcIPandPort);
+        _topByBytes.topDstIPandPort.merge(other._topByBytes.topDstIPandPort);
         _topByBytes.topInIfIndex.merge(other._topByBytes.topInIfIndex);
         _topByBytes.topOutIfIndex.merge(other._topByBytes.topOutIfIndex);
     }
@@ -356,6 +358,8 @@ void FlowMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
         _topByPackets.topDstIP.merge(other._topByPackets.topDstIP);
         _topByPackets.topSrcPort.merge(other._topByPackets.topSrcPort);
         _topByPackets.topDstPort.merge(other._topByPackets.topDstPort);
+        _topByPackets.topSrcIPandPort.merge(other._topByPackets.topSrcIPandPort);
+        _topByPackets.topDstIPandPort.merge(other._topByPackets.topDstIPandPort);
         _topByPackets.topInIfIndex.merge(other._topByPackets.topInIfIndex);
         _topByPackets.topOutIfIndex.merge(other._topByPackets.topOutIfIndex);
     }
@@ -406,6 +410,8 @@ void FlowMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap a
         _topByBytes.topDstIP.to_prometheus(out, add_labels);
         _topByBytes.topSrcPort.to_prometheus(out, add_labels, [](const uint16_t &val) { return std::to_string(val); });
         _topByBytes.topDstPort.to_prometheus(out, add_labels, [](const uint16_t &val) { return std::to_string(val); });
+        _topByBytes.topSrcIPandPort.to_prometheus(out, add_labels);
+        _topByBytes.topDstIPandPort.to_prometheus(out, add_labels);
         _topByBytes.topInIfIndex.to_prometheus(out, add_labels, [](const uint32_t &val) { return std::to_string(val); });
         _topByBytes.topOutIfIndex.to_prometheus(out, add_labels, [](const uint32_t &val) { return std::to_string(val); });
     }
@@ -415,6 +421,8 @@ void FlowMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap a
         _topByPackets.topDstIP.to_prometheus(out, add_labels);
         _topByPackets.topSrcPort.to_prometheus(out, add_labels, [](const uint16_t &val) { return std::to_string(val); });
         _topByPackets.topDstPort.to_prometheus(out, add_labels, [](const uint16_t &val) { return std::to_string(val); });
+        _topByPackets.topSrcIPandPort.to_prometheus(out, add_labels);
+        _topByPackets.topDstIPandPort.to_prometheus(out, add_labels);
         _topByPackets.topInIfIndex.to_prometheus(out, add_labels, [](const uint32_t &val) { return std::to_string(val); });
         _topByPackets.topOutIfIndex.to_prometheus(out, add_labels, [](const uint32_t &val) { return std::to_string(val); });
     }
@@ -467,6 +475,8 @@ void FlowMetricsBucket::to_json(json &j) const
         _topByBytes.topDstIP.to_json(j);
         _topByBytes.topSrcPort.to_json(j, [](const uint16_t &val) { return std::to_string(val); });
         _topByBytes.topDstPort.to_json(j, [](const uint16_t &val) { return std::to_string(val); });
+        _topByBytes.topSrcIPandPort.to_json(j);
+        _topByBytes.topDstIPandPort.to_json(j);
         _topByBytes.topInIfIndex.to_json(j, [](const uint32_t &val) { return std::to_string(val); });
         _topByBytes.topOutIfIndex.to_json(j, [](const uint32_t &val) { return std::to_string(val); });
     }
@@ -476,6 +486,8 @@ void FlowMetricsBucket::to_json(json &j) const
         _topByPackets.topDstIP.to_json(j);
         _topByPackets.topSrcPort.to_json(j, [](const uint16_t &val) { return std::to_string(val); });
         _topByPackets.topDstPort.to_json(j, [](const uint16_t &val) { return std::to_string(val); });
+        _topByPackets.topSrcIPandPort.to_json(j);
+        _topByPackets.topDstIPandPort.to_json(j);
         _topByPackets.topInIfIndex.to_json(j, [](const uint32_t &val) { return std::to_string(val); });
         _topByPackets.topOutIfIndex.to_json(j, [](const uint32_t &val) { return std::to_string(val); });
     }
@@ -552,8 +564,18 @@ void FlowMetricsBucket::process_flow(bool deep, const FlowPacket &payload)
 
         if (!flow.is_ipv6 && flow.ipv4_in.isValid()) {
             group_enabled(group::FlowMetrics::Cardinality) ? _srcIPCard.update(flow.ipv4_in.toInt()) : void();
-            group_enabled(group::FlowMetrics::TopByBytes) ? _topByBytes.topSrcIP.update(flow.ipv4_in.toString(), flow.payload_size) : void();
-            group_enabled(group::FlowMetrics::TopByPackets) ? _topByPackets.topSrcIP.update(flow.ipv4_in.toString(), flow.packets) : void();
+            if (group_enabled(group::FlowMetrics::TopByBytes)) {
+                _topByBytes.topSrcIP.update(flow.ipv4_in.toString(), flow.payload_size);
+                if (flow.src_port > 0) {
+                    _topByBytes.topSrcIPandPort.update(flow.ipv4_in.toString() + ":" + std::to_string(flow.src_port), flow.payload_size);
+                }
+            }
+            if (group_enabled(group::FlowMetrics::TopByPackets)) {
+                _topByPackets.topSrcIP.update(flow.ipv4_in.toString(), flow.packets);
+                if (flow.src_port > 0) {
+                    _topByPackets.topSrcIPandPort.update(flow.ipv4_in.toString() + ":" + std::to_string(flow.src_port), flow.packets);
+                }
+            }
             if (geo::enabled() && group_enabled(group::FlowMetrics::TopGeo)) {
                 if (IPv4_to_sockaddr(flow.ipv4_in, &sa4)) {
                     if (geo::GeoIP().enabled()) {
@@ -566,8 +588,18 @@ void FlowMetricsBucket::process_flow(bool deep, const FlowPacket &payload)
             }
         } else if (flow.is_ipv6 && flow.ipv6_in.isValid()) {
             group_enabled(group::FlowMetrics::Cardinality) ? _srcIPCard.update(reinterpret_cast<const void *>(flow.ipv6_in.toBytes()), 16) : void();
-            group_enabled(group::FlowMetrics::TopByBytes) ? _topByBytes.topSrcIP.update(flow.ipv6_in.toString(), flow.payload_size) : void();
-            group_enabled(group::FlowMetrics::TopByPackets) ? _topByPackets.topSrcIP.update(flow.ipv6_in.toString(), flow.packets) : void();
+            if (group_enabled(group::FlowMetrics::TopByPackets)) {
+                _topByBytes.topSrcIP.update(flow.ipv6_in.toString(), flow.payload_size);
+                if (flow.src_port > 0) {
+                    _topByBytes.topSrcIPandPort.update(flow.ipv6_in.toString() + ":" + std::to_string(flow.src_port), flow.payload_size);
+                }
+            }
+            if (group_enabled(group::FlowMetrics::TopByPackets)) {
+                _topByPackets.topSrcIP.update(flow.ipv6_in.toString(), flow.packets);
+                if (flow.src_port > 0) {
+                    _topByPackets.topSrcIPandPort.update(flow.ipv6_in.toString() + ":" + std::to_string(flow.src_port), flow.packets);
+                }
+            }
             if (geo::enabled() && group_enabled(group::FlowMetrics::TopGeo)) {
                 if (IPv6_to_sockaddr(flow.ipv6_in, &sa6)) {
                     if (geo::GeoIP().enabled()) {
@@ -582,8 +614,18 @@ void FlowMetricsBucket::process_flow(bool deep, const FlowPacket &payload)
 
         if (!flow.is_ipv6 && flow.ipv4_out.isValid()) {
             group_enabled(group::FlowMetrics::Cardinality) ? _dstIPCard.update(flow.ipv4_out.toInt()) : void();
-            group_enabled(group::FlowMetrics::TopByBytes) ? _topByBytes.topDstIP.update(flow.ipv4_out.toString(), flow.payload_size) : void();
-            group_enabled(group::FlowMetrics::TopByPackets) ? _topByPackets.topDstIP.update(flow.ipv4_out.toString(), flow.packets) : void();
+            if (group_enabled(group::FlowMetrics::TopByBytes)) {
+                _topByBytes.topDstIP.update(flow.ipv4_out.toString(), flow.payload_size);
+                if (flow.dst_port > 0) {
+                    _topByBytes.topDstIPandPort.update(flow.ipv4_out.toString() + ":" + std::to_string(flow.dst_port), flow.payload_size);
+                }
+            }
+            if (group_enabled(group::FlowMetrics::TopByPackets)) {
+                _topByPackets.topDstIP.update(flow.ipv4_out.toString(), flow.packets);
+                if (flow.dst_port > 0) {
+                    _topByPackets.topDstIPandPort.update(flow.ipv4_out.toString() + ":" + std::to_string(flow.dst_port), flow.packets);
+                }
+            }
             if (geo::enabled() && group_enabled(group::FlowMetrics::TopGeo)) {
                 if (IPv4_to_sockaddr(flow.ipv4_out, &sa4)) {
                     if (geo::GeoIP().enabled()) {
@@ -596,8 +638,18 @@ void FlowMetricsBucket::process_flow(bool deep, const FlowPacket &payload)
             }
         } else if (flow.is_ipv6 && flow.ipv6_out.isValid()) {
             group_enabled(group::FlowMetrics::Cardinality) ? _dstIPCard.update(reinterpret_cast<const void *>(flow.ipv6_out.toBytes()), 16) : void();
-            group_enabled(group::FlowMetrics::TopByBytes) ? _topByBytes.topDstIP.update(flow.ipv6_out.toString(), flow.payload_size) : void();
-            group_enabled(group::FlowMetrics::TopByPackets) ? _topByPackets.topDstIP.update(flow.ipv6_out.toString(), flow.packets) : void();
+            if (group_enabled(group::FlowMetrics::TopByBytes)) {
+                _topByBytes.topDstIP.update(flow.ipv6_out.toString(), flow.payload_size);
+                if (flow.dst_port > 0) {
+                    _topByBytes.topDstIPandPort.update(flow.ipv6_out.toString() + ":" + std::to_string(flow.dst_port), flow.payload_size);
+                }
+            }
+            if (group_enabled(group::FlowMetrics::TopByPackets)) {
+                _topByPackets.topDstIP.update(flow.ipv6_out.toString(), flow.packets);
+                if (flow.dst_port > 0) {
+                    _topByPackets.topDstIPandPort.update(flow.ipv6_out.toString() + ":" + std::to_string(flow.dst_port), flow.packets);
+                }
+            }
             if (geo::enabled() && group_enabled(group::FlowMetrics::TopGeo)) {
                 if (IPv6_to_sockaddr(flow.ipv6_out, &sa6)) {
                     if (geo::GeoIP().enabled()) {
