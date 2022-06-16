@@ -616,7 +616,7 @@ void FlowMetricsBucket::process_flow(bool deep, const FlowPacket &payload)
             group_enabled(group::FlowMetrics::Cardinality) ? _dstIPCard.update(flow.ipv4_out.toInt()) : void();
             if (group_enabled(group::FlowMetrics::TopByBytes)) {
                 _topByBytes.topDstIP.update(flow.ipv4_out.toString(), flow.payload_size);
-                if (flow.src_port > 0) {
+                if (flow.dst_port > 0) {
                     _topByBytes.topDstIPandPort.update(flow.ipv4_out.toString() + ":" + std::to_string(flow.dst_port), flow.payload_size);
                 }
             }
@@ -640,7 +640,7 @@ void FlowMetricsBucket::process_flow(bool deep, const FlowPacket &payload)
             group_enabled(group::FlowMetrics::Cardinality) ? _dstIPCard.update(reinterpret_cast<const void *>(flow.ipv6_out.toBytes()), 16) : void();
             if (group_enabled(group::FlowMetrics::TopByBytes)) {
                 _topByBytes.topDstIP.update(flow.ipv6_out.toString(), flow.payload_size);
-                if (flow.src_port > 0) {
+                if (flow.dst_port > 0) {
                     _topByBytes.topDstIPandPort.update(flow.ipv6_out.toString() + ":" + std::to_string(flow.dst_port), flow.payload_size);
                 }
             }
