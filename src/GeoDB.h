@@ -26,11 +26,11 @@ public:
     /*
      * These routines accept both IPv4 and IPv6
      */
-    std::string getGeoLocString(const char *ip_address) const;
-    std::string getGeoLocString(const struct sockaddr *sa) const;
+    std::string getGeoLocString(const char *ip_address, bool &error) const;
+    std::string getGeoLocString(const struct sockaddr *sa, bool &error) const;
 
-    std::string getASNString(const char *ip_address) const;
-    std::string getASNString(const struct sockaddr *sa) const;
+    std::string getASNString(const char *ip_address, bool &error) const;
+    std::string getASNString(const struct sockaddr *sa, bool &error) const;
 
 private:
     mutable MMDB_s _mmdb;

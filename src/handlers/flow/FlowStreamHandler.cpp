@@ -367,6 +367,8 @@ void FlowMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
     if (group_enabled(group::FlowMetrics::TopGeo)) {
         _topGeoLoc.merge(other._topGeoLoc);
         _topASN.merge(other._topASN);
+        _topGeoLocError.merge(other._topGeoLocError);
+        _topASNError.merge(other._topASNError);
     }
 
     _payload_size.merge(other._payload_size);
@@ -430,6 +432,8 @@ void FlowMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap a
     if (group_enabled(group::FlowMetrics::TopGeo)) {
         _topGeoLoc.to_prometheus(out, add_labels);
         _topASN.to_prometheus(out, add_labels);
+        _topGeoLocError.to_prometheus(out, add_labels);
+        _topASNError.to_prometheus(out, add_labels);
     }
 
     _payload_size.to_prometheus(out, add_labels);
@@ -495,6 +499,8 @@ void FlowMetricsBucket::to_json(json &j) const
     if (group_enabled(group::FlowMetrics::TopGeo)) {
         _topGeoLoc.to_json(j);
         _topASN.to_json(j);
+        _topGeoLocError.to_json(j);
+        _topASNError.to_json(j);
     }
 
     _payload_size.to_json(j);
@@ -579,10 +585,18 @@ void FlowMetricsBucket::process_flow(bool deep, const FlowPacket &payload)
             if (geo::enabled() && group_enabled(group::FlowMetrics::TopGeo)) {
                 if (IPv4_to_sockaddr(flow.ipv4_in, &sa4)) {
                     if (geo::GeoIP().enabled()) {
-                        _topGeoLoc.update(geo::GeoIP().getGeoLocString(reinterpret_cast<struct sockaddr *>(&sa4)));
+                        bool error = false;
+                        _topGeoLoc.update(geo::GeoIP().getGeoLocString(reinterpret_cast<struct sockaddr *>(&sa4), error));
+                        if (error) {
+                            _topGeoLocError.update(flow.ipv4_in.toString());
+                        }
                     }
                     if (geo::GeoASN().enabled()) {
-                        _topASN.update(geo::GeoASN().getASNString(reinterpret_cast<struct sockaddr *>(&sa4)));
+                        bool error = false;
+                        _topASN.update(geo::GeoASN().getASNString(reinterpret_cast<struct sockaddr *>(&sa4), error));
+                        if (error) {
+                            _topASNError.update(flow.ipv4_in.toString());
+                        }
                     }
                 }
             }
@@ -603,10 +617,18 @@ void FlowMetricsBucket::process_flow(bool deep, const FlowPacket &payload)
             if (geo::enabled() && group_enabled(group::FlowMetrics::TopGeo)) {
                 if (IPv6_to_sockaddr(flow.ipv6_in, &sa6)) {
                     if (geo::GeoIP().enabled()) {
-                        _topGeoLoc.update(geo::GeoIP().getGeoLocString(reinterpret_cast<struct sockaddr *>(&sa6)));
+                        bool error = false;
+                        _topGeoLoc.update(geo::GeoIP().getGeoLocString(reinterpret_cast<struct sockaddr *>(&sa6), error));
+                        if (error) {
+                            _topGeoLocError.update(flow.ipv6_in.toString());
+                        }
                     }
                     if (geo::GeoASN().enabled()) {
-                        _topASN.update(geo::GeoASN().getASNString(reinterpret_cast<struct sockaddr *>(&sa6)));
+                        bool error = false;
+                        _topASN.update(geo::GeoASN().getASNString(reinterpret_cast<struct sockaddr *>(&sa6), error));
+                        if (error) {
+                            _topASNError.update(flow.ipv6_in.toString());
+                        }
                     }
                 }
             }
@@ -629,10 +651,18 @@ void FlowMetricsBucket::process_flow(bool deep, const FlowPacket &payload)
             if (geo::enabled() && group_enabled(group::FlowMetrics::TopGeo)) {
                 if (IPv4_to_sockaddr(flow.ipv4_out, &sa4)) {
                     if (geo::GeoIP().enabled()) {
-                        _topGeoLoc.update(geo::GeoIP().getGeoLocString(reinterpret_cast<struct sockaddr *>(&sa4)));
+                        bool error = false;
+                        _topGeoLoc.update(geo::GeoIP().getGeoLocString(reinterpret_cast<struct sockaddr *>(&sa4), error));
+                        if (error) {
+                            _topGeoLocError.update(flow.ipv4_out.toString());
+                        }
                     }
                     if (geo::GeoASN().enabled()) {
-                        _topASN.update(geo::GeoASN().getASNString(reinterpret_cast<struct sockaddr *>(&sa4)));
+                        bool error = false;
+                        _topASN.update(geo::GeoASN().getASNString(reinterpret_cast<struct sockaddr *>(&sa4), error));
+                        if (error) {
+                            _topASNError.update(flow.ipv4_out.toString());
+                        }
                     }
                 }
             }
@@ -653,10 +683,18 @@ void FlowMetricsBucket::process_flow(bool deep, const FlowPacket &payload)
             if (geo::enabled() && group_enabled(group::FlowMetrics::TopGeo)) {
                 if (IPv6_to_sockaddr(flow.ipv6_out, &sa6)) {
                     if (geo::GeoIP().enabled()) {
-                        _topGeoLoc.update(geo::GeoIP().getGeoLocString(reinterpret_cast<struct sockaddr *>(&sa6)));
+                        bool error = false;
+                        _topGeoLoc.update(geo::GeoIP().getGeoLocString(reinterpret_cast<struct sockaddr *>(&sa6), error));
+                        if (error) {
+                            _topGeoLocError.update(flow.ipv6_out.toString());
+                        }
                     }
                     if (geo::GeoASN().enabled()) {
-                        _topASN.update(geo::GeoASN().getASNString(reinterpret_cast<struct sockaddr *>(&sa6)));
+                        bool error = false;
+                        _topASN.update(geo::GeoASN().getASNString(reinterpret_cast<struct sockaddr *>(&sa6), error));
+                        if (error) {
+                            _topASNError.update(flow.ipv6_out.toString());
+                        }
                     }
                 }
             }

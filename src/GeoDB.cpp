@@ -42,7 +42,7 @@ MaxmindDB::~MaxmindDB()
     }
 }
 
-std::string MaxmindDB::getGeoLocString(const struct sockaddr *sa) const
+std::string MaxmindDB::getGeoLocString(const struct sockaddr *sa, bool &error) const
 {
 
     if (!_enabled) {
@@ -53,13 +53,14 @@ std::string MaxmindDB::getGeoLocString(const struct sockaddr *sa) const
 
     MMDB_lookup_result_s lookup = MMDB_lookup_sockaddr(&_mmdb, sa, &mmdb_error);
     if (mmdb_error != MMDB_SUCCESS || !lookup.found_entry) {
+        error = true;
         return "Unknown";
     }
 
     return _getGeoLocString(&lookup);
 }
 
-std::string MaxmindDB::getGeoLocString(const char *ip_address) const
+std::string MaxmindDB::getGeoLocString(const char *ip_address, bool &error) const
 {
 
     if (!_enabled) {
@@ -70,6 +71,7 @@ std::string MaxmindDB::getGeoLocString(const char *ip_address) const
 
     MMDB_lookup_result_s lookup = MMDB_lookup_string(&_mmdb, ip_address, &gai_error, &mmdb_error);
     if (0 != gai_error || MMDB_SUCCESS != mmdb_error || !lookup.found_entry) {
+        error = true;
         return "Unknown";
     }
 
@@ -127,7 +129,7 @@ std::string MaxmindDB::_getGeoLocString(MMDB_lookup_result_s *lookup) const
     return geoString;
 }
 
-std::string MaxmindDB::getASNString(const struct sockaddr *sa) const
+std::string MaxmindDB::getASNString(const struct sockaddr *sa, bool &error) const
 {
 
     if (!_enabled) {
@@ -138,13 +140,14 @@ std::string MaxmindDB::getASNString(const struct sockaddr *sa) const
 
     MMDB_lookup_result_s lookup = MMDB_lookup_sockaddr(&_mmdb, sa, &mmdb_error);
     if (mmdb_error != MMDB_SUCCESS || !lookup.found_entry) {
+        error = true;
         return "Unknown";
     }
-
+    error = false;
     return _getASNString(&lookup);
 }
 
-std::string MaxmindDB::getASNString(const char *ip_address) const
+std::string MaxmindDB::getASNString(const char *ip_address, bool &error) const
 {
 
     if (!_enabled) {
@@ -155,9 +158,10 @@ std::string MaxmindDB::getASNString(const char *ip_address) const
 
     MMDB_lookup_result_s lookup = MMDB_lookup_string(&_mmdb, ip_address, &gai_error, &mmdb_error);
     if (0 != gai_error || MMDB_SUCCESS != mmdb_error || !lookup.found_entry) {
+        error = true;
         return "Unknown";
     }
-
+    error = false;
     return _getASNString(&lookup);
 }
 

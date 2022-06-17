@@ -63,6 +63,8 @@ protected:
 
     TopN<std::string> _topGeoLoc;
     TopN<std::string> _topASN;
+    TopN<std::string> _topGeoLocError;
+    TopN<std::string> _topASNError;
     TopN<uint32_t> _topIPv4;
     TopN<std::string> _topIPv6;
 
@@ -103,6 +105,8 @@ public:
         , _dstIPCard("packets", {"cardinality", "dst_ips_out"}, "Destination IP cardinality")
         , _topGeoLoc("packets", "geo_loc", {"top_geoLoc"}, "Top GeoIP locations")
         , _topASN("packets", "asn", {"top_ASN"}, "Top ASNs by IP")
+        , _topGeoLocError("packets", "geo_loc", {"top_geoLoc_error"}, "Top IP addresses that failed GeoLoc lookup")
+        , _topASNError("packets", "asn", {"top_ASN_error"}, "Top IP addresses that failed ASN lookup")
         , _topIPv4("packets", "ipv4", {"top_ipv4"}, "Top IPv4 IP addresses")
         , _topIPv6("packets", "ipv6", {"top_ipv6"}, "Top IPv6 IP addresses")
         , _payload_size("packets", {"payload_size"}, "Quantiles of payload sizes, in bytes")

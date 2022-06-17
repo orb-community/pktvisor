@@ -81,7 +81,9 @@
             }
           },
           "top_ASN": [],
+          "top_ASN_error": [],
           "top_geoLoc": [],
+          "top_geoLoc_error": [],
           "top_ipv4": [
             {
               "estimate": 16147,
@@ -106,7 +108,9 @@
         "tcp",
         "protocol",
         "top_ASN",
+        "top_ASN_error",
         "top_geoLoc",
+        "top_geoLoc_error",
         "top_ipv4",
         "top_ipv6",
         "total",
@@ -333,6 +337,20 @@
             "$id": "#/properties/packets/properties/top_ASN/items"
           }
         },
+        "top_ASN_error": {
+          "$id": "#/properties/packets/properties/top_ASN_error",
+          "type": "array",
+          "title": "The top_ASN_error schema",
+          "description": "An explanation about the purpose of this instance.",
+          "default": [],
+          "examples": [
+            []
+          ],
+          "additionalItems": true,
+          "items": {
+            "$id": "#/properties/packets/properties/top_ASN_error/items"
+          }
+        },
         "top_geoLoc": {
           "$id": "#/properties/packets/properties/top_geoLoc",
           "type": "array",
@@ -345,6 +363,20 @@
           "additionalItems": true,
           "items": {
             "$id": "#/properties/packets/properties/top_geoLoc/items"
+          }
+        },
+        "top_geoLoc_error": {
+          "$id": "#/properties/packets/properties/top_geoLoc_error",
+          "type": "array",
+          "title": "The top_geoLoc_error schema",
+          "description": "An explanation about the purpose of this instance.",
+          "default": [],
+          "examples": [
+            []
+          ],
+          "additionalItems": true,
+          "items": {
+            "$id": "#/properties/packets/properties/top_geoLoc_error/items"
           }
         },
         "top_ipv4": {

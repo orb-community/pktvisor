@@ -73,6 +73,8 @@ protected:
 
     TopN<std::string> _topGeoLoc;
     TopN<std::string> _topASN;
+    TopN<std::string> _topGeoLocError;
+    TopN<std::string> _topASNError;
 
     struct topns {
         TopN<std::string> topSrcIP;
@@ -133,6 +135,8 @@ public:
         , _dstPortCard(FLOW_SCHEMA, {"cardinality", "dst_ports_out"}, "Destination ports cardinality")
         , _topGeoLoc(FLOW_SCHEMA, "geo_loc", {"top_geoLoc"}, "Top GeoIP locations")
         , _topASN(FLOW_SCHEMA, "asn", {"top_ASN"}, "Top ASNs by IP")
+        , _topGeoLocError(FLOW_SCHEMA, "geo_loc", {"top_geoLoc_error"}, "Top IP addresses that failed GeoLoc lookup")
+        , _topASNError(FLOW_SCHEMA, "asn", {"top_ASN_error"}, "Top IP addresses that failed ASN lookup")
         , _topByBytes("bytes")
         , _topByPackets("packets")
         , _payload_size(FLOW_SCHEMA, {"payload_size"}, "Quantiles of payload sizes, in bytes")

@@ -162,6 +162,8 @@ void NetworkMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
     if (group_enabled(group::NetMetrics::TopGeo)) {
         _topGeoLoc.merge(other._topGeoLoc);
         _topASN.merge(other._topASN);
+        _topGeoLocError.merge(other._topGeoLocError);
+        _topASNError.merge(other._topASNError);
     }
 
     _payload_size.merge(other._payload_size);
@@ -209,6 +211,8 @@ void NetworkMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMa
     if (group_enabled(group::NetMetrics::TopGeo)) {
         _topGeoLoc.to_prometheus(out, add_labels);
         _topASN.to_prometheus(out, add_labels);
+        _topGeoLocError.to_prometheus(out, add_labels);
+        _topASNError.to_prometheus(out, add_labels);
     }
 
     _payload_size.to_prometheus(out, add_labels);
@@ -258,6 +262,8 @@ void NetworkMetricsBucket::to_json(json &j) const
     if (group_enabled(group::NetMetrics::TopGeo)) {
         _topGeoLoc.to_json(j);
         _topASN.to_json(j);
+        _topGeoLocError.to_json(j);
+        _topASNError.to_json(j);
     }
 
     _payload_size.to_json(j);
@@ -493,10 +499,18 @@ void NetworkMetricsBucket::process_net_layer(NetworkPacket &packet)
         if (geo::enabled() && group_enabled(group::NetMetrics::TopGeo)) {
             if (IPv4tosockaddr(packet.ipv4_in, &sa4)) {
                 if (geo::GeoIP().enabled()) {
-                    _topGeoLoc.update(geo::GeoIP().getGeoLocString(reinterpret_cast<struct sockaddr *>(&sa4)));
+                    bool error = false;
+                    _topGeoLoc.update(geo::GeoIP().getGeoLocString(reinterpret_cast<struct sockaddr *>(&sa4), error));
+                    if (error) {
+                        _topGeoLocError.update(packet.ipv4_in.toString());
+                    }
                 }
                 if (geo::GeoASN().enabled()) {
-                    _topASN.update(geo::GeoASN().getASNString(reinterpret_cast<struct sockaddr *>(&sa4)));
+                    bool error = false;
+                    _topASN.update(geo::GeoASN().getASNString(reinterpret_cast<struct sockaddr *>(&sa4), error));
+                    if (error) {
+                        _topASNError.update(packet.ipv4_in.toString());
+                    }
                 }
             }
         }
@@ -506,10 +520,18 @@ void NetworkMetricsBucket::process_net_layer(NetworkPacket &packet)
         if (geo::enabled() && group_enabled(group::NetMetrics::TopGeo)) {
             if (IPv6tosockaddr(packet.ipv6_in, &sa6)) {
                 if (geo::GeoIP().enabled()) {
-                    _topGeoLoc.update(geo::GeoIP().getGeoLocString(reinterpret_cast<struct sockaddr *>(&sa6)));
+                    bool error = false;
+                    _topGeoLoc.update(geo::GeoIP().getGeoLocString(reinterpret_cast<struct sockaddr *>(&sa6), error));
+                    if (error) {
+                        _topGeoLocError.update(packet.ipv6_in.toString());
+                    }
                 }
                 if (geo::GeoASN().enabled()) {
-                    _topASN.update(geo::GeoASN().getASNString(reinterpret_cast<struct sockaddr *>(&sa6)));
+                    bool error = false;
+                    _topASN.update(geo::GeoASN().getASNString(reinterpret_cast<struct sockaddr *>(&sa6), error));
+                    if (error) {
+                        _topASNError.update(packet.ipv6_in.toString());
+                    }
                 }
             }
         }
@@ -521,10 +543,18 @@ void NetworkMetricsBucket::process_net_layer(NetworkPacket &packet)
         if (geo::enabled() && group_enabled(group::NetMetrics::TopGeo)) {
             if (IPv4tosockaddr(packet.ipv4_out, &sa4)) {
                 if (geo::GeoIP().enabled()) {
-                    _topGeoLoc.update(geo::GeoIP().getGeoLocString(reinterpret_cast<struct sockaddr *>(&sa4)));
+                    bool error = false;
+                    _topGeoLoc.update(geo::GeoIP().getGeoLocString(reinterpret_cast<struct sockaddr *>(&sa4), error));
+                    if (error) {
+                        _topGeoLocError.update(packet.ipv4_out.toString());
+                    }
                 }
                 if (geo::GeoASN().enabled()) {
-                    _topASN.update(geo::GeoASN().getASNString(reinterpret_cast<struct sockaddr *>(&sa4)));
+                    bool error = false;
+                    _topASN.update(geo::GeoASN().getASNString(reinterpret_cast<struct sockaddr *>(&sa4), error));
+                    if (error) {
+                        _topASNError.update(packet.ipv4_out.toString());
+                    }
                 }
             }
         }
@@ -534,10 +564,18 @@ void NetworkMetricsBucket::process_net_layer(NetworkPacket &packet)
         if (geo::enabled() && group_enabled(group::NetMetrics::TopGeo)) {
             if (IPv6tosockaddr(packet.ipv6_out, &sa6)) {
                 if (geo::GeoIP().enabled()) {
-                    _topGeoLoc.update(geo::GeoIP().getGeoLocString(reinterpret_cast<struct sockaddr *>(&sa6)));
+                    bool error = false;
+                    _topGeoLoc.update(geo::GeoIP().getGeoLocString(reinterpret_cast<struct sockaddr *>(&sa6), error));
+                    if (error) {
+                        _topGeoLocError.update(packet.ipv6_out.toString());
+                    }
                 }
                 if (geo::GeoASN().enabled()) {
-                    _topASN.update(geo::GeoASN().getASNString(reinterpret_cast<struct sockaddr *>(&sa6)));
+                    bool error = false;
+                    _topASN.update(geo::GeoASN().getASNString(reinterpret_cast<struct sockaddr *>(&sa6), error));
+                    if (error) {
+                        _topASNError.update(packet.ipv6_out.toString());
+                    }
                 }
             }
         }
