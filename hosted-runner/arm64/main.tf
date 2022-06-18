@@ -6,6 +6,11 @@ resource "aws_instance" "orb-devops" {
   user_data       = file("user_data.sh")
   associate_public_ip_address = true
   subnet_id       = "subnet-090c967a67234e472"
+  
+  ebs_block_device {
+    device_name = "/dev/sda1"
+    volume_size = 20
+  }
 
   tags = {
     Name            = "orb-pktvisor-self-runner"
