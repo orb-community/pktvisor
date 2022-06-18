@@ -28,7 +28,7 @@ resource "aws_spot_instance_request" "orb-devops" {
   associate_public_ip_address = true
   subnet_id       = "subnet-090c967a67234e472"
 
-  spot_price             = "0.10"
+  spot_price             = "0.16"
   spot_type              = "one-time"
   wait_for_fulfillment   = "true"
 
