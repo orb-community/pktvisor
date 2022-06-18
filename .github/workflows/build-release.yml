@@ -288,8 +288,6 @@ jobs:
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
-        with:
-          platforms: linux/arm/v7
 
       - name: Set up Docker Buildx
         id: buildx
