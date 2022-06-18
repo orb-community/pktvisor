@@ -236,8 +236,8 @@ jobs:
           platforms: linux/arm64
           push: true
           tags: ${{ env.IMAGE_NAME }}:arm64
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+#          cache-from: type=gha
+#          cache-to: type=gha,mode=max
           build-args: |
             ghtoken=${{ secrets.GITHUB_TOKEN }}
 
