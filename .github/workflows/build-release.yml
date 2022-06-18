@@ -447,7 +447,6 @@ jobs:
         run: |
           docker manifest create ghcr.io/etaques/pktvisor:latest \
           ghcr.io/etaques/pktvisor:amd64 \
-          ghcr.io/etaques/pktvisor:armv7 \
           ghcr.io/etaques/pktvisor:arm64
 
       - name: Push manifest to ghcr.io
