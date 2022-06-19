@@ -103,7 +103,7 @@ jobs:
           path: ./
           retention-days: 1
 
-  spinup-self-runner:
+  spinup-arm64-runner:
     needs:
       - prebuild-package
     runs-on: ubuntu-latest
@@ -168,9 +168,74 @@ jobs:
             ./hosted-runner/arm64/terraform.tfstate
           retention-days: 1
 
+  spinup-amd64-runner:
+    needs:
+      - prebuild-package
+    runs-on: ubuntu-latest
+    #    if: ${{ needs.pre-test.outputs.stg == 'true' || needs.pre-test.outputs.prd == 'true' }}
+    outputs:
+      runner_token: ${{ steps.token.outputs.runner }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Generate runner token
+        id: token
+        run: |
+          curl -X POST -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/etaques/pktvisor/actions/runners/registration-token -o token.json
+          echo "::set-output name=runner::$(cat token.json | jq .token --raw-output )"
+          cat token.json
+
+      - name: Inject runner token in user_data.sh
+        run: |
+          cd hosted-runner/amd64/
+          ESCAPED_REPLACE_RUNNER_TOKEN=$(printf '%s\n' "${{ steps.token.outputs.runner }}" | sed -e 's/[\/&]/\\&/g')
+          sed -i -e "s/RUNNER_TOKEN/$ESCAPED_REPLACE_RUNNER_TOKEN/g" user_data.sh
+
+      - name: Inject AWS key
+        run: |
+          cd hosted-runner/amd64/
+          ESCAPED_REPLACE_KEY_ID=$(printf '%s\n' "${{ secrets.AWS_ACCESS_KEY_ID }}" | sed -e 's/[\/&]/\\&/g')
+          sed -i -e "s/AWSID/$ESCAPED_REPLACE_KEY_ID/g" vars.tf
+          ESCAPED_REPLACE_ACCESS_KEY=$(printf '%s\n' "${{ secrets.AWS_SECRET_ACCESS_KEY }}" | sed -e 's/[\/&]/\\&/g')
+          sed -i -e "s/AWSSECRET/$ESCAPED_REPLACE_ACCESS_KEY/g" vars.tf
+
+      - name: setup terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.1.7
+
+      - name: Terraform Init
+        run: |
+          cd hosted-runner/amd64/
+          terraform init -input=false
+
+      - name: Terraform plan
+        run: |
+          cd hosted-runner/amd64/
+          terraform plan -out=tfplan
+
+      - name: Terraform apply
+        run: |
+          cd hosted-runner/amd64/
+          terraform apply -auto-approve tfplan
+
+      - name: Terraform output
+        run: |
+          cd hosted-runner/amd64/
+          terraform output -raw ip
+
+      - name: Persist to workspace
+        uses: actions/upload-artifact@v2
+        with:
+          name: terraform2
+          path: |
+            ./hosted-runner/amd64/terraform.tfstate
+          retention-days: 1
+
   package-arm64:
-    needs: spinup-self-runner
-    runs-on: self-hosted
+    needs: spinup-arm64-runner
+    runs-on: [self-hosted, linux, ARM64]
     if: github.event_name != 'pull_request'
     steps:
       - name: Attach to workspace
@@ -215,7 +280,7 @@ jobs:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
-          
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
 
@@ -239,77 +304,78 @@ jobs:
           build-args: |
             ghtoken=${{ secrets.GITHUB_TOKEN }}
 
-#  package-armv7:
-#    needs: spinup-self-runner
-#    runs-on: self-hosted
-#    if: github.event_name != 'pull_request'
-#    steps:
-#      - name: Attach to workspace
-#        uses: actions/download-artifact@v2
-#        with:
-#          name: workspace
-#
-#      - name: Get branch name
-#        shell: bash
-#        run: echo "BRANCH_NAME=$(echo ${GITHUB_REF#refs/heads/} | tr / -)" >> $GITHUB_ENV
-#
-#      - name: Debug branch name
-#        run: echo ${{ env.BRANCH_NAME }}
-#
-#      - name: Get VERSION
-#        run: |
-#          echo "VERSION=`cat ${{github.workspace}}/build/VERSION`" >> $GITHUB_ENV
-#
-#      - name: Debug version
-#        run: echo ${{ env.VERSION }}
-#
-#      - name: Generate ref tag (master)
-#        if: ${{ env.BRANCH_NAME == 'master' || env.BRANCH_NAME == 'multi-arch-images' }}
-#        run: |
-#          echo "REF_TAG=latest" >> $GITHUB_ENV
-#          echo "PRERELEASE=false" >> $GITHUB_ENV
-#          echo "DRAFT=true" >> $GITHUB_ENV
-#
-#      - name: Generate ref tag (release candidate)
-#        if: ${{ env.BRANCH_NAME == 'release' }}
-#        run: |
-#          echo "REF_TAG=latest-rc" >> $GITHUB_ENV
-#          echo "PRERELEASE=true" >> $GITHUB_ENV
-#          echo "DRAFT=false" >> $GITHUB_ENV
-#
-#      - name: Debug ref tag
-#        run: echo ${{ env.REF_TAG }}
-#
-#      - name: Login to GitHub Container Registry
-#        uses: docker/login-action@v1
-#        with:
-#          registry: ghcr.io
-#          username: ${{ github.repository_owner }}
-#          password: ${{ secrets.GITHUB_TOKEN }}
-#
-#      - name: Set up QEMU
-#        uses: docker/setup-qemu-action@v2
-#
-#      - name: Set up Docker Buildx
-#        id: buildx
-#        uses: docker/setup-buildx-action@v2
-#
-#      - name: Build + push - pktvisor (multi-arch)
-#        env:
-#          IMAGE_NAME: ghcr.io/etaques/pktvisor
-#        uses: docker/build-push-action@v3
-#        with:
-#          builder: ${{ steps.buildx.outputs.name }}
-#          context: .
-#          file: ./docker/Dockerfile
-#          platforms: linux/arm/v7
-#          push: true
-#          tags: ${{ env.IMAGE_NAME }}:armv7
-#          build-args: |
-#            ghtoken=${{ secrets.GITHUB_TOKEN }}
+  package-armv7:
+    needs: spinup-amd64-runner
+    runs-on: [self-hosted, linux, x64]
+    if: github.event_name != 'pull_request'
+    steps:
+      - name: Attach to workspace
+        uses: actions/download-artifact@v2
+        with:
+          name: workspace
+
+      - name: Get branch name
+        shell: bash
+        run: echo "BRANCH_NAME=$(echo ${GITHUB_REF#refs/heads/} | tr / -)" >> $GITHUB_ENV
+
+      - name: Debug branch name
+        run: echo ${{ env.BRANCH_NAME }}
+
+      - name: Get VERSION
+        run: |
+          echo "VERSION=`cat ${{github.workspace}}/build/VERSION`" >> $GITHUB_ENV
+
+      - name: Debug version
+        run: echo ${{ env.VERSION }}
+
+      - name: Generate ref tag (master)
+        if: ${{ env.BRANCH_NAME == 'master' || env.BRANCH_NAME == 'multi-arch-images' }}
+        run: |
+          echo "REF_TAG=latest" >> $GITHUB_ENV
+          echo "PRERELEASE=false" >> $GITHUB_ENV
+          echo "DRAFT=true" >> $GITHUB_ENV
+
+      - name: Generate ref tag (release candidate)
+        if: ${{ env.BRANCH_NAME == 'release' }}
+        run: |
+          echo "REF_TAG=latest-rc" >> $GITHUB_ENV
+          echo "PRERELEASE=true" >> $GITHUB_ENV
+          echo "DRAFT=false" >> $GITHUB_ENV
+
+      - name: Debug ref tag
+        run: echo ${{ env.REF_TAG }}
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build + push - pktvisor (multi-arch)
+        env:
+          IMAGE_NAME: ghcr.io/etaques/pktvisor
+        uses: docker/build-push-action@v3
+        with:
+          builder: ${{ steps.buildx.outputs.name }}
+          context: .
+          file: ./docker/Dockerfile
+          platforms: linux/arm/v7
+          push: true
+          tags: ${{ env.IMAGE_NAME }}:armv7
+          build-args: |
+            ghtoken=${{ secrets.GITHUB_TOKEN }}
 
   package-amd64:
-    needs: spinup-self-runner
+    needs: 
+      - prebuild-package
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
     steps:
@@ -376,9 +442,8 @@ jobs:
           build-args: |
             ghtoken=${{ secrets.GITHUB_TOKEN }}
 
-  remove-self-runner:
+  remove-arm64-runner:
     needs:
-#      - package-armv7
       - package-arm64
     runs-on: ubuntu-latest
     #    if: ${{ needs.pre-test.outputs.stg == 'true' || needs.pre-test.outputs.prd == 'true' }}
@@ -427,12 +492,63 @@ jobs:
           RUNNER_ID=$(cat runner_id.txt)
           curl -X DELETE -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/etaques/pktvisor/actions/runners/$RUNNER_ID
 
+  remove-amd64-runner:
+    needs:
+      - package-armv7
+    runs-on: ubuntu-latest
+    #    if: ${{ needs.pre-test.outputs.stg == 'true' || needs.pre-test.outputs.prd == 'true' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Attach to workspace
+        uses: actions/download-artifact@v2
+        with:
+          name: terraform2
+          path: hosted-runner/amd64/
+
+      - name: Inject AWS key
+        run: |
+          cd hosted-runner/amd64/
+          ESCAPED_REPLACE_KEY_ID=$(printf '%s\n' "${{ secrets.AWS_ACCESS_KEY_ID }}" | sed -e 's/[\/&]/\\&/g')
+          sed -i -e "s/AWSID/$ESCAPED_REPLACE_KEY_ID/g" vars.tf
+          ESCAPED_REPLACE_ACCESS_KEY=$(printf '%s\n' "${{ secrets.AWS_SECRET_ACCESS_KEY }}" | sed -e 's/[\/&]/\\&/g')
+          sed -i -e "s/AWSSECRET/$ESCAPED_REPLACE_ACCESS_KEY/g" vars.tf
+
+      - name: setup terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.1.7
+
+      - name: Terraform Init
+        run: |
+          cd hosted-runner/amd64/
+          terraform init -input=false
+
+      - name: Terraform plan destroy
+        run: |
+          cd hosted-runner/amd64/
+          terraform plan -destroy
+        continue-on-error: true
+
+      - name: Terraform destroy
+        run: |
+          cd hosted-runner/amd64/
+          terraform destroy -auto-approve
+
+      - name: Remove runner from github
+        run: |
+          curl -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/etaques/pktvisor/actions/runners | jq '.runners[].id' --raw-output > runner_id.txt
+          RUNNER_ID=$(cat runner_id.txt)
+          curl -X DELETE -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/etaques/pktvisor/actions/runners/$RUNNER_ID
+
   pushing-manifests:
     needs:
-      - remove-self-runner
+      - remove-arm64-runner
+      - remove-amd64-runner
       - package-amd64
       - package-arm64
-#      - package-armv7
+      - package-armv7
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
     steps:
@@ -468,59 +584,3 @@ jobs:
           --all \
           docker://ghcr.io/etaques/pktvisor:latest \
           docker://docker.io/ns1labs/pktvisor:latest
-
-  clean-ghcr-amd64:
-    needs:
-      - pushing-manifests
-    runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request'
-    steps:
-      - name: Delete image from ghcr.io
-        uses: bots-house/ghcr-delete-image-action@v1.0.0
-        with:
-          owner: etaques
-          name: pktvisor
-          token: ${{ secrets.GITHUB_TOKEN }}
-          tag: amd64
-
-  clean-ghcr-arm64:
-    needs:
-      - pushing-manifests
-    runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request'
-    steps:
-      - name: Delete image from ghcr.io
-        uses: bots-house/ghcr-delete-image-action@v1.0.0
-        with:
-          owner: etaques
-          name: pktvisor
-          token: ${{ secrets.GITHUB_TOKEN }}
-          tag: arm64
-
-#  clean-ghcr-armv7:
-#    needs:
-#      - pushing-manifests
-#    runs-on: ubuntu-latest
-#    if: github.event_name != 'pull_request'
-#    steps:
-#      - name: Delete image from ghcr.io
-#        uses: bots-house/ghcr-delete-image-action@v1.0.0
-#        with:
-#          owner: etaques
-#          name: pktvisor
-#          token: ${{ secrets.GITHUB_TOKEN }}
-#          tag: armv7
-
-  clean-ghcr-latest:
-    needs:
-      - pushing-manifests
-    runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request'
-    steps:
-      - name: Delete image from ghcr.io
-        uses: bots-house/ghcr-delete-image-action@v1.0.0
-        with:
-          owner: etaques
-          name: pktvisor
-          token: ${{ secrets.GITHUB_TOKEN }}
-          tag: latest
