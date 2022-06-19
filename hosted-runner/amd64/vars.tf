@@ -22,5 +22,5 @@ variable "key_name" {
 }
 
 variable "instance_type" {
-  default = "t3a.medium"
+  default = "t3.xlarge"
 }
