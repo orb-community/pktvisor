@@ -547,8 +547,6 @@ jobs:
       - remove-arm64-runner
       - remove-amd64-runner
       - package-amd64
-      - package-arm64
-      - package-armv7
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
     steps:
