@@ -22,6 +22,8 @@ visor:
       input_type: mock
       config:
         iface: eth0
+  global_handler_config:
+    only_rcode: 2
   policies:
     # policy name and description
     default_view:
@@ -415,6 +417,7 @@ TEST_CASE("Policies", "[policies]")
         CHECK(config_file["visor"]["policies"].IsMap());
 
         REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
+        REQUIRE_NOTHROW(registry.policy_manager()->set_default_handler_config(config_file["visor"]["global_handler_config"]));
         REQUIRE_NOTHROW(registry.policy_manager()->load(config_file["visor"]["policies"]));
 
         REQUIRE(registry.policy_manager()->module_exists("default_view"));
@@ -425,8 +428,10 @@ TEST_CASE("Policies", "[policies]")
         CHECK(policy->input_stream()->config_get<std::string>("sample") == "value");
         CHECK(policy->modules()[0]->name() == "default_view-default_net");
         CHECK(policy->modules()[1]->name() == "default_view-default_dns");
+        CHECK(policy->modules()[1]->config_get<uint64_t>("only_rcode") == 2);
         CHECK(policy->modules()[2]->name() == "default_view-special_domain");
         CHECK(policy->modules()[2]->config_get<Configurable::StringList>("only_qname_suffix")[0] == ".google.com");
+        CHECK(policy->modules()[2]->config_get<uint64_t>("only_rcode") == 2);
         // TODO check window config settings made it through
         CHECK(policy->input_stream()->running());
         CHECK(policy->modules()[0]->running());

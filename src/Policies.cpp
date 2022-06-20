@@ -245,6 +245,9 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
                 }
             }
             Config handler_config;
+            if(_global_handler_config) {
+                handler_config.config_merge(*_global_handler_config);
+            }
             if (module["config"]) {
                 if (!module["config"].IsMap()) {
                     throw PolicyException("stream handler configuration is not a map");

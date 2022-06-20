@@ -96,6 +96,7 @@ class PolicyManager : public AbstractManager<Policy>
      */
     unsigned int _default_num_periods{5};
     uint32_t _default_deep_sample_rate{100};
+    std::unique_ptr<Configurable> _global_handler_config;
 
 public:
     PolicyManager(CoreRegistry *registry)
@@ -114,6 +115,11 @@ public:
     void set_default_deep_sample_rate(uint32_t r)
     {
         _default_deep_sample_rate = r;
+    }
+    void set_default_handler_config(const YAML::Node &config_yaml)
+    {
+        _global_handler_config = std::make_unique<Configurable>();
+        _global_handler_config->config_set_yaml(config_yaml);
     }
 
     unsigned int default_num_periods() const
