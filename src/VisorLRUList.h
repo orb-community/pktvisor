@@ -59,6 +59,11 @@ public:
      */
     int put(const T &element, const V &value, std::pair<T, V> *deletedValue = NULL)
     {
+        if(m_CacheItemsList.front().first == element) {
+            m_CacheItemsList.front().second = value;
+            return 0;
+        }
+
         m_CacheItemsList.push_front(std::make_pair(element, value));
 
         // Inserting a new element. If an element with an equivalent key already exists the method returns an iterator to the element that prevented the insertion

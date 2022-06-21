@@ -76,6 +76,7 @@ std::string MaxmindDB::getGeoLocString(const char *ip_address) const
 
     MMDB_lookup_result_s lookup = MMDB_lookup_string(&_mmdb, ip_address, &gai_error, &mmdb_error);
     if (0 != gai_error || MMDB_SUCCESS != mmdb_error || !lookup.found_entry) {
+        _lru_cache->put(ip_address, "Unknown");
         return "Unknown";
     }
 
@@ -169,6 +170,7 @@ std::string MaxmindDB::getASNString(const char *ip_address) const
 
     MMDB_lookup_result_s lookup = MMDB_lookup_string(&_mmdb, ip_address, &gai_error, &mmdb_error);
     if (0 != gai_error || MMDB_SUCCESS != mmdb_error || !lookup.found_entry) {
+        _lru_cache->put(ip_address, "Unknown");
         return "Unknown";
     }
 

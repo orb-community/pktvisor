@@ -20,7 +20,7 @@ class MaxmindDB
 public:
     ~MaxmindDB();
 
-    void enable(const std::string &database_filename, int cache_size = 10000);
+    void enable(const std::string &database_filename, int cache_size);
     bool enabled() const
     {
         return _enabled;

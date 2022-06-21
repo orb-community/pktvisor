@@ -111,7 +111,9 @@ NetStreamHandler::~NetStreamHandler()
 // callback from input module
 void NetStreamHandler::process_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp)
 {
-    _metrics->process_packet(payload, dir, l3, l4, stamp);
+    if (!_filtering(payload, dir, stamp)) {
+        _metrics->process_packet(payload, dir, l3, l4, stamp);
+    }
 }
 
 void NetStreamHandler::set_start_tstamp(timespec stamp)
@@ -152,7 +154,7 @@ bool NetStreamHandler::_filtering(pcpp::Packet &payload, PacketDirection dir, ti
                 goto will_filter;
             }
         }
-        goto will_filter;
+        goto will_not_filter;
     }
     if (_f_enabled[Filters::AsnNotFound] && geo::GeoASN().enabled() && dir != PacketDirection::unknown) {
         if (auto IP4layer = payload.getLayerOfType<pcpp::IPv4Layer>(); IP4layer) {

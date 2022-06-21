@@ -208,6 +208,14 @@ void fill_cmd_options(std::map<std::string, docopt::value> args, CmdOptions &opt
         options.geo_asn = config["geo_asn"].as<std::string>();
     }
 
+    if (args["--geo-cache"]) {
+        options.geo_cache = static_cast<unsigned int>(args["--geo-cache"].asLong());
+    } else if (config["geo_cache"]) {
+        options.geo_cache = config["geo_cache"].as<unsigned int>();
+    } else {
+        options.geo_cache =  10000;
+    }
+
     if (args["--max-deep-sample"]) {
         options.max_deep_sample = static_cast<unsigned int>(args["--max-deep-sample"].asLong());
     } else if (config["max_deep_sample"]) {
@@ -284,13 +292,13 @@ void fill_cmd_options(std::map<std::string, docopt::value> args, CmdOptions &opt
     }
 }
 
-void initialize_geo(const std::string &city, const std::string &asn)
+void initialize_geo(const std::string &city, const std::string &asn, unsigned int cache_size)
 {
     if (!city.empty()) {
-        geo::GeoIP().enable(city);
+        geo::GeoIP().enable(city, cache_size);
     }
     if (!asn.empty()) {
-        geo::GeoASN().enable(asn);
+        geo::GeoASN().enable(asn, cache_size);
     }
 }
 
@@ -553,7 +561,7 @@ int main(int argc, char *argv[])
     unsigned int periods = options.periods.value();
 
     try {
-        initialize_geo(options.geo_city.value(), options.geo_asn.value());
+        initialize_geo(options.geo_city.value(), options.geo_asn.value(), options.geo_cache.value());
     } catch (const std::exception &e) {
         logger->error("Fatal error: {}", e.what());
         exit(EXIT_FAILURE);
