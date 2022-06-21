@@ -38,7 +38,7 @@ public:
 private:
     mutable MMDB_s _mmdb;
     bool _enabled = false;
-    std::unique_ptr<pcpp::LRUList<std::string, std::string>> _lru_cache;
+    std::unique_ptr<LRUList<std::string, std::string>> _lru_cache;
 
     std::string _getGeoLocString(MMDB_lookup_result_s *lookup) const;
     std::string _getASNString(MMDB_lookup_result_s *lookup) const;

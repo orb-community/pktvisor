@@ -45,7 +45,7 @@ private:
     static constexpr uint8_t MAX_TCP_CLEANUPS = 100;
 
     static const PcapSource DefaultPcapSource = PcapSource::libpcap;
-    pcpp::LRUList<uint32_t, timeval> _lru_list;
+    LRUList<uint32_t, timeval> _lru_list;
     IPv4subnetList _hostIPv4;
     IPv6subnetList _hostIPv6;
 

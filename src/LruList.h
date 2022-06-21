@@ -1,5 +1,5 @@
-#ifndef PV_PCAPPP_LRU_LIST
-#define PV_PCAPPP_LRU_LIST
+#ifndef PV_VISOR_LRU_LIST
+#define PV_VISOR_LRU_LIST
 
 #include <list>
 #include <map>
@@ -11,10 +11,9 @@
 /// @file
 
 /**
- * \namespace pcpp
- * \brief The main namespace for the PcapPlusPlus lib
+ * \namespace visor
  */
-namespace pcpp {
+namespace visor {
 
 /**
  * @class LRUList
@@ -156,6 +155,6 @@ private:
     size_t m_MaxSize;
 };
 
-} // namespace pcpp
+} // namespace visor
 
-#endif /* PV_PCAPPP_LRU_LIST */
+#endif /* PV_VISOR_LRU_LIST */

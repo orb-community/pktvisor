@@ -32,7 +32,7 @@ void MaxmindDB::enable(const std::string &database_filename, int cache_size)
         std::string msg = database_filename + ": " + MMDB_strerror(status);
         throw std::runtime_error(msg);
     }
-    _lru_cache = std::make_unique<pcpp::LRUList<std::string, std::string>>(cache_size);
+    _lru_cache = std::make_unique<LRUList<std::string, std::string>>(cache_size);
     _enabled = true;
 }
 
