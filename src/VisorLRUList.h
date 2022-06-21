@@ -2,6 +2,7 @@
 
 #include <list>
 #include <map>
+#include <optional>
 
 #if __cplusplus > 199711L || _MSC_VER >= 1800
 #include <utility>
