@@ -107,6 +107,20 @@ public:
     }
 
     /**
+     * Get the get value of a specific element
+     * @param[in] element The element to get value from
+     * @return The value of the element if it exists
+     */
+    inline std::optional<V> getValue(const T &element)
+    {
+        MapIterator iter = m_CacheItemsMap.find(element);
+        if (iter == m_CacheItemsMap.end())
+            return std::nullopt;
+
+        return iter->second->second;
+    }
+
+    /**
      * Erase an element from the list. If element isn't found in the list nothing happens
      * @param[in] element The element to erase
      */

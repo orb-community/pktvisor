@@ -66,6 +66,7 @@ static const char USAGE[] =
     Geo Options:
       --geo-city FILE             GeoLite2 City database to use for IP to Geo mapping
       --geo-asn FILE              GeoLite2 ASN database to use for IP to ASN mapping
+      --geo-cache N               GeoLite2 cache size for databases (default: 10000)
     Configuration:
       --config FILE               Use specified YAML configuration to configure options, Taps, and Collection Policies
                                   Please see https://pktvisor.dev for more information
@@ -110,35 +111,36 @@ struct CmdOptions {
     bool verbose{false};
     bool no_track{false};
     bool prometheus{false};
-    std::pair<bool, std::string> log_file{false, ""};
-    std::pair<bool, std::string> prom_instance{false, ""};
-    std::pair<bool, std::string> geo_city{false, ""};
-    std::pair<bool, std::string> geo_asn{false, ""};
-    std::pair<bool, unsigned int> max_deep_sample{false, 0};
-    std::pair<bool, unsigned int> periods{false, 0};
-    std::pair<bool, YAML::Node> config;
+    std::optional<std::string> log_file;
+    std::optional<std::string> prom_instance;
+    std::optional<std::string> geo_city;
+    std::optional<std::string> geo_asn;
+    std::optional<unsigned int> geo_cache;
+    std::optional<unsigned int> max_deep_sample;
+    std::optional<unsigned int> periods;
+    std::optional<YAML::Node> config;
 
     struct WebServer {
         bool tls_support{false};
         bool admin_api{false};
-        std::pair<bool, unsigned int> port{false, 0};
-        std::pair<bool, std::string> host{false, ""};
-        std::pair<bool, std::string> tls_cert{false, ""};
-        std::pair<bool, std::string> tls_key{false, ""};
+        std::optional<unsigned int> port;
+        std::optional<std::string> host;
+        std::optional<std::string> tls_cert;
+        std::optional<std::string> tls_key;
     };
     WebServer web_server;
 
     struct Crashpad {
         bool disable{false};
-        std::pair<bool, std::string> token{false, ""};
-        std::pair<bool, std::string> url{false, ""};
-        std::pair<bool, std::string> path{false, ""};
+        std::optional<std::string> token;
+        std::optional<std::string> url;
+        std::optional<std::string> path;
     };
     Crashpad crashpad_info;
 
     struct Module {
         bool list{false};
-        std::pair<bool, std::string> dir{false, ""};
+        std::optional<std::string> dir;
     };
     Module module;
 };
@@ -148,7 +150,6 @@ void fill_cmd_options(std::map<std::string, docopt::value> args, CmdOptions &opt
     YAML::Node config;
     auto logger = spdlog::stdout_color_mt("visor");
     // local config file
-    options.config.first = false;
     if (args["--config"]) {
         YAML::Node config_file;
         // look for local options
@@ -164,7 +165,7 @@ void fill_cmd_options(std::map<std::string, docopt::value> args, CmdOptions &opt
                 exit(EXIT_FAILURE);
             }
 
-            options.config = {true, config_file};
+            options.config = config_file;
 
             if (config_file["visor"]["config"] && config_file["visor"]["config"].IsMap()) {
                 config = config_file["visor"]["config"];
@@ -184,102 +185,102 @@ void fill_cmd_options(std::map<std::string, docopt::value> args, CmdOptions &opt
     options.prometheus = (config["prometheus"] && config["prometheus"].as<bool>()) || args["--prometheus"].asBool();
 
     if (args["--log-file"]) {
-        options.log_file = {true, args["--log-file"].asString()};
+        options.log_file = args["--log-file"].asString();
     } else if (config["log_file"]) {
-        options.log_file = {true, config["log_file"].as<std::string>()};
+        options.log_file = config["log_file"].as<std::string>();
     }
 
     if (args["--prom-instance"]) {
-        options.prom_instance = {true, args["--prom-instance"].asString()};
+        options.prom_instance = args["--prom-instance"].asString();
     } else if (config["prom_instance"]) {
-        options.prom_instance = {true, config["prom_instance"].as<std::string>()};
+        options.prom_instance = config["prom_instance"].as<std::string>();
     }
 
     if (args["--geo-city"]) {
-        options.geo_city = {true, args["--geo-city"].asString()};
+        options.geo_city = args["--geo-city"].asString();
     } else if (config["geo_city"]) {
-        options.geo_city = {true, config["geo_city"].as<std::string>()};
+        options.geo_city = config["geo_city"].as<std::string>();
     }
 
     if (args["--geo-asn"]) {
-        options.geo_asn = {true, args["--geo-asn"].asString()};
+        options.geo_asn = args["--geo-asn"].asString();
     } else if (config["geo_asn"]) {
-        options.geo_asn = {true, config["geo_asn"].as<std::string>()};
+        options.geo_asn = config["geo_asn"].as<std::string>();
     }
 
     if (args["--max-deep-sample"]) {
-        options.max_deep_sample = {true, static_cast<unsigned int>(args["--max-deep-sample"].asLong())};
+        options.max_deep_sample = static_cast<unsigned int>(args["--max-deep-sample"].asLong());
     } else if (config["max_deep_sample"]) {
-        options.max_deep_sample = {true, config["max_deep_sample"].as<unsigned int>()};
+        options.max_deep_sample = config["max_deep_sample"].as<unsigned int>();
     } else {
-        options.max_deep_sample = {false, 100};
+        options.max_deep_sample =  100;
     }
 
     if (args["--periods"]) {
-        options.periods = {true, static_cast<unsigned int>(args["--periods"].asLong())};
+        options.periods = static_cast<unsigned int>(args["--periods"].asLong());
     } else if (config["periods"]) {
-        options.periods = {true, config["periods"].as<unsigned int>()};
+        options.periods = config["periods"].as<unsigned int>();
     } else {
-        options.periods = {false, 5};
+        options.periods =  5;
     }
 
     options.web_server.tls_support = (config["tls"] && config["tls"].as<bool>()) || args["--tls"].asBool();
     options.web_server.admin_api = (config["admin_api"] && config["admin_api"].as<bool>()) || args["--admin-api"].asBool();
 
     if (args["-p"]) {
-        options.web_server.port = {true, static_cast<unsigned int>(args["-p"].asLong())};
+        options.web_server.port = static_cast<unsigned int>(args["-p"].asLong());
     } else if (config["port"]) {
-        options.web_server.port = {true, config["port"].as<unsigned int>()};
+        options.web_server.port = config["port"].as<unsigned int>();
     } else {
-        options.web_server.port = {false, 10853};
+        options.web_server.port =  10853;
     }
 
     if (args["-l"]) {
-        options.web_server.host = {true, args["-l"].asString()};
+        options.web_server.host =  args["-l"].asString();
     } else if (config["host"]) {
-        options.web_server.host = {true, config["host"].as<std::string>()};
+        options.web_server.host =  config["host"].as<std::string>();
     } else {
-        options.web_server.host = {false, "localhost"};
+        options.web_server.host =  "localhost";
     }
 
     if (args["--tls-cert"]) {
-        options.web_server.tls_cert = {true, args["--tls-cert"].asString()};
+        options.web_server.tls_cert = args["--tls-cert"].asString();
     } else if (config["tls_cert"]) {
-        options.web_server.tls_cert = {true, config["tls_cert"].as<std::string>()};
+        options.web_server.tls_cert =  config["tls_cert"].as<std::string>();
     }
 
     if (args["--tls-key"]) {
-        options.web_server.tls_key = {true, args["--tls-key"].asString()};
+        options.web_server.tls_key =  args["--tls-key"].asString();
     } else if (config["tls_key"]) {
-        options.web_server.tls_key = {true, config["tls_key"].as<std::string>()};
+        options.web_server.tls_key = config["tls_key"].as<std::string>();
     }
 
     options.module.list = (config["module_list"] && config["module_list"].as<bool>()) || args["--module-list"].asBool();
 
     if (args["--module-dir"]) {
-        options.module.dir = {true, args["--module-dir"].asString()};
+        options.module.dir =  args["--module-dir"].asString();
     } else if (config["module_dir"]) {
-        options.module.dir = {true, config["module_dir"].as<std::string>()};
+        options.module.dir = config["module_dir"].as<std::string>();
     }
 
     options.crashpad_info.disable = (config["cp_disable"] && config["cp_disable"].as<bool>()) || args["--cp-disable"].asBool();
 
     if (args["--cp-token"]) {
-        options.crashpad_info.token = {true, args["--cp-token"].asString()};
+        options.crashpad_info.token =  args["--cp-token"].asString();
     } else if (config["cp_token"]) {
-        options.crashpad_info.token = {true, config["cp_token"].as<std::string>()};
+        options.crashpad_info.token =  config["cp_token"].as<std::string>();
     }
 
     if (args["--cp-url"]) {
-        options.crashpad_info.url = {true, args["--cp-url"].asString()};
+        options.crashpad_info.url = args["--cp-url"].asString();
     } else if (config["cp_url"]) {
-        options.crashpad_info.url = {true, config["cp_url"].as<std::string>()};
+        options.crashpad_info.url = config["cp_url"].as<std::string>();
     }
 
     if (args["--cp-path"]) {
-        options.crashpad_info.path = {true, args["--cp-path"].asString()};
+        options.crashpad_info.path =  args["--cp-path"].asString();
     } else if (config["cp_path"]) {
-        options.crashpad_info.path = {true, config["cp_path"].as<std::string>()};
+        options.crashpad_info.path =config["cp_path"].as<std::string>();
     }
 }
 
@@ -384,9 +385,9 @@ int main(int argc, char *argv[])
 
     if (options.daemon) {
         // before we daemonize, if they are using a log file, ensure it can be opened
-        if (options.log_file.first) {
+        if (options.log_file.has_value()) {
             try {
-                auto logger_probe = spdlog::basic_logger_mt("pktvisor-log-probe", options.log_file.second);
+                auto logger_probe = spdlog::basic_logger_mt("pktvisor-log-probe", options.log_file.value());
             } catch (const spdlog::spdlog_ex &ex) {
                 std::cerr << "Log init failed: " << ex.what() << std::endl;
                 exit(EXIT_FAILURE);
@@ -402,9 +403,9 @@ int main(int argc, char *argv[])
 
     std::shared_ptr<spdlog::logger> logger;
     spdlog::flush_on(spdlog::level::err);
-    if (options.log_file.first) {
+    if (options.log_file.has_value()) {
         try {
-            logger = spdlog::basic_logger_mt("visor", options.log_file.second);
+            logger = spdlog::basic_logger_mt("visor", options.log_file.value());
             spdlog::flush_every(std::chrono::seconds(3));
         } catch (const spdlog::spdlog_ex &ex) {
             std::cerr << "Log init failed: " << ex.what() << std::endl;
@@ -421,9 +422,9 @@ int main(int argc, char *argv[])
 
     // crashpad support
     if (!options.crashpad_info.disable) {
-        if (options.crashpad_info.token.first || options.crashpad_info.url.first || options.crashpad_info.path.first) {
-            if (options.crashpad_info.token.first && options.crashpad_info.url.first && options.crashpad_info.path.first) {
-                if (!crashpad::start_crashpad_handler(options.crashpad_info.token.second, options.crashpad_info.url.second, options.crashpad_info.path.second)) {
+        if (options.crashpad_info.token.has_value() || options.crashpad_info.url.has_value() || options.crashpad_info.path.has_value()) {
+            if (options.crashpad_info.token.has_value() && options.crashpad_info.url.has_value() && options.crashpad_info.path.has_value()) {
+                if (!crashpad::start_crashpad_handler(options.crashpad_info.token.value(), options.crashpad_info.url.value(), options.crashpad_info.path.value())) {
                     logger->error("failed to setup crashpad");
                 }
             } else {
@@ -435,14 +436,14 @@ int main(int argc, char *argv[])
 
     // modules
     CoreRegistry registry;
-    if (options.module.dir.first) {
-        registry.input_plugin_registry()->setPluginDirectory(options.module.dir.second);
-        registry.handler_plugin_registry()->setPluginDirectory(options.module.dir.second);
+    if (options.module.dir.has_value()) {
+        registry.input_plugin_registry()->setPluginDirectory(options.module.dir.value());
+        registry.handler_plugin_registry()->setPluginDirectory(options.module.dir.value());
     }
 
     // window config defaults for all policies
-    registry.policy_manager()->set_default_deep_sample_rate(options.max_deep_sample.second);
-    registry.policy_manager()->set_default_num_periods(options.periods.second);
+    registry.policy_manager()->set_default_deep_sample_rate(options.max_deep_sample.value());
+    registry.policy_manager()->set_default_num_periods(options.periods.value());
 
     logger->info("{} starting up", VISOR_VERSION);
 
@@ -453,20 +454,20 @@ int main(int argc, char *argv[])
 
     PrometheusConfig prom_config;
     prom_config.default_path = "/metrics";
-    if (options.prom_instance.first) {
-        prom_config.instance_label = options.prom_instance.second;
+    if (options.prom_instance.has_value()) {
+        prom_config.instance_label = options.prom_instance.value();
     }
 
     HttpConfig http_config;
     http_config.read_only = !options.web_server.admin_api;
     if (options.web_server.tls_support) {
         http_config.tls_enabled = true;
-        if (!options.web_server.tls_key.first || !options.web_server.tls_cert.first) {
+        if (!options.web_server.tls_key.has_value() || !options.web_server.tls_cert.has_value()) {
             logger->error("you must specify --tls-key and --tls-cert to use --tls");
             exit(EXIT_FAILURE);
         }
-        http_config.key = options.web_server.tls_key.second;
-        http_config.cert = options.web_server.tls_cert.second;
+        http_config.key = options.web_server.tls_key.value();
+        http_config.cert = options.web_server.tls_cert.value();
         logger->info("Enabling TLS with cert {} and key {}", http_config.key, http_config.cert);
     }
 
@@ -502,9 +503,9 @@ int main(int argc, char *argv[])
     }
 
     // local config file
-    if (options.config.first) {
+    if (options.config.has_value()) {
         // pass to CoreManagers
-        svr->registry()->configure_from_yaml(options.config.second);
+        svr->registry()->configure_from_yaml(options.config.value());
     }
 
     shutdown_handler = [&]([[maybe_unused]] int signal) {
@@ -516,12 +517,12 @@ int main(int argc, char *argv[])
     std::signal(SIGINT, signal_handler);
     std::signal(SIGTERM, signal_handler);
 
-    auto host = options.web_server.host.second;
-    auto port = options.web_server.port.second;
+    auto host = options.web_server.host.value();
+    auto port = options.web_server.port.value();
 
     unsigned int sample_rate = 100;
-    if (options.max_deep_sample.first) {
-        sample_rate = options.max_deep_sample.second;
+    if (options.max_deep_sample.has_value()) {
+        sample_rate = options.max_deep_sample.value();
         if (sample_rate != 100) {
             logger->info("Using maximum deep sample rate: {}%", sample_rate);
         }
@@ -549,10 +550,10 @@ int main(int argc, char *argv[])
         timer_handle = timer_thread.set_interval(24h, usage_metrics);
     }
 
-    unsigned int periods = options.periods.second;
+    unsigned int periods = options.periods.value();
 
     try {
-        initialize_geo(options.geo_city.second, options.geo_asn.second);
+        initialize_geo(options.geo_city.value(), options.geo_asn.value());
     } catch (const std::exception &e) {
         logger->error("Fatal error: {}", e.what());
         exit(EXIT_FAILURE);

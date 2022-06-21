@@ -63,8 +63,6 @@ protected:
 
     TopN<std::string> _topGeoLoc;
     TopN<std::string> _topASN;
-    TopN<std::string> _topGeoLocError;
-    TopN<std::string> _topASNError;
     TopN<uint32_t> _topIPv4;
     TopN<std::string> _topIPv6;
 
@@ -78,6 +76,7 @@ protected:
         Counter TCP_SYN;
         Counter total_in;
         Counter total_out;
+        Counter filtered;
         counters()
             : UDP("packets", {"udp"}, "Count of UDP packets")
             , TCP("packets", {"tcp"}, "Count of TCP packets")
@@ -87,6 +86,7 @@ protected:
             , TCP_SYN("packets", {"protocol", "tcp", "syn"}, "Count of TCP SYN packets")
             , total_in("packets", {"in"}, "Count of total ingress packets")
             , total_out("packets", {"out"}, "Count of total egress packets")
+            , filtered("packets", {"filtered"}, "Count of total packets that did not match the configured filter(s) (if any)")
         {
         }
     };
@@ -99,14 +99,14 @@ protected:
     Rate _throughput_in;
     Rate _throughput_out;
 
+    void _process_geo_metrics(const std::string &ip);
+
 public:
     NetworkMetricsBucket()
         : _srcIPCard("packets", {"cardinality", "src_ips_in"}, "Source IP cardinality")
         , _dstIPCard("packets", {"cardinality", "dst_ips_out"}, "Destination IP cardinality")
         , _topGeoLoc("packets", "geo_loc", {"top_geoLoc"}, "Top GeoIP locations")
         , _topASN("packets", "asn", {"top_ASN"}, "Top ASNs by IP")
-        , _topGeoLocError("packets", "geo_loc", {"top_geoLoc_error"}, "Top IP addresses that failed GeoLoc lookup")
-        , _topASNError("packets", "asn", {"top_ASN_error"}, "Top IP addresses that failed ASN lookup")
         , _topIPv4("packets", "ipv4", {"top_ipv4"}, "Top IPv4 IP addresses")
         , _topIPv6("packets", "ipv6", {"top_ipv6"}, "Top IPv6 IP addresses")
         , _payload_size("packets", {"payload_size"}, "Quantiles of payload sizes, in bytes")
@@ -142,6 +142,7 @@ public:
         _throughput_out.cancel();
     }
 
+    void process_filtered();
     void process_packet(bool deep, pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4);
     void process_dnstap(bool deep, const dnstap::Dnstap &payload, size_t size);
     void process_net_layer(PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, size_t payload_size);
@@ -156,6 +157,7 @@ public:
     {
     }
 
+    void process_filtered(timespec stamp);
     void process_packet(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp);
     void process_dnstap(const dnstap::Dnstap &payload, size_t size);
 };
@@ -192,6 +194,17 @@ class NetStreamHandler final : public visor::StreamMetricsHandler<NetworkMetrics
     void process_udp_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp);
     void set_start_tstamp(timespec stamp);
     void set_end_tstamp(timespec stamp);
+
+    // Net Filters
+    enum Filters {
+        GeoLocNotFound,
+        AsnNotFound,
+        FiltersMAX
+    };
+
+    std::bitset<Filters::FiltersMAX> _f_enabled;
+
+    bool _filtering(pcpp::Packet &payload, PacketDirection dir, timespec stamp);
 
 public:
     NetStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config, StreamHandler *handler = nullptr);

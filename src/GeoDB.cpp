@@ -25,13 +25,14 @@ bool enabled()
     return (GeoIP().enabled() || GeoASN().enabled());
 }
 
-void MaxmindDB::enable(const std::string &database_filename)
+void MaxmindDB::enable(const std::string &database_filename, int cache_size)
 {
     auto status = MMDB_open(database_filename.c_str(), MMDB_MODE_MMAP, &_mmdb);
     if (status != MMDB_SUCCESS) {
         std::string msg = database_filename + ": " + MMDB_strerror(status);
         throw std::runtime_error(msg);
     }
+    _lru_cache = std::make_unique<pcpp::LRUList<std::string, std::string>>(cache_size);
     _enabled = true;
 }
 
@@ -42,7 +43,7 @@ MaxmindDB::~MaxmindDB()
     }
 }
 
-std::string MaxmindDB::getGeoLocString(const struct sockaddr *sa, bool &error) const
+std::string MaxmindDB::getGeoLocString(const struct sockaddr *sa) const
 {
 
     if (!_enabled) {
@@ -53,29 +54,35 @@ std::string MaxmindDB::getGeoLocString(const struct sockaddr *sa, bool &error) c
 
     MMDB_lookup_result_s lookup = MMDB_lookup_sockaddr(&_mmdb, sa, &mmdb_error);
     if (mmdb_error != MMDB_SUCCESS || !lookup.found_entry) {
-        error = true;
         return "Unknown";
     }
 
     return _getGeoLocString(&lookup);
 }
 
-std::string MaxmindDB::getGeoLocString(const char *ip_address, bool &error) const
+std::string MaxmindDB::getGeoLocString(const char *ip_address) const
 {
 
     if (!_enabled) {
         return "";
     }
 
+    if (auto geoloc = _lru_cache->getValue(ip_address); geoloc.has_value()) {
+        _lru_cache->put(ip_address, geoloc.value());
+        return geoloc.value();
+    }
+
     int gai_error, mmdb_error;
 
     MMDB_lookup_result_s lookup = MMDB_lookup_string(&_mmdb, ip_address, &gai_error, &mmdb_error);
     if (0 != gai_error || MMDB_SUCCESS != mmdb_error || !lookup.found_entry) {
-        error = true;
         return "Unknown";
     }
 
-    return _getGeoLocString(&lookup);
+    auto geoloc = _getGeoLocString(&lookup);
+    _lru_cache->put(ip_address, geoloc);
+
+    return geoloc;
 }
 
 std::string MaxmindDB::_getGeoLocString(MMDB_lookup_result_s *lookup) const
@@ -129,7 +136,7 @@ std::string MaxmindDB::_getGeoLocString(MMDB_lookup_result_s *lookup) const
     return geoString;
 }
 
-std::string MaxmindDB::getASNString(const struct sockaddr *sa, bool &error) const
+std::string MaxmindDB::getASNString(const struct sockaddr *sa) const
 {
 
     if (!_enabled) {
@@ -140,29 +147,35 @@ std::string MaxmindDB::getASNString(const struct sockaddr *sa, bool &error) cons
 
     MMDB_lookup_result_s lookup = MMDB_lookup_sockaddr(&_mmdb, sa, &mmdb_error);
     if (mmdb_error != MMDB_SUCCESS || !lookup.found_entry) {
-        error = true;
         return "Unknown";
     }
-    error = false;
+
     return _getASNString(&lookup);
 }
 
-std::string MaxmindDB::getASNString(const char *ip_address, bool &error) const
+std::string MaxmindDB::getASNString(const char *ip_address) const
 {
 
     if (!_enabled) {
         return "";
     }
 
+    if (auto asn = _lru_cache->getValue(ip_address); asn.has_value()) {
+        _lru_cache->put(ip_address, asn.value());
+        return asn.value();
+    }
+
     int gai_error, mmdb_error;
 
     MMDB_lookup_result_s lookup = MMDB_lookup_string(&_mmdb, ip_address, &gai_error, &mmdb_error);
     if (0 != gai_error || MMDB_SUCCESS != mmdb_error || !lookup.found_entry) {
-        error = true;
         return "Unknown";
     }
-    error = false;
-    return _getASNString(&lookup);
+
+    auto asn = _getASNString(&lookup);
+    _lru_cache->put(ip_address, asn);
+
+    return asn;
 }
 
 std::string MaxmindDB::_getASNString(MMDB_lookup_result_s *lookup) const
