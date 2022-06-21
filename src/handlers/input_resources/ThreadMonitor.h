@@ -52,6 +52,10 @@ public:
         while (thread_stat >> stat) {
             stats.push_back(stat);
         }
+        if(stats.size() < 10) {
+            return 0.0;
+        }
+
         uint64_t thread_total_time = (stats[8] + stats[9]);
 
         uint64_t current_thread_time = thread_total_time - _last_thread_time;
