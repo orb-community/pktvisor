@@ -1,5 +1,4 @@
-#ifndef PV_VISOR_LRU_LIST
-#define PV_VISOR_LRU_LIST
+#pragma once
 
 #include <list>
 #include <map>
@@ -156,5 +155,3 @@ private:
 };
 
 } // namespace visor
-
-#endif /* PV_VISOR_LRU_LIST */

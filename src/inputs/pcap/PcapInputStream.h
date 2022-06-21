@@ -12,7 +12,7 @@
 #include <TcpReassembly.h>
 #include <UdpLayer.h>
 #pragma GCC diagnostic pop
-#include "LruList.h"
+#include "VisorLRUList.h"
 #include "utils.h"
 #include <functional>
 #include <memory>
