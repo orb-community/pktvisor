@@ -31,9 +31,13 @@ public:
      */
     std::string getGeoLocString(const char *ip_address) const;
     std::string getGeoLocString(const struct sockaddr *sa) const;
+    std::string getGeoLocString(const struct sockaddr_in *sa4) const;
+    std::string getGeoLocString(const struct sockaddr_in6 *sa6) const;
 
     std::string getASNString(const char *ip_address) const;
     std::string getASNString(const struct sockaddr *sa) const;
+    std::string getASNString(const struct sockaddr_in *sa4) const;
+    std::string getASNString(const struct sockaddr_in6 *sa6) const;
 
 private:
     mutable MMDB_s _mmdb;

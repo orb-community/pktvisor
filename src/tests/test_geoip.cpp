@@ -43,10 +43,14 @@ TEST_CASE("GeoIP", "[geoip]")
         struct sockaddr_in sa4;
         sa4.sin_family = AF_INET;
         inet_pton(AF_INET, "89.160.20.112", &sa4.sin_addr.s_addr);
+        CHECK(visor::geo::GeoIP().getGeoLocString(&sa4) == "EU/Sweden/E/Linköping");
+        CHECK(visor::geo::GeoIP().getGeoLocString(&sa4) == "EU/Sweden/E/Linköping");
         CHECK(visor::geo::GeoIP().getGeoLocString((struct sockaddr *)&sa4) == "EU/Sweden/E/Linköping");
         struct sockaddr_in6 sa6;
         sa6.sin6_family = AF_INET6;
         inet_pton(AF_INET6, "2a02:dac0::", &sa6.sin6_addr);
+        CHECK(visor::geo::GeoIP().getGeoLocString(&sa6) == "EU/Russia");
+        CHECK(visor::geo::GeoIP().getGeoLocString(&sa6) == "EU/Russia");
         CHECK(visor::geo::GeoIP().getGeoLocString((struct sockaddr *)&sa6) == "EU/Russia");
     }
 
@@ -55,10 +59,14 @@ TEST_CASE("GeoIP", "[geoip]")
         struct sockaddr_in sa4;
         sa4.sin_family = AF_INET;
         inet_pton(AF_INET, "1.128.0.0", &sa4.sin_addr.s_addr);
+        CHECK(visor::geo::GeoASN().getASNString(&sa4) == "1221/Telstra Pty Ltd");
+        CHECK(visor::geo::GeoASN().getASNString(&sa4) == "1221/Telstra Pty Ltd");
         CHECK(visor::geo::GeoASN().getASNString((struct sockaddr *)&sa4) == "1221/Telstra Pty Ltd");
         struct sockaddr_in6 sa6;
         sa6.sin6_family = AF_INET6;
         inet_pton(AF_INET6, "2401:8080::", &sa6.sin6_addr);
+        CHECK(visor::geo::GeoASN().getASNString(&sa6) == "237/Merit Network Inc.");
+        CHECK(visor::geo::GeoASN().getASNString(&sa6) == "237/Merit Network Inc.");
         CHECK(visor::geo::GeoASN().getASNString((struct sockaddr *)&sa6) == "237/Merit Network Inc.");
     }
 }

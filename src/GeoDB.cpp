@@ -4,6 +4,7 @@
 
 #include "GeoDB.h"
 #include <cstring>
+#include <fmt/format.h>
 #include <stdexcept>
 
 namespace visor::geo {
@@ -58,6 +59,61 @@ std::string MaxmindDB::getGeoLocString(const struct sockaddr *sa) const
     }
 
     return _getGeoLocString(&lookup);
+}
+
+std::string MaxmindDB::getGeoLocString(const struct sockaddr_in *sa4) const
+{
+
+    if (!_enabled) {
+        return "";
+    }
+    std::string ip_address(fmt::format_int(sa4->sin_addr.s_addr).str());
+    if (auto geoloc = _lru_cache->getValue(ip_address); geoloc.has_value()) {
+        return geoloc.value();
+    }
+
+    int mmdb_error;
+
+    MMDB_lookup_result_s lookup = MMDB_lookup_sockaddr(&_mmdb, reinterpret_cast<const struct sockaddr *>(sa4), &mmdb_error);
+    if (mmdb_error != MMDB_SUCCESS || !lookup.found_entry) {
+        _lru_cache->put(ip_address, "Unknown");
+        return "Unknown";
+    }
+
+    auto geoloc = _getGeoLocString(&lookup);
+    _lru_cache->put(ip_address, geoloc);
+
+    return geoloc;
+}
+
+std::string MaxmindDB::getGeoLocString(const struct sockaddr_in6 *sa6) const
+{
+
+    if (!_enabled) {
+        return "";
+    }
+
+    std::string ip_address(fmt::format("{}{}{}{}",
+        sa6->sin6_addr.s6_addr32[0],
+        sa6->sin6_addr.s6_addr32[1],
+        sa6->sin6_addr.s6_addr32[2],
+        sa6->sin6_addr.s6_addr32[3]));
+    if (auto geoloc = _lru_cache->getValue(ip_address); geoloc.has_value()) {
+        return geoloc.value();
+    }
+
+    int mmdb_error;
+
+    MMDB_lookup_result_s lookup = MMDB_lookup_sockaddr(&_mmdb, reinterpret_cast<const struct sockaddr *>(sa6), &mmdb_error);
+    if (mmdb_error != MMDB_SUCCESS || !lookup.found_entry) {
+        _lru_cache->put(ip_address, "Unknown");
+        return "Unknown";
+    }
+
+    auto geoloc = _getGeoLocString(&lookup);
+    _lru_cache->put(ip_address, geoloc);
+
+    return geoloc;
 }
 
 std::string MaxmindDB::getGeoLocString(const char *ip_address) const
@@ -154,6 +210,61 @@ std::string MaxmindDB::getASNString(const struct sockaddr *sa) const
     return _getASNString(&lookup);
 }
 
+std::string MaxmindDB::getASNString(const struct sockaddr_in *sa4) const
+{
+
+    if (!_enabled) {
+        return "";
+    }
+    std::string ip_address(fmt::format_int(sa4->sin_addr.s_addr).str());
+    if (auto asn = _lru_cache->getValue(ip_address); asn.has_value()) {
+        return asn.value();
+    }
+
+    int mmdb_error;
+
+    MMDB_lookup_result_s lookup = MMDB_lookup_sockaddr(&_mmdb, reinterpret_cast<const struct sockaddr *>(sa4), &mmdb_error);
+    if (mmdb_error != MMDB_SUCCESS || !lookup.found_entry) {
+        _lru_cache->put(ip_address, "Unknown");
+        return "Unknown";
+    }
+
+    auto asn = _getASNString(&lookup);
+    _lru_cache->put(ip_address, asn);
+
+    return asn;
+}
+
+std::string MaxmindDB::getASNString(const struct sockaddr_in6 *sa6) const
+{
+
+    if (!_enabled) {
+        return "";
+    }
+
+    std::string ip_address(fmt::format("{}{}{}{}",
+        sa6->sin6_addr.s6_addr32[0],
+        sa6->sin6_addr.s6_addr32[1],
+        sa6->sin6_addr.s6_addr32[2],
+        sa6->sin6_addr.s6_addr32[3]));
+    if (auto asn = _lru_cache->getValue(ip_address); asn.has_value()) {
+        return asn.value();
+    }
+
+    int mmdb_error;
+
+    MMDB_lookup_result_s lookup = MMDB_lookup_sockaddr(&_mmdb, reinterpret_cast<const struct sockaddr *>(sa6), &mmdb_error);
+    if (mmdb_error != MMDB_SUCCESS || !lookup.found_entry) {
+        _lru_cache->put(ip_address, "Unknown");
+        return "Unknown";
+    }
+
+    auto asn = _getASNString(&lookup);
+    _lru_cache->put(ip_address, asn);
+
+    return asn;
+}
+
 std::string MaxmindDB::getASNString(const char *ip_address) const
 {
 
@@ -162,7 +273,6 @@ std::string MaxmindDB::getASNString(const char *ip_address) const
     }
 
     if (auto asn = _lru_cache->getValue(ip_address); asn.has_value()) {
-        _lru_cache->put(ip_address, asn.value());
         return asn.value();
     }
 

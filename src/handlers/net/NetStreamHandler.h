@@ -99,7 +99,8 @@ protected:
     Rate _throughput_in;
     Rate _throughput_out;
 
-    void _process_geo_metrics(const std::string &ip);
+    void _process_geo_metrics(const pcpp::IPv4Address &ipv4);
+    void _process_geo_metrics(const pcpp::IPv6Address &ipv6);
 
 public:
     NetworkMetricsBucket()
