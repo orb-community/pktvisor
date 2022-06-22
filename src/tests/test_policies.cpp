@@ -23,7 +23,8 @@ visor:
       config:
         iface: eth0
   global_handler_config:
-    only_rcode: 2
+    dns:
+        only_rcode: 2
   policies:
     # policy name and description
     default_view:
@@ -352,6 +353,53 @@ visor:
                  - counters
 )";
 
+auto policies_config_bad12 = R"(
+version: "1.0"
+
+visor:
+  taps:
+    anycast:
+      input_type: mock
+      config:
+        iface: eth0
+  global_handler_config:
+    dns2:
+      only_rcode: 2
+  policies:
+    default_view:
+      kind: collection
+      input:
+        tap: anycast
+        input_type: mock
+      handlers:
+        modules:
+           default_net:
+            type: net
+)";
+
+auto policies_config_bad13 = R"(
+version: "1.0"
+
+visor:
+  taps:
+    anycast:
+      input_type: mock
+      config:
+        iface: eth0
+  global_handler_config:
+      only_rcode: 2
+  policies:
+    default_view:
+      kind: collection
+      input:
+        tap: anycast
+        input_type: mock
+      handlers:
+        modules:
+           default_net:
+            type: net
+)";
+
 auto policies_config_hseq_bad1 = R"(
 version: "1.0"
 
@@ -591,6 +639,26 @@ TEST_CASE("Policies", "[policies]")
 
         REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
         REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["policies"]), "stream handler metric groups should contain enable and/or disable tags");
+    }
+
+    SECTION("Bad Config: global_handler_config with not valid handler type")
+    {
+        CoreRegistry registry;
+        registry.start(nullptr);
+        YAML::Node config_file = YAML::Load(policies_config_bad12);
+
+        REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
+        REQUIRE_THROWS_WITH(registry.policy_manager()->set_default_handler_config(config_file["visor"]["global_handler_config"]), "global_handler_config requires stream handler type 'dns2' which is not available");
+    }
+
+    SECTION("Bad Config: global_handler_config with not valid format")
+    {
+        CoreRegistry registry;
+        registry.start(nullptr);
+        YAML::Node config_file = YAML::Load(policies_config_bad13);
+
+        REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
+        REQUIRE_THROWS_WITH(registry.policy_manager()->set_default_handler_config(config_file["visor"]["global_handler_config"]), "expecting global_handler_config configuration map");
     }
 
     SECTION("Bad Config: invalid handler modules order")

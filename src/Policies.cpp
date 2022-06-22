@@ -13,6 +13,29 @@
 
 namespace visor {
 
+void PolicyManager::set_default_handler_config(const YAML::Node &config_yaml)
+{
+    for (YAML::const_iterator it = config_yaml.begin(); it != config_yaml.end(); ++it) {
+
+        auto handler_module_type = it->first.as<std::string>();
+        if (!it->second.IsMap()) {
+            throw ConfigException("expecting global_handler_config configuration map");
+        }
+
+        auto handler_plugin = _registry->handler_plugins().find(handler_module_type);
+        if (handler_plugin == _registry->handler_plugins().end()) {
+            throw ConfigException(fmt::format("global_handler_config requires stream handler type '{}' which is not available", handler_module_type));
+        }
+
+        if (_global_handler_config.count(handler_module_type) > 0) {
+            throw ConfigException(fmt::format("stream handler type '{}' already exists in global_handler_config configuration", handler_module_type));
+        }
+
+        auto pair = _global_handler_config.emplace(handler_module_type, std::make_unique<Configurable>());
+        pair.first->second->config_set_yaml(it->second);
+    }
+}
+
 std::vector<Policy *> PolicyManager::load_from_str(const std::string &str)
 {
     if (str.empty()) {
@@ -245,8 +268,8 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
                 }
             }
             Config handler_config;
-            if(_global_handler_config) {
-                handler_config.config_merge(*_global_handler_config);
+            if (auto it_global = _global_handler_config.find(handler_module_type); it_global != _global_handler_config.end()) {
+                handler_config.config_merge(*it_global->second);
             }
             if (module["config"]) {
                 if (!module["config"].IsMap()) {
