@@ -121,7 +121,6 @@ std::string MaxmindDB::getGeoLocString(const char *ip_address) const
     }
 
     if (auto geoloc = _lru_cache->getValue(ip_address); geoloc.has_value()) {
-        _lru_cache->put(ip_address, geoloc.value());
         return geoloc.value();
     }
 
