@@ -141,38 +141,39 @@ void NetStreamHandler::process_udp_packet_cb(pcpp::Packet &payload, PacketDirect
 bool NetStreamHandler::_filtering(pcpp::Packet &payload, PacketDirection dir, timespec stamp)
 {
     if (_f_enabled[Filters::GeoLocNotFound] && geo::GeoIP().enabled() && dir != PacketDirection::unknown) {
-        if (auto IP4layer = payload.getLayerOfType<pcpp::IPv4Layer>(); IP4layer) {
-            if (dir == PacketDirection::toHost && geo::GeoIP().getGeoLocString(IP4layer->getSrcIPv4Address().toString().c_str()) != "Unknown") {
+        if (auto IPv4Layer = payload.getLayerOfType<pcpp::IPv4Layer>(); IPv4Layer) {
+            struct sockaddr_in sa4;
+            if (dir == PacketDirection::toHost && IPv4tosockaddr(IPv4Layer->getSrcIPv4Address(), &sa4) && geo::GeoIP().getGeoLocString(&sa4) != "Unknown") {
                 goto will_filter;
-            } else if (dir == PacketDirection::fromHost && geo::GeoIP().getGeoLocString(IP4layer->getDstIPv4Address().toString().c_str()) != "Unknown") {
+            } else if (dir == PacketDirection::fromHost && IPv4tosockaddr(IPv4Layer->getDstIPv4Address(), &sa4) && geo::GeoIP().getGeoLocString(&sa4) != "Unknown") {
                 goto will_filter;
             }
-        } else if (auto IP6layer = payload.getLayerOfType<pcpp::IPv6Layer>(); IP6layer) {
-            if (dir == PacketDirection::toHost && geo::GeoIP().getGeoLocString(IP6layer->getSrcIPv6Address().toString().c_str()) != "Unknown") {
+        } else if (auto IPv6layer = payload.getLayerOfType<pcpp::IPv6Layer>(); IPv6layer) {
+            struct sockaddr_in6 sa6;
+            if (dir == PacketDirection::toHost && IPv6tosockaddr(IPv6layer->getSrcIPv6Address(), &sa6) && geo::GeoIP().getGeoLocString(&sa6) != "Unknown") {
                 goto will_filter;
-            } else if (dir == PacketDirection::fromHost && geo::GeoIP().getGeoLocString(IP6layer->getDstIPv6Address().toString().c_str()) != "Unknown") {
+            } else if (dir == PacketDirection::fromHost && IPv6tosockaddr(IPv6layer->getDstIPv6Address(), &sa6) && geo::GeoIP().getGeoLocString(&sa6) != "Unknown") {
                 goto will_filter;
             }
         }
-        goto will_not_filter;
     }
     if (_f_enabled[Filters::AsnNotFound] && geo::GeoASN().enabled() && dir != PacketDirection::unknown) {
-        if (auto IP4layer = payload.getLayerOfType<pcpp::IPv4Layer>(); IP4layer) {
-            if (dir == PacketDirection::toHost && geo::GeoASN().getASNString(IP4layer->getSrcIPv4Address().toString().c_str()) != "Unknown") {
+        if (auto IPv4Layer = payload.getLayerOfType<pcpp::IPv4Layer>(); IPv4Layer) {
+            struct sockaddr_in sa4;
+            if (dir == PacketDirection::toHost && IPv4tosockaddr(IPv4Layer->getSrcIPv4Address(), &sa4) && geo::GeoASN().getASNString(&sa4) != "Unknown") {
                 goto will_filter;
-            } else if (dir == PacketDirection::fromHost && geo::GeoASN().getASNString(IP4layer->getDstIPv4Address().toString().c_str()) != "Unknown") {
+            } else if (dir == PacketDirection::fromHost && IPv4tosockaddr(IPv4Layer->getDstIPv4Address(), &sa4) && geo::GeoASN().getASNString(&sa4) != "Unknown") {
                 goto will_filter;
             }
-        } else if (auto IP6layer = payload.getLayerOfType<pcpp::IPv6Layer>(); IP6layer) {
-            if (dir == PacketDirection::toHost && geo::GeoASN().getASNString(IP6layer->getSrcIPv6Address().toString().c_str()) != "Unknown") {
+        } else if (auto IPv6layer = payload.getLayerOfType<pcpp::IPv6Layer>(); IPv6layer) {
+            struct sockaddr_in6 sa6;
+            if (dir == PacketDirection::toHost && IPv6tosockaddr(IPv6layer->getSrcIPv6Address(), &sa6) && geo::GeoASN().getASNString(&sa6) != "Unknown") {
                 goto will_filter;
-            } else if (dir == PacketDirection::fromHost && geo::GeoASN().getASNString(IP6layer->getDstIPv6Address().toString().c_str()) != "Unknown") {
+            } else if (dir == PacketDirection::fromHost && IPv6tosockaddr(IPv6layer->getDstIPv6Address(), &sa6) && geo::GeoASN().getASNString(&sa6) != "Unknown") {
                 goto will_filter;
             }
         }
-        goto will_not_filter;
     }
-will_not_filter:
     return false;
 will_filter:
     _metrics->process_filtered(stamp);
