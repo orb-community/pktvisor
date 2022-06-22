@@ -93,11 +93,9 @@ std::string MaxmindDB::getGeoLocString(const struct sockaddr_in6 *sa6) const
         return "";
     }
 
-    std::string ip_address(fmt::format("{}{}{}{}",
-        sa6->sin6_addr.s6_addr32[0],
-        sa6->sin6_addr.s6_addr32[1],
-        sa6->sin6_addr.s6_addr32[2],
-        sa6->sin6_addr.s6_addr32[3]));
+
+
+    std::string ip_address(fmt::format("{}", sa6->sin6_addr.s6_addr));
     if (auto geoloc = _lru_cache->getValue(ip_address); geoloc.has_value()) {
         return geoloc.value();
     }
