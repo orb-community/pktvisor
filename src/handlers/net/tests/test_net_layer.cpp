@@ -355,3 +355,74 @@ TEST_CASE("Net groups", "[pcap][net]")
         REQUIRE_THROWS_WITH(net_handler.start(), "rates is an invalid/unsupported metric group. The valid groups are cardinality, counters, top_geo, top_ips");
     }
 }
+
+TEST_CASE("Net geolocation filtering", "[pcap][net][geo]")
+{
+    CHECK_NOTHROW(visor::geo::GeoIP().enable("tests/fixtures/GeoIP2-City-Test.mmdb"));
+    CHECK_NOTHROW(visor::geo::GeoASN().enable("tests/fixtures/GeoIP2-ISP-Test.mmdb"));
+
+    PcapInputStream stream{"pcap-test"};
+    stream.config_set("pcap_file", "tests/fixtures/dns_udp_mixed_rcode.pcap");
+    stream.config_set("bpf", "");
+    stream.config_set("host_spec", "192.168.0.0/23");
+    stream.parse_host_spec();
+
+    visor::Config c;
+    auto stream_proxy = stream.add_event_proxy(c);
+    c.config_set<uint64_t>("num_periods", 1);
+    NetStreamHandler net_handler{"net-test", stream_proxy, &c};
+
+    SECTION("Enable geoloc not found")
+    {
+        net_handler.config_set<bool>("geloc_notfound", true);
+
+        net_handler.start();
+        stream.start();
+        stream.stop();
+        net_handler.stop();
+
+        nlohmann::json j;
+        net_handler.metrics()->bucket(0)->to_json(j);
+        CHECK(j["top_ipv4"][0]["estimate"] == 4);
+        CHECK(j["top_ipv4"][0]["name"] == "198.51.44.1");
+        CHECK(j["top_geoLoc"][0]["estimate"] == 24);
+        CHECK(j["top_geoLoc"][0]["name"] == "Unknown");
+    }
+
+    SECTION("Enable asn not found")
+    {
+        net_handler.config_set<bool>("asn_notfound", true);
+
+        net_handler.start();
+        stream.start();
+        stream.stop();
+        net_handler.stop();
+
+        nlohmann::json j;
+        net_handler.metrics()->bucket(0)->to_json(j);
+        CHECK(j["top_ipv4"][0]["estimate"] == 4);
+        CHECK(j["top_ipv4"][0]["name"] == "198.51.44.1");
+        CHECK(j["top_ASN"][0]["estimate"] == 24);
+        CHECK(j["top_ASN"][0]["name"] == "Unknown");
+    }
+
+    SECTION("Enable geoloc and asn not found")
+    {
+        net_handler.config_set<bool>("geloc_notfound", true);
+        net_handler.config_set<bool>("asn_notfound", true);
+
+        net_handler.start();
+        stream.start();
+        stream.stop();
+        net_handler.stop();
+
+        nlohmann::json j;
+        net_handler.metrics()->bucket(0)->to_json(j);
+        CHECK(j["top_ipv4"][0]["estimate"] == 4);
+        CHECK(j["top_ipv4"][0]["name"] == "198.51.44.1");
+        CHECK(j["top_geoLoc"][0]["estimate"] == 24);
+        CHECK(j["top_geoLoc"][0]["name"] == "Unknown");
+        CHECK(j["top_ASN"][0]["estimate"] == 24);
+        CHECK(j["top_ASN"][0]["name"] == "Unknown");
+    }
+}
