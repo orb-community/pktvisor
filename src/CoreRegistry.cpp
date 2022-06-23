@@ -119,6 +119,12 @@ void CoreRegistry::configure_from_yaml(YAML::Node &node)
     if (node["visor"]["taps"] && node["visor"]["taps"].IsMap()) {
         _tap_manager->load(node["visor"]["taps"], true);
     }
+
+    // global handlers config
+    if (node["visor"]["global_handler_config"] && node["visor"]["global_handler_config"].IsMap()) {
+        _policy_manager->set_default_handler_config(node["visor"]["global_handler_config"]);
+    }
+
     // policies
     if (node["visor"]["policies"] && node["visor"]["policies"].IsMap()) {
         auto policies = _policy_manager->load(node["visor"]["policies"]);
