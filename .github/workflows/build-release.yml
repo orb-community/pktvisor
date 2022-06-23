@@ -171,6 +171,7 @@ jobs:
   spinup-amd64-runner:
     needs:
       - prebuild-package
+      - spinup-arm64-runner
     runs-on: ubuntu-latest
     #    if: ${{ needs.pre-test.outputs.stg == 'true' || needs.pre-test.outputs.prd == 'true' }}
     outputs:
@@ -488,7 +489,7 @@ jobs:
 
       - name: Remove runner from github
         run: |
-          curl -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/etaques/pktvisor/actions/runners | jq '.runners[].id' --raw-output > runner_id.txt
+          curl -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/etaques/pktvisor/actions/runners | jq '.runners[0].id' --raw-output > runner_id.txt
           RUNNER_ID=$(cat runner_id.txt)
           curl -X DELETE -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/etaques/pktvisor/actions/runners/$RUNNER_ID
 
@@ -538,7 +539,7 @@ jobs:
 
       - name: Remove runner from github
         run: |
-          curl -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/etaques/pktvisor/actions/runners | jq '.runners[].id' --raw-output > runner_id.txt
+          curl -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/etaques/pktvisor/actions/runners | jq '.runners[1].id' --raw-output > runner_id.txt
           RUNNER_ID=$(cat runner_id.txt)
           curl -X DELETE -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/etaques/pktvisor/actions/runners/$RUNNER_ID
 
