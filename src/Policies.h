@@ -10,6 +10,7 @@
 #include "HandlerModulePlugin.h"
 #include "InputModulePlugin.h"
 #include "Taps.h"
+#include <map>
 #include <vector>
 #include <yaml-cpp/yaml.h>
 
@@ -96,6 +97,7 @@ class PolicyManager : public AbstractManager<Policy>
      */
     unsigned int _default_num_periods{5};
     uint32_t _default_deep_sample_rate{100};
+    std::map<std::string, std::unique_ptr<Configurable>> _global_handler_config;
 
 public:
     PolicyManager(CoreRegistry *registry)
@@ -126,6 +128,7 @@ public:
         return _default_deep_sample_rate;
     }
 
+    void set_default_handler_config(const YAML::Node &config_yaml);
     std::vector<Policy *> load_from_str(const std::string &str);
     std::vector<Policy *> load(const YAML::Node &tap_yaml);
     void remove_policy(const std::string &name);
