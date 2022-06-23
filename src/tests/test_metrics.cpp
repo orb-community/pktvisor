@@ -17,6 +17,9 @@ public:
     {
         out << "test_performed" << std::endl;
     }
+    void update_top_metrics([[maybe_unused]] size_t top_count)
+    {
+    }
 };
 
 class TestMetricsManager : public AbstractMetricsManager<TestMetricsBucket>

@@ -57,6 +57,9 @@ public:
     void specialized_merge(const AbstractMetricsBucket &other) override;
     void to_json(json &j) const override;
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override;
+    void update_top_metrics(size_t) override
+    {
+    }
 
     void process_pcap_tcp_reassembly_error(bool deep, pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3);
     void process_pcap_stats(const pcpp::IPcapDevice::PcapStats &stats);

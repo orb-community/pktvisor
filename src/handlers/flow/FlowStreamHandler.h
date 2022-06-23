@@ -94,6 +94,18 @@ protected:
             , topOutIfIndex("flow", "index", {"top_out_if_index_" + metric}, "Top output interface indexes by " + metric)
         {
         }
+
+        void update_top_count(size_t top_size)
+        {
+            topSrcIP.update_top_count(top_size);
+            topDstIP.update_top_count(top_size);
+            topSrcPort.update_top_count(top_size);
+            topDstPort.update_top_count(top_size);
+            topSrcIPandPort.update_top_count(top_size);
+            topDstIPandPort.update_top_count(top_size);
+            topInIfIndex.update_top_count(top_size);
+            topOutIfIndex.update_top_count(top_size);
+        }
     };
 
     topns _topByBytes;
@@ -152,6 +164,13 @@ public:
     void specialized_merge(const AbstractMetricsBucket &other) override;
     void to_json(json &j) const override;
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override;
+    void update_top_metrics(size_t top_size) override
+    {
+        _topByBytes.update_top_count(top_size);
+        _topByPackets.update_top_count(top_size);
+        _topGeoLoc.update_top_count(top_size);
+        _topASN.update_top_count(top_size);
+    }
 
     // must be thread safe as it is called from time window maintenance thread
     void on_set_read_only() override
@@ -230,5 +249,4 @@ public:
     void start() override;
     void stop() override;
 };
-
 }
