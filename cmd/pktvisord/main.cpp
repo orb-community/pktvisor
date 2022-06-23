@@ -66,7 +66,7 @@ static const char USAGE[] =
     Geo Options:
       --geo-city FILE             GeoLite2 City database to use for IP to Geo mapping
       --geo-asn FILE              GeoLite2 ASN database to use for IP to ASN mapping
-      --geo-cache N               GeoLite2 cache size for databases (default: 10000)
+      --geo-cache-size N          GeoLite2 LRU cache size, 0 to disable. (default: 10000)
     Configuration:
       --config FILE               Use specified YAML configuration to configure options, Taps, and Collection Policies
                                   Please see https://pktvisor.dev for more information
@@ -115,7 +115,7 @@ struct CmdOptions {
     std::optional<std::string> prom_instance;
     std::optional<std::string> geo_city;
     std::optional<std::string> geo_asn;
-    std::optional<unsigned int> geo_cache;
+    std::optional<unsigned int> geo_cache_size;
     std::optional<unsigned int> max_deep_sample;
     std::optional<unsigned int> periods;
     std::optional<YAML::Node> config;
@@ -200,20 +200,24 @@ void fill_cmd_options(std::map<std::string, docopt::value> args, CmdOptions &opt
         options.geo_city = args["--geo-city"].asString();
     } else if (config["geo_city"]) {
         options.geo_city = config["geo_city"].as<std::string>();
+    } else {
+        options.geo_city = "";
     }
 
     if (args["--geo-asn"]) {
         options.geo_asn = args["--geo-asn"].asString();
     } else if (config["geo_asn"]) {
         options.geo_asn = config["geo_asn"].as<std::string>();
+    } else {
+        options.geo_asn = "";
     }
 
-    if (args["--geo-cache"]) {
-        options.geo_cache = static_cast<unsigned int>(args["--geo-cache"].asLong());
-    } else if (config["geo_cache"]) {
-        options.geo_cache = config["geo_cache"].as<unsigned int>();
+    if (args["--geo-cache-size"]) {
+        options.geo_cache_size = static_cast<unsigned int>(args["--geo-cache-size"].asLong());
+    } else if (config["geo_cache_size"]) {
+        options.geo_cache_size = config["geo_cache_size"].as<unsigned int>();
     } else {
-        options.geo_cache =  10000;
+        options.geo_cache_size = 10000;
     }
 
     if (args["--max-deep-sample"]) {
@@ -221,7 +225,7 @@ void fill_cmd_options(std::map<std::string, docopt::value> args, CmdOptions &opt
     } else if (config["max_deep_sample"]) {
         options.max_deep_sample = config["max_deep_sample"].as<unsigned int>();
     } else {
-        options.max_deep_sample =  100;
+        options.max_deep_sample = 100;
     }
 
     if (args["--periods"]) {
@@ -229,7 +233,7 @@ void fill_cmd_options(std::map<std::string, docopt::value> args, CmdOptions &opt
     } else if (config["periods"]) {
         options.periods = config["periods"].as<unsigned int>();
     } else {
-        options.periods =  5;
+        options.periods = 5;
     }
 
     options.web_server.tls_support = (config["tls"] && config["tls"].as<bool>()) || args["--tls"].asBool();
@@ -240,25 +244,25 @@ void fill_cmd_options(std::map<std::string, docopt::value> args, CmdOptions &opt
     } else if (config["port"]) {
         options.web_server.port = config["port"].as<unsigned int>();
     } else {
-        options.web_server.port =  10853;
+        options.web_server.port = 10853;
     }
 
     if (args["-l"]) {
-        options.web_server.host =  args["-l"].asString();
+        options.web_server.host = args["-l"].asString();
     } else if (config["host"]) {
-        options.web_server.host =  config["host"].as<std::string>();
+        options.web_server.host = config["host"].as<std::string>();
     } else {
-        options.web_server.host =  "localhost";
+        options.web_server.host = "localhost";
     }
 
     if (args["--tls-cert"]) {
         options.web_server.tls_cert = args["--tls-cert"].asString();
     } else if (config["tls_cert"]) {
-        options.web_server.tls_cert =  config["tls_cert"].as<std::string>();
+        options.web_server.tls_cert = config["tls_cert"].as<std::string>();
     }
 
     if (args["--tls-key"]) {
-        options.web_server.tls_key =  args["--tls-key"].asString();
+        options.web_server.tls_key = args["--tls-key"].asString();
     } else if (config["tls_key"]) {
         options.web_server.tls_key = config["tls_key"].as<std::string>();
     }
@@ -266,7 +270,7 @@ void fill_cmd_options(std::map<std::string, docopt::value> args, CmdOptions &opt
     options.module.list = (config["module_list"] && config["module_list"].as<bool>()) || args["--module-list"].asBool();
 
     if (args["--module-dir"]) {
-        options.module.dir =  args["--module-dir"].asString();
+        options.module.dir = args["--module-dir"].asString();
     } else if (config["module_dir"]) {
         options.module.dir = config["module_dir"].as<std::string>();
     }
@@ -274,9 +278,9 @@ void fill_cmd_options(std::map<std::string, docopt::value> args, CmdOptions &opt
     options.crashpad_info.disable = (config["cp_disable"] && config["cp_disable"].as<bool>()) || args["--cp-disable"].asBool();
 
     if (args["--cp-token"]) {
-        options.crashpad_info.token =  args["--cp-token"].asString();
+        options.crashpad_info.token = args["--cp-token"].asString();
     } else if (config["cp_token"]) {
-        options.crashpad_info.token =  config["cp_token"].as<std::string>();
+        options.crashpad_info.token = config["cp_token"].as<std::string>();
     }
 
     if (args["--cp-url"]) {
@@ -286,9 +290,9 @@ void fill_cmd_options(std::map<std::string, docopt::value> args, CmdOptions &opt
     }
 
     if (args["--cp-path"]) {
-        options.crashpad_info.path =  args["--cp-path"].asString();
+        options.crashpad_info.path = args["--cp-path"].asString();
     } else if (config["cp_path"]) {
-        options.crashpad_info.path =config["cp_path"].as<std::string>();
+        options.crashpad_info.path = config["cp_path"].as<std::string>();
     }
 }
 
@@ -561,7 +565,7 @@ int main(int argc, char *argv[])
     unsigned int periods = options.periods.value();
 
     try {
-        initialize_geo(options.geo_city.value(), options.geo_asn.value(), options.geo_cache.value());
+        initialize_geo(options.geo_city.value(), options.geo_asn.value(), options.geo_cache_size.value());
     } catch (const std::exception &e) {
         logger->error("Fatal error: {}", e.what());
         exit(EXIT_FAILURE);

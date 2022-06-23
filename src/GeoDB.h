@@ -8,8 +8,8 @@
 #pragma GCC diagnostic ignored "-Wpedantic"
 #include <maxminddb.h>
 #pragma GCC diagnostic pop
-#include <string>
 #include <memory>
+#include <string>
 
 #include "VisorLRUList.h"
 
@@ -17,10 +17,12 @@ namespace visor::geo {
 
 class MaxmindDB
 {
+    static constexpr size_t DEFAULT_CACHE_SIZE = 10000;
+
 public:
     ~MaxmindDB();
 
-    void enable(const std::string &database_filename, int cache_size = 10000);
+    void enable(const std::string &database_filename, int cache_size = DEFAULT_CACHE_SIZE);
     bool enabled() const
     {
         return _enabled;
