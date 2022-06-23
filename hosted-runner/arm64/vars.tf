@@ -23,6 +23,6 @@ variable "key_name" {
 
 variable "instance_type" {
 #  default = "t3a.medium"
-  default = "a1.2xlarge"
+  default = "a1.xlarge"
 #  default = "a1.4xlarge"
 }
