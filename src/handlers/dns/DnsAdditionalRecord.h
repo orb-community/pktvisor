@@ -8,6 +8,8 @@
 
 namespace visor::handler::dns {
 
+static constexpr size_t IPV6_BYTE_SIZE = 16;
+
 enum OptEnum {
     CSUBNET = 8,
     COOKIE = 10,
@@ -63,14 +65,19 @@ static std::unique_ptr<DnsAdditionalEcs> parse_additional_records_ecs(DnsResourc
     ecs->family = be16toh(static_cast<uint16_t>(iterator[5] << 8) | iterator[4]);
     ecs->source_netmask = iterator[6];
     ecs->scope_netmask = iterator[7];
+    size_t offset = 8;
 
     if (ecs->family == FamilyAddressEnum::IPV4) {
         char addrBuffer[INET_ADDRSTRLEN];
-        if (inet_ntop(AF_INET, &iterator[8], addrBuffer, sizeof(addrBuffer)) != NULL)
+        if (inet_ntop(AF_INET, &iterator[offset], addrBuffer, sizeof(addrBuffer)) != NULL)
             ecs->client_subnet = addrBuffer;
     } else if (ecs->family == FamilyAddressEnum::IPV6) {
         char addrBuffer[INET6_ADDRSTRLEN];
-        if (inet_ntop(AF_INET6, &iterator[8], addrBuffer, sizeof(addrBuffer)) != NULL)
+        std::array<uint8_t, IPV6_BYTE_SIZE> ipv6 = {};
+        for (auto i = offset; i < size; i++) {
+            ipv6[i-offset] = iterator[i];
+        }
+        if (inet_ntop(AF_INET6, &ipv6, addrBuffer, sizeof(addrBuffer)) != NULL)
             ecs->client_subnet = addrBuffer;
     }
 
