@@ -239,7 +239,7 @@ private:
      */
     jsf32 _rng;
     uint32_t _deep_sample_rate{100};
-    size_t _topn_size{10};
+    size_t _topn_count{10};
 
 protected:
     std::atomic_bool _deep_sampling_now; // atomic so we can reference without mutex
@@ -276,7 +276,7 @@ private:
         _metric_buckets.emplace_front(std::make_unique<MetricsBucketClass>());
         _metric_buckets[0]->configure_groups(_groups);
         _metric_buckets[0]->set_start_tstamp(stamp);
-        _metric_buckets[0]->update_top_metrics(_topn_size);
+        _metric_buckets[0]->update_top_metrics(_topn_count);
         if (_recorded_stream) {
             _metric_buckets[0]->set_recorded_stream();
         }
@@ -367,12 +367,12 @@ public:
         _next_shift_tstamp = _last_shift_tstamp;
         _next_shift_tstamp.tv_sec += AbstractMetricsManager::PERIOD_SEC;
 
-        if (window_config->config_exists("topn_size")) {
-            _topn_size = window_config->config_get<uint64_t>("topn_size");
+        if (window_config->config_exists("topn_count")) {
+            _topn_count = window_config->config_get<uint64_t>("topn_count");
         }
 
         _metric_buckets.emplace_front(std::make_unique<MetricsBucketClass>());
-        _metric_buckets[0]->update_top_metrics(_topn_size);
+        _metric_buckets[0]->update_top_metrics(_topn_count);
     }
 
     virtual ~AbstractMetricsManager() = default;

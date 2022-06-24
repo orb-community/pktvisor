@@ -95,16 +95,16 @@ protected:
         {
         }
 
-        void update_top_count(size_t top_size)
+        void set_top_count(size_t top_count)
         {
-            topSrcIP.update_top_count(top_size);
-            topDstIP.update_top_count(top_size);
-            topSrcPort.update_top_count(top_size);
-            topDstPort.update_top_count(top_size);
-            topSrcIPandPort.update_top_count(top_size);
-            topDstIPandPort.update_top_count(top_size);
-            topInIfIndex.update_top_count(top_size);
-            topOutIfIndex.update_top_count(top_size);
+            topSrcIP.set_top_count(top_count);
+            topDstIP.set_top_count(top_count);
+            topSrcPort.set_top_count(top_count);
+            topDstPort.set_top_count(top_count);
+            topSrcIPandPort.set_top_count(top_count);
+            topDstIPandPort.set_top_count(top_count);
+            topInIfIndex.set_top_count(top_count);
+            topOutIfIndex.set_top_count(top_count);
         }
     };
 
@@ -164,12 +164,12 @@ public:
     void specialized_merge(const AbstractMetricsBucket &other) override;
     void to_json(json &j) const override;
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override;
-    void update_top_metrics(size_t top_size) override
+    void update_top_metrics(size_t top_count) override
     {
-        _topByBytes.update_top_count(top_size);
-        _topByPackets.update_top_count(top_size);
-        _topGeoLoc.update_top_count(top_size);
-        _topASN.update_top_count(top_size);
+        _topByBytes.set_top_count(top_count);
+        _topByPackets.set_top_count(top_count);
+        _topGeoLoc.set_top_count(top_count);
+        _topASN.set_top_count(top_count);
     }
 
     // must be thread safe as it is called from time window maintenance thread

@@ -250,7 +250,7 @@ TEST_CASE("TopN metrics", "[metrics][topn]")
         top_sting.update("top2");
         top_sting.update("top1");
         CHECK(top_sting.get_top_count() == 10);
-        top_sting.update_top_count(1);
+        top_sting.set_top_count(1);
         CHECK(top_sting.get_top_count() == 1);
         top_sting.to_json(j["top"]);
         CHECK(j["top"]["test"]["metric"][0]["estimate"] == 2);

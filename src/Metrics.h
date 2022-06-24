@@ -259,12 +259,12 @@ public:
         _fi.merge(other._fi);
     }
 
-    void update_top_count(const size_t top_count)
+    void set_top_count(const size_t top_count)
     {
         _top_count = top_count;
     }
 
-    size_t get_top_count()
+    size_t get_top_count() const
     {
         return _top_count;
     }

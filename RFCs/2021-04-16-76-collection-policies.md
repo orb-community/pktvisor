@@ -45,7 +45,7 @@ visor:
         config:
           periods: 2 #default is 5
           max_deep_sample: 50 #default is 100
-          topn_size: 5 #default is 10
+          topn_count: 5 #default is 10
         modules:
           # the keys at this level are unique identifiers
           default_net:

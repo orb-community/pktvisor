@@ -366,7 +366,7 @@ TEST_CASE("DNS TopN custom size", "[pcap][dns]")
     visor::Config c;
     auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
-    c.config_set<uint64_t>("topn_size", 3);
+    c.config_set<uint64_t>("topn_count", 3);
     DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
 
     dns_handler.start();
