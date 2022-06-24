@@ -5,7 +5,9 @@
 #pragma once
 
 #include "DnsResource.h"
+#include "EndianPortable.h"
 #include <algorithm>
+#include <array>
 
 namespace visor::handler::dns {
 
