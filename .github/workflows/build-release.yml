@@ -171,7 +171,6 @@ jobs:
   spinup-amd64-runner:
     needs:
       - prebuild-package
-      - spinup-arm64-runner
     runs-on: ubuntu-latest
     #    if: ${{ needs.pre-test.outputs.stg == 'true' || needs.pre-test.outputs.prd == 'true' }}
     outputs:
