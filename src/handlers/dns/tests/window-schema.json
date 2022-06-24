@@ -15,6 +15,7 @@
         "length": 31,
         "start_ts": 1614874231
       },
+      "top_ecs": [],
       "top_nxdomain": [],
       "top_qname2": [
         {
@@ -368,6 +369,7 @@
       "required": [
         "cardinality",
         "period",
+        "top_ecs",
         "top_nxdomain",
         "top_qname2",
         "top_qname3",
@@ -447,6 +449,20 @@
             }
           },
           "additionalProperties": false
+        },
+        "top_ecs": {
+          "$id": "#/properties/dns/properties/top_ecs",
+          "type": "array",
+          "title": "The top_ecs schema",
+          "description": "An explanation about the purpose of this instance.",
+          "default": [],
+          "examples": [
+            []
+          ],
+          "additionalItems": true,
+          "items": {
+            "$id": "#/properties/dns/properties/top_ecs/items"
+          }
         },
         "top_nxdomain": {
           "$id": "#/properties/dns/properties/top_nxdomain",

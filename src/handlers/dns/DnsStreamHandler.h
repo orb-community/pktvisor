@@ -55,6 +55,7 @@ protected:
 
     Cardinality _dns_qnameCard;
 
+    TopN<std::string> _dns_topECS;
     TopN<std::string> _dns_topQname2;
     TopN<std::string> _dns_topQname3;
     TopN<std::string> _dns_topNX;
@@ -112,6 +113,7 @@ public:
         : _dnsXactFromTimeUs("dns", {"xact", "out", "quantiles_us"}, "Quantiles of transaction timing (query/reply pairs) when host is client, in microseconds")
         , _dnsXactToTimeUs("dns", {"xact", "in", "quantiles_us"}, "Quantiles of transaction timing (query/reply pairs) when host is server, in microseconds")
         , _dns_qnameCard("dns", {"cardinality", "qname"}, "Cardinality of unique QNAMES, both ingress and egress")
+        , _dns_topECS("dns", "ecs", {"top_ecs"}, "Top EDNS Client Subnet (ECS) on the query side of a transaction")
         , _dns_topQname2("dns", "qname", {"top_qname2"}, "Top QNAMES, aggregated at a depth of two labels")
         , _dns_topQname3("dns", "qname", {"top_qname3"}, "Top QNAMES, aggregated at a depth of three labels")
         , _dns_topNX("dns", "qname", {"top_nxdomain"}, "Top QNAMES with result code NXDOMAIN")

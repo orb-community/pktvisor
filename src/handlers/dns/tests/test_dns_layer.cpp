@@ -391,6 +391,48 @@ TEST_CASE("DNS Filters: only_qname_suffix", "[pcap][dns]")
     CHECK(j["top_qname3"][0]["name"] == nullptr);
 }
 
+TEST_CASE("Parse DNS with ECS data", "[pcap][dns][ecs]")
+{
+
+    PcapInputStream stream{"pcap-test"};
+    stream.config_set("pcap_file", "tests/fixtures/ecs.pcap");
+    stream.config_set("bpf", "");
+    stream.config_set("host_spec", "192.168.0.0/24");
+    stream.parse_host_spec();
+
+    visor::Config c;
+    auto stream_proxy = stream.add_event_proxy(c);
+    c.config_set<uint64_t>("num_periods", 1);
+    DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
+
+    dns_handler.start();
+    stream.start();
+    stream.stop();
+    dns_handler.stop();
+
+    auto counters = dns_handler.metrics()->bucket(0)->counters();
+    auto event_data = dns_handler.metrics()->bucket(0)->event_data_locked();
+
+
+    CHECK(event_data.num_events->value() == 36);
+    CHECK(event_data.num_samples->value() == 36);
+    CHECK(counters.TCP.value() == 4);
+    CHECK(counters.UDP.value() == 32);
+    CHECK(counters.IPv4.value() == 6);
+    CHECK(counters.IPv6.value() == 30);
+    CHECK(counters.queries.value() == 22);
+    CHECK(counters.replies.value() == 14);
+
+    nlohmann::json j;
+    dns_handler.metrics()->bucket(0)->to_json(j);
+
+    CHECK(j["cardinality"]["qname"] == 9);
+
+    CHECK(j["top_ecs"][0]["name"] == "2001:470:1f0b:1600::"); //wireshark
+    CHECK(j["top_ecs"][0]["estimate"] == 5);
+    CHECK(j["top_ecs"][1] == nullptr);
+}
+
 TEST_CASE("DNS groups", "[pcap][dns]")
 {
     PcapInputStream stream{"pcap-test"};

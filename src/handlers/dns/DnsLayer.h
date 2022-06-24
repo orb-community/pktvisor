@@ -433,7 +433,7 @@ struct dnshdr {
 
 		std::string toString() const;
 
-                bool parseResources(bool queryOnly);
+                bool parseResources(bool queryOnly, bool additionalOnly = false, bool force = false);
 
                 pcpp::OsiModelLayer getOsiModelLayer() const
                 {
