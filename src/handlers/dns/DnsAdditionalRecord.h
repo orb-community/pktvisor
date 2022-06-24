@@ -5,9 +5,11 @@
 #pragma once
 
 #include "DnsResource.h"
+#include <algorithm>
 
 namespace visor::handler::dns {
 
+static constexpr size_t IPV4_BYTE_SIZE = 4;
 static constexpr size_t IPV6_BYTE_SIZE = 16;
 
 enum OptEnum {
@@ -69,12 +71,16 @@ static std::unique_ptr<DnsAdditionalEcs> parse_additional_records_ecs(DnsResourc
 
     if (ecs->family == FamilyAddressEnum::IPV4) {
         char addrBuffer[INET_ADDRSTRLEN];
-        if (inet_ntop(AF_INET, &iterator[offset], addrBuffer, sizeof(addrBuffer)) != NULL)
+        std::array<uint8_t, IPV4_BYTE_SIZE> ipv4 = {};
+        for (auto i = offset; i < std::min(size, IPV4_BYTE_SIZE); i++) {
+            ipv4[i - offset] = iterator[i];
+        }
+        if (inet_ntop(AF_INET, &ipv4, addrBuffer, sizeof(addrBuffer)) != NULL)
             ecs->client_subnet = addrBuffer;
     } else if (ecs->family == FamilyAddressEnum::IPV6) {
         char addrBuffer[INET6_ADDRSTRLEN];
         std::array<uint8_t, IPV6_BYTE_SIZE> ipv6 = {};
-        for (auto i = offset; i < size; i++) {
+        for (auto i = offset; i < std::min(size, IPV6_BYTE_SIZE); i++) {
             ipv6[i - offset] = iterator[i];
         }
         if (inet_ntop(AF_INET6, &ipv6, addrBuffer, sizeof(addrBuffer)) != NULL)
