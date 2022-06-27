@@ -62,9 +62,9 @@ static std::unique_ptr<DnsAdditionalEcs> parse_additional_records_ecs(DnsResourc
     if (ecs->common.option_code != OptEnum::CSUBNET) {
         return nullptr;
     }
+    ecs->common.option_length = be16toh(static_cast<uint16_t>(array[3] << 8) | array[2]);
 
     // rfc7871 - Option Format
-    ecs->common.option_length = be16toh(static_cast<uint16_t>(array[3] << 8) | array[2]);
     ecs->family = be16toh(static_cast<uint16_t>(array[5] << 8) | array[4]);
     ecs->source_netmask = array[6];
     ecs->scope_netmask = array[7];
