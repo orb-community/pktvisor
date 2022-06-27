@@ -46,17 +46,17 @@ public:
         }
         system_total_time = system_total_time / sysconf(_SC_NPROCESSORS_ONLN);
 
-        std::vector<uint64_t> stats;
+        std::vector<std::string> stats;
         std::ifstream thread_stat("/proc/thread-self/stat");
-        thread_stat.ignore(' ');
-        while (thread_stat >> stat) {
-            stats.push_back(stat);
+        std::string stat_str;
+        while (thread_stat >> stat_str) {
+            stats.push_back(stat_str);
         }
-        if(stats.size() < 10) {
+        if(stats.size() < 16) {
             return 0.0;
         }
 
-        uint64_t thread_total_time = (stats[8] + stats[9]);
+        uint64_t thread_total_time = std::stoull(stats[14]) + std::stoull(stats[15]);
 
         uint64_t current_thread_time = thread_total_time - _last_thread_time;
         _last_thread_time = thread_total_time;
