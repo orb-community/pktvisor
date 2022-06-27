@@ -57,25 +57,24 @@ static std::unique_ptr<DnsAdditionalEcs> parse_additional_records_ecs(DnsResourc
     }
 
     // rfc6891
-    uint8_t *iterator = array.get();
     std::unique_ptr<DnsAdditionalEcs> ecs = std::make_unique<DnsAdditionalEcs>();
-    ecs->common.option_code = be16toh(static_cast<uint16_t>(iterator[1] << 8) | iterator[0]);
+    ecs->common.option_code = be16toh(static_cast<uint16_t>(array[1] << 8) | array[0]);
     if (ecs->common.option_code != OptEnum::CSUBNET) {
         return nullptr;
     }
 
     // rfc7871 - Option Format
-    ecs->common.option_length = be16toh(static_cast<uint16_t>(iterator[3] << 8) | iterator[2]);
-    ecs->family = be16toh(static_cast<uint16_t>(iterator[5] << 8) | iterator[4]);
-    ecs->source_netmask = iterator[6];
-    ecs->scope_netmask = iterator[7];
+    ecs->common.option_length = be16toh(static_cast<uint16_t>(array[3] << 8) | array[2]);
+    ecs->family = be16toh(static_cast<uint16_t>(array[5] << 8) | array[4]);
+    ecs->source_netmask = array[6];
+    ecs->scope_netmask = array[7];
     size_t offset = 8;
 
     if (ecs->family == FamilyAddressEnum::IPV4) {
         char addrBuffer[INET_ADDRSTRLEN];
         std::array<uint8_t, IPV4_BYTE_SIZE> ipv4 = {};
         for (auto i = offset; i < std::min(size, IPV4_BYTE_SIZE); i++) {
-            ipv4[i - offset] = iterator[i];
+            ipv4[i - offset] = array[i];
         }
         if (inet_ntop(AF_INET, &ipv4, addrBuffer, sizeof(addrBuffer)) != NULL)
             ecs->client_subnet = addrBuffer;
@@ -83,7 +82,7 @@ static std::unique_ptr<DnsAdditionalEcs> parse_additional_records_ecs(DnsResourc
         char addrBuffer[INET6_ADDRSTRLEN];
         std::array<uint8_t, IPV6_BYTE_SIZE> ipv6 = {};
         for (auto i = offset; i < std::min(size, IPV6_BYTE_SIZE); i++) {
-            ipv6[i - offset] = iterator[i];
+            ipv6[i - offset] = array[i];
         }
         if (inet_ntop(AF_INET6, &ipv6, addrBuffer, sizeof(addrBuffer)) != NULL)
             ecs->client_subnet = addrBuffer;
