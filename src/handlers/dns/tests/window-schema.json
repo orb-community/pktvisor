@@ -16,6 +16,7 @@
         "start_ts": 1614874231
       },
       "top_query_ecs": [],
+      "top_nodata": [],
       "top_nxdomain": [],
       "top_qname2": [
         {
@@ -149,6 +150,7 @@
         "deep_samples": 5851,
         "ipv4": 5851,
         "ipv6": 0,
+        "nodata": 2254,
         "noerror": 2921,
         "nxdomain": 0,
         "queries": 2930,
@@ -201,6 +203,8 @@
             "length": 31,
             "start_ts": 1614874231
           },
+          "top_query_ecs": [],
+          "top_nodata": [],
           "top_nxdomain": [],
           "top_qname2": [
             {
@@ -334,6 +338,7 @@
             "deep_samples": 5851,
             "ipv4": 5851,
             "ipv6": 0,
+            "nodata": 2254,
             "noerror": 2921,
             "nxdomain": 0,
             "queries": 2930,
@@ -370,6 +375,7 @@
         "cardinality",
         "period",
         "top_query_ecs",
+        "top_nodata",
         "top_nxdomain",
         "top_qname2",
         "top_qname3",
@@ -462,6 +468,20 @@
           "additionalItems": true,
           "items": {
             "$id": "#/properties/dns/properties/top_query_ecs/items"
+          }
+        },
+        "top_nodata": {
+          "$id": "#/properties/dns/properties/top_nodata",
+          "type": "array",
+          "title": "The top_nodata schema",
+          "description": "An explanation about the purpose of this instance.",
+          "default": [],
+          "examples": [
+            []
+          ],
+          "additionalItems": true,
+          "items": {
+            "$id": "#/properties/dns/properties/top_nodata/items"
           }
         },
         "top_nxdomain": {
@@ -834,6 +854,7 @@
               "deep_samples": 5851,
               "ipv4": 5851,
               "ipv6": 0,
+              "nodata": 2254,
               "noerror": 2921,
               "nxdomain": 0,
               "queries": 2930,
@@ -849,6 +870,7 @@
             "deep_samples",
             "ipv4",
             "ipv6",
+            "nodata",
             "noerror",
             "nxdomain",
             "queries",
@@ -889,6 +911,16 @@
               "default": 0,
               "examples": [
                 0
+              ]
+            },
+            "nodata": {
+              "$id": "#/properties/dns/properties/wire_packets/properties/nodata",
+              "type": "integer",
+              "title": "The nodata schema",
+              "description": "An explanation about the purpose of this instance.",
+              "default": 0,
+              "examples": [
+                2254
               ]
             },
             "noerror": {

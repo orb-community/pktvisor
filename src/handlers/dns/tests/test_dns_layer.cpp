@@ -221,6 +221,7 @@ TEST_CASE("Parse DNS random UDP/TCP tests", "[pcap][dns]")
     CHECK(counters.xacts_in.value() == 0);
     CHECK(counters.xacts_out.value() == 2921); // wireshark: 2894
     CHECK(counters.xacts_timed_out.value() == 0);
+    CHECK(counters.NODATA.value() == 2254);
     CHECK(counters.NOERROR.value() == 2921); // wireshark: 5838 (we only count reply result codes)
     CHECK(counters.NOERROR.value() == 2921); // wireshark: 5838 (we only count reply result codes)
     CHECK(counters.NX.value() == 0);
@@ -283,6 +284,7 @@ TEST_CASE("DNS Filters: exclude_noerror", "[pcap][dns]")
     REQUIRE(counters.SRVFAIL.value() == 0);
     REQUIRE(counters.REFUSED.value() == 1);
     REQUIRE(counters.NX.value() == 1);
+    CHECK(counters.NODATA.value() == 0);
     REQUIRE(counters.filtered.value() == 22);
     nlohmann::json j;
     dns_handler.metrics()->bucket(0)->to_json(j);
@@ -315,6 +317,7 @@ TEST_CASE("DNS Filters: only_rcode nx", "[pcap][net]")
     REQUIRE(counters.SRVFAIL.value() == 0);
     REQUIRE(counters.REFUSED.value() == 0);
     REQUIRE(counters.NX.value() == 1);
+    CHECK(counters.NODATA.value() == 0);
     REQUIRE(counters.filtered.value() == 23);
     nlohmann::json j;
     dns_handler.metrics()->bucket(0)->to_json(j);
@@ -347,6 +350,7 @@ TEST_CASE("DNS Filters: only_rcode refused", "[pcap][dns]")
     REQUIRE(counters.SRVFAIL.value() == 0);
     REQUIRE(counters.REFUSED.value() == 1);
     REQUIRE(counters.NX.value() == 0);
+    CHECK(counters.NODATA.value() == 0);
     REQUIRE(counters.filtered.value() == 23);
     nlohmann::json j;
     dns_handler.metrics()->bucket(0)->to_json(j);
@@ -415,6 +419,7 @@ TEST_CASE("DNS Filters: only_qname_suffix", "[pcap][dns]")
     CHECK(counters.SRVFAIL.value() == 0);
     CHECK(counters.REFUSED.value() == 0);
     CHECK(counters.NX.value() == 1);
+    CHECK(counters.NODATA.value() == 2);
     CHECK(counters.filtered.value() == 14);
 
     nlohmann::json j;
