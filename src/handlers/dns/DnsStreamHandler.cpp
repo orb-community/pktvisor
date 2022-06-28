@@ -651,7 +651,7 @@ void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, pcpp::Pro
         }
     }
 
-    if (payload.getDnsHeader()->queryOrResponse == QR::query) {
+    if (payload.getDnsHeader()->queryOrResponse == QR::query && payload.getAdditionalRecordCount()) {
         auto additional = payload.getFirstAdditionalRecord();
         if (!additional) {
             payload.parseResources(false, true, true);
