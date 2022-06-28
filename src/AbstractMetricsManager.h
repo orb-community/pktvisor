@@ -214,7 +214,7 @@ public:
 
     virtual void to_json(json &j) const = 0;
     virtual void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const = 0;
-    virtual void update_top_metrics(size_t top_count) = 0;
+    virtual void update_topn_metrics(size_t topn_count) = 0;
 };
 
 template <typename MetricsBucketClass>
@@ -276,7 +276,7 @@ private:
         _metric_buckets.emplace_front(std::make_unique<MetricsBucketClass>());
         _metric_buckets[0]->configure_groups(_groups);
         _metric_buckets[0]->set_start_tstamp(stamp);
-        _metric_buckets[0]->update_top_metrics(_topn_count);
+        _metric_buckets[0]->update_topn_metrics(_topn_count);
         if (_recorded_stream) {
             _metric_buckets[0]->set_recorded_stream();
         }
@@ -372,7 +372,7 @@ public:
         }
 
         _metric_buckets.emplace_front(std::make_unique<MetricsBucketClass>());
-        _metric_buckets[0]->update_top_metrics(_topn_count);
+        _metric_buckets[0]->update_topn_metrics(_topn_count);
     }
 
     virtual ~AbstractMetricsManager() = default;

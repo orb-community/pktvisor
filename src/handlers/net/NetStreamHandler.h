@@ -127,12 +127,12 @@ public:
     void specialized_merge(const AbstractMetricsBucket &other) override;
     void to_json(json &j) const override;
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override;
-    void update_top_metrics(size_t top_count) override
+    void update_topn_metrics(size_t topn_count) override
     {
-        _topGeoLoc.set_top_count(top_count);
-        _topASN.set_top_count(top_count);
-        _topIPv4.set_top_count(top_count);
-        _topIPv6.set_top_count(top_count);
+        _topGeoLoc.set_topn_count(topn_count);
+        _topASN.set_topn_count(topn_count);
+        _topIPv4.set_topn_count(topn_count);
+        _topIPv6.set_topn_count(topn_count);
     }
 
     // must be thread safe as it is called from time window maintenance thread

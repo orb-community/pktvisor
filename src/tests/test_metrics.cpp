@@ -17,7 +17,7 @@ public:
     {
         out << "test_performed" << std::endl;
     }
-    void update_top_metrics([[maybe_unused]] size_t top_count)
+    void update_topn_metrics([[maybe_unused]] size_t topn_count)
     {
     }
 };
@@ -240,8 +240,8 @@ TEST_CASE("TopN metrics", "[metrics][topn]")
 
     SECTION("TopN get count size")
     {
-        CHECK(top_sting.get_top_count() == 10);
-        CHECK(top_int.get_top_count() == 10);
+        CHECK(top_sting.topn_count() == 10);
+        CHECK(top_int.topn_count() == 10);
     }
 
     SECTION("TopN update count size")
@@ -249,9 +249,9 @@ TEST_CASE("TopN metrics", "[metrics][topn]")
         top_sting.update("top1");
         top_sting.update("top2");
         top_sting.update("top1");
-        CHECK(top_sting.get_top_count() == 10);
-        top_sting.set_top_count(1);
-        CHECK(top_sting.get_top_count() == 1);
+        CHECK(top_sting.topn_count() == 10);
+        top_sting.set_topn_count(1);
+        CHECK(top_sting.topn_count() == 1);
         top_sting.to_json(j["top"]);
         CHECK(j["top"]["test"]["metric"][0]["estimate"] == 2);
         CHECK(j["top"]["test"]["metric"][0]["name"] == "top1");

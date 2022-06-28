@@ -156,18 +156,18 @@ public:
     void specialized_merge(const AbstractMetricsBucket &other) override;
     void to_json(json &j) const override;
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override;
-    void update_top_metrics(size_t top_count) override
+    void update_topn_metrics(size_t topn_count) override
     {
-        _dns_topQname2.set_top_count(top_count);
-        _dns_topQname3.set_top_count(top_count);
-        _dns_topNX.set_top_count(top_count);
-        _dns_topREFUSED.set_top_count(top_count);
-        _dns_topSRVFAIL.set_top_count(top_count);
-        _dns_topUDPPort.set_top_count(top_count);
-        _dns_topQType.set_top_count(top_count);
-        _dns_topRCode.set_top_count(top_count);
-        _dns_slowXactIn.set_top_count(top_count);
-        _dns_slowXactOut.set_top_count(top_count);
+        _dns_topQname2.set_topn_count(topn_count);
+        _dns_topQname3.set_topn_count(topn_count);
+        _dns_topNX.set_topn_count(topn_count);
+        _dns_topREFUSED.set_topn_count(topn_count);
+        _dns_topSRVFAIL.set_topn_count(topn_count);
+        _dns_topUDPPort.set_topn_count(topn_count);
+        _dns_topQType.set_topn_count(topn_count);
+        _dns_topRCode.set_topn_count(topn_count);
+        _dns_slowXactIn.set_topn_count(topn_count);
+        _dns_slowXactOut.set_topn_count(topn_count);
     }
 
     void process_filtered();
