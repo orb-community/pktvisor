@@ -56,6 +56,15 @@ void NetStreamHandler::start()
 
     process_groups(_group_defs);
 
+    // Setup Filters
+    if (config_exists("geoloc_notfound") && config_get<bool>("geoloc_notfound")) {
+        _f_enabled.set(Filters::GeoLocNotFound);
+    }
+
+    if (config_exists("asn_notfound") && config_get<bool>("asn_notfound")) {
+        _f_enabled.set(Filters::AsnNotFound);
+    }
+
     if (config_exists("recorded_stream")) {
         _metrics->set_recorded_stream();
     }
@@ -102,7 +111,9 @@ NetStreamHandler::~NetStreamHandler()
 // callback from input module
 void NetStreamHandler::process_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp)
 {
-    _metrics->process_packet(payload, dir, l3, l4, stamp);
+    if (!_filtering(payload, dir, stamp)) {
+        _metrics->process_packet(payload, dir, l3, l4, stamp);
+    }
 }
 
 void NetStreamHandler::set_start_tstamp(timespec stamp)
@@ -122,7 +133,51 @@ void NetStreamHandler::process_dnstap_cb(const dnstap::Dnstap &payload, size_t s
 
 void NetStreamHandler::process_udp_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, [[maybe_unused]] uint32_t flowkey, timespec stamp)
 {
-    _metrics->process_packet(payload, dir, l3, pcpp::UDP, stamp);
+    if (!_filtering(payload, dir, stamp)) {
+        _metrics->process_packet(payload, dir, l3, pcpp::UDP, stamp);
+    }
+}
+
+bool NetStreamHandler::_filtering(pcpp::Packet &payload, PacketDirection dir, timespec stamp)
+{
+    if (_f_enabled[Filters::GeoLocNotFound] && geo::GeoIP().enabled() && dir != PacketDirection::unknown) {
+        if (auto IPv4Layer = payload.getLayerOfType<pcpp::IPv4Layer>(); IPv4Layer) {
+            struct sockaddr_in sa4;
+            if (dir == PacketDirection::toHost && IPv4tosockaddr(IPv4Layer->getSrcIPv4Address(), &sa4) && geo::GeoIP().getGeoLocString(&sa4) != "Unknown") {
+                goto will_filter;
+            } else if (dir == PacketDirection::fromHost && IPv4tosockaddr(IPv4Layer->getDstIPv4Address(), &sa4) && geo::GeoIP().getGeoLocString(&sa4) != "Unknown") {
+                goto will_filter;
+            }
+        } else if (auto IPv6layer = payload.getLayerOfType<pcpp::IPv6Layer>(); IPv6layer) {
+            struct sockaddr_in6 sa6;
+            if (dir == PacketDirection::toHost && IPv6tosockaddr(IPv6layer->getSrcIPv6Address(), &sa6) && geo::GeoIP().getGeoLocString(&sa6) != "Unknown") {
+                goto will_filter;
+            } else if (dir == PacketDirection::fromHost && IPv6tosockaddr(IPv6layer->getDstIPv6Address(), &sa6) && geo::GeoIP().getGeoLocString(&sa6) != "Unknown") {
+                goto will_filter;
+            }
+        }
+    }
+    if (_f_enabled[Filters::AsnNotFound] && geo::GeoASN().enabled() && dir != PacketDirection::unknown) {
+        if (auto IPv4Layer = payload.getLayerOfType<pcpp::IPv4Layer>(); IPv4Layer) {
+            struct sockaddr_in sa4;
+            if (dir == PacketDirection::toHost && IPv4tosockaddr(IPv4Layer->getSrcIPv4Address(), &sa4) && geo::GeoASN().getASNString(&sa4) != "Unknown") {
+                goto will_filter;
+            } else if (dir == PacketDirection::fromHost && IPv4tosockaddr(IPv4Layer->getDstIPv4Address(), &sa4) && geo::GeoASN().getASNString(&sa4) != "Unknown") {
+                goto will_filter;
+            }
+        } else if (auto IPv6layer = payload.getLayerOfType<pcpp::IPv6Layer>(); IPv6layer) {
+            struct sockaddr_in6 sa6;
+            if (dir == PacketDirection::toHost && IPv6tosockaddr(IPv6layer->getSrcIPv6Address(), &sa6) && geo::GeoASN().getASNString(&sa6) != "Unknown") {
+                goto will_filter;
+            } else if (dir == PacketDirection::fromHost && IPv6tosockaddr(IPv6layer->getDstIPv6Address(), &sa6) && geo::GeoASN().getASNString(&sa6) != "Unknown") {
+                goto will_filter;
+            }
+        }
+    }
+    return false;
+will_filter:
+    _metrics->process_filtered(stamp);
+    return true;
 }
 
 void NetworkMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
@@ -148,6 +203,7 @@ void NetworkMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
         _counters.IPv6 += other._counters.IPv6;
         _counters.total_in += other._counters.total_in;
         _counters.total_out += other._counters.total_out;
+        _counters.filtered += other._counters.filtered;
     }
 
     if (group_enabled(group::NetMetrics::Cardinality)) {
@@ -194,6 +250,7 @@ void NetworkMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMa
         _counters.IPv6.to_prometheus(out, add_labels);
         _counters.total_in.to_prometheus(out, add_labels);
         _counters.total_out.to_prometheus(out, add_labels);
+        _counters.filtered.to_prometheus(out, add_labels);
     }
 
     if (group_enabled(group::NetMetrics::Cardinality)) {
@@ -243,6 +300,7 @@ void NetworkMetricsBucket::to_json(json &j) const
         _counters.IPv6.to_json(j);
         _counters.total_in.to_json(j);
         _counters.total_out.to_json(j);
+        _counters.filtered.to_json(j);
     }
 
     if (group_enabled(group::NetMetrics::Cardinality)) {
@@ -264,6 +322,12 @@ void NetworkMetricsBucket::to_json(json &j) const
 }
 
 // the main bucket analysis
+void NetworkMetricsBucket::process_filtered()
+{
+    std::unique_lock lock(_mutex);
+    ++_counters.filtered;
+}
+
 void NetworkMetricsBucket::process_packet(bool deep, pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4)
 {
     if (!deep) {
@@ -281,17 +345,14 @@ void NetworkMetricsBucket::process_packet(bool deep, pcpp::Packet &payload, Pack
 
     NetworkPacket packet(dir, l3, l4, payload.getRawPacket()->getRawDataLen(), syn_flag, false);
 
-    auto IP4layer = payload.getLayerOfType<pcpp::IPv4Layer>();
-    auto IP6layer = payload.getLayerOfType<pcpp::IPv6Layer>();
-
-    if (IP4layer) {
+    if (auto IP4layer = payload.getLayerOfType<pcpp::IPv4Layer>(); IP4layer) {
         packet.is_ipv6 = false;
         if (dir == PacketDirection::toHost) {
             packet.ipv4_in = IP4layer->getSrcIPv4Address();
         } else if (dir == PacketDirection::fromHost) {
             packet.ipv4_out = IP4layer->getDstIPv4Address();
         }
-    } else if (IP6layer) {
+    } else if (auto IP6layer = payload.getLayerOfType<pcpp::IPv6Layer>(); IP6layer) {
         packet.is_ipv6 = true;
         if (dir == PacketDirection::toHost) {
             packet.ipv6_in = IP6layer->getSrcIPv6Address();
@@ -484,64 +545,62 @@ void NetworkMetricsBucket::process_net_layer(NetworkPacket &packet)
 
     _payload_size.update(packet.payload_size);
 
-    struct sockaddr_in sa4;
-    struct sockaddr_in6 sa6;
-
     if (!packet.is_ipv6 && packet.ipv4_in.isValid()) {
         group_enabled(group::NetMetrics::Cardinality) ? _srcIPCard.update(packet.ipv4_in.toInt()) : void();
         group_enabled(group::NetMetrics::TopIps) ? _topIPv4.update(packet.ipv4_in.toInt()) : void();
-        if (geo::enabled() && group_enabled(group::NetMetrics::TopGeo)) {
-            if (IPv4tosockaddr(packet.ipv4_in, &sa4)) {
-                if (geo::GeoIP().enabled()) {
-                    _topGeoLoc.update(geo::GeoIP().getGeoLocString(reinterpret_cast<struct sockaddr *>(&sa4)));
-                }
-                if (geo::GeoASN().enabled()) {
-                    _topASN.update(geo::GeoASN().getASNString(reinterpret_cast<struct sockaddr *>(&sa4)));
-                }
-            }
-        }
+        _process_geo_metrics(packet.ipv4_in);
     } else if (packet.is_ipv6 && packet.ipv6_in.isValid()) {
         group_enabled(group::NetMetrics::Cardinality) ? _srcIPCard.update(reinterpret_cast<const void *>(packet.ipv6_in.toBytes()), 16) : void();
         group_enabled(group::NetMetrics::TopIps) ? _topIPv6.update(packet.ipv6_in.toString()) : void();
-        if (geo::enabled() && group_enabled(group::NetMetrics::TopGeo)) {
-            if (IPv6tosockaddr(packet.ipv6_in, &sa6)) {
-                if (geo::GeoIP().enabled()) {
-                    _topGeoLoc.update(geo::GeoIP().getGeoLocString(reinterpret_cast<struct sockaddr *>(&sa6)));
-                }
-                if (geo::GeoASN().enabled()) {
-                    _topASN.update(geo::GeoASN().getASNString(reinterpret_cast<struct sockaddr *>(&sa6)));
-                }
-            }
-        }
+        _process_geo_metrics(packet.ipv6_in);
     }
 
     if (!packet.is_ipv6 && packet.ipv4_out.isValid()) {
         group_enabled(group::NetMetrics::Cardinality) ? _dstIPCard.update(packet.ipv4_out.toInt()) : void();
         group_enabled(group::NetMetrics::TopIps) ? _topIPv4.update(packet.ipv4_out.toInt()) : void();
-        if (geo::enabled() && group_enabled(group::NetMetrics::TopGeo)) {
-            if (IPv4tosockaddr(packet.ipv4_out, &sa4)) {
-                if (geo::GeoIP().enabled()) {
-                    _topGeoLoc.update(geo::GeoIP().getGeoLocString(reinterpret_cast<struct sockaddr *>(&sa4)));
-                }
-                if (geo::GeoASN().enabled()) {
-                    _topASN.update(geo::GeoASN().getASNString(reinterpret_cast<struct sockaddr *>(&sa4)));
-                }
-            }
-        }
+        _process_geo_metrics(packet.ipv4_out);
     } else if (packet.is_ipv6 && packet.ipv6_out.isValid()) {
         group_enabled(group::NetMetrics::Cardinality) ? _dstIPCard.update(reinterpret_cast<const void *>(packet.ipv6_out.toBytes()), 16) : void();
         group_enabled(group::NetMetrics::TopIps) ? _topIPv6.update(packet.ipv6_out.toString()) : void();
-        if (geo::enabled() && group_enabled(group::NetMetrics::TopGeo)) {
-            if (IPv6tosockaddr(packet.ipv6_out, &sa6)) {
-                if (geo::GeoIP().enabled()) {
-                    _topGeoLoc.update(geo::GeoIP().getGeoLocString(reinterpret_cast<struct sockaddr *>(&sa6)));
-                }
-                if (geo::GeoASN().enabled()) {
-                    _topASN.update(geo::GeoASN().getASNString(reinterpret_cast<struct sockaddr *>(&sa6)));
-                }
+        _process_geo_metrics(packet.ipv6_out);
+    }
+}
+
+inline void NetworkMetricsBucket::_process_geo_metrics(const pcpp::IPv4Address &ipv4)
+{
+    if (geo::enabled() && group_enabled(group::NetMetrics::TopGeo)) {
+        struct sockaddr_in sa4;
+        if (IPv4tosockaddr(ipv4, &sa4)) {
+            if (geo::GeoIP().enabled()) {
+                _topGeoLoc.update(geo::GeoIP().getGeoLocString(&sa4));
+            }
+            if (geo::GeoASN().enabled()) {
+                _topASN.update(geo::GeoASN().getASNString(&sa4));
             }
         }
     }
+}
+
+inline void NetworkMetricsBucket::_process_geo_metrics(const pcpp::IPv6Address &ipv6)
+{
+    if (geo::enabled() && group_enabled(group::NetMetrics::TopGeo)) {
+        struct sockaddr_in6 sa6;
+        if (IPv6tosockaddr(ipv6, &sa6)) {
+            if (geo::GeoIP().enabled()) {
+                _topGeoLoc.update(geo::GeoIP().getGeoLocString(&sa6));
+            }
+            if (geo::GeoASN().enabled()) {
+                _topASN.update(geo::GeoASN().getASNString(&sa6));
+            }
+        }
+    }
+}
+
+void NetworkMetricsManager::process_filtered(timespec stamp)
+{
+    // base event, no sample
+    new_event(stamp, false);
+    live_bucket()->process_filtered();
 }
 
 // the general metrics manager entry point

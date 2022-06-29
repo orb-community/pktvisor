@@ -137,6 +137,9 @@ protected:
     Rate _rate;
     Rate _throughput;
 
+    void _process_geo_metrics(const pcpp::IPv4Address &ipv4);
+    void _process_geo_metrics(const pcpp::IPv6Address &ipv6);
+
 public:
     FlowMetricsBucket()
         : _srcIPCard(FLOW_SCHEMA, {"cardinality", "src_ips_in"}, "Source IP cardinality")
@@ -211,6 +214,8 @@ class FlowStreamHandler final : public visor::StreamMetricsHandler<FlowMetricsMa
 
     enum Filters {
         OnlyHosts,
+        GeoLocNotFound,
+        AsnNotFound,
         FiltersMAX
     };
     std::bitset<Filters::FiltersMAX> _f_enabled;
