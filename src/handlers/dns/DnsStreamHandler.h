@@ -161,6 +161,7 @@ public:
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override;
     void update_topn_metrics(size_t topn_count) override
     {
+        _dns_topECSQuery.set_topn_count(topn_count);
         _dns_topQname2.set_topn_count(topn_count);
         _dns_topQname3.set_topn_count(topn_count);
         _dns_topNX.set_topn_count(topn_count);
