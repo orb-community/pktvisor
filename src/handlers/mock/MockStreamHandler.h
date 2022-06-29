@@ -50,6 +50,9 @@ public:
     void specialized_merge(const AbstractMetricsBucket &other) override;
     void to_json(json &j) const override;
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override;
+    void update_topn_metrics(size_t) override
+    {
+    }
 
     void process_random_int(uint64_t i);
 };
