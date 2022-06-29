@@ -17,6 +17,9 @@ public:
     {
         out << "test_performed" << std::endl;
     }
+    void update_topn_metrics([[maybe_unused]] size_t topn_count)
+    {
+    }
 };
 
 class TestMetricsManager : public AbstractMetricsManager<TestMetricsBucket>
@@ -233,6 +236,26 @@ TEST_CASE("TopN metrics", "[metrics][topn]")
         CHECK(line == R"(root_test_metric{instance="test instance",integer="123",policy="default"} 2)");
         std::getline(output, line);
         CHECK(line == R"(root_test_metric{instance="test instance",integer="10",policy="default"} 1)");
+    }
+
+    SECTION("TopN get count size")
+    {
+        CHECK(top_sting.topn_count() == 10);
+        CHECK(top_int.topn_count() == 10);
+    }
+
+    SECTION("TopN update count size")
+    {
+        top_sting.update("top1");
+        top_sting.update("top2");
+        top_sting.update("top1");
+        CHECK(top_sting.topn_count() == 10);
+        top_sting.set_topn_count(1);
+        CHECK(top_sting.topn_count() == 1);
+        top_sting.to_json(j["top"]);
+        CHECK(j["top"]["test"]["metric"][0]["estimate"] == 2);
+        CHECK(j["top"]["test"]["metric"][0]["name"] == "top1");
+        CHECK(j["top"]["test"]["metric"][1] == nullptr);
     }
 }
 

@@ -26,6 +26,8 @@ std::unique_ptr<StreamHandler> MockHandlerModulePlugin::instantiate(const std::s
 {
     // TODO using config as both window config and module config
     auto handler_module = std::make_unique<MockStreamHandler>(name, proxy, config, stream_handler);
+    handler_module->config_merge(*config);
+    handler_module->config_merge(*filter);
     return handler_module;
 }
 

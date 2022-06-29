@@ -43,8 +43,9 @@ visor:
       handlers:
         # default configuration for the stream handlers
         config:
-          periods: 5
-          max_deep_sample: 50
+          periods: 2 #default is 5
+          max_deep_sample: 50 #default is 100
+          topn_count: 5 #default is 10
         modules:
           # the keys at this level are unique identifiers
           default_net:
@@ -74,8 +75,8 @@ visor:
               qname_suffix: .mydomain.com
             metric_groups:
               disable:
-                - top_qtypes
-                - top_udp_ports
+                - top_qname
+                - dns_transaction
     chaning_handlers:
       kind: collection
       description: "base chaning NET to DNS policy"
