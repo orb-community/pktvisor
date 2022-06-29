@@ -15,7 +15,7 @@
         "length": 31,
         "start_ts": 1614874231
       },
-      "top_ecs": [],
+      "top_ecs_query": [],
       "top_nxdomain": [],
       "top_qname2": [
         {
@@ -369,7 +369,7 @@
       "required": [
         "cardinality",
         "period",
-        "top_ecs",
+        "top_ecs_query",
         "top_nxdomain",
         "top_qname2",
         "top_qname3",
@@ -450,10 +450,10 @@
           },
           "additionalProperties": false
         },
-        "top_ecs": {
-          "$id": "#/properties/dns/properties/top_ecs",
+        "top_ecs_query": {
+          "$id": "#/properties/dns/properties/top_ecs_query",
           "type": "array",
-          "title": "The top_ecs schema",
+          "title": "The top_ecs_query schema",
           "description": "An explanation about the purpose of this instance.",
           "default": [],
           "examples": [
@@ -461,7 +461,7 @@
           ],
           "additionalItems": true,
           "items": {
-            "$id": "#/properties/dns/properties/top_ecs/items"
+            "$id": "#/properties/dns/properties/top_ecs_query/items"
           }
         },
         "top_nxdomain": {
