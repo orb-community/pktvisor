@@ -1,8 +1,8 @@
-#ifndef PV_PCAPPP_LRU_LIST
-#define PV_PCAPPP_LRU_LIST
+#pragma once
 
 #include <list>
 #include <map>
+#include <optional>
 
 #if __cplusplus > 199711L || _MSC_VER >= 1800
 #include <utility>
@@ -11,10 +11,9 @@
 /// @file
 
 /**
- * \namespace pcpp
- * \brief The main namespace for the PcapPlusPlus lib
+ * \namespace visor
  */
-namespace pcpp {
+namespace visor {
 
 /**
  * @class LRUList
@@ -60,6 +59,11 @@ public:
      */
     int put(const T &element, const V &value, std::pair<T, V> *deletedValue = NULL)
     {
+        if(m_CacheItemsList.front().first == element) {
+            m_CacheItemsList.front().second = value;
+            return 0;
+        }
+
         m_CacheItemsList.push_front(std::make_pair(element, value));
 
         // Inserting a new element. If an element with an equivalent key already exists the method returns an iterator to the element that prevented the insertion
@@ -107,6 +111,20 @@ public:
     }
 
     /**
+     * Get the get value of a specific element
+     * @param[in] element The element to get value from
+     * @return The value of the element if it exists
+     */
+    inline std::optional<V> getValue(const T &element)
+    {
+        MapIterator iter = m_CacheItemsMap.find(element);
+        if (iter == m_CacheItemsMap.end())
+            return std::nullopt;
+
+        return iter->second->second;
+    }
+
+    /**
      * Erase an element from the list. If element isn't found in the list nothing happens
      * @param[in] element The element to erase
      */
@@ -142,6 +160,4 @@ private:
     size_t m_MaxSize;
 };
 
-} // namespace pcpp
-
-#endif /* PV_PCAPPP_LRU_LIST */
+} // namespace visor
