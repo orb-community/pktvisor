@@ -353,6 +353,40 @@ TEST_CASE("DNS Filters: only_rcode refused", "[pcap][dns]")
     REQUIRE(j["wire_packets"]["filtered"] == 23);
 }
 
+TEST_CASE("DNS TopN custom size", "[pcap][dns]")
+{
+
+    PcapInputStream stream{"pcap-test"};
+    stream.config_set("pcap_file", "tests/fixtures/dns_udp_tcp_random.pcap");
+    stream.config_set("bpf", "");
+    stream.config_set("host_spec", "192.168.0.0/24");
+    stream.parse_host_spec();
+
+    visor::Config c;
+    auto stream_proxy = stream.add_event_proxy(c);
+    c.config_set<uint64_t>("num_periods", 1);
+    c.config_set<uint64_t>("topn_count", 3);
+    DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
+
+    dns_handler.start();
+    stream.start();
+    stream.stop();
+    dns_handler.stop();
+
+    nlohmann::json j;
+    dns_handler.metrics()->bucket(0)->to_json(j);
+
+    CHECK(j["cardinality"]["qname"] == 2036); // flame was run with 1000 randoms x2 (udp+tcp)
+
+    CHECK(j["top_qtype"][0]["name"] == "AAAA");
+    CHECK(j["top_qtype"][0]["estimate"] == 1476);
+    CHECK(j["top_qtype"][1]["name"] == "CNAME");
+    CHECK(j["top_qtype"][1]["estimate"] == 825);
+    CHECK(j["top_qtype"][2]["name"] == "SOA");
+    CHECK(j["top_qtype"][2]["estimate"] == 794);
+    CHECK(j["top_qtype"][3] == nullptr);
+}
+
 TEST_CASE("DNS Filters: only_qname_suffix", "[pcap][dns]")
 {
 
@@ -525,3 +559,4 @@ TEST_CASE("DNS groups", "[pcap][dns]")
         REQUIRE_THROWS_WITH(dns_handler.start(), "dns_top_wired is an invalid/unsupported metric group. The valid groups are cardinality, counters, dns_transaction, top_ecs, top_qnames");
     }
 }
+

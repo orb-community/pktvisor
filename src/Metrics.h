@@ -259,6 +259,16 @@ public:
         _fi.merge(other._fi);
     }
 
+    void set_topn_count(const size_t top_count)
+    {
+        _top_count = top_count;
+    }
+
+    size_t topn_count() const
+    {
+        return _top_count;
+    }
+
     /**
      * to_json which takes a formater to format the "name"
      * @param j json object
