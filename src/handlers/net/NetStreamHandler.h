@@ -76,6 +76,7 @@ protected:
         Counter TCP_SYN;
         Counter total_in;
         Counter total_out;
+        Counter filtered;
         counters()
             : UDP("packets", {"udp"}, "Count of UDP packets")
             , TCP("packets", {"tcp"}, "Count of TCP packets")
@@ -85,6 +86,7 @@ protected:
             , TCP_SYN("packets", {"protocol", "tcp", "syn"}, "Count of TCP SYN packets")
             , total_in("packets", {"in"}, "Count of total ingress packets")
             , total_out("packets", {"out"}, "Count of total egress packets")
+            , filtered("packets", {"filtered"}, "Count of total packets that did not match the configured filter(s) (if any)")
         {
         }
     };
@@ -96,6 +98,9 @@ protected:
     Rate _rate_out;
     Rate _throughput_in;
     Rate _throughput_out;
+
+    void _process_geo_metrics(const pcpp::IPv4Address &ipv4);
+    void _process_geo_metrics(const pcpp::IPv6Address &ipv6);
 
 public:
     NetworkMetricsBucket()
@@ -145,6 +150,7 @@ public:
         _throughput_out.cancel();
     }
 
+    void process_filtered();
     void process_packet(bool deep, pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4);
     void process_dnstap(bool deep, const dnstap::Dnstap &payload, size_t size);
     void process_net_layer(PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, size_t payload_size);
@@ -159,6 +165,7 @@ public:
     {
     }
 
+    void process_filtered(timespec stamp);
     void process_packet(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp);
     void process_dnstap(const dnstap::Dnstap &payload, size_t size);
 };
@@ -195,6 +202,17 @@ class NetStreamHandler final : public visor::StreamMetricsHandler<NetworkMetrics
     void process_udp_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp);
     void set_start_tstamp(timespec stamp);
     void set_end_tstamp(timespec stamp);
+
+    // Net Filters
+    enum Filters {
+        GeoLocNotFound,
+        AsnNotFound,
+        FiltersMAX
+    };
+
+    std::bitset<Filters::FiltersMAX> _f_enabled;
+
+    bool _filtering(pcpp::Packet &payload, PacketDirection dir, timespec stamp);
 
 public:
     NetStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config, StreamHandler *handler = nullptr);
