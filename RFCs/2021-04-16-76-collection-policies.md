@@ -52,6 +52,8 @@ visor:
             type: net
           udp_traffic:
             type: net
+            config:
+              topn_count: 7
             filter:
               protocols: [ udp ]
             metric_groups:

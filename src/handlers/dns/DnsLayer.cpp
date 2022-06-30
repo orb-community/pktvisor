@@ -112,10 +112,10 @@ bool DnsLayer::shortenLayer(int offsetInLayer, size_t numOfBytesToShorten, IDnsR
     return true;
 }
 
-bool DnsLayer::parseResources(bool queryOnly)
+bool DnsLayer::parseResources(bool queryOnly, bool additionalOnly, bool forceParse)
 {
 
-    if (m_ResourcesParsed) {
+    if (m_ResourcesParsed && !forceParse) {
         return m_ResourcesParseResult;
     }
 
@@ -184,14 +184,19 @@ bool DnsLayer::parseResources(bool queryOnly)
 
         if (resType == DnsQueryType && m_FirstQuery == NULL) {
             m_FirstQuery = newQuery;
-            if (queryOnly)
+            if (queryOnly) {
                 break;
+            }
         } else if (resType == DnsAnswerType && m_FirstAnswer == NULL)
             m_FirstAnswer = newResource;
         else if (resType == DnsAuthorityType && m_FirstAuthority == NULL)
             m_FirstAuthority = newResource;
-        else if (resType == DnsAdditionalType && m_FirstAdditional == NULL)
+        else if (resType == DnsAdditionalType && m_FirstAdditional == NULL) {
             m_FirstAdditional = newResource;
+            if (additionalOnly) {
+                break;
+            }
+        }
     }
 
     m_ResourcesParsed = true;
