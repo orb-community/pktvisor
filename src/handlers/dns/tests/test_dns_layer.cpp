@@ -284,7 +284,7 @@ TEST_CASE("DNS Filters: exclude_noerror", "[pcap][dns]")
     REQUIRE(counters.SRVFAIL.value() == 0);
     REQUIRE(counters.REFUSED.value() == 1);
     REQUIRE(counters.NX.value() == 1);
-    CHECK(counters.NODATA.value() == 0);
+    REQUIRE(counters.NODATA.value() == 0);
     REQUIRE(counters.filtered.value() == 22);
     nlohmann::json j;
     dns_handler.metrics()->bucket(0)->to_json(j);
@@ -317,7 +317,7 @@ TEST_CASE("DNS Filters: only_rcode nx", "[pcap][net]")
     REQUIRE(counters.SRVFAIL.value() == 0);
     REQUIRE(counters.REFUSED.value() == 0);
     REQUIRE(counters.NX.value() == 1);
-    CHECK(counters.NODATA.value() == 0);
+    REQUIRE(counters.NODATA.value() == 0);
     REQUIRE(counters.filtered.value() == 23);
     nlohmann::json j;
     dns_handler.metrics()->bucket(0)->to_json(j);
@@ -350,7 +350,7 @@ TEST_CASE("DNS Filters: only_rcode refused", "[pcap][dns]")
     REQUIRE(counters.SRVFAIL.value() == 0);
     REQUIRE(counters.REFUSED.value() == 1);
     REQUIRE(counters.NX.value() == 0);
-    CHECK(counters.NODATA.value() == 0);
+    REQUIRE(counters.NODATA.value() == 0);
     REQUIRE(counters.filtered.value() == 23);
     nlohmann::json j;
     dns_handler.metrics()->bucket(0)->to_json(j);
