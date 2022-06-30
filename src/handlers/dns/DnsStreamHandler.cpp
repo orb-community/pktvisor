@@ -15,6 +15,7 @@
 #include <IPv4Layer.h>
 #include <IPv6Layer.h>
 #pragma GCC diagnostic pop
+#include "DnsAdditionalRecord.h"
 #include <arpa/inet.h>
 #include <sstream>
 
@@ -387,7 +388,9 @@ void DnsMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
     if (group_enabled(group::DnsMetrics::Cardinality)) {
         _dns_qnameCard.merge(other._dns_qnameCard);
     }
-
+    if (group_enabled(group::DnsMetrics::TopEcs)) {
+        _dns_topQueryECS.merge(other._dns_topQueryECS);
+    }
     if (group_enabled(group::DnsMetrics::TopQnames)) {
         _dns_topQname2.merge(other._dns_topQname2);
         _dns_topQname3.merge(other._dns_topQname3);
@@ -450,6 +453,10 @@ void DnsMetricsBucket::to_json(json &j) const
     }
 
     _dns_topUDPPort.to_json(j, [](const uint16_t &val) { return std::to_string(val); });
+
+    if (group_enabled(group::DnsMetrics::TopEcs)) {
+        _dns_topQueryECS.to_json(j);
+    }
 
     if (group_enabled(group::DnsMetrics::TopQnames)) {
         _dns_topQname2.to_json(j);
@@ -645,6 +652,21 @@ void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, pcpp::Pro
             }
         }
     }
+
+    if (group_enabled(group::DnsMetrics::TopEcs)) {
+        if (payload.getDnsHeader()->queryOrResponse == QR::query && payload.getAdditionalRecordCount()) {
+            auto additional = payload.getFirstAdditionalRecord();
+            if (!additional) {
+                payload.parseResources(false, true, true);
+                additional = payload.getFirstAdditionalRecord();
+            }
+
+            auto ecs = parse_additional_records_ecs(additional);
+            if (ecs && !(ecs->client_subnet.empty())) {
+                _dns_topQueryECS.update(ecs->client_subnet);
+            }
+        }
+    }
 }
 
 void DnsMetricsBucket::process_dns_layer(pcpp::ProtocolType l3, Protocol l4, QR side, uint16_t port)
@@ -769,6 +791,10 @@ void DnsMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap ad
     }
 
     _dns_topUDPPort.to_prometheus(out, add_labels, [](const uint16_t &val) { return std::to_string(val); });
+
+    if (group_enabled(group::DnsMetrics::TopEcs)) {
+        _dns_topQueryECS.to_prometheus(out, add_labels);
+    }
 
     if (group_enabled(group::DnsMetrics::TopQnames)) {
         _dns_topQname2.to_prometheus(out, add_labels);
