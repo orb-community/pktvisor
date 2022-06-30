@@ -461,9 +461,9 @@ TEST_CASE("Parse DNS with ECS data", "[pcap][dns][ecs]")
 
     CHECK(j["cardinality"]["qname"] == 9);
 
-    CHECK(j["top_ecs_query"][0]["name"] == "2001:470:1f0b:1600::"); //wireshark
-    CHECK(j["top_ecs_query"][0]["estimate"] == 5);
-    CHECK(j["top_ecs_query"][1] == nullptr);
+    CHECK(j["top_query_ecs"][0]["name"] == "2001:470:1f0b:1600::"); //wireshark
+    CHECK(j["top_query_ecs"][0]["estimate"] == 5);
+    CHECK(j["top_query_ecs"][1] == nullptr);
 }
 
 TEST_CASE("DNS groups", "[pcap][dns]")

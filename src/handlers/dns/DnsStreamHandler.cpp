@@ -389,7 +389,7 @@ void DnsMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
         _dns_qnameCard.merge(other._dns_qnameCard);
     }
     if (group_enabled(group::DnsMetrics::TopEcs)) {
-        _dns_topECSQuery.merge(other._dns_topECSQuery);
+        _dns_topQueryECS.merge(other._dns_topQueryECS);
     }
     if (group_enabled(group::DnsMetrics::TopQnames)) {
         _dns_topQname2.merge(other._dns_topQname2);
@@ -455,7 +455,7 @@ void DnsMetricsBucket::to_json(json &j) const
     _dns_topUDPPort.to_json(j, [](const uint16_t &val) { return std::to_string(val); });
 
     if (group_enabled(group::DnsMetrics::TopEcs)) {
-        _dns_topECSQuery.to_json(j);
+        _dns_topQueryECS.to_json(j);
     }
 
     if (group_enabled(group::DnsMetrics::TopQnames)) {
@@ -663,7 +663,7 @@ void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, pcpp::Pro
 
             auto ecs = parse_additional_records_ecs(additional);
             if (ecs && !(ecs->client_subnet.empty())) {
-                _dns_topECSQuery.update(ecs->client_subnet);
+                _dns_topQueryECS.update(ecs->client_subnet);
             }
         }
     }
@@ -793,7 +793,7 @@ void DnsMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap ad
     _dns_topUDPPort.to_prometheus(out, add_labels, [](const uint16_t &val) { return std::to_string(val); });
 
     if (group_enabled(group::DnsMetrics::TopEcs)) {
-        _dns_topECSQuery.to_prometheus(out, add_labels);
+        _dns_topQueryECS.to_prometheus(out, add_labels);
     }
 
     if (group_enabled(group::DnsMetrics::TopQnames)) {
