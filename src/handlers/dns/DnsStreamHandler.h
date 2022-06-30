@@ -56,7 +56,10 @@ protected:
 
     Cardinality _dns_qnameCard;
 
+    TopN<std::string> _dns_topGeoLocECS;
+    TopN<std::string> _dns_topASNECS;
     TopN<std::string> _dns_topQueryECS;
+
     TopN<std::string> _dns_topQname2;
     TopN<std::string> _dns_topQname3;
     TopN<std::string> _dns_topNX;
@@ -114,6 +117,8 @@ public:
         : _dnsXactFromTimeUs("dns", {"xact", "out", "quantiles_us"}, "Quantiles of transaction timing (query/reply pairs) when host is client, in microseconds")
         , _dnsXactToTimeUs("dns", {"xact", "in", "quantiles_us"}, "Quantiles of transaction timing (query/reply pairs) when host is server, in microseconds")
         , _dns_qnameCard("dns", {"cardinality", "qname"}, "Cardinality of unique QNAMES, both ingress and egress")
+        , _dns_topGeoLocECS("dns", "top_geoloc", {"top_geoLoc_ecs"}, "Top GeoIP ECS locations")
+        , _dns_topASNECS("dns", "asn", {"top_asn_ecs"}, "Top ASNs by ECS")
         , _dns_topQueryECS("dns", "ecs", {"top_query_ecs"}, "Top EDNS Client Subnet (ECS) observed in DNS queries")
         , _dns_topQname2("dns", "qname", {"top_qname2"}, "Top QNAMES, aggregated at a depth of two labels")
         , _dns_topQname3("dns", "qname", {"top_qname3"}, "Top QNAMES, aggregated at a depth of three labels")
@@ -161,6 +166,8 @@ public:
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override;
     void update_topn_metrics(size_t topn_count) override
     {
+        _dns_topGeoLocECS.set_topn_count(topn_count);
+        _dns_topASNECS.set_topn_count(topn_count);
         _dns_topQueryECS.set_topn_count(topn_count);
         _dns_topQname2.set_topn_count(topn_count);
         _dns_topQname3.set_topn_count(topn_count);
