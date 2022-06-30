@@ -508,6 +508,38 @@ TEST_CASE("Parse DNS with ECS data", "[pcap][dns][ecs]")
     CHECK(j["top_query_ecs"][1] == nullptr);
 }
 
+TEST_CASE("DNS filter exceptions", "[pcap][dns][filter]")
+{
+    PcapInputStream stream{"pcap-test"};
+    stream.config_set("pcap_file", "tests/fixtures/dns_udp_tcp_random.pcap");
+    stream.config_set("bpf", "");
+    stream.config_set("host_spec", "192.168.0.0/24");
+    stream.parse_host_spec();
+
+    visor::Config c;
+    auto stream_proxy = stream.add_event_proxy(c);
+    c.config_set<uint64_t>("num_periods", 1);
+    DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
+
+    SECTION("only_rcode as string")
+    {
+        dns_handler.config_set<std::string>("only_rcode", "1");
+        REQUIRE_THROWS_WITH(dns_handler.start(), "DnsStreamHandler: wrong value type for only_rcode filter. It should be an integer");
+    }
+
+    SECTION("only_rcode invalid")
+    {
+        dns_handler.config_set<uint64_t>("only_rcode", 133);
+        REQUIRE_THROWS_WITH(dns_handler.start(), "DnsStreamHandler: only_rcode filter contained an invalid/unsupported rcode");
+    }
+
+    SECTION("answer_count as string")
+    {
+        dns_handler.config_set<std::string>("answer_count", "1");
+        REQUIRE_THROWS_WITH(dns_handler.start(), "DnsStreamHandler: wrong value type for answer_count filter. It should be an integer");
+    }
+}
+
 TEST_CASE("DNS groups", "[pcap][dns]")
 {
     PcapInputStream stream{"pcap-test"};

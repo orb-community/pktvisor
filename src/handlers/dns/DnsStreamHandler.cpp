@@ -58,7 +58,12 @@ void DnsStreamHandler::start()
         _f_enabled.set(Filters::ExcludingRCode);
         _f_rcode = NoError;
     } else if (config_exists("only_rcode")) {
-        auto want_code = config_get<uint64_t>("only_rcode");
+        uint64_t want_code;
+        try {
+            want_code = config_get<uint64_t>("only_rcode");
+        } catch (const std::exception &e) {
+            throw ConfigException("DnsStreamHandler: wrong value type for only_rcode filter. It should be an integer");
+        }
         switch (want_code) {
         case NoError:
         case NXDomain:
@@ -68,12 +73,16 @@ void DnsStreamHandler::start()
             _f_rcode = want_code;
             break;
         default:
-            throw ConfigException("only_rcode contained an invalid/unsupported rcode");
+            throw ConfigException("DnsStreamHandler: only_rcode filter contained an invalid/unsupported rcode");
         }
     }
     if (config_exists("answer_count")) {
-        _f_answer_count = config_get<uint64_t>("answer_count");
-        _f_enabled.set(Filters::AnswerCount);
+        try {
+            _f_answer_count = config_get<uint64_t>("answer_count");
+            _f_enabled.set(Filters::AnswerCount);
+        } catch (const std::exception &e) {
+            throw ConfigException("DnsStreamHandler: wrong value type for answer_count filter. It should be an integer");
+        }
     }
     if (config_exists("only_qname_suffix")) {
         _f_enabled.set(Filters::OnlyQNameSuffix);
@@ -99,7 +108,7 @@ void DnsStreamHandler::start()
             for (const auto &type : _dnstap_map_types) {
                 valid_types.push_back(type.first);
             }
-            throw ConfigException(fmt::format("dnstap_msg_type contained an invalid/unsupported type. Valid types: {}", fmt::join(valid_types, ", ")));
+            throw ConfigException(fmt::format("DnsStreamHandler: dnstap_msg_type contained an invalid/unsupported type. Valid types: {}", fmt::join(valid_types, ", ")));
         }
     }
 
