@@ -429,6 +429,43 @@ TEST_CASE("DNS Filters: only_qname_suffix", "[pcap][dns]")
     CHECK(j["top_qname3"][0]["name"] == nullptr);
 }
 
+TEST_CASE("DNS Filters: answer_count", "[pcap][dns]")
+{
+
+    PcapInputStream stream{"pcap-test"};
+    stream.config_set("pcap_file", "tests/fixtures/dns_udp_mixed_rcode.pcap");
+    stream.config_set("bpf", "");
+    stream.config_set("host_spec", "192.168.0.0/24");
+    stream.parse_host_spec();
+
+    visor::Config c;
+    auto stream_proxy = stream.add_event_proxy(c);
+    c.config_set<uint64_t>("num_periods", 1);
+    DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
+    dns_handler.config_set<uint64_t>("only_rcode", NoError);
+    dns_handler.config_set<uint64_t>("answer_count", 0);
+    dns_handler.start();
+    stream.start();
+    stream.stop();
+    dns_handler.stop();
+
+    auto counters = dns_handler.metrics()->bucket(0)->counters();
+
+    CHECK(counters.UDP.value() == 16);
+    CHECK(counters.NOERROR.value() == 4);
+    CHECK(counters.SRVFAIL.value() == 0);
+    CHECK(counters.REFUSED.value() == 0);
+    CHECK(counters.NX.value() == 0);
+    CHECK(counters.NODATA.value() == 4);
+    CHECK(counters.filtered.value() == 8);
+
+    nlohmann::json j;
+    dns_handler.metrics()->bucket(0)->to_json(j);
+
+    CHECK(j["top_qname2"][0]["name"] == ".mwbsys.com");
+    CHECK(j["top_qname3"][0]["name"] == "sirius.mwbsys.com");
+}
+
 TEST_CASE("Parse DNS with ECS data", "[pcap][dns][ecs]")
 {
 
