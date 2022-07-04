@@ -311,6 +311,7 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
         OnlyRCode,
         OnlyQNameSuffix,
         DnstapMsgType,
+        PublicSuffixList,
         FiltersMAX
     };
     std::bitset<Filters::FiltersMAX> _f_enabled;

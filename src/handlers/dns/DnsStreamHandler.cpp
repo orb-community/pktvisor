@@ -16,9 +16,9 @@
 #include <IPv6Layer.h>
 #pragma GCC diagnostic pop
 #include "DnsAdditionalRecord.h"
+#include "PublicSuffixList.h"
 #include <arpa/inet.h>
 #include <sstream>
-
 namespace visor::handler::dns {
 
 thread_local DnsStreamHandler::DnsCacheData DnsStreamHandler::_cached_dns_layer;
@@ -97,6 +97,9 @@ void DnsStreamHandler::start()
             }
             throw ConfigException(fmt::format("dnstap_msg_type contained an invalid/unsupported type. Valid types: {}", fmt::join(valid_types, ", ")));
         }
+    }
+    if (config_exists("public_suffix_list") && config_get<bool>("public_suffix_list")) {
+        _f_enabled.set(Filters::PublicSuffixList);
     }
 
     if (config_exists("recorded_stream")) {
@@ -317,10 +320,6 @@ void DnsStreamHandler::info_json(json &j) const
     common_info_json(j);
     j[schema_key()]["xact"]["open"] = _metrics->num_open_transactions();
 }
-static inline bool endsWith(std::string_view str, std::string_view suffix)
-{
-    return str.size() >= suffix.size() && 0 == str.compare(str.size() - suffix.size(), suffix.size(), suffix);
-}
 bool DnsStreamHandler::_filtering(DnsLayer &payload, [[maybe_unused]] PacketDirection dir, [[maybe_unused]] pcpp::ProtocolType l3, [[maybe_unused]] pcpp::ProtocolType l4, [[maybe_unused]] uint16_t port, timespec stamp)
 {
     if (_f_enabled[Filters::ExcludingRCode] && payload.getDnsHeader()->responseCode == _f_rcode) {
@@ -335,13 +334,17 @@ bool DnsStreamHandler::_filtering(DnsLayer &payload, [[maybe_unused]] PacketDire
         std::string_view qname_ci = payload.getFirstQuery()->getNameLower();
         for (const auto &fqn : _f_qnames) {
             // if it matched, we know we are not filtering
-            if (endsWith(qname_ci, fqn)) {
+            if (ends_with(qname_ci, fqn)) {
                 _static_suffix_size = fqn.size();
                 goto will_not_filter;
             }
         }
         // checked the whole list and none of them matched: filter
         goto will_filter;
+    }
+    // This is not actually a filter, but only should work if OnlyQNameSuffix is not enabled
+    else if (_f_enabled[Filters::PublicSuffixList] && payload.parseResources(true) && payload.getFirstQuery() != nullptr) {
+        _static_suffix_size = match_public_suffix(payload.getFirstQuery()->getNameLower());
     }
 will_not_filter:
     return false;
