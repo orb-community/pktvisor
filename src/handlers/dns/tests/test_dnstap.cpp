@@ -165,5 +165,5 @@ TEST_CASE("Invalid DNSTAP filter", "[dnstap][dns][filter]")
     DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
 
     dns_handler.config_set<std::string>("dnstap_msg_type", "sender");
-    REQUIRE_THROWS_WITH(dns_handler.start(), "dnstap_msg_type contained an invalid/unsupported type. Valid types: auth, client, forwarder, resolver, stub, tool, update");
+    REQUIRE_THROWS_WITH(dns_handler.start(), "DnsStreamHandler: dnstap_msg_type contained an invalid/unsupported type. Valid types: auth, client, forwarder, resolver, stub, tool, update");
 }
