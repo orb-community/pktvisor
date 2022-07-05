@@ -117,7 +117,7 @@ public:
         : _dnsXactFromTimeUs("dns", {"xact", "out", "quantiles_us"}, "Quantiles of transaction timing (query/reply pairs) when host is client, in microseconds")
         , _dnsXactToTimeUs("dns", {"xact", "in", "quantiles_us"}, "Quantiles of transaction timing (query/reply pairs) when host is server, in microseconds")
         , _dns_qnameCard("dns", {"cardinality", "qname"}, "Cardinality of unique QNAMES, both ingress and egress")
-        , _dns_topGeoLocECS("dns", "top_geoloc", {"top_geoLoc_ecs"}, "Top GeoIP ECS locations")
+        , _dns_topGeoLocECS("dns", "geo_loc", {"top_geoLoc_ecs"}, "Top GeoIP ECS locations")
         , _dns_topASNECS("dns", "asn", {"top_asn_ecs"}, "Top ASNs by ECS")
         , _dns_topQueryECS("dns", "ecs", {"top_query_ecs"}, "Top EDNS Client Subnet (ECS) observed in DNS queries")
         , _dns_topQname2("dns", "qname", {"top_qname2"}, "Top QNAMES, aggregated at a depth of two labels")
