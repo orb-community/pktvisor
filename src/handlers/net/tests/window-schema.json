@@ -23,6 +23,11 @@
             "start_ts": 1614874231
           },
           "tcp": 13176,
+          "protocol": {
+            "tcp": {
+              "syn":2846
+            }
+          },
           "top_ASN": [],
           "top_geoLoc": [],
           "top_ipv4": [
@@ -59,6 +64,7 @@
           "ipv6": 0,
           "other_l4": 0,
           "out": 9499,
+          "filtered": 0,
           "period": {
             "length": 31,
             "start_ts": 1614874231
@@ -70,6 +76,11 @@
             "p99": 202
           },
           "tcp": 13176,
+          "protocol": {
+            "tcp": {
+              "syn":2846
+            }
+          },
           "top_ASN": [],
           "top_geoLoc": [],
           "top_ipv4": [
@@ -91,9 +102,11 @@
         "ipv6",
         "other_l4",
         "out",
+        "filtered",
         "period",
         "payload_size",
         "tcp",
+        "protocol",
         "top_ASN",
         "top_geoLoc",
         "top_ipv4",
@@ -202,6 +215,16 @@
             9499
           ]
         },
+        "filtered": {
+          "$id": "#/properties/packets/properties/filtered",
+          "type": "integer",
+          "title": "The filtered schema",
+          "description": "An explanation about the purpose of this instance.",
+          "default": 0,
+          "examples": [
+            2
+          ]
+        },
         "period": {
           "$id": "#/properties/packets/properties/period",
           "type": "object",
@@ -261,6 +284,52 @@
           "examples": [
             13176
           ]
+        },
+        "protocol": {
+          "$id": "#/properties/packets/properties/protocol",
+          "type": "object",
+          "title": "The protocol schema",
+          "description": "An explanation about the purpose of this instance.",
+          "default": {},
+          "examples": [
+            {
+              "tcp": {
+                "syn": 10
+              }
+            }
+          ],
+          "required": [
+            "tcp"
+          ],
+          "properties": {
+            "tcp": {
+              "$id": "#/properties/packets/properties/protocol/properties/tcp",
+              "type": "object",
+              "title": "The tcp flags schema",
+              "description": "An explanation about the purpose of this instance.",
+              "default": 0,
+              "examples": [
+                {
+                  "syn": 10
+                }
+              ],
+              "required": [
+                "syn"
+              ],
+              "properties": {
+                "syn": {
+                  "$id": "#/properties/packets/properties/protocol/properties/tcp/properties/syn",
+                  "type": "integer",
+                  "title": "The syn flag schema",
+                  "description": "An explanation about the purpose of this instance.",
+                  "default": 0,
+                  "examples": [
+                    10
+                  ]
+                }
+              }
+            }
+          }
         },
         "top_ASN": {
           "$id": "#/properties/packets/properties/top_ASN",

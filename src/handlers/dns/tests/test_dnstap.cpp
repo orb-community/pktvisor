@@ -14,7 +14,8 @@ TEST_CASE("Parse DNSTAP", "[dnstap][dns]")
     stream.config_set<visor::Configurable::StringList>("only_hosts", {"192.168.0.0/24", "2001:db8::/48"});
     visor::Config c;
     c.config_set<uint64_t>("num_periods", 1);
-    DnsStreamHandler dns_handler{"dns-test", &stream, &c};
+    auto stream_proxy = stream.add_event_proxy(c);
+    DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
 
     dns_handler.start();
     stream.start();
@@ -65,8 +66,9 @@ TEST_CASE("Parse filtered DNSTAP empty data", "[dnstap][dns][filter]")
     stream.config_set("dnstap_file", "inputs/dnstap/tests/fixtures/fixture.dnstap");
 
     visor::Config c;
+    auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
-    DnsStreamHandler dns_handler{"dns-test", &stream, &c};
+    DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
 
     dns_handler.config_set<std::string>("dnstap_msg_type", "auth");
 
@@ -103,8 +105,9 @@ TEST_CASE("Parse filtered DNSTAP with data", "[dnstap][dns][filter]")
     stream.config_set("dnstap_file", "inputs/dnstap/tests/fixtures/fixture.dnstap");
 
     visor::Config c;
+    auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
-    DnsStreamHandler dns_handler{"dns-test", &stream, &c};
+    DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
 
     dns_handler.config_set<std::string>("dnstap_msg_type", "client");
 
@@ -157,8 +160,9 @@ TEST_CASE("Invalid DNSTAP filter", "[dnstap][dns][filter]")
     stream.config_set("dnstap_file", "inputs/dnstap/tests/fixtures/fixture.dnstap");
 
     visor::Config c;
+    auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
-    DnsStreamHandler dns_handler{"dns-test", &stream, &c};
+    DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
 
     dns_handler.config_set<std::string>("dnstap_msg_type", "sender");
     REQUIRE_THROWS_WITH(dns_handler.start(), "dnstap_msg_type contained an invalid/unsupported type. Valid types: auth, client, forwarder, resolver, stub, tool, update");

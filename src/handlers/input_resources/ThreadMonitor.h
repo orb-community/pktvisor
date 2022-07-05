@@ -20,6 +20,8 @@ class ThreadMonitor
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
 #elif __APPLE__
 #elif __linux__
+    static constexpr size_t PROC_STAT_POS_UTIME = 13;
+    static constexpr size_t PROC_STAT_POS_STIME = 14;
     uint64_t _last_system_time = 0;
     uint64_t _last_thread_time = 0;
 #endif
@@ -46,13 +48,20 @@ public:
         }
         system_total_time = system_total_time / sysconf(_SC_NPROCESSORS_ONLN);
 
-        std::vector<uint64_t> stats;
+        std::vector<std::string> stats;
         std::ifstream thread_stat("/proc/thread-self/stat");
-        thread_stat.ignore(' ');
-        while (thread_stat >> stat) {
-            stats.push_back(stat);
+        std::string stat_str;
+        while (thread_stat >> stat_str) {
+            stats.push_back(stat_str);
+            if (stats.size() > PROC_STAT_POS_STIME)
+                break;
         }
-        uint64_t thread_total_time = (stats[8] + stats[9]);
+
+        if (stats.size() <= PROC_STAT_POS_STIME) {
+            return 0.0;
+        }
+
+        uint64_t thread_total_time = std::stoull(stats[PROC_STAT_POS_UTIME]) + std::stoull(stats[PROC_STAT_POS_STIME]);
 
         uint64_t current_thread_time = thread_total_time - _last_thread_time;
         _last_thread_time = thread_total_time;

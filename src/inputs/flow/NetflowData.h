@@ -77,7 +77,7 @@ static bool process_netflow_v1(NFSample *sample)
     for (uint16_t flow = 0; flow < sample->nflows; flow++) {
         offset = NF1_PACKET_SIZE(flow);
         nf1_flow = reinterpret_cast<struct NF1_FLOW *>(sample->raw_sample + offset);
-        NFSample::Flows flow_sample;
+        NFSample::Flows flow_sample = {};
 
         flow_sample.tcp_flags = nf1_flow->tcp_flags;
         flow_sample.protocol = nf1_flow->protocol;
@@ -126,7 +126,7 @@ static bool process_netflow_v5(NFSample *sample)
     for (uint16_t flow = 0; flow < sample->nflows; flow++) {
         offset = NF5_PACKET_SIZE(flow);
         nf5_flow = reinterpret_cast<struct NF5_FLOW *>(sample->raw_sample + offset);
-        NFSample::Flows flow_sample;
+        NFSample::Flows flow_sample = {};
 
         flow_sample.tcp_flags = nf5_flow->tcp_flags;
         flow_sample.protocol = nf5_flow->protocol;
@@ -180,7 +180,7 @@ static bool process_netflow_v7(NFSample *sample)
     for (uint16_t flow = 0; flow < sample->nflows; flow++) {
         offset = NF7_PACKET_SIZE(flow);
         nf7_flow = reinterpret_cast<struct NF7_FLOW *>(sample->raw_sample + offset);
-        NFSample::Flows flow_sample;
+        NFSample::Flows flow_sample = {};
 
         flow_sample.tcp_flags = nf7_flow->tcp_flags;
         flow_sample.protocol = nf7_flow->protocol;
@@ -367,7 +367,7 @@ static bool process_netflow_v9_data(std::vector<NFSample::Flows> *flows, uint8_t
 
     for (i = 0; i < num_flowsets; i++) {
         uint32_t offset_recs = 0;
-        NFSample::Flows flow;
+        NFSample::Flows flow = {};
         for (j = 0; j < nf9_template.num_records; j++) {
             nf9_rec_to_flow(&flow, &nf9_template.records[j], pkt + offset + offset_recs);
             offset_recs += nf9_template.records[j].len;
@@ -545,7 +545,7 @@ static bool process_netflow_v10_data(std::vector<NFSample::Flows> *flows, uint8_
 
     for (i = 0; i < num_flowsets; i++) {
         uint32_t offset_recs = 0;
-        NFSample::Flows flow;
+        NFSample::Flows flow = {};
         for (j = 0; j < nf10_template.num_records; j++) {
             nf10_rec_to_flow(&flow, &nf10_template.records[j], pkt + offset + offset_recs);
             offset_recs += nf10_template.records[j].len;

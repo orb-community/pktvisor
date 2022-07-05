@@ -15,8 +15,9 @@ TEST_CASE("Parse net (dns) UDP IPv4 tests", "[pcap][ipv4][udp][net]")
     stream.config_set("bpf", std::string());
 
     visor::Config c;
+    auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
-    NetStreamHandler net_handler{"net-test", &stream, &c};
+    NetStreamHandler net_handler{"net-test", stream_proxy, &c};
 
     net_handler.start();
     stream.start();
@@ -48,8 +49,9 @@ TEST_CASE("Parse net (dns) TCP IPv4 tests", "[pcap][ipv4][tcp][net]")
     stream.config_set("bpf", "");
 
     visor::Config c;
+    auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
-    NetStreamHandler net_handler{"net-test", &stream, &c};
+    NetStreamHandler net_handler{"net-test", stream_proxy, &c};
 
     net_handler.start();
     stream.start();
@@ -63,6 +65,7 @@ TEST_CASE("Parse net (dns) TCP IPv4 tests", "[pcap][ipv4][tcp][net]")
     CHECK(net_handler.metrics()->start_tstamp().tv_nsec == 56403000);
     CHECK(event_data.num_events->value() == 2100);
     CHECK(counters.TCP.value() == 2100);
+    CHECK(counters.TCP_SYN.value() == 420);
     CHECK(counters.IPv4.value() == 2100);
     CHECK(counters.IPv6.value() == 0);
 }
@@ -75,8 +78,9 @@ TEST_CASE("Parse net (dns) UDP IPv6 tests", "[pcap][ipv6][udp][net]")
     stream.config_set("bpf", "");
 
     visor::Config c;
+    auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
-    NetStreamHandler net_handler{"net-test", &stream, &c};
+    NetStreamHandler net_handler{"net-test", stream_proxy, &c};
 
     net_handler.start();
     stream.start();
@@ -102,8 +106,9 @@ TEST_CASE("Parse net (dns) TCP IPv6 tests", "[pcap][ipv6][tcp][net]")
     stream.config_set("bpf", "");
 
     visor::Config c;
+    auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
-    NetStreamHandler net_handler{"net-test", &stream, &c};
+    NetStreamHandler net_handler{"net-test", stream_proxy, &c};
 
     net_handler.start();
     stream.start();
@@ -117,6 +122,7 @@ TEST_CASE("Parse net (dns) TCP IPv6 tests", "[pcap][ipv6][tcp][net]")
     CHECK(net_handler.metrics()->start_tstamp().tv_nsec == 958184000);
     CHECK(event_data.num_events->value() == 1800);
     CHECK(counters.TCP.value() == 1800);
+    CHECK(counters.TCP_SYN.value() == 360);
     CHECK(counters.IPv4.value() == 0);
     CHECK(counters.IPv6.value() == 1800);
 }
@@ -131,8 +137,9 @@ TEST_CASE("Parse net (dns) random UDP/TCP tests", "[pcap][net]")
     stream.parse_host_spec();
 
     visor::Config c;
+    auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
-    NetStreamHandler net_handler{"net-test", &stream, &c};
+    NetStreamHandler net_handler{"net-test", stream_proxy, &c};
 
     net_handler.start();
     stream.start();
@@ -149,6 +156,7 @@ TEST_CASE("Parse net (dns) random UDP/TCP tests", "[pcap][net]")
     CHECK(event_data.num_events->value() == 16147);
     CHECK(event_data.num_samples->value() == 16147);
     CHECK(counters.TCP.value() == 13176);
+    CHECK(counters.TCP_SYN.value() == 2846);
     CHECK(counters.UDP.value() == 2971);
     CHECK(counters.IPv4.value() == 16147);
     CHECK(counters.IPv6.value() == 0);
@@ -176,8 +184,9 @@ TEST_CASE("Parse net (dns) with DNS filter only_qname_suffix", "[pcap][dns][net]
     stream.parse_host_spec();
 
     visor::Config c;
+    auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
-    DnsStreamHandler dns_handler{"dns-test", &stream, &c};
+    DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
     NetStreamHandler net_handler{"net-test", nullptr, &c, &dns_handler};
 
     dns_handler.config_set<visor::Configurable::StringList>("only_qname_suffix", {"google.com"});
@@ -210,85 +219,6 @@ TEST_CASE("Parse net (dns) with DNS filter only_qname_suffix", "[pcap][dns][net]
     CHECK(j["top_ipv4"][0]["name"] == "216.239.38.10");
 }
 
-TEST_CASE("Parse net (dns) sflow stream", "[sflow][net]")
-{
-
-    FlowInputStream stream{"sflow-test"};
-    stream.config_set("flow_type", "sflow");
-    stream.config_set("pcap_file", "tests/fixtures/ecmp.pcap");
-
-    visor::Config c;
-    c.config_set<uint64_t>("num_periods", 1);
-    NetStreamHandler net_handler{"net-test", &stream, &c};
-
-    net_handler.start();
-    stream.start();
-    stream.stop();
-    net_handler.stop();
-
-    auto counters = net_handler.metrics()->bucket(0)->counters();
-    auto event_data = net_handler.metrics()->bucket(0)->event_data_locked();
-
-    // confirmed with wireshark
-    CHECK(event_data.num_events->value() == 9279);
-    CHECK(event_data.num_samples->value() == 9279);
-    CHECK(counters.TCP.value() == 52785);
-    CHECK(counters.UDP.value() == 0);
-    CHECK(counters.IPv4.value() == 52785);
-    CHECK(counters.IPv6.value() == 0);
-    CHECK(counters.OtherL4.value() == 3682);
-    CHECK(counters.total_in.value() == 0);
-    CHECK(counters.total_out.value() == 0);
-
-    nlohmann::json j;
-    net_handler.metrics()->bucket(0)->to_json(j);
-
-    CHECK(j["cardinality"]["dst_ips_out"] == 4);
-    CHECK(j["cardinality"]["src_ips_in"] == 4);
-    CHECK(j["top_ipv4"][0]["estimate"] == 27054);
-    CHECK(j["top_ipv4"][0]["name"] == "10.4.2.2");
-    CHECK(j["payload_size"]["p50"] == 1518);
-}
-
-TEST_CASE("Parse net (dns) netflow stream", "[netflow][net]")
-{
-
-    FlowInputStream stream{"netflow-test"};
-    stream.config_set("flow_type", "netflow");
-    stream.config_set("pcap_file", "tests/fixtures/nf9.pcap");
-
-    visor::Config c;
-    c.config_set<uint64_t>("num_periods", 1);
-    NetStreamHandler net_handler{"net-test", &stream, &c};
-
-    net_handler.start();
-    stream.start();
-    stream.stop();
-    net_handler.stop();
-
-    auto counters = net_handler.metrics()->bucket(0)->counters();
-    auto event_data = net_handler.metrics()->bucket(0)->event_data_locked();
-
-    // confirmed with wireshark
-    CHECK(event_data.num_events->value() == 1);
-    CHECK(event_data.num_samples->value() == 1);
-    CHECK(counters.TCP.value() == 0);
-    CHECK(counters.UDP.value() == 0);
-    CHECK(counters.IPv4.value() == 24);
-    CHECK(counters.IPv6.value() == 0);
-    CHECK(counters.OtherL4.value() == 24);
-    CHECK(counters.total_in.value() == 0);
-    CHECK(counters.total_out.value() == 0);
-
-    nlohmann::json j;
-    net_handler.metrics()->bucket(0)->to_json(j);
-
-    CHECK(j["cardinality"]["dst_ips_out"] == 24);
-    CHECK(j["cardinality"]["src_ips_in"] == 24);
-    CHECK(j["top_ipv4"][0]["estimate"] == 1);
-    CHECK(j["payload_size"]["p50"] == 5926641);
-}
-
 TEST_CASE("Parse net dnstap stream", "[dnstap][net]")
 {
 
@@ -296,8 +226,9 @@ TEST_CASE("Parse net dnstap stream", "[dnstap][net]")
     stream.config_set("dnstap_file", "inputs/dnstap/tests/fixtures/fixture.dnstap");
     stream.config_set<visor::Configurable::StringList>("only_hosts", {"192.168.0.0/24", "2001:db8::/48"});
     visor::Config c;
+    auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
-    NetStreamHandler net_handler{"dns-test", &stream, &c};
+    NetStreamHandler net_handler{"dns-test", stream_proxy, &c};
 
     net_handler.start();
     stream.start();
@@ -311,6 +242,7 @@ TEST_CASE("Parse net dnstap stream", "[dnstap][net]")
     CHECK(event_data.num_events->value() == 153);
     CHECK(event_data.num_samples->value() == 153);
     CHECK(counters.TCP.value() == 0);
+    CHECK(counters.TCP_SYN.value() == 0);
     CHECK(counters.UDP.value() == 153);
     CHECK(counters.IPv4.value() == 153);
     CHECK(counters.IPv6.value() == 0);
@@ -337,8 +269,9 @@ TEST_CASE("Net groups", "[pcap][net]")
     stream.parse_host_spec();
 
     visor::Config c;
+    auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
-    NetStreamHandler net_handler{"net-test", &stream, &c};
+    NetStreamHandler net_handler{"net-test", stream_proxy, &c};
 
     SECTION("disable cardinality and counters")
     {
@@ -358,6 +291,7 @@ TEST_CASE("Net groups", "[pcap][net]")
         CHECK(event_data.num_events->value() == 16147);
         CHECK(event_data.num_samples->value() == 16147);
         CHECK(counters.TCP.value() == 0);
+        CHECK(counters.TCP_SYN.value() == 0);
         CHECK(counters.UDP.value() == 0);
         CHECK(counters.IPv4.value() == 0);
         CHECK(counters.IPv6.value() == 0);
@@ -419,5 +353,76 @@ TEST_CASE("Net groups", "[pcap][net]")
     {
         net_handler.config_set<visor::Configurable::StringList>("enable", {"top_ips", "rates"});
         REQUIRE_THROWS_WITH(net_handler.start(), "rates is an invalid/unsupported metric group. The valid groups are cardinality, counters, top_geo, top_ips");
+    }
+}
+
+TEST_CASE("Net geolocation filtering", "[pcap][net][geo]")
+{
+    CHECK_NOTHROW(visor::geo::GeoIP().enable("tests/fixtures/GeoIP2-City-Test.mmdb"));
+    CHECK_NOTHROW(visor::geo::GeoASN().enable("tests/fixtures/GeoIP2-ISP-Test.mmdb"));
+
+    PcapInputStream stream{"pcap-test"};
+    stream.config_set("pcap_file", "tests/fixtures/dns_udp_mixed_rcode.pcap");
+    stream.config_set("bpf", "");
+    stream.config_set("host_spec", "192.168.0.0/23");
+    stream.parse_host_spec();
+
+    visor::Config c;
+    auto stream_proxy = stream.add_event_proxy(c);
+    c.config_set<uint64_t>("num_periods", 1);
+    NetStreamHandler net_handler{"net-test", stream_proxy, &c};
+
+    SECTION("Enable geoloc not found")
+    {
+        net_handler.config_set<bool>("geloc_notfound", true);
+
+        net_handler.start();
+        stream.start();
+        stream.stop();
+        net_handler.stop();
+
+        nlohmann::json j;
+        net_handler.metrics()->bucket(0)->to_json(j);
+        CHECK(j["top_ipv4"][0]["estimate"] == 4);
+        CHECK(j["top_ipv4"][0]["name"] == "198.51.44.1");
+        CHECK(j["top_geoLoc"][0]["estimate"] == 24);
+        CHECK(j["top_geoLoc"][0]["name"] == "Unknown");
+    }
+
+    SECTION("Enable asn not found")
+    {
+        net_handler.config_set<bool>("asn_notfound", true);
+
+        net_handler.start();
+        stream.start();
+        stream.stop();
+        net_handler.stop();
+
+        nlohmann::json j;
+        net_handler.metrics()->bucket(0)->to_json(j);
+        CHECK(j["top_ipv4"][0]["estimate"] == 4);
+        CHECK(j["top_ipv4"][0]["name"] == "198.51.44.1");
+        CHECK(j["top_ASN"][0]["estimate"] == 24);
+        CHECK(j["top_ASN"][0]["name"] == "Unknown");
+    }
+
+    SECTION("Enable geoloc and asn not found")
+    {
+        net_handler.config_set<bool>("geloc_notfound", true);
+        net_handler.config_set<bool>("asn_notfound", true);
+
+        net_handler.start();
+        stream.start();
+        stream.stop();
+        net_handler.stop();
+
+        nlohmann::json j;
+        net_handler.metrics()->bucket(0)->to_json(j);
+        CHECK(j["top_ipv4"][0]["estimate"] == 4);
+        CHECK(j["top_ipv4"][0]["name"] == "198.51.44.1");
+        CHECK(j["top_geoLoc"][0]["estimate"] == 24);
+        CHECK(j["top_geoLoc"][0]["name"] == "Unknown");
+        CHECK(j["top_ASN"][0]["estimate"] == 24);
+        CHECK(j["top_ASN"][0]["name"] == "Unknown");
     }
 }

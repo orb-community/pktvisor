@@ -17,7 +17,7 @@
 #include <string>
 
 namespace visor::input::dnstap {
-class DnstapInputStream;
+class DnstapInputEventProxy;
 }
 
 namespace visor::handler::dns {
@@ -32,6 +32,7 @@ enum DnsMetrics : visor::MetricGroupIntType {
     Cardinality,
     Counters,
     DnsTransactions,
+    TopEcs,
     TopQnames
 };
 }
@@ -55,6 +56,7 @@ protected:
 
     Cardinality _dns_qnameCard;
 
+    TopN<std::string> _dns_topQueryECS;
     TopN<std::string> _dns_topQname2;
     TopN<std::string> _dns_topQname3;
     TopN<std::string> _dns_topNX;
@@ -112,6 +114,7 @@ public:
         : _dnsXactFromTimeUs("dns", {"xact", "out", "quantiles_us"}, "Quantiles of transaction timing (query/reply pairs) when host is client, in microseconds")
         , _dnsXactToTimeUs("dns", {"xact", "in", "quantiles_us"}, "Quantiles of transaction timing (query/reply pairs) when host is server, in microseconds")
         , _dns_qnameCard("dns", {"cardinality", "qname"}, "Cardinality of unique QNAMES, both ingress and egress")
+        , _dns_topQueryECS("dns", "ecs", {"top_query_ecs"}, "Top EDNS Client Subnet (ECS) observed in DNS queries")
         , _dns_topQname2("dns", "qname", {"top_qname2"}, "Top QNAMES, aggregated at a depth of two labels")
         , _dns_topQname3("dns", "qname", {"top_qname3"}, "Top QNAMES, aggregated at a depth of three labels")
         , _dns_topNX("dns", "qname", {"top_nxdomain"}, "Top QNAMES with result code NXDOMAIN")
@@ -156,6 +159,20 @@ public:
     void specialized_merge(const AbstractMetricsBucket &other) override;
     void to_json(json &j) const override;
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override;
+    void update_topn_metrics(size_t topn_count) override
+    {
+        _dns_topQueryECS.set_topn_count(topn_count);
+        _dns_topQname2.set_topn_count(topn_count);
+        _dns_topQname3.set_topn_count(topn_count);
+        _dns_topNX.set_topn_count(topn_count);
+        _dns_topREFUSED.set_topn_count(topn_count);
+        _dns_topSRVFAIL.set_topn_count(topn_count);
+        _dns_topUDPPort.set_topn_count(topn_count);
+        _dns_topQType.set_topn_count(topn_count);
+        _dns_topRCode.set_topn_count(topn_count);
+        _dns_slowXactIn.set_topn_count(topn_count);
+        _dns_slowXactOut.set_topn_count(topn_count);
+    }
 
     void process_filtered();
     void process_dns_layer(bool deep, DnsLayer &payload, pcpp::ProtocolType l3, Protocol l4, uint16_t port, size_t suffix_size = 0);
@@ -251,10 +268,10 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
     };
     static thread_local DnsCacheData _cached_dns_layer;
 
-    // the input stream sources we support (only one will be in use at a time)
-    PcapInputStream *_pcap_stream{nullptr};
-    MockInputStream *_mock_stream{nullptr};
-    DnstapInputStream *_dnstap_stream{nullptr};
+    // the input event proxy we support (only one will be in use at a time)
+    PcapInputEventProxy *_pcap_proxy{nullptr};
+    MockInputEventProxy *_mock_proxy{nullptr};
+    DnstapInputEventProxy *_dnstap_proxy{nullptr};
 
     typedef uint32_t flowKey;
     std::unordered_map<flowKey, TcpFlowData> _tcp_connections;
@@ -306,12 +323,13 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
         {"cardinality", group::DnsMetrics::Cardinality},
         {"counters", group::DnsMetrics::Counters},
         {"dns_transaction", group::DnsMetrics::DnsTransactions},
+        {"top_ecs", group::DnsMetrics::TopEcs},
         {"top_qnames", group::DnsMetrics::TopQnames}};
 
     bool _filtering(DnsLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint16_t port, timespec stamp);
 
 public:
-    DnsStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config, StreamHandler *handler = nullptr);
+    DnsStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config, StreamHandler *handler = nullptr);
     ~DnsStreamHandler() = default;
 
     // visor::AbstractModule

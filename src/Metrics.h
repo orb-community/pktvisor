@@ -244,19 +244,29 @@ public:
     {
     }
 
-    void update(const T &value)
+    void update(const T &value, uint64_t weight = 1)
     {
-        _fi.update(value);
+        _fi.update(value, weight);
     }
 
-    void update(T &&value)
+    void update(T &&value, uint64_t weight = 1)
     {
-        _fi.update(value);
+        _fi.update(value, weight);
     }
 
     void merge(const TopN &other)
     {
         _fi.merge(other._fi);
+    }
+
+    void set_topn_count(const size_t top_count)
+    {
+        _top_count = top_count;
+    }
+
+    size_t topn_count() const
+    {
+        return _top_count;
     }
 
     /**

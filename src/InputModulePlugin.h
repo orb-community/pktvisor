@@ -36,7 +36,9 @@ public:
     /**
      * Instantiate a new InputStream
      */
-    virtual std::unique_ptr<InputStream> instantiate(const std::string name, const Configurable *config) = 0;
+    virtual std::unique_ptr<InputStream> instantiate(const std::string name, const Configurable *config, const Configurable *filter) = 0;
+
+    virtual std::string generate_input_name(std::string prefix, const Configurable &config, const Configurable &filter) = 0;
 };
 
 typedef Corrade::PluginManager::Manager<InputModulePlugin> InputPluginRegistry;

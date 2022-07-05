@@ -22,6 +22,9 @@ visor:
       input_type: mock
       config:
         iface: eth0
+  global_handler_config:
+    dns:
+        only_rcode: 2
   policies:
     # policy name and description
     default_view:
@@ -34,7 +37,6 @@ visor:
         input_type: mock
         config:
           sample: value
-        filter:
           bpf: "tcp or udp"
       # stream handlers to attach to this input stream
       # these decide exactly which data to summarize and expose for collection
@@ -107,7 +109,6 @@ visor:
         input_type: mock
         config:
           sample: value
-        filter:
           bpf: "tcp or udp"
       handlers:
         window_config:
@@ -352,6 +353,53 @@ visor:
                  - counters
 )";
 
+auto policies_config_bad12 = R"(
+version: "1.0"
+
+visor:
+  taps:
+    anycast:
+      input_type: mock
+      config:
+        iface: eth0
+  global_handler_config:
+    dns2:
+      only_rcode: 2
+  policies:
+    default_view:
+      kind: collection
+      input:
+        tap: anycast
+        input_type: mock
+      handlers:
+        modules:
+           default_net:
+            type: net
+)";
+
+auto policies_config_bad13 = R"(
+version: "1.0"
+
+visor:
+  taps:
+    anycast:
+      input_type: mock
+      config:
+        iface: eth0
+  global_handler_config:
+      only_rcode: 2
+  policies:
+    default_view:
+      kind: collection
+      input:
+        tap: anycast
+        input_type: mock
+      handlers:
+        modules:
+           default_net:
+            type: net
+)";
+
 auto policies_config_hseq_bad1 = R"(
 version: "1.0"
 
@@ -417,6 +465,7 @@ TEST_CASE("Policies", "[policies]")
         CHECK(config_file["visor"]["policies"].IsMap());
 
         REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
+        REQUIRE_NOTHROW(registry.policy_manager()->set_default_handler_config(config_file["visor"]["global_handler_config"]));
         REQUIRE_NOTHROW(registry.policy_manager()->load(config_file["visor"]["policies"]));
 
         REQUIRE(registry.policy_manager()->module_exists("default_view"));
@@ -427,8 +476,10 @@ TEST_CASE("Policies", "[policies]")
         CHECK(policy->input_stream()->config_get<std::string>("sample") == "value");
         CHECK(policy->modules()[0]->name() == "default_view-default_net");
         CHECK(policy->modules()[1]->name() == "default_view-default_dns");
+        CHECK(policy->modules()[1]->config_get<uint64_t>("only_rcode") == 2);
         CHECK(policy->modules()[2]->name() == "default_view-special_domain");
         CHECK(policy->modules()[2]->config_get<Configurable::StringList>("only_qname_suffix")[0] == ".google.com");
+        CHECK(policy->modules()[2]->config_get<uint64_t>("only_rcode") == 2);
         // TODO check window config settings made it through
         CHECK(policy->input_stream()->running());
         CHECK(policy->modules()[0]->running());
@@ -590,6 +641,26 @@ TEST_CASE("Policies", "[policies]")
         REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["policies"]), "stream handler metric groups should contain enable and/or disable tags");
     }
 
+    SECTION("Bad Config: global_handler_config with not valid handler type")
+    {
+        CoreRegistry registry;
+        registry.start(nullptr);
+        YAML::Node config_file = YAML::Load(policies_config_bad12);
+
+        REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
+        REQUIRE_THROWS_WITH(registry.policy_manager()->set_default_handler_config(config_file["visor"]["global_handler_config"]), "global_handler_config requires stream handler type 'dns2' which is not available");
+    }
+
+    SECTION("Bad Config: global_handler_config with not valid format")
+    {
+        CoreRegistry registry;
+        registry.start(nullptr);
+        YAML::Node config_file = YAML::Load(policies_config_bad13);
+
+        REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
+        REQUIRE_THROWS_WITH(registry.policy_manager()->set_default_handler_config(config_file["visor"]["global_handler_config"]), "expecting global_handler_config configuration map");
+    }
+
     SECTION("Bad Config: invalid handler modules order")
     {
         CoreRegistry registry;
@@ -620,18 +691,17 @@ TEST_CASE("Policies", "[policies]")
 
         // force a roll back by creating a conflict with a handler module name that already exists
         Config config;
-        auto input_stream = registry.input_plugins()["mock"]->instantiate("mymock", &config);
-        auto mod = registry.handler_plugins()["net"]->instantiate("default_view-default_net", input_stream.get(), &config);
+        Config filter;
+        auto input_stream = registry.input_plugins()["mock"]->instantiate("mymock", &config, &filter);
+        auto stream_proxy = input_stream->add_event_proxy(filter);
+        auto mod = registry.handler_plugins()["net"]->instantiate("default_view-default_net", stream_proxy, &config, &filter);
         registry.handler_manager()->module_add(std::move(mod));
         REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["policies"]), "policy [default_view-default_net] creation failed (handler: default_view): module name 'default_view-default_net' already exists");
 
         auto input_node = config_file["visor"]["policies"]["default_view"]["input"];
-        Config input_filter;
-        input_filter.config_set_yaml(input_node["filter"]);
         Config input_config;
         input_config.config_set_yaml(input_node["config"]);
-        input_filter.config_merge(input_config);
-        auto hash = input_filter.config_hash();
+        auto hash = input_config.config_hash();
 
         // ensure the modules were rolled back
         REQUIRE(!registry.policy_manager()->module_exists("default_view"));

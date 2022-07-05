@@ -10,20 +10,66 @@
 
 namespace visor {
 
+enum class Action {
+    AddPolicy,
+    RemovePolicy
+};
+
+class InputEventProxy : public Configurable
+{
+protected:
+    std::string _input_name;
+    std::string _filter_hash;
+
+public:
+    InputEventProxy(const std::string &name, const Configurable &filter)
+        : _input_name(name)
+    {
+        config_merge(filter);
+        _filter_hash = config_hash();
+    };
+    virtual ~InputEventProxy() = default;
+
+    const std::string &name() const
+    {
+        return _input_name;
+    }
+
+    const std::string &hash() const
+    {
+        return _filter_hash;
+    }
+
+    void policy_cb(const Policy *policy, Action action)
+    {
+        policy_signal(policy, action);
+    }
+
+    void heartbeat_cb(const timespec stamp)
+    {
+        heartbeat_signal(stamp);
+    }
+
+    virtual size_t consumer_count() const
+    {
+        return policy_signal.slot_count() + heartbeat_signal.slot_count();
+    }
+
+    mutable sigslot::signal<const Policy *, Action> policy_signal;
+    mutable sigslot::signal<const timespec> heartbeat_signal;
+};
+
 class InputStream : public AbstractRunnableModule
 {
-    mutable std::shared_mutex _input_mutex;
+
     std::vector<const Policy *> _policies;
 
 protected:
     static constexpr uint8_t HEARTBEAT_INTERVAL = 30; // in seconds
+    mutable std::shared_mutex _input_mutex;
+    std::vector<std::unique_ptr<InputEventProxy>> _event_proxies;
 
 public:
-    enum class Action {
-        AddPolicy,
-        RemovePolicy
-    };
-
     InputStream(const std::string &name)
         : AbstractRunnableModule(name)
     {
@@ -35,26 +81,50 @@ public:
     {
         std::unique_lock lock(_input_mutex);
         _policies.push_back(policy);
-        policy_signal(policy, Action::AddPolicy);
+        for (auto const &proxy : _event_proxies) {
+            proxy->policy_cb(policy, Action::AddPolicy);
+        }
     }
 
     void remove_policy(const Policy *policy)
     {
         std::unique_lock lock(_input_mutex);
         _policies.erase(std::remove(_policies.begin(), _policies.end(), policy), _policies.end());
-        policy_signal(policy, Action::RemovePolicy);
+        for (auto const &proxy : _event_proxies) {
+            proxy->policy_cb(policy, Action::RemovePolicy);
+        }
     }
 
     size_t policies_count() const
     {
-        std::unique_lock lock(_input_mutex);
+        std::shared_lock lock(_input_mutex);
         return _policies.size();
     }
 
-    virtual size_t consumer_count() const
+    size_t consumer_count() const
     {
-        return policy_signal.slot_count() + heartbeat_signal.slot_count();
+        std::shared_lock lock(_input_mutex);
+        size_t count = 0;
+        for (auto const &proxy : _event_proxies) {
+            count = proxy->consumer_count();
+        }
+        return count;
     }
+
+    InputEventProxy *add_event_proxy(const Configurable &filter)
+    {
+        std::unique_lock lock(_input_mutex);
+        auto hash = filter.config_hash();
+        for (auto const &proxy : _event_proxies) {
+            if (proxy->hash() == hash) {
+                return proxy.get();
+            }
+        }
+        _event_proxies.push_back(create_event_proxy(filter));
+        return _event_proxies.back().get();
+    }
+
+    virtual std::unique_ptr<InputEventProxy> create_event_proxy(const Configurable &filter) = 0;
 
     void common_info_json(json &j) const
     {
@@ -62,9 +132,6 @@ public:
         j["input"]["running"] = running();
         j["input"]["consumers"] = consumer_count();
     }
-
-    mutable sigslot::signal<const Policy *, Action> policy_signal;
-    mutable sigslot::signal<const timespec> heartbeat_signal;
 };
 
 }

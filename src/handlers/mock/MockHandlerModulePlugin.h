@@ -4,7 +4,6 @@
 
 #pragma once
 
-
 #include "HandlerModulePlugin.h"
 
 namespace visor::handler::mock {
@@ -20,7 +19,6 @@ public:
         : visor::HandlerModulePlugin{manager, plugin}
     {
     }
-    std::unique_ptr<StreamHandler> instantiate(const std::string &name, InputStream *input_stream, const Configurable *config, StreamHandler *stream_handler = nullptr) override;
+    std::unique_ptr<StreamHandler> instantiate(const std::string &name, InputEventProxy *proxy, const Configurable *config, const Configurable *filter, StreamHandler *stream_handler = nullptr) override;
 };
 }
-

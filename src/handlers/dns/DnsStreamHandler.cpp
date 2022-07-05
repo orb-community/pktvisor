@@ -15,6 +15,7 @@
 #include <IPv4Layer.h>
 #include <IPv6Layer.h>
 #pragma GCC diagnostic pop
+#include "DnsAdditionalRecord.h"
 #include <arpa/inet.h>
 #include <sstream>
 
@@ -22,20 +23,20 @@ namespace visor::handler::dns {
 
 thread_local DnsStreamHandler::DnsCacheData DnsStreamHandler::_cached_dns_layer;
 
-DnsStreamHandler::DnsStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config, StreamHandler *handler)
+DnsStreamHandler::DnsStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config, StreamHandler *handler)
     : visor::StreamMetricsHandler<DnsMetricsManager>(name, window_config)
 {
     if (handler) {
         throw StreamHandlerException(fmt::format("DnsStreamHandler: unsupported upstream chained stream handler {}", handler->name()));
     }
 
-    assert(stream);
-    // figure out which input stream we have
-    _pcap_stream = dynamic_cast<PcapInputStream *>(stream);
-    _mock_stream = dynamic_cast<MockInputStream *>(stream);
-    _dnstap_stream = dynamic_cast<DnstapInputStream *>(stream);
-    if (!_pcap_stream && !_mock_stream && !_dnstap_stream) {
-        throw StreamHandlerException(fmt::format("DnsStreamHandler: unsupported input stream {}", stream->name()));
+    assert(proxy);
+    // figure out which input event proxy we have
+    _pcap_proxy = dynamic_cast<PcapInputEventProxy *>(proxy);
+    _mock_proxy = dynamic_cast<MockInputEventProxy *>(proxy);
+    _dnstap_proxy = dynamic_cast<DnstapInputEventProxy *>(proxy);
+    if (!_pcap_proxy && !_mock_proxy && !_dnstap_proxy) {
+        throw StreamHandlerException(fmt::format("DnsStreamHandler: unsupported input event proxy {}", proxy->name()));
     }
 }
 
@@ -102,17 +103,17 @@ void DnsStreamHandler::start()
         _metrics->set_recorded_stream();
     }
 
-    if (_pcap_stream) {
-        _pkt_udp_connection = _pcap_stream->udp_signal.connect(&DnsStreamHandler::process_udp_packet_cb, this);
-        _start_tstamp_connection = _pcap_stream->start_tstamp_signal.connect(&DnsStreamHandler::set_start_tstamp, this);
-        _end_tstamp_connection = _pcap_stream->end_tstamp_signal.connect(&DnsStreamHandler::set_end_tstamp, this);
-        _tcp_start_connection = _pcap_stream->tcp_connection_start_signal.connect(&DnsStreamHandler::tcp_connection_start_cb, this);
-        _tcp_end_connection = _pcap_stream->tcp_connection_end_signal.connect(&DnsStreamHandler::tcp_connection_end_cb, this);
-        _tcp_message_connection = _pcap_stream->tcp_message_ready_signal.connect(&DnsStreamHandler::tcp_message_ready_cb, this);
-        _heartbeat_connection = _pcap_stream->heartbeat_signal.connect(&DnsStreamHandler::check_period_shift, this);
-    } else if (_dnstap_stream) {
-        _dnstap_connection = _dnstap_stream->dnstap_signal.connect(&DnsStreamHandler::process_dnstap_cb, this);
-        _heartbeat_connection = _dnstap_stream->heartbeat_signal.connect(&DnsStreamHandler::check_period_shift, this);
+    if (_pcap_proxy) {
+        _pkt_udp_connection = _pcap_proxy->udp_signal.connect(&DnsStreamHandler::process_udp_packet_cb, this);
+        _start_tstamp_connection = _pcap_proxy->start_tstamp_signal.connect(&DnsStreamHandler::set_start_tstamp, this);
+        _end_tstamp_connection = _pcap_proxy->end_tstamp_signal.connect(&DnsStreamHandler::set_end_tstamp, this);
+        _tcp_start_connection = _pcap_proxy->tcp_connection_start_signal.connect(&DnsStreamHandler::tcp_connection_start_cb, this);
+        _tcp_end_connection = _pcap_proxy->tcp_connection_end_signal.connect(&DnsStreamHandler::tcp_connection_end_cb, this);
+        _tcp_message_connection = _pcap_proxy->tcp_message_ready_signal.connect(&DnsStreamHandler::tcp_message_ready_cb, this);
+        _heartbeat_connection = _pcap_proxy->heartbeat_signal.connect(&DnsStreamHandler::check_period_shift, this);
+    } else if (_dnstap_proxy) {
+        _dnstap_connection = _dnstap_proxy->dnstap_signal.connect(&DnsStreamHandler::process_dnstap_cb, this);
+        _heartbeat_connection = _dnstap_proxy->heartbeat_signal.connect(&DnsStreamHandler::check_period_shift, this);
     }
 
     _running = true;
@@ -124,14 +125,14 @@ void DnsStreamHandler::stop()
         return;
     }
 
-    if (_pcap_stream) {
+    if (_pcap_proxy) {
         _pkt_udp_connection.disconnect();
         _start_tstamp_connection.disconnect();
         _end_tstamp_connection.disconnect();
         _tcp_start_connection.disconnect();
         _tcp_end_connection.disconnect();
         _tcp_message_connection.disconnect();
-    } else if (_dnstap_stream) {
+    } else if (_dnstap_proxy) {
         _dnstap_connection.disconnect();
     }
     _heartbeat_connection.disconnect();
@@ -387,7 +388,9 @@ void DnsMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
     if (group_enabled(group::DnsMetrics::Cardinality)) {
         _dns_qnameCard.merge(other._dns_qnameCard);
     }
-
+    if (group_enabled(group::DnsMetrics::TopEcs)) {
+        _dns_topQueryECS.merge(other._dns_topQueryECS);
+    }
     if (group_enabled(group::DnsMetrics::TopQnames)) {
         _dns_topQname2.merge(other._dns_topQname2);
         _dns_topQname3.merge(other._dns_topQname3);
@@ -450,6 +453,10 @@ void DnsMetricsBucket::to_json(json &j) const
     }
 
     _dns_topUDPPort.to_json(j, [](const uint16_t &val) { return std::to_string(val); });
+
+    if (group_enabled(group::DnsMetrics::TopEcs)) {
+        _dns_topQueryECS.to_json(j);
+    }
 
     if (group_enabled(group::DnsMetrics::TopQnames)) {
         _dns_topQname2.to_json(j);
@@ -645,6 +652,21 @@ void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, pcpp::Pro
             }
         }
     }
+
+    if (group_enabled(group::DnsMetrics::TopEcs)) {
+        if (payload.getDnsHeader()->queryOrResponse == QR::query && payload.getAdditionalRecordCount()) {
+            auto additional = payload.getFirstAdditionalRecord();
+            if (!additional) {
+                payload.parseResources(false, true, true);
+                additional = payload.getFirstAdditionalRecord();
+            }
+
+            auto ecs = parse_additional_records_ecs(additional);
+            if (ecs && !(ecs->client_subnet.empty())) {
+                _dns_topQueryECS.update(ecs->client_subnet);
+            }
+        }
+    }
 }
 
 void DnsMetricsBucket::process_dns_layer(pcpp::ProtocolType l3, Protocol l4, QR side, uint16_t port)
@@ -769,6 +791,10 @@ void DnsMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap ad
     }
 
     _dns_topUDPPort.to_prometheus(out, add_labels, [](const uint16_t &val) { return std::to_string(val); });
+
+    if (group_enabled(group::DnsMetrics::TopEcs)) {
+        _dns_topQueryECS.to_prometheus(out, add_labels);
+    }
 
     if (group_enabled(group::DnsMetrics::TopQnames)) {
         _dns_topQname2.to_prometheus(out, add_labels);

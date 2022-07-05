@@ -22,7 +22,7 @@
 namespace visor::input::flow {
 
 enum DIRECTION {
-    UNKNOWN = 0,
+    UNKNOWN_DIR = 0,
     FULL_DUPLEX = 1,
     HALF_DUPLEX = 2,
     IN = 3,
@@ -30,6 +30,7 @@ enum DIRECTION {
 };
 
 enum IP_PROTOCOL {
+    UNKNOWN_IP = 0,
     ICMP = 1,
     TCP = 6,
     UDP = 17

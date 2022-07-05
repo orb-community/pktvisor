@@ -2,7 +2,6 @@
 
 #include "DnsStreamHandler.h"
 #include "PcapInputStream.h"
-
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 #pragma GCC diagnostic ignored "-Wunused-parameter"
@@ -56,8 +55,9 @@ TEST_CASE("Parse DNS UDP IPv4 tests", "[pcap][ipv4][udp][dns]")
     stream.config_set("bpf", "");
 
     visor::Config c;
+    auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
-    DnsStreamHandler dns_handler{"dns-test", &stream, &c};
+    DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
 
     dns_handler.start();
     stream.start();
@@ -97,8 +97,9 @@ TEST_CASE("Parse DNS TCP IPv4 tests", "[pcap][ipv4][tcp][dns]")
     stream.config_set("bpf", "");
 
     visor::Config c;
+    auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
-    DnsStreamHandler dns_handler{"dns-test", &stream, &c};
+    DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
 
     dns_handler.start();
     stream.start();
@@ -128,8 +129,9 @@ TEST_CASE("Parse DNS UDP IPv6 tests", "[pcap][ipv6][udp][dns]")
     stream.config_set("bpf", "");
 
     visor::Config c;
+    auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
-    DnsStreamHandler dns_handler{"dns-test", &stream, &c};
+    DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
 
     dns_handler.start();
     stream.start();
@@ -159,8 +161,9 @@ TEST_CASE("Parse DNS TCP IPv6 tests", "[pcap][ipv6][tcp][dns]")
     stream.config_set("bpf", "");
 
     visor::Config c;
+    auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
-    DnsStreamHandler dns_handler{"dns-test", &stream, &c};
+    DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
 
     dns_handler.start();
     stream.start();
@@ -192,8 +195,9 @@ TEST_CASE("Parse DNS random UDP/TCP tests", "[pcap][dns]")
     stream.parse_host_spec();
 
     visor::Config c;
+    auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
-    DnsStreamHandler dns_handler{"dns-test", &stream, &c};
+    DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
 
     dns_handler.start();
     stream.start();
@@ -263,8 +267,9 @@ TEST_CASE("DNS Filters: exclude_noerror", "[pcap][dns]")
     stream.parse_host_spec();
 
     visor::Config c;
+    auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
-    DnsStreamHandler dns_handler{"dns-test", &stream, &c};
+    DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
 
     dns_handler.config_set<bool>("exclude_noerror", true);
 
@@ -294,8 +299,9 @@ TEST_CASE("DNS Filters: only_rcode nx", "[pcap][net]")
     stream.parse_host_spec();
 
     visor::Config c;
+    auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
-    DnsStreamHandler dns_handler{"dns-test", &stream, &c};
+    DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
 
     dns_handler.config_set<uint64_t>("only_rcode", NXDomain);
 
@@ -325,8 +331,9 @@ TEST_CASE("DNS Filters: only_rcode refused", "[pcap][dns]")
     stream.parse_host_spec();
 
     visor::Config c;
+    auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
-    DnsStreamHandler dns_handler{"dns-test", &stream, &c};
+    DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
 
     dns_handler.config_set<uint64_t>("only_rcode", Refused);
 
@@ -346,6 +353,40 @@ TEST_CASE("DNS Filters: only_rcode refused", "[pcap][dns]")
     REQUIRE(j["wire_packets"]["filtered"] == 23);
 }
 
+TEST_CASE("DNS TopN custom size", "[pcap][dns]")
+{
+
+    PcapInputStream stream{"pcap-test"};
+    stream.config_set("pcap_file", "tests/fixtures/dns_udp_tcp_random.pcap");
+    stream.config_set("bpf", "");
+    stream.config_set("host_spec", "192.168.0.0/24");
+    stream.parse_host_spec();
+
+    visor::Config c;
+    auto stream_proxy = stream.add_event_proxy(c);
+    c.config_set<uint64_t>("num_periods", 1);
+    c.config_set<uint64_t>("topn_count", 3);
+    DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
+
+    dns_handler.start();
+    stream.start();
+    stream.stop();
+    dns_handler.stop();
+
+    nlohmann::json j;
+    dns_handler.metrics()->bucket(0)->to_json(j);
+
+    CHECK(j["cardinality"]["qname"] == 2036); // flame was run with 1000 randoms x2 (udp+tcp)
+
+    CHECK(j["top_qtype"][0]["name"] == "AAAA");
+    CHECK(j["top_qtype"][0]["estimate"] == 1476);
+    CHECK(j["top_qtype"][1]["name"] == "CNAME");
+    CHECK(j["top_qtype"][1]["estimate"] == 825);
+    CHECK(j["top_qtype"][2]["name"] == "SOA");
+    CHECK(j["top_qtype"][2]["estimate"] == 794);
+    CHECK(j["top_qtype"][3] == nullptr);
+}
+
 TEST_CASE("DNS Filters: only_qname_suffix", "[pcap][dns]")
 {
 
@@ -356,8 +397,9 @@ TEST_CASE("DNS Filters: only_qname_suffix", "[pcap][dns]")
     stream.parse_host_spec();
 
     visor::Config c;
+    auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
-    DnsStreamHandler dns_handler{"dns-test", &stream, &c};
+    DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
 
     // notice, case insensitive
     dns_handler.config_set<visor::Configurable::StringList>("only_qname_suffix", {"GooGle.com"});
@@ -382,6 +424,48 @@ TEST_CASE("DNS Filters: only_qname_suffix", "[pcap][dns]")
     CHECK(j["top_qname3"][0]["name"] == nullptr);
 }
 
+TEST_CASE("Parse DNS with ECS data", "[pcap][dns][ecs]")
+{
+
+    PcapInputStream stream{"pcap-test"};
+    stream.config_set("pcap_file", "tests/fixtures/ecs.pcap");
+    stream.config_set("bpf", "");
+    stream.config_set("host_spec", "192.168.0.0/24");
+    stream.parse_host_spec();
+
+    visor::Config c;
+    auto stream_proxy = stream.add_event_proxy(c);
+    c.config_set<uint64_t>("num_periods", 1);
+    DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
+    dns_handler.config_set<visor::Configurable::StringList>("enable", visor::Configurable::StringList({"top_ecs"}));
+    dns_handler.start();
+    stream.start();
+    stream.stop();
+    dns_handler.stop();
+
+    auto counters = dns_handler.metrics()->bucket(0)->counters();
+    auto event_data = dns_handler.metrics()->bucket(0)->event_data_locked();
+
+
+    CHECK(event_data.num_events->value() == 36);
+    CHECK(event_data.num_samples->value() == 36);
+    CHECK(counters.TCP.value() == 4);
+    CHECK(counters.UDP.value() == 32);
+    CHECK(counters.IPv4.value() == 6);
+    CHECK(counters.IPv6.value() == 30);
+    CHECK(counters.queries.value() == 22);
+    CHECK(counters.replies.value() == 14);
+
+    nlohmann::json j;
+    dns_handler.metrics()->bucket(0)->to_json(j);
+
+    CHECK(j["cardinality"]["qname"] == 9);
+
+    CHECK(j["top_query_ecs"][0]["name"] == "2001:470:1f0b:1600::"); //wireshark
+    CHECK(j["top_query_ecs"][0]["estimate"] == 5);
+    CHECK(j["top_query_ecs"][1] == nullptr);
+}
+
 TEST_CASE("DNS groups", "[pcap][dns]")
 {
     PcapInputStream stream{"pcap-test"};
@@ -391,8 +475,9 @@ TEST_CASE("DNS groups", "[pcap][dns]")
     stream.parse_host_spec();
 
     visor::Config c;
+    auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
-    DnsStreamHandler dns_handler{"dns-test", &stream, &c};
+    DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
 
     SECTION("disable cardinality and counters")
     {
@@ -465,12 +550,13 @@ TEST_CASE("DNS groups", "[pcap][dns]")
     SECTION("disable invalid dns group")
     {
         dns_handler.config_set<visor::Configurable::StringList>("disable", {"top_qnames", "dns_top_wired"});
-        REQUIRE_THROWS_WITH(dns_handler.start(), "dns_top_wired is an invalid/unsupported metric group. The valid groups are cardinality, counters, dns_transaction, top_qnames");
+        REQUIRE_THROWS_WITH(dns_handler.start(), "dns_top_wired is an invalid/unsupported metric group. The valid groups are cardinality, counters, dns_transaction, top_ecs, top_qnames");
     }
 
     SECTION("enable invalid dns group")
     {
         dns_handler.config_set<visor::Configurable::StringList>("enable", {"top_qnames", "dns_top_wired"});
-        REQUIRE_THROWS_WITH(dns_handler.start(), "dns_top_wired is an invalid/unsupported metric group. The valid groups are cardinality, counters, dns_transaction, top_qnames");
+        REQUIRE_THROWS_WITH(dns_handler.start(), "dns_top_wired is an invalid/unsupported metric group. The valid groups are cardinality, counters, dns_transaction, top_ecs, top_qnames");
     }
 }
+

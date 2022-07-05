@@ -45,9 +45,32 @@ public:
     void start() override;
     void stop() override;
     void info_json(json &j) const override;
+    std::unique_ptr<InputEventProxy> create_event_proxy(const Configurable &filter) override;
+};
+
+class FlowInputEventProxy : public visor::InputEventProxy
+{
+public:
+    FlowInputEventProxy(const std::string &name, const Configurable &filter)
+        : InputEventProxy(name, filter)
+    {
+    }
+
+    ~FlowInputEventProxy() = default;
+
     size_t consumer_count() const override
     {
         return policy_signal.slot_count() + heartbeat_signal.slot_count() + sflow_signal.slot_count() + netflow_signal.slot_count();
+    }
+
+    void sflow_cb(const SFSample &sflow)
+    {
+        sflow_signal(sflow);
+    }
+
+    void netflow_cb(const NFSample &netflow)
+    {
+        netflow_signal(netflow);
     }
 
     // handler functionality
