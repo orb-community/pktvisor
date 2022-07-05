@@ -222,6 +222,7 @@ TEST_CASE("Parse DNS random UDP/TCP tests", "[pcap][dns]")
     CHECK(counters.xacts_in.value() == 0);
     CHECK(counters.xacts_out.value() == 2921); // wireshark: 2894
     CHECK(counters.xacts_timed_out.value() == 0);
+    CHECK(counters.NODATA.value() == 2254);
     CHECK(counters.NOERROR.value() == 2921); // wireshark: 5838 (we only count reply result codes)
     CHECK(counters.NOERROR.value() == 2921); // wireshark: 5838 (we only count reply result codes)
     CHECK(counters.NX.value() == 0);
@@ -284,6 +285,7 @@ TEST_CASE("DNS Filters: exclude_noerror", "[pcap][dns]")
     REQUIRE(counters.SRVFAIL.value() == 0);
     REQUIRE(counters.REFUSED.value() == 1);
     REQUIRE(counters.NX.value() == 1);
+    REQUIRE(counters.NODATA.value() == 0);
     REQUIRE(counters.filtered.value() == 22);
     nlohmann::json j;
     dns_handler.metrics()->bucket(0)->to_json(j);
@@ -316,6 +318,7 @@ TEST_CASE("DNS Filters: only_rcode nx", "[pcap][net]")
     REQUIRE(counters.SRVFAIL.value() == 0);
     REQUIRE(counters.REFUSED.value() == 0);
     REQUIRE(counters.NX.value() == 1);
+    REQUIRE(counters.NODATA.value() == 0);
     REQUIRE(counters.filtered.value() == 23);
     nlohmann::json j;
     dns_handler.metrics()->bucket(0)->to_json(j);
@@ -348,6 +351,7 @@ TEST_CASE("DNS Filters: only_rcode refused", "[pcap][dns]")
     REQUIRE(counters.SRVFAIL.value() == 0);
     REQUIRE(counters.REFUSED.value() == 1);
     REQUIRE(counters.NX.value() == 0);
+    REQUIRE(counters.NODATA.value() == 0);
     REQUIRE(counters.filtered.value() == 23);
     nlohmann::json j;
     dns_handler.metrics()->bucket(0)->to_json(j);
@@ -416,6 +420,7 @@ TEST_CASE("DNS Filters: only_qname_suffix", "[pcap][dns]")
     CHECK(counters.SRVFAIL.value() == 0);
     CHECK(counters.REFUSED.value() == 0);
     CHECK(counters.NX.value() == 1);
+    CHECK(counters.NODATA.value() == 2);
     CHECK(counters.filtered.value() == 14);
 
     nlohmann::json j;
@@ -423,6 +428,43 @@ TEST_CASE("DNS Filters: only_qname_suffix", "[pcap][dns]")
 
     CHECK(j["top_qname2"][0]["name"].get<std::string>().find("google.com") != std::string::npos);
     CHECK(j["top_qname3"][0]["name"] == nullptr);
+}
+
+TEST_CASE("DNS Filters: answer_count", "[pcap][dns]")
+{
+
+    PcapInputStream stream{"pcap-test"};
+    stream.config_set("pcap_file", "tests/fixtures/dns_udp_mixed_rcode.pcap");
+    stream.config_set("bpf", "");
+    stream.config_set("host_spec", "192.168.0.0/24");
+    stream.parse_host_spec();
+
+    visor::Config c;
+    auto stream_proxy = stream.add_event_proxy(c);
+    c.config_set<uint64_t>("num_periods", 1);
+    DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
+    dns_handler.config_set<uint64_t>("only_rcode", NoError);
+    dns_handler.config_set<uint64_t>("answer_count", 0);
+    dns_handler.start();
+    stream.start();
+    stream.stop();
+    dns_handler.stop();
+
+    auto counters = dns_handler.metrics()->bucket(0)->counters();
+
+    CHECK(counters.UDP.value() == 16);
+    CHECK(counters.NOERROR.value() == 4);
+    CHECK(counters.SRVFAIL.value() == 0);
+    CHECK(counters.REFUSED.value() == 0);
+    CHECK(counters.NX.value() == 0);
+    CHECK(counters.NODATA.value() == 4);
+    CHECK(counters.filtered.value() == 8);
+
+    nlohmann::json j;
+    dns_handler.metrics()->bucket(0)->to_json(j);
+
+    CHECK(j["top_qname2"][0]["name"] == ".mwbsys.com");
+    CHECK(j["top_qname3"][0]["name"] == "sirius.mwbsys.com");
 }
 
 TEST_CASE("Parse DNS with ECS data", "[pcap][dns][ecs]")
@@ -470,6 +512,38 @@ TEST_CASE("Parse DNS with ECS data", "[pcap][dns][ecs]")
     CHECK(j["top_geoLoc_ecs"][0]["estimate"] == 5);
     CHECK(j["top_asn_ecs"][0]["name"] == "Unknown");
     CHECK(j["top_asn_ecs"][0]["estimate"] == 5);
+}
+
+TEST_CASE("DNS filter exceptions", "[pcap][dns][filter]")
+{
+    PcapInputStream stream{"pcap-test"};
+    stream.config_set("pcap_file", "tests/fixtures/dns_udp_tcp_random.pcap");
+    stream.config_set("bpf", "");
+    stream.config_set("host_spec", "192.168.0.0/24");
+    stream.parse_host_spec();
+
+    visor::Config c;
+    auto stream_proxy = stream.add_event_proxy(c);
+    c.config_set<uint64_t>("num_periods", 1);
+    DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
+
+    SECTION("only_rcode as string")
+    {
+        dns_handler.config_set<std::string>("only_rcode", "1");
+        REQUIRE_THROWS_WITH(dns_handler.start(), "DnsStreamHandler: wrong value type for only_rcode filter. It should be an integer");
+    }
+
+    SECTION("only_rcode invalid")
+    {
+        dns_handler.config_set<uint64_t>("only_rcode", 133);
+        REQUIRE_THROWS_WITH(dns_handler.start(), "DnsStreamHandler: only_rcode filter contained an invalid/unsupported rcode");
+    }
+
+    SECTION("answer_count as string")
+    {
+        dns_handler.config_set<std::string>("answer_count", "1");
+        REQUIRE_THROWS_WITH(dns_handler.start(), "DnsStreamHandler: wrong value type for answer_count filter. It should be an integer");
+    }
 }
 
 TEST_CASE("DNS groups", "[pcap][dns]")
