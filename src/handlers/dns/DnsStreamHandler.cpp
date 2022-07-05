@@ -58,7 +58,12 @@ void DnsStreamHandler::start()
         _f_enabled.set(Filters::ExcludingRCode);
         _f_rcode = NoError;
     } else if (config_exists("only_rcode")) {
-        auto want_code = config_get<uint64_t>("only_rcode");
+        uint64_t want_code;
+        try {
+            want_code = config_get<uint64_t>("only_rcode");
+        } catch (const std::exception &e) {
+            throw ConfigException("DnsStreamHandler: wrong value type for only_rcode filter. It should be an integer");
+        }
         switch (want_code) {
         case NoError:
         case NXDomain:
@@ -68,7 +73,15 @@ void DnsStreamHandler::start()
             _f_rcode = want_code;
             break;
         default:
-            throw ConfigException("only_rcode contained an invalid/unsupported rcode");
+            throw ConfigException("DnsStreamHandler: only_rcode filter contained an invalid/unsupported rcode");
+        }
+    }
+    if (config_exists("answer_count")) {
+        try {
+            _f_answer_count = config_get<uint64_t>("answer_count");
+            _f_enabled.set(Filters::AnswerCount);
+        } catch (const std::exception &e) {
+            throw ConfigException("DnsStreamHandler: wrong value type for answer_count filter. It should be an integer");
         }
     }
     if (config_exists("only_qname_suffix")) {
@@ -95,7 +108,7 @@ void DnsStreamHandler::start()
             for (const auto &type : _dnstap_map_types) {
                 valid_types.push_back(type.first);
             }
-            throw ConfigException(fmt::format("dnstap_msg_type contained an invalid/unsupported type. Valid types: {}", fmt::join(valid_types, ", ")));
+            throw ConfigException(fmt::format("DnsStreamHandler: dnstap_msg_type contained an invalid/unsupported type. Valid types: {}", fmt::join(valid_types, ", ")));
         }
     }
 
@@ -328,6 +341,9 @@ bool DnsStreamHandler::_filtering(DnsLayer &payload, [[maybe_unused]] PacketDire
     } else if (_f_enabled[Filters::OnlyRCode] && payload.getDnsHeader()->responseCode != _f_rcode) {
         goto will_filter;
     }
+    if (_f_enabled[Filters::AnswerCount] && payload.getAnswerCount() != _f_answer_count) {
+        goto will_filter;
+    }
     if (_f_enabled[Filters::OnlyQNameSuffix]) {
         if (!payload.parseResources(true) || payload.getFirstQuery() == nullptr) {
             goto will_filter;
@@ -369,6 +385,7 @@ void DnsMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
         _counters.REFUSED += other._counters.REFUSED;
         _counters.SRVFAIL += other._counters.SRVFAIL;
         _counters.NOERROR += other._counters.NOERROR;
+        _counters.NODATA += other._counters.NODATA;
     }
 
     _counters.filtered += other._counters.filtered;
@@ -397,6 +414,7 @@ void DnsMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
         _dns_topNX.merge(other._dns_topNX);
         _dns_topREFUSED.merge(other._dns_topREFUSED);
         _dns_topSRVFAIL.merge(other._dns_topSRVFAIL);
+        _dns_topNODATA.merge(other._dns_topNODATA);
     }
 
     _dns_topUDPPort.merge(other._dns_topUDPPort);
@@ -430,6 +448,7 @@ void DnsMetricsBucket::to_json(json &j) const
         _counters.REFUSED.to_json(j);
         _counters.SRVFAIL.to_json(j);
         _counters.NOERROR.to_json(j);
+        _counters.NODATA.to_json(j);
     }
 
     _counters.filtered.to_json(j);
@@ -464,6 +483,7 @@ void DnsMetricsBucket::to_json(json &j) const
         _dns_topNX.to_json(j);
         _dns_topREFUSED.to_json(j);
         _dns_topSRVFAIL.to_json(j);
+        _dns_topNODATA.to_json(j);
     }
     _dns_topRCode.to_json(j, [](const uint16_t &val) {
         if (RCodeNames.find(val) != RCodeNames.end()) {
@@ -586,6 +606,9 @@ void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, pcpp::Pro
             switch (payload.getDnsHeader()->responseCode) {
             case NoError:
                 ++_counters.NOERROR;
+                if (!payload.getAnswerCount()) {
+                    ++_counters.NODATA;
+                }
                 break;
             case SrvFail:
                 ++_counters.SRVFAIL;
@@ -641,6 +664,11 @@ void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, pcpp::Pro
                     break;
                 case Refused:
                     _dns_topREFUSED.update(name);
+                    break;
+                case NoError:
+                    if (!payload.getAnswerCount()) {
+                        _dns_topNODATA.update(name);
+                    }
                     break;
                 }
             }
@@ -768,6 +796,7 @@ void DnsMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap ad
         _counters.REFUSED.to_prometheus(out, add_labels);
         _counters.SRVFAIL.to_prometheus(out, add_labels);
         _counters.NOERROR.to_prometheus(out, add_labels);
+        _counters.NODATA.to_prometheus(out, add_labels);
     }
 
     _counters.filtered.to_prometheus(out, add_labels);
@@ -802,6 +831,7 @@ void DnsMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap ad
         _dns_topNX.to_prometheus(out, add_labels);
         _dns_topREFUSED.to_prometheus(out, add_labels);
         _dns_topSRVFAIL.to_prometheus(out, add_labels);
+        _dns_topNODATA.to_prometheus(out, add_labels);
     }
     _dns_topRCode.to_prometheus(out, add_labels, [](const uint16_t &val) {
         if (RCodeNames.find(val) != RCodeNames.end()) {
