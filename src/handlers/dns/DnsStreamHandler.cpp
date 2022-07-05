@@ -415,6 +415,7 @@ void DnsMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
         _dns_topQname3.merge(other._dns_topQname3);
         _dns_topNX.merge(other._dns_topNX);
         _dns_topREFUSED.merge(other._dns_topREFUSED);
+        _dns_topSizedQnameResp.merge(other._dns_topSizedQnameResp);
         _dns_topSRVFAIL.merge(other._dns_topSRVFAIL);
         _dns_topNODATA.merge(other._dns_topNODATA);
     }
@@ -486,6 +487,7 @@ void DnsMetricsBucket::to_json(json &j) const
         _dns_topQname3.to_json(j);
         _dns_topNX.to_json(j);
         _dns_topREFUSED.to_json(j);
+        _dns_topSizedQnameResp.to_json(j);
         _dns_topSRVFAIL.to_json(j);
         _dns_topNODATA.to_json(j);
     }
@@ -675,6 +677,7 @@ void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, pcpp::Pro
                     }
                     break;
                 }
+                _dns_topSizedQnameResp.update(name, payload.getDataLen());
             }
 
             auto aggDomain = aggregateDomain(name, suffix_size);
@@ -842,6 +845,7 @@ void DnsMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap ad
         _dns_topQname3.to_prometheus(out, add_labels);
         _dns_topNX.to_prometheus(out, add_labels);
         _dns_topREFUSED.to_prometheus(out, add_labels);
+        _dns_topSizedQnameResp.to_prometheus(out, add_labels);
         _dns_topSRVFAIL.to_prometheus(out, add_labels);
         _dns_topNODATA.to_prometheus(out, add_labels);
     }

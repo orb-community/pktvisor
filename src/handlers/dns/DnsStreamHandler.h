@@ -64,6 +64,7 @@ protected:
     TopN<std::string> _dns_topQname3;
     TopN<std::string> _dns_topNX;
     TopN<std::string> _dns_topREFUSED;
+    TopN<std::string> _dns_topSizedQnameResp;
     TopN<std::string> _dns_topSRVFAIL;
     TopN<std::string> _dns_topNODATA;
     TopN<uint16_t> _dns_topUDPPort;
@@ -127,6 +128,7 @@ public:
         , _dns_topQname3("dns", "qname", {"top_qname3"}, "Top QNAMES, aggregated at a depth of three labels")
         , _dns_topNX("dns", "qname", {"top_nxdomain"}, "Top QNAMES with result code NXDOMAIN")
         , _dns_topREFUSED("dns", "qname", {"top_refused"}, "Top QNAMES with result code REFUSED")
+        , _dns_topSizedQnameResp("dns", "qname", {"top_qname_by_response"}, "Top QNAMES by response size")
         , _dns_topSRVFAIL("dns", "qname", {"top_srvfail"}, "Top QNAMES with result code SRVFAIL")
         , _dns_topNODATA("dns", "qname", {"top_nodata"}, "Top QNAMES with result code NOERROR and no answer section")
         , _dns_topUDPPort("dns", "port", {"top_udp_ports"}, "Top UDP source port on the query side of a transaction")
@@ -177,6 +179,7 @@ public:
         _dns_topQname3.set_topn_count(topn_count);
         _dns_topNX.set_topn_count(topn_count);
         _dns_topREFUSED.set_topn_count(topn_count);
+        _dns_topSizedQnameResp.set_topn_count(topn_count);
         _dns_topSRVFAIL.set_topn_count(topn_count);
         _dns_topNODATA.set_topn_count(topn_count);
         _dns_topUDPPort.set_topn_count(topn_count);
