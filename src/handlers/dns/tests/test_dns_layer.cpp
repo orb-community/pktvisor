@@ -1,6 +1,7 @@
 #include <catch2/catch.hpp>
 
 #include "DnsStreamHandler.h"
+#include "GeoDB.h"
 #include "PcapInputStream.h"
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wold-style-cast"
@@ -468,6 +469,8 @@ TEST_CASE("DNS Filters: answer_count", "[pcap][dns]")
 
 TEST_CASE("Parse DNS with ECS data", "[pcap][dns][ecs]")
 {
+    CHECK_NOTHROW(visor::geo::GeoIP().enable("tests/fixtures/GeoIP2-City-Test.mmdb"));
+    CHECK_NOTHROW(visor::geo::GeoASN().enable("tests/fixtures/GeoIP2-ISP-Test.mmdb"));
 
     PcapInputStream stream{"pcap-test"};
     stream.config_set("pcap_file", "tests/fixtures/ecs.pcap");
@@ -488,7 +491,6 @@ TEST_CASE("Parse DNS with ECS data", "[pcap][dns][ecs]")
     auto counters = dns_handler.metrics()->bucket(0)->counters();
     auto event_data = dns_handler.metrics()->bucket(0)->event_data_locked();
 
-
     CHECK(event_data.num_events->value() == 36);
     CHECK(event_data.num_samples->value() == 36);
     CHECK(counters.TCP.value() == 4);
@@ -503,9 +505,13 @@ TEST_CASE("Parse DNS with ECS data", "[pcap][dns][ecs]")
 
     CHECK(j["cardinality"]["qname"] == 9);
 
-    CHECK(j["top_query_ecs"][0]["name"] == "2001:470:1f0b:1600::"); //wireshark
+    CHECK(j["top_query_ecs"][0]["name"] == "2001:470:1f0b:1600::"); // wireshark
     CHECK(j["top_query_ecs"][0]["estimate"] == 5);
     CHECK(j["top_query_ecs"][1] == nullptr);
+    CHECK(j["top_geoLoc_ecs"][0]["name"] == "Unknown");
+    CHECK(j["top_geoLoc_ecs"][0]["estimate"] == 5);
+    CHECK(j["top_asn_ecs"][0]["name"] == "Unknown");
+    CHECK(j["top_asn_ecs"][0]["estimate"] == 5);
 }
 
 TEST_CASE("DNS filter exceptions", "[pcap][dns][filter]")
@@ -633,4 +639,3 @@ TEST_CASE("DNS groups", "[pcap][dns]")
         REQUIRE_THROWS_WITH(dns_handler.start(), "dns_top_wired is an invalid/unsupported metric group. The valid groups are cardinality, counters, dns_transaction, top_ecs, top_qnames");
     }
 }
-
