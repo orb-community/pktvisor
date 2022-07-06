@@ -53,7 +53,7 @@ protected:
 
     Quantile<uint64_t> _dnsXactFromTimeUs;
     Quantile<uint64_t> _dnsXactToTimeUs;
-    Quantile<uint64_t> _dnsXactRatio;
+    Quantile<double> _dnsXactRatio;
 
     Cardinality _dns_qnameCard;
 
@@ -121,7 +121,7 @@ public:
     DnsMetricsBucket()
         : _dnsXactFromTimeUs("dns", {"xact", "out", "quantiles_us"}, "Quantiles of transaction timing (query/reply pairs) when host is client, in microseconds")
         , _dnsXactToTimeUs("dns", {"xact", "in", "quantiles_us"}, "Quantiles of transaction timing (query/reply pairs) when host is server, in microseconds")
-        , _dnsXactRatio("dns", {"xact", "ratio", "quantiles_percent"}, "Quantiles of transaction ratio (query/reply pairs) in percentage")
+        , _dnsXactRatio("dns", {"xact", "ratio", "quantiles"}, "Quantiles of transaction ratio (query/reply)")
         , _dns_qnameCard("dns", {"cardinality", "qname"}, "Cardinality of unique QNAMES, both ingress and egress")
         , _dns_topGeoLocECS("dns", "geo_loc", {"top_geoLoc_ecs"}, "Top GeoIP ECS locations")
         , _dns_topASNECS("dns", "asn", {"top_asn_ecs"}, "Top ASNs by ECS")
@@ -130,7 +130,7 @@ public:
         , _dns_topQname3("dns", "qname", {"top_qname3"}, "Top QNAMES, aggregated at a depth of three labels")
         , _dns_topNX("dns", "qname", {"top_nxdomain"}, "Top QNAMES with result code NXDOMAIN")
         , _dns_topREFUSED("dns", "qname", {"top_refused"}, "Top QNAMES with result code REFUSED")
-        , _dns_topSizedQnameResp("dns", "qname", {"top_qname_by_response"}, "Top QNAMES by response size")
+        , _dns_topSizedQnameResp("dns", "qname", {"top_qname_by_resp_size"}, "Top QNAMES by response size")
         , _dns_topSRVFAIL("dns", "qname", {"top_srvfail"}, "Top QNAMES with result code SRVFAIL")
         , _dns_topNODATA("dns", "qname", {"top_nodata"}, "Top QNAMES with result code NOERROR and no answer section")
         , _dns_topUDPPort("dns", "port", {"top_udp_ports"}, "Top UDP source port on the query side of a transaction")

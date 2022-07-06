@@ -783,9 +783,8 @@ void DnsMetricsBucket::new_dns_transaction(bool deep, float to90th, float from90
     }
 
     if (deep) {
-        size_t resp_size = dns.getDataLen();
-        if (resp_size) {
-            _dnsXactRatio.update((100 * xact.querySize) / resp_size);
+        if (auto resp_size = dns.getDataLen(); resp_size) {
+            _dnsXactRatio.update(static_cast<double>(xact.querySize) / resp_size);
         }
 
         auto query = dns.getFirstQuery();
