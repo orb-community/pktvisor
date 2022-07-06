@@ -145,7 +145,7 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
         std::string input_stream_module_name = tap->get_input_name(tap_config, tap_filter);
 
         std::unique_ptr<InputStream> input_stream;
-        InputStream *input_ptr;
+        InputStream *input_ptr = nullptr;
         std::unique_lock<std::shared_mutex> input_lock;
         if (_registry->input_manager()->module_exists(input_stream_module_name)) {
             spdlog::get("visor")->info("policy [{}]: input stream already exists. reusing: {}", policy_name, input_stream_module_name);
@@ -361,15 +361,21 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
             }
         } catch (ModuleException &e) {
             // note that if any of these calls except, we are in an unknown state and the exception will propagate
-            // nothing needs to be stopped because it was not started
-            module_remove(policy_name);
             if (input_res_policy_ptr) {
+                input_res_policy_ptr->stop();
                 module_remove(input_res_policy_ptr->name());
             }
-            _registry->input_manager()->module_remove(input_stream_module_name);
+
+            policy_ptr->stop();
+            module_remove(policy_name);
+
             for (auto &m : added_handlers) {
                 _registry->handler_manager()->module_remove(m);
             }
+            if (!input_ptr->policies_count()) {
+                _registry->input_manager()->module_remove(input_stream_module_name);
+            }
+
             // at this point no outside reference is held to the modules so they will destruct
             throw PolicyException(fmt::format("policy [{}] creation failed (handler: {}): {}", e.name(), policy_name, e.what()));
         }
