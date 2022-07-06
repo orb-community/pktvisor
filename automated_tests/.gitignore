@@ -5,3 +5,4 @@ behave_test/
 /env_tests
 __pycache__/
 doc_generator.py
+/output
