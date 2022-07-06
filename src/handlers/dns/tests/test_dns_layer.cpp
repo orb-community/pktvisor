@@ -594,6 +594,7 @@ TEST_CASE("DNS groups", "[pcap][dns]")
         CHECK(j["top_qname2"][0]["name"] == ".test.com");
         CHECK(j["top_udp_ports"][0]["name"] == "57975");
         CHECK(j["top_udp_ports"][0]["estimate"] == 302);
+        CHECK(j["xact"]["ratio"]["quantiles_percent"]["p50"] != nullptr);
     }
 
     SECTION("disable TopQname and Dns Transactions")

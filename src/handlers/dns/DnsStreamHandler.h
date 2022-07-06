@@ -53,6 +53,7 @@ protected:
 
     Quantile<uint64_t> _dnsXactFromTimeUs;
     Quantile<uint64_t> _dnsXactToTimeUs;
+    Quantile<uint64_t> _dnsXactRatio;
 
     Cardinality _dns_qnameCard;
 
@@ -120,6 +121,7 @@ public:
     DnsMetricsBucket()
         : _dnsXactFromTimeUs("dns", {"xact", "out", "quantiles_us"}, "Quantiles of transaction timing (query/reply pairs) when host is client, in microseconds")
         , _dnsXactToTimeUs("dns", {"xact", "in", "quantiles_us"}, "Quantiles of transaction timing (query/reply pairs) when host is server, in microseconds")
+        , _dnsXactRatio("dns", {"xact", "ratio", "quantiles_percent"}, "Quantiles of transaction ratio (query/reply pairs) in percentage")
         , _dns_qnameCard("dns", {"cardinality", "qname"}, "Cardinality of unique QNAMES, both ingress and egress")
         , _dns_topGeoLocECS("dns", "geo_loc", {"top_geoLoc_ecs"}, "Top GeoIP ECS locations")
         , _dns_topASNECS("dns", "asn", {"top_asn_ecs"}, "Top ASNs by ECS")

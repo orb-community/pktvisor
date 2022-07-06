@@ -398,6 +398,7 @@ void DnsMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
 
         _dnsXactFromTimeUs.merge(other._dnsXactFromTimeUs);
         _dnsXactToTimeUs.merge(other._dnsXactToTimeUs);
+        _dnsXactRatio.merge(other._dnsXactRatio);
         _dns_slowXactIn.merge(other._dns_slowXactIn);
         _dns_slowXactOut.merge(other._dns_slowXactOut);
     }
@@ -469,6 +470,7 @@ void DnsMetricsBucket::to_json(json &j) const
 
         _dnsXactFromTimeUs.to_json(j);
         _dnsXactToTimeUs.to_json(j);
+        _dnsXactRatio.to_json(j);
 
         _counters.xacts_out.to_json(j);
         _dns_slowXactOut.to_json(j);
@@ -773,6 +775,11 @@ void DnsMetricsBucket::new_dns_transaction(bool deep, float to90th, float from90
     }
 
     if (deep) {
+        size_t resp_size = dns.getDataLen();
+        if (resp_size) {
+            _dnsXactRatio.update((100 * xact.querySize) / resp_size);
+        }
+
         auto query = dns.getFirstQuery();
         if (query) {
             auto name = query->getName();
@@ -827,6 +834,7 @@ void DnsMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap ad
 
         _dnsXactFromTimeUs.to_prometheus(out, add_labels);
         _dnsXactToTimeUs.to_prometheus(out, add_labels);
+        _dnsXactRatio.to_prometheus(out, add_labels);
 
         _counters.xacts_out.to_prometheus(out, add_labels);
         _dns_slowXactOut.to_prometheus(out, add_labels);
@@ -887,7 +895,7 @@ void DnsMetricsManager::process_dns_layer(DnsLayer &payload, PacketDirection dir
                 live_bucket()->new_dns_transaction(_deep_sampling_now, _to90th, _from90th, payload, dir, xact.second);
             }
         } else {
-            _qr_pair_manager.start_transaction(flowkey, payload.getDnsHeader()->transactionID, stamp);
+            _qr_pair_manager.start_transaction(flowkey, payload.getDnsHeader()->transactionID, stamp, payload.getDataLen());
         }
     }
 }
