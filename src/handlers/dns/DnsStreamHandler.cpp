@@ -16,9 +16,9 @@
 #include <IPv6Layer.h>
 #pragma GCC diagnostic pop
 #include "DnsAdditionalRecord.h"
+#include "PublicSuffixList.h"
 #include <arpa/inet.h>
 #include <sstream>
-
 namespace visor::handler::dns {
 
 thread_local DnsStreamHandler::DnsCacheData DnsStreamHandler::_cached_dns_layer;
@@ -111,6 +111,10 @@ void DnsStreamHandler::start()
             throw ConfigException(fmt::format("DnsStreamHandler: dnstap_msg_type contained an invalid/unsupported type. Valid types: {}", fmt::join(valid_types, ", ")));
         }
     }
+    // Setup Configs
+    if (config_exists("public_suffix_list") && config_get<bool>("public_suffix_list")) {
+        _c_enabled.set(Configs::PublicSuffixList);
+    }
 
     if (config_exists("recorded_stream")) {
         _metrics->set_recorded_stream();
@@ -186,7 +190,7 @@ void DnsStreamHandler::process_udp_packet_cb(pcpp::Packet &payload, PacketDirect
             _cached_dns_layer.dnsLayer = std::make_unique<DnsLayer>(udpLayer, &payload);
         }
         auto dnsLayer = _cached_dns_layer.dnsLayer.get();
-        if (!_filtering(*dnsLayer, dir, l3, pcpp::UDP, metric_port, stamp)) {
+        if (!_filtering(*dnsLayer, dir, l3, pcpp::UDP, metric_port, stamp) && _configs(*dnsLayer)) {
             _metrics->process_dns_layer(*dnsLayer, dir, l3, pcpp::UDP, flowkey, metric_port, _static_suffix_size, stamp);
             _static_suffix_size = 0;
             // signal for chained stream handlers, if we have any
@@ -271,7 +275,7 @@ void DnsStreamHandler::tcp_message_ready_cb(int8_t side, const pcpp::TcpStreamDa
         // instead using the packet meta data we pass in
         pcpp::Packet dummy_packet;
         DnsLayer dnsLayer(data.get(), size, nullptr, &dummy_packet);
-        if (!_filtering(dnsLayer, dir, l3Type, pcpp::UDP, port, stamp)) {
+        if (!_filtering(dnsLayer, dir, l3Type, pcpp::UDP, port, stamp) && _configs(dnsLayer)) {
             _metrics->process_dns_layer(dnsLayer, dir, l3Type, pcpp::TCP, flowKey, port, _static_suffix_size, stamp);
             _static_suffix_size = 0;
         }
@@ -330,11 +334,7 @@ void DnsStreamHandler::info_json(json &j) const
     common_info_json(j);
     j[schema_key()]["xact"]["open"] = _metrics->num_open_transactions();
 }
-static inline bool endsWith(std::string_view str, std::string_view suffix)
-{
-    return str.size() >= suffix.size() && 0 == str.compare(str.size() - suffix.size(), suffix.size(), suffix);
-}
-bool DnsStreamHandler::_filtering(DnsLayer &payload, [[maybe_unused]] PacketDirection dir, [[maybe_unused]] pcpp::ProtocolType l3, [[maybe_unused]] pcpp::ProtocolType l4, [[maybe_unused]] uint16_t port, timespec stamp)
+inline bool DnsStreamHandler::_filtering(DnsLayer &payload, [[maybe_unused]] PacketDirection dir, [[maybe_unused]] pcpp::ProtocolType l3, [[maybe_unused]] pcpp::ProtocolType l4, [[maybe_unused]] uint16_t port, timespec stamp)
 {
     if (_f_enabled[Filters::ExcludingRCode] && payload.getDnsHeader()->responseCode == _f_rcode) {
         goto will_filter;
@@ -351,7 +351,7 @@ bool DnsStreamHandler::_filtering(DnsLayer &payload, [[maybe_unused]] PacketDire
         std::string_view qname_ci = payload.getFirstQuery()->getNameLower();
         for (const auto &fqn : _f_qnames) {
             // if it matched, we know we are not filtering
-            if (endsWith(qname_ci, fqn)) {
+            if (ends_with(qname_ci, fqn)) {
                 _static_suffix_size = fqn.size();
                 goto will_not_filter;
             }
@@ -365,7 +365,15 @@ will_filter:
     _metrics->process_filtered(stamp);
     return true;
 }
+inline bool DnsStreamHandler::_configs(DnsLayer &payload)
+{
+    // should only work if OnlyQNameSuffix is not enabled
+    if (_c_enabled[Configs::PublicSuffixList] && !_f_enabled[Filters::OnlyQNameSuffix] && payload.parseResources(true) && payload.getFirstQuery() != nullptr) {
+        _static_suffix_size = match_public_suffix(payload.getFirstQuery()->getNameLower());
+    }
 
+    return true;
+}
 void DnsMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
 {
     // static because caller guarantees only our own bucket type

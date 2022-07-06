@@ -332,6 +332,11 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
         FiltersMAX
     };
     std::bitset<Filters::FiltersMAX> _f_enabled;
+    enum Configs {
+        PublicSuffixList,
+        ConfigsMAX
+    };
+    std::bitset<Configs::ConfigsMAX> _c_enabled;
     uint16_t _f_rcode{0};
     uint64_t _f_answer_count{0};
     std::vector<std::string> _f_qnames;
@@ -346,6 +351,7 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
         {"top_qnames", group::DnsMetrics::TopQnames}};
 
     bool _filtering(DnsLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint16_t port, timespec stamp);
+    bool _configs(DnsLayer &payload);
 
 public:
     DnsStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config, StreamHandler *handler = nullptr);

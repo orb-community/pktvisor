@@ -6,6 +6,7 @@ from datetime import datetime
 from hamcrest import *
 import socket
 import requests
+import multiprocessing
 
 
 def random_string(k=10):
@@ -80,29 +81,37 @@ def threading_wait_until(func):
     return wait_event
 
 
-def check_port_is_available(availability=True):
-    """
+def check_port_is_available(containers_id, available=True, time_to_wait=5):
 
-    :param (str) availability: Status of the port on which pktvisor must try to run. Default: available.
+    """
+    :param (dict) containers_id: dictionary in which the keys are the ids of the containers and the values are the ports
+    on which the containers are running
+    :param (bool) available: Status of the port on which agent must try to run. Default: available.
+    :param (int) time_to_wait: seconds that threading must wait after run the agent
     :return: (int) port number
     """
-    assert_that(availability, any_of(equal_to(True), equal_to(False)), "Unexpected value for availability")
-    available_port = None
-    port_options = range(10853, 10900)
-    for port in port_options:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        result = sock.connect_ex(('127.0.0.1', port))
-        sock.close()
-        if result == 0:
-            available_port = port
-            if availability is True:
-                continue
-            else:
+
+    assert_that(available, any_of(equal_to(True), equal_to(False)), "Unexpected value for 'available' parameter")
+    process = multiprocessing.current_process()
+    if process.name != "MainProcess":
+        process_number = int(format(int(process.name.split("-")[-1]), "e").split(".")[0])
+        threading.Event().wait(process_number)
+    if not available:
+        unavailable_port = list(containers_id.values())[-1]
+        return unavailable_port
+    else:
+        available_port = None
+        retries = 0
+        while available_port is None and retries < 10:
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.bind(('', 0))
+            addr = s.getsockname()
+            s.close()
+            retries += 1
+            if addr[1] not in list(containers_id.values()):
+                available_port = addr[1]
                 return available_port
-        else:
-            available_port = port
-            break
-    assert_that(available_port, is_not(equal_to(None)), "No available ports to bind")
+    assert_that(available_port, is_not(None), "Unable to find an available port to run orb agent")
     return available_port
 
 
