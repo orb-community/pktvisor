@@ -11,6 +11,8 @@
 #include <PcapLiveDeviceList.h>
 #include <TcpReassembly.h>
 #include <UdpLayer.h>
+#include <algorithm>
+#include <spdlog/spdlog.h>
 #pragma GCC diagnostic pop
 #include "VisorLRUList.h"
 #include "utils.h"
@@ -106,17 +108,18 @@ public:
 class PcapInputEventProxy : public visor::InputEventProxy
 {
     typedef std::function<void(pcpp::Packet &, PacketDirection, pcpp::ProtocolType, pcpp::ProtocolType, timespec)> UdpSignal;
-    bool _any_match;
     std::string _metadata;
-    std::map<std::string, std::string> _registered_matchers;
+    std::vector<std::string> _registered_matchers;
     std::map<std::string, std::vector<UdpSignal>> predicate_udp_signals;
     mutable std::shared_mutex _pcap_proxy_mutex;
+    std::shared_ptr<spdlog::logger> _logger;
 
 public:
     PcapInputEventProxy(const std::string &name, const Configurable &filter)
         : InputEventProxy(name, filter)
-        , _any_match(false)
     {
+        _logger = spdlog::get("visor");
+        assert(_logger);
     }
 
     ~PcapInputEventProxy() = default;
@@ -135,14 +138,14 @@ public:
     {
         udp_signal(payload, dir, l3, flowkey, stamp);
 
-        if (_any_match) {
+        if (!_metadata.empty()) {
             std::shared_lock lock(_pcap_proxy_mutex);
             if (const auto it = predicate_udp_signals.find(_metadata); it != predicate_udp_signals.end()) {
                 for (auto signal : it->second) {
                     signal(payload, dir, l3, flowkey, stamp);
                 }
             }
-            _any_match = false;
+            _metadata.clear();
         }
     }
     void tcp_message_ready_cb(int8_t side, const pcpp::TcpStreamData &tcpData)
@@ -176,23 +179,22 @@ public:
         pcap_stats_signal(stats);
     }
 
-    void register_matcher(const std::string &key, const std::string &schema)
+    void register_matcher(const std::string &key)
     {
         std::unique_lock lock(_pcap_proxy_mutex);
-        if (_registered_matchers.count(key) != 0) {
+        if (std::any_of(_registered_matchers.begin(), _registered_matchers.end(), [key](std::string val) { return key == val; })) {
             throw PcapException(fmt::format("matcher with key [{}] is already registered", key));
         }
-        _registered_matchers[key] = schema;
+        _registered_matchers.push_back(key);
     }
 
-    void register_udp_predicate_signal(const std::string &schema, const std::string &key, const std::string &value, UdpSignal callback)
+    void register_udp_predicate_signal(const std::string &key, const std::string &value, UdpSignal callback)
     {
         std::unique_lock lock(_pcap_proxy_mutex);
-        if (const auto it = _registered_matchers.find(key); it == _registered_matchers.end()) {
-            throw PcapException(fmt::format("there is no matcher registered with key [{}]", key));
-        } else if (it->second != schema) {
-            throw PcapException(fmt::format("matcher schema [{}] does not match predicate schema [{}], they must be the same.", it->second, schema));
+        if (!std::any_of(_registered_matchers.begin(), _registered_matchers.end(), [key](std::string val) { return key == val; })) {
+            _logger->warn(fmt::format("there is no matcher registered with key [{}]", key));
         }
+
         auto hash = key + value;
         predicate_udp_signals[hash].push_back(callback);
     }
@@ -200,7 +202,6 @@ public:
     void send_metadata(const std::string &key, const std::string &value)
     {
         _metadata = key + value;
-        _any_match = true;
     }
 
     // handler functionality
@@ -216,5 +217,4 @@ public:
     mutable sigslot::signal<pcpp::Packet &, PacketDirection, pcpp::ProtocolType, timespec> tcp_reassembly_error_signal;
     mutable sigslot::signal<const pcpp::IPcapDevice::PcapStats &> pcap_stats_signal;
 };
-
 }
