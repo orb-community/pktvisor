@@ -504,7 +504,6 @@ TEST_CASE("DNS Configs: public_suffix_list", "[pcap][dns]")
     CHECK(j["top_qname3"][0]["name"] == "sirius.mwbsys.com");
 }
 
-
 TEST_CASE("Parse DNS with ECS data", "[pcap][dns][ecs]")
 {
     CHECK_NOTHROW(visor::geo::GeoIP().enable("tests/fixtures/GeoIP2-City-Test.mmdb"));

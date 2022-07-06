@@ -190,7 +190,7 @@ void DnsStreamHandler::process_udp_packet_cb(pcpp::Packet &payload, PacketDirect
             _cached_dns_layer.dnsLayer = std::make_unique<DnsLayer>(udpLayer, &payload);
         }
         auto dnsLayer = _cached_dns_layer.dnsLayer.get();
-        if (!_filtering(*dnsLayer, dir, l3, pcpp::UDP, metric_port, stamp) &&  _configs(*dnsLayer)) {
+        if (!_filtering(*dnsLayer, dir, l3, pcpp::UDP, metric_port, stamp) && _configs(*dnsLayer)) {
             _metrics->process_dns_layer(*dnsLayer, dir, l3, pcpp::UDP, flowkey, metric_port, _static_suffix_size, stamp);
             _static_suffix_size = 0;
             // signal for chained stream handlers, if we have any
@@ -368,7 +368,7 @@ will_filter:
 inline bool DnsStreamHandler::_configs(DnsLayer &payload)
 {
     // should only work if OnlyQNameSuffix is not enabled
-    if (!_f_enabled[Filters::OnlyQNameSuffix] && _c_enabled[Configs::PublicSuffixList] && payload.parseResources(true) && payload.getFirstQuery() != nullptr) {
+    if (_c_enabled[Configs::PublicSuffixList] && !_f_enabled[Filters::OnlyQNameSuffix] && payload.parseResources(true) && payload.getFirstQuery() != nullptr) {
         _static_suffix_size = match_public_suffix(payload.getFirstQuery()->getNameLower());
     }
 
