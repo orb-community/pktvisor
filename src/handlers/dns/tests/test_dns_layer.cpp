@@ -467,7 +467,7 @@ TEST_CASE("DNS Filters: answer_count", "[pcap][dns]")
     CHECK(j["top_qname3"][0]["name"] == "sirius.mwbsys.com");
 }
 
-TEST_CASE("DNS Filters: public_suffix_list", "[pcap][dns]")
+TEST_CASE("DNS Configs: public_suffix_list", "[pcap][dns]")
 {
 
     PcapInputStream stream{"pcap-test"};
