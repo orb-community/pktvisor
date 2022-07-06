@@ -5,6 +5,7 @@ from yaml.loader import SafeLoader
 import random
 from behave import step
 from utils import make_get_request, random_string, threading_wait_until
+import re
 
 
 @step("{amount_of_policies} policies {status_condition} be running")
@@ -41,13 +42,24 @@ def try_to_create_new_policy(context, handler):
     create_new_policy(context, handler, pkt_port=context.pkt_port, expected_status_code=404)
 
 
-@step("delete {amount_of_policies} policies")
-def remove_policies(context, amount_of_policies):
+@step("delete {amount_of_policies} {policy_type} policies")
+def remove_policies(context, amount_of_policies, policy_type):
+    resources = list()
+    non_resources = list()
+    assert_that(policy_type, any_of(equal_to("resource"), equal_to("non-resource")), "Unexpected type of policy")
     names_of_all_policies = make_get_request('policies', context.pkt_port).json().keys()
-    policies_to_remove = random.sample(names_of_all_policies, int(amount_of_policies))
+    for name in names_of_all_policies:
+        matching = re.match(r'^.+\-[a-zA-Z0-9]{16}\-resources$', name)
+        if matching:
+            resources.append(matching.group())
+        else:
+            assert_that(matching, equal_to(None))
+            non_resources.append(name)
+    policies_by_type = {"resource": resources, "non-resource": non_resources}
+    policies_to_remove = random.sample(policies_by_type[policy_type], int(amount_of_policies))
     for policy in policies_to_remove:
         remove_policy(policy, context.pkt_port)
-        response = get_policy(policy, 10853, 404)
+        response = get_policy(policy, context.pkt_port, 404)
         assert_that(response.json(), has_key('error'), "Unexpected message for non existing policy")
         assert_that(response.json(), has_value('policy does not exists'), "Unexpected message for non existing policy")
 
@@ -59,7 +71,7 @@ def try_to_delete_policies(context):
     context.response = remove_policy(sample_policy, context.pkt_port, 404)
 
 
-def assert_policy_creation(yaml_data, pkt_port=10853, expected_status_code=200): #todo arrumar status code
+def assert_policy_creation(yaml_data, pkt_port=10853, expected_status_code=200):
     """
 
     :param yaml_data: policy configurations
@@ -85,7 +97,7 @@ def get_policy(policy_name, pkt_port=10853, expected_status_code=200):
     return make_get_request(endpoint, pkt_port, expected_status_code)
 
 
-def remove_policy(policy_name, pkt_port=10853, expected_status_code=200): #todo arrumar status code
+def remove_policy(policy_name, pkt_port=10853, expected_status_code=200):
 
     """
     :param (str) policy_name: name of the policy to be fetched

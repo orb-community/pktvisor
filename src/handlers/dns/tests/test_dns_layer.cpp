@@ -467,6 +467,43 @@ TEST_CASE("DNS Filters: answer_count", "[pcap][dns]")
     CHECK(j["top_qname3"][0]["name"] == "sirius.mwbsys.com");
 }
 
+TEST_CASE("DNS Configs: public_suffix_list", "[pcap][dns]")
+{
+
+    PcapInputStream stream{"pcap-test"};
+    stream.config_set("pcap_file", "tests/fixtures/dns_udp_mixed_rcode.pcap");
+    stream.config_set("bpf", "");
+    stream.config_set("host_spec", "192.168.0.0/24");
+    stream.parse_host_spec();
+
+    visor::Config c;
+    auto stream_proxy = stream.add_event_proxy(c);
+    c.config_set<uint64_t>("num_periods", 1);
+    DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
+
+    // notice, case insensitive
+    dns_handler.config_set<bool>("public_suffix_list", true);
+    dns_handler.start();
+    stream.start();
+    stream.stop();
+    dns_handler.stop();
+
+    auto counters = dns_handler.metrics()->bucket(0)->counters();
+
+    CHECK(counters.UDP.value() == 24);
+    CHECK(counters.NOERROR.value() == 10);
+    CHECK(counters.SRVFAIL.value() == 0);
+    CHECK(counters.REFUSED.value() == 1);
+    CHECK(counters.NX.value() == 1);
+    CHECK(counters.filtered.value() == 0);
+
+    nlohmann::json j;
+    dns_handler.metrics()->bucket(0)->to_json(j);
+
+    CHECK(j["top_qname2"][0]["name"] == ".mwbsys.com");
+    CHECK(j["top_qname3"][0]["name"] == "sirius.mwbsys.com");
+}
+
 TEST_CASE("Parse DNS with ECS data", "[pcap][dns][ecs]")
 {
     CHECK_NOTHROW(visor::geo::GeoIP().enable("tests/fixtures/GeoIP2-City-Test.mmdb"));
