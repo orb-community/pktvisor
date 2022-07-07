@@ -73,6 +73,7 @@ std::string MaxmindDB::getGeoLocString(const struct sockaddr_in *sa4) const
     std::string ip_address;
     if (_lru_cache) {
         ip_address = fmt::format_int(sa4->sin_addr.s_addr).str();
+        std::shared_lock lock(_cache_mutex);
         if (auto geoloc = _lru_cache->getValue(ip_address); geoloc.has_value()) {
             return geoloc.value();
         }
@@ -83,6 +84,7 @@ std::string MaxmindDB::getGeoLocString(const struct sockaddr_in *sa4) const
     MMDB_lookup_result_s lookup = MMDB_lookup_sockaddr(&_mmdb, reinterpret_cast<const struct sockaddr *>(sa4), &mmdb_error);
     if (mmdb_error != MMDB_SUCCESS || !lookup.found_entry) {
         if (_lru_cache) {
+            std::unique_lock lock(_cache_mutex);
             _lru_cache->put(ip_address, "Unknown");
         }
         return "Unknown";
@@ -90,6 +92,7 @@ std::string MaxmindDB::getGeoLocString(const struct sockaddr_in *sa4) const
 
     if (_lru_cache) {
         auto geoloc = _getGeoLocString(&lookup);
+        std::unique_lock lock(_cache_mutex);
         _lru_cache->put(ip_address, geoloc);
         return geoloc;
     }
@@ -107,6 +110,7 @@ std::string MaxmindDB::getGeoLocString(const struct sockaddr_in6 *sa6) const
     std::string ip_address;
     if (_lru_cache) {
         ip_address = fmt::format("{}", sa6->sin6_addr.s6_addr);
+        std::shared_lock lock(_cache_mutex);
         if (auto geoloc = _lru_cache->getValue(ip_address); geoloc.has_value()) {
             return geoloc.value();
         }
@@ -117,6 +121,7 @@ std::string MaxmindDB::getGeoLocString(const struct sockaddr_in6 *sa6) const
     MMDB_lookup_result_s lookup = MMDB_lookup_sockaddr(&_mmdb, reinterpret_cast<const struct sockaddr *>(sa6), &mmdb_error);
     if (mmdb_error != MMDB_SUCCESS || !lookup.found_entry) {
         if (_lru_cache) {
+            std::unique_lock lock(_cache_mutex);
             _lru_cache->put(ip_address, "Unknown");
         }
         return "Unknown";
@@ -124,6 +129,7 @@ std::string MaxmindDB::getGeoLocString(const struct sockaddr_in6 *sa6) const
 
     if (_lru_cache) {
         auto geoloc = _getGeoLocString(&lookup);
+        std::unique_lock lock(_cache_mutex);
         _lru_cache->put(ip_address, geoloc);
         return geoloc;
     }
@@ -139,6 +145,7 @@ std::string MaxmindDB::getGeoLocString(const char *ip_address) const
     }
 
     if (_lru_cache) {
+        std::shared_lock lock(_cache_mutex);
         if (auto geoloc = _lru_cache->getValue(ip_address); geoloc.has_value()) {
             return geoloc.value();
         }
@@ -149,6 +156,7 @@ std::string MaxmindDB::getGeoLocString(const char *ip_address) const
     MMDB_lookup_result_s lookup = MMDB_lookup_string(&_mmdb, ip_address, &gai_error, &mmdb_error);
     if (0 != gai_error || MMDB_SUCCESS != mmdb_error || !lookup.found_entry) {
         if (_lru_cache) {
+            std::unique_lock lock(_cache_mutex);
             _lru_cache->put(ip_address, "Unknown");
         }
         return "Unknown";
@@ -156,6 +164,7 @@ std::string MaxmindDB::getGeoLocString(const char *ip_address) const
 
     if (_lru_cache) {
         auto geoloc = _getGeoLocString(&lookup);
+        std::unique_lock lock(_cache_mutex);
         _lru_cache->put(ip_address, geoloc);
         return geoloc;
     }
@@ -240,6 +249,7 @@ std::string MaxmindDB::getASNString(const struct sockaddr_in *sa4) const
     std::string ip_address;
     if (_lru_cache) {
         ip_address = fmt::format_int(sa4->sin_addr.s_addr).str();
+        std::shared_lock lock(_cache_mutex);
         if (auto asn = _lru_cache->getValue(ip_address); asn.has_value()) {
             return asn.value();
         }
@@ -250,6 +260,7 @@ std::string MaxmindDB::getASNString(const struct sockaddr_in *sa4) const
     MMDB_lookup_result_s lookup = MMDB_lookup_sockaddr(&_mmdb, reinterpret_cast<const struct sockaddr *>(sa4), &mmdb_error);
     if (mmdb_error != MMDB_SUCCESS || !lookup.found_entry) {
         if (_lru_cache) {
+            std::unique_lock lock(_cache_mutex);
             _lru_cache->put(ip_address, "Unknown");
         }
         return "Unknown";
@@ -257,6 +268,7 @@ std::string MaxmindDB::getASNString(const struct sockaddr_in *sa4) const
 
     if (_lru_cache) {
         auto asn = _getASNString(&lookup);
+        std::unique_lock lock(_cache_mutex);
         _lru_cache->put(ip_address, asn);
         return asn;
     }
@@ -274,6 +286,7 @@ std::string MaxmindDB::getASNString(const struct sockaddr_in6 *sa6) const
     std::string ip_address;
     if (_lru_cache) {
         ip_address = fmt::format("{}", sa6->sin6_addr.s6_addr);
+        std::shared_lock lock(_cache_mutex);
         if (auto asn = _lru_cache->getValue(ip_address); asn.has_value()) {
             return asn.value();
         }
@@ -284,6 +297,7 @@ std::string MaxmindDB::getASNString(const struct sockaddr_in6 *sa6) const
     MMDB_lookup_result_s lookup = MMDB_lookup_sockaddr(&_mmdb, reinterpret_cast<const struct sockaddr *>(sa6), &mmdb_error);
     if (mmdb_error != MMDB_SUCCESS || !lookup.found_entry) {
         if (_lru_cache) {
+            std::unique_lock lock(_cache_mutex);
             _lru_cache->put(ip_address, "Unknown");
         }
         return "Unknown";
@@ -291,6 +305,7 @@ std::string MaxmindDB::getASNString(const struct sockaddr_in6 *sa6) const
 
     if (_lru_cache) {
         auto asn = _getASNString(&lookup);
+        std::unique_lock lock(_cache_mutex);
         _lru_cache->put(ip_address, asn);
         return asn;
     }
@@ -306,6 +321,7 @@ std::string MaxmindDB::getASNString(const char *ip_address) const
     }
 
     if (_lru_cache) {
+        std::shared_lock lock(_cache_mutex);
         if (auto asn = _lru_cache->getValue(ip_address); asn.has_value()) {
             return asn.value();
         }
@@ -316,6 +332,7 @@ std::string MaxmindDB::getASNString(const char *ip_address) const
     MMDB_lookup_result_s lookup = MMDB_lookup_string(&_mmdb, ip_address, &gai_error, &mmdb_error);
     if (0 != gai_error || MMDB_SUCCESS != mmdb_error || !lookup.found_entry) {
         if (_lru_cache) {
+            std::unique_lock lock(_cache_mutex);
             _lru_cache->put(ip_address, "Unknown");
         }
         return "Unknown";
@@ -323,6 +340,7 @@ std::string MaxmindDB::getASNString(const char *ip_address) const
 
     if (_lru_cache) {
         auto asn = _getASNString(&lookup);
+        std::unique_lock lock(_cache_mutex);
         _lru_cache->put(ip_address, asn);
         return asn;
     }
