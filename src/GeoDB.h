@@ -9,6 +9,7 @@
 #include <maxminddb.h>
 #pragma GCC diagnostic pop
 #include <memory>
+#include <mutex>
 #include <shared_mutex>
 #include <string>
 
