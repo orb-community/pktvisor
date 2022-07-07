@@ -73,7 +73,7 @@ public:
             ListIterator lruIter = m_CacheItemsList.end();
             lruIter--;
 
-            if (deletedValue != NULL)
+            if (deletedValue != nullptr)
 #if __cplusplus > 199711L || _MSC_VER >= 1800
                 *deletedValue = std::move(*lruIter);
 #else
