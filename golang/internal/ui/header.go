@@ -6,9 +6,10 @@ package ui
 
 import (
 	"fmt"
-	"github.com/jroimartin/gocui"
 	"pktvisor/pkg/client"
 	"time"
+
+	"github.com/jroimartin/gocui"
 )
 
 func (u *ui) updateHeader(v *gocui.View, window5m *client.StatSnapshot) {
@@ -118,12 +119,12 @@ func (u *ui) updateHeader(v *gocui.View, window5m *client.StatSnapshot) {
 	startTime := time.Unix(window5m.Packets.Period.StartTS, 0)
 	endTime := time.Unix(window5m.Packets.Period.StartTS+window5m.Packets.Period.Length, 0)
 	_, _ = fmt.Fprintf(v, "DNS NOERROR %d (%3.1f%%) | SRVFAIL %d (%3.1f%%) | NXDOMAIN %d (%3.1f%%) | REFUSED %d (%3.1f%%) | Time Window %v to %v, Period %ds\n",
-		dnsc.NoError,
-		(float64(dnsc.NoError)/float64(dnsc.Replies))*100,
-		dnsc.SrvFail,
-		(float64(dnsc.SrvFail)/float64(dnsc.Replies))*100,
-		dnsc.NxDomain,
-		(float64(dnsc.NxDomain)/float64(dnsc.Replies))*100,
+		dnsc.Noerror,
+		(float64(dnsc.Noerror)/float64(dnsc.Replies))*100,
+		dnsc.Srvfail,
+		(float64(dnsc.Srvfail)/float64(dnsc.Replies))*100,
+		dnsc.Nxdomain,
+		(float64(dnsc.Nxdomain)/float64(dnsc.Replies))*100,
 		dnsc.Refused,
 		(float64(dnsc.Refused)/float64(dnsc.Replies))*100,
 		startTime.Format(time.Kitchen),
