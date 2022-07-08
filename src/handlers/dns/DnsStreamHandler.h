@@ -372,6 +372,9 @@ public:
     void stop() override;
     void info_json(json &j) const override;
 
+    mutable sigslot::signal<timespec> start_tstamp_signal;
+    mutable sigslot::signal<timespec> end_tstamp_signal;
+    mutable sigslot::signal<const timespec> heartbeat_signal;
     mutable sigslot::signal<pcpp::Packet &, PacketDirection, pcpp::ProtocolType, uint32_t, timespec> udp_signal;
 };
 
