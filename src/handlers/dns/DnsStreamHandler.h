@@ -121,7 +121,7 @@ public:
     DnsMetricsBucket()
         : _dnsXactFromTimeUs("dns", {"xact", "out", "quantiles_us"}, "Quantiles of transaction timing (query/reply pairs) when host is client, in microseconds")
         , _dnsXactToTimeUs("dns", {"xact", "in", "quantiles_us"}, "Quantiles of transaction timing (query/reply pairs) when host is server, in microseconds")
-        , _dnsXactRatio("dns", {"xact", "ratio", "quantiles"}, "Quantiles of transaction ratio (reply/query)")
+        , _dnsXactRatio("dns", {"xact", "ratio", "quantiles"}, "Quantiles of ratio of packet sizes in a DNS transaction (reply/query)")
         , _dns_qnameCard("dns", {"cardinality", "qname"}, "Cardinality of unique QNAMES, both ingress and egress")
         , _dns_topGeoLocECS("dns", "geo_loc", {"top_geoLoc_ecs"}, "Top GeoIP ECS locations")
         , _dns_topASNECS("dns", "asn", {"top_asn_ecs"}, "Top ASNs by ECS")
