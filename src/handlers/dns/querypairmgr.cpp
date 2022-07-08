@@ -19,9 +19,9 @@ static inline void timespec_diff(struct timespec *a, struct timespec *b,
 
 namespace visor::handler::dns {
 
-void QueryResponsePairMgr::start_transaction(uint32_t flowKey, uint16_t queryID, timespec stamp)
+void QueryResponsePairMgr::start_transaction(uint32_t flowKey, uint16_t queryID, timespec stamp, size_t querySize)
 {
-    _dns_transactions[DnsXactID(flowKey, queryID)] = {stamp, {0, 0}};
+    _dns_transactions[DnsXactID(flowKey, queryID)] = {stamp, {0, 0}, querySize};
 }
 
 std::pair<bool, DnsTransaction> QueryResponsePairMgr::maybe_end_transaction(uint32_t flowKey, uint16_t queryID, timespec stamp)
@@ -33,7 +33,7 @@ std::pair<bool, DnsTransaction> QueryResponsePairMgr::maybe_end_transaction(uint
         _dns_transactions.erase(key);
         return std::pair<bool, DnsTransaction>(true, result);
     } else {
-        return std::pair<bool, DnsTransaction>(false, DnsTransaction{{0, 0}, {0, 0}});
+        return std::pair<bool, DnsTransaction>(false, DnsTransaction{{0, 0}, {0, 0}, 0});
     }
 }
 

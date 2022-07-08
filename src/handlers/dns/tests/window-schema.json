@@ -7,184 +7,193 @@
   "default": {},
   "examples": [
     {
-    "dns": {
-      "cardinality": {
-        "qname": 2048
-      },
-      "period": {
-        "length": 31,
-        "start_ts": 1614874231
-      },
-      "top_asn_ecs": [],
-      "top_geoLoc_ecs": [],
-      "top_query_ecs": [],
-      "top_nodata": [],
-      "top_nxdomain": [],
-      "top_qname2": [
-        {
-          "estimate": 5851,
-          "name": ".test.com"
-        }
-      ],
-      "top_qname3": [
-        {
-          "estimate": 8,
-          "name": ".as.test.com"
+      "dns": {
+        "cardinality": {
+          "qname": 2048
         },
-        {
-          "estimate": 8,
-          "name": ".jk.test.com"
+        "period": {
+          "length": 31,
+          "start_ts": 1614874231
         },
-        {
-          "estimate": 8,
-          "name": ".M6.test.com"
-        },
-        {
-          "estimate": 6,
-          "name": ".AG.test.com"
-        },
-        {
-          "estimate": 4,
-          "name": "Lg.test.com"
-        },
-        {
-          "estimate": 4,
-          "name": ".LDyZ.test.com"
-        },
-        {
-          "estimate": 4,
-          "name": "_GbQ8x.test.com"
-        },
-        {
-          "estimate": 4,
-          "name": "3ZI6Sv.test.com"
-        },
-        {
-          "estimate": 4,
-          "name": ".0E5QKD.test.com"
-        },
-        {
-          "estimate": 4,
-          "name": "oK5y8IB.test.com"
-        }
-      ],
-      "top_qtype": [
-        {
-          "estimate": 1476,
-          "name": "AAAA"
-        },
-        {
-          "estimate": 825,
-          "name": "CNAME"
-        },
-        {
-          "estimate": 794,
-          "name": "SOA"
-        },
-        {
-          "estimate": 757,
-          "name": "MX"
-        },
-        {
-          "estimate": 717,
-          "name": "A"
-        },
-        {
-          "estimate": 662,
-          "name": "NS"
-        },
-        {
-          "estimate": 620,
-          "name": "TXT"
-        }
-      ],
-      "top_rcode": [
-        {
-          "estimate": 2921,
-          "name": "NOERROR"
-        }
-      ],
-      "top_refused": [],
-      "top_srvfail": [],
-      "top_udp_ports": [
-        {
-          "estimate": 302,
-          "name": "57975"
-        },
-        {
-          "estimate": 298,
-          "name": "64406"
-        },
-        {
-          "estimate": 298,
-          "name": "59371"
-        },
-        {
-          "estimate": 298,
-          "name": "54916"
-        },
-        {
-          "estimate": 298,
-          "name": "63354"
-        },
-        {
-          "estimate": 298,
-          "name": "56323"
-        },
-        {
-          "estimate": 298,
-          "name": "64767"
-        },
-        {
-          "estimate": 298,
-          "name": "49867"
-        },
-        {
-          "estimate": 298,
-          "name": "53476"
-        },
-        {
-          "estimate": 289,
-          "name": "52301"
-        }
-      ],
-      "wire_packets": {
-        "deep_samples": 5851,
-        "ipv4": 5851,
-        "ipv6": 0,
-        "nodata": 2254,
-        "noerror": 2921,
-        "nxdomain": 0,
-        "queries": 2930,
-        "refused": 0,
-        "replies": 2921,
-        "srvfail": 0,
-        "tcp": 2880,
-        "total": 5851,
-        "udp": 2971
-      },
-      "xact": {
-        "counts": {
-          "timed_out": 0,
-          "total": 2921
-        },
-        "in": {
-          "top_slow": [],
-          "total": 0
-        },
-        "out": {
-          "quantiles_us": {
-            "p50": 31582,
-            "p90": 41599,
-            "p95": 65418,
-            "p99": 325152
+        "top_asn_ecs": [],
+        "top_geoLoc_ecs": [],
+        "top_query_ecs": [],
+        "top_nodata": [],
+        "top_nxdomain": [],
+        "top_qname2": [
+          {
+            "estimate": 5851,
+            "name": ".test.com"
+          }
+        ],
+        "top_qname3": [
+          {
+            "estimate": 8,
+            "name": ".as.test.com"
           },
-          "top_slow": [],
-          "total": 2921
+          {
+            "estimate": 8,
+            "name": ".jk.test.com"
+          },
+          {
+            "estimate": 8,
+            "name": ".M6.test.com"
+          },
+          {
+            "estimate": 6,
+            "name": ".AG.test.com"
+          },
+          {
+            "estimate": 4,
+            "name": "Lg.test.com"
+          },
+          {
+            "estimate": 4,
+            "name": ".LDyZ.test.com"
+          },
+          {
+            "estimate": 4,
+            "name": "_GbQ8x.test.com"
+          },
+          {
+            "estimate": 4,
+            "name": "3ZI6Sv.test.com"
+          },
+          {
+            "estimate": 4,
+            "name": ".0E5QKD.test.com"
+          },
+          {
+            "estimate": 4,
+            "name": "oK5y8IB.test.com"
+          }
+        ],
+        "top_qtype": [
+          {
+            "estimate": 1476,
+            "name": "AAAA"
+          },
+          {
+            "estimate": 825,
+            "name": "CNAME"
+          },
+          {
+            "estimate": 794,
+            "name": "SOA"
+          },
+          {
+            "estimate": 757,
+            "name": "MX"
+          },
+          {
+            "estimate": 717,
+            "name": "A"
+          },
+          {
+            "estimate": 662,
+            "name": "NS"
+          },
+          {
+            "estimate": 620,
+            "name": "TXT"
+          }
+        ],
+        "top_rcode": [
+          {
+            "estimate": 2921,
+            "name": "NOERROR"
+          }
+        ],
+        "top_refused": [],
+        "top_qname_by_resp_size": [],
+        "top_srvfail": [],
+        "top_udp_ports": [
+          {
+            "estimate": 302,
+            "name": "57975"
+          },
+          {
+            "estimate": 298,
+            "name": "64406"
+          },
+          {
+            "estimate": 298,
+            "name": "59371"
+          },
+          {
+            "estimate": 298,
+            "name": "54916"
+          },
+          {
+            "estimate": 298,
+            "name": "63354"
+          },
+          {
+            "estimate": 298,
+            "name": "56323"
+          },
+          {
+            "estimate": 298,
+            "name": "64767"
+          },
+          {
+            "estimate": 298,
+            "name": "49867"
+          },
+          {
+            "estimate": 298,
+            "name": "53476"
+          },
+          {
+            "estimate": 289,
+            "name": "52301"
+          }
+        ],
+        "wire_packets": {
+          "deep_samples": 5851,
+          "ipv4": 5851,
+          "ipv6": 0,
+          "nodata": 2254,
+          "noerror": 2921,
+          "nxdomain": 0,
+          "queries": 2930,
+          "refused": 0,
+          "replies": 2921,
+          "srvfail": 0,
+          "tcp": 2880,
+          "total": 5851,
+          "udp": 2971
+        },
+        "xact": {
+          "counts": {
+            "timed_out": 0,
+            "total": 2921
+          },
+          "in": {
+            "top_slow": [],
+            "total": 0
+          },
+          "out": {
+            "quantiles_us": {
+              "p50": 31582,
+              "p90": 41599,
+              "p95": 65418,
+              "p99": 325152
+            },
+            "top_slow": [],
+            "total": 2921
+          },
+          "ratio": {
+            "quantiles": {
+              "p50": 0.50,
+              "p90": 0.92,
+              "p95": 1.3,
+              "p99": 1.3
+            }
+          }
         }
       }
     }
-  }
   ],
   "required": [
     "dns"
@@ -293,6 +302,7 @@
             }
           ],
           "top_refused": [],
+          "top_qname_by_resp_size": [],
           "top_srvfail": [],
           "top_udp_ports": [
             {
@@ -369,6 +379,14 @@
               },
               "top_slow": [],
               "total": 2921
+            },
+            "ratio": {
+              "quantiles": {
+                "p50": 0.50,
+                "p90": 0.92,
+                "p95": 1.3,
+                "p99": 1.3
+              }
             }
           }
         }
@@ -386,6 +404,7 @@
         "top_qtype",
         "top_rcode",
         "top_refused",
+        "top_qname_by_resp_size",
         "top_srvfail",
         "top_udp_ports",
         "wire_packets",
@@ -796,6 +815,20 @@
             "$id": "#/properties/dns/properties/top_refused/items"
           }
         },
+        "top_qname_by_resp_size": {
+          "$id": "#/properties/dns/properties/top_qname_by_resp_size",
+          "type": "array",
+          "title": "The top_qname_by_resp_size schema",
+          "description": "An explanation about the purpose of this instance.",
+          "default": [],
+          "examples": [
+            []
+          ],
+          "additionalItems": true,
+          "items": {
+            "$id": "#/properties/dns/properties/top_qname_by_resp_size/items"
+          }
+        },
         "top_srvfail": {
           "$id": "#/properties/dns/properties/top_srvfail",
           "type": "array",
@@ -1083,13 +1116,22 @@
                 },
                 "top_slow": [],
                 "total": 2921
+              },
+              "ratio": {
+                "quantiles": {
+                  "p50": 0.50,
+                  "p90": 0.92,
+                  "p95": 1.3,
+                  "p99": 1.3
+                }
               }
             }
           ],
           "required": [
             "counts",
             "in",
-            "out"
+            "out",
+            "ratio"
           ],
           "properties": {
             "counts": {
@@ -1290,9 +1332,96 @@
                 }
               },
               "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
+            },
+            "ratio": {
+              "$id": "#/properties/dns/properties/xact/properties/ratio",
+              "type": "object",
+              "title": "The ratio schema",
+              "description": "An explanation about the purpose of this instance.",
+              "default": {},
+              "examples": [
+                {
+                  "quantiles": {
+                    "p50": 0.50,
+                    "p90": 0.92,
+                    "p95": 1.3,
+                    "p99": 1.3
+                  }
+                }
+              ],
+              "required": [
+                "quantiles"
+              ],
+              "properties": {
+                "quantiles": {
+                  "$id": "#/properties/dns/properties/xact/properties/ratio/properties/quantiles",
+                  "type": "object",
+                  "title": "The quantiles schema",
+                  "description": "An explanation about the purpose of this instance.",
+                  "default": {},
+                  "examples": [
+                    {
+                      "p50": 0.50,
+                      "p90": 0.92,
+                      "p95": 1.3,
+                      "p99": 1.3
+                    }
+                  ],
+                  "required": [
+                    "p50",
+                    "p90",
+                    "p95",
+                    "p99"
+                  ],
+                  "properties": {
+                    "p50": {
+                      "$id": "#/properties/dns/properties/xact/properties/ratio/properties/quantiles/properties/p50",
+                      "type": "number",
+                      "title": "The p50 schema",
+                      "description": "An explanation about the purpose of this instance.",
+                      "default": 0,
+                      "examples": [
+                        0.50
+                      ]
+                    },
+                    "p90": {
+                      "$id": "#/properties/dns/properties/xact/properties/ratio/properties/quantiles/properties/p90",
+                      "type": "number",
+                      "title": "The p90 schema",
+                      "description": "An explanation about the purpose of this instance.",
+                      "default": 0,
+                      "examples": [
+                        0.92
+                      ]
+                    },
+                    "p95": {
+                      "$id": "#/properties/dns/properties/xact/properties/ratio/properties/quantiles/properties/p95",
+                      "type": "number",
+                      "title": "The p95 schema",
+                      "description": "An explanation about the purpose of this instance.",
+                      "default": 0,
+                      "examples": [
+                        1.3
+                      ]
+                    },
+                    "p99": {
+                      "$id": "#/properties/dns/properties/xact/properties/ratio/properties/quantiles/properties/p99",
+                      "type": "number",
+                      "title": "The p99 schema",
+                      "description": "An explanation about the purpose of this instance.",
+                      "default": 0,
+                      "examples": [
+                        1.3
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            },
+            "additionalProperties": false
+          }
         }
       },
       "additionalProperties": false
