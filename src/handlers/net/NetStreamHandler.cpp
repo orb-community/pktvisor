@@ -79,6 +79,9 @@ void NetStreamHandler::start()
         _heartbeat_connection = _dnstap_proxy->heartbeat_signal.connect(&NetStreamHandler::check_period_shift, this);
     } else if (_dns_handler) {
         _pkt_udp_connection = _dns_handler->udp_signal.connect(&NetStreamHandler::process_udp_packet_cb, this);
+        _start_tstamp_connection = _dns_handler->start_tstamp_signal.connect(&NetStreamHandler::set_start_tstamp, this);
+        _end_tstamp_connection = _dns_handler->end_tstamp_signal.connect(&NetStreamHandler::set_end_tstamp, this);
+        _heartbeat_connection = _dns_handler->heartbeat_signal.connect(&NetStreamHandler::check_period_shift, this);
     }
 
     _running = true;
