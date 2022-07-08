@@ -63,10 +63,10 @@ type DNSPayload struct {
 		DeepSamples int64 `mapstructure:"deep_samples"`
 		Total       int64 `mapstructure:"total"`
 		UDP         int64 `mapstructure:"udp"`
-		Nodata      int64 `mapstructure:"nodata"`
-		Noerror     int64 `mapstructure:"noerror"`
-		Nxdomain    int64 `mapstructure:"nxdomain"`
-		Srvfail     int64 `mapstructure:"srvfail"`
+		NoData      int64 `mapstructure:"nodata"`
+		NoError     int64 `mapstructure:"noerror"`
+		NxDomain    int64 `mapstructure:"nxdomain"`
+		SrvFail     int64 `mapstructure:"srvfail"`
 		Refused     int64 `mapstructure:"refused"`
 		Filtered    int64 `mapstructure:"filtered"`
 	} `mapstructure:"wire_packets"`
