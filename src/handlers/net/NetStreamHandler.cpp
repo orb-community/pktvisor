@@ -101,6 +101,8 @@ void NetStreamHandler::stop()
         _dnstap_connection.disconnect();
     } else if (_dns_handler) {
         _pkt_udp_connection.disconnect();
+        _start_tstamp_connection.disconnect();
+        _end_tstamp_connection.disconnect();
     }
     _heartbeat_connection.disconnect();
 
