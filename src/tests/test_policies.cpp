@@ -95,6 +95,95 @@ visor:
             type: net
 )";
 
+
+auto policies_config_tap_selector_all = R"(
+version: "1.0"
+
+visor:
+  taps:
+    anycast1:
+      input_type: mock
+      config:
+        iface: eth0
+      tags:
+        virtual: true
+        vhost: 1
+        key: value
+    anycast2:
+      input_type: mock
+      config:
+        iface: eth0
+      tags:
+        virtual: true
+        vhost: 2
+        key: value
+  policies:
+   default_view:
+     kind: collection
+     input:
+       tap_selector:
+         all:
+           virtual: true
+           vhost: 1
+           key: value
+       input_type: mock
+       config:
+         sample: value
+     handlers:
+        window_config:
+          num_periods: 5
+          deep_sample_rate: 100
+        modules:
+          default_dns:
+            type: dns
+          default_net:
+            type: net
+)";
+
+auto policies_config_tap_selector_any = R"(
+version: "1.0"
+
+visor:
+  taps:
+    anycast1:
+      input_type: mock
+      config:
+        iface: eth0
+      tags:
+        virtual: true
+        vhost: 1
+        key: value
+    anycast2:
+      input_type: mock
+      config:
+        iface: eth0
+      tags:
+        virtual: true
+        vhost: 2
+        key: value
+  policies:
+   default_view:
+     kind: collection
+     input:
+       tap_selector:
+         any:
+           virtual: true
+           vhost: 1
+           key: value
+       input_type: mock
+       config:
+         sample: value
+     handlers:
+        window_config:
+          num_periods: 5
+          deep_sample_rate: 100
+        modules:
+          default_dns:
+            type: dns
+          default_net:
+            type: net
+)";
+
 auto policies_config_same_input = R"(
 version: "1.0"
 
@@ -452,6 +541,104 @@ visor:
             type: net
 )";
 
+auto policies_config_tap_selector_bad1 = R"(
+version: "1.0"
+
+visor:
+  taps:
+    anycast1:
+      input_type: mock
+      config:
+        iface: eth0
+      tags:
+        virtual: true
+        vhost: "1"
+        key: value
+    anycast2:
+      input_type: mock
+      config:
+        iface: eth0
+      tags:
+        virtual: true
+        vhost: "2"
+        key: value
+  policies:
+   default_view:
+     kind: collection
+     input:
+       tap_selector:
+         all:
+           virtual: true
+           vhost: "1"
+           non_existent_key: value
+       input_type: mock
+)";
+
+auto policies_config_tap_selector_bad2 = R"(
+version: "1.0"
+
+visor:
+  taps:
+    anycast1:
+      input_type: mock
+      config:
+        iface: eth0
+      tags:
+        virtual: true
+        vhost: 1
+        key: value
+    anycast2:
+      input_type: mock
+      config:
+        iface: eth0
+      tags:
+        virtual: true
+        vhost: 2
+        key: value
+  policies:
+   default_view:
+     kind: collection
+     input:
+       tap_selector:
+         any:
+           virtual:
+             vhost: 1
+             non_existent_key: value
+       input_type: mock
+)";
+
+auto policies_config_tap_selector_bad3 = R"(
+version: "1.0"
+
+visor:
+  taps:
+    anycast1:
+      input_type: mock
+      config:
+        iface: eth0
+      tags:
+        virtual: true
+        vhost: 1
+        key: value
+    anycast2:
+      input_type: mock
+      config:
+        iface: eth0
+      tags:
+        virtual: true
+        vhost: 2
+        key: value
+  policies:
+   default_view:
+     kind: collection
+     input:
+       tap: anycast1
+       tap_selector:
+         any:
+           virtual: true
+       input_type: mock
+)";
+
 TEST_CASE("Policies", "[policies]")
 {
 
@@ -523,6 +710,34 @@ TEST_CASE("Policies", "[policies]")
         REQUIRE(registry.policy_manager()->module_exists("default_view"));
         auto [policy, lock] = registry.policy_manager()->module_get_locked("default_view");
         CHECK(policy->name() == "default_view");
+    }
+
+    SECTION("Good Config tap selector all")
+    {
+        CoreRegistry registry;
+        registry.start(nullptr);
+        YAML::Node config_file = YAML::Load(policies_config_tap_selector_all);
+        CHECK(config_file["visor"]["policies"]);
+        CHECK(config_file["visor"]["policies"].IsMap());
+        REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
+        REQUIRE_NOTHROW(registry.policy_manager()->load(config_file["visor"]["policies"]));
+
+        REQUIRE(registry.policy_manager()->module_exists("default_view_anycast1"));
+        REQUIRE_FALSE(registry.policy_manager()->module_exists("default_view_anycast2"));
+    }
+
+    SECTION("Good Config tap selector any")
+    {
+        CoreRegistry registry;
+        registry.start(nullptr);
+        YAML::Node config_file = YAML::Load(policies_config_tap_selector_any);
+        CHECK(config_file["visor"]["policies"]);
+        CHECK(config_file["visor"]["policies"].IsMap());
+        REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
+        REQUIRE_NOTHROW(registry.policy_manager()->load(config_file["visor"]["policies"]));
+
+        REQUIRE(registry.policy_manager()->module_exists("default_view_anycast1"));
+        REQUIRE(registry.policy_manager()->module_exists("default_view_anycast2"));
     }
 
     SECTION("Bad Config")
@@ -676,6 +891,36 @@ TEST_CASE("Policies", "[policies]")
         CoreRegistry registry;
         registry.start(nullptr);
         REQUIRE_THROWS_WITH(YAML::Load(policies_config_hseq_bad2), "yaml-cpp: error at line 23, column 11: end of map not found");
+    }
+
+    SECTION("Bad Config: invalid matching tags for tap selector")
+    {
+        CoreRegistry registry;
+        registry.start(nullptr);
+        YAML::Node config_file = YAML::Load(policies_config_tap_selector_bad1);
+
+        REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
+        REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["policies"]), "no tap match found for specified 'input.tap_selector' tags");
+    }
+
+    SECTION("Bad Config: invalid matching tags for tap selector")
+    {
+        CoreRegistry registry;
+        registry.start(nullptr);
+        YAML::Node config_file = YAML::Load(policies_config_tap_selector_bad2);
+
+        REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
+        REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["policies"]), "tag key 'virtual' must have scalar value");
+    }
+
+    SECTION("Bad Config: both tap and tap selector")
+    {
+        CoreRegistry registry;
+        registry.start(nullptr);
+        YAML::Node config_file = YAML::Load(policies_config_tap_selector_bad3);
+
+        REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
+        REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["policies"]), "input can have only key 'input.tap' or key 'input.tap_selector'");
     }
 
     SECTION("Roll Back")

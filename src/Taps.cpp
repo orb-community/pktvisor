@@ -51,6 +51,13 @@ void TapManager::load(const YAML::Node &tap_yaml, bool strict)
             tap_module->config_set_yaml(it->second["config"]);
         }
 
+        if (it->second["tags"]) {
+            if (!it->second["tags"].IsMap()) {
+                throw ConfigException("tap configuration is not a map");
+            }
+            tap_module->tags_set_yaml(it->second["tags"]);
+        }
+
         // will throw if it already exists. nothing else to clean up
         module_add(std::move(tap_module));
 
@@ -74,6 +81,50 @@ std::unique_ptr<InputStream> Tap::instantiate(const Configurable *config, const 
     auto module = _input_plugin->instantiate(input_name, &c, filter);
 
     return module;
+}
+
+bool Tap::tags_validate_yaml(const YAML::Node &tag_yaml, bool all)
+{
+    bool any_match = false;
+    for (YAML::const_iterator it = tag_yaml.begin(); it != tag_yaml.end(); ++it) {
+        if (!it->second.IsScalar()) {
+            throw PolicyException(fmt::format("tag key '{}' must have scalar value", it->first));
+        }
+
+        auto key = it->first.as<std::string>();
+        if (!_tags->config_exists(key)) {
+            if (all) {
+                return false;
+            } else {
+                continue;
+            }
+        }
+
+        // the yaml library doesn't discriminate between scalar types, so we have to do that ourselves
+        auto value = it->second.as<std::string>();
+        if (std::regex_match(value, std::regex("[0-9]+"))) {
+            if (_tags->config_get<uint64_t>(key) == it->second.as<uint64_t>()) {
+                any_match = true;
+            } else if (all) {
+                return false;
+            }
+
+        } else if (std::regex_match(value, std::regex("true|false", std::regex_constants::icase))) {
+            if (_tags->config_get<bool>(key) == it->second.as<bool>()) {
+                any_match = true;
+            } else if (all) {
+                return false;
+            }
+        } else {
+            if (_tags->config_get<std::string>(key) == value) {
+                any_match = true;
+            } else if (all) {
+                return false;
+            }
+        }
+    }
+
+    return any_match;
 }
 
 }

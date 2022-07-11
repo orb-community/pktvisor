@@ -131,6 +131,7 @@ public:
     void set_default_handler_config(const YAML::Node &config_yaml);
     std::vector<Policy *> load_from_str(const std::string &str);
     std::vector<Policy *> load(const YAML::Node &tap_yaml);
+    Policy *create_policy(const YAML::Node &policy_yaml, std::string policy_name, Tap *tap = nullptr);
     void remove_policy(const std::string &name);
 };
 

@@ -19,11 +19,13 @@ class Tap : public AbstractModule
 {
 
     InputModulePlugin *_input_plugin;
+    std::unique_ptr<Configurable> _tags;
 
 public:
     Tap(const std::string &name, InputModulePlugin *input_plugin)
         : AbstractModule(name)
         , _input_plugin(input_plugin)
+        , _tags(std::make_unique<Configurable>())
     {
         assert(input_plugin);
     }
@@ -31,6 +33,8 @@ public:
     std::string get_input_name(const Configurable &config, const Configurable &filter);
 
     std::unique_ptr<InputStream> instantiate(const Configurable *config, const Configurable *filter, std::string input_name);
+
+    bool tags_validate_yaml(const YAML::Node &tag_yaml, bool all);
 
     const InputModulePlugin *input_plugin() const
     {
@@ -42,6 +46,12 @@ public:
         j["input_type"] = _input_plugin->plugin();
         j["interface"] = _input_plugin->pluginInterface();
         config_json(j["config"]);
+        _tags->config_json(j["tags"]);
+    }
+
+    void tags_set_yaml(const YAML::Node &tag_yaml)
+    {
+        _tags->config_set_yaml(tag_yaml);
     }
 };
 
