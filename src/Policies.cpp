@@ -289,16 +289,16 @@ Policy *PolicyManager::create_policy(const YAML::Node &policy_yaml, std::string 
     for (YAML::const_iterator h_it = handler_node["modules"].begin(); h_it != handler_node["modules"].end(); ++h_it) {
 
         // Per handler
-        auto module = [&]() -> const YAML::Node {
+        const auto it_module = [&]() -> const YAML::Node {
             return handler_sequence ? *h_it : h_it->second;
         }();
 
         std::string handler_module_name;
         if (handler_sequence) {
-            if (!module.begin()->first.IsScalar()) {
+            if (!it_module.begin()->first.IsScalar()) {
                 throw PolicyException("expecting handler module identifier");
             }
-            handler_module_name = module.begin()->first.as<std::string>();
+            handler_module_name = it_module.begin()->first.as<std::string>();
         } else {
             if (!h_it->first.IsScalar()) {
                 throw PolicyException("expecting handler module identifier");
@@ -306,10 +306,11 @@ Policy *PolicyManager::create_policy(const YAML::Node &policy_yaml, std::string 
             handler_module_name = h_it->first.as<std::string>();
         }
 
-        if (!module.IsMap()) {
+        if (!it_module.IsMap()) {
             throw PolicyException("expecting Handler configuration map");
         }
 
+        auto module = YAML::Clone(it_module);
         if (!module["type"] || !module["type"].IsScalar()) {
             module = module[handler_module_name];
             if (!module["type"] || !module["type"].IsScalar()) {
