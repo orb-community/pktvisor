@@ -53,7 +53,7 @@ void TapManager::load(const YAML::Node &tap_yaml, bool strict)
 
         if (it->second["tags"]) {
             if (!it->second["tags"].IsMap()) {
-                throw ConfigException("tap configuration is not a map");
+                throw ConfigException("tap tags is not a map");
             }
             tap_module->tags_set_yaml(it->second["tags"]);
         }
