@@ -130,7 +130,7 @@ public:
         , _dns_topQname3("dns", "qname", {"top_qname3"}, "Top QNAMES, aggregated at a depth of three labels")
         , _dns_topNX("dns", "qname", {"top_nxdomain"}, "Top QNAMES with result code NXDOMAIN")
         , _dns_topREFUSED("dns", "qname", {"top_refused"}, "Top QNAMES with result code REFUSED")
-        , _dns_topSizedQnameResp("dns", "qname", {"top_qname_by_resp_size"}, "Top QNAMES by response size")
+        , _dns_topSizedQnameResp("dns", "qname", {"top_qname_by_resp_bytes"}, "Top QNAMES by response volume in bytes")
         , _dns_topSRVFAIL("dns", "qname", {"top_srvfail"}, "Top QNAMES with result code SRVFAIL")
         , _dns_topNODATA("dns", "qname", {"top_nodata"}, "Top QNAMES with result code NOERROR and no answer section")
         , _dns_topUDPPort("dns", "port", {"top_udp_ports"}, "Top UDP source port on the query side of a transaction")
