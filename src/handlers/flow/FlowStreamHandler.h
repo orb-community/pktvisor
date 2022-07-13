@@ -151,8 +151,8 @@ public:
         , _topByBytes("bytes")
         , _topByPackets("packets")
         , _payload_size(FLOW_SCHEMA, {"payload_size"}, "Quantiles of payload sizes, in bytes")
-        , _rate(FLOW_SCHEMA, {"rates", "packets"}, "Rate of combined flow packets per second")
-        , _throughput("payload", {"rates", "bytes"}, "Rate of combined flow bytes per second")
+        , _rate(FLOW_SCHEMA, {"rates", "packets"}, "Rate of combined flow throughput in packets per second")
+        , _throughput("payload", {"rates", "bytes"}, "Rate of combined flow throughput in bytes per second")
     {
     }
 
