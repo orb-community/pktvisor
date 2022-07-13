@@ -105,7 +105,7 @@
           }
         ],
         "top_refused": [],
-        "top_qname_by_resp_size": [],
+        "top_qname_by_resp_bytes": [],
         "top_srvfail": [],
         "top_udp_ports": [
           {
@@ -302,7 +302,7 @@
             }
           ],
           "top_refused": [],
-          "top_qname_by_resp_size": [],
+          "top_qname_by_resp_bytes": [],
           "top_srvfail": [],
           "top_udp_ports": [
             {
@@ -404,7 +404,7 @@
         "top_qtype",
         "top_rcode",
         "top_refused",
-        "top_qname_by_resp_size",
+        "top_qname_by_resp_bytes",
         "top_srvfail",
         "top_udp_ports",
         "wire_packets",
@@ -815,10 +815,10 @@
             "$id": "#/properties/dns/properties/top_refused/items"
           }
         },
-        "top_qname_by_resp_size": {
-          "$id": "#/properties/dns/properties/top_qname_by_resp_size",
+        "top_qname_by_resp_bytes": {
+          "$id": "#/properties/dns/properties/top_qname_by_resp_bytes",
           "type": "array",
-          "title": "The top_qname_by_resp_size schema",
+          "title": "The top_qname_by_resp_bytes schema",
           "description": "An explanation about the purpose of this instance.",
           "default": [],
           "examples": [
@@ -826,7 +826,7 @@
           ],
           "additionalItems": true,
           "items": {
-            "$id": "#/properties/dns/properties/top_qname_by_resp_size/items"
+            "$id": "#/properties/dns/properties/top_qname_by_resp_bytes/items"
           }
         },
         "top_srvfail": {
