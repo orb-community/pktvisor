@@ -113,8 +113,8 @@ public:
         , _payload_size("packets", {"payload_size"}, "Quantiles of payload sizes, in bytes")
         , _rate_in("packets", {"rates", "pps_in"}, "Rate of ingress in packets per second")
         , _rate_out("packets", {"rates", "pps_out"}, "Rate of egress in packets per second")
-        , _throughput_in("payload", {"rates", "bps_in"}, "Rate of ingress packets size in bytes per second")
-        , _throughput_out("payload", {"rates", "bps_out"}, "Rate of egress packets size in bytes per second")
+        , _throughput_in("payload", {"rates", "bytes_in"}, "Rate of ingress packets size in bytes per second")
+        , _throughput_out("payload", {"rates", "bytes_out"}, "Rate of egress packets size in bytes per second")
     {
         set_event_rate_info("packets", {"rates", "pps_total"}, "Rate of all packets (combined ingress and egress) in packets per second");
         set_num_events_info("packets", {"total"}, "Total packets processed");
