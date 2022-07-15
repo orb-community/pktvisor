@@ -99,6 +99,15 @@ class PolicyManager : public AbstractManager<Policy>
     uint32_t _default_deep_sample_rate{100};
     std::map<std::string, std::unique_ptr<Configurable>> _global_handler_config;
 
+    struct HandlerData {
+        std::string name;
+        std::string type;
+        Config config;
+        Config filter;
+    };
+
+    Policy *_create_policy(const YAML::Node &policy_yaml, const std::string &policy_name, Tap *tap = nullptr);
+    HandlerData _validate_handler(const YAML::const_iterator &hander_iterator, const std::string &policy_name, Config &window_config, bool sequence);
 public:
     PolicyManager(CoreRegistry *registry)
         : _registry(registry)
@@ -131,7 +140,6 @@ public:
     void set_default_handler_config(const YAML::Node &config_yaml);
     std::vector<Policy *> load_from_str(const std::string &str);
     std::vector<Policy *> load(const YAML::Node &tap_yaml);
-    Policy *create_policy(const YAML::Node &policy_yaml, std::string policy_name, Tap *tap = nullptr);
     void remove_policy(const std::string &name);
 };
 

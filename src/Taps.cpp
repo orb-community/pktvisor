@@ -20,22 +20,22 @@ void TapManager::load(const YAML::Node &tap_yaml, bool strict)
 
     for (YAML::const_iterator it = tap_yaml.begin(); it != tap_yaml.end(); ++it) {
         if (!it->first.IsScalar()) {
-            throw ConfigException("expecting tap identifier");
+            throw TapException("expecting tap identifier");
         }
         auto tap_name = it->first.as<std::string>();
         spdlog::get("visor")->info("tap [{}]: parsing", tap_name);
         if (!it->second.IsMap()) {
-            throw ConfigException("expecting tap configuration map");
+            throw TapException("expecting tap configuration map");
         }
         if (!it->second["input_type"] || !it->second["input_type"].IsScalar()) {
-            throw ConfigException("missing or invalid tap type key 'input_type'");
+            throw TapException("missing or invalid tap type key 'input_type'");
         }
         auto input_type = it->second["input_type"].as<std::string>();
 
         auto input_plugin = _registry->input_plugins().find(input_type);
         if (input_plugin == _registry->input_plugins().end()) {
             if (strict) {
-                throw ConfigException(fmt::format("Tap '{}' requires input stream type '{}' which is not available", tap_name, input_type));
+                throw TapException(fmt::format("Tap '{}' requires input stream type '{}' which is not available", tap_name, input_type));
             } else {
                 spdlog::get("visor")->warn("Tap '{}' requires input stream type '{}' which is not available; skipping", tap_name, input_type);
                 continue;
@@ -46,14 +46,14 @@ void TapManager::load(const YAML::Node &tap_yaml, bool strict)
 
         if (it->second["config"]) {
             if (!it->second["config"].IsMap()) {
-                throw ConfigException("tap configuration is not a map");
+                throw TapException("tap configuration is not a map");
             }
             tap_module->config_set_yaml(it->second["config"]);
         }
 
         if (it->second["tags"]) {
             if (!it->second["tags"].IsMap()) {
-                throw ConfigException("tap tags is not a map");
+                throw TapException("tap tags is not a map");
             }
             tap_module->tags_set_yaml(it->second["tags"]);
         }
@@ -83,12 +83,12 @@ std::unique_ptr<InputStream> Tap::instantiate(const Configurable *config, const 
     return module;
 }
 
-bool Tap::tags_validate_yaml(const YAML::Node &tag_yaml, bool all)
+bool Tap::tags_match_selector_yaml(const YAML::Node &tag_yaml, bool all)
 {
     bool any_match = false;
     for (YAML::const_iterator it = tag_yaml.begin(); it != tag_yaml.end(); ++it) {
         if (!it->second.IsScalar()) {
-            throw PolicyException(fmt::format("tag key '{}' must have scalar value", it->first));
+            throw TapException(fmt::format("tag key '{}' must have scalar value", it->first));
         }
 
         auto key = it->first.as<std::string>();

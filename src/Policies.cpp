@@ -110,7 +110,7 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
             if (!input_node["tap"].IsScalar()) {
                 throw PolicyException("invalid tap at key 'input.tap'");
             }
-            result.push_back(create_policy(it->second, policy_name));
+            result.push_back(_create_policy(it->second, policy_name));
         } else if (input_node["tap_selector"]) {
             auto tap_selector = input_node["tap_selector"];
             if (!tap_selector.IsMap()) {
@@ -143,12 +143,12 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
             auto [tap_modules, hm_lock] = _registry->tap_manager()->module_get_all_locked();
             for (auto &[name, mod] : tap_modules) {
                 auto tmod = dynamic_cast<Tap *>(mod.get());
-                if (tmod && tmod->tags_validate_yaml(tap_selector[binary_op], all)) {
+                if (tmod && tmod->tags_match_selector_yaml(tap_selector[binary_op], all)) {
                     auto policy_selector_name = policy_name + "_" + tmod->name();
                     if (module_exists(policy_selector_name)) {
                         throw PolicyException(fmt::format("policy with name '{}' already defined", policy_selector_name));
                     }
-                    result.push_back(create_policy(it->second, policy_selector_name, tmod));
+                    result.push_back(_create_policy(it->second, policy_selector_name, tmod));
                     match = true;
                 }
             }
@@ -161,7 +161,7 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
     return result;
 }
 
-Policy *PolicyManager::create_policy(const YAML::Node &policy_yaml, std::string policy_name, Tap *tap)
+Policy *PolicyManager::_create_policy(const YAML::Node &policy_yaml, const std::string &policy_name, Tap *tap)
 {
     auto input_node = policy_yaml["input"];
     // Tap
@@ -287,93 +287,14 @@ Policy *PolicyManager::create_policy(const YAML::Node &policy_yaml, std::string 
 
     std::vector<std::unique_ptr<StreamHandler>> handler_modules;
     for (YAML::const_iterator h_it = handler_node["modules"].begin(); h_it != handler_node["modules"].end(); ++h_it) {
-
-        // Per handler
-        const auto it_module = [&]() -> const YAML::Node {
-            return handler_sequence ? *h_it : h_it->second;
-        }();
-
-        std::string handler_module_name;
-        if (handler_sequence) {
-            if (!it_module.begin()->first.IsScalar()) {
-                throw PolicyException("expecting handler module identifier");
-            }
-            handler_module_name = it_module.begin()->first.as<std::string>();
-        } else {
-            if (!h_it->first.IsScalar()) {
-                throw PolicyException("expecting handler module identifier");
-            }
-            handler_module_name = h_it->first.as<std::string>();
-        }
-
-        if (!it_module.IsMap()) {
-            throw PolicyException("expecting Handler configuration map");
-        }
-
-        auto module = YAML::Clone(it_module);
-        if (!module["type"] || !module["type"].IsScalar()) {
-            module = module[handler_module_name];
-            if (!module["type"] || !module["type"].IsScalar()) {
-                throw PolicyException("missing or invalid stream handler type at key 'type'");
-            }
-        }
-        auto handler_module_type = module["type"].as<std::string>();
-        auto handler_plugin = _registry->handler_plugins().find(handler_module_type);
-        if (handler_plugin == _registry->handler_plugins().end()) {
-            throw PolicyException(fmt::format("Policy '{}' requires stream handler type '{}' which is not available", policy_name, handler_module_type));
-        }
-        Config handler_filter;
-        if (module["filter"]) {
-            if (!module["filter"].IsMap()) {
-                throw PolicyException("stream handler filter configuration is not a map");
-            }
-            try {
-                handler_filter.config_set_yaml(module["filter"]);
-            } catch (ConfigException &e) {
-                throw PolicyException(fmt::format("invalid stream handler filter config for handler '{}': {}", handler_module_name, e.what()));
-            }
-        }
-        Config handler_config;
-        if (auto it_global = _global_handler_config.find(handler_module_type); it_global != _global_handler_config.end()) {
-            handler_config.config_merge(*it_global->second);
-        }
-        if (module["config"]) {
-            if (!module["config"].IsMap()) {
-                throw PolicyException("stream handler configuration is not a map");
-            }
-            try {
-                handler_config.config_set_yaml(module["config"]);
-            } catch (ConfigException &e) {
-                throw PolicyException(fmt::format("invalid stream handler config for handler '{}': {}", handler_module_name, e.what()));
-            }
-        }
-        Config handler_metrics;
-        if (module["metric_groups"]) {
-            if (!module["metric_groups"].IsMap()) {
-                throw PolicyException("stream handler metric groups is not a map");
-            }
-
-            if (!module["metric_groups"]["enable"] && !module["metric_groups"]["disable"]) {
-                throw PolicyException("stream handler metric groups should contain enable and/or disable tags");
-            }
-
-            try {
-                handler_config.config_set_yaml(module["metric_groups"]);
-            } catch (ConfigException &e) {
-                throw PolicyException(fmt::format("invalid stream handler metrics for handler '{}': {}", handler_module_name, e.what()));
-            }
-        }
-        spdlog::get("visor")->info("policy [{}]: instantiating Handler {} of type {}", policy_name, handler_module_name, handler_module_type);
-        // note, currently merging the handler config with the window config. do they need to be separate?
-        handler_config.config_merge(window_config);
-        handler_filter.config_merge(handler_metrics);
-
+        auto handler_config = _validate_handler(h_it, policy_name, window_config, handler_sequence);
         std::unique_ptr<StreamHandler> handler_module;
+        auto handler_plugin = _registry->handler_plugins().find(handler_config.type);
         if (!handler_sequence || handler_modules.empty()) {
-            handler_module = handler_plugin->second->instantiate(policy_name + "-" + handler_module_name, input_event_proxy, &handler_config, &handler_filter);
+            handler_module = handler_plugin->second->instantiate(policy_name + "-" + handler_config.name, input_event_proxy, &handler_config.config, &handler_config.filter);
         } else {
             // for sequence, use only previous handler
-            handler_module = handler_plugin->second->instantiate(policy_name + "-" + handler_module_name, nullptr, &handler_config, &handler_filter, handler_modules.back().get());
+            handler_module = handler_plugin->second->instantiate(policy_name + "-" + handler_config.name, nullptr, &handler_config.config, &handler_config.filter, handler_modules.back().get());
         }
         policy_ptr->add_module(handler_module.get());
         handler_modules.emplace_back(std::move(handler_module));
@@ -453,6 +374,92 @@ Policy *PolicyManager::create_policy(const YAML::Node &policy_yaml, std::string 
     input_ptr->add_policy(policy_ptr);
 
     return policy_ptr;
+}
+
+PolicyManager::HandlerData PolicyManager::_validate_handler(const YAML::const_iterator &hander_iterator, const std::string &policy_name, Config &window_config, bool sequence)
+{
+    // Per handler
+    const auto it_module = [&]() -> const YAML::Node {
+        return sequence ? *hander_iterator : hander_iterator->second;
+    }();
+
+    HandlerData handler;
+    if (sequence) {
+        if (!it_module.begin()->first.IsScalar()) {
+            throw PolicyException("expecting handler module identifier");
+        }
+        handler.name = it_module.begin()->first.as<std::string>();
+    } else {
+        if (!hander_iterator->first.IsScalar()) {
+            throw PolicyException("expecting handler module identifier");
+        }
+        handler.name = hander_iterator->first.as<std::string>();
+    }
+
+    if (!it_module.IsMap()) {
+        throw PolicyException("expecting Handler configuration map");
+    }
+
+    auto module = YAML::Clone(it_module);
+    if (!module["type"] || !module["type"].IsScalar()) {
+        module = module[handler.name];
+        if (!module["type"] || !module["type"].IsScalar()) {
+            throw PolicyException("missing or invalid stream handler type at key 'type'");
+        }
+    }
+
+    handler.type = module["type"].as<std::string>();
+    auto handler_plugin = _registry->handler_plugins().find(handler.type);
+    if (handler_plugin == _registry->handler_plugins().end()) {
+        throw PolicyException(fmt::format("Policy '{}' requires stream handler type '{}' which is not available", policy_name, handler.type));
+    }
+
+    if (module["filter"]) {
+        if (!module["filter"].IsMap()) {
+            throw PolicyException("stream handler filter configuration is not a map");
+        }
+        try {
+            handler.filter.config_set_yaml(module["filter"]);
+        } catch (ConfigException &e) {
+            throw PolicyException(fmt::format("invalid stream handler filter config for handler '{}': {}", handler.name, e.what()));
+        }
+    }
+
+    if (auto it_global = _global_handler_config.find(handler.type); it_global != _global_handler_config.end()) {
+        handler.config.config_merge(*it_global->second);
+    }
+    if (module["config"]) {
+        if (!module["config"].IsMap()) {
+            throw PolicyException("stream handler configuration is not a map");
+        }
+        try {
+            handler.config.config_set_yaml(module["config"]);
+        } catch (ConfigException &e) {
+            throw PolicyException(fmt::format("invalid stream handler config for handler '{}': {}", handler.name, e.what()));
+        }
+    }
+    Config handler_metrics;
+    if (module["metric_groups"]) {
+        if (!module["metric_groups"].IsMap()) {
+            throw PolicyException("stream handler metric groups is not a map");
+        }
+
+        if (!module["metric_groups"]["enable"] && !module["metric_groups"]["disable"]) {
+            throw PolicyException("stream handler metric groups should contain enable and/or disable tags");
+        }
+
+        try {
+            handler_metrics.config_set_yaml(module["metric_groups"]);
+        } catch (ConfigException &e) {
+            throw PolicyException(fmt::format("invalid stream handler metrics for handler '{}': {}", handler.name, e.what()));
+        }
+    }
+    spdlog::get("visor")->info("policy [{}]: instantiating Handler {} of type {}", policy_name, handler.name, handler.type);
+    // note, currently merging the handler config with the window config. do they need to be separate?
+    handler.config.config_merge(window_config);
+    handler.filter.config_merge(handler_metrics);
+
+    return handler;
 }
 
 void PolicyManager::remove_policy(const std::string &name)

@@ -15,6 +15,19 @@ namespace visor {
 class InputStream;
 class Policy;
 
+class TapException : public std::runtime_error
+{
+public:
+    TapException(const char *msg)
+        : std::runtime_error(msg)
+    {
+    }
+    TapException(const std::string &msg)
+        : std::runtime_error(msg)
+    {
+    }
+};
+
 class Tap : public AbstractModule
 {
 
@@ -34,7 +47,7 @@ public:
 
     std::unique_ptr<InputStream> instantiate(const Configurable *config, const Configurable *filter, std::string input_name);
 
-    bool tags_validate_yaml(const YAML::Node &tag_yaml, bool all);
+    bool tags_match_selector_yaml(const YAML::Node &tag_yaml, bool all);
 
     const InputModulePlugin *input_plugin() const
     {
