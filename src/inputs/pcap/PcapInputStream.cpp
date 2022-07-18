@@ -463,7 +463,7 @@ void PcapInputStream::_open_pcap(const std::string &fileName, const std::string 
     if (reader->getNextPacket(rawPacket)) {
         std::shared_lock lock(_input_mutex);
         for (auto &proxy : _event_proxies) {
-            static_cast<PcapInputEventProxy *>(proxy.get())->start_tstamp_signal(rawPacket.getPacketTimeStamp());
+            static_cast<PcapInputEventProxy *>(proxy.get())->start_tstamp_cb(rawPacket.getPacketTimeStamp());
         }
         process_raw_packet(&rawPacket);
     }

@@ -243,6 +243,9 @@ TEST_CASE("Parse DNS random UDP/TCP tests", "[pcap][dns]")
     CHECK(j["top_udp_ports"][0]["name"] == "57975");
     CHECK(j["top_udp_ports"][0]["estimate"] == 302);
 
+    CHECK(j["top_qname_by_resp_bytes"][0]["name"] == "82gdxvz5vp.mmyv7ma0jn.rxst40swe.tcbgtnfa.test.com");
+    CHECK(j["top_qname_by_resp_bytes"][0]["estimate"] == 290);
+
     CHECK(j["top_qtype"][0]["name"] == "AAAA");
     CHECK(j["top_qtype"][0]["estimate"] == 1476);
     CHECK(j["top_qtype"][1]["name"] == "CNAME");
@@ -628,6 +631,7 @@ TEST_CASE("DNS groups", "[pcap][dns]")
         CHECK(j["top_qname2"][0]["name"] == ".test.com");
         CHECK(j["top_udp_ports"][0]["name"] == "57975");
         CHECK(j["top_udp_ports"][0]["estimate"] == 302);
+        CHECK(j["xact"]["ratio"]["quantiles"]["p50"] != nullptr);
     }
 
     SECTION("disable TopQname and Dns Transactions")
