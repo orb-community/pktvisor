@@ -329,6 +329,7 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
         AnswerCount,
         OnlyQNameSuffix,
         DnstapMsgType,
+        OnlyQName2,
         FiltersMAX
     };
     std::bitset<Filters::FiltersMAX> _f_enabled;
@@ -340,6 +341,7 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
     uint16_t _f_rcode{0};
     uint64_t _f_answer_count{0};
     std::vector<std::string> _f_qnames;
+    std::string _f_qname2;
     size_t _static_suffix_size{0};
     std::bitset<DNSTAP_TYPE_SIZE> _f_dnstap_types;
 
@@ -352,6 +354,7 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
 
     bool _filtering(DnsLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint16_t port, timespec stamp);
     bool _configs(DnsLayer &payload);
+    Type _register_filter(std::string f_key, std::string f_value);
 
 public:
     DnsStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config, StreamHandler *handler = nullptr);
@@ -376,6 +379,8 @@ public:
     mutable sigslot::signal<timespec> end_tstamp_signal;
     mutable sigslot::signal<const timespec> heartbeat_signal;
     mutable sigslot::signal<pcpp::Packet &, PacketDirection, pcpp::ProtocolType, uint32_t, timespec> udp_signal;
+
+    PcapInputEventProxy::UdpSignal _udp_predicate_signal;
 };
 
 }

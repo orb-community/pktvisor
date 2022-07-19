@@ -25,8 +25,13 @@ public:
 
 class StreamHandler : public AbstractRunnableModule
 {
-
 public:
+    enum class Type {
+        Default,
+        Caller,
+        Predicate
+    };
+
     StreamHandler(const std::string &name)
         : AbstractRunnableModule(name)
     {
@@ -37,6 +42,9 @@ public:
     virtual size_t consumer_count() const = 0;
     virtual void window_json(json &j, uint64_t period, bool merged) = 0;
     virtual void window_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) = 0;
+
+protected:
+    Type _type = Type::Default;
 };
 
 template <class MetricsManagerClass>

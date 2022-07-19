@@ -680,3 +680,45 @@ TEST_CASE("DNS groups", "[pcap][dns]")
         REQUIRE_THROWS_WITH(dns_handler.start(), "dns_top_wired is an invalid/unsupported metric group. The valid groups are cardinality, counters, dns_transaction, top_ecs, top_qnames");
     }
 }
+
+TEST_CASE("DNS Filters: Qname2 with predicate", "[pcap][dns][filter]")
+{
+    PcapInputStream stream{"pcap-test"};
+    stream.config_set("pcap_file", "tests/fixtures/dns_udp_mixed_rcode.pcap");
+    stream.config_set("bpf", "");
+    stream.config_set("host_spec", "192.168.0.0/24");
+    stream.parse_host_spec();
+
+    visor::Config c;
+    auto stream_proxy = stream.add_event_proxy(c);
+    c.config_set<uint64_t>("num_periods", 1);
+    DnsStreamHandler dns_handler_1{"dns-test-1", stream_proxy, &c};
+    DnsStreamHandler dns_handler_2{"dns-test-2", stream_proxy, &c};
+
+
+    dns_handler_1.config_set<std::string>("only_qname2", ".test.com");
+    dns_handler_2.config_set<std::string>("only_qname2", ".google.com");
+
+    dns_handler_1.start();
+    dns_handler_2.start();
+    stream.start();
+    stream.stop();
+    dns_handler_1.stop();
+    dns_handler_2.start();
+
+    auto event_data_1 = dns_handler_1.metrics()->bucket(0)->event_data_locked();
+
+    CHECK(event_data_1.num_events->value() == 24);
+    CHECK(event_data_1.num_samples->value() == 24);
+
+    auto event_data_2 = dns_handler_2.metrics()->bucket(0)->event_data_locked();
+
+    CHECK(event_data_2.num_events->value() == 6);
+    CHECK(event_data_2.num_samples->value() == 6);
+
+    nlohmann::json j;
+    dns_handler_2.metrics()->bucket(0)->to_json(j);
+
+    CHECK(j["top_qname2"][0]["name"] == ".google.com");
+    CHECK(j["top_qname2"][1]["name"] == nullptr);
+}

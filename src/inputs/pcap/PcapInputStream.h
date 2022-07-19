@@ -107,9 +107,12 @@ public:
 
 class PcapInputEventProxy : public visor::InputEventProxy
 {
+public:
     typedef std::function<void(pcpp::Packet &, PacketDirection, pcpp::ProtocolType, pcpp::ProtocolType, timespec)> UdpSignal;
+
+private:
     std::string _metadata;
-    std::vector<std::string> _registered_matchers;
+    std::vector<std::string> _registered_callers;
     std::map<std::string, std::vector<UdpSignal>> predicate_udp_signals;
     mutable std::shared_mutex _pcap_proxy_mutex;
     std::shared_ptr<spdlog::logger> _logger;
@@ -179,24 +182,18 @@ public:
         pcap_stats_signal(stats);
     }
 
-    void register_matcher(const std::string &key)
+    StreamHandler::Type register_udp_predicate_signal(const std::string &key, const std::string &value, UdpSignal callback)
     {
         std::unique_lock lock(_pcap_proxy_mutex);
-        if (std::any_of(_registered_matchers.begin(), _registered_matchers.end(), [key](std::string val) { return key == val; })) {
-            throw PcapException(fmt::format("matcher with key [{}] is already registered", key));
-        }
-        _registered_matchers.push_back(key);
-    }
-
-    void register_udp_predicate_signal(const std::string &key, const std::string &value, UdpSignal callback)
-    {
-        std::unique_lock lock(_pcap_proxy_mutex);
-        if (!std::any_of(_registered_matchers.begin(), _registered_matchers.end(), [key](std::string val) { return key == val; })) {
-            _logger->warn(fmt::format("there is no matcher registered with key [{}]", key));
+        if (!std::any_of(_registered_callers.begin(), _registered_callers.end(), [key](std::string val) { return key == val; })) {
+            _logger->warn(fmt::format("there is no matcher registered with key [{}], register as caller", key));
+            _registered_callers.push_back(key);
+            return StreamHandler::Type::Caller;
         }
 
         auto hash = key + value;
         predicate_udp_signals[hash].push_back(callback);
+        return StreamHandler::Type::Predicate;
     }
 
     void send_metadata(const std::string &key, const std::string &value)

@@ -96,6 +96,14 @@ void DnsStreamHandler::start()
             _f_qnames.emplace_back(std::move(qname_ci));
         }
     }
+
+    if (config_exists("only_qname2")) {
+        _f_qname2 = config_get<std::string>("only_qname2");
+        std::transform(_f_qname2.begin(), _f_qname2.end(), _f_qname2.begin(),
+            [](unsigned char c) { return std::tolower(c); });
+        _type = _register_filter("only_qname2", _f_qname2);
+        _f_enabled.set(Filters::OnlyQName2);
+    }
     if (config_exists("dnstap_msg_type")) {
         auto type = config_get<std::string>("dnstap_msg_type");
         try {
@@ -121,7 +129,9 @@ void DnsStreamHandler::start()
     }
 
     if (_pcap_proxy) {
-        _pkt_udp_connection = _pcap_proxy->udp_signal.connect(&DnsStreamHandler::process_udp_packet_cb, this);
+        if (_type != Type::Predicate) {
+            _pkt_udp_connection = _pcap_proxy->udp_signal.connect(&DnsStreamHandler::process_udp_packet_cb, this);
+        }
         _start_tstamp_connection = _pcap_proxy->start_tstamp_signal.connect([this](timespec stamp) { set_start_tstamp(stamp); start_tstamp_signal(stamp); });
         _end_tstamp_connection = _pcap_proxy->end_tstamp_signal.connect([this](timespec stamp) { set_end_tstamp(stamp); end_tstamp_signal(stamp); });
         _tcp_start_connection = _pcap_proxy->tcp_connection_start_signal.connect(&DnsStreamHandler::tcp_connection_start_cb, this);
@@ -334,6 +344,21 @@ void DnsStreamHandler::info_json(json &j) const
     common_info_json(j);
     j[schema_key()]["xact"]["open"] = _metrics->num_open_transactions();
 }
+
+inline StreamHandler::Type DnsStreamHandler::_register_filter(std::string f_key, std::string f_value)
+{
+    if (!_udp_predicate_signal) {
+        _udp_predicate_signal = [this](pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp) {
+            process_udp_packet_cb(payload, dir, l3, flowkey, stamp);
+        };
+    }
+
+    if (_pcap_proxy) {
+        return _pcap_proxy->register_udp_predicate_signal(f_key, f_value, _udp_predicate_signal);
+    }
+
+    return Type::Default;
+}
 inline bool DnsStreamHandler::_filtering(DnsLayer &payload, [[maybe_unused]] PacketDirection dir, [[maybe_unused]] pcpp::ProtocolType l3, [[maybe_unused]] pcpp::ProtocolType l4, [[maybe_unused]] uint16_t port, timespec stamp)
 {
     if (_f_enabled[Filters::ExcludingRCode] && payload.getDnsHeader()->responseCode == _f_rcode) {
@@ -343,6 +368,24 @@ inline bool DnsStreamHandler::_filtering(DnsLayer &payload, [[maybe_unused]] Pac
     }
     if (_f_enabled[Filters::AnswerCount] && payload.getAnswerCount() != _f_answer_count) {
         goto will_filter;
+    }
+    if (_f_enabled[Filters::OnlyQName2]) {
+        if (!payload.parseResources(true) || payload.getFirstQuery() == nullptr) {
+            goto will_filter;
+        }
+
+        std::string qname = payload.getFirstQuery()->getNameLower();
+        auto aggDomain = aggregateDomain(qname);
+
+        if (_type == Type::Caller) {
+            if (_pcap_proxy) {
+                _pcap_proxy->send_metadata("only_qname2", std::string(aggDomain.first));
+            }
+        }
+
+        if (aggDomain.first != _f_qname2) {
+            goto will_filter;
+        }
     }
     if (_f_enabled[Filters::OnlyQNameSuffix]) {
         if (!payload.parseResources(true) || payload.getFirstQuery() == nullptr) {
