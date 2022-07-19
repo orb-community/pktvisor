@@ -101,7 +101,7 @@ void DnsStreamHandler::start()
         _f_qname2 = config_get<std::string>("only_qname2");
         std::transform(_f_qname2.begin(), _f_qname2.end(), _f_qname2.begin(),
             [](unsigned char c) { return std::tolower(c); });
-        _type = _register_filter("only_qname2", _f_qname2);
+        _register_predicate_filter("only_qname2", _f_qname2);
         _f_enabled.set(Filters::OnlyQName2);
     }
     if (config_exists("dnstap_msg_type")) {
@@ -129,7 +129,7 @@ void DnsStreamHandler::start()
     }
 
     if (_pcap_proxy) {
-        if (_type != Type::Predicate) {
+        if (!_using_predicate_signals) {
             _pkt_udp_connection = _pcap_proxy->udp_signal.connect(&DnsStreamHandler::process_udp_packet_cb, this);
         }
         _start_tstamp_connection = _pcap_proxy->start_tstamp_signal.connect([this](timespec stamp) { set_start_tstamp(stamp); start_tstamp_signal(stamp); });
@@ -345,7 +345,7 @@ void DnsStreamHandler::info_json(json &j) const
     j[schema_key()]["xact"]["open"] = _metrics->num_open_transactions();
 }
 
-inline StreamHandler::Type DnsStreamHandler::_register_filter(std::string f_key, std::string f_value)
+inline void DnsStreamHandler::_register_predicate_filter(std::string f_key, std::string f_value)
 {
     if (!_udp_predicate_signal) {
         _udp_predicate_signal = [this](pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp) {
@@ -354,10 +354,9 @@ inline StreamHandler::Type DnsStreamHandler::_register_filter(std::string f_key,
     }
 
     if (_pcap_proxy) {
-        return _pcap_proxy->register_udp_predicate_signal(f_key, f_value, _udp_predicate_signal);
+        _pcap_proxy->register_udp_predicate_signal(f_key, f_value, _udp_predicate_signal);
+        _using_predicate_signals = true;
     }
-
-    return Type::Default;
 }
 inline bool DnsStreamHandler::_filtering(DnsLayer &payload, [[maybe_unused]] PacketDirection dir, [[maybe_unused]] pcpp::ProtocolType l3, [[maybe_unused]] pcpp::ProtocolType l4, [[maybe_unused]] uint16_t port, timespec stamp)
 {
@@ -377,10 +376,8 @@ inline bool DnsStreamHandler::_filtering(DnsLayer &payload, [[maybe_unused]] Pac
         std::string qname = payload.getFirstQuery()->getNameLower();
         auto aggDomain = aggregateDomain(qname);
 
-        if (_type == Type::Caller) {
-            if (_pcap_proxy) {
-                _pcap_proxy->send_metadata("only_qname2", std::string(aggDomain.first));
-            }
+        if (_using_predicate_signals) {
+            _pcap_proxy->set_current_predicate("only_qname2", std::string(aggDomain.first));
         }
 
         if (aggDomain.first != _f_qname2) {
