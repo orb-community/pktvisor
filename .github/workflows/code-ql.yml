@@ -1,0 +1,104 @@
+#
+name: "CodeQL"
+
+on:
+  #push:
+  #  branches: [ "develop" ]
+  #pull_request:
+  #   The branches below must be a subset of the branches above
+  #  branches: [ "develop" ]
+  schedule:
+  #run 5 minutes after midnight daily
+    - cron: '5 0 * * *'
+
+jobs:
+  analyze:
+    name: Analyze
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    strategy:
+      fail-fast: false
+      #matrix:
+      #  language: [ 'cpp', 'go', 'python' ]
+        # CodeQL supports [ 'cpp', 'csharp', 'go', 'java', 'javascript', 'python', 'ruby' ]
+        # Learn more about CodeQL language support at https://aka.ms/codeql-docs/language-support
+
+    env:
+      CC: gcc-10
+      CXX: g++-10
+      CONAN_USER_HOME: "${{github.workspace}}"
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    # Initializes the CodeQL tools for scanning.
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v2
+      with:
+        languages: 'cpp'
+        # If you wish to specify custom queries, you can do so here or in a config file.
+        # By default, queries listed here will override any specified in a config file.
+        # Prefix the list here with "+" to use these queries and those in the config file.
+        
+        # Details on CodeQL's query packs refer to : https://docs.github.com/en/code-security/code-scanning/automatically-scanning-your-code-for-vulnerabilities-and-errors/configuring-code-scanning#using-queries-in-ql-packs
+        # queries: security-extended,security-and-quality
+        queries: ns1/NS1QLPacks/codeql/cpp/NS1-security.qls@main
+        config-file: ns1/NS1QLPacks/codeql/NS1-codeql-config.yml@main
+        
+    # Autobuild attempts to build any compiled languages  (C/C++, C#, or Java).
+    # If this step fails, then you should remove it and run the build manually (see below)
+    # - name: Autobuild
+    #   uses: github/codeql-action/autobuild@v2
+
+    # ℹ️ Command-line programs to run using the OS shell.
+    # 📚 See https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idstepsrun
+
+    #   If the Autobuild fails above, remove it and uncomment the following three lines. 
+    #   modify them (or add more) to build your code if your project, please refer to the EXAMPLE below for guidance.
+
+    - run: |
+        # Run Build - set up dependencies, env vars, compile, and make test
+        #install conan
+        pip install --no-cache-dir conan
+        # create conan config
+        CONAN_V2_MODE=1 conan config init
+        conan config set general.revisions_enabled=1
+        conan remote add ns1labs https://ns1labs.jfrog.io/artifactory/api/conan/ns1labs-conan
+        # add custom compiler settings for libc
+        python3 -c 'import yaml; p = "${{env.CONAN_USER_HOME}}/.conan/settings.yml"; d = yaml.safe_load(open(p)); d["compiler"]["gcc"]["libc"] = ["None", "glibc", "musl"]; yaml.safe_dump(d, open(p, "w"))'
+        # Create Conan host profile
+        cat > "${{env.CONAN_USER_HOME}}/.conan/profiles/host" << "EOF"
+        [settings]
+        os=Linux
+        os_build=Linux
+        arch=${{matrix.conan_arch}}
+        arch_build=x86_64
+        compiler=gcc
+        compiler.version=11
+        compiler.libcxx=libstdc++11
+        compiler.libc=musl
+        build_type=Release
+        [options]
+        pcapplusplus:with_musl=True
+        [build_requires]
+        [env]
+        CC=${{github.workspace}}/toolchain/bin/${{matrix.cc}}
+        CXX=${{github.workspace}}/toolchain/bin/${{matrix.cxx}}
+        LDFLAGS=${{matrix.ldflags}}
+        EOF
+        # clone the repository, not sure if this needs to be done
+        git clone https://github.com/ns1labs/pktvisor.git
+        cd pktvisor
+        mkdir build && cd build
+        # configure and handle dependencies
+        cmake -DCMAKE_BUILD_TYPE=Release ..
+        # build and run tests
+        make all test
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v2
