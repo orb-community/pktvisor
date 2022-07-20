@@ -704,12 +704,12 @@ TEST_CASE("DNS Filters: Qname2 with predicate", "[pcap][dns][filter]")
     stream.start();
     stream.stop();
     dns_handler_1.stop();
-    dns_handler_2.start();
+    dns_handler_2.stop();
 
     auto event_data_1 = dns_handler_1.metrics()->bucket(0)->event_data_locked();
 
-    CHECK(event_data_1.num_events->value() == 24);
-    CHECK(event_data_1.num_samples->value() == 24);
+    CHECK(event_data_1.num_events->value() == 0);
+    CHECK(event_data_1.num_samples->value() == 0);
 
     auto event_data_2 = dns_handler_2.metrics()->bucket(0)->event_data_locked();
 

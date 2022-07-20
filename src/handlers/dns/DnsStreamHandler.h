@@ -380,8 +380,8 @@ public:
     mutable sigslot::signal<const timespec> heartbeat_signal;
     mutable sigslot::signal<pcpp::Packet &, PacketDirection, pcpp::ProtocolType, uint32_t, timespec> udp_signal;
 
-    PcapInputEventProxy::UdpPredicate _udp_predicate;
-    PcapInputEventProxy::UdpSignalCB _udp_predicate_signal;
+    PcapInputEventProxy::UdpPredicate _udp_qname_predicate;
+    PcapInputEventProxy::UdpSignalCB _udp_qname_predicate_signal;
 };
 
 }

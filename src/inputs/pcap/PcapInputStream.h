@@ -154,7 +154,7 @@ public:
         // note that it is namespaced to each handler so that different handlers can have the same predicate_key
         auto full_predicate_key = schema_key + predicate_key;
         auto predicate_jump_key = full_predicate_key + conditional_value;
-        if (_udp_predicates.find(full_predicate_key) != _udp_predicates.end()) {
+        if (_udp_predicates.find(full_predicate_key) == _udp_predicates.end()) {
             _udp_predicates[full_predicate_key] = predicate;
         }
         // now install the given conditional signal based on the jump key
@@ -179,6 +179,7 @@ public:
             for (const auto &[key, predicate] : _udp_predicates) {
                 auto predicate_jump_key = predicate(payload, dir, l3, flowkey, stamp);
                 if (_udp_predicate_signals.find(predicate_jump_key) != _udp_predicate_signals.end()) {
+                    auto i = _udp_predicate_signals[predicate_jump_key].slot_count();
                     _udp_predicate_signals[predicate_jump_key](payload, dir, l3, flowkey, stamp);
                 }
             }

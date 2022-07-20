@@ -345,15 +345,15 @@ void DnsStreamHandler::info_json(json &j) const
 {
     common_info_json(j);
     j[schema_key()]["xact"]["open"] = _metrics->num_open_transactions();
+    j[schema_key()]["predicate"]["enabled"] = _using_predicate_signals;
 }
 
 inline void DnsStreamHandler::_register_predicate_filter(std::string f_key, std::string f_value)
 {
-    if (!_udp_predicate_signal) {
-        _udp_predicate_signal = [this](pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp) {
-            process_udp_packet_cb(payload, dir, l3, flowkey, stamp);
-        };
-        _udp_predicate = [this](pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp) -> std::string {
+    if (!_udp_qname_predicate_signal && !_udp_qname_predicate_signal) {
+        // all DnsStreamHandler race to install this predicate, which is only installed once and called once per udp event
+        // it's job is to return the predicate "jump key" to call matching signals
+        _udp_qname_predicate = [this](pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp) -> std::string {
             pcpp::UdpLayer *udpLayer = payload.getLayerOfType<pcpp::UdpLayer>();
             assert(udpLayer);
             if (flowkey != _cached_dns_layer.flowKey || stamp.tv_sec != _cached_dns_layer.timestamp.tv_sec || stamp.tv_nsec != _cached_dns_layer.timestamp.tv_nsec) {
@@ -363,18 +363,25 @@ inline void DnsStreamHandler::_register_predicate_filter(std::string f_key, std:
             }
             auto dnsLayer = _cached_dns_layer.dnsLayer.get();
             if (!dnsLayer->parseResources(true) || dnsLayer->getFirstQuery() == nullptr) {
-                return ":X"; // always filter
+                return "X"; // always filter by returning a key that will never match
             }
 
             std::string qname = dnsLayer->getFirstQuery()->getNameLower();
             auto aggDomain = aggregateDomain(qname);
 
-            return std::string(aggDomain.first);
+            // return the 'jump key' for pcap to make O(1) call to appropriate signals
+            return schema_key() + "only_qname2" + std::string(aggDomain.first);
+        };
+        // if the jump key matches, this callback fires
+        _udp_qname_predicate_signal = [this](pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp) {
+            process_udp_packet_cb(payload, dir, l3, flowkey, stamp);
         };
     }
 
     if (_pcap_proxy) {
-        _pcap_proxy->register_udp_predicate_signal(schema_key(), name(), f_key, f_value, _udp_predicate, _udp_predicate_signal);
+        // even though predicate and callback are sent, pcap will only install the first one it sees from dns handler
+        // module name is sent to allow disconnect at shutdown time
+        _pcap_proxy->register_udp_predicate_signal(schema_key(), name(), f_key, f_value, _udp_qname_predicate, _udp_qname_predicate_signal);
         _using_predicate_signals = true;
     }
 }
