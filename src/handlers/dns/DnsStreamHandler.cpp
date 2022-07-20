@@ -102,7 +102,6 @@ void DnsStreamHandler::start()
         std::transform(_f_qname2.begin(), _f_qname2.end(), _f_qname2.begin(),
             [](unsigned char c) { return std::tolower(c); });
         _register_predicate_filter("only_qname2", _f_qname2);
-        _f_enabled.set(Filters::OnlyQName2);
     }
     if (config_exists("dnstap_msg_type")) {
         auto type = config_get<std::string>("dnstap_msg_type");
@@ -159,6 +158,9 @@ void DnsStreamHandler::stop()
         _tcp_start_connection.disconnect();
         _tcp_end_connection.disconnect();
         _tcp_message_connection.disconnect();
+        if (_using_predicate_signals) {
+            _pcap_proxy->unregister_udp_predicate_signal(name());
+        }
     } else if (_dnstap_proxy) {
         _dnstap_connection.disconnect();
     }
@@ -351,10 +353,28 @@ inline void DnsStreamHandler::_register_predicate_filter(std::string f_key, std:
         _udp_predicate_signal = [this](pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp) {
             process_udp_packet_cb(payload, dir, l3, flowkey, stamp);
         };
+        _udp_predicate = [this](pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp) -> std::string {
+            pcpp::UdpLayer *udpLayer = payload.getLayerOfType<pcpp::UdpLayer>();
+            assert(udpLayer);
+            if (flowkey != _cached_dns_layer.flowKey || stamp.tv_sec != _cached_dns_layer.timestamp.tv_sec || stamp.tv_nsec != _cached_dns_layer.timestamp.tv_nsec) {
+                _cached_dns_layer.flowKey = flowkey;
+                _cached_dns_layer.timestamp = stamp;
+                _cached_dns_layer.dnsLayer = std::make_unique<DnsLayer>(udpLayer, &payload);
+            }
+            auto dnsLayer = _cached_dns_layer.dnsLayer.get();
+            if (!dnsLayer->parseResources(true) || dnsLayer->getFirstQuery() == nullptr) {
+                return ":X"; // always filter
+            }
+
+            std::string qname = dnsLayer->getFirstQuery()->getNameLower();
+            auto aggDomain = aggregateDomain(qname);
+
+            return std::string(aggDomain.first);
+        };
     }
 
     if (_pcap_proxy) {
-        _pcap_proxy->register_udp_predicate_signal(f_key, f_value, _udp_predicate_signal);
+        _pcap_proxy->register_udp_predicate_signal(schema_key(), name(), f_key, f_value, _udp_predicate, _udp_predicate_signal);
         _using_predicate_signals = true;
     }
 }
@@ -367,22 +387,6 @@ inline bool DnsStreamHandler::_filtering(DnsLayer &payload, [[maybe_unused]] Pac
     }
     if (_f_enabled[Filters::AnswerCount] && payload.getAnswerCount() != _f_answer_count) {
         goto will_filter;
-    }
-    if (_f_enabled[Filters::OnlyQName2]) {
-        if (!payload.parseResources(true) || payload.getFirstQuery() == nullptr) {
-            goto will_filter;
-        }
-
-        std::string qname = payload.getFirstQuery()->getNameLower();
-        auto aggDomain = aggregateDomain(qname);
-
-        if (_using_predicate_signals) {
-            _pcap_proxy->set_current_predicate("only_qname2", std::string(aggDomain.first));
-        }
-
-        if (aggDomain.first != _f_qname2) {
-            goto will_filter;
-        }
     }
     if (_f_enabled[Filters::OnlyQNameSuffix]) {
         if (!payload.parseResources(true) || payload.getFirstQuery() == nullptr) {

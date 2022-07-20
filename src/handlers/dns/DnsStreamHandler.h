@@ -329,7 +329,6 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
         AnswerCount,
         OnlyQNameSuffix,
         DnstapMsgType,
-        OnlyQName2,
         FiltersMAX
     };
     std::bitset<Filters::FiltersMAX> _f_enabled;
@@ -381,6 +380,7 @@ public:
     mutable sigslot::signal<const timespec> heartbeat_signal;
     mutable sigslot::signal<pcpp::Packet &, PacketDirection, pcpp::ProtocolType, uint32_t, timespec> udp_signal;
 
+    PcapInputEventProxy::UdpPredicate _udp_predicate;
     PcapInputEventProxy::UdpSignalCB _udp_predicate_signal;
 };
 
