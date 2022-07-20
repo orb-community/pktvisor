@@ -233,7 +233,7 @@ void PolicyManager::_validate_policy(const YAML::Node &policy_yaml, const std::s
     } else {
         // Instantiate stream from tap
         try {
-            spdlog::get("visor")->info("policy [{}]: instantiating Tap: {}", policy_name, tap_name);
+            spdlog::get("visor")->debug("policy [{}]: instantiating Tap: {}", policy_name, tap_name);
             input_stream = tap->instantiate(&tap_config, &tap_filter, input_stream_module_name);
             // ensure tap input type matches policy input tap
             if (input_node["input_type"].as<std::string>() != tap->input_plugin()->plugin()) {
