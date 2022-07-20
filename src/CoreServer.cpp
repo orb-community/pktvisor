@@ -242,6 +242,10 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
                 mod->info_json(j[mod->name()]);
             }
             res.set_content(j.dump(), "text/json");
+        } catch (const std::invalid_argument &e) {
+            res.status = 422;
+            j["error"] = e.what();
+            res.set_content(j.dump(), "text/json");
         } catch (const std::exception &e) {
             res.status = 500;
             j["error"] = e.what();
