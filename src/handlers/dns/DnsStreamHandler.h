@@ -340,7 +340,6 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
     uint16_t _f_rcode{0};
     uint64_t _f_answer_count{0};
     std::vector<std::string> _f_qnames;
-    std::string _f_qname2;
     size_t _static_suffix_size{0};
     std::bitset<DNSTAP_TYPE_SIZE> _f_dnstap_types;
     bool _using_predicate_signals{false};

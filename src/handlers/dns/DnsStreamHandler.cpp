@@ -98,10 +98,10 @@ void DnsStreamHandler::start()
     }
 
     if (config_exists("only_qname2")) {
-        _f_qname2 = config_get<std::string>("only_qname2");
-        std::transform(_f_qname2.begin(), _f_qname2.end(), _f_qname2.begin(),
+        auto qname2 = config_get<std::string>("only_qname2");
+        std::transform(qname2.begin(), qname2.end(), qname2.begin(),
             [](unsigned char c) { return std::tolower(c); });
-        _register_predicate_filter("only_qname2", _f_qname2);
+        _register_predicate_filter("only_qname2", qname2);
     }
     if (config_exists("dnstap_msg_type")) {
         auto type = config_get<std::string>("dnstap_msg_type");

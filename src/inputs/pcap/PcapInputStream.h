@@ -116,11 +116,11 @@ public:
     typedef sigslot::signal<pcpp::Packet &, PacketDirection, pcpp::ProtocolType, uint32_t, timespec> UdpPredicateSignal;
 
 private:
-    // by_qname2
+    // key example: dnsonly_qname2
     std::map<std::string, UdpPredicate> _udp_predicates;
-    // by_qname2google.com
+    // key example: dnsonly_qname2.google.com
     std::map<std::string, UdpPredicateSignal> _udp_predicate_signals;
-    // handlerid
+    // key: <handlerid>
     std::map<std::string, sigslot::connection> _udp_predicate_connections;
 
     mutable std::shared_mutex _pcap_proxy_mutex;
@@ -165,6 +165,7 @@ public:
     void unregister_udp_predicate_signal(const std::string &handler_id)
     {
         assert(_udp_predicate_connections.find(handler_id) != _udp_predicate_connections.end());
+        std::shared_lock lock(_pcap_proxy_mutex);
         _udp_predicate_connections[handler_id].disconnect();
     }
 
