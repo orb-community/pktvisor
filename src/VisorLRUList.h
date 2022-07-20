@@ -1,7 +1,7 @@
 #pragma once
 
 #include <list>
-#include <map>
+#include <robin_hood.h>
 #include <optional>
 
 #if __cplusplus > 199711L || _MSC_VER >= 1800
@@ -27,7 +27,7 @@ class LRUList
 {
 public:
     typedef typename std::list<std::pair<T, V>>::iterator ListIterator;
-    typedef typename std::map<T, ListIterator>::iterator MapIterator;
+    typedef typename robin_hood::unordered_map<T, ListIterator>::iterator MapIterator;
 
     /**
      * A c'tor for this class
@@ -59,15 +59,10 @@ public:
      */
     int put(const T &element, const V &value, std::pair<T, V> *deletedValue = NULL)
     {
-        if(m_CacheItemsList.front().first == element) {
-            m_CacheItemsList.front().second = value;
-            return 0;
-        }
-
         m_CacheItemsList.push_front(std::make_pair(element, value));
 
         // Inserting a new element. If an element with an equivalent key already exists the method returns an iterator to the element that prevented the insertion
-        std::pair<MapIterator, bool> pair = m_CacheItemsMap.insert(std::make_pair(element, m_CacheItemsList.begin()));
+        std::pair<MapIterator, bool> pair = m_CacheItemsMap.emplace(std::make_pair(element, m_CacheItemsList.begin()));
         if (pair.second == false) // already exists
         {
             m_CacheItemsList.erase(pair.first->second);
@@ -78,7 +73,7 @@ public:
             ListIterator lruIter = m_CacheItemsList.end();
             lruIter--;
 
-            if (deletedValue != NULL)
+            if (deletedValue != nullptr)
 #if __cplusplus > 199711L || _MSC_VER >= 1800
                 *deletedValue = std::move(*lruIter);
 #else
@@ -156,7 +151,7 @@ public:
 
 private:
     std::list<std::pair<T, V>> m_CacheItemsList;
-    std::map<T, ListIterator> m_CacheItemsMap;
+    robin_hood::unordered_map<T, ListIterator> m_CacheItemsMap;
     size_t m_MaxSize;
 };
 

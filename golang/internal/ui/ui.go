@@ -7,11 +7,12 @@ package ui
 import (
 	"context"
 	"fmt"
-	"github.com/jroimartin/gocui"
 	"log"
 	"pktvisor/pkg/client"
 	"strconv"
 	"time"
+
+	"github.com/jroimartin/gocui"
 )
 
 type UI interface {
@@ -277,7 +278,7 @@ func (u *ui) updateViews() {
 			if err != nil {
 				return err
 			}
-			u.updateTable(stats.DNS.TopNX, v, replySample)
+			u.updateTable(stats.DNS.TopNxdomain, v, replySample)
 			v, err = u.gui.View("rcode")
 			if err != nil {
 				return err

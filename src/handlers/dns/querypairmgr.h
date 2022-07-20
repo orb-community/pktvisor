@@ -26,6 +26,7 @@ struct hash_pair {
 struct DnsTransaction {
     timespec queryTS;
     timespec totalTS;
+    size_t querySize;
 };
 
 class QueryResponsePairMgr
@@ -43,7 +44,7 @@ public:
     {
     }
 
-    void start_transaction(uint32_t flowKey, uint16_t queryID, timespec stamp);
+    void start_transaction(uint32_t flowKey, uint16_t queryID, timespec stamp, size_t querySize);
 
     std::pair<bool, DnsTransaction> maybe_end_transaction(uint32_t flowKey, uint16_t queryID, timespec stamp);
 

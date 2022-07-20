@@ -79,6 +79,9 @@ void NetStreamHandler::start()
         _heartbeat_connection = _dnstap_proxy->heartbeat_signal.connect(&NetStreamHandler::check_period_shift, this);
     } else if (_dns_handler) {
         _pkt_udp_connection = _dns_handler->udp_signal.connect(&NetStreamHandler::process_udp_packet_cb, this);
+        _start_tstamp_connection = _dns_handler->start_tstamp_signal.connect(&NetStreamHandler::set_start_tstamp, this);
+        _end_tstamp_connection = _dns_handler->end_tstamp_signal.connect(&NetStreamHandler::set_end_tstamp, this);
+        _heartbeat_connection = _dns_handler->heartbeat_signal.connect(&NetStreamHandler::check_period_shift, this);
     }
 
     _running = true;
@@ -98,6 +101,8 @@ void NetStreamHandler::stop()
         _dnstap_connection.disconnect();
     } else if (_dns_handler) {
         _pkt_udp_connection.disconnect();
+        _start_tstamp_connection.disconnect();
+        _end_tstamp_connection.disconnect();
     }
     _heartbeat_connection.disconnect();
 
@@ -140,8 +145,10 @@ void NetStreamHandler::process_udp_packet_cb(pcpp::Packet &payload, PacketDirect
 
 bool NetStreamHandler::_filtering(pcpp::Packet &payload, PacketDirection dir, timespec stamp)
 {
-    if (_f_enabled[Filters::GeoLocNotFound] && geo::GeoIP().enabled() && dir != PacketDirection::unknown) {
-        if (auto IPv4Layer = payload.getLayerOfType<pcpp::IPv4Layer>(); IPv4Layer) {
+    if (_f_enabled[Filters::GeoLocNotFound]) {
+        if (!geo::GeoIP().enabled() || dir == PacketDirection::unknown) {
+            goto will_filter;
+        } else if (auto IPv4Layer = payload.getLayerOfType<pcpp::IPv4Layer>(); IPv4Layer) {
             struct sockaddr_in sa4;
             if (dir == PacketDirection::toHost && IPv4tosockaddr(IPv4Layer->getSrcIPv4Address(), &sa4) && geo::GeoIP().getGeoLocString(&sa4) != "Unknown") {
                 goto will_filter;
@@ -157,8 +164,10 @@ bool NetStreamHandler::_filtering(pcpp::Packet &payload, PacketDirection dir, ti
             }
         }
     }
-    if (_f_enabled[Filters::AsnNotFound] && geo::GeoASN().enabled() && dir != PacketDirection::unknown) {
-        if (auto IPv4Layer = payload.getLayerOfType<pcpp::IPv4Layer>(); IPv4Layer) {
+    if (_f_enabled[Filters::AsnNotFound]) {
+        if (!geo::GeoASN().enabled() || dir == PacketDirection::unknown) {
+            goto will_filter;
+        } else if (auto IPv4Layer = payload.getLayerOfType<pcpp::IPv4Layer>(); IPv4Layer) {
             struct sockaddr_in sa4;
             if (dir == PacketDirection::toHost && IPv4tosockaddr(IPv4Layer->getSrcIPv4Address(), &sa4) && geo::GeoASN().getASNString(&sa4) != "Unknown") {
                 goto will_filter;

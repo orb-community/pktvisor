@@ -9,6 +9,8 @@
 #include <maxminddb.h>
 #pragma GCC diagnostic pop
 #include <memory>
+#include <mutex>
+#include <shared_mutex>
 #include <string>
 
 #include "VisorLRUList.h"
@@ -45,6 +47,7 @@ private:
     mutable MMDB_s _mmdb;
     bool _enabled = false;
     std::unique_ptr<LRUList<std::string, std::string>> _lru_cache;
+    mutable std::shared_mutex _cache_mutex;
 
     std::string _getGeoLocString(MMDB_lookup_result_s *lookup) const;
     std::string _getASNString(MMDB_lookup_result_s *lookup) const;
