@@ -106,11 +106,20 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
             throw PolicyException("missing key 'input.tap' or key 'input.tap_selector'");
         }
 
+        // Create Policy
+        auto policy = std::make_unique<Policy>(policy_name);
         if (input_node["tap"]) {
             if (!input_node["tap"].IsScalar()) {
                 throw PolicyException("invalid tap at key 'input.tap'");
             }
-            result.push_back(_create_policy(it->second, policy_name));
+            auto policy_ptr = policy.get();
+            module_add(std::move(policy));
+            try {
+                _validate_policy(it->second, policy_name, policy_ptr);
+            } catch (PolicyException &e) {
+                module_remove(policy_name);
+                throw;
+            }
         } else if (input_node["tap_selector"]) {
             auto tap_selector = input_node["tap_selector"];
             if (!tap_selector.IsMap()) {
@@ -141,27 +150,31 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
 
             bool match = false;
             auto [tap_modules, hm_lock] = _registry->tap_manager()->module_get_all_locked();
-            for (auto &[name, mod] : tap_modules) {
-                auto tmod = dynamic_cast<Tap *>(mod.get());
-                if (tmod && tmod->tags_match_selector_yaml(tap_selector[binary_op], all)) {
-                    auto policy_selector_name = policy_name + "_" + tmod->name();
-                    if (module_exists(policy_selector_name)) {
-                        throw PolicyException(fmt::format("policy with name '{}' already defined", policy_selector_name));
+            auto policy_ptr = policy.get();
+            module_add(std::move(policy));
+            try {
+                for (auto &[name, mod] : tap_modules) {
+                    auto tmod = dynamic_cast<Tap *>(mod.get());
+                    if (tmod && tmod->tags_match_selector_yaml(tap_selector[binary_op], all)) {
+                        _validate_policy(it->second, policy_name, policy_ptr, tmod);
+                        match = true;
                     }
-                    result.push_back(_create_policy(it->second, policy_selector_name, tmod));
-                    match = true;
                 }
+            } catch (PolicyException &e) {
+                module_remove(policy_name);
+                throw;
             }
             if (!match) {
                 throw PolicyException("no tap match found for specified 'input.tap_selector' tags");
             }
         }
+        result.push_back(policy.get());
     }
 
     return result;
 }
 
-Policy *PolicyManager::_create_policy(const YAML::Node &policy_yaml, const std::string &policy_name, Tap *tap)
+void PolicyManager::_validate_policy(const YAML::Node &policy_yaml, const std::string &policy_name, Policy *policy_ptr, Tap *tap)
 {
     auto input_node = policy_yaml["input"];
     // Tap
@@ -239,11 +252,17 @@ Policy *PolicyManager::_create_policy(const YAML::Node &policy_yaml, const std::
         throw PolicyException(fmt::format("unable to create event proxy due to invalid input filter config: {}", e.what()));
     }
 
-    // Handler type
-    if (!policy_yaml["handlers"] || !policy_yaml["handlers"].IsMap()) {
+    // if and only if policy succeeds, we will return this in result set
+    policy_ptr->set_tap(tap);
+    policy_ptr->set_input_stream(input_ptr);
+
+    // Handler Section
+
+    auto handler_node = policy_yaml["handlers"];
+    if (!handler_node || !handler_node.IsMap()) {
         throw PolicyException("missing or invalid handler configuration at key 'handlers'");
     }
-    auto handler_node = policy_yaml["handlers"];
+
     bool handler_sequence = false;
     if (!handler_node["modules"] || (!handler_node["modules"].IsMap() && !handler_node["modules"].IsSequence())) {
         throw PolicyException("missing or invalid handler modules at key 'modules'");
@@ -251,13 +270,8 @@ Policy *PolicyManager::_create_policy(const YAML::Node &policy_yaml, const std::
         handler_sequence = true;
     }
 
-    // Create Policy
-    auto policy = std::make_unique<Policy>(policy_name, tap, handler_sequence);
-    // if and only if policy succeeds, we will return this in result set
-    Policy *policy_ptr = policy.get();
-    policy->set_input_stream(input_ptr);
+    policy_ptr->set_modules_sequence(handler_sequence);
 
-    // Handler Section
     Config window_config;
     if (handler_node["window_config"] && handler_node["window_config"].IsMap()) {
         try {
@@ -269,13 +283,14 @@ Policy *PolicyManager::_create_policy(const YAML::Node &policy_yaml, const std::
         window_config.config_set<uint64_t>("num_periods", _default_num_periods);
         window_config.config_set<uint64_t>("deep_sample_rate", _default_deep_sample_rate);
     }
+    window_config.config_set<std::string>("_internal_tap_name", tap_name);
 
     std::unique_ptr<Policy> input_resources_policy;
     Policy *input_res_policy_ptr{nullptr};
     std::unique_ptr<StreamHandler> resources_module;
     if (input_stream) {
         // create new policy with resources handler for input stream
-        input_resources_policy = std::make_unique<Policy>(input_stream_module_name + "-resources", tap, false);
+        input_resources_policy = std::make_unique<Policy>(input_stream_module_name + "-resources");
         input_resources_policy->set_input_stream(input_ptr);
         auto resources_handler_plugin = _registry->handler_plugins().find("input_resources");
         if (resources_handler_plugin != _registry->handler_plugins().end()) {
@@ -290,11 +305,12 @@ Policy *PolicyManager::_create_policy(const YAML::Node &policy_yaml, const std::
         auto handler_config = _validate_handler(h_it, policy_name, window_config, handler_sequence);
         std::unique_ptr<StreamHandler> handler_module;
         auto handler_plugin = _registry->handler_plugins().find(handler_config.type);
+        auto handler_name = policy_name + "-" + tap_name + "-" + handler_config.name;
         if (!handler_sequence || handler_modules.empty()) {
-            handler_module = handler_plugin->second->instantiate(policy_name + "-" + handler_config.name, input_event_proxy, &handler_config.config, &handler_config.filter);
+            handler_module = handler_plugin->second->instantiate(handler_name, input_event_proxy, &handler_config.config, &handler_config.filter);
         } else {
             // for sequence, use only previous handler
-            handler_module = handler_plugin->second->instantiate(policy_name + "-" + handler_config.name, nullptr, &handler_config.config, &handler_config.filter, handler_modules.back().get());
+            handler_module = handler_plugin->second->instantiate(handler_name, nullptr, &handler_config.config, &handler_config.filter, handler_modules.back().get());
         }
         policy_ptr->add_module(handler_module.get());
         handler_modules.emplace_back(std::move(handler_module));
@@ -302,7 +318,7 @@ Policy *PolicyManager::_create_policy(const YAML::Node &policy_yaml, const std::
 
     // make sure policy starts before committing
     try {
-        policy->start();
+        policy_ptr->start();
         if (input_resources_policy) {
             input_resources_policy->start();
         }
@@ -314,7 +330,6 @@ Policy *PolicyManager::_create_policy(const YAML::Node &policy_yaml, const std::
     // If the modules created above go out of scope before this step, they will destruct so the key is to make sure
     // roll back during exception ensures no modules have been added to any of the managers
     try {
-        module_add(std::move(policy));
         if (input_resources_policy) {
             module_add(std::move(input_resources_policy));
         }
@@ -327,7 +342,6 @@ Policy *PolicyManager::_create_policy(const YAML::Node &policy_yaml, const std::
         }
     } catch (ModuleException &e) {
         // note that if this call excepts, we are in an unknown state and the exception will propagate
-        module_remove(policy_name);
         if (input_res_policy_ptr) {
             module_remove(input_res_policy_ptr->name());
         }
@@ -354,7 +368,6 @@ Policy *PolicyManager::_create_policy(const YAML::Node &policy_yaml, const std::
         }
 
         policy_ptr->stop();
-        module_remove(policy_name);
 
         for (auto &m : added_handlers) {
             _registry->handler_manager()->module_remove(m);
@@ -372,8 +385,6 @@ Policy *PolicyManager::_create_policy(const YAML::Node &policy_yaml, const std::
         input_ptr->add_policy(input_res_policy_ptr);
     }
     input_ptr->add_policy(policy_ptr);
-
-    return policy_ptr;
 }
 
 PolicyManager::HandlerData PolicyManager::_validate_handler(const YAML::const_iterator &hander_iterator, const std::string &policy_name, Config &window_config, bool sequence)
@@ -470,8 +481,11 @@ void PolicyManager::remove_policy(const std::string &name)
     }
 
     auto policy = _map[name].get();
-    auto input_stream = policy->input_stream();
-    auto input_name = policy->input_stream()->name();
+    std::map<std::string, InputStream *> input_stream;
+    for (const auto &input : policy->input_stream()) {
+        input_stream[input->name()] = input;
+    }
+
     std::vector<std::string> module_names;
     for (const auto &mod : policy->modules()) {
         module_names.push_back(mod->name());
@@ -482,26 +496,30 @@ void PolicyManager::remove_policy(const std::string &name)
         _registry->handler_manager()->module_remove(name);
     }
 
-    if (input_stream->policies_count() == 1) {
-        // if there is only one policy left on the input stream, and that policy is the input resources policy, then remove it
-        auto input_resources_name = input_name + "-resources";
-        if (name != input_resources_name && _map.count(input_resources_name) != 0) {
-            auto resources_policy = _map[input_resources_name].get();
-            resources_policy->stop();
-            _registry->handler_manager()->module_remove(input_resources_name);
-            _map.erase(input_resources_name);
+    for (const auto &input : input_stream) {
+        if (input.second->policies_count() == 1) {
+            // if there is only one policy left on the input stream, and that policy is the input resources policy, then remove it
+            auto input_resources_name = input.first + "-resources";
+            if (name != input_resources_name && _map.count(input_resources_name) != 0) {
+                auto resources_policy = _map[input_resources_name].get();
+                resources_policy->stop();
+                _registry->handler_manager()->module_remove(input_resources_name);
+                _map.erase(input_resources_name);
+            }
         }
-    }
 
-    if (!input_stream->policies_count()) {
-        _registry->input_manager()->module_remove(input_name);
+        if (!input.second->policies_count()) {
+            _registry->input_manager()->module_remove(input.first);
+        }
     }
 
     _map.erase(name);
 }
 void Policy::info_json(json &j) const
 {
-    _input_stream->info_json(j["input"][_input_stream->name()]);
+    for (auto &input : _input_stream) {
+        input->info_json(j["input"][input->name()]);
+    }
     for (auto &mod : _modules) {
         mod->info_json(j["modules"][mod->name()]);
     }
@@ -511,17 +529,18 @@ void Policy::start()
     if (_running) {
         return;
     }
-    assert(_tap);
-    assert(_input_stream);
+    assert(_input_stream.size());
     spdlog::get("visor")->info("policy [{}]: starting", _name);
     for (auto &mod : _modules) {
-        spdlog::get("visor")->info("policy [{}]: starting handler instance: {}", _name, mod->name());
+        spdlog::get("visor")->debug("policy [{}]: starting handler instance: {}", _name, mod->name());
         mod->start();
     }
     // start input stream _after_ modules, since input stream will create a new thread and we need to catch any startup errors
     // from handlers in the same thread we are starting the policy from
-    spdlog::get("visor")->info("policy [{}]: starting input instance: {}", _name, _input_stream->name());
-    _input_stream->start();
+    for (auto &input : _input_stream) {
+        spdlog::get("visor")->debug("policy [{}]: starting input instance: {}", _name, input->name());
+        input->start();
+    }
     _running = true;
 }
 void Policy::stop()
@@ -530,18 +549,20 @@ void Policy::stop()
         return;
     }
     spdlog::get("visor")->info("policy [{}]: stopping", _name);
-    if (_input_stream->running()) {
-        if (_input_stream->policies_count() <= 1) {
-            spdlog::get("visor")->info("policy [{}]: stopping input instance: {}", _name, _input_stream->name());
-            _input_stream->stop();
-        } else {
-            spdlog::get("visor")->info("policy [{}]: input instance {} not stopped because it is in use by another policy.", _name, _input_stream->name());
+    for (auto &input : _input_stream) {
+        if (input->running()) {
+            if (input->policies_count() <= 1) {
+                spdlog::get("visor")->debug("policy [{}]: stopping input instance: {}", _name, input->name());
+                input->stop();
+            } else {
+                spdlog::get("visor")->info("policy [{}]: input instance {} not stopped because it is in use by another policy.", _name, input->name());
+            }
         }
+        input->remove_policy(this);
     }
-    _input_stream->remove_policy(this);
     for (auto &mod : _modules) {
         if (mod->running()) {
-            spdlog::get("visor")->info("policy [{}]: stopping handler instance: {}", _name, mod->name());
+            spdlog::get("visor")->debug("policy [{}]: stopping handler instance: {}", _name, mod->name());
             mod->stop();
         }
     }

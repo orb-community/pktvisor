@@ -31,17 +31,15 @@ class Policy : public AbstractRunnableModule
 {
     static constexpr size_t HANDLERS_SEQUENCE_SIZE = 1;
 
-    Tap *_tap;
+    std::vector<Tap *> _tap;
+    std::vector<InputStream *> _input_stream;
     bool _modules_sequence;
-    InputStream *_input_stream;
     std::vector<AbstractRunnableModule *> _modules;
 
 public:
-    Policy(const std::string &name, Tap *tap, bool modules_sequence)
+    Policy(const std::string &name)
         : AbstractRunnableModule(name)
-        , _tap(tap)
-        , _modules_sequence(modules_sequence)
-        , _input_stream(nullptr)
+        , _modules_sequence(false)
     {
     }
 
@@ -50,12 +48,22 @@ public:
         return "policy";
     }
 
-    void set_input_stream(InputStream *input_stream)
+    void set_modules_sequence(bool sequence)
     {
-        _input_stream = input_stream;
+        _modules_sequence = sequence;
     }
 
-    const InputStream *input_stream() const
+    void set_tap(Tap *tap)
+    {
+        _tap.push_back(tap);
+    }
+
+    void set_input_stream(InputStream *input_stream)
+    {
+        _input_stream.push_back(input_stream);
+    }
+
+    const std::vector<InputStream *> &input_stream()
     {
         return _input_stream;
     }
@@ -106,8 +114,9 @@ class PolicyManager : public AbstractManager<Policy>
         Config filter;
     };
 
-    Policy *_create_policy(const YAML::Node &policy_yaml, const std::string &policy_name, Tap *tap = nullptr);
+    void _validate_policy(const YAML::Node &policy_yaml, const std::string &policy_name, Policy *policy_ptr, Tap *tap = nullptr);
     HandlerData _validate_handler(const YAML::const_iterator &hander_iterator, const std::string &policy_name, Config &window_config, bool sequence);
+
 public:
     PolicyManager(CoreRegistry *registry)
         : _registry(registry)
