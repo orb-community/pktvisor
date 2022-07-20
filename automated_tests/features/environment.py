@@ -1,6 +1,7 @@
 import docker
 from steps import test_config
 import hashlib
+from steps import utils
 
 
 PKTVISOR_CONTAINER_NAME = "pktvisor-test"
@@ -8,8 +9,7 @@ PKTVISOR_CONTAINER_NAME = "pktvisor-test"
 
 def before_scenario(context, scenario):
     context.containers_id = dict()
-    # context.scenario_name = str(scenario.name.replace(" ", ""))
-    context.mock_iface_name = hashlib.shake_256(str(scenario.name.replace(" ", "")).encode()).hexdigest(5)
+    context.mock_iface_name = utils.random_string(10)
     test_config.send_terminal_commands(f"ip link add {context.mock_iface_name} type dummy", sudo=True)
     test_config.send_terminal_commands(f"ip link set {context.mock_iface_name} up", sudo=True)
 

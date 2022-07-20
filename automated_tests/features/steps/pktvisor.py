@@ -102,18 +102,19 @@ def bucket_check(context, amount_of_buckets):
     pkt_api_get_endpoint = 'policies/__all/metrics/bucket/'
     buckets = dict()
     for time in range(1, 6):
-        event.wait(70)
+        event.wait(70)  # buckets change every 60 seconds
         for bucket in range(1, amount_of_buckets):
             buckets[f"{time}_{bucket}"] = make_get_request(f"{pkt_api_get_endpoint}{bucket}", context.pkt_port)
 
+    # the idea here is to validate that the data that is in bucket 1 at minute 1 is in bucket 2 at minute two, etc.
     for index, bucket in enumerate(range(1, buckets_to_check)):
-        for bucket_iter in range(1, amount_of_buckets-bucket):
-            diff = DeepDiff(buckets[f"{buckets_to_check}_{buckets_to_check-index}"],
-                            buckets[f"{buckets_to_check-bucket_iter}_{buckets_to_check-bucket_iter-index}"],
+        for bucket_iter in range(1, amount_of_buckets - bucket):
+            diff = DeepDiff(buckets[f"{buckets_to_check}_{buckets_to_check - index}"],
+                            buckets[f"{buckets_to_check - bucket_iter}_{buckets_to_check - bucket_iter - index}"],
                             ignore_order=True)
             assert_that(diff, equal_to({}), f"Data did not queue correctly. "
-                                            f"Check buckets: {buckets_to_check}_{buckets_to_check-index} x "
-                                            f"{buckets_to_check-bucket_iter}_{buckets_to_check-bucket_iter-index}. "
+                                            f"Check buckets: {buckets_to_check}_{buckets_to_check - index} x "
+                                            f"{buckets_to_check - bucket_iter}_{buckets_to_check - bucket_iter - index}. "
                                             f"All buckets: {buckets}")
 
 
