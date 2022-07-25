@@ -35,7 +35,7 @@ Activate your virtual environment: `source name_of_virtualenv/bin/activate`
 Install the required libraries: `pip install -r requirements.txt`
 
 ## Test settings
-The : `cp test_config.ini.tpl test_config.ini`.
+Create the test config file from the template: `cp test_config.ini.tpl test_config.ini`.
 
 The best way to run the tests is with root permissions. In this case, set the root variable to True:
 - **root=True**
