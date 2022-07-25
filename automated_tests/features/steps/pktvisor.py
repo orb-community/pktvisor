@@ -19,7 +19,7 @@ def run_pktvisor(context, status_port, role):
     availability = {"available": True, "unavailable": False}
 
     context.pkt_port = check_port_is_available(context.containers_id, availability[status_port])
-    context.container_id = run_pktvisor_container("ns1labs/pktvisor", context.mock_iface_name, context.pkt_port, role)
+    context.container_id = run_pktvisor_container(configs['pktvisor_docker_image'], context.mock_iface_name, context.pkt_port, role)
     assert_that(context.container_id, not_(equal_to(None)), "Failed to provision pktvisor container")
     if context.container_id not in context.containers_id.keys():
         context.containers_id[context.container_id] = str(context.pkt_port)
@@ -87,7 +87,7 @@ def run_mocked_data(context, file_name):
         path_to_file = f"{context.directory_of_network_data_files}{network_file}"
         assert_that(os.path.exists(path_to_file), equal_to(True), f"Nonexistent file {path_to_file}.")
         run_mocked_data_command = f"tcpreplay -i {context.mock_iface_name} -tK {context.directory_of_network_data_files}{network_file}"
-        tcpreplay_return = send_terminal_commands(run_mocked_data_command, sudo=True)
+        tcpreplay_return = send_terminal_commands(run_mocked_data_command, sudo=configs.get("sudo"))
         check_successful_packets(tcpreplay_return[0])
 
         assert_that(tcpreplay_return[1], not_(contains_string("command not found")), f"{tcpreplay_return[1]}."
@@ -138,7 +138,17 @@ def check_metrics(context):
 
 @step("Remove dummy interface")
 def remove_mocked_interface(context):
-    send_terminal_commands("rmmod dummy", sudo=True)
+    send_terminal_commands("rmmod dummy", sudo=configs.get("sudo"))
+
+
+@step("Remove pktvisor containers")
+def remove_all_pktvisors_containers_with_test_prefix(context):
+    docker_client = docker.from_env()
+    containers = docker_client.containers.list(all=True)
+    for container in containers:
+        test_container = container.name.startswith(PKTVISOR_CONTAINER_NAME)
+        if test_container is True:
+            container.remove(force=True)
 
 
 @threading_wait_until

@@ -84,13 +84,12 @@ def threading_wait_until(func):
     return wait_event
 
 
-def check_port_is_available(containers_id, available=True, time_to_wait=5):
+def check_port_is_available(containers_id, available=True):
 
     """
     :param (dict) containers_id: dictionary in which the keys are the ids of the containers and the values are the ports
     on which the containers are running
     :param (bool) available: Status of the port on which agent must try to run. Default: available.
-    :param (int) time_to_wait: seconds that threading must wait after run the agent
     :return: (int) port number
     """
 
