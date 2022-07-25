@@ -208,10 +208,11 @@ jobs:
         continue-on-error: true
         run: |
           cd ./automated_tests/
-          python3 -m venv behave_pktvisor
+          pip install --upgrade pip
+          python3.8 -m venv behave_pktvisor
           source behave_pktvisor/bin/activate
-          pip3 install -r requirements.txt
-          pip3 install -r requirements.txt
+          pip install -r requirements.txt
+          pip install -r requirements.txt
           behavex -t=@smoke --parallel-processes=20 --parallel-scheme=scenario
 
       - name: Cleanup Venv
