@@ -200,6 +200,11 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
+      - name: Prepare test config
+        run: |
+          cd ./automated_tests/
+          mv test_config.ini.tpl test_config.ini
+
       - uses: actions/setup-python@v4
         with:
           python-version: '3.8'
