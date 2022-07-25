@@ -72,3 +72,17 @@ Took 0m2.312s
 
 
 ```
+
+## Run behave using parallel process
+
+You can use [behavex](https://github.com/hrcorval/behavex) to run the scenarios using multiprocess by simply run:
+
+Examples:
+
+> behavex -t @\<TAG\> --parallel-processes=2 --parallel-schema=scenario
+
+> behavex -t @\<TAG\> --parallel-processes=5 --parallel-schema=feature
+
+Running smoke tests:
+
+> behavex -t=@smoke --parallel-processes=20 --parallel-scheme=scenario

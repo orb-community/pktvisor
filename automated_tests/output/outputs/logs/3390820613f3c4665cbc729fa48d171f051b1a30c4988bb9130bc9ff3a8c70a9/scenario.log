@@ -1,0 +1,3 @@
+﻿15:39:16 - INFO - STEP: that a pktvisor instance is running on port available with admin permission
+15:39:17 - INFO - STEP: create a new policy with dhcp handler(s)
+15:39:18 - INFO - STEP: 4 policies must be running

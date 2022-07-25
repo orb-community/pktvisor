@@ -1,0 +1,17 @@
+LICENSE
+MANIFEST.in
+README.rst
+setup.cfg
+setup.py
+csscompressor/__init__.py
+csscompressor/__main__.py
+csscompressor.egg-info/PKG-INFO
+csscompressor.egg-info/SOURCES.txt
+csscompressor.egg-info/dependency_links.txt
+csscompressor.egg-info/top_level.txt
+csscompressor/tests/__init__.py
+csscompressor/tests/base.py
+csscompressor/tests/test_compress.py
+csscompressor/tests/test_other.py
+csscompressor/tests/test_partition.py
+csscompressor/tests/test_yui.py

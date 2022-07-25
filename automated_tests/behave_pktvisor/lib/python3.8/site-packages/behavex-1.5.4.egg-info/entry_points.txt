@@ -1,0 +1,3 @@
+[console_scripts]
+behavex = behavex.runner:main
+

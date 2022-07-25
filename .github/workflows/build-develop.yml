@@ -5,10 +5,11 @@ on:
   pull_request:
     branches:
       - develop
+      - multi-arch-images
   push:
     branches:
       - develop
-
+      - multi-arch-images
 env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
   BUILD_TYPE: Release
@@ -80,7 +81,6 @@ jobs:
     runs-on: ubuntu-latest
     # if this is a push into one of our main branches (rather than just a pull request), we will also package
     if: github.event_name != 'pull_request'
-
     steps:
       - uses: actions/checkout@v2
 
@@ -109,24 +109,10 @@ jobs:
       - name: Debug version
         run: echo ${{ env.VERSION }}
 
-      - name: Generate ref tag (master)
-        if: ${{ env.BRANCH_NAME == 'master' }}
-        run: |
-          echo "REF_TAG=latest" >> $GITHUB_ENV
-          echo "PRERELEASE=false" >> $GITHUB_ENV
-          echo "DRAFT=true" >> $GITHUB_ENV
-
       - name: Generate ref tag (develop)
         if: ${{ env.BRANCH_NAME == 'develop' }}
         run: |
           echo "REF_TAG=latest-develop" >> $GITHUB_ENV
-          echo "PRERELEASE=true" >> $GITHUB_ENV
-          echo "DRAFT=false" >> $GITHUB_ENV
-
-      - name: Generate ref tag (release candidate)
-        if: ${{ env.BRANCH_NAME == 'release' }}
-        run: |
-          echo "REF_TAG=latest-rc" >> $GITHUB_ENV
           echo "PRERELEASE=true" >> $GITHUB_ENV
           echo "DRAFT=false" >> $GITHUB_ENV
 
@@ -213,3 +199,38 @@ jobs:
           name: pktvisor-x86_64-${{ env.VERSION }}.AppImage
           path: ${{github.workspace}}/appimage/pktvisor-x86_64-${{ env.VERSION }}.AppImage
 
+  integration-tests:
+    needs: package
+    runs-on: ubuntu-latest
+    # if this is a push into one of our main branches (rather than just a pull request), we will also package
+    if: github.event_name != 'pull_request'
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Test
+        run: |
+          cd ./automated_tests/
+          python3 -m venv behave_pktvisor
+          source behave_pktvisor/bin/activate
+          pip3 install -r requirements.txt
+          pip3 install -r requirements.txt
+          behavex -t=@smoke --parallel-processes=20 --parallel-scheme=scenario
+
+      - name: Cleanup Venv
+        run: |
+          ls -lha
+          cd ./automated_tests/
+          rm -rf ./behave_pktvisor  
+
+      - name: Persist to workspace
+        uses: actions/upload-artifact@v2
+        with:
+          name: workspace
+          path: |
+            ./automated_tests/
+          retention-days: 1
+
+      - name: Clean
+        run: |
+          cd ./automated_tests/
+          behavex -t=@cleanup --parallel-processes=8 --parallel-scheme=scenario

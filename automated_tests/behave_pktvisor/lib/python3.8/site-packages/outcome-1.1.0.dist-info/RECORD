@@ -1,0 +1,16 @@
+outcome-1.1.0.dist-info/INSTALLER,sha256=zuuue4knoyJ-UwPPXg8fezS7VCrXJQrAP7zeNuwvFQg,4
+outcome-1.1.0.dist-info/LICENSE,sha256=ZSyHhIjRRWNh4Iw_hgf9e6WYkqFBA9Fczk_5PIW1zIs,185
+outcome-1.1.0.dist-info/LICENSE.APACHE2,sha256=z8d0m5b2O9McPEK1xHG_dWgUBT6EfBDz6wA0F7xSPTA,11358
+outcome-1.1.0.dist-info/LICENSE.MIT,sha256=Pm2uVV65J4f8gtHUg1Vnf0VMf2Wus40_nnK_mj2vA0s,1046
+outcome-1.1.0.dist-info/METADATA,sha256=IDF7DXqUgaNSYYovGIS3XNKPkIAncsvTDp0MTvsZwxs,2287
+outcome-1.1.0.dist-info/RECORD,,
+outcome-1.1.0.dist-info/WHEEL,sha256=kGT74LWyRUZrL4VgLh6_g12IeVl_9u9ZVhadrgXZUEY,110
+outcome-1.1.0.dist-info/top_level.txt,sha256=gyOUMosVXcIYHnlvxHt2jeNDnEIt62nwCk1PKatrcNg,8
+outcome/__init__.py,sha256=KvpS6PDeFBkv8x-JOzRcpRs_YIlpuD8qjkiDzB62X0Y,351
+outcome/__pycache__/__init__.cpython-38.pyc,,
+outcome/__pycache__/_impl.cpython-38.pyc,,
+outcome/__pycache__/_util.cpython-38.pyc,,
+outcome/__pycache__/_version.cpython-38.pyc,,
+outcome/_impl.py,sha256=0LXAi1K8M8HDxIMyRpc1PD1hqFUXdR_0rwp64t6MGL0,4705
+outcome/_util.py,sha256=DBavKx74818Za3QhmHTkIs64iLjHJ8PH4HHYwujr7DI,689
+outcome/_version.py,sha256=3Cp2v6rnoQ7IcWd6Yyf4_x_bgMKc3PnT2TlWQH3u3cA,89

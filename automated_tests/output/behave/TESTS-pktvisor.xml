@@ -1,0 +1,442 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite time="49.70380258560181" tests='22' skipped='0'
+name="27e33fdbfd748482cc8f42977931ed3647b0374ac54ff0a84b73c4317e51a035" failures='6' errors='0'><testcase time="1.7506558895111084" name="383557df82e52727f8bf9e7bffe78618d21915df5765bd326f6320271b4b7950" status="passed"
+         classname="1dc6e623c3adefa44f7aab8d92f9615bb73446da96f13a226da7859e3aa62d1c"><system-out>
+            <![CDATA[
+            @scenario.begin
+                @smoke
+                scenario: pktvisor bootstrap
+                when run pktvisor instance on port available with user permission ... passed in 1.189s 
+                then the pktvisor container status must be running ... passed in 0.008546s 
+                then pktvisor API must be enabled ... passed in 0.5517s 
+                then 2 policies must be running ... passed in 0.001827s 
+@scenario.end
+            ----------------------------------------------------------------------------------------------------
+            ]]>
+            </system-out>
+        </testcase><testcase time="3.473891019821167" name="51cec5da0764d49e03d1c3029a77015177f06aceb66485ad4e86b4067a88b6c5" status="passed"
+         classname="1dc6e623c3adefa44f7aab8d92f9615bb73446da96f13a226da7859e3aa62d1c"><system-out>
+            <![CDATA[
+            @scenario.begin
+                @smoke
+                scenario: run multiple pktvisors instances using different ports
+                when run pktvisor instance on port available with user permission ... passed in 1.143s 
+                when run pktvisor instance on port available with user permission ... passed in 1.142s 
+                when run pktvisor instance on port available with user permission ... passed in 1.178s 
+                then 3 pktvisor&#39;s containers must be running ... passed in 0.0106s 
+@scenario.end
+            ----------------------------------------------------------------------------------------------------
+            ]]>
+            </system-out>
+        </testcase><testcase time="2.3886334896087646" name="eefa4104aa345bc607c5e7cd70b98965e696990f8ef6c689c7ffc91155e614e5" status="passed"
+         classname="1dc6e623c3adefa44f7aab8d92f9615bb73446da96f13a226da7859e3aa62d1c"><system-out>
+            <![CDATA[
+            @scenario.begin
+                @smoke
+                scenario: run multiple pktvisors instances using the same port
+                when run pktvisor instance on port available with user permission ... passed in 1.194s 
+                when run pktvisor instance on port unavailable with user permission ... passed in 1.174s 
+                then 1 pktvisor&#39;s containers must be running ... passed in 0.01057s 
+                then 1 pktvisor&#39;s containers must be exited ... passed in 0.01015s 
+@scenario.end
+            ----------------------------------------------------------------------------------------------------
+            ]]>
+            </system-out>
+        </testcase><testcase time="2.208388090133667" name="83e49bbbf5f5c9531a9b9c393e5c0ba1bd82aff5829e5db52261c303dc3fc808" status="passed"
+         classname="1dc6e623c3adefa44f7aab8d92f9615bb73446da96f13a226da7859e3aa62d1c"><system-out>
+            <![CDATA[
+            @scenario.begin
+                @smoke
+                scenario: create a policy with all handlers using admin permission
+                given that a pktvisor instance is running on port available with admin permission ... passed in 1.164s 
+                when create a new policy with all handler(s) ... passed in 1.043s 
+                then 4 policies must be running ... passed in 0.001854s 
+@scenario.end
+            ----------------------------------------------------------------------------------------------------
+            ]]>
+            </system-out>
+        </testcase><testcase time="2.2773642539978027" name="1cdc23d793ba03f6c60daa294c6edc72706e7f6af7df9faff02f504ca2b40aa4" status="passed"
+         classname="1dc6e623c3adefa44f7aab8d92f9615bb73446da96f13a226da7859e3aa62d1c"><system-out>
+            <![CDATA[
+            @scenario.begin
+                @smoke
+                scenario: create a policy with net handler using admin permission
+                given that a pktvisor instance is running on port available with admin permission ... passed in 1.203s 
+                when create a new policy with net handler(s) ... passed in 1.073s 
+                then 4 policies must be running ... passed in 0.001475s 
+@scenario.end
+            ----------------------------------------------------------------------------------------------------
+            ]]>
+            </system-out>
+        </testcase><testcase time="2.1954219341278076" name="3390820613f3c4665cbc729fa48d171f051b1a30c4988bb9130bc9ff3a8c70a9" status="passed"
+         classname="1dc6e623c3adefa44f7aab8d92f9615bb73446da96f13a226da7859e3aa62d1c"><system-out>
+            <![CDATA[
+            @scenario.begin
+                @smoke
+                scenario: create a policy with dhcp handler using admin permission
+                given that a pktvisor instance is running on port available with admin permission ... passed in 1.183s 
+                when create a new policy with dhcp handler(s) ... passed in 1.011s 
+                then 4 policies must be running ... passed in 0.00222s 
+@scenario.end
+            ----------------------------------------------------------------------------------------------------
+            ]]>
+            </system-out>
+        </testcase><testcase time="2.263913154602051" name="599d9a04d731648242aae16d110695ab0c7c748d9b592ae0bcbd21c50956dd91" status="passed"
+         classname="1dc6e623c3adefa44f7aab8d92f9615bb73446da96f13a226da7859e3aa62d1c"><system-out>
+            <![CDATA[
+            @scenario.begin
+                @smoke
+                scenario: create a policy with dns handler using admin permission
+                given that a pktvisor instance is running on port available with admin permission ... passed in 1.188s 
+                when create a new policy with dns handler(s) ... passed in 1.074s 
+                then 4 policies must be running ... passed in 0.002315s 
+@scenario.end
+            ----------------------------------------------------------------------------------------------------
+            ]]>
+            </system-out>
+        </testcase><testcase time="2.230095148086548" name="c48a75aeb2af7b944b2582f8ef0a95b8a2630062d10c8c2d137b2a77e743c22e" status="passed"
+         classname="1dc6e623c3adefa44f7aab8d92f9615bb73446da96f13a226da7859e3aa62d1c"><system-out>
+            <![CDATA[
+            @scenario.begin
+                @smoke
+                scenario: create a policy with pcap stats handler using admin permission
+                given that a pktvisor instance is running on port available with admin permission ... passed in 1.181s 
+                when create a new policy with pcap_stats handler(s) ... passed in 1.047s 
+                then 4 policies must be running ... passed in 0.002198s 
+@scenario.end
+            ----------------------------------------------------------------------------------------------------
+            ]]>
+            </system-out>
+        </testcase><testcase time="2.5198440551757812" name="edf5be0780a24602d7acb5da70e39178932deea2fbf2ba47e5afa396fd3e862d" status="passed"
+         classname="1dc6e623c3adefa44f7aab8d92f9615bb73446da96f13a226da7859e3aa62d1c"><system-out>
+            <![CDATA[
+            @scenario.begin
+                @smoke
+                scenario: delete the default policy using admin permission
+                given that a pktvisor instance is running on port available with admin permission ... passed in 1.297s 
+                when delete 1 non-resource policies ... passed in 1.219s 
+                then 0 policies must be running ... passed in 0.003913s 
+@scenario.end
+            ----------------------------------------------------------------------------------------------------
+            ]]>
+            </system-out>
+        </testcase><testcase time="6.519364356994629" name="ece698d8534c27051d01063bfce10574b7abae60d6140b5887ec0b58ec2bb40b" status="passed"
+         classname="1dc6e623c3adefa44f7aab8d92f9615bb73446da96f13a226da7859e3aa62d1c"><system-out>
+            <![CDATA[
+            @scenario.begin
+                @smoke
+                scenario: delete all non-resource policies using admin permission
+                given that a pktvisor instance is running on port available with admin permission ... passed in 1.277s 
+                given create a new policy with all handler(s) ... passed in 1.063s 
+                when delete 2 non-resource policies ... passed in 4.175s 
+                then 0 policies must be running ... passed in 0.004818s 
+@scenario.end
+            ----------------------------------------------------------------------------------------------------
+            ]]>
+            </system-out>
+        </testcase><testcase time="4.431309223175049" name="4f3667a8b43a700bb4bc0fdf92a1ef040ed658616d0f6da9f11545ef617e1fc5" status="passed"
+         classname="1dc6e623c3adefa44f7aab8d92f9615bb73446da96f13a226da7859e3aa62d1c"><system-out>
+            <![CDATA[
+            @scenario.begin
+                @smoke
+                scenario: delete 1 non-resource policy using admin permission
+                given that a pktvisor instance is running on port available with admin permission ... passed in 1.239s 
+                when create a new policy with all handler(s) ... passed in 1.075s 
+                when delete 1 non-resource policies ... passed in 2.112s 
+                then 2 policies must be running ... passed in 0.005051s 
+@scenario.end
+            ----------------------------------------------------------------------------------------------------
+            ]]>
+            </system-out>
+        </testcase><testcase time="1.2908875942230225" name="9c5bfe3524efd13c9ce0a33b7d861918a042bf0e9f4f6464e2a108daafee23c6" status="passed"
+         classname="1dc6e623c3adefa44f7aab8d92f9615bb73446da96f13a226da7859e3aa62d1c"><system-out>
+            <![CDATA[
+            @scenario.begin
+                @smoke
+                scenario: delete the default-resource policy using admin permission
+                given that a pktvisor instance is running on port available with admin permission ... passed in 1.271s 
+                when delete 1 resource policies ... passed in 0.01518s 
+                then 1 policies must be running ... passed in 0.00468s 
+@scenario.end
+            ----------------------------------------------------------------------------------------------------
+            ]]>
+            </system-out>
+        </testcase><testcase time="2.4401488304138184" name="c2f6c52d19475c3dfccb6cc2803ebdef42dd12bf5990b39741dea298fa9c5dd2" status="passed"
+         classname="1dc6e623c3adefa44f7aab8d92f9615bb73446da96f13a226da7859e3aa62d1c"><system-out>
+            <![CDATA[
+            @scenario.begin
+                @smoke
+                scenario: delete all resource policies using admin permission
+                given that a pktvisor instance is running on port available with admin permission ... passed in 1.304s 
+                given create a new policy with all handler(s) ... passed in 1.113s 
+                when delete 2 resource policies ... passed in 0.01915s 
+                then 2 policies must be running ... passed in 0.003511s 
+@scenario.end
+            ----------------------------------------------------------------------------------------------------
+            ]]>
+            </system-out>
+        </testcase><testcase time="2.365280866622925" name="4058f3f245a30eed2665cba4d20235440a3fbb7734c3fe3a4ac35be67f91e0be" status="passed"
+         classname="1dc6e623c3adefa44f7aab8d92f9615bb73446da96f13a226da7859e3aa62d1c"><system-out>
+            <![CDATA[
+            @scenario.begin
+                @smoke
+                scenario: delete 1 resource policy using admin permission
+                given that a pktvisor instance is running on port available with admin permission ... passed in 1.253s 
+                when create a new policy with all handler(s) ... passed in 1.09s 
+                when delete 1 resource policies ... passed in 0.01701s 
+                then 3 policies must be running ... passed in 0.005375s 
+@scenario.end
+            ----------------------------------------------------------------------------------------------------
+            ]]>
+            </system-out>
+        </testcase><testcase time="2.279021739959717" name="21888bb4dd3971f7595b0a7f6933bb429ca9bbfe1c9191e59044130c36ec790e" status="passed"
+         classname="1dc6e623c3adefa44f7aab8d92f9615bb73446da96f13a226da7859e3aa62d1c"><system-out>
+            <![CDATA[
+            @scenario.begin
+                @smoke
+                scenario: create a policy using user permission
+                given that a pktvisor instance is running on port available with user permission ... passed in 1.26s 
+                when try to create a new policy with all handler(s) ... passed in 1.014s 
+                then status code returned on response must be 404 ... passed in 0.0002031s 
+                then 2 policies must be running ... passed in 0.004091s 
+@scenario.end
+            ----------------------------------------------------------------------------------------------------
+            ]]>
+            </system-out>
+        </testcase><testcase time="1.2760965824127197" name="9f9b1a7f64cd24f2655b74de78de955828750e64ad71777913874bd111573cd0" status="passed"
+         classname="1dc6e623c3adefa44f7aab8d92f9615bb73446da96f13a226da7859e3aa62d1c"><system-out>
+            <![CDATA[
+            @scenario.begin
+                @smoke
+                scenario: delete 1 policy using user permission
+                given that a pktvisor instance is running on port available with user permission ... passed in 1.262s 
+                when try to delete a policy ... passed in 0.01042s 
+                then status code returned on response must be 404 ... passed in 0.000272s 
+                then 2 policies must be running ... passed in 0.003752s 
+@scenario.end
+            ----------------------------------------------------------------------------------------------------
+            ]]>
+            </system-out>
+        </testcase><testcase time="1.2860946655273438" name="cd47fa3662215e48a83ef05ad3d2df37cb99fc53406ac078e7e612c1c8798183" status="failed"
+         classname="1dc6e623c3adefa44f7aab8d92f9615bb73446da96f13a226da7859e3aa62d1c"><failure type="33e72c0500c94a99f5b3c26f2d347a20c7c207dcb8429e6716388581831315d0" message=''>
+                        <![CDATA[ Failing step: when run mocked data dns_ipv6_udp.pcap for this network ... failed in 0.01193s  Location:100532f6fc4dbe93f4d317dd0d8eb2966b7f3f3381d2c7a6992ba7e8773a4075
+                         File "/tmp/teste/pktvisor/automated_tests/behave_pktvisor/lib/python3.8/site-packages/behave/model.py", line 1329, in run
+    match.run(runner.context)
+
+                  File "/tmp/teste/pktvisor/automated_tests/behave_pktvisor/lib/python3.8/site-packages/behave/matchers.py", line 98, in run
+    self.func(context, *args, **kwargs)
+
+                  File "features/steps/pktvisor.py", line 90, in run_mocked_data
+    check_successful_packets(tcpreplay_return[0])
+
+                  File "features/steps/pktvisor.py", line 177, in check_successful_packets
+    return_command_tcpreplay = json.loads(return_command_tcpreplay)
+
+                  File "/usr/lib/python3.8/json/__init__.py", line 357, in loads
+    return _default_decoder.decode(s)
+
+                  File "/usr/lib/python3.8/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+
+                  File "/usr/lib/python3.8/json/decoder.py", line 353, in raw_decode
+    obj, end = self.scan_once(s, idx)
+                        ]]>
+                    </failure><system-out>
+            <![CDATA[
+            @scenario.begin
+                @smoke
+                scenario: pktvisor metrics -- @1.1 
+                when run pktvisor instance on port available with user permission ... passed in 1.274s 
+                when run mocked data dns_ipv6_udp.pcap for this network ... failed in 0.01193s 
+                then the pktvisor container status must be running ... skipped in 0.0s 
+                then metrics must be correctly generated ... skipped in 0.0s 
+@scenario.end
+            ----------------------------------------------------------------------------------------------------
+            ]]>
+            </system-out>
+        </testcase><testcase time="1.2760546207427979" name="8b8e156e7078c569faf62978f86e92b4abc08c64e32543243a1b6a8bf08c2df9" status="failed"
+         classname="1dc6e623c3adefa44f7aab8d92f9615bb73446da96f13a226da7859e3aa62d1c"><failure type="33e72c0500c94a99f5b3c26f2d347a20c7c207dcb8429e6716388581831315d0" message=''>
+                        <![CDATA[ Failing step: when run mocked data dns_ipv6_tcp.pcap for this network ... failed in 0.01284s  Location:100532f6fc4dbe93f4d317dd0d8eb2966b7f3f3381d2c7a6992ba7e8773a4075
+                         File "/tmp/teste/pktvisor/automated_tests/behave_pktvisor/lib/python3.8/site-packages/behave/model.py", line 1329, in run
+    match.run(runner.context)
+
+                  File "/tmp/teste/pktvisor/automated_tests/behave_pktvisor/lib/python3.8/site-packages/behave/matchers.py", line 98, in run
+    self.func(context, *args, **kwargs)
+
+                  File "features/steps/pktvisor.py", line 90, in run_mocked_data
+    check_successful_packets(tcpreplay_return[0])
+
+                  File "features/steps/pktvisor.py", line 177, in check_successful_packets
+    return_command_tcpreplay = json.loads(return_command_tcpreplay)
+
+                  File "/usr/lib/python3.8/json/__init__.py", line 357, in loads
+    return _default_decoder.decode(s)
+
+                  File "/usr/lib/python3.8/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+
+                  File "/usr/lib/python3.8/json/decoder.py", line 353, in raw_decode
+    obj, end = self.scan_once(s, idx)
+                        ]]>
+                    </failure><system-out>
+            <![CDATA[
+            @scenario.begin
+                @smoke
+                scenario: pktvisor metrics -- @1.2 
+                when run pktvisor instance on port available with user permission ... passed in 1.263s 
+                when run mocked data dns_ipv6_tcp.pcap for this network ... failed in 0.01284s 
+                then the pktvisor container status must be running ... skipped in 0.0s 
+                then metrics must be correctly generated ... skipped in 0.0s 
+@scenario.end
+            ----------------------------------------------------------------------------------------------------
+            ]]>
+            </system-out>
+        </testcase><testcase time="1.3114981651306152" name="9724c1b55a867cfe73f2eff2aa2b4140be8acf9517faef28cffb218be1f64e14" status="failed"
+         classname="1dc6e623c3adefa44f7aab8d92f9615bb73446da96f13a226da7859e3aa62d1c"><failure type="33e72c0500c94a99f5b3c26f2d347a20c7c207dcb8429e6716388581831315d0" message=''>
+                        <![CDATA[ Failing step: when run mocked data dns_ipv4_udp.pcap for this network ... failed in 0.01329s  Location:100532f6fc4dbe93f4d317dd0d8eb2966b7f3f3381d2c7a6992ba7e8773a4075
+                         File "/tmp/teste/pktvisor/automated_tests/behave_pktvisor/lib/python3.8/site-packages/behave/model.py", line 1329, in run
+    match.run(runner.context)
+
+                  File "/tmp/teste/pktvisor/automated_tests/behave_pktvisor/lib/python3.8/site-packages/behave/matchers.py", line 98, in run
+    self.func(context, *args, **kwargs)
+
+                  File "features/steps/pktvisor.py", line 90, in run_mocked_data
+    check_successful_packets(tcpreplay_return[0])
+
+                  File "features/steps/pktvisor.py", line 177, in check_successful_packets
+    return_command_tcpreplay = json.loads(return_command_tcpreplay)
+
+                  File "/usr/lib/python3.8/json/__init__.py", line 357, in loads
+    return _default_decoder.decode(s)
+
+                  File "/usr/lib/python3.8/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+
+                  File "/usr/lib/python3.8/json/decoder.py", line 353, in raw_decode
+    obj, end = self.scan_once(s, idx)
+                        ]]>
+                    </failure><system-out>
+            <![CDATA[
+            @scenario.begin
+                @smoke
+                scenario: pktvisor metrics -- @1.3 
+                when run pktvisor instance on port available with user permission ... passed in 1.298s 
+                when run mocked data dns_ipv4_udp.pcap for this network ... failed in 0.01329s 
+                then the pktvisor container status must be running ... skipped in 0.0s 
+                then metrics must be correctly generated ... skipped in 0.0s 
+@scenario.end
+            ----------------------------------------------------------------------------------------------------
+            ]]>
+            </system-out>
+        </testcase><testcase time="1.2867090702056885" name="861edf746f71585a42ccade33cb9a6cb8e0f81f11948b1b0e9c9c4bcd7dc56f8" status="failed"
+         classname="1dc6e623c3adefa44f7aab8d92f9615bb73446da96f13a226da7859e3aa62d1c"><failure type="33e72c0500c94a99f5b3c26f2d347a20c7c207dcb8429e6716388581831315d0" message=''>
+                        <![CDATA[ Failing step: when run mocked data dns_ipv4_tcp.pcap for this network ... failed in 0.01436s  Location:100532f6fc4dbe93f4d317dd0d8eb2966b7f3f3381d2c7a6992ba7e8773a4075
+                         File "/tmp/teste/pktvisor/automated_tests/behave_pktvisor/lib/python3.8/site-packages/behave/model.py", line 1329, in run
+    match.run(runner.context)
+
+                  File "/tmp/teste/pktvisor/automated_tests/behave_pktvisor/lib/python3.8/site-packages/behave/matchers.py", line 98, in run
+    self.func(context, *args, **kwargs)
+
+                  File "features/steps/pktvisor.py", line 90, in run_mocked_data
+    check_successful_packets(tcpreplay_return[0])
+
+                  File "features/steps/pktvisor.py", line 177, in check_successful_packets
+    return_command_tcpreplay = json.loads(return_command_tcpreplay)
+
+                  File "/usr/lib/python3.8/json/__init__.py", line 357, in loads
+    return _default_decoder.decode(s)
+
+                  File "/usr/lib/python3.8/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+
+                  File "/usr/lib/python3.8/json/decoder.py", line 353, in raw_decode
+    obj, end = self.scan_once(s, idx)
+                        ]]>
+                    </failure><system-out>
+            <![CDATA[
+            @scenario.begin
+                @smoke
+                scenario: pktvisor metrics -- @1.4 
+                when run pktvisor instance on port available with user permission ... passed in 1.272s 
+                when run mocked data dns_ipv4_tcp.pcap for this network ... failed in 0.01436s 
+                then the pktvisor container status must be running ... skipped in 0.0s 
+                then metrics must be correctly generated ... skipped in 0.0s 
+@scenario.end
+            ----------------------------------------------------------------------------------------------------
+            ]]>
+            </system-out>
+        </testcase><testcase time="1.3235492706298828" name="8ea3567c01a3b5b3bcaec24c359e7fc7602f2506ba7a3d1de7db1a50e8e6bdf6" status="failed"
+         classname="1dc6e623c3adefa44f7aab8d92f9615bb73446da96f13a226da7859e3aa62d1c"><failure type="33e72c0500c94a99f5b3c26f2d347a20c7c207dcb8429e6716388581831315d0" message=''>
+                        <![CDATA[ Failing step: when run mocked data dhcp-flow.pcap for this network ... failed in 0.01243s  Location:100532f6fc4dbe93f4d317dd0d8eb2966b7f3f3381d2c7a6992ba7e8773a4075
+                         File "/tmp/teste/pktvisor/automated_tests/behave_pktvisor/lib/python3.8/site-packages/behave/model.py", line 1329, in run
+    match.run(runner.context)
+
+                  File "/tmp/teste/pktvisor/automated_tests/behave_pktvisor/lib/python3.8/site-packages/behave/matchers.py", line 98, in run
+    self.func(context, *args, **kwargs)
+
+                  File "features/steps/pktvisor.py", line 90, in run_mocked_data
+    check_successful_packets(tcpreplay_return[0])
+
+                  File "features/steps/pktvisor.py", line 177, in check_successful_packets
+    return_command_tcpreplay = json.loads(return_command_tcpreplay)
+
+                  File "/usr/lib/python3.8/json/__init__.py", line 357, in loads
+    return _default_decoder.decode(s)
+
+                  File "/usr/lib/python3.8/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+
+                  File "/usr/lib/python3.8/json/decoder.py", line 353, in raw_decode
+    obj, end = self.scan_once(s, idx)
+                        ]]>
+                    </failure><system-out>
+            <![CDATA[
+            @scenario.begin
+                @smoke
+                scenario: pktvisor metrics -- @1.5 
+                when run pktvisor instance on port available with user permission ... passed in 1.311s 
+                when run mocked data dhcp-flow.pcap for this network ... failed in 0.01243s 
+                then the pktvisor container status must be running ... skipped in 0.0s 
+                then metrics must be correctly generated ... skipped in 0.0s 
+@scenario.end
+            ----------------------------------------------------------------------------------------------------
+            ]]>
+            </system-out>
+        </testcase><testcase time="1.3095805644989014" name="1f3f406060d4c1f654153e81925b6753917c6a853606c82931e0b56583cef802" status="failed"
+         classname="1dc6e623c3adefa44f7aab8d92f9615bb73446da96f13a226da7859e3aa62d1c"><failure type="33e72c0500c94a99f5b3c26f2d347a20c7c207dcb8429e6716388581831315d0" message=''>
+                        <![CDATA[ Failing step: when run mocked data dns_udp_mixed_rcode.pcap for this network ... failed in 0.01153s  Location:100532f6fc4dbe93f4d317dd0d8eb2966b7f3f3381d2c7a6992ba7e8773a4075
+                         File "/tmp/teste/pktvisor/automated_tests/behave_pktvisor/lib/python3.8/site-packages/behave/model.py", line 1329, in run
+    match.run(runner.context)
+
+                  File "/tmp/teste/pktvisor/automated_tests/behave_pktvisor/lib/python3.8/site-packages/behave/matchers.py", line 98, in run
+    self.func(context, *args, **kwargs)
+
+                  File "features/steps/pktvisor.py", line 90, in run_mocked_data
+    check_successful_packets(tcpreplay_return[0])
+
+                  File "features/steps/pktvisor.py", line 177, in check_successful_packets
+    return_command_tcpreplay = json.loads(return_command_tcpreplay)
+
+                  File "/usr/lib/python3.8/json/__init__.py", line 357, in loads
+    return _default_decoder.decode(s)
+
+                  File "/usr/lib/python3.8/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+
+                  File "/usr/lib/python3.8/json/decoder.py", line 353, in raw_decode
+    obj, end = self.scan_once(s, idx)
+                        ]]>
+                    </failure><system-out>
+            <![CDATA[
+            @scenario.begin
+                @smoke
+                scenario: pktvisor metrics -- @1.6 
+                when run pktvisor instance on port available with user permission ... passed in 1.298s 
+                when run mocked data dns_udp_mixed_rcode.pcap for this network ... failed in 0.01153s 
+                then the pktvisor container status must be running ... skipped in 0.0s 
+                then metrics must be correctly generated ... skipped in 0.0s 
+@scenario.end
+            ----------------------------------------------------------------------------------------------------
+            ]]>
+            </system-out>
+        </testcase></testsuite>

@@ -20,9 +20,11 @@ PKTVISOR_CONTAINER_NAME = "pktvisor-test"
 def run_pktvisor(context, status_port, role):
     availability = {"available": True, "unavailable": False}
 
-    context.pkt_port = check_port_is_available(availability[status_port])
+    context.pkt_port = check_port_is_available(context.containers_id, availability[status_port])
     context.container_id = run_pktvisor_container("ns1labs/pktvisor", context.pkt_port, role)
     assert_that(context.container_id, not_(equal_to(None)), "Failed to provision pktvisor container")
+    if context.container_id not in context.containers_id.keys():
+        context.containers_id[context.container_id] = str(context.pkt_port)
     event = threading.Event()
     event.wait(1)
 
@@ -45,21 +47,10 @@ def check_pkt_status(context, pkt_status):
     assert_that(status, equal_to(pkt_status), f"pktvisor container {context.container_id} failed with status:{status}")
 
 
-@step("all the pktvisor containers must be {pkt_status}")
-def check_pktvisors_status(context, pkt_status):
-    docker_client = docker.from_env()
-
-    containers = docker_client.containers.list(all=True)
-    for container in containers:
-        is_test_container = container.name.startswith(PKTVISOR_CONTAINER_NAME)
-        if is_test_container is True:
-            status = container.status
-            assert_that(status, equal_to(pkt_status), f"pktvisor container {container.id} failed with status:{status}")
-
-
 @step("{amount_of_pktvisor} pktvisor's containers must be {pkt_status}")
 def assert_amount_of_pkt_with_status(context, amount_of_pktvisor, pkt_status):
-    containers_with_expected_status = check_amount_of_pkt_with_status(amount_of_pktvisor, pkt_status)
+    containers_with_expected_status = check_amount_of_pkt_with_status(amount_of_pktvisor, pkt_status,
+                                                                      context.containers_id.keys())
     assert_that(len(set(containers_with_expected_status)), equal_to(int(amount_of_pktvisor)),
                 f"Amount of pktvisor container with referred status failed")
 
@@ -120,6 +111,11 @@ def check_metrics(context):
             assert_that(is_json_valid, equal_to(True), f"Wrong data generated for {network_file}_{endpoint.replace('/','_')}")
 
 
+@step("Remove dummy interface")
+def remove_mocked_interface(context):
+    send_terminal_commands("rmmod dummy", sudo=True)
+
+
 @threading_wait_until
 def check_metrics_per_endpoint(endpoint, pkt_port, path_to_schema_file, event=None):
     response = make_get_request(endpoint, pkt_port)
@@ -156,19 +152,17 @@ def run_pktvisor_container(container_image, port=10853, role="user", container_n
 
 
 @threading_wait_until
-def check_amount_of_pkt_with_status(amount_of_pktvisor, pkt_status, event=None):
+def check_amount_of_pkt_with_status(amount_of_pktvisor, pkt_status, test_containers_id, event=None):
     docker_client = docker.from_env()
-    containers = docker_client.containers.list(all=True)
     containers_with_expected_status = list()
-    for container in containers:
-        is_test_container = container.name.startswith(PKTVISOR_CONTAINER_NAME)
-        if is_test_container is True:
-            status = container.status
-            if status == pkt_status:
-                containers_with_expected_status.append(container)
-            if len(set(containers_with_expected_status)) == int(amount_of_pktvisor):
-                event.set()
-                return containers_with_expected_status
+    for container_id in test_containers_id:
+        container = docker_client.containers.get(container_id)
+        status = container.status
+        if status == pkt_status:
+            containers_with_expected_status.append(container)
+    if len(set(containers_with_expected_status)) == int(amount_of_pktvisor):
+        event.set()
+        return containers_with_expected_status
     return containers_with_expected_status
 
 
@@ -218,4 +212,3 @@ def validate_json(json_data, path_to_file):
         return False
 
     return True
-

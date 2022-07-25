@@ -121,13 +121,13 @@ jobs:
 
       - name: Inject runner token in user_data.sh
         run: |
-          cd hosted-runner/arm64/
+          cd .github/hosted-runner/arm64/
           ESCAPED_REPLACE_RUNNER_TOKEN=$(printf '%s\n' "${{ steps.token.outputs.runner }}" | sed -e 's/[\/&]/\\&/g')
           sed -i -e "s/RUNNER_TOKEN/$ESCAPED_REPLACE_RUNNER_TOKEN/g" user_data.sh
 
       - name: Inject AWS key
         run: |
-          cd hosted-runner/arm64/
+          cd .github/hosted-runner/arm64/
           ESCAPED_REPLACE_KEY_ID=$(printf '%s\n' "${{ secrets.AWS_ACCESS_KEY_ID }}" | sed -e 's/[\/&]/\\&/g')
           sed -i -e "s/AWSID/$ESCAPED_REPLACE_KEY_ID/g" vars.tf
           ESCAPED_REPLACE_ACCESS_KEY=$(printf '%s\n' "${{ secrets.AWS_SECRET_ACCESS_KEY }}" | sed -e 's/[\/&]/\\&/g')
@@ -140,22 +140,22 @@ jobs:
 
       - name: Terraform Init
         run: |
-          cd hosted-runner/arm64/
+          cd .github/hosted-runner/arm64/
           terraform init -input=false
 
       - name: Terraform plan
         run: |
-          cd hosted-runner/arm64/
+          cd .github/hosted-runner/arm64/
           terraform plan -out=tfplan
 
       - name: Terraform apply
         run: |
-          cd hosted-runner/arm64/
+          cd .github/hosted-runner/arm64/
           terraform apply -auto-approve tfplan
 
       - name: Terraform output
         run: |
-          cd hosted-runner/arm64/
+          cd .github/hosted-runner/arm64/
           terraform output -raw ip
 
       - name: Persist to workspace
@@ -163,7 +163,7 @@ jobs:
         with:
           name: terraform
           path: |
-            ./hosted-runner/arm64/terraform.tfstate
+            .github/hosted-runner/arm64/terraform.tfstate
           retention-days: 1
 
   spinup-amd64-runner:
@@ -185,13 +185,13 @@ jobs:
 
       - name: Inject runner token in user_data.sh
         run: |
-          cd hosted-runner/amd64/
+          cd .github/hosted-runner/amd64/
           ESCAPED_REPLACE_RUNNER_TOKEN=$(printf '%s\n' "${{ steps.token.outputs.runner }}" | sed -e 's/[\/&]/\\&/g')
           sed -i -e "s/RUNNER_TOKEN/$ESCAPED_REPLACE_RUNNER_TOKEN/g" user_data.sh
 
       - name: Inject AWS key
         run: |
-          cd hosted-runner/amd64/
+          cd .github/hosted-runner/amd64/
           ESCAPED_REPLACE_KEY_ID=$(printf '%s\n' "${{ secrets.AWS_ACCESS_KEY_ID }}" | sed -e 's/[\/&]/\\&/g')
           sed -i -e "s/AWSID/$ESCAPED_REPLACE_KEY_ID/g" vars.tf
           ESCAPED_REPLACE_ACCESS_KEY=$(printf '%s\n' "${{ secrets.AWS_SECRET_ACCESS_KEY }}" | sed -e 's/[\/&]/\\&/g')
@@ -204,22 +204,22 @@ jobs:
 
       - name: Terraform Init
         run: |
-          cd hosted-runner/amd64/
+          cd .github/hosted-runner/amd64/
           terraform init -input=false
 
       - name: Terraform plan
         run: |
-          cd hosted-runner/amd64/
+          cd .github/hosted-runner/amd64/
           terraform plan -out=tfplan
 
       - name: Terraform apply
         run: |
-          cd hosted-runner/amd64/
+          cd .github/hosted-runner/amd64/
           terraform apply -auto-approve tfplan
 
       - name: Terraform output
         run: |
-          cd hosted-runner/amd64/
+          cd .github/hosted-runner/amd64/
           terraform output -raw ip
 
       - name: Persist to workspace
@@ -451,11 +451,11 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: terraform
-          path: hosted-runner/arm64/
+          path: .github/hosted-runner/arm64/
 
       - name: Inject AWS key
         run: |
-          cd hosted-runner/arm64/
+          cd .github/hosted-runner/arm64/
           ESCAPED_REPLACE_KEY_ID=$(printf '%s\n' "${{ secrets.AWS_ACCESS_KEY_ID }}" | sed -e 's/[\/&]/\\&/g')
           sed -i -e "s/AWSID/$ESCAPED_REPLACE_KEY_ID/g" vars.tf
           ESCAPED_REPLACE_ACCESS_KEY=$(printf '%s\n' "${{ secrets.AWS_SECRET_ACCESS_KEY }}" | sed -e 's/[\/&]/\\&/g')
@@ -468,18 +468,18 @@ jobs:
 
       - name: Terraform Init
         run: |
-          cd hosted-runner/arm64/
+          cd .github/hosted-runner/arm64/
           terraform init -input=false
 
       - name: Terraform plan destroy
         run: |
-          cd hosted-runner/arm64/
+          cd .github/hosted-runner/arm64/
           terraform plan -destroy
         continue-on-error: true
 
       - name: Terraform destroy
         run: |
-          cd hosted-runner/arm64/
+          cd .github/hosted-runner/arm64/
           terraform destroy -auto-approve
 
   remove-amd64-runner:
@@ -494,11 +494,11 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: terraform2
-          path: hosted-runner/amd64/
+          path: .github/hosted-runner/amd64/
 
       - name: Inject AWS key
         run: |
-          cd hosted-runner/amd64/
+          cd .github/hosted-runner/amd64/
           ESCAPED_REPLACE_KEY_ID=$(printf '%s\n' "${{ secrets.AWS_ACCESS_KEY_ID }}" | sed -e 's/[\/&]/\\&/g')
           sed -i -e "s/AWSID/$ESCAPED_REPLACE_KEY_ID/g" vars.tf
           ESCAPED_REPLACE_ACCESS_KEY=$(printf '%s\n' "${{ secrets.AWS_SECRET_ACCESS_KEY }}" | sed -e 's/[\/&]/\\&/g')
@@ -511,12 +511,12 @@ jobs:
 
       - name: Terraform Init
         run: |
-          cd hosted-runner/amd64/
+          cd .github/hosted-runner/amd64/
           terraform init -input=false
 
       - name: Terraform plan destroy
         run: |
-          cd hosted-runner/amd64/
+          cd .github/hosted-runner/amd64/
           terraform plan -destroy
         continue-on-error: true
 

@@ -1,0 +1,4 @@
+﻿15:40:11 - INFO - STEP: that a pktvisor instance is running on port available with user permission
+15:40:12 - INFO - STEP: try to delete a policy
+15:40:12 - INFO - STEP: status code returned on response must be 404
+15:40:12 - INFO - STEP: 2 policies must be running
