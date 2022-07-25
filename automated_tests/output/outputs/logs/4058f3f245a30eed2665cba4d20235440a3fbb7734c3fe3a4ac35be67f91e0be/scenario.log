@@ -1,4 +1,0 @@
-﻿15:40:01 - INFO - STEP: that a pktvisor instance is running on port available with admin permission
-15:40:02 - INFO - STEP: create a new policy with all handler(s)
-15:40:03 - INFO - STEP: delete 1 resource policies
-15:40:03 - INFO - STEP: 3 policies must be running
