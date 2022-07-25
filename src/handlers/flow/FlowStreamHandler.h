@@ -49,67 +49,59 @@ struct FlowData {
 };
 
 struct FlowPacket {
+    std::string device_id;
     timespec stamp;
+    size_t raw_size;
     uint64_t filtered;
     std::vector<FlowData> flow_data;
 
-    FlowPacket(timespec stamp)
-        : stamp(stamp)
+    FlowPacket(std::string id, timespec stamp, size_t raw_size)
+        : device_id(id)
+        , raw_size(raw_size)
+        , stamp(stamp)
         , filtered(0)
     {
     }
 };
 
-class FlowMetricsBucket final : public visor::AbstractMetricsBucket
-{
+struct FlowTopN {
+    TopN<std::string> topSrcIP;
+    TopN<std::string> topDstIP;
+    TopN<uint16_t> topSrcPort;
+    TopN<uint16_t> topDstPort;
+    TopN<std::string> topSrcIPandPort;
+    TopN<std::string> topDstIPandPort;
+    TopN<std::string> topConversations;
+    TopN<uint32_t> topInIfIndex;
+    TopN<uint32_t> topOutIfIndex;
+    FlowTopN(std::string metric)
+        : topSrcIP(FLOW_SCHEMA, "ip", {"top_src_ips_" + metric}, "Top source IP addresses by " + metric)
+        , topDstIP(FLOW_SCHEMA, "ip", {"top_dst_ips_" + metric}, "Top destination IP addresses by " + metric)
+        , topSrcPort(FLOW_SCHEMA, "port", {"top_src_ports_" + metric}, "Top source ports by " + metric)
+        , topDstPort(FLOW_SCHEMA, "port", {"top_dst_ports_" + metric}, "Top destination ports by " + metric)
+        , topSrcIPandPort(FLOW_SCHEMA, "ip_port", {"top_src_ips_and_port_" + metric}, "Top source IP addresses and port by " + metric)
+        , topDstIPandPort(FLOW_SCHEMA, "ip_port", {"top_dst_ips_and_port_" + metric}, "Top destination IP addresses and port by " + metric)
+        , topConversations(FLOW_SCHEMA, "conversations", {"top_conversations_" + metric}, "Top source IP addresses and port by " + metric)
+        , topInIfIndex(FLOW_SCHEMA, "index", {"top_in_if_index_" + metric}, "Top input interface indexes by " + metric)
+        , topOutIfIndex(FLOW_SCHEMA, "index", {"top_out_if_index_" + metric}, "Top output interface indexes by " + metric)
+    {
+    }
 
-protected:
-    mutable std::shared_mutex _mutex;
+    void set_topn_count(size_t topn_count)
+    {
+        topSrcIP.set_topn_count(topn_count);
+        topDstIP.set_topn_count(topn_count);
+        topSrcPort.set_topn_count(topn_count);
+        topDstPort.set_topn_count(topn_count);
+        topSrcIPandPort.set_topn_count(topn_count);
+        topDstIPandPort.set_topn_count(topn_count);
+        topConversations.set_topn_count(topn_count);
+        topInIfIndex.set_topn_count(topn_count);
+        topOutIfIndex.set_topn_count(topn_count);
+    }
+};
 
-    Cardinality _srcIPCard;
-    Cardinality _dstIPCard;
-    Cardinality _srcPortCard;
-    Cardinality _dstPortCard;
-
-    TopN<std::string> _topGeoLoc;
-    TopN<std::string> _topASN;
-
-    struct topns {
-        TopN<std::string> topSrcIP;
-        TopN<std::string> topDstIP;
-        TopN<uint16_t> topSrcPort;
-        TopN<uint16_t> topDstPort;
-        TopN<std::string> topSrcIPandPort;
-        TopN<std::string> topDstIPandPort;
-        TopN<uint32_t> topInIfIndex;
-        TopN<uint32_t> topOutIfIndex;
-        topns(std::string metric)
-            : topSrcIP("flow", "ip", {"top_src_ips_" + metric}, "Top source IP addresses by " + metric)
-            , topDstIP("flow", "ip", {"top_dst_ips_" + metric}, "Top destination IP addresses by " + metric)
-            , topSrcPort("flow", "port", {"top_src_ports_" + metric}, "Top source ports by " + metric)
-            , topDstPort("flow", "port", {"top_dst_ports_" + metric}, "Top destination ports by " + metric)
-            , topSrcIPandPort("flow", "ip_port", {"top_src_ips_and_port_" + metric}, "Top source IP addresses and port by " + metric)
-            , topDstIPandPort("flow", "ip_port", {"top_dst_ips_and_port_" + metric}, "Top destination IP addresses and port by " + metric)
-            , topInIfIndex("flow", "index", {"top_in_if_index_" + metric}, "Top input interface indexes by " + metric)
-            , topOutIfIndex("flow", "index", {"top_out_if_index_" + metric}, "Top output interface indexes by " + metric)
-        {
-        }
-
-        void set_topn_count(size_t topn_count)
-        {
-            topSrcIP.set_topn_count(topn_count);
-            topDstIP.set_topn_count(topn_count);
-            topSrcPort.set_topn_count(topn_count);
-            topDstPort.set_topn_count(topn_count);
-            topSrcIPandPort.set_topn_count(topn_count);
-            topDstIPandPort.set_topn_count(topn_count);
-            topInIfIndex.set_topn_count(topn_count);
-            topOutIfIndex.set_topn_count(topn_count);
-        }
-    };
-
-    topns _topByBytes;
-    topns _topByPackets;
+struct FlowDevice {
 
     struct counters {
         Counter UDP;
@@ -130,28 +122,75 @@ protected:
         {
         }
     };
+
+    counters counters;
+    Quantile<std::size_t> payload_size;
+    TopN<std::string> topGeoLoc;
+    TopN<std::string> topASN;
+    Cardinality conversationsCard;
+    Cardinality srcIPCard;
+    Cardinality dstIPCard;
+    Cardinality srcPortCard;
+    Cardinality dstPortCard;
+    FlowTopN topByBytes;
+    FlowTopN topByPackets;
+
+    FlowDevice()
+        : payload_size(FLOW_SCHEMA, {"payload_size"}, "Quantiles of payload sizes, in bytes")
+        , topGeoLoc(FLOW_SCHEMA, "geo_loc", {"top_geoLoc"}, "Top GeoIP locations")
+        , topASN(FLOW_SCHEMA, "asn", {"top_ASN"}, "Top ASNs by IP")
+        , conversationsCard(FLOW_SCHEMA, {"cardinality", "conversations"}, "Conversations cardinality")
+        , srcIPCard(FLOW_SCHEMA, {"cardinality", "src_ips_in"}, "Source IP cardinality")
+        , dstIPCard(FLOW_SCHEMA, {"cardinality", "dst_ips_out"}, "Destination IP cardinality")
+        , srcPortCard(FLOW_SCHEMA, {"cardinality", "src_ports_in"}, "Source ports cardinality")
+        , dstPortCard(FLOW_SCHEMA, {"cardinality", "dst_ports_out"}, "Destination ports cardinality")
+        , topByBytes("bytes")
+        , topByPackets("packets")
+    {
+    }
+
+    void set_topn_count(size_t topn_count)
+    {
+        topGeoLoc.set_topn_count(topn_count);
+        topASN.set_topn_count(topn_count);
+        topByBytes.set_topn_count(topn_count);
+        topByPackets.set_topn_count(topn_count);
+    }
+};
+
+class FlowMetricsBucket final : public visor::AbstractMetricsBucket
+{
+
+protected:
+    mutable std::shared_mutex _mutex;
+
+    struct counters {
+        Counter volume;
+        Counter filtered;
+        Counter total;
+        counters()
+            : volume(FLOW_SCHEMA, {"volume_bytes"}, "Count of total raw packet bytes")
+            , filtered(FLOW_SCHEMA, {"filtered"}, "Count of total flows seen that did not match the configured filter(s) (if any)")
+            , total(FLOW_SCHEMA, {"flows"}, "Count of total flows that match the configured filter(s) (if any)")
+        {
+        }
+    };
     counters _counters;
 
-    Quantile<std::size_t> _payload_size;
-
+    size_t _topn_count{10};
     Rate _rate;
     Rate _throughput;
 
-    void _process_geo_metrics(const pcpp::IPv4Address &ipv4);
-    void _process_geo_metrics(const pcpp::IPv6Address &ipv6);
+    using InterfacePair = std::pair<uint32_t, uint32_t>;
+    //  <DeviceId, FlowDevice>
+    std::map<std::string, std::unique_ptr<FlowDevice>> _devices_metrics;
+
+    void _process_geo_metrics(FlowDevice *device, const pcpp::IPv4Address &ipv4);
+    void _process_geo_metrics(FlowDevice *device, const pcpp::IPv6Address &ipv6);
 
 public:
     FlowMetricsBucket()
-        : _srcIPCard(FLOW_SCHEMA, {"cardinality", "src_ips_in"}, "Source IP cardinality")
-        , _dstIPCard(FLOW_SCHEMA, {"cardinality", "dst_ips_out"}, "Destination IP cardinality")
-        , _srcPortCard(FLOW_SCHEMA, {"cardinality", "src_ports_in"}, "Source ports cardinality")
-        , _dstPortCard(FLOW_SCHEMA, {"cardinality", "dst_ports_out"}, "Destination ports cardinality")
-        , _topGeoLoc(FLOW_SCHEMA, "geo_loc", {"top_geoLoc"}, "Top GeoIP locations")
-        , _topASN(FLOW_SCHEMA, "asn", {"top_ASN"}, "Top ASNs by IP")
-        , _topByBytes("bytes")
-        , _topByPackets("packets")
-        , _payload_size(FLOW_SCHEMA, {"payload_size"}, "Quantiles of payload sizes, in bytes")
-        , _rate(FLOW_SCHEMA, {"rates", "packets"}, "Rate of combined flow throughput in packets per second")
+        : _rate(FLOW_SCHEMA, {"rates", "packets"}, "Rate of combined flow throughput in packets per second")
         , _throughput("payload", {"rates", "bytes"}, "Rate of combined flow throughput in bytes per second")
     {
     }
@@ -169,10 +208,7 @@ public:
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override;
     void update_topn_metrics(size_t topn_count) override
     {
-        _topByBytes.set_topn_count(topn_count);
-        _topByPackets.set_topn_count(topn_count);
-        _topGeoLoc.set_topn_count(topn_count);
-        _topASN.set_topn_count(topn_count);
+        _topn_count = topn_count;
     }
 
     // must be thread safe as it is called from time window maintenance thread
@@ -183,6 +219,11 @@ public:
         _throughput.cancel();
     }
 
+    void process_filtered(uint64_t filtered = 1)
+    {
+        std::unique_lock lock(_mutex);
+        _counters.filtered += filtered;
+    }
     void process_flow(bool deep, const FlowPacket &payload);
 };
 
@@ -194,6 +235,12 @@ public:
     {
     }
 
+    void process_filtered(timespec stamp, uint64_t filtered)
+    {
+        // base event, no sample
+        new_event(stamp, false);
+        live_bucket()->process_filtered(filtered);
+    }
     void process_flow(const FlowPacket &payload);
 };
 
@@ -207,13 +254,31 @@ class FlowStreamHandler final : public visor::StreamMetricsHandler<FlowMetricsMa
     sigslot::connection _sflow_connection;
     sigslot::connection _netflow_connection;
 
-    std::vector<Ipv4Subnet> _IPv4_host_list;
-    std::vector<Ipv6Subnet> _IPv6_host_list;
+    std::vector<Ipv4Subnet> _IPv4_ips_list;
+    std::vector<Ipv6Subnet> _IPv6_ips_list;
+    std::vector<Ipv4Subnet> _IPv4_devices_list;
+    std::vector<Ipv6Subnet> _IPv6_devices_list;
+
+    enum class ParserType {
+        Port,
+        InterfaceIn,
+        InterfaceOut,
+    };
+    std::map<ParserType, std::vector<std::pair<uint32_t, uint32_t>>> _parsed_list;
+    static const inline std::map<ParserType, std::string> _parser_types_string = {
+        {ParserType::Port, "only_ports"},
+        {ParserType::InterfaceIn, "only_in_interfaces"},
+        {ParserType::InterfaceOut, "only_out_interfaces"},
+    };
 
     bool _sample_rate_scaling;
 
     enum Filters {
-        OnlyHosts,
+        OnlyIps,
+        OnlyDevices,
+        OnlyPorts,
+        OnlyInInterfaces,
+        OnlyOutInterfaces,
         GeoLocNotFound,
         AsnNotFound,
         FiltersMAX
@@ -227,13 +292,15 @@ class FlowStreamHandler final : public visor::StreamMetricsHandler<FlowMetricsMa
         {"top_by_bytes", group::FlowMetrics::TopByBytes},
         {"top_by_packets", group::FlowMetrics::TopByPackets}};
 
-    void process_sflow_cb(const SFSample &);
-    void process_netflow_cb(const NFSample &);
+    void process_sflow_cb(const SFSample &, size_t);
+    void process_netflow_cb(const std::string &, const NFSample &, size_t);
     void set_start_tstamp(timespec stamp);
     void set_end_tstamp(timespec stamp);
 
-    void _parse_host_specs(const std::vector<std::string> &host_list);
-    bool _match_subnet(uint32_t ipv4 = 0, const uint8_t *ipv6 = nullptr);
+    void _parse_ports_or_interfaces(const std::vector<std::string> &port_interface_list, ParserType type);
+    bool _match_parser(uint32_t value, ParserType type);
+    void _parse_host_specs(const std::vector<std::string> &host_list, bool device = false);
+    bool _match_subnet(std::vector<Ipv4Subnet> &IPv4_subnet_list, std::vector<Ipv6Subnet> &IPv6_subnet_list, uint32_t ipv4 = 0, const uint8_t *ipv6 = nullptr);
     bool _filtering(const FlowData &flow);
 
 public:
