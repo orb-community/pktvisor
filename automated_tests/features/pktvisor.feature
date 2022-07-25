@@ -127,6 +127,7 @@ Scenario Outline: pktvisor metrics
   When run pktvisor instance on port <status_port> with <role> permission
     And run mocked data <file_name> for this network
   Then the pktvisor container status must be <pkt_status>
+    And pktvisor API must be enabled
     And metrics must be correctly generated
   Examples:
     | status_port | role | file_name | pkt_status |
@@ -136,3 +137,13 @@ Scenario Outline: pktvisor metrics
     | available   | user | dns_ipv4_tcp.pcap | running    |
     | available   | user | dhcp-flow.pcap | running    |
     | available   | user | dns_udp_mixed_rcode.pcap | running    |
+
+
+@smoke
+Scenario Outline: pktvisor bucket metrics
+  Given that a pktvisor instance is running on port <status_port> with <role> permission
+  When run mocked data <file_name> for this network
+  Then Metrics must go through the 5 bucket(s) queue correctly
+  Examples:
+    | status_port | role | file_name |
+    | available   | user | dns_ipv6_udp.pcap |
