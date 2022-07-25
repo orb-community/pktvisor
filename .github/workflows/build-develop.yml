@@ -205,6 +205,7 @@ jobs:
           python-version: '3.8'
 
       - name: Test
+        continue-on-error: true
         run: |
           cd ./automated_tests/
           python3 -m venv behave_pktvisor
@@ -228,6 +229,7 @@ jobs:
           retention-days: 1
 
       - name: Clean
+        continue-on-error: true
         run: |
           cd ./automated_tests/
           behavex -t=@cleanup --parallel-processes=8 --parallel-scheme=scenario
