@@ -5,4 +5,4 @@ sudo_password=True
 
 # Optional fields:
 # schema_file_name=metrics_schema.json
-pktvisor_docker_image_tag=develop
+pktvisor_docker_image_tag=latest-develop
