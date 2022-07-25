@@ -110,7 +110,7 @@ jobs:
         run: echo ${{ env.VERSION }}
 
       - name: Generate ref tag (develop)
-        if: ${{ env.BRANCH_NAME == 'develop' || }}
+        if: ${{ env.BRANCH_NAME == 'develop' || env.BRANCH_NAME == 'multi-arch-images' }}
         run: |
           echo "REF_TAG=latest-develop" >> $GITHUB_ENV
           echo "PRERELEASE=true" >> $GITHUB_ENV
