@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+{#
+/*
+* BehaveX - Agile test wrapper on top of Behave (BDD)
+*/#}
+
+
+{%- macro print_step_xml(step) -%}
+    {%- if step.table -%}
+        {{ 20*' ' }}
+        {%- for key in step.table.headings -%}
+            |{{ key }}
+        {%- endfor -%}
+        {{'\n'}}
+        {%- for values in step.table.rows -%}
+            {{ 20*' ' }}
+            {%- for value in values-%}
+                |{{ value }}
+            {%- endfor -%}
+            {{'\n'}}
+        {%- endfor -%}
+    {%- endif -%}
+        {{ 16*' ' ~ step|print_step|safe ~ '\n'}}
+{%- endmacro -%}
+{%- macro print_scenario(scenario) -%}
+{%- set is_muted = ('MUTE' in scenario.tags and scenario.status == 'failed')-%}
+{%- set errors_step = 0-%}
+        {%- for step in scenario.steps -%}
+            {%- set errors_step = errors_step + (0 if step.error_message else 1) -%}
+        {%- endfor -%}
+        <testcase time="{{ scenario.duration }}" name={{scenario.name|normalize|CIXC|quoteattr|safe}} status="{{ scenario.status if not is_muted else 'skipped'}}"
+         classname={{scenario.feature.name|normalize|CIXC|quoteattr|safe }}>
+            {%- set steps_with_exception = scenario.steps|get_list_exception_steps(scenario._background_steps) -%}
+            {%- if steps_with_exception and 'MUTE' not in scenario.tags -%}
+                {%- for step in steps_with_exception -%}
+                    <failure type={{ step.exception.__class__.__name__ |normalize|CIXC|quoteattr|safe}} message={{step.exception.message|get_error_message|CIXC|quoteattr|safe }}>
+                        <![CDATA[ Failing step: {{step|print_step|safe}} Location:{{step.filename|normalize|safe}}
+                         {{step|get_lines_exception|safe}}
+                        ]]>
+                    </failure>
+                {%- endfor -%}
+            {%- endif -%}
+            <system-out>
+            <![CDATA[
+            @scenario.begin
+                {{ (scenario.tags)|print_tag_xml}}
+                scenario: {{ scenario.name|CIXC|safe ~'\n'}}
+                {%- if scenario._background_steps is iterable -%}
+                    {%- for step in scenario._background_steps -%}
+                        {{ print_step_xml(step)|safe}}
+                    {%- endfor -%}
+                {%- endif -%}
+                {%- for step in scenario.steps -%}
+                    {{ print_step_xml(step)|safe }}
+                {%- endfor -%}
+            @scenario.end
+            ----------------------------------------------------------------------------------------------------
+            ]]>
+            </system-out>
+        </testcase>
+{%- endmacro -%}
+<testsuite time="{{ summary.time }}" tests='{{ scenarios|count }}' skipped='{{ summary.skipped }}'
+name={{ feature.filename[9:-8]|normalize|CIXC|quoteattr|safe }} failures='{{ summary.failures }}' errors='0'>
+{%- for scenario in scenarios -%}
+    {%- if scenario._scenarios is defined -%}
+        {%- for _scenario in scenario._scenarios -%}
+            {{ print_scenario(_scenario)|safe }}
+        {%- endfor -%}
+    {%- else -%}
+        {{ print_scenario(scenario)|safe }}
+    {%- endif -%}
+{%- endfor -%}
+</testsuite>

@@ -1,0 +1,3 @@
+﻿23:41:35 - INFO - STEP: that a pktvisor instance is running on port available with admin permission
+23:41:36 - INFO - STEP: create a new policy with net handler(s)
+23:41:37 - INFO - STEP: 4 policies must be running

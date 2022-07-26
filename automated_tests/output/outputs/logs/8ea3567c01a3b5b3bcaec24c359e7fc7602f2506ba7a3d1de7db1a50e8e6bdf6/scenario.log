@@ -1,0 +1,4 @@
+﻿23:42:44 - INFO - STEP: run pktvisor instance on port available with user permission
+23:42:46 - INFO - STEP: run mocked data dhcp-flow.pcap for this network
+23:42:46 - ERROR - Unterminated string starting at: line 1 column 2 (char 1)
+NoneType: None

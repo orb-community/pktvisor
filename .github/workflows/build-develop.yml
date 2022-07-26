@@ -229,7 +229,7 @@ jobs:
           source behave_pktvisor/bin/activate
           pip install -r requirements.txt
           pip install -r requirements.txt
-          behavex -t=@smoke --parallel-processes=20 --parallel-scheme=scenario
+          behavex -t=@smoke
 
       - name: Cleanup Venv
         run: |
@@ -253,7 +253,7 @@ jobs:
         continue-on-error: true
         run: |
           cd ./automated_tests/
-          behavex -t=@cleanup --parallel-processes=8 --parallel-scheme=scenario
+          behavex -t=@cleanup
 
       - name: Unlocking pktvisor integration test state
         run: |
