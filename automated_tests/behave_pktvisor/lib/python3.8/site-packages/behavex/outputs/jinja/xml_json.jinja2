@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+{#
+/*
+* BehaveX - Agile test wrapper on top of Behave (BDD)
+*/#}
+
+
+{%- macro print_step_xml(step) -%}
+    {%- if step.table -%}
+        {{ 20*' ' }}
+        {%- for key in step.table.keys() -%}
+            |{{ key }}
+        {%- endfor -%}
+        {{'\n'}}
+        {%- for values in step.table.values() -%}
+            {{ 20*' ' }}
+            {%- for value in values-%}
+                |{{ value }}
+            {%- endfor -%}
+            {{'\n'}}
+        {%- endfor -%}
+    {%- endif -%}
+        {{ 16*' ' ~ step|print_step_json ~ '\n'}}
+{%- endmacro -%}
+{%- macro print_scenario(scenario) -%}
+{%- set is_muted = ('MUTE' in scenario.tags and scenario.status == 'failed') -%}
+        <testcase time="{{ scenario.duration }}" name={{scenario.name|normalize|CIXC|quoteattr|safe}} status="{{ 'skipped' if is_muted else scenario.status }}"
+         classname={{scenario.feature|normalize|CIXC|quoteattr|safe }} >
+            {% set step_with_exception = scenario.error_step %}
+            {%- if step_with_exception and 'MUTE' not in scenario.tags  -%}
+                <failure message={{step_with_exception.error_msg|get_error_message|CIXC|quoteattr|safe }} type="AssertionError">
+                    <![CDATA[ Failing step: {{step_with_exception|print_step_json|safe}} Location:{{step_with_exception.index}}
+                        {{step_with_exception|safe}}
+                    ]]>
+                </failure>
+            {%- endif -%}
+            <system-out>
+            <![CDATA[
+            @scenario.begin
+                {{ (scenario.tags)|print_tag_xml}}
+                scenario: {{ (scenario.name|CIXC|safe) ~'\n'}}
+                {%- if scenario.background.steps is iterable -%}
+                    {%- for step in scenario.background.steps -%}
+                        {{ print_step_xml(step)}}
+                    {%- endfor -%}
+                {%- endif -%}e
+                {%- for step in scenario.steps -%}
+                    {{ print_step_xml(step) }}
+                {%- endfor -%}
+            @scenario.end
+            ----------------------------------------------------------------------------------------------------
+            ]]>
+            </system-out>
+        </testcase>
+{%- endmacro -%}
+<testsuite time="{{ summary.time }}" tests='{{ scenarios|count }}' skipped='{{ summary.skipped }}'
+name={{ feature.filename[9:-8]|normalize|CIXC|quoteattr|safe }} failures='{{ summary.failures }}' errors='0'>
+{%- for scenario in scenarios -%}
+    {{ print_scenario(scenario)}}
+{%- endfor -%}
+</testsuite>

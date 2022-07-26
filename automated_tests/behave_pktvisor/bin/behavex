@@ -1,0 +1,12 @@
+#!/tmp/teste/pktvisor/automated_tests/behave_pktvisor/bin/python3
+# EASY-INSTALL-ENTRY-SCRIPT: 'behavex==1.5.11','console_scripts','behavex'
+__requires__ = 'behavex==1.5.11'
+import re
+import sys
+from pkg_resources import load_entry_point
+
+if __name__ == '__main__':
+    sys.argv[0] = re.sub(r'(-script\.pyw?|\.exe)?$', '', sys.argv[0])
+    sys.exit(
+        load_entry_point('behavex==1.5.11', 'console_scripts', 'behavex')()
+    )

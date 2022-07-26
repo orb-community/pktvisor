@@ -1,0 +1,4 @@
+﻿11:18:05 - INFO - STEP: run pktvisor instance on port available with user permission
+11:18:07 - INFO - STEP: run pktvisor instance on port unavailable with user permission
+11:18:08 - INFO - STEP: 1 pktvisor's containers must be running
+11:18:08 - INFO - STEP: 1 pktvisor's containers must be exited

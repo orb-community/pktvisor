@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+
+{#/*#}
+{#* BehaveX - Agile test wrapper on top of Behave (BDD)#}
+{#*/#}
+{##}
+
+{%- set relative = '' -%}
+{%- set path_report = '../report.html' -%}
+{%- if menu == 'report' -%}
+    {%- set path_report = '#' -%}
+    {%- set relative = 'outputs/'-%}
+{%- endif -%}
+ <html lang="en" manifest="{{relative}}bootstrap/manifest/{{ menu }}.manifest">
+    <head>
+        <title>{% block title %} Test Execution Report {% endblock%}</title>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+        <!-- Latest compiled and minified CSS -->
+        <link href="{{relative}}bootstrap/css/pace-theme-loading-bar.min.css"
+              rel="stylesheet">
+        <link rel="stylesheet" href="{{relative}}bootstrap/css/behavex.min.css"
+              rel="stylesheet">
+        <link rel="stylesheet"
+              href="{{relative}}bootstrap/css/bootstrap-theme.min.css">
+        <link href="{{relative}}bootstrap/css/bootstrap.min.css"
+              rel="stylesheet">
+        <link href="{{relative}}bootstrap/css/behavex.min.css"
+              rel="stylesheet">
+        <!-- <link href="{{relative}}bootstrap/css/jquery-ui.min.css"
+              rel="stylesheet">-->
+        {% block link_css %}{% endblock %}
+        <!-- Latest compiled and minified JavaScript -->
+        <script src="{{relative}}bootstrap/js/jquery-1.11.0.min.js"
+                type="application/javascript"></script>
+        <script src="{{relative}}bootstrap/js/bootstrap.min.js"
+            type="application/javascript"></script>
+        <script src="{{relative}}bootstrap/js/chart.js"
+            type="application/javascript"></script>
+        <script src="{{relative}}bootstrap/js/jquery.tablesorter.min.js"
+            type="application/javascript"></script>
+        <script src="{{relative}}bootstrap/js/jquery.tooltipster.min.js"
+            type="application/javascript"></script>
+        <script src="{{relative}}bootstrap/js/jquery-ui.min.js"
+            type="application/javascript"></script>
+        <script src="{{relative}}bootstrap/js/pace.min.js"
+            type="application/javascript"></script>
+        {% block script %}{% endblock %}
+    </head>
+    <body>
+    {%- block iframe -%}{%- endblock -%}
+    <nav class="navbar navbar-inverse" style="margin-top:16px;">
+        <div class="container-fluid">
+            <div class="navbar-header">
+                <a class="navbar-brand">BehaveX</a>
+            </div>
+            <div>
+                <ul class="nav navbar-nav">
+                    <!-- icon behavex-->
+                    <li class="nav-item {% if menu == 'report' %}active{% endif %}">
+                        <a class="nav-link" href="{{ path_report}}">Test Report</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+    {% block metrics %}{% endblock %}
+    {% block filter %} {% endblock %}
+    {% block body %}{% endblock %}
+    <div id="fill-for-fix"></div>
+    {# start modal #}
+    <div class="modal fade" id="{{ menu }}_modal" style="display: None">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <a class="close" data-dismiss="modal">&times;</a>
+                    <h3>{{ (menu ~ '.modal.title')|get_text }}</h3>
+                </div>
+                <div class="modal-body modal-style-body">
+                    {{ (menu ~ '.modal.body')|get_text }}
+                </div>
+                <div class="modal-footer">
+                    <a href="#" class="btn" data-dismiss="modal">Close</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <nav class="navbar navbar navbar-bottom"  style="display: none">
+        <div class="container">
+            <div class="row">
+                <div class="col-sm-12 text-center">
+                    <h6 id='footer-header'>
+                        {{ 'commons.framework_name'|get_text }} -
+                        {{ 'commons.framework_description'|get_text }}</h6>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+<script type="text/javascript">{% block javascript %} {% endblock %}
+</script>
+    <script type="text/javascript">
+        $(window).load(function() {
+            {% block pre_load %}{% endblock %}
+            $('.container_body').css('display','');
+            $('.nav-behavex').css('display','');
+            $('.navbar-bottom').css('display','');
+            $('#help-{{ menu }}').click(function($this){
+                if ($('#{{ menu }}_modal').hasClass('in')){
+                    $('#{{ menu }}_modal').modal('hide');
+                } else {
+                    $('#{{ menu }}_modal').modal('show');
+                }
+            });
+            $('.tr-progress').hover(
+                function(){
+                    tr = $(this);
+                    tr.find('.progress').css('border', '2px solid #66c4e0');
+                },
+                function(){
+                    tr = $(this);
+                    tr.find('.progress').css('border', '1px solid #ccc');
+                }
+            );
+        });
+
+    </script>
+    </body>
+</html>

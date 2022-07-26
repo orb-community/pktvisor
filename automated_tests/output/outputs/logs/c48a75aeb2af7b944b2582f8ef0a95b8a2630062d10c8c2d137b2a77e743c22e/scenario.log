@@ -1,0 +1,3 @@
+﻿11:18:37 - INFO - STEP: that a pktvisor instance is running on port available with admin permission
+11:18:38 - INFO - STEP: create a new policy with pcap_stats handler(s)
+11:18:39 - INFO - STEP: 4 policies must be running

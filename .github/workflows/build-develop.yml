@@ -228,6 +228,7 @@ jobs:
         continue-on-error: true
         run: |
           cd ./automated_tests/
+          sudo apt-get install tcpreplay
           pip install --upgrade pip
           python3.8 -m venv behave_pktvisor
           source behave_pktvisor/bin/activate

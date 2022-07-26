@@ -1,0 +1,4 @@
+﻿11:17:53 - INFO - STEP: run pktvisor instance on port available with user permission
+11:17:55 - INFO - STEP: the pktvisor container status must be running
+11:17:55 - INFO - STEP: pktvisor API must be enabled
+11:17:55 - INFO - STEP: 2 policies must be running

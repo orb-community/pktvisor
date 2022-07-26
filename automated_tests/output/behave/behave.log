@@ -1,0 +1,277 @@
+Feature: pktvisor tests # features/pktvisor.feature:1
+
+  @smoke
+  Scenario: pktvisor bootstrap                                        # features/pktvisor.feature:4
+    When run pktvisor instance on port available with user permission # features/steps/pktvisor.py:17
+    Then the pktvisor container status must be running                # features/steps/pktvisor.py:40
+    And pktvisor API must be enabled                                  # features/steps/pktvisor.py:56
+    And 2 policies must be running                                    # features/steps/policies.py:11
+
+  @smoke
+  Scenario: run multiple pktvisors instances using different ports    # features/pktvisor.feature:12
+    When run pktvisor instance on port available with user permission # features/steps/pktvisor.py:17
+    And run pktvisor instance on port available with user permission  # features/steps/pktvisor.py:17
+    And run pktvisor instance on port available with user permission  # features/steps/pktvisor.py:17
+    Then 3 pktvisor's containers must be running                      # features/steps/pktvisor.py:48
+
+  @smoke
+  Scenario: run multiple pktvisors instances using the same port       # features/pktvisor.feature:20
+    When run pktvisor instance on port available with user permission  # features/steps/pktvisor.py:17
+    And run pktvisor instance on port unavailable with user permission # features/steps/pktvisor.py:17
+    Then 1 pktvisor's containers must be running                       # features/steps/pktvisor.py:48
+    And 1 pktvisor's containers must be exited                         # features/steps/pktvisor.py:48
+
+  @smoke
+  Scenario: create a policy with all handlers using admin permission                  # features/pktvisor.feature:28
+    Given that a pktvisor instance is running on port available with admin permission # features/steps/pktvisor.py:30
+    When create a new policy with all handler(s)                                      # features/steps/policies.py:25
+    Then 4 policies must be running                                                   # features/steps/policies.py:11
+
+  @smoke
+  Scenario: create a policy with net handler using admin permission                   # features/pktvisor.feature:36
+    Given that a pktvisor instance is running on port available with admin permission # features/steps/pktvisor.py:30
+    When create a new policy with net handler(s)                                      # features/steps/policies.py:25
+    Then 4 policies must be running                                                   # features/steps/policies.py:11
+
+  @smoke
+  Scenario: create a policy with dhcp handler using admin permission                  # features/pktvisor.feature:43
+    Given that a pktvisor instance is running on port available with admin permission # features/steps/pktvisor.py:30
+    When create a new policy with dhcp handler(s)                                     # features/steps/policies.py:25
+    Then 4 policies must be running                                                   # features/steps/policies.py:11
+
+  @smoke
+  Scenario: create a policy with dns handler using admin permission                   # features/pktvisor.feature:50
+    Given that a pktvisor instance is running on port available with admin permission # features/steps/pktvisor.py:30
+    When create a new policy with dns handler(s)                                      # features/steps/policies.py:25
+    Then 4 policies must be running                                                   # features/steps/policies.py:11
+
+  @smoke
+  Scenario: create a policy with pcap stats handler using admin permission            # features/pktvisor.feature:57
+    Given that a pktvisor instance is running on port available with admin permission # features/steps/pktvisor.py:30
+    When create a new policy with pcap_stats handler(s)                               # features/steps/policies.py:25
+    Then 4 policies must be running                                                   # features/steps/policies.py:11
+
+  @smoke
+  Scenario: delete the default policy using admin permission                          # features/pktvisor.feature:64
+    Given that a pktvisor instance is running on port available with admin permission # features/steps/pktvisor.py:30
+    When delete 1 non-resource policies                                               # features/steps/policies.py:45
+    Then 0 policies must be running                                                   # features/steps/policies.py:11
+
+  @smoke
+  Scenario: delete all non-resource policies using admin permission                   # features/pktvisor.feature:71
+    Given that a pktvisor instance is running on port available with admin permission # features/steps/pktvisor.py:30
+    And create a new policy with all handler(s)                                       # features/steps/policies.py:25
+    When delete 2 non-resource policies                                               # features/steps/policies.py:45
+    Then 0 policies must be running                                                   # features/steps/policies.py:11
+
+  @smoke
+  Scenario: delete 1 non-resource policy using admin permission                       # features/pktvisor.feature:79
+    Given that a pktvisor instance is running on port available with admin permission # features/steps/pktvisor.py:30
+    When create a new policy with all handler(s)                                      # features/steps/policies.py:25
+    And delete 1 non-resource policies                                                # features/steps/policies.py:45
+    Then 2 policies must be running                                                   # features/steps/policies.py:11
+
+  @smoke
+  Scenario: delete the default-resource policy using admin permission                 # features/pktvisor.feature:87
+    Given that a pktvisor instance is running on port available with admin permission # features/steps/pktvisor.py:30
+    When delete 1 resource policies                                                   # features/steps/policies.py:45
+      Traceback (most recent call last):
+        File "/tmp/teste/pktvisor/automated_tests/behave_pktvisor/lib/python3.8/site-packages/urllib3/connection.py", line 174, in _new_conn
+          conn = connection.create_connection(
+        File "/tmp/teste/pktvisor/automated_tests/behave_pktvisor/lib/python3.8/site-packages/urllib3/util/connection.py", line 95, in create_connection
+          raise err
+        File "/tmp/teste/pktvisor/automated_tests/behave_pktvisor/lib/python3.8/site-packages/urllib3/util/connection.py", line 85, in create_connection
+          sock.connect(sa)
+      ConnectionRefusedError: [Errno 111] Connection refused
+      
+      During handling of the above exception, another exception occurred:
+      
+      Traceback (most recent call last):
+        File "/tmp/teste/pktvisor/automated_tests/behave_pktvisor/lib/python3.8/site-packages/urllib3/connectionpool.py", line 703, in urlopen
+          httplib_response = self._make_request(
+        File "/tmp/teste/pktvisor/automated_tests/behave_pktvisor/lib/python3.8/site-packages/urllib3/connectionpool.py", line 398, in _make_request
+          conn.request(method, url, **httplib_request_kw)
+        File "/tmp/teste/pktvisor/automated_tests/behave_pktvisor/lib/python3.8/site-packages/urllib3/connection.py", line 239, in request
+          super(HTTPConnection, self).request(method, url, body=body, headers=headers)
+        File "/usr/lib/python3.8/http/client.py", line 1256, in request
+          self._send_request(method, url, body, headers, encode_chunked)
+        File "/usr/lib/python3.8/http/client.py", line 1302, in _send_request
+          self.endheaders(body, encode_chunked=encode_chunked)
+        File "/usr/lib/python3.8/http/client.py", line 1251, in endheaders
+          self._send_output(message_body, encode_chunked=encode_chunked)
+        File "/usr/lib/python3.8/http/client.py", line 1011, in _send_output
+          self.send(msg)
+        File "/usr/lib/python3.8/http/client.py", line 951, in send
+          self.connect()
+        File "/tmp/teste/pktvisor/automated_tests/behave_pktvisor/lib/python3.8/site-packages/urllib3/connection.py", line 205, in connect
+          conn = self._new_conn()
+        File "/tmp/teste/pktvisor/automated_tests/behave_pktvisor/lib/python3.8/site-packages/urllib3/connection.py", line 186, in _new_conn
+          raise NewConnectionError(
+      urllib3.exceptions.NewConnectionError: <urllib3.connection.HTTPConnection object at 0x7f3c15a81ee0>: Failed to establish a new connection: [Errno 111] Connection refused
+      
+      During handling of the above exception, another exception occurred:
+      
+      Traceback (most recent call last):
+        File "/tmp/teste/pktvisor/automated_tests/behave_pktvisor/lib/python3.8/site-packages/requests/adapters.py", line 489, in send
+          resp = conn.urlopen(
+        File "/tmp/teste/pktvisor/automated_tests/behave_pktvisor/lib/python3.8/site-packages/urllib3/connectionpool.py", line 787, in urlopen
+          retries = retries.increment(
+        File "/tmp/teste/pktvisor/automated_tests/behave_pktvisor/lib/python3.8/site-packages/urllib3/util/retry.py", line 592, in increment
+          raise MaxRetryError(_pool, url, error or ResponseError(cause))
+      urllib3.exceptions.MaxRetryError: HTTPConnectionPool(host='localhost', port=39829): Max retries exceeded with url: /api/v1/policies (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7f3c15a81ee0>: Failed to establish a new connection: [Errno 111] Connection refused'))
+      
+      During handling of the above exception, another exception occurred:
+      
+      Traceback (most recent call last):
+        File "/tmp/teste/pktvisor/automated_tests/behave_pktvisor/lib/python3.8/site-packages/behave/model.py", line 1329, in run
+          match.run(runner.context)
+        File "/tmp/teste/pktvisor/automated_tests/behave_pktvisor/lib/python3.8/site-packages/behave/matchers.py", line 98, in run
+          self.func(context, *args, **kwargs)
+        File "features/steps/policies.py", line 50, in remove_policies
+          names_of_all_policies = make_get_request('policies', context.pkt_port).json().keys()
+        File "/tmp/teste/pktvisor/automated_tests/features/steps/utils.py", line 79, in wait_event
+          func_value = func(*args, event=event, **kwargs)
+        File "/tmp/teste/pktvisor/automated_tests/features/steps/utils.py", line 132, in make_get_request
+          response = requests.get(path)
+        File "/tmp/teste/pktvisor/automated_tests/behave_pktvisor/lib/python3.8/site-packages/requests/api.py", line 73, in get
+          return request("get", url, params=params, **kwargs)
+        File "/tmp/teste/pktvisor/automated_tests/behave_pktvisor/lib/python3.8/site-packages/requests/api.py", line 59, in request
+          return session.request(method=method, url=url, **kwargs)
+        File "/tmp/teste/pktvisor/automated_tests/behave_pktvisor/lib/python3.8/site-packages/requests/sessions.py", line 587, in request
+          resp = self.send(prep, **send_kwargs)
+        File "/tmp/teste/pktvisor/automated_tests/behave_pktvisor/lib/python3.8/site-packages/requests/sessions.py", line 701, in send
+          r = adapter.send(request, **kwargs)
+        File "/tmp/teste/pktvisor/automated_tests/behave_pktvisor/lib/python3.8/site-packages/requests/adapters.py", line 565, in send
+          raise ConnectionError(e, request=request)
+      requests.exceptions.ConnectionError: HTTPConnectionPool(host='localhost', port=39829): Max retries exceeded with url: /api/v1/policies (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7f3c15a81ee0>: Failed to establish a new connection: [Errno 111] Connection refused'))
+
+    Then 1 policies must be running                                                   # None
+
+  @smoke
+  Scenario: delete all resource policies using admin permission                       # features/pktvisor.feature:94
+    Given that a pktvisor instance is running on port available with admin permission # features/steps/pktvisor.py:30
+    And create a new policy with all handler(s)                                       # features/steps/policies.py:25
+    When delete 2 resource policies                                                   # features/steps/policies.py:45
+    Then 2 policies must be running                                                   # features/steps/policies.py:11
+
+  @smoke
+  Scenario: delete 1 resource policy using admin permission                           # features/pktvisor.feature:102
+    Given that a pktvisor instance is running on port available with admin permission # features/steps/pktvisor.py:30
+    When create a new policy with all handler(s)                                      # features/steps/policies.py:25
+    And delete 1 resource policies                                                    # features/steps/policies.py:45
+    Then 3 policies must be running                                                   # features/steps/policies.py:11
+
+  @smoke
+  Scenario: create a policy using user permission                                    # features/pktvisor.feature:110
+    Given that a pktvisor instance is running on port available with user permission # features/steps/pktvisor.py:30
+    When try to create a new policy with all handler(s)                              # features/steps/policies.py:40
+    Then status code returned on response must be 404                                # features/steps/pktvisor.py:35
+    And 2 policies must be running                                                   # features/steps/policies.py:11
+
+  @smoke
+  Scenario: delete 1 policy using user permission                                    # features/pktvisor.feature:118
+    Given that a pktvisor instance is running on port available with user permission # features/steps/pktvisor.py:30
+    When try to delete a policy                                                      # features/steps/policies.py:67
+    Then status code returned on response must be 404                                # features/steps/pktvisor.py:35
+    And 2 policies must be running                                                   # features/steps/policies.py:11
+
+  @smoke
+  Scenario Outline: pktvisor metrics -- @1.1                          # features/pktvisor.feature:134
+    When run pktvisor instance on port available with user permission # features/steps/pktvisor.py:17
+    And run mocked data dns_ipv6_udp.pcap for this network            # features/steps/pktvisor.py:75
+    Then the pktvisor container status must be running                # features/steps/pktvisor.py:40
+    And pktvisor API must be enabled                                  # features/steps/pktvisor.py:56
+      Traceback (most recent call last):
+        File "/tmp/teste/pktvisor/automated_tests/behave_pktvisor/lib/python3.8/site-packages/urllib3/connection.py", line 174, in _new_conn
+          conn = connection.create_connection(
+        File "/tmp/teste/pktvisor/automated_tests/behave_pktvisor/lib/python3.8/site-packages/urllib3/util/connection.py", line 95, in create_connection
+          raise err
+        File "/tmp/teste/pktvisor/automated_tests/behave_pktvisor/lib/python3.8/site-packages/urllib3/util/connection.py", line 85, in create_connection
+          sock.connect(sa)
+      ConnectionRefusedError: [Errno 111] Connection refused
+      
+      During handling of the above exception, another exception occurred:
+      
+      Traceback (most recent call last):
+        File "/tmp/teste/pktvisor/automated_tests/behave_pktvisor/lib/python3.8/site-packages/urllib3/connectionpool.py", line 703, in urlopen
+          httplib_response = self._make_request(
+        File "/tmp/teste/pktvisor/automated_tests/behave_pktvisor/lib/python3.8/site-packages/urllib3/connectionpool.py", line 398, in _make_request
+          conn.request(method, url, **httplib_request_kw)
+        File "/tmp/teste/pktvisor/automated_tests/behave_pktvisor/lib/python3.8/site-packages/urllib3/connection.py", line 239, in request
+          super(HTTPConnection, self).request(method, url, body=body, headers=headers)
+        File "/usr/lib/python3.8/http/client.py", line 1256, in request
+          self._send_request(method, url, body, headers, encode_chunked)
+        File "/usr/lib/python3.8/http/client.py", line 1302, in _send_request
+          self.endheaders(body, encode_chunked=encode_chunked)
+        File "/usr/lib/python3.8/http/client.py", line 1251, in endheaders
+          self._send_output(message_body, encode_chunked=encode_chunked)
+        File "/usr/lib/python3.8/http/client.py", line 1011, in _send_output
+          self.send(msg)
+        File "/usr/lib/python3.8/http/client.py", line 951, in send
+          self.connect()
+        File "/tmp/teste/pktvisor/automated_tests/behave_pktvisor/lib/python3.8/site-packages/urllib3/connection.py", line 205, in connect
+          conn = self._new_conn()
+        File "/tmp/teste/pktvisor/automated_tests/behave_pktvisor/lib/python3.8/site-packages/urllib3/connection.py", line 186, in _new_conn
+          raise NewConnectionError(
+      urllib3.exceptions.NewConnectionError: <urllib3.connection.HTTPConnection object at 0x7f3c15a1a130>: Failed to establish a new connection: [Errno 111] Connection refused
+      
+      During handling of the above exception, another exception occurred:
+      
+      Traceback (most recent call last):
+        File "/tmp/teste/pktvisor/automated_tests/behave_pktvisor/lib/python3.8/site-packages/requests/adapters.py", line 489, in send
+          resp = conn.urlopen(
+        File "/tmp/teste/pktvisor/automated_tests/behave_pktvisor/lib/python3.8/site-packages/urllib3/connectionpool.py", line 787, in urlopen
+          retries = retries.increment(
+        File "/tmp/teste/pktvisor/automated_tests/behave_pktvisor/lib/python3.8/site-packages/urllib3/util/retry.py", line 592, in increment
+          raise MaxRetryError(_pool, url, error or ResponseError(cause))
+      urllib3.exceptions.MaxRetryError: HTTPConnectionPool(host='localhost', port=44543): Max retries exceeded with url: /api/v1/policies (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7f3c15a1a130>: Failed to establish a new connection: [Errno 111] Connection refused'))
+      
+      During handling of the above exception, another exception occurred:
+      
+      Traceback (most recent call last):
+        File "/tmp/teste/pktvisor/automated_tests/behave_pktvisor/lib/python3.8/site-packages/behave/model.py", line 1329, in run
+          match.run(runner.context)
+        File "/tmp/teste/pktvisor/automated_tests/behave_pktvisor/lib/python3.8/site-packages/behave/matchers.py", line 98, in run
+          self.func(context, *args, **kwargs)
+        File "features/steps/pktvisor.py", line 72, in check_pkt_base_API
+          make_get_request(endpoint, context.pkt_port)
+        File "/tmp/teste/pktvisor/automated_tests/features/steps/utils.py", line 79, in wait_event
+          func_value = func(*args, event=event, **kwargs)
+        File "/tmp/teste/pktvisor/automated_tests/features/steps/utils.py", line 132, in make_get_request
+          response = requests.get(path)
+        File "/tmp/teste/pktvisor/automated_tests/behave_pktvisor/lib/python3.8/site-packages/requests/api.py", line 73, in get
+          return request("get", url, params=params, **kwargs)
+        File "/tmp/teste/pktvisor/automated_tests/behave_pktvisor/lib/python3.8/site-packages/requests/api.py", line 59, in request
+          return session.request(method=method, url=url, **kwargs)
+        File "/tmp/teste/pktvisor/automated_tests/behave_pktvisor/lib/python3.8/site-packages/requests/sessions.py", line 587, in request
+          resp = self.send(prep, **send_kwargs)
+        File "/tmp/teste/pktvisor/automated_tests/behave_pktvisor/lib/python3.8/site-packages/requests/sessions.py", line 701, in send
+          r = adapter.send(request, **kwargs)
+        File "/tmp/teste/pktvisor/automated_tests/behave_pktvisor/lib/python3.8/site-packages/requests/adapters.py", line 565, in send
+          raise ConnectionError(e, request=request)
+      requests.exceptions.ConnectionError: HTTPConnectionPool(host='localhost', port=44543): Max retries exceeded with url: /api/v1/policies (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7f3c15a1a130>: Failed to establish a new connection: [Errno 111] Connection refused'))
+
+    And metrics must be correctly generated                           # None
+
+  @smoke
+  Scenario Outline: pktvisor metrics -- @1.2                          # features/pktvisor.feature:135
+    When run pktvisor instance on port available with user permission # features/steps/pktvisor.py:17
+    And run mocked data dns_ipv6_tcp.pcap for this network            # features/steps/pktvisor.py:75
+    Then the pktvisor container status must be running                # features/steps/pktvisor.py:40
+    And pktvisor API must be enabled                                  # features/steps/pktvisor.py:56
+    And metrics must be correctly generated                           # features/steps/pktvisor.py:121
+
+  @smoke
+  Scenario Outline: pktvisor metrics -- @1.3                          # features/pktvisor.feature:136
+    When run pktvisor instance on port available with user permission # features/steps/pktvisor.py:17
+    And run mocked data dns_ipv4_udp.pcap for this network            # features/steps/pktvisor.py:75
+    Then the pktvisor container status must be running                # features/steps/pktvisor.py:40
+    And pktvisor API must be enabled                                  # features/steps/pktvisor.py:56
+    And metrics must be correctly generated                           # features/steps/pktvisor.py:121
+
+  @smoke
+  Scenario Outline: pktvisor metrics -- @1.4                          # features/pktvisor.feature:137
+    When run pktvisor instance on port available with user permission # features/steps/pktvisor.py:17
+    And run mocked data dns_ipv4_tcp.pcap for this network            # features/steps/pktvisor.py:75
+    Then the pktvisor container status must be running                # features/steps/pktvisor.py:40
+    And pktvisor API must be enabled                                  # features/steps/pktvisor.py:56

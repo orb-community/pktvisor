@@ -1,0 +1,5 @@
+﻿11:19:43 - INFO - STEP: run pktvisor instance on port available with user permission
+11:19:44 - INFO - STEP: run mocked data dns_ipv6_tcp.pcap for this network
+11:19:44 - INFO - STEP: the pktvisor container status must be running
+11:19:44 - INFO - STEP: pktvisor API must be enabled
+11:19:45 - INFO - STEP: metrics must be correctly generated
