@@ -1,4 +1,0 @@
-﻿11:19:52 - INFO - STEP: run pktvisor instance on port available with user permission
-11:19:53 - INFO - STEP: run mocked data dns_ipv4_tcp.pcap for this network
-11:19:53 - INFO - STEP: the pktvisor container status must be running
-11:19:53 - INFO - STEP: pktvisor API must be enabled
