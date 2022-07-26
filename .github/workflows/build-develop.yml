@@ -292,9 +292,9 @@ jobs:
         run: |
           cd ./automated_tests/
           sudo apt-get install tcpreplay
-          pip install --upgrade pip
           python3.8 -m venv behave_pktvisor
           source behave_pktvisor/bin/activate
+          pip install --upgrade pip
           pip install -r requirements.txt
           pip install -r requirements.txt
           behavex -t=@smoke
@@ -386,3 +386,15 @@ jobs:
         run: |
           cd .github/hosted-runner/amd64/
           terraform destroy -auto-approve
+
+  removing-runners:
+    needs:
+      - remove-amd64-runner
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
+    steps:
+      - name: Remove runner from github
+        run: |
+          curl -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/etaques/pktvisor/actions/runners | jq '.runners[0].id' --raw-output > runner_id_0.txt
+          RUNNER_ID=$(cat runner_id_0.txt)
+          curl -X DELETE -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/etaques/pktvisor/actions/runners/$RUNNER_ID
