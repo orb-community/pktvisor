@@ -239,7 +239,7 @@ jobs:
 
       - name: Copy VERSION file
         run: |
-          echo ${{ env.VERSION }} ./automated_tests/output/VERSION 
+          echo "${{ env.VERSION }}" > ./automated_tests/output/VERSION 
 
       - name: Persist to workspace
         uses: actions/upload-artifact@v2
