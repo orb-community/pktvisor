@@ -235,7 +235,11 @@ jobs:
         run: |
           ls -lha
           cd ./automated_tests/
-          rm -rf ./behave_pktvisor  
+          rm -rf ./behave_pktvisor
+
+      - name: Copy VERSION file
+        run: |
+          echo ${{ env.VERSION }} ./automated_tests/output/VERSION 
 
       - name: Persist to workspace
         uses: actions/upload-artifact@v2
