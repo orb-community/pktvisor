@@ -196,9 +196,73 @@ jobs:
 #          name: pktvisor-x86_64-${{ env.VERSION }}.AppImage
 #          path: ${{github.workspace}}/appimage/pktvisor-x86_64-${{ env.VERSION }}.AppImage
 
+  spinup-amd64-runner:
+    needs:
+      - package
+    runs-on: ubuntu-latest
+    outputs:
+      runner_token: ${{ steps.token.outputs.runner }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Generate runner token
+        id: token
+        run: |
+          curl -X POST -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/etaques/pktvisor/actions/runners/registration-token -o token.json
+          echo "::set-output name=runner::$(cat token.json | jq .token --raw-output )"
+          cat token.json
+
+      - name: Inject runner token in user_data.sh
+        run: |
+          cd .github/hosted-runner/amd64/
+          ESCAPED_REPLACE_RUNNER_TOKEN=$(printf '%s\n' "${{ steps.token.outputs.runner }}" | sed -e 's/[\/&]/\\&/g')
+          sed -i -e "s/RUNNER_TOKEN/$ESCAPED_REPLACE_RUNNER_TOKEN/g" user_data.sh
+
+      - name: Inject AWS key
+        run: |
+          cd .github/hosted-runner/amd64/
+          ESCAPED_REPLACE_KEY_ID=$(printf '%s\n' "${{ secrets.AWS_ACCESS_KEY_ID }}" | sed -e 's/[\/&]/\\&/g')
+          sed -i -e "s/AWSID/$ESCAPED_REPLACE_KEY_ID/g" vars.tf
+          ESCAPED_REPLACE_ACCESS_KEY=$(printf '%s\n' "${{ secrets.AWS_SECRET_ACCESS_KEY }}" | sed -e 's/[\/&]/\\&/g')
+          sed -i -e "s/AWSSECRET/$ESCAPED_REPLACE_ACCESS_KEY/g" vars.tf
+
+      - name: setup terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.1.7
+
+      - name: Terraform Init
+        run: |
+          cd .github/hosted-runner/amd64/
+          terraform init -input=false
+
+      - name: Terraform plan
+        run: |
+          cd .github/hosted-runner/amd64/
+          terraform plan -out=tfplan
+
+      - name: Terraform apply
+        run: |
+          cd .github/hosted-runner/amd64/
+          terraform apply -auto-approve tfplan
+
+      - name: Terraform output
+        run: |
+          cd .github/hosted-runner/amd64/
+          terraform output -raw ip
+
+      - name: Persist to workspace
+        uses: actions/upload-artifact@v2
+        with:
+          name: terraform
+          path: |
+            .github/hosted-runner/amd64/terraform.tfstate
+          retention-days: 1
+
   integration-tests:
     needs: package
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     outputs:
       commit_hash: ${{ steps.commit_hash.outputs.sha_short }}
     # if this is a push into one of our main branches (rather than just a pull request), we will also package
@@ -236,12 +300,6 @@ jobs:
           pip install -r requirements.txt
           behavex -t=@smoke
 
-      - name: Cleanup Venv
-        run: |
-          ls -lha
-          cd ./automated_tests/
-          rm -rf ./behave_pktvisor
-
       - name: Copy VERSION file
         run: |
           echo "${{ needs.package.outputs.VERSION }}" > ./automated_tests/output/VERSION 
@@ -252,6 +310,7 @@ jobs:
           name: workspace
           path: |
             ./automated_tests/
+            !./automated_tests/behave_pktvisor
           retention-days: 1
 
       - name: Clean

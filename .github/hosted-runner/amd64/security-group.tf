@@ -1,5 +1,5 @@
 resource "aws_security_group" "sg_SelfRunner_amd64" {
-  name        = "sg_SelfRunner_amd64"
+  name        = "sg_pktvisor_SelfRunner_amd64"
   description = "Allow all outbound traffic and inbound 22/80"
   vpc_id      = "vpc-0cd4a525c008d8d71"
 
