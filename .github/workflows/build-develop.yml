@@ -195,15 +195,26 @@ jobs:
   integration-tests:
     needs: package
     runs-on: ubuntu-latest
+    outputs:
+      commit_hash: ${{ steps.commit_hash.outputs.sha_short }}
     # if this is a push into one of our main branches (rather than just a pull request), we will also package
     if: github.event_name != 'pull_request'
     steps:
       - uses: actions/checkout@v2
 
+      - name: Locking pktvisor integration test state
+        run: |
+          curl -X POST -H "Content-Type: application/x-www-form-urlencoded" -u "${{ secrets.QA_AUTH_CREDENTIALS }}" -d "change=pktvisor-dev&state=active" https://qa.ops.orb.live/api.php
+
       - name: Prepare test config
         run: |
           cd ./automated_tests/
           mv test_config.ini.tpl test_config.ini
+
+      - name: commit hash
+        id: commit_hash
+        run: |
+          echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"    
 
       - uses: actions/setup-python@v4
         with:
@@ -239,3 +250,30 @@ jobs:
         run: |
           cd ./automated_tests/
           behavex -t=@cleanup --parallel-processes=8 --parallel-scheme=scenario
+
+      - name: Unlocking pktvisor integration test state
+        run: |
+          curl -X POST -H "Content-Type: application/x-www-form-urlencoded" -u "${{ secrets.QA_AUTH_CREDENTIALS }}" -d "change=pktvisor-dev&state=inactive" https://qa.ops.orb.live/api.php
+          
+  upload-qa-artifact:
+    needs: [ integration-tests ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Attach to workspace
+        uses: actions/download-artifact@v2
+        with:
+          name: workspace
+
+      - name: debug files
+        run: |
+          ls -lha
+
+      - name: Upload pktvisor report to qa host
+        uses: appleboy/scp-action@master
+        with:
+          host: qa.ops.orb.live
+          username: ${{ secrets.SSH_USERNAME }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          port: 2022
+          source: "./output/*"
+          target: "/usr/share/nginx/html/pktvisor/develop/${{ needs.integration-tests.outputs.commit_hash }}/pktvisor/python-test"
