@@ -79,6 +79,8 @@ jobs:
   package:
     needs: build
     runs-on: ubuntu-latest
+    outputs:
+      VERSION: ${{ steps.version.outputs.version }}
     # if this is a push into one of our main branches (rather than just a pull request), we will also package
     if: github.event_name != 'pull_request'
     steps:
@@ -103,8 +105,10 @@ jobs:
         run: echo ${{ env.BRANCH_NAME }}
 
       - name: Get VERSION
+        id: version
         run: |
           echo "VERSION=`cat ${{github.workspace}}/build/VERSION`" >> $GITHUB_ENV
+          echo "::set-output name=version::$(cat ${{github.workspace}}/build/VERSION)" 
 
       - name: Debug version
         run: echo ${{ env.VERSION }}
@@ -239,7 +243,7 @@ jobs:
 
       - name: Copy VERSION file
         run: |
-          echo "${{ env.VERSION }}" > ./automated_tests/output/VERSION 
+          echo "${{ needs.package.outputs.VERSION }}" > ./automated_tests/output/VERSION 
 
       - name: Persist to workspace
         uses: actions/upload-artifact@v2
