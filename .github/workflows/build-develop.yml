@@ -261,7 +261,7 @@ jobs:
 
   integration-tests:
     needs: [ spinup-amd64-runner ]
-    runs-on: self-hosted
+    runs-on: [ self-hosted, linux, x64 ]
     outputs:
       commit_hash: ${{ steps.commit_hash.outputs.sha_short }}
     # if this is a push into one of our main branches (rather than just a pull request), we will also package
@@ -344,3 +344,45 @@ jobs:
           port: 2022
           source: "./output/*"
           target: "/usr/share/nginx/html/pktvisor/develop/${{ needs.integration-tests.outputs.commit_hash }}/pktvisor/python-test"
+
+  remove-amd64-runner:
+    needs: [ integration-tests ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Attach to workspace
+        uses: actions/download-artifact@v2
+        with:
+          name: terraform
+          path: .github/hosted-runner/amd64/
+
+      - name: Inject AWS key
+        run: |
+          cd .github/hosted-runner/amd64/
+          ESCAPED_REPLACE_KEY_ID=$(printf '%s\n' "${{ secrets.AWS_ACCESS_KEY_ID }}" | sed -e 's/[\/&]/\\&/g')
+          sed -i -e "s/AWSID/$ESCAPED_REPLACE_KEY_ID/g" vars.tf
+          ESCAPED_REPLACE_ACCESS_KEY=$(printf '%s\n' "${{ secrets.AWS_SECRET_ACCESS_KEY }}" | sed -e 's/[\/&]/\\&/g')
+          sed -i -e "s/AWSSECRET/$ESCAPED_REPLACE_ACCESS_KEY/g" vars.tf
+
+      - name: setup terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.1.7
+
+      - name: Terraform Init
+        run: |
+          cd .github/hosted-runner/amd64/
+          terraform init -input=false
+
+      - name: Terraform plan destroy
+        run: |
+          cd .github/hosted-runner/amd64/
+          terraform plan -destroy
+        continue-on-error: true
+
+      - name: Terraform destroy
+        run: |
+          cd .github/hosted-runner/amd64/
+          terraform destroy -auto-approve
