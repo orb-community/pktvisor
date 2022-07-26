@@ -197,8 +197,7 @@ jobs:
 #          path: ${{github.workspace}}/appimage/pktvisor-x86_64-${{ env.VERSION }}.AppImage
 
   spinup-amd64-runner:
-    needs:
-      - package
+    needs: [ package ]
     runs-on: ubuntu-latest
     outputs:
       runner_token: ${{ steps.token.outputs.runner }}
@@ -261,7 +260,7 @@ jobs:
           retention-days: 1
 
   integration-tests:
-    needs: package
+    needs: [ spinup-amd64-runner ]
     runs-on: self-hosted
     outputs:
       commit_hash: ${{ steps.commit_hash.outputs.sha_short }}
