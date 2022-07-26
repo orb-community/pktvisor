@@ -79,6 +79,8 @@ protected:
         TopN<std::string> topDstIP;
         TopN<uint16_t> topSrcPort;
         TopN<uint16_t> topDstPort;
+        TopN<std::string> topSrcIPandPort;
+        TopN<std::string> topDstIPandPort;
         TopN<uint32_t> topInIfIndex;
         TopN<uint32_t> topOutIfIndex;
         topns(std::string metric)
@@ -86,9 +88,23 @@ protected:
             , topDstIP("flow", "ip", {"top_dst_ips_" + metric}, "Top destination IP addresses by " + metric)
             , topSrcPort("flow", "port", {"top_src_ports_" + metric}, "Top source ports by " + metric)
             , topDstPort("flow", "port", {"top_dst_ports_" + metric}, "Top destination ports by " + metric)
+            , topSrcIPandPort("flow", "ip_port", {"top_src_ips_and_port_" + metric}, "Top source IP addresses and port by " + metric)
+            , topDstIPandPort("flow", "ip_port", {"top_dst_ips_and_port_" + metric}, "Top destination IP addresses and port by " + metric)
             , topInIfIndex("flow", "index", {"top_in_if_index_" + metric}, "Top input interface indexes by " + metric)
             , topOutIfIndex("flow", "index", {"top_out_if_index_" + metric}, "Top output interface indexes by " + metric)
         {
+        }
+
+        void set_topn_count(size_t topn_count)
+        {
+            topSrcIP.set_topn_count(topn_count);
+            topDstIP.set_topn_count(topn_count);
+            topSrcPort.set_topn_count(topn_count);
+            topDstPort.set_topn_count(topn_count);
+            topSrcIPandPort.set_topn_count(topn_count);
+            topDstIPandPort.set_topn_count(topn_count);
+            topInIfIndex.set_topn_count(topn_count);
+            topOutIfIndex.set_topn_count(topn_count);
         }
     };
 
@@ -121,6 +137,9 @@ protected:
     Rate _rate;
     Rate _throughput;
 
+    void _process_geo_metrics(const pcpp::IPv4Address &ipv4);
+    void _process_geo_metrics(const pcpp::IPv6Address &ipv6);
+
 public:
     FlowMetricsBucket()
         : _srcIPCard(FLOW_SCHEMA, {"cardinality", "src_ips_in"}, "Source IP cardinality")
@@ -132,8 +151,8 @@ public:
         , _topByBytes("bytes")
         , _topByPackets("packets")
         , _payload_size(FLOW_SCHEMA, {"payload_size"}, "Quantiles of payload sizes, in bytes")
-        , _rate(FLOW_SCHEMA, {"rates", "pps"}, "Rate of combined flow packets per second")
-        , _throughput("payload", {"rates", "bps"}, "Rate of combined flow bytes per second")
+        , _rate(FLOW_SCHEMA, {"rates", "packets"}, "Rate of combined flow throughput in packets per second")
+        , _throughput("payload", {"rates", "bytes"}, "Rate of combined flow throughput in bytes per second")
     {
     }
 
@@ -148,6 +167,13 @@ public:
     void specialized_merge(const AbstractMetricsBucket &other) override;
     void to_json(json &j) const override;
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override;
+    void update_topn_metrics(size_t topn_count) override
+    {
+        _topByBytes.set_topn_count(topn_count);
+        _topByPackets.set_topn_count(topn_count);
+        _topGeoLoc.set_topn_count(topn_count);
+        _topASN.set_topn_count(topn_count);
+    }
 
     // must be thread safe as it is called from time window maintenance thread
     void on_set_read_only() override
@@ -174,9 +200,9 @@ public:
 class FlowStreamHandler final : public visor::StreamMetricsHandler<FlowMetricsManager>
 {
 
-    // the input stream sources we support (only one will be in use at a time)
-    MockInputStream *_mock_stream{nullptr};
-    FlowInputStream *_flow_stream{nullptr};
+    // the input stream event proxy we support (only one will be in use at a time)
+    MockInputEventProxy *_mock_proxy{nullptr};
+    FlowInputEventProxy *_flow_proxy{nullptr};
 
     sigslot::connection _sflow_connection;
     sigslot::connection _netflow_connection;
@@ -184,8 +210,12 @@ class FlowStreamHandler final : public visor::StreamMetricsHandler<FlowMetricsMa
     std::vector<Ipv4Subnet> _IPv4_host_list;
     std::vector<Ipv6Subnet> _IPv6_host_list;
 
+    bool _sample_rate_scaling;
+
     enum Filters {
         OnlyHosts,
+        GeoLocNotFound,
+        AsnNotFound,
         FiltersMAX
     };
     std::bitset<Filters::FiltersMAX> _f_enabled;
@@ -207,7 +237,7 @@ class FlowStreamHandler final : public visor::StreamMetricsHandler<FlowMetricsMa
     bool _filtering(const FlowData &flow);
 
 public:
-    FlowStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config, StreamHandler *handler = nullptr);
+    FlowStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config, StreamHandler *handler = nullptr);
     ~FlowStreamHandler() override;
 
     // visor::AbstractModule
@@ -224,5 +254,4 @@ public:
     void start() override;
     void stop() override;
 };
-
 }

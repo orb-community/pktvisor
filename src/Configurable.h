@@ -163,7 +163,7 @@ public:
         }
     }
 
-    const std::string config_hash()
+    const std::string config_hash() const
     {
         std::shared_lock lock(_config_mutex);
         std::vector<std::string> key_values;

@@ -57,6 +57,9 @@ public:
     void specialized_merge(const AbstractMetricsBucket &other) override;
     void to_json(json &j) const override;
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override;
+    void update_topn_metrics(size_t) override
+    {
+    }
 
     void process_pcap_tcp_reassembly_error(bool deep, pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3);
     void process_pcap_stats(const pcpp::IPcapDevice::PcapStats &stats);
@@ -77,7 +80,7 @@ public:
 class PcapStreamHandler final : public visor::StreamMetricsHandler<PcapMetricsManager>
 {
 
-    PcapInputStream *_pcap_stream;
+    PcapInputEventProxy *_pcap_proxy;
 
     sigslot::connection _start_tstamp_connection;
     sigslot::connection _end_tstamp_connection;
@@ -94,7 +97,7 @@ class PcapStreamHandler final : public visor::StreamMetricsHandler<PcapMetricsMa
     void set_end_tstamp(timespec stamp);
 
 public:
-    PcapStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config, StreamHandler *handler = nullptr);
+    PcapStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config, StreamHandler *handler = nullptr);
     ~PcapStreamHandler() = default;
 
     // visor::AbstractModule

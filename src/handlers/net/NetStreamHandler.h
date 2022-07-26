@@ -76,6 +76,7 @@ protected:
         Counter TCP_SYN;
         Counter total_in;
         Counter total_out;
+        Counter filtered;
         counters()
             : UDP("packets", {"udp"}, "Count of UDP packets")
             , TCP("packets", {"tcp"}, "Count of TCP packets")
@@ -85,6 +86,7 @@ protected:
             , TCP_SYN("packets", {"protocol", "tcp", "syn"}, "Count of TCP SYN packets")
             , total_in("packets", {"in"}, "Count of total ingress packets")
             , total_out("packets", {"out"}, "Count of total egress packets")
+            , filtered("packets", {"filtered"}, "Count of total packets that did not match the configured filter(s) (if any)")
         {
         }
     };
@@ -97,6 +99,9 @@ protected:
     Rate _throughput_in;
     Rate _throughput_out;
 
+    void _process_geo_metrics(const pcpp::IPv4Address &ipv4);
+    void _process_geo_metrics(const pcpp::IPv6Address &ipv6);
+
 public:
     NetworkMetricsBucket()
         : _srcIPCard("packets", {"cardinality", "src_ips_in"}, "Source IP cardinality")
@@ -108,8 +113,8 @@ public:
         , _payload_size("packets", {"payload_size"}, "Quantiles of payload sizes, in bytes")
         , _rate_in("packets", {"rates", "pps_in"}, "Rate of ingress in packets per second")
         , _rate_out("packets", {"rates", "pps_out"}, "Rate of egress in packets per second")
-        , _throughput_in("payload", {"rates", "bps_in"}, "Rate of ingress packets size in bytes per second")
-        , _throughput_out("payload", {"rates", "bps_out"}, "Rate of egress packets size in bytes per second")
+        , _throughput_in("payload", {"rates", "bytes_in"}, "Rate of ingress throughput in bytes per second")
+        , _throughput_out("payload", {"rates", "bytes_out"}, "Rate of egress throughput in bytes per second")
     {
         set_event_rate_info("packets", {"rates", "pps_total"}, "Rate of all packets (combined ingress and egress) in packets per second");
         set_num_events_info("packets", {"total"}, "Total packets processed");
@@ -127,6 +132,13 @@ public:
     void specialized_merge(const AbstractMetricsBucket &other) override;
     void to_json(json &j) const override;
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override;
+    void update_topn_metrics(size_t topn_count) override
+    {
+        _topGeoLoc.set_topn_count(topn_count);
+        _topASN.set_topn_count(topn_count);
+        _topIPv4.set_topn_count(topn_count);
+        _topIPv6.set_topn_count(topn_count);
+    }
 
     // must be thread safe as it is called from time window maintenance thread
     void on_set_read_only() override
@@ -138,6 +150,7 @@ public:
         _throughput_out.cancel();
     }
 
+    void process_filtered();
     void process_packet(bool deep, pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4);
     void process_dnstap(bool deep, const dnstap::Dnstap &payload, size_t size);
     void process_net_layer(PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, size_t payload_size);
@@ -152,6 +165,7 @@ public:
     {
     }
 
+    void process_filtered(timespec stamp);
     void process_packet(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp);
     void process_dnstap(const dnstap::Dnstap &payload, size_t size);
 };
@@ -159,10 +173,10 @@ public:
 class NetStreamHandler final : public visor::StreamMetricsHandler<NetworkMetricsManager>
 {
 
-    // the input stream sources we support (only one will be in use at a time)
-    PcapInputStream *_pcap_stream{nullptr};
-    DnstapInputStream *_dnstap_stream{nullptr};
-    MockInputStream *_mock_stream{nullptr};
+    // the input event proxy we support (only one will be in use at a time)
+    PcapInputEventProxy *_pcap_proxy{nullptr};
+    DnstapInputEventProxy *_dnstap_proxy{nullptr};
+    MockInputEventProxy *_mock_proxy{nullptr};
 
     // the stream handlers sources we support (only one will be in use at a time)
     DnsStreamHandler *_dns_handler{nullptr};
@@ -189,8 +203,19 @@ class NetStreamHandler final : public visor::StreamMetricsHandler<NetworkMetrics
     void set_start_tstamp(timespec stamp);
     void set_end_tstamp(timespec stamp);
 
+    // Net Filters
+    enum Filters {
+        GeoLocNotFound,
+        AsnNotFound,
+        FiltersMAX
+    };
+
+    std::bitset<Filters::FiltersMAX> _f_enabled;
+
+    bool _filtering(pcpp::Packet &payload, PacketDirection dir, timespec stamp);
+
 public:
-    NetStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config, StreamHandler *handler = nullptr);
+    NetStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config, StreamHandler *handler = nullptr);
     ~NetStreamHandler() override;
 
     // visor::AbstractModule

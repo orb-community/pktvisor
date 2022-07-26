@@ -28,7 +28,8 @@ TEST_CASE("DHCP JSON Schema", "[dhcp][iface][json]")
         stream.parse_host_spec();
 
         visor::Config c;
-        DhcpStreamHandler handler{"dhcp-test", &stream, &c};
+        auto stream_proxy = stream.add_event_proxy(c);
+        DhcpStreamHandler handler{"dhcp-test", stream_proxy, &c};
         handler.config_set("recorded_stream", true);
 
         handler.start();

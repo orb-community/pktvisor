@@ -180,6 +180,8 @@ int main(int argc, char *argv[])
         auto [input_stream_, stream_mgr_lock] = registry.input_manager()->module_get_locked(input_text);
         stream_mgr_lock.unlock();
         auto input_stream = input_stream_;
+        visor::Config filter;
+        auto input_proxy = input_stream->add_event_proxy(filter);
 
         shutdown_handler = [&]([[maybe_unused]] int signal) {
             input_stream->stop();
@@ -188,7 +190,7 @@ int main(int argc, char *argv[])
 
         handler::net::NetStreamHandler *net_handler{nullptr};
         {
-            auto handler_module = std::make_unique<handler::net::NetStreamHandler>("net", input_stream, &window_config);
+            auto handler_module = std::make_unique<handler::net::NetStreamHandler>("net", input_proxy, &window_config);
             handler_module->config_set("recorded_stream", true);
             handler_module->start();
             registry.handler_manager()->module_add(std::move(handler_module));
@@ -199,7 +201,7 @@ int main(int argc, char *argv[])
 
         handler::dns::DnsStreamHandler *dns_handler{nullptr};
         if (input_type == PCAP || input_type == DNSTAP) {
-            auto handler_module = std::make_unique<handler::dns::DnsStreamHandler>("dns", input_stream, &window_config);
+            auto handler_module = std::make_unique<handler::dns::DnsStreamHandler>("dns", input_proxy, &window_config);
             handler_module->config_set("recorded_stream", true);
             handler_module->start();
             registry.handler_manager()->module_add(std::move(handler_module));
@@ -210,7 +212,7 @@ int main(int argc, char *argv[])
 
         handler::dhcp::DhcpStreamHandler *dhcp_handler{nullptr};
         if (input_type == PCAP) {
-            auto handler_module = std::make_unique<handler::dhcp::DhcpStreamHandler>("dhcp", input_stream, &window_config);
+            auto handler_module = std::make_unique<handler::dhcp::DhcpStreamHandler>("dhcp", input_proxy, &window_config);
             handler_module->config_set("recorded_stream", true);
             handler_module->start();
             registry.handler_manager()->module_add(std::move(handler_module));

@@ -229,30 +229,44 @@ void PcapInputStream::stop()
 
 void PcapInputStream::tcp_message_ready(int8_t side, const pcpp::TcpStreamData &tcpData)
 {
-    tcp_message_ready_signal(side, tcpData);
+    std::shared_lock lock(_input_mutex);
+    for (auto &proxy : _event_proxies) {
+        dynamic_cast<PcapInputEventProxy *>(proxy.get())->tcp_message_ready_cb(side, tcpData);
+    }
     _lru_list.put(tcpData.getConnectionData().flowKey, tcpData.getConnectionData().endTime);
 }
 
 void PcapInputStream::tcp_connection_start(const pcpp::ConnectionData &connectionData)
 {
-    tcp_connection_start_signal(connectionData);
+    std::shared_lock lock(_input_mutex);
+    for (auto &proxy : _event_proxies) {
+        dynamic_cast<PcapInputEventProxy *>(proxy.get())->tcp_connection_start_cb(connectionData);
+    }
     _lru_list.put(connectionData.flowKey, connectionData.startTime);
 }
 
 void PcapInputStream::tcp_connection_end(const pcpp::ConnectionData &connectionData, pcpp::TcpReassembly::ConnectionEndReason reason)
 {
-    tcp_connection_end_signal(connectionData, reason);
+    std::shared_lock lock(_input_mutex);
+    for (auto &proxy : _event_proxies) {
+        static_cast<PcapInputEventProxy *>(proxy.get())->tcp_connection_end_cb(connectionData, reason);
+    }
     _lru_list.eraseElement(connectionData.flowKey);
 }
 
 void PcapInputStream::process_pcap_stats(const pcpp::IPcapDevice::PcapStats &stats)
 {
-    pcap_stats_signal(stats);
+    std::shared_lock lock(_input_mutex);
+    for (auto &proxy : _event_proxies) {
+        static_cast<PcapInputEventProxy *>(proxy.get())->process_pcap_stats(stats);
+    }
     if (!repeat_counter) {
         // use now()
         timespec stamp;
         std::timespec_get(&stamp, TIME_UTC);
-        heartbeat_signal(stamp);
+        for (auto &proxy : _event_proxies) {
+            static_cast<PcapInputEventProxy *>(proxy.get())->heartbeat_cb(stamp);
+        }
         repeat_counter++;
     } else if (repeat_counter < HEARTBEAT_INTERVAL) {
         repeat_counter++;
@@ -327,8 +341,12 @@ void PcapInputStream::_generate_mock_traffic()
     pcpp::ProtocolType l4 = pcpp::UDP;
     timespec ts;
     timespec_get(&ts, TIME_UTC);
-    packet_signal(packet, dir, l3, l4, ts);
-    udp_signal(packet, dir, l3, pcpp::hash5Tuple(&packet), ts);
+    std::shared_lock lock(_input_mutex);
+    for (auto &proxy : _event_proxies) {
+        auto pcap_proxy = static_cast<PcapInputEventProxy *>(proxy.get());
+        pcap_proxy->process_packet_cb(packet, dir, l3, l4, ts);
+        pcap_proxy->process_udp_packet_cb(packet, dir, l3, pcpp::hash5Tuple(&packet), ts);
+    }
 }
 
 void PcapInputStream::process_raw_packet(pcpp::RawPacket *rawPacket)
@@ -374,17 +392,26 @@ void PcapInputStream::process_raw_packet(pcpp::RawPacket *rawPacket)
 
     auto timestamp = rawPacket->getPacketTimeStamp();
     // interface to handlers
-    packet_signal(packet, dir, l3, l4, timestamp);
+    std::shared_lock lock(_input_mutex);
+    for (auto &proxy : _event_proxies) {
+        static_cast<PcapInputEventProxy *>(proxy.get())->process_packet_cb(packet, dir, l3, l4, timestamp);
+    }
 
     if (l4 == pcpp::UDP) {
-        udp_signal(packet, dir, l3, pcpp::hash5Tuple(&packet), timestamp);
+        for (auto &proxy : _event_proxies) {
+            static_cast<PcapInputEventProxy *>(proxy.get())->process_udp_packet_cb(packet, dir, l3, pcpp::hash5Tuple(&packet), timestamp);
+        }
     } else if (l4 == pcpp::TCP) {
+        lock.unlock();
         auto result = _tcp_reassembly.reassemblePacket(packet);
+        lock.lock();
         switch (result) {
         case pcpp::TcpReassembly::Error_PacketDoesNotMatchFlow:
         case pcpp::TcpReassembly::NonTcpPacket:
         case pcpp::TcpReassembly::NonIpPacket:
-            tcp_reassembly_error_signal(packet, dir, l3, timestamp);
+            for (auto &proxy : _event_proxies) {
+                static_cast<PcapInputEventProxy *>(proxy.get())->process_pcap_tcp_reassembly_error(packet, dir, l3, timestamp);
+            }
         case pcpp::TcpReassembly::TcpMessageHandled:
         case pcpp::TcpReassembly::OutOfOrderTcpMessageBuffered:
         case pcpp::TcpReassembly::FIN_RSTWithNoData:
@@ -434,7 +461,10 @@ void PcapInputStream::_open_pcap(const std::string &fileName, const std::string 
 
     // setup initial timestamp from first packet to initiate bucketing
     if (reader->getNextPacket(rawPacket)) {
-        start_tstamp_signal(rawPacket.getPacketTimeStamp());
+        std::shared_lock lock(_input_mutex);
+        for (auto &proxy : _event_proxies) {
+            static_cast<PcapInputEventProxy *>(proxy.get())->start_tstamp_cb(rawPacket.getPacketTimeStamp());
+        }
         process_raw_packet(&rawPacket);
     }
 
@@ -450,7 +480,10 @@ void PcapInputStream::_open_pcap(const std::string &fileName, const std::string 
         lastCount++;
         end_tstamp = rawPacket.getPacketTimeStamp();
     }
-    end_tstamp_signal(end_tstamp);
+    std::shared_lock lock(_input_mutex);
+    for (auto &proxy : _event_proxies) {
+        static_cast<PcapInputEventProxy *>(proxy.get())->end_tstamp_cb(end_tstamp);
+    }
     t0->cancel();
     std::cerr << "processed " << packetCount << " packets\n";
 
@@ -583,6 +616,11 @@ void PcapInputStream::info_json(json &j) const
         break;
     }
     j[schema_key()] = info;
+}
+
+std::unique_ptr<InputEventProxy> PcapInputStream::create_event_proxy(const Configurable &filter)
+{
+    return std::make_unique<PcapInputEventProxy>(_name, filter);
 }
 
 void PcapInputStream::parse_host_spec()

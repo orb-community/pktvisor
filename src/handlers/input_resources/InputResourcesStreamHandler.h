@@ -51,6 +51,9 @@ public:
     void specialized_merge(const AbstractMetricsBucket &other) override;
     void to_json(json &j) const override;
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override;
+    void update_topn_metrics(size_t) override
+    {
+    }
 
     void process_resources(double cpu_usage, uint64_t memory_usage);
     void process_policies(int16_t policy_count, int16_t handler_count);
@@ -84,10 +87,10 @@ class InputResourcesStreamHandler final : public visor::StreamMetricsHandler<Inp
     time_t _timer;
     timespec _timestamp;
 
-    PcapInputStream *_pcap_stream{nullptr};
-    DnstapInputStream *_dnstap_stream{nullptr};
-    MockInputStream *_mock_stream{nullptr};
-    FlowInputStream *_flow_stream{nullptr};
+    PcapInputEventProxy *_pcap_proxy{nullptr};
+    DnstapInputEventProxy *_dnstap_proxy{nullptr};
+    MockInputEventProxy *_mock_proxy{nullptr};
+    FlowInputEventProxy *_flow_proxy{nullptr};
 
     sigslot::connection _dnstap_connection;
     sigslot::connection _sflow_connection;
@@ -100,11 +103,11 @@ class InputResourcesStreamHandler final : public visor::StreamMetricsHandler<Inp
     void process_sflow_cb(const SFSample &);
     void process_netflow_cb(const NFSample &);
     void process_dnstap_cb(const dnstap::Dnstap &, size_t);
-    void process_policies_cb(const Policy *policy, InputStream::Action action);
+    void process_policies_cb(const Policy *policy, Action action);
     void process_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp);
 
 public:
-    InputResourcesStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config, StreamHandler *handler = nullptr);
+    InputResourcesStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config, StreamHandler *handler = nullptr);
     ~InputResourcesStreamHandler() = default;
 
     // visor::AbstractModule

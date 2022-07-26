@@ -64,7 +64,10 @@ void DnstapInputStream::_read_frame_stream_file()
 
             // Emit signal to handlers
             if (!_filtering(d)) {
-                dnstap_signal(d, len_data);
+                std::shared_lock lock(_input_mutex);
+                for (auto &proxy : _event_proxies) {
+                    static_cast<DnstapInputEventProxy *>(proxy.get())->dnstap_cb(d, len_data);
+                }
             }
         } else if (result == fstrm_res_stop) {
             // Normal end of data stream
@@ -84,11 +87,6 @@ void DnstapInputStream::start()
 
     if (_running) {
         return;
-    }
-
-    if (config_exists("only_hosts")) {
-        _parse_host_specs(config_get<StringList>("only_hosts"));
-        _f_enabled.set(Filters::OnlyHosts);
     }
 
     if (config_exists("dnstap_file")) {
@@ -158,7 +156,10 @@ void DnstapInputStream::_create_frame_stream_tcp_socket()
         timespec stamp;
         // use now()
         std::timespec_get(&stamp, TIME_UTC);
-        heartbeat_signal(stamp);
+        std::shared_lock lock(_input_mutex);
+        for (auto &proxy : _event_proxies) {
+            static_cast<DnstapInputEventProxy *>(proxy.get())->heartbeat_cb(stamp);
+        }
     });
     _timer->on<uvw::ErrorEvent>([this](const auto &err, auto &handle) {
         _logger->error("[{}] TimerEvent error: {}", _name, err.what());
@@ -197,7 +198,10 @@ void DnstapInputStream::_create_frame_stream_tcp_socket()
 
             // Emit signal to handlers
             if (!_filtering(d)) {
-                dnstap_signal(d, len_data);
+                std::shared_lock lock(_input_mutex);
+                for (auto &proxy : _event_proxies) {
+                    static_cast<DnstapInputEventProxy *>(proxy.get())->dnstap_cb(d, len_data);
+                }
             }
         };
 
@@ -282,7 +286,10 @@ void DnstapInputStream::_create_frame_stream_unix_socket()
         timespec stamp;
         // use now()
         std::timespec_get(&stamp, TIME_UTC);
-        heartbeat_signal(stamp);
+        std::shared_lock lock(_input_mutex);
+        for (auto &proxy : _event_proxies) {
+            static_cast<DnstapInputEventProxy *>(proxy.get())->heartbeat_cb(stamp);
+        }
     });
     _timer->on<uvw::ErrorEvent>([this](const auto &err, auto &handle) {
         _logger->error("[{}] TimerEvent error: {}", _name, err.what());
@@ -320,7 +327,10 @@ void DnstapInputStream::_create_frame_stream_unix_socket()
             }
             // Emit signal to handlers
             if (!_filtering(d)) {
-                dnstap_signal(d, len_data);
+                std::shared_lock lock(_input_mutex);
+                for (auto &proxy : _event_proxies) {
+                    static_cast<DnstapInputEventProxy *>(proxy.get())->dnstap_cb(d, len_data);
+                }
             }
         };
 
@@ -373,45 +383,35 @@ void DnstapInputStream::_create_frame_stream_unix_socket()
     });
 }
 
-void DnstapInputStream::_parse_host_specs(const std::vector<std::string> &host_list)
+void DnstapInputStream::stop()
 {
-    for (const auto &host : host_list) {
-        auto delimiter = host.find('/');
-        if (delimiter == host.npos) {
-            throw DnstapException(fmt::format("invalid CIDR: {}", host));
-        }
-        auto ip = host.substr(0, delimiter);
-        auto cidr = host.substr(++delimiter);
-        auto not_number = std::count_if(cidr.begin(), cidr.end(),
-            [](unsigned char c) { return !std::isdigit(c); });
-        if (not_number) {
-            throw DnstapException(fmt::format("invalid CIDR: {}", host));
-        }
+    if (!_running) {
+        return;
+    }
 
-        auto cidr_number = std::stoi(cidr);
-        if (ip.find(':') != ip.npos) {
-            if (cidr_number < 0 || cidr_number > 128) {
-                throw DnstapException(fmt::format("invalid CIDR: {}", host));
-            }
-            in6_addr ipv6;
-            if (inet_pton(AF_INET6, ip.c_str(), &ipv6) != 1) {
-                throw DnstapException(fmt::format("invalid IPv6 address: {}", ip));
-            }
-            _IPv6_host_list.emplace_back(ipv6, cidr_number);
-        } else {
-            if (cidr_number < 0 || cidr_number > 32) {
-                throw DnstapException(fmt::format("invalid CIDR: {}", host));
-            }
-            in_addr ipv4;
-            if (inet_pton(AF_INET, ip.c_str(), &ipv4) != 1) {
-                throw DnstapException(fmt::format("invalid IPv4 address: {}", ip));
-            }
-            _IPv4_host_list.emplace_back(ipv4, cidr_number);
+    if (_async_h && _io_thread) {
+        // we have to use AsyncHandle to stop the loop from the same thread the loop is running in
+        _async_h->send();
+        // waits for _io_loop->run() to return
+        if (_io_thread->joinable()) {
+            _io_thread->join();
         }
     }
+
+    _running = false;
 }
 
-bool DnstapInputStream::_match_subnet(const std::string &dnstap_ip)
+void DnstapInputStream::info_json(json &j) const
+{
+    common_info_json(j);
+}
+
+std::unique_ptr<InputEventProxy> DnstapInputStream::create_event_proxy(const Configurable &filter)
+{
+    return std::make_unique<DnstapInputEventProxy>(_name, filter);
+}
+
+bool DnstapInputEventProxy::_match_subnet(const std::string &dnstap_ip)
 {
     if (dnstap_ip.size() == 16 && _IPv6_host_list.size() > 0) {
         in6_addr ipv6;
@@ -452,26 +452,42 @@ bool DnstapInputStream::_match_subnet(const std::string &dnstap_ip)
     return false;
 }
 
-void DnstapInputStream::stop()
+void DnstapInputEventProxy::_parse_host_specs(const std::vector<std::string> &host_list)
 {
-    if (!_running) {
-        return;
-    }
+    for (const auto &host : host_list) {
+        auto delimiter = host.find('/');
+        if (delimiter == host.npos) {
+            throw ConfigException(fmt::format("invalid CIDR: {}", host));
+        }
+        auto ip = host.substr(0, delimiter);
+        auto cidr = host.substr(++delimiter);
+        auto not_number = std::count_if(cidr.begin(), cidr.end(),
+            [](unsigned char c) { return !std::isdigit(c); });
+        if (not_number) {
+            throw ConfigException(fmt::format("invalid CIDR: {}", host));
+        }
 
-    if (_async_h && _io_thread) {
-        // we have to use AsyncHandle to stop the loop from the same thread the loop is running in
-        _async_h->send();
-        // waits for _io_loop->run() to return
-        if (_io_thread->joinable()) {
-            _io_thread->join();
+        auto cidr_number = std::stoi(cidr);
+        if (ip.find(':') != ip.npos) {
+            if (cidr_number < 0 || cidr_number > 128) {
+                throw ConfigException(fmt::format("invalid CIDR: {}", host));
+            }
+            in6_addr ipv6;
+            if (inet_pton(AF_INET6, ip.c_str(), &ipv6) != 1) {
+                throw ConfigException(fmt::format("invalid IPv6 address: {}", ip));
+            }
+            _IPv6_host_list.emplace_back(ipv6, cidr_number);
+        } else {
+            if (cidr_number < 0 || cidr_number > 32) {
+                throw ConfigException(fmt::format("invalid CIDR: {}", host));
+            }
+            in_addr ipv4;
+            if (inet_pton(AF_INET, ip.c_str(), &ipv4) != 1) {
+                throw ConfigException(fmt::format("invalid IPv4 address: {}", ip));
+            }
+            _IPv4_host_list.emplace_back(ipv4, cidr_number);
         }
     }
-
-    _running = false;
 }
 
-void DnstapInputStream::info_json(json &j) const
-{
-    common_info_json(j);
-}
 }

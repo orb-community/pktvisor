@@ -13,6 +13,29 @@
 
 namespace visor {
 
+void PolicyManager::set_default_handler_config(const YAML::Node &config_yaml)
+{
+    for (YAML::const_iterator it = config_yaml.begin(); it != config_yaml.end(); ++it) {
+
+        auto handler_module_type = it->first.as<std::string>();
+        if (!it->second.IsMap()) {
+            throw ConfigException("expecting global_handler_config configuration map");
+        }
+
+        auto handler_plugin = _registry->handler_plugins().find(handler_module_type);
+        if (handler_plugin == _registry->handler_plugins().end()) {
+            throw ConfigException(fmt::format("global_handler_config requires stream handler type '{}' which is not available", handler_module_type));
+        }
+
+        if (_global_handler_config.count(handler_module_type) > 0) {
+            throw ConfigException(fmt::format("stream handler type '{}' already exists in global_handler_config configuration", handler_module_type));
+        }
+
+        auto pair = _global_handler_config.emplace(handler_module_type, std::make_unique<Configurable>());
+        pair.first->second->config_set_yaml(it->second);
+    }
+}
+
 std::vector<Policy *> PolicyManager::load_from_str(const std::string &str)
 {
     if (str.empty()) {
@@ -118,14 +141,11 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
                 throw PolicyException(fmt::format("invalid input config for tap '{}': {}", tap_name, e.what()));
             }
         }
-        // TODO separate config and filter. for now, they merge
-        tap_filter.config_merge(tap_config);
 
-        std::string input_stream_module_name = tap_filter.config_hash();
-        input_stream_module_name.insert(0, tap->name() + "-");
+        std::string input_stream_module_name = tap->get_input_name(tap_config, tap_filter);
 
         std::unique_ptr<InputStream> input_stream;
-        InputStream *input_ptr;
+        InputStream *input_ptr = nullptr;
         std::unique_lock<std::shared_mutex> input_lock;
         if (_registry->input_manager()->module_exists(input_stream_module_name)) {
             spdlog::get("visor")->info("policy [{}]: input stream already exists. reusing: {}", policy_name, input_stream_module_name);
@@ -136,7 +156,7 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
             // Instantiate stream from tap
             try {
                 spdlog::get("visor")->info("policy [{}]: instantiating Tap: {}", policy_name, tap_name);
-                input_stream = tap->instantiate(&tap_filter, input_stream_module_name);
+                input_stream = tap->instantiate(&tap_config, &tap_filter, input_stream_module_name);
                 // ensure tap input type matches policy input tap
                 if (input_node["input_type"].as<std::string>() != tap->input_plugin()->plugin()) {
                     throw PolicyException(fmt::format("input_type for policy specified tap '{}' doesn't match tap's defined input type: {}/{}", tap_name, input_node["input_type"].as<std::string>(), tap->input_plugin()->plugin()));
@@ -146,6 +166,14 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
                 throw PolicyException(fmt::format("unable to instantiate tap '{}': {}", tap_name, e.what()));
             }
         }
+
+        InputEventProxy *input_event_proxy = nullptr;
+        try {
+            input_event_proxy = input_ptr->add_event_proxy(tap_filter);
+        } catch (ConfigException &e) {
+            throw PolicyException(fmt::format("unable to create event proxy due to invalid input filter config: {}", e.what()));
+        }
+
         // Handler type
         if (!it->second["handlers"] || !it->second["handlers"].IsMap()) {
             throw PolicyException("missing or invalid handler configuration at key 'handlers'");
@@ -186,7 +214,7 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
             input_resources_policy->set_input_stream(input_ptr);
             auto resources_handler_plugin = _registry->handler_plugins().find("input_resources");
             if (resources_handler_plugin != _registry->handler_plugins().end()) {
-                resources_module = resources_handler_plugin->second->instantiate(input_stream_module_name + "-resources", input_ptr, &window_config);
+                resources_module = resources_handler_plugin->second->instantiate(input_stream_module_name + "-resources", input_event_proxy, &window_config, nullptr);
                 input_resources_policy->add_module(resources_module.get());
                 input_res_policy_ptr = input_resources_policy.get();
             }
@@ -240,6 +268,9 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
                 }
             }
             Config handler_config;
+            if (auto it_global = _global_handler_config.find(handler_module_type); it_global != _global_handler_config.end()) {
+                handler_config.config_merge(*it_global->second);
+            }
             if (module["config"]) {
                 if (!module["config"].IsMap()) {
                     throw PolicyException("stream handler configuration is not a map");
@@ -268,17 +299,15 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
             }
             spdlog::get("visor")->info("policy [{}]: instantiating Handler {} of type {}", policy_name, handler_module_name, handler_module_type);
             // note, currently merging the handler config with the window config. do they need to be separate?
-            // TODO separate filter config
-            handler_config.config_merge(handler_metrics);
-            handler_config.config_merge(handler_filter);
             handler_config.config_merge(window_config);
+            handler_filter.config_merge(handler_metrics);
 
             std::unique_ptr<StreamHandler> handler_module;
             if (!handler_sequence || handler_modules.empty()) {
-                handler_module = handler_plugin->second->instantiate(policy_name + "-" + handler_module_name, input_ptr, &handler_config);
+                handler_module = handler_plugin->second->instantiate(policy_name + "-" + handler_module_name, input_event_proxy, &handler_config, &handler_filter);
             } else {
                 // for sequence, use only previous handler
-                handler_module = handler_plugin->second->instantiate(policy_name + "-" + handler_module_name, nullptr, &handler_config, handler_modules.back().get());
+                handler_module = handler_plugin->second->instantiate(policy_name + "-" + handler_module_name, nullptr, &handler_config, &handler_filter, handler_modules.back().get());
             }
             policy_ptr->add_module(handler_module.get());
             handler_modules.emplace_back(std::move(handler_module));
@@ -332,15 +361,21 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
             }
         } catch (ModuleException &e) {
             // note that if any of these calls except, we are in an unknown state and the exception will propagate
-            // nothing needs to be stopped because it was not started
-            module_remove(policy_name);
             if (input_res_policy_ptr) {
+                input_res_policy_ptr->stop();
                 module_remove(input_res_policy_ptr->name());
             }
-            _registry->input_manager()->module_remove(input_stream_module_name);
+
+            policy_ptr->stop();
+            module_remove(policy_name);
+
             for (auto &m : added_handlers) {
                 _registry->handler_manager()->module_remove(m);
             }
+            if (!input_ptr->policies_count()) {
+                _registry->input_manager()->module_remove(input_stream_module_name);
+            }
+
             // at this point no outside reference is held to the modules so they will destruct
             throw PolicyException(fmt::format("policy [{}] creation failed (handler: {}): {}", e.name(), policy_name, e.what()));
         }

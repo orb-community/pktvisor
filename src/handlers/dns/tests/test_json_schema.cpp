@@ -28,8 +28,10 @@ TEST_CASE("DNS JSON Schema", "[dns][iface][json]")
         stream.parse_host_spec();
 
         visor::Config c;
-        DnsStreamHandler dns_handler{"dns-test", &stream, &c};
+        auto stream_proxy = stream.add_event_proxy(c);
+        DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
         dns_handler.config_set("recorded_stream", true);
+        dns_handler.config_set<visor::Configurable::StringList>("enable", visor::Configurable::StringList({"top_ecs"}));
 
         dns_handler.start();
         stream.start();

@@ -64,6 +64,7 @@
           "ipv6": 0,
           "other_l4": 0,
           "out": 9499,
+          "filtered": 0,
           "period": {
             "length": 31,
             "start_ts": 1614874231
@@ -101,6 +102,7 @@
         "ipv6",
         "other_l4",
         "out",
+        "filtered",
         "period",
         "payload_size",
         "tcp",
@@ -211,6 +213,16 @@
           "default": 0,
           "examples": [
             9499
+          ]
+        },
+        "filtered": {
+          "$id": "#/properties/packets/properties/filtered",
+          "type": "integer",
+          "title": "The filtered schema",
+          "description": "An explanation about the purpose of this instance.",
+          "default": 0,
+          "examples": [
+            2
           ]
         },
         "period": {

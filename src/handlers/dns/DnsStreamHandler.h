@@ -17,7 +17,7 @@
 #include <string>
 
 namespace visor::input::dnstap {
-class DnstapInputStream;
+class DnstapInputEventProxy;
 }
 
 namespace visor::handler::dns {
@@ -32,6 +32,7 @@ enum DnsMetrics : visor::MetricGroupIntType {
     Cardinality,
     Counters,
     DnsTransactions,
+    TopEcs,
     TopQnames
 };
 }
@@ -52,14 +53,21 @@ protected:
 
     Quantile<uint64_t> _dnsXactFromTimeUs;
     Quantile<uint64_t> _dnsXactToTimeUs;
+    Quantile<double> _dnsXactRatio;
 
     Cardinality _dns_qnameCard;
+
+    TopN<std::string> _dns_topGeoLocECS;
+    TopN<std::string> _dns_topASNECS;
+    TopN<std::string> _dns_topQueryECS;
 
     TopN<std::string> _dns_topQname2;
     TopN<std::string> _dns_topQname3;
     TopN<std::string> _dns_topNX;
     TopN<std::string> _dns_topREFUSED;
+    TopN<std::string> _dns_topSizedQnameResp;
     TopN<std::string> _dns_topSRVFAIL;
+    TopN<std::string> _dns_topNODATA;
     TopN<uint16_t> _dns_topUDPPort;
     TopN<uint16_t> _dns_topQType;
     TopN<uint16_t> _dns_topRCode;
@@ -83,6 +91,7 @@ protected:
         Counter REFUSED;
         Counter SRVFAIL;
         Counter NOERROR;
+        Counter NODATA;
         Counter filtered;
         counters()
             : xacts_total("dns", {"xact", "counts", "total"}, "Total DNS transactions (query/reply pairs)")
@@ -101,6 +110,7 @@ protected:
             , REFUSED("dns", {"wire_packets", "refused"}, "Total DNS wire packets flagged as reply with return code REFUSED (ingress and egress)")
             , SRVFAIL("dns", {"wire_packets", "srvfail"}, "Total DNS wire packets flagged as reply with return code SRVFAIL (ingress and egress)")
             , NOERROR("dns", {"wire_packets", "noerror"}, "Total DNS wire packets flagged as reply with return code NOERROR (ingress and egress)")
+            , NODATA("dns", {"wire_packets", "nodata"}, "Total DNS wire packets flagged as reply with return code NOERROR and no answer section data (ingress and egress)")
             , filtered("dns", {"wire_packets", "filtered"}, "Total DNS wire packets seen that did not match the configured filter(s) (if any)")
         {
         }
@@ -111,12 +121,18 @@ public:
     DnsMetricsBucket()
         : _dnsXactFromTimeUs("dns", {"xact", "out", "quantiles_us"}, "Quantiles of transaction timing (query/reply pairs) when host is client, in microseconds")
         , _dnsXactToTimeUs("dns", {"xact", "in", "quantiles_us"}, "Quantiles of transaction timing (query/reply pairs) when host is server, in microseconds")
+        , _dnsXactRatio("dns", {"xact", "ratio", "quantiles"}, "Quantiles of ratio of packet sizes in a DNS transaction (reply/query)")
         , _dns_qnameCard("dns", {"cardinality", "qname"}, "Cardinality of unique QNAMES, both ingress and egress")
+        , _dns_topGeoLocECS("dns", "geo_loc", {"top_geoLoc_ecs"}, "Top GeoIP ECS locations")
+        , _dns_topASNECS("dns", "asn", {"top_asn_ecs"}, "Top ASNs by ECS")
+        , _dns_topQueryECS("dns", "ecs", {"top_query_ecs"}, "Top EDNS Client Subnet (ECS) observed in DNS queries")
         , _dns_topQname2("dns", "qname", {"top_qname2"}, "Top QNAMES, aggregated at a depth of two labels")
         , _dns_topQname3("dns", "qname", {"top_qname3"}, "Top QNAMES, aggregated at a depth of three labels")
         , _dns_topNX("dns", "qname", {"top_nxdomain"}, "Top QNAMES with result code NXDOMAIN")
         , _dns_topREFUSED("dns", "qname", {"top_refused"}, "Top QNAMES with result code REFUSED")
+        , _dns_topSizedQnameResp("dns", "qname", {"top_qname_by_resp_bytes"}, "Top QNAMES by response volume in bytes")
         , _dns_topSRVFAIL("dns", "qname", {"top_srvfail"}, "Top QNAMES with result code SRVFAIL")
+        , _dns_topNODATA("dns", "qname", {"top_nodata"}, "Top QNAMES with result code NOERROR and no answer section")
         , _dns_topUDPPort("dns", "port", {"top_udp_ports"}, "Top UDP source port on the query side of a transaction")
         , _dns_topQType("dns", "qtype", {"top_qtype"}, "Top query types")
         , _dns_topRCode("dns", "rcode", {"top_rcode"}, "Top result codes")
@@ -156,6 +172,24 @@ public:
     void specialized_merge(const AbstractMetricsBucket &other) override;
     void to_json(json &j) const override;
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override;
+    void update_topn_metrics(size_t topn_count) override
+    {
+        _dns_topGeoLocECS.set_topn_count(topn_count);
+        _dns_topASNECS.set_topn_count(topn_count);
+        _dns_topQueryECS.set_topn_count(topn_count);
+        _dns_topQname2.set_topn_count(topn_count);
+        _dns_topQname3.set_topn_count(topn_count);
+        _dns_topNX.set_topn_count(topn_count);
+        _dns_topREFUSED.set_topn_count(topn_count);
+        _dns_topSizedQnameResp.set_topn_count(topn_count);
+        _dns_topSRVFAIL.set_topn_count(topn_count);
+        _dns_topNODATA.set_topn_count(topn_count);
+        _dns_topUDPPort.set_topn_count(topn_count);
+        _dns_topQType.set_topn_count(topn_count);
+        _dns_topRCode.set_topn_count(topn_count);
+        _dns_slowXactIn.set_topn_count(topn_count);
+        _dns_slowXactOut.set_topn_count(topn_count);
+    }
 
     void process_filtered();
     void process_dns_layer(bool deep, DnsLayer &payload, pcpp::ProtocolType l3, Protocol l4, uint16_t port, size_t suffix_size = 0);
@@ -251,10 +285,10 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
     };
     static thread_local DnsCacheData _cached_dns_layer;
 
-    // the input stream sources we support (only one will be in use at a time)
-    PcapInputStream *_pcap_stream{nullptr};
-    MockInputStream *_mock_stream{nullptr};
-    DnstapInputStream *_dnstap_stream{nullptr};
+    // the input event proxy we support (only one will be in use at a time)
+    PcapInputEventProxy *_pcap_proxy{nullptr};
+    MockInputEventProxy *_mock_proxy{nullptr};
+    DnstapInputEventProxy *_dnstap_proxy{nullptr};
 
     typedef uint32_t flowKey;
     std::unordered_map<flowKey, TcpFlowData> _tcp_connections;
@@ -292,12 +326,19 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
     enum Filters {
         ExcludingRCode,
         OnlyRCode,
+        AnswerCount,
         OnlyQNameSuffix,
         DnstapMsgType,
         FiltersMAX
     };
     std::bitset<Filters::FiltersMAX> _f_enabled;
+    enum Configs {
+        PublicSuffixList,
+        ConfigsMAX
+    };
+    std::bitset<Configs::ConfigsMAX> _c_enabled;
     uint16_t _f_rcode{0};
+    uint64_t _f_answer_count{0};
     std::vector<std::string> _f_qnames;
     size_t _static_suffix_size{0};
     std::bitset<DNSTAP_TYPE_SIZE> _f_dnstap_types;
@@ -306,12 +347,14 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
         {"cardinality", group::DnsMetrics::Cardinality},
         {"counters", group::DnsMetrics::Counters},
         {"dns_transaction", group::DnsMetrics::DnsTransactions},
+        {"top_ecs", group::DnsMetrics::TopEcs},
         {"top_qnames", group::DnsMetrics::TopQnames}};
 
     bool _filtering(DnsLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint16_t port, timespec stamp);
+    bool _configs(DnsLayer &payload);
 
 public:
-    DnsStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config, StreamHandler *handler = nullptr);
+    DnsStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config, StreamHandler *handler = nullptr);
     ~DnsStreamHandler() = default;
 
     // visor::AbstractModule
@@ -329,6 +372,9 @@ public:
     void stop() override;
     void info_json(json &j) const override;
 
+    mutable sigslot::signal<timespec> start_tstamp_signal;
+    mutable sigslot::signal<timespec> end_tstamp_signal;
+    mutable sigslot::signal<const timespec> heartbeat_signal;
     mutable sigslot::signal<pcpp::Packet &, PacketDirection, pcpp::ProtocolType, uint32_t, timespec> udp_signal;
 };
 

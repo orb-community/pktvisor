@@ -37,7 +37,10 @@ void MockInputStream::start()
     _mock_work = timer_thread.set_interval(1s, [this] {
         auto i = std::rand();
         _logger->info("mock input sends random int signal: {}", i);
-        random_int_signal(i);
+        std::shared_lock lock(_input_mutex);
+        for (auto &proxy : _event_proxies) {
+            static_cast<MockInputEventProxy *>(proxy.get())->random_int_cb(i);
+        }
     });
 
     _running = true;
@@ -59,6 +62,11 @@ void MockInputStream::stop()
 void MockInputStream::info_json(json &j) const
 {
     common_info_json(j);
+}
+
+std::unique_ptr<InputEventProxy> MockInputStream::create_event_proxy(const Configurable &filter)
+{
+    return std::make_unique<MockInputEventProxy>(_name, filter);
 }
 
 }
