@@ -1,4 +1,0 @@
-﻿23:42:49 - INFO - STEP: that a pktvisor instance is running on port available with user permission
-23:42:50 - INFO - STEP: run mocked data dns_ipv6_udp.pcap for this network
-23:42:50 - ERROR - Unterminated string starting at: line 1 column 2 (char 1)
-NoneType: None
