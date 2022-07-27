@@ -113,7 +113,7 @@ jobs:
       - name: Debug version
         run: |
           echo ${{ env.VERSION }}
-          echo ${{ steps.version.output.version }}
+          echo ${{ steps.version.outputs.version }}
 
       - name: Generate ref tag (develop)
         if: ${{ env.BRANCH_NAME == 'develop' || env.BRANCH_NAME == 'multi-arch-images' }}
