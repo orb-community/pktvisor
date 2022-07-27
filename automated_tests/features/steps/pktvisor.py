@@ -2,14 +2,12 @@ from utils import random_string, threading_wait_until
 import docker
 from behave import step
 from test_config import TestConfig, send_terminal_commands
-from utils import check_port_is_available, make_get_request
+from utils import check_port_is_available, make_get_request, validate_json
 import threading
 from hamcrest import *
 import os
 import json
-from jsonschema import validate
-import jsonschema
-
+from deepdiff import DeepDiff
 
 configs = TestConfig.configs()
 
@@ -21,7 +19,7 @@ def run_pktvisor(context, status_port, role):
     availability = {"available": True, "unavailable": False}
 
     context.pkt_port = check_port_is_available(context.containers_id, availability[status_port])
-    context.container_id = run_pktvisor_container("ns1labs/pktvisor", context.pkt_port, role)
+    context.container_id = run_pktvisor_container(configs['pktvisor_docker_image'], context.mock_iface_name, context.pkt_port, role)
     assert_that(context.container_id, not_(equal_to(None)), "Failed to provision pktvisor container")
     if context.container_id not in context.containers_id.keys():
         context.containers_id[context.container_id] = str(context.pkt_port)
@@ -58,12 +56,16 @@ def assert_amount_of_pkt_with_status(context, amount_of_pktvisor, pkt_status):
 @step("pktvisor API must be enabled")
 def check_pkt_base_API(context):
     pkt_api_get_endpoints = ['policies',
-                             'policies/__all/metrics/bucket/0',
                              'policies/__all/metrics/window/2',
                              'policies/__all/metrics/window/3',
                              'policies/__all/metrics/window/4',
                              'policies/__all/metrics/window/5',
-                             'policies/__all/metrics/prometheus']
+                             'policies/__all/metrics/prometheus',
+                             'policies/__all/metrics/bucket/0',
+                             'policies/__all/metrics/bucket/1',
+                             'policies/__all/metrics/bucket/2',
+                             'policies/__all/metrics/bucket/3',
+                             'policies/__all/metrics/bucket/4']
     event = threading.Event()
     event.wait(0.5)
     for endpoint in pkt_api_get_endpoints:
@@ -72,7 +74,6 @@ def check_pkt_base_API(context):
 
 @step("run mocked data {file_name} for this network")
 def run_mocked_data(context, file_name):
-    iface = configs.get('iface', 'dummy0')
     cwd = os.getcwd()
     dir_path = os.path.dirname(cwd)
     context.directory_of_network_data_files = f"{dir_path}/automated_tests/features/steps/pcap_files/"
@@ -85,35 +86,69 @@ def run_mocked_data(context, file_name):
     for network_file in context.network_data_files:
         path_to_file = f"{context.directory_of_network_data_files}{network_file}"
         assert_that(os.path.exists(path_to_file), equal_to(True), f"Nonexistent file {path_to_file}.")
-        run_mocked_data_command = f"tcpreplay -i {iface} -tK {context.directory_of_network_data_files}{network_file}"
-        tcpreplay_return = send_terminal_commands(run_mocked_data_command, sudo=True)
+        run_mocked_data_command = f"tcpreplay -i {context.mock_iface_name} -tK {context.directory_of_network_data_files}{network_file}"
+        tcpreplay_return = send_terminal_commands(run_mocked_data_command, sudo=configs.get("sudo"))
         check_successful_packets(tcpreplay_return[0])
 
         assert_that(tcpreplay_return[1], not_(contains_string("command not found")), f"{tcpreplay_return[1]}."
                                                                                      f"Please, install tcpreplay.")
 
 
-@step("metrics must be correctly generated")
-def check_metrics(context):
+@step("Metrics must go through the {amount_of_buckets} bucket(s) queue correctly")
+def bucket_check(context, amount_of_buckets):
+    amount_of_buckets = int(amount_of_buckets)
+    buckets_to_check = amount_of_buckets - 1
+    event = threading.Event()
+    pkt_api_get_endpoint = 'policies/__all/metrics/bucket/'
+    buckets = dict()
+    for time in range(1, 6):
+        event.wait(65)  # buckets change every 60 seconds
+        for bucket in range(1, amount_of_buckets):
+            buckets[f"{time}_{bucket}"] = make_get_request(f"{pkt_api_get_endpoint}{bucket}", context.pkt_port)
+
+    # the idea here is to validate that the data that is in bucket 1 at minute 1 is in bucket 2 at minute two, etc.
+    for index, bucket in enumerate(range(1, buckets_to_check)):
+        for bucket_iter in range(1, amount_of_buckets - bucket):
+            diff = DeepDiff(buckets[f"{buckets_to_check}_{buckets_to_check - index}"],
+                            buckets[f"{buckets_to_check - bucket_iter}_{buckets_to_check - bucket_iter - index}"],
+                            ignore_order=True)
+            assert_that(diff, equal_to({}), f"Data did not queue correctly. "
+                                            f"Check buckets: {buckets_to_check}_{buckets_to_check - index} x "
+                                            f"{buckets_to_check - bucket_iter}_{buckets_to_check - bucket_iter - index}. "
+                                            f"All buckets: {buckets}")
+
+
+@step("metrics must be correctly generated as per the {schema_file} schema")
+def check_metrics(context, schema_file):
     pkt_api_get_endpoints = ['policies/default/metrics/window/2',
                              'policies/default/metrics/window/3',
                              'policies/default/metrics/window/4',
                              'policies/default/metrics/window/5']
     event = threading.Event()
     event.wait(1)
-    schema_file_name = configs.get("schema_file_name", "metrics_schema.json")
-    schema_file_path = f"{context.directory_of_network_data_files}schemas/{schema_file_name}"
+    schema_file_path = f"{context.directory_of_network_data_files}schemas/{schema_file}"
+    assert_that(os.path.exists(schema_file_path), equal_to(True), f"Unable to find {schema_file_path}. Path not exist.")
     for network_file in context.network_data_files:
         for endpoint in pkt_api_get_endpoints:
-
             response_json, is_json_valid = check_metrics_per_endpoint(endpoint, context.pkt_port,
                                                                       schema_file_path, timeout=10)
-            assert_that(is_json_valid, equal_to(True), f"Wrong data generated for {network_file}_{endpoint.replace('/','_')}")
+            assert_that(is_json_valid, equal_to(True),
+                        f"Wrong data generated for {network_file}_{endpoint.replace('/', '_')}")
 
 
 @step("Remove dummy interface")
 def remove_mocked_interface(context):
-    send_terminal_commands("rmmod dummy", sudo=True)
+    send_terminal_commands("rmmod dummy", sudo=configs.get("sudo"))
+
+
+@step("Remove pktvisor containers")
+def remove_all_pktvisors_containers_with_test_prefix(context):
+    docker_client = docker.from_env()
+    containers = docker_client.containers.list(all=True)
+    for container in containers:
+        test_container = container.name.startswith(PKTVISOR_CONTAINER_NAME)
+        if test_container is True:
+            container.remove(force=True)
 
 
 @threading_wait_until
@@ -126,7 +161,7 @@ def check_metrics_per_endpoint(endpoint, pkt_port, path_to_schema_file, event=No
     return response.json(), is_json_valid
 
 
-def run_pktvisor_container(container_image, port=10853, role="user", container_name=PKTVISOR_CONTAINER_NAME):
+def run_pktvisor_container(container_image, iface, port, role="user", container_name=PKTVISOR_CONTAINER_NAME):
     """
     Run a pktvisor container
 
@@ -139,7 +174,6 @@ def run_pktvisor_container(container_image, port=10853, role="user", container_n
     assert_that(role, any_of(equal_to('user'), equal_to('admin')), "Unexpect permission role")
     PKTVISOR_CONTAINER_NAME = container_name + random_string(3)
     client = docker.from_env()
-    iface = configs.get('iface', 'dummy0')
     pkt_command = ["pktvisord", iface]
     if port != 10853:
         pkt_command.insert(-1, '-p')
@@ -167,7 +201,6 @@ def check_amount_of_pkt_with_status(amount_of_pktvisor, pkt_status, test_contain
 
 
 def check_successful_packets(return_command_tcpreplay):
-
     return_command_tcpreplay = return_command_tcpreplay.replace("\t", "")
     return_command_tcpreplay = return_command_tcpreplay.replace("\n", "\",\"")
     return_command_tcpreplay = return_command_tcpreplay.replace(":", "\":\"")
@@ -180,35 +213,3 @@ def check_successful_packets(return_command_tcpreplay):
                 equal_to(int(return_command_tcpreplay['Successfulpackets'])), "Some packet may have failure")
 
     return return_command_tcpreplay
-
-
-def get_schema(path_to_file):
-    """
-        Loads the given schema available
-
-    :param path_to_file: path to schema json file
-    :return: schema json
-    """
-    with open(path_to_file, 'r') as file:
-        schema = json.load(file)
-    return schema
-
-
-def validate_json(json_data, path_to_file):
-
-    """
-        Compare a file with the schema and validate if the structure is correct
-    :param json_data: json to be validated
-    :param path_to_file: path to schema json file
-    :return: bool. False if the json is not valid according to the schema and True if it is
-    """
-
-    execute_api_schema = get_schema(path_to_file)
-
-    try:
-        validate(instance=json_data, schema=execute_api_schema)
-    except jsonschema.exceptions.ValidationError as err:
-        print(err)
-        return False
-
-    return True

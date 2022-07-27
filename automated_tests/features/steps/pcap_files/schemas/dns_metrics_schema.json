@@ -1,5 +1,5 @@
 {
-  "$schema": "http://json-schema.org/draft/2019-09/schema",
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
   "$id": "http://example.com/example.json",
   "type": "object",
   "default": {},
@@ -90,7 +90,6 @@
                       "properties": {
                         "live": {
                           "type": "integer",
-                          "minimum": 0,
                           "default": 0,
                           "title": "The live Schema",
                           "examples": [
@@ -99,8 +98,6 @@
                         },
                         "p50": {
                           "type": "integer",
-                          "minimum": 0,
-                          "minimum": 0,
                           "default": 0,
                           "title": "The p50 Schema",
                           "examples": [
@@ -109,7 +106,6 @@
                         },
                         "p90": {
                           "type": "integer",
-                          "minimum": 0,
                           "default": 0,
                           "title": "The p90 Schema",
                           "examples": [
@@ -118,7 +114,6 @@
                         },
                         "p95": {
                           "type": "integer",
-                          "minimum": 0,
                           "default": 0,
                           "title": "The p95 Schema",
                           "examples": [
@@ -127,7 +122,6 @@
                         },
                         "p99": {
                           "type": "integer",
-                          "minimum": 0,
                           "default": 0,
                           "title": "The p99 Schema",
                           "examples": [
@@ -238,8 +232,8 @@
               },
               "examples": [{
                 "period": {
-                  "length": 1,
-                  "start_ts": 1652448116
+                  "length": 57,
+                  "start_ts": 1658846746
                 },
                 "rates": {
                   "total": {
@@ -305,9 +299,11 @@
                 "cardinality",
                 "period",
                 "rates",
+                "top_nodata",
                 "top_nxdomain",
                 "top_qname2",
                 "top_qname3",
+                "top_qname_by_resp_bytes",
                 "top_qtype",
                 "top_rcode",
                 "top_refused",
@@ -391,7 +387,6 @@
                       "properties": {
                         "live": {
                           "type": "integer",
-                          "minimum": 0,
                           "default": 0,
                           "title": "The live Schema",
                           "examples": [
@@ -400,7 +395,6 @@
                         },
                         "p50": {
                           "type": "integer",
-                          "minimum": 0,
                           "default": 0,
                           "title": "The p50 Schema",
                           "examples": [
@@ -409,7 +403,6 @@
                         },
                         "p90": {
                           "type": "integer",
-                          "minimum": 0,
                           "default": 0,
                           "title": "The p90 Schema",
                           "examples": [
@@ -418,7 +411,6 @@
                         },
                         "p95": {
                           "type": "integer",
-                          "minimum": 0,
                           "default": 0,
                           "title": "The p95 Schema",
                           "examples": [
@@ -427,7 +419,6 @@
                         },
                         "p99": {
                           "type": "integer",
-                          "minimum": 0,
                           "default": 0,
                           "title": "The p99 Schema",
                           "examples": [
@@ -453,6 +444,15 @@
                       "p99": 0
                     }
                   }]
+                },
+                "top_nodata": {
+                  "type": "array",
+                  "default": [],
+                  "title": "The top_nodata Schema",
+                  "items": {},
+                  "examples": [
+                    []
+                  ]
                 },
                 "top_nxdomain": {
                   "type": "array",
@@ -622,6 +622,134 @@
                       {
                         "estimate": 2,
                         "name": ".kn.test.com"
+                      }]
+                  ]
+                },
+                "top_qname_by_resp_bytes": {
+                  "type": "array",
+                  "default": [],
+                  "title": "The top_qname_by_resp_bytes Schema",
+                  "items": {
+                    "type": "object",
+                    "title": "A Schema",
+                    "required": [
+                      "estimate",
+                      "name"
+                    ],
+                    "properties": {
+                      "estimate": {
+                        "type": "integer",
+                        "title": "The estimate Schema",
+                        "examples": [
+                          69,
+                          68,
+                          66,
+                          65,
+                          64,
+                          62,
+                          61,
+                          60,
+                          58
+                        ]
+                      },
+                      "name": {
+                        "type": "string",
+                        "title": "The name Schema",
+                        "examples": [
+                          "n22dzh9iev.62fq.lewasapcsq.fzkbbdhugt.a9ju.test.com",
+                          "qjs1k.v1rk4_zpd.lpc3evyi9.s8yuzj19yq.zotw.test.com",
+                          "ubjaakm.kenh7yfyju.anq_k8.1yehorab9o.rh.test.com",
+                          "loj5pq2._empluapr.ppliop.1f8j2r1.emvq5.test.com",
+                          "b4.mdx9df4iz.hyoap.gs6hjlb.gakdjq-m1m.test.com",
+                          "7i55rusl.0yg.ybujicpf.zfor.prb5dt94.test.com",
+                          "w0fl7oss.wncitowvw.dyx4to6hm.edk.nu.test.com",
+                          "57ojczk.nuj-cq5e2.dudl6si.4ozcqyax.test.com",
+                          "me_3y.vrqzhd.e7c2.zahor.dnn1o5nnk.test.com",
+                          "ajazg.us.92virkhez.27.q6jjpf6kv.test.com"
+                        ]
+                      }
+                    },
+                    "examples": [{
+                      "estimate": 69,
+                      "name": "n22dzh9iev.62fq.lewasapcsq.fzkbbdhugt.a9ju.test.com"
+                    },
+                      {
+                        "estimate": 68,
+                        "name": "qjs1k.v1rk4_zpd.lpc3evyi9.s8yuzj19yq.zotw.test.com"
+                      },
+                      {
+                        "estimate": 66,
+                        "name": "ubjaakm.kenh7yfyju.anq_k8.1yehorab9o.rh.test.com"
+                      },
+                      {
+                        "estimate": 65,
+                        "name": "loj5pq2._empluapr.ppliop.1f8j2r1.emvq5.test.com"
+                      },
+                      {
+                        "estimate": 64,
+                        "name": "b4.mdx9df4iz.hyoap.gs6hjlb.gakdjq-m1m.test.com"
+                      },
+                      {
+                        "estimate": 62,
+                        "name": "7i55rusl.0yg.ybujicpf.zfor.prb5dt94.test.com"
+                      },
+                      {
+                        "estimate": 62,
+                        "name": "w0fl7oss.wncitowvw.dyx4to6hm.edk.nu.test.com"
+                      },
+                      {
+                        "estimate": 61,
+                        "name": "57ojczk.nuj-cq5e2.dudl6si.4ozcqyax.test.com"
+                      },
+                      {
+                        "estimate": 60,
+                        "name": "me_3y.vrqzhd.e7c2.zahor.dnn1o5nnk.test.com"
+                      },
+                      {
+                        "estimate": 58,
+                        "name": "ajazg.us.92virkhez.27.q6jjpf6kv.test.com"
+                      }]
+                  },
+                  "examples": [
+                    [{
+                      "estimate": 69,
+                      "name": "n22dzh9iev.62fq.lewasapcsq.fzkbbdhugt.a9ju.test.com"
+                    },
+                      {
+                        "estimate": 68,
+                        "name": "qjs1k.v1rk4_zpd.lpc3evyi9.s8yuzj19yq.zotw.test.com"
+                      },
+                      {
+                        "estimate": 66,
+                        "name": "ubjaakm.kenh7yfyju.anq_k8.1yehorab9o.rh.test.com"
+                      },
+                      {
+                        "estimate": 65,
+                        "name": "loj5pq2._empluapr.ppliop.1f8j2r1.emvq5.test.com"
+                      },
+                      {
+                        "estimate": 64,
+                        "name": "b4.mdx9df4iz.hyoap.gs6hjlb.gakdjq-m1m.test.com"
+                      },
+                      {
+                        "estimate": 62,
+                        "name": "7i55rusl.0yg.ybujicpf.zfor.prb5dt94.test.com"
+                      },
+                      {
+                        "estimate": 62,
+                        "name": "w0fl7oss.wncitowvw.dyx4to6hm.edk.nu.test.com"
+                      },
+                      {
+                        "estimate": 61,
+                        "name": "57ojczk.nuj-cq5e2.dudl6si.4ozcqyax.test.com"
+                      },
+                      {
+                        "estimate": 60,
+                        "name": "me_3y.vrqzhd.e7c2.zahor.dnn1o5nnk.test.com"
+                      },
+                      {
+                        "estimate": 58,
+                        "name": "ajazg.us.92virkhez.27.q6jjpf6kv.test.com"
                       }]
                   ]
                 },
@@ -910,6 +1038,7 @@
                     "filtered",
                     "ipv4",
                     "ipv6",
+                    "nodata",
                     "noerror",
                     "nxdomain",
                     "queries",
@@ -951,6 +1080,14 @@
                       "title": "The ipv6 Schema",
                       "examples": [
                         140
+                      ]
+                    },
+                    "nodata": {
+                      "type": "integer",
+                      "default": 0,
+                      "title": "The nodata Schema",
+                      "examples": [
+                        0
                       ]
                     },
                     "noerror": {
@@ -1031,6 +1168,7 @@
                     "filtered": 0,
                     "ipv4": 0,
                     "ipv6": 140,
+                    "nodata": 0,
                     "noerror": 0,
                     "nxdomain": 0,
                     "queries": 70,
@@ -1049,7 +1187,8 @@
                   "required": [
                     "counts",
                     "in",
-                    "out"
+                    "out",
+                    "ratio"
                   ],
                   "properties": {
                     "counts": {
@@ -1063,7 +1202,6 @@
                       "properties": {
                         "timed_out": {
                           "type": "integer",
-                          "minimum": 0,
                           "default": 0,
                           "title": "The timed_out Schema",
                           "examples": [
@@ -1072,7 +1210,6 @@
                         },
                         "total": {
                           "type": "integer",
-                          "minimum": 0,
                           "default": 0,
                           "title": "The total Schema",
                           "examples": [
@@ -1105,7 +1242,6 @@
                         },
                         "total": {
                           "type": "integer",
-                          "minimum": 0,
                           "default": 0,
                           "title": "The total Schema",
                           "examples": [
@@ -1138,7 +1274,6 @@
                         },
                         "total": {
                           "type": "integer",
-                          "minimum": 0,
                           "default": 0,
                           "title": "The total Schema",
                           "examples": [
@@ -1149,6 +1284,75 @@
                       "examples": [{
                         "top_slow": [],
                         "total": 0
+                      }]
+                    },
+                    "ratio": {
+                      "type": "object",
+                      "default": {},
+                      "title": "The ratio Schema",
+                      "required": [
+                        "quantiles"
+                      ],
+                      "properties": {
+                        "quantiles": {
+                          "type": "object",
+                          "default": {},
+                          "title": "The quantiles Schema",
+                          "required": [
+                            "p50",
+                            "p90",
+                            "p95",
+                            "p99"
+                          ],
+                          "properties": {
+                            "p50": {
+                              "type": "number",
+                              "default": 0.0,
+                              "title": "The p50 Schema",
+                              "examples": [
+                                0.8
+                              ]
+                            },
+                            "p90": {
+                              "type": "number",
+                              "default": 0.0,
+                              "title": "The p90 Schema",
+                              "examples": [
+                                0.8493150684931506
+                              ]
+                            },
+                            "p95": {
+                              "type": "number",
+                              "default": 0.0,
+                              "title": "The p95 Schema",
+                              "examples": [
+                                0.8552631578947368
+                              ]
+                            },
+                            "p99": {
+                              "type": "number",
+                              "default": 0.0,
+                              "title": "The p99 Schema",
+                              "examples": [
+                                0.8625
+                              ]
+                            }
+                          },
+                          "examples": [{
+                            "p50": 0.8,
+                            "p90": 0.8493150684931506,
+                            "p95": 0.8552631578947368,
+                            "p99": 0.8625
+                          }]
+                        }
+                      },
+                      "examples": [{
+                        "quantiles": {
+                          "p50": 0.8,
+                          "p90": 0.8493150684931506,
+                          "p95": 0.8552631578947368,
+                          "p99": 0.8625
+                        }
                       }]
                     }
                   },
@@ -1164,6 +1368,14 @@
                     "out": {
                       "top_slow": [],
                       "total": 0
+                    },
+                    "ratio": {
+                      "quantiles": {
+                        "p50": 0.8,
+                        "p90": 0.8493150684931506,
+                        "p95": 0.8552631578947368,
+                        "p99": 0.8625
+                      }
                     }
                   }]
                 }
@@ -1185,6 +1397,7 @@
                     "p99": 0
                   }
                 },
+                "top_nodata": [],
                 "top_nxdomain": [],
                 "top_qname2": [{
                   "estimate": 140,
@@ -1229,6 +1442,46 @@
                   {
                     "estimate": 2,
                     "name": ".kn.test.com"
+                  }],
+                "top_qname_by_resp_bytes": [{
+                  "estimate": 69,
+                  "name": "n22dzh9iev.62fq.lewasapcsq.fzkbbdhugt.a9ju.test.com"
+                },
+                  {
+                    "estimate": 68,
+                    "name": "qjs1k.v1rk4_zpd.lpc3evyi9.s8yuzj19yq.zotw.test.com"
+                  },
+                  {
+                    "estimate": 66,
+                    "name": "ubjaakm.kenh7yfyju.anq_k8.1yehorab9o.rh.test.com"
+                  },
+                  {
+                    "estimate": 65,
+                    "name": "loj5pq2._empluapr.ppliop.1f8j2r1.emvq5.test.com"
+                  },
+                  {
+                    "estimate": 64,
+                    "name": "b4.mdx9df4iz.hyoap.gs6hjlb.gakdjq-m1m.test.com"
+                  },
+                  {
+                    "estimate": 62,
+                    "name": "7i55rusl.0yg.ybujicpf.zfor.prb5dt94.test.com"
+                  },
+                  {
+                    "estimate": 62,
+                    "name": "w0fl7oss.wncitowvw.dyx4to6hm.edk.nu.test.com"
+                  },
+                  {
+                    "estimate": 61,
+                    "name": "57ojczk.nuj-cq5e2.dudl6si.4ozcqyax.test.com"
+                  },
+                  {
+                    "estimate": 60,
+                    "name": "me_3y.vrqzhd.e7c2.zahor.dnn1o5nnk.test.com"
+                  },
+                  {
+                    "estimate": 58,
+                    "name": "ajazg.us.92virkhez.27.q6jjpf6kv.test.com"
                   }],
                 "top_qtype": [{
                   "estimate": 34,
@@ -1309,6 +1562,7 @@
                   "filtered": 0,
                   "ipv4": 0,
                   "ipv6": 140,
+                  "nodata": 0,
                   "noerror": 0,
                   "nxdomain": 0,
                   "queries": 70,
@@ -1331,6 +1585,14 @@
                   "out": {
                     "top_slow": [],
                     "total": 0
+                  },
+                  "ratio": {
+                    "quantiles": {
+                      "p50": 0.8,
+                      "p90": 0.8493150684931506,
+                      "p95": 0.8552631578947368,
+                      "p99": 0.8625
+                    }
                   }
                 }
               }]
@@ -1354,6 +1616,7 @@
                   "p99": 0
                 }
               },
+              "top_nodata": [],
               "top_nxdomain": [],
               "top_qname2": [{
                 "estimate": 140,
@@ -1398,6 +1661,46 @@
                 {
                   "estimate": 2,
                   "name": ".kn.test.com"
+                }],
+              "top_qname_by_resp_bytes": [{
+                "estimate": 69,
+                "name": "n22dzh9iev.62fq.lewasapcsq.fzkbbdhugt.a9ju.test.com"
+              },
+                {
+                  "estimate": 68,
+                  "name": "qjs1k.v1rk4_zpd.lpc3evyi9.s8yuzj19yq.zotw.test.com"
+                },
+                {
+                  "estimate": 66,
+                  "name": "ubjaakm.kenh7yfyju.anq_k8.1yehorab9o.rh.test.com"
+                },
+                {
+                  "estimate": 65,
+                  "name": "loj5pq2._empluapr.ppliop.1f8j2r1.emvq5.test.com"
+                },
+                {
+                  "estimate": 64,
+                  "name": "b4.mdx9df4iz.hyoap.gs6hjlb.gakdjq-m1m.test.com"
+                },
+                {
+                  "estimate": 62,
+                  "name": "7i55rusl.0yg.ybujicpf.zfor.prb5dt94.test.com"
+                },
+                {
+                  "estimate": 62,
+                  "name": "w0fl7oss.wncitowvw.dyx4to6hm.edk.nu.test.com"
+                },
+                {
+                  "estimate": 61,
+                  "name": "57ojczk.nuj-cq5e2.dudl6si.4ozcqyax.test.com"
+                },
+                {
+                  "estimate": 60,
+                  "name": "me_3y.vrqzhd.e7c2.zahor.dnn1o5nnk.test.com"
+                },
+                {
+                  "estimate": 58,
+                  "name": "ajazg.us.92virkhez.27.q6jjpf6kv.test.com"
                 }],
               "top_qtype": [{
                 "estimate": 34,
@@ -1478,6 +1781,7 @@
                 "filtered": 0,
                 "ipv4": 0,
                 "ipv6": 140,
+                "nodata": 0,
                 "noerror": 0,
                 "nxdomain": 0,
                 "queries": 70,
@@ -1500,6 +1804,14 @@
                 "out": {
                   "top_slow": [],
                   "total": 0
+                },
+                "ratio": {
+                  "quantiles": {
+                    "p50": 0.8,
+                    "p90": 0.8493150684931506,
+                    "p95": 0.8552631578947368,
+                    "p99": 0.8625
+                  }
                 }
               }
             }
@@ -1520,6 +1832,7 @@
               "required": [
                 "cardinality",
                 "deep_samples",
+                "filtered",
                 "in",
                 "ipv4",
                 "ipv6",
@@ -1527,6 +1840,7 @@
                 "out",
                 "payload_size",
                 "period",
+                "protocol",
                 "rates",
                 "tcp",
                 "top_ASN",
@@ -1574,6 +1888,14 @@
                   "title": "The deep_samples Schema",
                   "examples": [
                     140
+                  ]
+                },
+                "filtered": {
+                  "type": "integer",
+                  "default": 0,
+                  "title": "The filtered Schema",
+                  "examples": [
+                    0
                   ]
                 },
                 "in": {
@@ -1698,22 +2020,58 @@
                     "start_ts": 1652448116
                   }]
                 },
+                "protocol": {
+                  "type": "object",
+                  "default": {},
+                  "title": "The protocol Schema",
+                  "required": [
+                    "tcp"
+                  ],
+                  "properties": {
+                    "tcp": {
+                      "type": "object",
+                      "default": {},
+                      "title": "The tcp Schema",
+                      "required": [
+                        "syn"
+                      ],
+                      "properties": {
+                        "syn": {
+                          "type": "integer",
+                          "default": 0,
+                          "title": "The syn Schema",
+                          "examples": [
+                            0
+                          ]
+                        }
+                      },
+                      "examples": [{
+                        "syn": 0
+                      }]
+                    }
+                  },
+                  "examples": [{
+                    "tcp": {
+                      "syn": 0
+                    }
+                  }]
+                },
                 "rates": {
                   "type": "object",
                   "default": {},
                   "title": "The rates Schema",
                   "required": [
-                    "bps_in",
-                    "bps_out",
+                    "bytes_in",
+                    "bytes_out",
                     "pps_in",
                     "pps_out",
                     "pps_total"
                   ],
                   "properties": {
-                    "bps_in": {
+                    "bytes_in": {
                       "type": "object",
                       "default": {},
-                      "title": "The bps_in Schema",
+                      "title": "The bytes_in Schema",
                       "required": [
                         "live",
                         "p50",
@@ -1724,7 +2082,6 @@
                       "properties": {
                         "live": {
                           "type": "integer",
-                          "minimum": 0,
                           "default": 0,
                           "title": "The live Schema",
                           "examples": [
@@ -1733,7 +2090,6 @@
                         },
                         "p50": {
                           "type": "integer",
-                          "minimum": 0,
                           "default": 0,
                           "title": "The p50 Schema",
                           "examples": [
@@ -1742,7 +2098,6 @@
                         },
                         "p90": {
                           "type": "integer",
-                          "minimum": 0,
                           "default": 0,
                           "title": "The p90 Schema",
                           "examples": [
@@ -1751,7 +2106,6 @@
                         },
                         "p95": {
                           "type": "integer",
-                          "minimum": 0,
                           "default": 0,
                           "title": "The p95 Schema",
                           "examples": [
@@ -1760,7 +2114,6 @@
                         },
                         "p99": {
                           "type": "integer",
-                          "minimum": 0,
                           "default": 0,
                           "title": "The p99 Schema",
                           "examples": [
@@ -1776,10 +2129,10 @@
                         "p99": 6
                       }]
                     },
-                    "bps_out": {
+                    "bytes_out": {
                       "type": "object",
                       "default": {},
-                      "title": "The bps_out Schema",
+                      "title": "The bytes_out Schema",
                       "required": [
                         "live",
                         "p50",
@@ -1790,7 +2143,6 @@
                       "properties": {
                         "live": {
                           "type": "integer",
-                          "minimum": 0,
                           "default": 0,
                           "title": "The live Schema",
                           "examples": [
@@ -1799,7 +2151,6 @@
                         },
                         "p50": {
                           "type": "integer",
-                          "minimum": 0,
                           "default": 0,
                           "title": "The p50 Schema",
                           "examples": [
@@ -1808,7 +2159,6 @@
                         },
                         "p90": {
                           "type": "integer",
-                          "minimum": 0,
                           "default": 0,
                           "title": "The p90 Schema",
                           "examples": [
@@ -1817,7 +2167,6 @@
                         },
                         "p95": {
                           "type": "integer",
-                          "minimum": 0,
                           "default": 0,
                           "title": "The p95 Schema",
                           "examples": [
@@ -1826,7 +2175,6 @@
                         },
                         "p99": {
                           "type": "integer",
-                          "minimum": 0,
                           "default": 0,
                           "title": "The p99 Schema",
                           "examples": [
@@ -1856,7 +2204,6 @@
                       "properties": {
                         "live": {
                           "type": "integer",
-                          "minimum": 0,
                           "default": 0,
                           "title": "The live Schema",
                           "examples": [
@@ -1865,7 +2212,6 @@
                         },
                         "p50": {
                           "type": "integer",
-                          "minimum": 0,
                           "default": 0,
                           "title": "The p50 Schema",
                           "examples": [
@@ -1874,7 +2220,6 @@
                         },
                         "p90": {
                           "type": "integer",
-                          "minimum": 0,
                           "default": 0,
                           "title": "The p90 Schema",
                           "examples": [
@@ -1883,7 +2228,6 @@
                         },
                         "p95": {
                           "type": "integer",
-                          "minimum": 0,
                           "default": 0,
                           "title": "The p95 Schema",
                           "examples": [
@@ -1892,7 +2236,6 @@
                         },
                         "p99": {
                           "type": "integer",
-                          "minimum": 0,
                           "default": 0,
                           "title": "The p99 Schema",
                           "examples": [
@@ -1922,7 +2265,6 @@
                       "properties": {
                         "live": {
                           "type": "integer",
-                          "minimum": 0,
                           "default": 0,
                           "title": "The live Schema",
                           "examples": [
@@ -1931,7 +2273,6 @@
                         },
                         "p50": {
                           "type": "integer",
-                          "minimum": 0,
                           "default": 0,
                           "title": "The p50 Schema",
                           "examples": [
@@ -1940,7 +2281,6 @@
                         },
                         "p90": {
                           "type": "integer",
-                          "minimum": 0,
                           "default": 0,
                           "title": "The p90 Schema",
                           "examples": [
@@ -1949,7 +2289,6 @@
                         },
                         "p95": {
                           "type": "integer",
-                          "minimum": 0,
                           "default": 0,
                           "title": "The p95 Schema",
                           "examples": [
@@ -1958,7 +2297,6 @@
                         },
                         "p99": {
                           "type": "integer",
-                          "minimum": 0,
                           "default": 0,
                           "title": "The p99 Schema",
                           "examples": [
@@ -1988,7 +2326,6 @@
                       "properties": {
                         "live": {
                           "type": "integer",
-                          "minimum": 0,
                           "default": 0,
                           "title": "The live Schema",
                           "examples": [
@@ -1997,7 +2334,6 @@
                         },
                         "p50": {
                           "type": "integer",
-                          "minimum": 0,
                           "default": 0,
                           "title": "The p50 Schema",
                           "examples": [
@@ -2006,7 +2342,6 @@
                         },
                         "p90": {
                           "type": "integer",
-                          "minimum": 0,
                           "default": 0,
                           "title": "The p90 Schema",
                           "examples": [
@@ -2015,7 +2350,6 @@
                         },
                         "p95": {
                           "type": "integer",
-                          "minimum": 0,
                           "default": 0,
                           "title": "The p95 Schema",
                           "examples": [
@@ -2024,7 +2358,6 @@
                         },
                         "p99": {
                           "type": "integer",
-                          "minimum": 0,
                           "default": 0,
                           "title": "The p99 Schema",
                           "examples": [
@@ -2042,14 +2375,14 @@
                     }
                   },
                   "examples": [{
-                    "bps_in": {
+                    "bytes_in": {
                       "live": 0,
                       "p50": 0,
                       "p90": 10,
                       "p95": 5,
                       "p99": 6
                     },
-                    "bps_out": {
+                    "bytes_out": {
                       "live": 0,
                       "p50": 0,
                       "p90": 0,
@@ -2118,9 +2451,42 @@
                   "type": "array",
                   "default": [],
                   "title": "The top_ipv6 Schema",
-                  "items": {},
+                  "items": {
+                    "type": "object",
+                    "default": {},
+                    "title": "A Schema",
+                    "required": [
+                      "estimate",
+                      "name"
+                    ],
+                    "properties": {
+                      "estimate": {
+                        "type": "integer",
+                        "default": 0,
+                        "title": "The estimate Schema",
+                        "examples": [
+                          3
+                        ]
+                      },
+                      "name": {
+                        "type": "string",
+                        "default": "",
+                        "title": "The name Schema",
+                        "examples": [
+                          "ff02::2"
+                        ]
+                      }
+                    },
+                    "examples": [{
+                      "estimate": 3,
+                      "name": "ff02::2"
+                    }]
+                  },
                   "examples": [
-                    []
+                    [{
+                      "estimate": 3,
+                      "name": "ff02::2"
+                    }]
                   ]
                 },
                 "total": {
@@ -2146,6 +2512,7 @@
                   "src_ips_in": 0
                 },
                 "deep_samples": 140,
+                "filtered": 0,
                 "in": 0,
                 "ipv4": 0,
                 "ipv6": 140,
@@ -2161,15 +2528,20 @@
                   "length": 1,
                   "start_ts": 1652448116
                 },
+                "protocol": {
+                  "tcp": {
+                    "syn": 0
+                  }
+                },
                 "rates": {
-                  "bps_in": {
+                  "bytes_in": {
                     "live": 0,
                     "p50": 0,
                     "p90": 10,
                     "p95": 5,
                     "p99": 6
                   },
-                  "bps_out": {
+                  "bytes_out": {
                     "live": 0,
                     "p50": 0,
                     "p90": 0,
@@ -2202,7 +2574,10 @@
                 "top_ASN": [],
                 "top_geoLoc": [],
                 "top_ipv4": [],
-                "top_ipv6": [],
+                "top_ipv6": [{
+                  "estimate": 3,
+                  "name": "ff02::2"
+                }],
                 "total": 140,
                 "udp": 140
               }]
@@ -2215,6 +2590,7 @@
                 "src_ips_in": 0
               },
               "deep_samples": 140,
+              "filtered": 0,
               "in": 0,
               "ipv4": 0,
               "ipv6": 140,
@@ -2230,15 +2606,20 @@
                 "length": 1,
                 "start_ts": 1652448116
               },
+              "protocol": {
+                "tcp": {
+                  "syn": 0
+                }
+              },
               "rates": {
-                "bps_in": {
+                "bytes_in": {
                   "live": 0,
                   "p50": 0,
                   "p90": 10,
                   "p95": 5,
                   "p99": 6
                 },
-                "bps_out": {
+                "bytes_out": {
                   "live": 0,
                   "p50": 0,
                   "p90": 0,
@@ -2271,7 +2652,10 @@
               "top_ASN": [],
               "top_geoLoc": [],
               "top_ipv4": [],
-              "top_ipv6": [],
+              "top_ipv6": [{
+                "estimate": 3,
+                "name": "ff02::2"
+              }],
               "total": 140,
               "udp": 140
             }
@@ -2421,6 +2805,7 @@
                 "p99": 0
               }
             },
+            "top_nodata": [],
             "top_nxdomain": [],
             "top_qname2": [{
               "estimate": 140,
@@ -2465,6 +2850,46 @@
               {
                 "estimate": 2,
                 "name": ".kn.test.com"
+              }],
+            "top_qname_by_resp_bytes": [{
+              "estimate": 69,
+              "name": "n22dzh9iev.62fq.lewasapcsq.fzkbbdhugt.a9ju.test.com"
+            },
+              {
+                "estimate": 68,
+                "name": "qjs1k.v1rk4_zpd.lpc3evyi9.s8yuzj19yq.zotw.test.com"
+              },
+              {
+                "estimate": 66,
+                "name": "ubjaakm.kenh7yfyju.anq_k8.1yehorab9o.rh.test.com"
+              },
+              {
+                "estimate": 65,
+                "name": "loj5pq2._empluapr.ppliop.1f8j2r1.emvq5.test.com"
+              },
+              {
+                "estimate": 64,
+                "name": "b4.mdx9df4iz.hyoap.gs6hjlb.gakdjq-m1m.test.com"
+              },
+              {
+                "estimate": 62,
+                "name": "7i55rusl.0yg.ybujicpf.zfor.prb5dt94.test.com"
+              },
+              {
+                "estimate": 62,
+                "name": "w0fl7oss.wncitowvw.dyx4to6hm.edk.nu.test.com"
+              },
+              {
+                "estimate": 61,
+                "name": "57ojczk.nuj-cq5e2.dudl6si.4ozcqyax.test.com"
+              },
+              {
+                "estimate": 60,
+                "name": "me_3y.vrqzhd.e7c2.zahor.dnn1o5nnk.test.com"
+              },
+              {
+                "estimate": 58,
+                "name": "ajazg.us.92virkhez.27.q6jjpf6kv.test.com"
               }],
             "top_qtype": [{
               "estimate": 34,
@@ -2545,6 +2970,7 @@
               "filtered": 0,
               "ipv4": 0,
               "ipv6": 140,
+              "nodata": 0,
               "noerror": 0,
               "nxdomain": 0,
               "queries": 70,
@@ -2567,6 +2993,14 @@
               "out": {
                 "top_slow": [],
                 "total": 0
+              },
+              "ratio": {
+                "quantiles": {
+                  "p50": 0.8,
+                  "p90": 0.8493150684931506,
+                  "p95": 0.8552631578947368,
+                  "p99": 0.8625
+                }
               }
             }
           }
@@ -2578,6 +3012,7 @@
               "src_ips_in": 0
             },
             "deep_samples": 140,
+            "filtered": 0,
             "in": 0,
             "ipv4": 0,
             "ipv6": 140,
@@ -2593,20 +3028,25 @@
               "length": 1,
               "start_ts": 1652448116
             },
+            "protocol": {
+              "tcp": {
+                "syn": 0
+              }
+            },
             "rates": {
-              "bps_in": {
-                "live": 0,
-                "p50": 0,
-                "p90": 10,
-                "p95": 5,
-                "p99": 6
-              },
-              "bps_out": {
+              "bytes_in": {
                 "live": 0,
                 "p50": 0,
                 "p90": 0,
                 "p95": 0,
                 "p99": 0
+              },
+              "bytes_out": {
+                "live": 0,
+                "p50": 0,
+                "p90": 0,
+                "p95": 70,
+                "p99": 70
               },
               "pps_in": {
                 "live": 0,
@@ -2634,7 +3074,10 @@
             "top_ASN": [],
             "top_geoLoc": [],
             "top_ipv4": [],
-            "top_ipv6": [],
+            "top_ipv6": [{
+              "estimate": 3,
+              "name": "ff02::2"
+            }],
             "total": 140,
             "udp": 140
           }
@@ -2648,6 +3091,363 @@
               "start_ts": 1652448116
             },
             "tcp_reassembly_errors": 0
+          }
+        }
+      }]
+    },
+    "^default-([a-zA-Z]+([0-9]+[a-zA-Z]+)+)-resources$": {
+      "type": "object",
+      "default": {},
+      "title": "The default-14f94e24c2d175cf-resources Schema",
+      "pattern": "^default-([a-zA-Z]+([0-9]+[a-zA-Z]+)+)-resources$",
+      "required": [
+        "^default-([a-zA-Z]+([0-9]+[a-zA-Z]+)+)-resources$"
+      ],
+      "properties": {
+        "^default-([a-zA-Z]+([0-9]+[a-zA-Z]+)+)-resources$": {
+          "type": "object",
+          "default": {},
+          "title": "The default-14f94e24c2d175cf-resources Schema",
+          "required": [
+            "input_resources"
+          ],
+          "properties": {
+            "input_resources": {
+              "type": "object",
+              "default": {},
+              "title": "The input_resources Schema",
+              "required": [
+                "cpu_usage",
+                "deep_samples",
+                "event_rate",
+                "handler_count",
+                "memory_bytes",
+                "period",
+                "policy_count",
+                "total"
+              ],
+              "properties": {
+                "cpu_usage": {
+                  "type": "object",
+                  "default": {},
+                  "title": "The cpu_usage Schema",
+                  "required": [
+                    "p50",
+                    "p90",
+                    "p95",
+                    "p99"
+                  ],
+                  "properties": {
+                    "p50": {
+                      "type": "number",
+                      "default": 0.0,
+                      "title": "The p50 Schema",
+                      "examples": [
+                        0.20161290322580644
+                      ]
+                    },
+                    "p90": {
+                      "type": "number",
+                      "default": 0.0,
+                      "title": "The p90 Schema",
+                      "examples": [
+                        0.33222591362126247
+                      ]
+                    },
+                    "p95": {
+                      "type": "number",
+                      "default": 0.0,
+                      "title": "The p95 Schema",
+                      "examples": [
+                        0.33222591362126247
+                      ]
+                    },
+                    "p99": {
+                      "type": "number",
+                      "default": 0.0,
+                      "title": "The p99 Schema",
+                      "examples": [
+                        0.33222591362126247
+                      ]
+                    }
+                  },
+                  "examples": [{
+                    "p50": 0.20161290322580644,
+                    "p90": 0.33222591362126247,
+                    "p95": 0.33222591362126247,
+                    "p99": 0.33222591362126247
+                  }]
+                },
+                "deep_samples": {
+                  "type": "integer",
+                  "default": 0,
+                  "title": "The deep_samples Schema",
+                  "examples": [
+                    5
+                  ]
+                },
+                "event_rate": {
+                  "type": "object",
+                  "default": {},
+                  "title": "The event_rate Schema",
+                  "required": [
+                    "live",
+                    "p50",
+                    "p90",
+                    "p95",
+                    "p99"
+                  ],
+                  "properties": {
+                    "live": {
+                      "type": "integer",
+                      "default": 0,
+                      "title": "The live Schema",
+                      "examples": [
+                        0
+                      ]
+                    },
+                    "p50": {
+                      "type": "integer",
+                      "default": 0,
+                      "title": "The p50 Schema",
+                      "examples": [
+                        0
+                      ]
+                    },
+                    "p90": {
+                      "type": "integer",
+                      "default": 0,
+                      "title": "The p90 Schema",
+                      "examples": [
+                        0
+                      ]
+                    },
+                    "p95": {
+                      "type": "integer",
+                      "default": 0,
+                      "title": "The p95 Schema",
+                      "examples": [
+                        1
+                      ]
+                    },
+                    "p99": {
+                      "type": "integer",
+                      "default": 0,
+                      "title": "The p99 Schema",
+                      "examples": [
+                        2
+                      ]
+                    }
+                  },
+                  "examples": [{
+                    "live": 0,
+                    "p50": 0,
+                    "p90": 0,
+                    "p95": 1,
+                    "p99": 2
+                  }]
+                },
+                "handler_count": {
+                  "type": "integer",
+                  "default": 0,
+                  "title": "The handler_count Schema",
+                  "examples": [
+                    5
+                  ]
+                },
+                "memory_bytes": {
+                  "type": "object",
+                  "default": {},
+                  "title": "The memory_bytes Schema",
+                  "required": [
+                    "p50",
+                    "p90",
+                    "p95",
+                    "p99"
+                  ],
+                  "properties": {
+                    "p50": {
+                      "type": "integer",
+                      "default": 0,
+                      "title": "The p50 Schema",
+                      "examples": [
+                        18022400
+                      ]
+                    },
+                    "p90": {
+                      "type": "integer",
+                      "default": 0,
+                      "title": "The p90 Schema",
+                      "examples": [
+                        18022400
+                      ]
+                    },
+                    "p95": {
+                      "type": "integer",
+                      "default": 0,
+                      "title": "The p95 Schema",
+                      "examples": [
+                        18022400
+                      ]
+                    },
+                    "p99": {
+                      "type": "integer",
+                      "default": 0,
+                      "title": "The p99 Schema",
+                      "examples": [
+                        18022400
+                      ]
+                    }
+                  },
+                  "examples": [{
+                    "p50": 18022400,
+                    "p90": 18022400,
+                    "p95": 18022400,
+                    "p99": 18022400
+                  }]
+                },
+                "period": {
+                  "type": "object",
+                  "default": {},
+                  "title": "The period Schema",
+                  "required": [
+                    "length",
+                    "start_ts"
+                  ],
+                  "properties": {
+                    "length": {
+                      "type": "integer",
+                      "default": 0,
+                      "title": "The length Schema",
+                      "examples": [
+                        57
+                      ]
+                    },
+                    "start_ts": {
+                      "type": "integer",
+                      "default": 0,
+                      "title": "The start_ts Schema",
+                      "examples": [
+                        1658846746
+                      ]
+                    }
+                  },
+                  "examples": [{
+                    "length": 57,
+                    "start_ts": 1658846746
+                  }]
+                },
+                "policy_count": {
+                  "type": "integer",
+                  "default": 0,
+                  "title": "The policy_count Schema",
+                  "examples": [
+                    2
+                  ]
+                },
+                "total": {
+                  "type": "integer",
+                  "default": 0,
+                  "title": "The total Schema",
+                  "examples": [
+                    5
+                  ]
+                }
+              },
+              "examples": [{
+                "cpu_usage": {
+                  "p50": 0.20161290322580644,
+                  "p90": 0.33222591362126247,
+                  "p95": 0.33222591362126247,
+                  "p99": 0.33222591362126247
+                },
+                "deep_samples": 5,
+                "event_rate": {
+                  "live": 0,
+                  "p50": 0,
+                  "p90": 0,
+                  "p95": 1,
+                  "p99": 2
+                },
+                "handler_count": 5,
+                "memory_bytes": {
+                  "p50": 18022400,
+                  "p90": 18022400,
+                  "p95": 18022400,
+                  "p99": 18022400
+                },
+                "period": {
+                  "length": 57,
+                  "start_ts": 1658846746
+                },
+                "policy_count": 2,
+                "total": 5
+              }]
+            }
+          },
+          "examples": [{
+            "input_resources": {
+              "cpu_usage": {
+                "p50": 0.20161290322580644,
+                "p90": 0.33222591362126247,
+                "p95": 0.33222591362126247,
+                "p99": 0.33222591362126247
+              },
+              "deep_samples": 5,
+              "event_rate": {
+                "live": 0,
+                "p50": 0,
+                "p90": 0,
+                "p95": 1,
+                "p99": 2
+              },
+              "handler_count": 5,
+              "memory_bytes": {
+                "p50": 18022400,
+                "p90": 18022400,
+                "p95": 18022400,
+                "p99": 18022400
+              },
+              "period": {
+                "length": 57,
+                "start_ts": 1658846746
+              },
+              "policy_count": 2,
+              "total": 5
+            }
+          }]
+        }
+      },
+      "examples": [{
+        "default-14f94e24c2d175cf-resources": {
+          "input_resources": {
+            "cpu_usage": {
+              "p50": 0.20161290322580644,
+              "p90": 0.33222591362126247,
+              "p95": 0.33222591362126247,
+              "p99": 0.33222591362126247
+            },
+            "deep_samples": 5,
+            "event_rate": {
+              "live": 0,
+              "p50": 0,
+              "p90": 0,
+              "p95": 1,
+              "p99": 2
+            },
+            "handler_count": 5,
+            "memory_bytes": {
+              "p50": 18022400,
+              "p90": 18022400,
+              "p95": 18022400,
+              "p99": 18022400
+            },
+            "period": {
+              "length": 57,
+              "start_ts": 1658846746
+            },
+            "policy_count": 2,
+            "total": 5
           }
         }
       }]
@@ -2699,6 +3499,7 @@
               "p99": 0
             }
           },
+          "top_nodata": [],
           "top_nxdomain": [],
           "top_qname2": [{
             "estimate": 140,
@@ -2743,6 +3544,46 @@
             {
               "estimate": 2,
               "name": ".kn.test.com"
+            }],
+          "top_qname_by_resp_bytes": [{
+            "estimate": 69,
+            "name": "n22dzh9iev.62fq.lewasapcsq.fzkbbdhugt.a9ju.test.com"
+          },
+            {
+              "estimate": 68,
+              "name": "qjs1k.v1rk4_zpd.lpc3evyi9.s8yuzj19yq.zotw.test.com"
+            },
+            {
+              "estimate": 66,
+              "name": "ubjaakm.kenh7yfyju.anq_k8.1yehorab9o.rh.test.com"
+            },
+            {
+              "estimate": 65,
+              "name": "loj5pq2._empluapr.ppliop.1f8j2r1.emvq5.test.com"
+            },
+            {
+              "estimate": 64,
+              "name": "b4.mdx9df4iz.hyoap.gs6hjlb.gakdjq-m1m.test.com"
+            },
+            {
+              "estimate": 62,
+              "name": "7i55rusl.0yg.ybujicpf.zfor.prb5dt94.test.com"
+            },
+            {
+              "estimate": 62,
+              "name": "w0fl7oss.wncitowvw.dyx4to6hm.edk.nu.test.com"
+            },
+            {
+              "estimate": 61,
+              "name": "57ojczk.nuj-cq5e2.dudl6si.4ozcqyax.test.com"
+            },
+            {
+              "estimate": 60,
+              "name": "me_3y.vrqzhd.e7c2.zahor.dnn1o5nnk.test.com"
+            },
+            {
+              "estimate": 58,
+              "name": "ajazg.us.92virkhez.27.q6jjpf6kv.test.com"
             }],
           "top_qtype": [{
             "estimate": 34,
@@ -2823,6 +3664,7 @@
             "filtered": 0,
             "ipv4": 0,
             "ipv6": 140,
+            "nodata": 0,
             "noerror": 0,
             "nxdomain": 0,
             "queries": 70,
@@ -2845,6 +3687,14 @@
             "out": {
               "top_slow": [],
               "total": 0
+            },
+            "ratio": {
+              "quantiles": {
+                "p50": 0.8,
+                "p90": 0.8493150684931506,
+                "p95": 0.8552631578947368,
+                "p99": 0.8625
+              }
             }
           }
         }
@@ -2871,20 +3721,25 @@
             "length": 1,
             "start_ts": 1652448116
           },
+          "protocol": {
+            "tcp": {
+              "syn": 0
+            }
+          },
           "rates": {
-            "bps_in": {
-              "live": 0,
-              "p50": 0,
-              "p90": 10,
-              "p95": 5,
-              "p99": 6
-            },
-            "bps_out": {
+            "bytes_in": {
               "live": 0,
               "p50": 0,
               "p90": 0,
               "p95": 0,
               "p99": 0
+            },
+            "bytes_out": {
+              "live": 0,
+              "p50": 0,
+              "p90": 0,
+              "p95": 70,
+              "p99": 70
             },
             "pps_in": {
               "live": 0,
@@ -2904,16 +3759,19 @@
               "live": 0,
               "p50": 0,
               "p90": 0,
-              "p95": 0,
-              "p99": 0
+              "p95": 1,
+              "p99": 140
             }
           },
           "tcp": 0,
           "top_ASN": [],
           "top_geoLoc": [],
           "top_ipv4": [],
-          "top_ipv6": [],
-          "total": 140,
+          "top_ipv6": [{
+            "estimate": 3,
+            "name": "ff02::2"
+          }],
+          "total": 143,
           "udp": 140
         }
       },
