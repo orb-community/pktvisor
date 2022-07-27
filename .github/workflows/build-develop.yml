@@ -275,6 +275,11 @@ jobs:
         run: |
           curl -X POST -H "Content-Type: application/x-www-form-urlencoded" -u "${{ secrets.QA_AUTH_CREDENTIALS }}" -d "change=pktvisor-dev&state=active" https://qa.ops.orb.live/api.php
 
+      - name: Debug version
+        run: |
+          echo ${{ env.VERSION }}
+          echo ${{ needs.package.outputs.version }}
+
       - name: Prepare test config
         run: |
           cd ./automated_tests/
