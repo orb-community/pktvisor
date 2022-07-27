@@ -18,7 +18,7 @@ env:
   CONAN_REVISIONS_ENABLED: 1
 
 jobs:
-  build:
+  unit-tests:
     # The CMake configure and build commands are platform agnostic and should work equally
     # well on Windows or Mac.  You can convert this to a matrix build if you need
     # cross-platform coverage.
@@ -77,10 +77,10 @@ jobs:
 #        run: CONAN_USER_HOME=${{github.workspace}}/build/conan_home conan upload "*" --all -r ns1labs -c
 
   package:
-    needs: build
+    needs: unit-tests
     runs-on: ubuntu-latest
     outputs:
-      VERSION: ${{ steps.version.outputs.version }}
+      version: ${{ steps.version.outputs.build }}
     # if this is a push into one of our main branches (rather than just a pull request), we will also package
     if: github.event_name != 'pull_request'
     steps:
@@ -108,12 +108,12 @@ jobs:
         id: version
         run: |
           echo "VERSION=`cat ${{github.workspace}}/build/VERSION`" >> $GITHUB_ENV
-          echo "::set-output name=version::$(cat ${{github.workspace}}/build/VERSION)"
+          echo "::set-output name=build::$(cat ${{github.workspace}}/build/VERSION)"
 
       - name: Debug version
         run: |
           echo ${{ env.VERSION }}
-          echo ${{ steps.version.outputs.version }}
+          echo ${{ steps.version.outputs.build }}
 
       - name: Generate ref tag (develop)
         if: ${{ env.BRANCH_NAME == 'develop' || env.BRANCH_NAME == 'multi-arch-images' }}
@@ -303,7 +303,8 @@ jobs:
 
       - name: Copy VERSION file
         run: |
-          echo "${{ needs.package.outputs.VERSION }}" > ./automated_tests/output/VERSION 
+          echo ${{ needs.package.outputs.version }}
+          echo ${{ needs.package.outputs.version }} > ./automated_tests/output/VERSION 
 
       - name: Persist to workspace
         uses: actions/upload-artifact@v2
