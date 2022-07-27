@@ -102,7 +102,7 @@ def bucket_check(context, amount_of_buckets):
     pkt_api_get_endpoint = 'policies/__all/metrics/bucket/'
     buckets = dict()
     for time in range(1, 6):
-        event.wait(70)  # buckets change every 60 seconds
+        event.wait(65)  # buckets change every 60 seconds
         for bucket in range(1, amount_of_buckets):
             buckets[f"{time}_{bucket}"] = make_get_request(f"{pkt_api_get_endpoint}{bucket}", context.pkt_port)
 
@@ -118,16 +118,16 @@ def bucket_check(context, amount_of_buckets):
                                             f"All buckets: {buckets}")
 
 
-@step("metrics must be correctly generated")
-def check_metrics(context):
+@step("metrics must be correctly generated as per the {schema_file} schema")
+def check_metrics(context, schema_file):
     pkt_api_get_endpoints = ['policies/default/metrics/window/2',
                              'policies/default/metrics/window/3',
                              'policies/default/metrics/window/4',
                              'policies/default/metrics/window/5']
     event = threading.Event()
     event.wait(1)
-    schema_file_name = configs.get("schema_file_name", "metrics_schema.json")
-    schema_file_path = f"{context.directory_of_network_data_files}schemas/{schema_file_name}"
+    schema_file_path = f"{context.directory_of_network_data_files}schemas/{schema_file}"
+    assert_that(os.path.exists(schema_file_path), equal_to(True), f"Unable to find {schema_file_path}. Path not exist.")
     for network_file in context.network_data_files:
         for endpoint in pkt_api_get_endpoints:
             response_json, is_json_valid = check_metrics_per_endpoint(endpoint, context.pkt_port,

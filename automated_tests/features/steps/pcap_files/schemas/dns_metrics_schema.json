@@ -1,0 +1,3791 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "http://example.com/example.json",
+  "type": "object",
+  "default": {},
+  "title": "Root Schema",
+  "required": [
+    "default"
+  ],
+  "properties": {
+    "default": {
+      "type": "object",
+      "default": {},
+      "title": "The default Schema",
+      "required": [
+        "default-dhcp",
+        "default-dns",
+        "default-net",
+        "default-pcap_stats"
+      ],
+      "properties": {
+        "default-dhcp": {
+          "type": "object",
+          "default": {},
+          "title": "The default-dhcp Schema",
+          "required": [
+            "dhcp"
+          ],
+          "properties": {
+            "dhcp": {
+              "type": "object",
+              "default": {},
+              "title": "The dhcp Schema",
+              "required": [
+                "period",
+                "rates",
+                "wire_packets"
+              ],
+              "properties": {
+                "period": {
+                  "type": "object",
+                  "default": {},
+                  "title": "The period Schema",
+                  "required": [
+                    "length",
+                    "start_ts"
+                  ],
+                  "properties": {
+                    "length": {
+                      "type": "integer",
+                      "default": 0,
+                      "title": "The length Schema",
+                      "examples": [
+                        1
+                      ]
+                    },
+                    "start_ts": {
+                      "type": "integer",
+                      "default": 0,
+                      "title": "The start_ts Schema",
+                      "examples": [
+                        1652448116
+                      ]
+                    }
+                  },
+                  "examples": [{
+                    "length": 1,
+                    "start_ts": 1652448116
+                  }]
+                },
+                "rates": {
+                  "type": "object",
+                  "default": {},
+                  "title": "The rates Schema",
+                  "required": [
+                    "total"
+                  ],
+                  "properties": {
+                    "total": {
+                      "type": "object",
+                      "default": {},
+                      "title": "The total Schema",
+                      "required": [
+                        "live",
+                        "p50",
+                        "p90",
+                        "p95",
+                        "p99"
+                      ],
+                      "properties": {
+                        "live": {
+                          "type": "integer",
+                          "default": 0,
+                          "title": "The live Schema",
+                          "examples": [
+                            0
+                          ]
+                        },
+                        "p50": {
+                          "type": "integer",
+                          "default": 0,
+                          "title": "The p50 Schema",
+                          "examples": [
+                            0
+                          ]
+                        },
+                        "p90": {
+                          "type": "integer",
+                          "default": 0,
+                          "title": "The p90 Schema",
+                          "examples": [
+                            0
+                          ]
+                        },
+                        "p95": {
+                          "type": "integer",
+                          "default": 0,
+                          "title": "The p95 Schema",
+                          "examples": [
+                            0
+                          ]
+                        },
+                        "p99": {
+                          "type": "integer",
+                          "default": 0,
+                          "title": "The p99 Schema",
+                          "examples": [
+                            0
+                          ]
+                        }
+                      },
+                      "examples": [{
+                        "live": 0,
+                        "p50": 0,
+                        "p90": 0,
+                        "p95": 0,
+                        "p99": 0
+                      }]
+                    }
+                  },
+                  "examples": [{
+                    "total": {
+                      "live": 0,
+                      "p50": 0,
+                      "p90": 0,
+                      "p95": 0,
+                      "p99": 0
+                    }
+                  }]
+                },
+                "wire_packets": {
+                  "type": "object",
+                  "default": {},
+                  "title": "The wire_packets Schema",
+                  "required": [
+                    "ack",
+                    "deep_samples",
+                    "discover",
+                    "filtered",
+                    "offer",
+                    "request",
+                    "total"
+                  ],
+                  "properties": {
+                    "ack": {
+                      "type": "integer",
+                      "default": 0,
+                      "title": "The ack Schema",
+                      "examples": [
+                        0
+                      ]
+                    },
+                    "deep_samples": {
+                      "type": "integer",
+                      "default": 0,
+                      "title": "The deep_samples Schema",
+                      "examples": [
+                        0
+                      ]
+                    },
+                    "discover": {
+                      "type": "integer",
+                      "default": 0,
+                      "title": "The discover Schema",
+                      "examples": [
+                        0
+                      ]
+                    },
+                    "filtered": {
+                      "type": "integer",
+                      "default": 0,
+                      "title": "The filtered Schema",
+                      "examples": [
+                        0
+                      ]
+                    },
+                    "offer": {
+                      "type": "integer",
+                      "default": 0,
+                      "title": "The offer Schema",
+                      "examples": [
+                        0
+                      ]
+                    },
+                    "request": {
+                      "type": "integer",
+                      "default": 0,
+                      "title": "The request Schema",
+                      "examples": [
+                        0
+                      ]
+                    },
+                    "total": {
+                      "type": "integer",
+                      "default": 0,
+                      "title": "The total Schema",
+                      "examples": [
+                        0
+                      ]
+                    }
+                  },
+                  "examples": [{
+                    "ack": 0,
+                    "deep_samples": 0,
+                    "discover": 0,
+                    "filtered": 0,
+                    "offer": 0,
+                    "request": 0,
+                    "total": 0
+                  }]
+                }
+              },
+              "examples": [{
+                "period": {
+                  "length": 57,
+                  "start_ts": 1658846746
+                },
+                "rates": {
+                  "total": {
+                    "live": 0,
+                    "p50": 0,
+                    "p90": 0,
+                    "p95": 0,
+                    "p99": 0
+                  }
+                },
+                "wire_packets": {
+                  "ack": 0,
+                  "deep_samples": 0,
+                  "discover": 0,
+                  "filtered": 0,
+                  "offer": 0,
+                  "request": 0,
+                  "total": 0
+                }
+              }]
+            }
+          },
+          "examples": [{
+            "dhcp": {
+              "period": {
+                "length": 1,
+                "start_ts": 1652448116
+              },
+              "rates": {
+                "total": {
+                  "live": 0,
+                  "p50": 0,
+                  "p90": 0,
+                  "p95": 0,
+                  "p99": 0
+                }
+              },
+              "wire_packets": {
+                "ack": 0,
+                "deep_samples": 0,
+                "discover": 0,
+                "filtered": 0,
+                "offer": 0,
+                "request": 0,
+                "total": 0
+              }
+            }
+          }]
+        },
+        "default-dns": {
+          "type": "object",
+          "default": {},
+          "title": "The default-dns Schema",
+          "required": [
+            "dns"
+          ],
+          "properties": {
+            "dns": {
+              "type": "object",
+              "default": {},
+              "title": "The dns Schema",
+              "required": [
+                "cardinality",
+                "period",
+                "rates",
+                "top_nodata",
+                "top_nxdomain",
+                "top_qname2",
+                "top_qname3",
+                "top_qname_by_resp_bytes",
+                "top_qtype",
+                "top_rcode",
+                "top_refused",
+                "top_srvfail",
+                "top_udp_ports",
+                "wire_packets",
+                "xact"
+              ],
+              "properties": {
+                "cardinality": {
+                  "type": "object",
+                  "default": {},
+                  "title": "The cardinality Schema",
+                  "required": [
+                    "qname"
+                  ],
+                  "properties": {
+                    "qname": {
+                      "type": "integer",
+                      "default": 0,
+                      "title": "The qname Schema",
+                      "examples": [
+                        69
+                      ]
+                    }
+                  },
+                  "examples": [{
+                    "qname": 69
+                  }]
+                },
+                "period": {
+                  "type": "object",
+                  "default": {},
+                  "title": "The period Schema",
+                  "required": [
+                    "length",
+                    "start_ts"
+                  ],
+                  "properties": {
+                    "length": {
+                      "type": "integer",
+                      "default": 0,
+                      "title": "The length Schema",
+                      "examples": [
+                        1
+                      ]
+                    },
+                    "start_ts": {
+                      "type": "integer",
+                      "default": 0,
+                      "title": "The start_ts Schema",
+                      "examples": [
+                        1652448116
+                      ]
+                    }
+                  },
+                  "examples": [{
+                    "length": 1,
+                    "start_ts": 1652448116
+                  }]
+                },
+                "rates": {
+                  "type": "object",
+                  "default": {},
+                  "title": "The rates Schema",
+                  "required": [
+                    "total"
+                  ],
+                  "properties": {
+                    "total": {
+                      "type": "object",
+                      "default": {},
+                      "title": "The total Schema",
+                      "required": [
+                        "live",
+                        "p50",
+                        "p90",
+                        "p95",
+                        "p99"
+                      ],
+                      "properties": {
+                        "live": {
+                          "type": "integer",
+                          "default": 0,
+                          "title": "The live Schema",
+                          "examples": [
+                            0
+                          ]
+                        },
+                        "p50": {
+                          "type": "integer",
+                          "default": 0,
+                          "title": "The p50 Schema",
+                          "examples": [
+                            0
+                          ]
+                        },
+                        "p90": {
+                          "type": "integer",
+                          "default": 0,
+                          "title": "The p90 Schema",
+                          "examples": [
+                            0
+                          ]
+                        },
+                        "p95": {
+                          "type": "integer",
+                          "default": 0,
+                          "title": "The p95 Schema",
+                          "examples": [
+                            0
+                          ]
+                        },
+                        "p99": {
+                          "type": "integer",
+                          "default": 0,
+                          "title": "The p99 Schema",
+                          "examples": [
+                            0
+                          ]
+                        }
+                      },
+                      "examples": [{
+                        "live": 0,
+                        "p50": 0,
+                        "p90": 0,
+                        "p95": 0,
+                        "p99": 0
+                      }]
+                    }
+                  },
+                  "examples": [{
+                    "total": {
+                      "live": 0,
+                      "p50": 0,
+                      "p90": 0,
+                      "p95": 0,
+                      "p99": 0
+                    }
+                  }]
+                },
+                "top_nodata": {
+                  "type": "array",
+                  "default": [],
+                  "title": "The top_nodata Schema",
+                  "items": {},
+                  "examples": [
+                    []
+                  ]
+                },
+                "top_nxdomain": {
+                  "type": "array",
+                  "default": [],
+                  "title": "The top_nxdomain Schema",
+                  "items": {},
+                  "examples": [
+                    []
+                  ]
+                },
+                "top_qname2": {
+                  "type": "array",
+                  "default": [],
+                  "title": "The top_qname2 Schema",
+                  "items": {
+                    "type": "object",
+                    "default": {},
+                    "title": "A Schema",
+                    "required": [
+                      "estimate",
+                      "name"
+                    ],
+                    "properties": {
+                      "estimate": {
+                        "type": "integer",
+                        "default": 0,
+                        "title": "The estimate Schema",
+                        "examples": [
+                          140
+                        ]
+                      },
+                      "name": {
+                        "type": "string",
+                        "default": "",
+                        "title": "The name Schema",
+                        "examples": [
+                          ".test.com"
+                        ]
+                      }
+                    },
+                    "examples": [{
+                      "estimate": 140,
+                      "name": ".test.com"
+                    }]
+                  },
+                  "examples": [
+                    [{
+                      "estimate": 140,
+                      "name": ".test.com"
+                    }]
+                  ]
+                },
+                "top_qname3": {
+                  "type": "array",
+                  "default": [],
+                  "title": "The top_qname3 Schema",
+                  "items": {
+                    "type": "object",
+                    "title": "A Schema",
+                    "required": [
+                      "estimate",
+                      "name"
+                    ],
+                    "properties": {
+                      "estimate": {
+                        "type": "integer",
+                        "title": "The estimate Schema",
+                        "examples": [
+                          2
+                        ]
+                      },
+                      "name": {
+                        "type": "string",
+                        "title": "The name Schema",
+                        "examples": [
+                          ".q6jjpf6kv.test.com",
+                          ".ogl8.test.com",
+                          "lfv2-uf4p9.test.com",
+                          ".8a3cpmzb5.test.com",
+                          ".ew_.test.com",
+                          ".dnn1o5nnk.test.com",
+                          ".pap4y.test.com",
+                          "jde.test.com",
+                          ".nlwk1xsm.test.com",
+                          ".kn.test.com"
+                        ]
+                      }
+                    },
+                    "examples": [{
+                      "estimate": 2,
+                      "name": ".q6jjpf6kv.test.com"
+                    },
+                      {
+                        "estimate": 2,
+                        "name": ".ogl8.test.com"
+                      },
+                      {
+                        "estimate": 2,
+                        "name": "lfv2-uf4p9.test.com"
+                      },
+                      {
+                        "estimate": 2,
+                        "name": ".8a3cpmzb5.test.com"
+                      },
+                      {
+                        "estimate": 2,
+                        "name": ".ew_.test.com"
+                      },
+                      {
+                        "estimate": 2,
+                        "name": ".dnn1o5nnk.test.com"
+                      },
+                      {
+                        "estimate": 2,
+                        "name": ".pap4y.test.com"
+                      },
+                      {
+                        "estimate": 2,
+                        "name": "jde.test.com"
+                      },
+                      {
+                        "estimate": 2,
+                        "name": ".nlwk1xsm.test.com"
+                      },
+                      {
+                        "estimate": 2,
+                        "name": ".kn.test.com"
+                      }]
+                  },
+                  "examples": [
+                    [{
+                      "estimate": 2,
+                      "name": ".q6jjpf6kv.test.com"
+                    },
+                      {
+                        "estimate": 2,
+                        "name": ".ogl8.test.com"
+                      },
+                      {
+                        "estimate": 2,
+                        "name": "lfv2-uf4p9.test.com"
+                      },
+                      {
+                        "estimate": 2,
+                        "name": ".8a3cpmzb5.test.com"
+                      },
+                      {
+                        "estimate": 2,
+                        "name": ".ew_.test.com"
+                      },
+                      {
+                        "estimate": 2,
+                        "name": ".dnn1o5nnk.test.com"
+                      },
+                      {
+                        "estimate": 2,
+                        "name": ".pap4y.test.com"
+                      },
+                      {
+                        "estimate": 2,
+                        "name": "jde.test.com"
+                      },
+                      {
+                        "estimate": 2,
+                        "name": ".nlwk1xsm.test.com"
+                      },
+                      {
+                        "estimate": 2,
+                        "name": ".kn.test.com"
+                      }]
+                  ]
+                },
+                "top_qname_by_resp_bytes": {
+                  "type": "array",
+                  "default": [],
+                  "title": "The top_qname_by_resp_bytes Schema",
+                  "items": {
+                    "type": "object",
+                    "title": "A Schema",
+                    "required": [
+                      "estimate",
+                      "name"
+                    ],
+                    "properties": {
+                      "estimate": {
+                        "type": "integer",
+                        "title": "The estimate Schema",
+                        "examples": [
+                          69,
+                          68,
+                          66,
+                          65,
+                          64,
+                          62,
+                          61,
+                          60,
+                          58
+                        ]
+                      },
+                      "name": {
+                        "type": "string",
+                        "title": "The name Schema",
+                        "examples": [
+                          "n22dzh9iev.62fq.lewasapcsq.fzkbbdhugt.a9ju.test.com",
+                          "qjs1k.v1rk4_zpd.lpc3evyi9.s8yuzj19yq.zotw.test.com",
+                          "ubjaakm.kenh7yfyju.anq_k8.1yehorab9o.rh.test.com",
+                          "loj5pq2._empluapr.ppliop.1f8j2r1.emvq5.test.com",
+                          "b4.mdx9df4iz.hyoap.gs6hjlb.gakdjq-m1m.test.com",
+                          "7i55rusl.0yg.ybujicpf.zfor.prb5dt94.test.com",
+                          "w0fl7oss.wncitowvw.dyx4to6hm.edk.nu.test.com",
+                          "57ojczk.nuj-cq5e2.dudl6si.4ozcqyax.test.com",
+                          "me_3y.vrqzhd.e7c2.zahor.dnn1o5nnk.test.com",
+                          "ajazg.us.92virkhez.27.q6jjpf6kv.test.com"
+                        ]
+                      }
+                    },
+                    "examples": [{
+                      "estimate": 69,
+                      "name": "n22dzh9iev.62fq.lewasapcsq.fzkbbdhugt.a9ju.test.com"
+                    },
+                      {
+                        "estimate": 68,
+                        "name": "qjs1k.v1rk4_zpd.lpc3evyi9.s8yuzj19yq.zotw.test.com"
+                      },
+                      {
+                        "estimate": 66,
+                        "name": "ubjaakm.kenh7yfyju.anq_k8.1yehorab9o.rh.test.com"
+                      },
+                      {
+                        "estimate": 65,
+                        "name": "loj5pq2._empluapr.ppliop.1f8j2r1.emvq5.test.com"
+                      },
+                      {
+                        "estimate": 64,
+                        "name": "b4.mdx9df4iz.hyoap.gs6hjlb.gakdjq-m1m.test.com"
+                      },
+                      {
+                        "estimate": 62,
+                        "name": "7i55rusl.0yg.ybujicpf.zfor.prb5dt94.test.com"
+                      },
+                      {
+                        "estimate": 62,
+                        "name": "w0fl7oss.wncitowvw.dyx4to6hm.edk.nu.test.com"
+                      },
+                      {
+                        "estimate": 61,
+                        "name": "57ojczk.nuj-cq5e2.dudl6si.4ozcqyax.test.com"
+                      },
+                      {
+                        "estimate": 60,
+                        "name": "me_3y.vrqzhd.e7c2.zahor.dnn1o5nnk.test.com"
+                      },
+                      {
+                        "estimate": 58,
+                        "name": "ajazg.us.92virkhez.27.q6jjpf6kv.test.com"
+                      }]
+                  },
+                  "examples": [
+                    [{
+                      "estimate": 69,
+                      "name": "n22dzh9iev.62fq.lewasapcsq.fzkbbdhugt.a9ju.test.com"
+                    },
+                      {
+                        "estimate": 68,
+                        "name": "qjs1k.v1rk4_zpd.lpc3evyi9.s8yuzj19yq.zotw.test.com"
+                      },
+                      {
+                        "estimate": 66,
+                        "name": "ubjaakm.kenh7yfyju.anq_k8.1yehorab9o.rh.test.com"
+                      },
+                      {
+                        "estimate": 65,
+                        "name": "loj5pq2._empluapr.ppliop.1f8j2r1.emvq5.test.com"
+                      },
+                      {
+                        "estimate": 64,
+                        "name": "b4.mdx9df4iz.hyoap.gs6hjlb.gakdjq-m1m.test.com"
+                      },
+                      {
+                        "estimate": 62,
+                        "name": "7i55rusl.0yg.ybujicpf.zfor.prb5dt94.test.com"
+                      },
+                      {
+                        "estimate": 62,
+                        "name": "w0fl7oss.wncitowvw.dyx4to6hm.edk.nu.test.com"
+                      },
+                      {
+                        "estimate": 61,
+                        "name": "57ojczk.nuj-cq5e2.dudl6si.4ozcqyax.test.com"
+                      },
+                      {
+                        "estimate": 60,
+                        "name": "me_3y.vrqzhd.e7c2.zahor.dnn1o5nnk.test.com"
+                      },
+                      {
+                        "estimate": 58,
+                        "name": "ajazg.us.92virkhez.27.q6jjpf6kv.test.com"
+                      }]
+                  ]
+                },
+                "top_qtype": {
+                  "type": "array",
+                  "default": [],
+                  "title": "The top_qtype Schema",
+                  "items": {
+                    "type": "object",
+                    "title": "A Schema",
+                    "required": [
+                      "estimate",
+                      "name"
+                    ],
+                    "properties": {
+                      "estimate": {
+                        "type": "integer",
+                        "title": "The estimate Schema",
+                        "examples": [
+                          34,
+                          22,
+                          14,
+                          12
+                        ]
+                      },
+                      "name": {
+                        "type": "string",
+                        "title": "The name Schema",
+                        "examples": [
+                          "AAAA",
+                          "A",
+                          "SOA",
+                          "NS",
+                          "MX",
+                          "CNAME",
+                          "TXT"
+                        ]
+                      }
+                    },
+                    "examples": [{
+                      "estimate": 34,
+                      "name": "AAAA"
+                    },
+                      {
+                        "estimate": 22,
+                        "name": "A"
+                      },
+                      {
+                        "estimate": 22,
+                        "name": "SOA"
+                      },
+                      {
+                        "estimate": 22,
+                        "name": "NS"
+                      },
+                      {
+                        "estimate": 14,
+                        "name": "MX"
+                      },
+                      {
+                        "estimate": 14,
+                        "name": "CNAME"
+                      },
+                      {
+                        "estimate": 12,
+                        "name": "TXT"
+                      }]
+                  },
+                  "examples": [
+                    [{
+                      "estimate": 34,
+                      "name": "AAAA"
+                    },
+                      {
+                        "estimate": 22,
+                        "name": "A"
+                      },
+                      {
+                        "estimate": 22,
+                        "name": "SOA"
+                      },
+                      {
+                        "estimate": 22,
+                        "name": "NS"
+                      },
+                      {
+                        "estimate": 14,
+                        "name": "MX"
+                      },
+                      {
+                        "estimate": 14,
+                        "name": "CNAME"
+                      },
+                      {
+                        "estimate": 12,
+                        "name": "TXT"
+                      }]
+                  ]
+                },
+                "top_rcode": {
+                  "type": "array",
+                  "default": [],
+                  "title": "The top_rcode Schema",
+                  "items": {
+                    "type": "object",
+                    "default": {},
+                    "title": "A Schema",
+                    "required": [
+                      "estimate",
+                      "name"
+                    ],
+                    "properties": {
+                      "estimate": {
+                        "type": "integer",
+                        "default": 0,
+                        "title": "The estimate Schema",
+                        "examples": [
+                          70
+                        ]
+                      },
+                      "name": {
+                        "type": "string",
+                        "default": "",
+                        "title": "The name Schema",
+                        "examples": [
+                          "NOTIMP"
+                        ]
+                      }
+                    },
+                    "examples": [{
+                      "estimate": 70,
+                      "name": "NOTIMP"
+                    }]
+                  },
+                  "examples": [
+                    [{
+                      "estimate": 70,
+                      "name": "NOTIMP"
+                    }]
+                  ]
+                },
+                "top_refused": {
+                  "type": "array",
+                  "default": [],
+                  "title": "The top_refused Schema",
+                  "items": {},
+                  "examples": [
+                    []
+                  ]
+                },
+                "top_srvfail": {
+                  "type": "array",
+                  "default": [],
+                  "title": "The top_srvfail Schema",
+                  "items": {},
+                  "examples": [
+                    []
+                  ]
+                },
+                "top_udp_ports": {
+                  "type": "array",
+                  "default": [],
+                  "title": "The top_udp_ports Schema",
+                  "items": {
+                    "type": "object",
+                    "title": "A Schema",
+                    "required": [
+                      "estimate",
+                      "name"
+                    ],
+                    "properties": {
+                      "estimate": {
+                        "type": "integer",
+                        "title": "The estimate Schema",
+                        "examples": [
+                          14
+                        ]
+                      },
+                      "name": {
+                        "type": "string",
+                        "title": "The name Schema",
+                        "examples": [
+                          "46590",
+                          "58571",
+                          "36484",
+                          "43798",
+                          "46567",
+                          "59640",
+                          "44741",
+                          "51811",
+                          "38920",
+                          "52826"
+                        ]
+                      }
+                    },
+                    "examples": [{
+                      "estimate": 14,
+                      "name": "46590"
+                    },
+                      {
+                        "estimate": 14,
+                        "name": "58571"
+                      },
+                      {
+                        "estimate": 14,
+                        "name": "36484"
+                      },
+                      {
+                        "estimate": 14,
+                        "name": "43798"
+                      },
+                      {
+                        "estimate": 14,
+                        "name": "46567"
+                      },
+                      {
+                        "estimate": 14,
+                        "name": "59640"
+                      },
+                      {
+                        "estimate": 14,
+                        "name": "44741"
+                      },
+                      {
+                        "estimate": 14,
+                        "name": "51811"
+                      },
+                      {
+                        "estimate": 14,
+                        "name": "38920"
+                      },
+                      {
+                        "estimate": 14,
+                        "name": "52826"
+                      }]
+                  },
+                  "examples": [
+                    [{
+                      "estimate": 14,
+                      "name": "46590"
+                    },
+                      {
+                        "estimate": 14,
+                        "name": "58571"
+                      },
+                      {
+                        "estimate": 14,
+                        "name": "36484"
+                      },
+                      {
+                        "estimate": 14,
+                        "name": "43798"
+                      },
+                      {
+                        "estimate": 14,
+                        "name": "46567"
+                      },
+                      {
+                        "estimate": 14,
+                        "name": "59640"
+                      },
+                      {
+                        "estimate": 14,
+                        "name": "44741"
+                      },
+                      {
+                        "estimate": 14,
+                        "name": "51811"
+                      },
+                      {
+                        "estimate": 14,
+                        "name": "38920"
+                      },
+                      {
+                        "estimate": 14,
+                        "name": "52826"
+                      }]
+                  ]
+                },
+                "wire_packets": {
+                  "type": "object",
+                  "default": {},
+                  "title": "The wire_packets Schema",
+                  "required": [
+                    "deep_samples",
+                    "filtered",
+                    "ipv4",
+                    "ipv6",
+                    "nodata",
+                    "noerror",
+                    "nxdomain",
+                    "queries",
+                    "refused",
+                    "replies",
+                    "srvfail",
+                    "tcp",
+                    "total",
+                    "udp"
+                  ],
+                  "properties": {
+                    "deep_samples": {
+                      "type": "integer",
+                      "default": 0,
+                      "title": "The deep_samples Schema",
+                      "examples": [
+                        140
+                      ]
+                    },
+                    "filtered": {
+                      "type": "integer",
+                      "default": 0,
+                      "title": "The filtered Schema",
+                      "examples": [
+                        0
+                      ]
+                    },
+                    "ipv4": {
+                      "type": "integer",
+                      "default": 0,
+                      "title": "The ipv4 Schema",
+                      "examples": [
+                        0
+                      ]
+                    },
+                    "ipv6": {
+                      "type": "integer",
+                      "default": 0,
+                      "title": "The ipv6 Schema",
+                      "examples": [
+                        140
+                      ]
+                    },
+                    "nodata": {
+                      "type": "integer",
+                      "default": 0,
+                      "title": "The nodata Schema",
+                      "examples": [
+                        0
+                      ]
+                    },
+                    "noerror": {
+                      "type": "integer",
+                      "default": 0,
+                      "title": "The noerror Schema",
+                      "examples": [
+                        0
+                      ]
+                    },
+                    "nxdomain": {
+                      "type": "integer",
+                      "default": 0,
+                      "title": "The nxdomain Schema",
+                      "examples": [
+                        0
+                      ]
+                    },
+                    "queries": {
+                      "type": "integer",
+                      "default": 0,
+                      "title": "The queries Schema",
+                      "examples": [
+                        70
+                      ]
+                    },
+                    "refused": {
+                      "type": "integer",
+                      "default": 0,
+                      "title": "The refused Schema",
+                      "examples": [
+                        0
+                      ]
+                    },
+                    "replies": {
+                      "type": "integer",
+                      "default": 0,
+                      "title": "The replies Schema",
+                      "examples": [
+                        70
+                      ]
+                    },
+                    "srvfail": {
+                      "type": "integer",
+                      "default": 0,
+                      "title": "The srvfail Schema",
+                      "examples": [
+                        0
+                      ]
+                    },
+                    "tcp": {
+                      "type": "integer",
+                      "default": 0,
+                      "title": "The tcp Schema",
+                      "examples": [
+                        0
+                      ]
+                    },
+                    "total": {
+                      "type": "integer",
+                      "default": 0,
+                      "title": "The total Schema",
+                      "examples": [
+                        140
+                      ]
+                    },
+                    "udp": {
+                      "type": "integer",
+                      "default": 0,
+                      "title": "The udp Schema",
+                      "examples": [
+                        140
+                      ]
+                    }
+                  },
+                  "examples": [{
+                    "deep_samples": 140,
+                    "filtered": 0,
+                    "ipv4": 0,
+                    "ipv6": 140,
+                    "nodata": 0,
+                    "noerror": 0,
+                    "nxdomain": 0,
+                    "queries": 70,
+                    "refused": 0,
+                    "replies": 70,
+                    "srvfail": 0,
+                    "tcp": 0,
+                    "total": 140,
+                    "udp": 140
+                  }]
+                },
+                "xact": {
+                  "type": "object",
+                  "default": {},
+                  "title": "The xact Schema",
+                  "required": [
+                    "counts",
+                    "in",
+                    "out",
+                    "ratio"
+                  ],
+                  "properties": {
+                    "counts": {
+                      "type": "object",
+                      "default": {},
+                      "title": "The counts Schema",
+                      "required": [
+                        "timed_out",
+                        "total"
+                      ],
+                      "properties": {
+                        "timed_out": {
+                          "type": "integer",
+                          "default": 0,
+                          "title": "The timed_out Schema",
+                          "examples": [
+                            0
+                          ]
+                        },
+                        "total": {
+                          "type": "integer",
+                          "default": 0,
+                          "title": "The total Schema",
+                          "examples": [
+                            70
+                          ]
+                        }
+                      },
+                      "examples": [{
+                        "timed_out": 0,
+                        "total": 70
+                      }]
+                    },
+                    "in": {
+                      "type": "object",
+                      "default": {},
+                      "title": "The in Schema",
+                      "required": [
+                        "top_slow",
+                        "total"
+                      ],
+                      "properties": {
+                        "top_slow": {
+                          "type": "array",
+                          "default": [],
+                          "title": "The top_slow Schema",
+                          "items": {},
+                          "examples": [
+                            []
+                          ]
+                        },
+                        "total": {
+                          "type": "integer",
+                          "default": 0,
+                          "title": "The total Schema",
+                          "examples": [
+                            0
+                          ]
+                        }
+                      },
+                      "examples": [{
+                        "top_slow": [],
+                        "total": 0
+                      }]
+                    },
+                    "out": {
+                      "type": "object",
+                      "default": {},
+                      "title": "The out Schema",
+                      "required": [
+                        "top_slow",
+                        "total"
+                      ],
+                      "properties": {
+                        "top_slow": {
+                          "type": "array",
+                          "default": [],
+                          "title": "The top_slow Schema",
+                          "items": {},
+                          "examples": [
+                            []
+                          ]
+                        },
+                        "total": {
+                          "type": "integer",
+                          "default": 0,
+                          "title": "The total Schema",
+                          "examples": [
+                            0
+                          ]
+                        }
+                      },
+                      "examples": [{
+                        "top_slow": [],
+                        "total": 0
+                      }]
+                    },
+                    "ratio": {
+                      "type": "object",
+                      "default": {},
+                      "title": "The ratio Schema",
+                      "required": [
+                        "quantiles"
+                      ],
+                      "properties": {
+                        "quantiles": {
+                          "type": "object",
+                          "default": {},
+                          "title": "The quantiles Schema",
+                          "required": [
+                            "p50",
+                            "p90",
+                            "p95",
+                            "p99"
+                          ],
+                          "properties": {
+                            "p50": {
+                              "type": "number",
+                              "default": 0.0,
+                              "title": "The p50 Schema",
+                              "examples": [
+                                0.8
+                              ]
+                            },
+                            "p90": {
+                              "type": "number",
+                              "default": 0.0,
+                              "title": "The p90 Schema",
+                              "examples": [
+                                0.8493150684931506
+                              ]
+                            },
+                            "p95": {
+                              "type": "number",
+                              "default": 0.0,
+                              "title": "The p95 Schema",
+                              "examples": [
+                                0.8552631578947368
+                              ]
+                            },
+                            "p99": {
+                              "type": "number",
+                              "default": 0.0,
+                              "title": "The p99 Schema",
+                              "examples": [
+                                0.8625
+                              ]
+                            }
+                          },
+                          "examples": [{
+                            "p50": 0.8,
+                            "p90": 0.8493150684931506,
+                            "p95": 0.8552631578947368,
+                            "p99": 0.8625
+                          }]
+                        }
+                      },
+                      "examples": [{
+                        "quantiles": {
+                          "p50": 0.8,
+                          "p90": 0.8493150684931506,
+                          "p95": 0.8552631578947368,
+                          "p99": 0.8625
+                        }
+                      }]
+                    }
+                  },
+                  "examples": [{
+                    "counts": {
+                      "timed_out": 0,
+                      "total": 70
+                    },
+                    "in": {
+                      "top_slow": [],
+                      "total": 0
+                    },
+                    "out": {
+                      "top_slow": [],
+                      "total": 0
+                    },
+                    "ratio": {
+                      "quantiles": {
+                        "p50": 0.8,
+                        "p90": 0.8493150684931506,
+                        "p95": 0.8552631578947368,
+                        "p99": 0.8625
+                      }
+                    }
+                  }]
+                }
+              },
+              "examples": [{
+                "cardinality": {
+                  "qname": 69
+                },
+                "period": {
+                  "length": 1,
+                  "start_ts": 1652448116
+                },
+                "rates": {
+                  "total": {
+                    "live": 0,
+                    "p50": 0,
+                    "p90": 0,
+                    "p95": 0,
+                    "p99": 0
+                  }
+                },
+                "top_nodata": [],
+                "top_nxdomain": [],
+                "top_qname2": [{
+                  "estimate": 140,
+                  "name": ".test.com"
+                }],
+                "top_qname3": [{
+                  "estimate": 2,
+                  "name": ".q6jjpf6kv.test.com"
+                },
+                  {
+                    "estimate": 2,
+                    "name": ".ogl8.test.com"
+                  },
+                  {
+                    "estimate": 2,
+                    "name": "lfv2-uf4p9.test.com"
+                  },
+                  {
+                    "estimate": 2,
+                    "name": ".8a3cpmzb5.test.com"
+                  },
+                  {
+                    "estimate": 2,
+                    "name": ".ew_.test.com"
+                  },
+                  {
+                    "estimate": 2,
+                    "name": ".dnn1o5nnk.test.com"
+                  },
+                  {
+                    "estimate": 2,
+                    "name": ".pap4y.test.com"
+                  },
+                  {
+                    "estimate": 2,
+                    "name": "jde.test.com"
+                  },
+                  {
+                    "estimate": 2,
+                    "name": ".nlwk1xsm.test.com"
+                  },
+                  {
+                    "estimate": 2,
+                    "name": ".kn.test.com"
+                  }],
+                "top_qname_by_resp_bytes": [{
+                  "estimate": 69,
+                  "name": "n22dzh9iev.62fq.lewasapcsq.fzkbbdhugt.a9ju.test.com"
+                },
+                  {
+                    "estimate": 68,
+                    "name": "qjs1k.v1rk4_zpd.lpc3evyi9.s8yuzj19yq.zotw.test.com"
+                  },
+                  {
+                    "estimate": 66,
+                    "name": "ubjaakm.kenh7yfyju.anq_k8.1yehorab9o.rh.test.com"
+                  },
+                  {
+                    "estimate": 65,
+                    "name": "loj5pq2._empluapr.ppliop.1f8j2r1.emvq5.test.com"
+                  },
+                  {
+                    "estimate": 64,
+                    "name": "b4.mdx9df4iz.hyoap.gs6hjlb.gakdjq-m1m.test.com"
+                  },
+                  {
+                    "estimate": 62,
+                    "name": "7i55rusl.0yg.ybujicpf.zfor.prb5dt94.test.com"
+                  },
+                  {
+                    "estimate": 62,
+                    "name": "w0fl7oss.wncitowvw.dyx4to6hm.edk.nu.test.com"
+                  },
+                  {
+                    "estimate": 61,
+                    "name": "57ojczk.nuj-cq5e2.dudl6si.4ozcqyax.test.com"
+                  },
+                  {
+                    "estimate": 60,
+                    "name": "me_3y.vrqzhd.e7c2.zahor.dnn1o5nnk.test.com"
+                  },
+                  {
+                    "estimate": 58,
+                    "name": "ajazg.us.92virkhez.27.q6jjpf6kv.test.com"
+                  }],
+                "top_qtype": [{
+                  "estimate": 34,
+                  "name": "AAAA"
+                },
+                  {
+                    "estimate": 22,
+                    "name": "A"
+                  },
+                  {
+                    "estimate": 22,
+                    "name": "SOA"
+                  },
+                  {
+                    "estimate": 22,
+                    "name": "NS"
+                  },
+                  {
+                    "estimate": 14,
+                    "name": "MX"
+                  },
+                  {
+                    "estimate": 14,
+                    "name": "CNAME"
+                  },
+                  {
+                    "estimate": 12,
+                    "name": "TXT"
+                  }],
+                "top_rcode": [{
+                  "estimate": 70,
+                  "name": "NOTIMP"
+                }],
+                "top_refused": [],
+                "top_srvfail": [],
+                "top_udp_ports": [{
+                  "estimate": 14,
+                  "name": "46590"
+                },
+                  {
+                    "estimate": 14,
+                    "name": "58571"
+                  },
+                  {
+                    "estimate": 14,
+                    "name": "36484"
+                  },
+                  {
+                    "estimate": 14,
+                    "name": "43798"
+                  },
+                  {
+                    "estimate": 14,
+                    "name": "46567"
+                  },
+                  {
+                    "estimate": 14,
+                    "name": "59640"
+                  },
+                  {
+                    "estimate": 14,
+                    "name": "44741"
+                  },
+                  {
+                    "estimate": 14,
+                    "name": "51811"
+                  },
+                  {
+                    "estimate": 14,
+                    "name": "38920"
+                  },
+                  {
+                    "estimate": 14,
+                    "name": "52826"
+                  }],
+                "wire_packets": {
+                  "deep_samples": 140,
+                  "filtered": 0,
+                  "ipv4": 0,
+                  "ipv6": 140,
+                  "nodata": 0,
+                  "noerror": 0,
+                  "nxdomain": 0,
+                  "queries": 70,
+                  "refused": 0,
+                  "replies": 70,
+                  "srvfail": 0,
+                  "tcp": 0,
+                  "total": 140,
+                  "udp": 140
+                },
+                "xact": {
+                  "counts": {
+                    "timed_out": 0,
+                    "total": 70
+                  },
+                  "in": {
+                    "top_slow": [],
+                    "total": 0
+                  },
+                  "out": {
+                    "top_slow": [],
+                    "total": 0
+                  },
+                  "ratio": {
+                    "quantiles": {
+                      "p50": 0.8,
+                      "p90": 0.8493150684931506,
+                      "p95": 0.8552631578947368,
+                      "p99": 0.8625
+                    }
+                  }
+                }
+              }]
+            }
+          },
+          "examples": [{
+            "dns": {
+              "cardinality": {
+                "qname": 69
+              },
+              "period": {
+                "length": 1,
+                "start_ts": 1652448116
+              },
+              "rates": {
+                "total": {
+                  "live": 0,
+                  "p50": 0,
+                  "p90": 0,
+                  "p95": 0,
+                  "p99": 0
+                }
+              },
+              "top_nodata": [],
+              "top_nxdomain": [],
+              "top_qname2": [{
+                "estimate": 140,
+                "name": ".test.com"
+              }],
+              "top_qname3": [{
+                "estimate": 2,
+                "name": ".q6jjpf6kv.test.com"
+              },
+                {
+                  "estimate": 2,
+                  "name": ".ogl8.test.com"
+                },
+                {
+                  "estimate": 2,
+                  "name": "lfv2-uf4p9.test.com"
+                },
+                {
+                  "estimate": 2,
+                  "name": ".8a3cpmzb5.test.com"
+                },
+                {
+                  "estimate": 2,
+                  "name": ".ew_.test.com"
+                },
+                {
+                  "estimate": 2,
+                  "name": ".dnn1o5nnk.test.com"
+                },
+                {
+                  "estimate": 2,
+                  "name": ".pap4y.test.com"
+                },
+                {
+                  "estimate": 2,
+                  "name": "jde.test.com"
+                },
+                {
+                  "estimate": 2,
+                  "name": ".nlwk1xsm.test.com"
+                },
+                {
+                  "estimate": 2,
+                  "name": ".kn.test.com"
+                }],
+              "top_qname_by_resp_bytes": [{
+                "estimate": 69,
+                "name": "n22dzh9iev.62fq.lewasapcsq.fzkbbdhugt.a9ju.test.com"
+              },
+                {
+                  "estimate": 68,
+                  "name": "qjs1k.v1rk4_zpd.lpc3evyi9.s8yuzj19yq.zotw.test.com"
+                },
+                {
+                  "estimate": 66,
+                  "name": "ubjaakm.kenh7yfyju.anq_k8.1yehorab9o.rh.test.com"
+                },
+                {
+                  "estimate": 65,
+                  "name": "loj5pq2._empluapr.ppliop.1f8j2r1.emvq5.test.com"
+                },
+                {
+                  "estimate": 64,
+                  "name": "b4.mdx9df4iz.hyoap.gs6hjlb.gakdjq-m1m.test.com"
+                },
+                {
+                  "estimate": 62,
+                  "name": "7i55rusl.0yg.ybujicpf.zfor.prb5dt94.test.com"
+                },
+                {
+                  "estimate": 62,
+                  "name": "w0fl7oss.wncitowvw.dyx4to6hm.edk.nu.test.com"
+                },
+                {
+                  "estimate": 61,
+                  "name": "57ojczk.nuj-cq5e2.dudl6si.4ozcqyax.test.com"
+                },
+                {
+                  "estimate": 60,
+                  "name": "me_3y.vrqzhd.e7c2.zahor.dnn1o5nnk.test.com"
+                },
+                {
+                  "estimate": 58,
+                  "name": "ajazg.us.92virkhez.27.q6jjpf6kv.test.com"
+                }],
+              "top_qtype": [{
+                "estimate": 34,
+                "name": "AAAA"
+              },
+                {
+                  "estimate": 22,
+                  "name": "A"
+                },
+                {
+                  "estimate": 22,
+                  "name": "SOA"
+                },
+                {
+                  "estimate": 22,
+                  "name": "NS"
+                },
+                {
+                  "estimate": 14,
+                  "name": "MX"
+                },
+                {
+                  "estimate": 14,
+                  "name": "CNAME"
+                },
+                {
+                  "estimate": 12,
+                  "name": "TXT"
+                }],
+              "top_rcode": [{
+                "estimate": 70,
+                "name": "NOTIMP"
+              }],
+              "top_refused": [],
+              "top_srvfail": [],
+              "top_udp_ports": [{
+                "estimate": 14,
+                "name": "46590"
+              },
+                {
+                  "estimate": 14,
+                  "name": "58571"
+                },
+                {
+                  "estimate": 14,
+                  "name": "36484"
+                },
+                {
+                  "estimate": 14,
+                  "name": "43798"
+                },
+                {
+                  "estimate": 14,
+                  "name": "46567"
+                },
+                {
+                  "estimate": 14,
+                  "name": "59640"
+                },
+                {
+                  "estimate": 14,
+                  "name": "44741"
+                },
+                {
+                  "estimate": 14,
+                  "name": "51811"
+                },
+                {
+                  "estimate": 14,
+                  "name": "38920"
+                },
+                {
+                  "estimate": 14,
+                  "name": "52826"
+                }],
+              "wire_packets": {
+                "deep_samples": 140,
+                "filtered": 0,
+                "ipv4": 0,
+                "ipv6": 140,
+                "nodata": 0,
+                "noerror": 0,
+                "nxdomain": 0,
+                "queries": 70,
+                "refused": 0,
+                "replies": 70,
+                "srvfail": 0,
+                "tcp": 0,
+                "total": 140,
+                "udp": 140
+              },
+              "xact": {
+                "counts": {
+                  "timed_out": 0,
+                  "total": 70
+                },
+                "in": {
+                  "top_slow": [],
+                  "total": 0
+                },
+                "out": {
+                  "top_slow": [],
+                  "total": 0
+                },
+                "ratio": {
+                  "quantiles": {
+                    "p50": 0.8,
+                    "p90": 0.8493150684931506,
+                    "p95": 0.8552631578947368,
+                    "p99": 0.8625
+                  }
+                }
+              }
+            }
+          }]
+        },
+        "default-net": {
+          "type": "object",
+          "default": {},
+          "title": "The default-net Schema",
+          "required": [
+            "packets"
+          ],
+          "properties": {
+            "packets": {
+              "type": "object",
+              "default": {},
+              "title": "The packets Schema",
+              "required": [
+                "cardinality",
+                "deep_samples",
+                "filtered",
+                "in",
+                "ipv4",
+                "ipv6",
+                "other_l4",
+                "out",
+                "payload_size",
+                "period",
+                "protocol",
+                "rates",
+                "tcp",
+                "top_ASN",
+                "top_geoLoc",
+                "top_ipv4",
+                "top_ipv6",
+                "total",
+                "udp"
+              ],
+              "properties": {
+                "cardinality": {
+                  "type": "object",
+                  "default": {},
+                  "title": "The cardinality Schema",
+                  "required": [
+                    "dst_ips_out",
+                    "src_ips_in"
+                  ],
+                  "properties": {
+                    "dst_ips_out": {
+                      "type": "integer",
+                      "default": 0,
+                      "title": "The dst_ips_out Schema",
+                      "examples": [
+                        0
+                      ]
+                    },
+                    "src_ips_in": {
+                      "type": "integer",
+                      "default": 0,
+                      "title": "The src_ips_in Schema",
+                      "examples": [
+                        0
+                      ]
+                    }
+                  },
+                  "examples": [{
+                    "dst_ips_out": 0,
+                    "src_ips_in": 0
+                  }]
+                },
+                "deep_samples": {
+                  "type": "integer",
+                  "default": 0,
+                  "title": "The deep_samples Schema",
+                  "examples": [
+                    140
+                  ]
+                },
+                "filtered": {
+                  "type": "integer",
+                  "default": 0,
+                  "title": "The filtered Schema",
+                  "examples": [
+                    0
+                  ]
+                },
+                "in": {
+                  "type": "integer",
+                  "default": 0,
+                  "title": "The in Schema",
+                  "examples": [
+                    0
+                  ]
+                },
+                "ipv4": {
+                  "type": "integer",
+                  "default": 0,
+                  "title": "The ipv4 Schema",
+                  "examples": [
+                    0
+                  ]
+                },
+                "ipv6": {
+                  "type": "integer",
+                  "default": 0,
+                  "title": "The ipv6 Schema",
+                  "examples": [
+                    140
+                  ]
+                },
+                "other_l4": {
+                  "type": "integer",
+                  "default": 0,
+                  "title": "The other_l4 Schema",
+                  "examples": [
+                    0
+                  ]
+                },
+                "out": {
+                  "type": "integer",
+                  "default": 0,
+                  "title": "The out Schema",
+                  "examples": [
+                    0
+                  ]
+                },
+                "payload_size": {
+                  "type": "object",
+                  "default": {},
+                  "title": "The payload_size Schema",
+                  "required": [
+                    "p50",
+                    "p90",
+                    "p95",
+                    "p99"
+                  ],
+                  "properties": {
+                    "p50": {
+                      "type": "integer",
+                      "default": 0,
+                      "title": "The p50 Schema",
+                      "examples": [
+                        112
+                      ]
+                    },
+                    "p90": {
+                      "type": "integer",
+                      "default": 0,
+                      "title": "The p90 Schema",
+                      "examples": [
+                        130
+                      ]
+                    },
+                    "p95": {
+                      "type": "integer",
+                      "default": 0,
+                      "title": "The p95 Schema",
+                      "examples": [
+                        135
+                      ]
+                    },
+                    "p99": {
+                      "type": "integer",
+                      "default": 0,
+                      "title": "The p99 Schema",
+                      "examples": [
+                        141
+                      ]
+                    }
+                  },
+                  "examples": [{
+                    "p50": 112,
+                    "p90": 130,
+                    "p95": 135,
+                    "p99": 141
+                  }]
+                },
+                "period": {
+                  "type": "object",
+                  "default": {},
+                  "title": "The period Schema",
+                  "required": [
+                    "length",
+                    "start_ts"
+                  ],
+                  "properties": {
+                    "length": {
+                      "type": "integer",
+                      "default": 0,
+                      "title": "The length Schema",
+                      "examples": [
+                        1
+                      ]
+                    },
+                    "start_ts": {
+                      "type": "integer",
+                      "default": 0,
+                      "title": "The start_ts Schema",
+                      "examples": [
+                        1652448116
+                      ]
+                    }
+                  },
+                  "examples": [{
+                    "length": 1,
+                    "start_ts": 1652448116
+                  }]
+                },
+                "protocol": {
+                  "type": "object",
+                  "default": {},
+                  "title": "The protocol Schema",
+                  "required": [
+                    "tcp"
+                  ],
+                  "properties": {
+                    "tcp": {
+                      "type": "object",
+                      "default": {},
+                      "title": "The tcp Schema",
+                      "required": [
+                        "syn"
+                      ],
+                      "properties": {
+                        "syn": {
+                          "type": "integer",
+                          "default": 0,
+                          "title": "The syn Schema",
+                          "examples": [
+                            0
+                          ]
+                        }
+                      },
+                      "examples": [{
+                        "syn": 0
+                      }]
+                    }
+                  },
+                  "examples": [{
+                    "tcp": {
+                      "syn": 0
+                    }
+                  }]
+                },
+                "rates": {
+                  "type": "object",
+                  "default": {},
+                  "title": "The rates Schema",
+                  "required": [
+                    "bytes_in",
+                    "bytes_out",
+                    "pps_in",
+                    "pps_out",
+                    "pps_total"
+                  ],
+                  "properties": {
+                    "bytes_in": {
+                      "type": "object",
+                      "default": {},
+                      "title": "The bytes_in Schema",
+                      "required": [
+                        "live",
+                        "p50",
+                        "p90",
+                        "p95",
+                        "p99"
+                      ],
+                      "properties": {
+                        "live": {
+                          "type": "integer",
+                          "default": 0,
+                          "title": "The live Schema",
+                          "examples": [
+                            0
+                          ]
+                        },
+                        "p50": {
+                          "type": "integer",
+                          "default": 0,
+                          "title": "The p50 Schema",
+                          "examples": [
+                            0
+                          ]
+                        },
+                        "p90": {
+                          "type": "integer",
+                          "default": 0,
+                          "title": "The p90 Schema",
+                          "examples": [
+                            10
+                          ]
+                        },
+                        "p95": {
+                          "type": "integer",
+                          "default": 0,
+                          "title": "The p95 Schema",
+                          "examples": [
+                            5
+                          ]
+                        },
+                        "p99": {
+                          "type": "integer",
+                          "default": 0,
+                          "title": "The p99 Schema",
+                          "examples": [
+                            6
+                          ]
+                        }
+                      },
+                      "examples": [{
+                        "live": 0,
+                        "p50": 0,
+                        "p90": 10,
+                        "p95": 5,
+                        "p99": 6
+                      }]
+                    },
+                    "bytes_out": {
+                      "type": "object",
+                      "default": {},
+                      "title": "The bytes_out Schema",
+                      "required": [
+                        "live",
+                        "p50",
+                        "p90",
+                        "p95",
+                        "p99"
+                      ],
+                      "properties": {
+                        "live": {
+                          "type": "integer",
+                          "default": 0,
+                          "title": "The live Schema",
+                          "examples": [
+                            0
+                          ]
+                        },
+                        "p50": {
+                          "type": "integer",
+                          "default": 0,
+                          "title": "The p50 Schema",
+                          "examples": [
+                            0
+                          ]
+                        },
+                        "p90": {
+                          "type": "integer",
+                          "default": 0,
+                          "title": "The p90 Schema",
+                          "examples": [
+                            0
+                          ]
+                        },
+                        "p95": {
+                          "type": "integer",
+                          "default": 0,
+                          "title": "The p95 Schema",
+                          "examples": [
+                            0
+                          ]
+                        },
+                        "p99": {
+                          "type": "integer",
+                          "default": 0,
+                          "title": "The p99 Schema",
+                          "examples": [
+                            0
+                          ]
+                        }
+                      },
+                      "examples": [{
+                        "live": 0,
+                        "p50": 0,
+                        "p90": 0,
+                        "p95": 0,
+                        "p99": 0
+                      }]
+                    },
+                    "pps_in": {
+                      "type": "object",
+                      "default": {},
+                      "title": "The pps_in Schema",
+                      "required": [
+                        "live",
+                        "p50",
+                        "p90",
+                        "p95",
+                        "p99"
+                      ],
+                      "properties": {
+                        "live": {
+                          "type": "integer",
+                          "default": 0,
+                          "title": "The live Schema",
+                          "examples": [
+                            0
+                          ]
+                        },
+                        "p50": {
+                          "type": "integer",
+                          "default": 0,
+                          "title": "The p50 Schema",
+                          "examples": [
+                            0
+                          ]
+                        },
+                        "p90": {
+                          "type": "integer",
+                          "default": 0,
+                          "title": "The p90 Schema",
+                          "examples": [
+                            0
+                          ]
+                        },
+                        "p95": {
+                          "type": "integer",
+                          "default": 0,
+                          "title": "The p95 Schema",
+                          "examples": [
+                            0
+                          ]
+                        },
+                        "p99": {
+                          "type": "integer",
+                          "default": 0,
+                          "title": "The p99 Schema",
+                          "examples": [
+                            0
+                          ]
+                        }
+                      },
+                      "examples": [{
+                        "live": 0,
+                        "p50": 0,
+                        "p90": 0,
+                        "p95": 0,
+                        "p99": 0
+                      }]
+                    },
+                    "pps_out": {
+                      "type": "object",
+                      "default": {},
+                      "title": "The pps_out Schema",
+                      "required": [
+                        "live",
+                        "p50",
+                        "p90",
+                        "p95",
+                        "p99"
+                      ],
+                      "properties": {
+                        "live": {
+                          "type": "integer",
+                          "default": 0,
+                          "title": "The live Schema",
+                          "examples": [
+                            0
+                          ]
+                        },
+                        "p50": {
+                          "type": "integer",
+                          "default": 0,
+                          "title": "The p50 Schema",
+                          "examples": [
+                            0
+                          ]
+                        },
+                        "p90": {
+                          "type": "integer",
+                          "default": 0,
+                          "title": "The p90 Schema",
+                          "examples": [
+                            0
+                          ]
+                        },
+                        "p95": {
+                          "type": "integer",
+                          "default": 0,
+                          "title": "The p95 Schema",
+                          "examples": [
+                            0
+                          ]
+                        },
+                        "p99": {
+                          "type": "integer",
+                          "default": 0,
+                          "title": "The p99 Schema",
+                          "examples": [
+                            0
+                          ]
+                        }
+                      },
+                      "examples": [{
+                        "live": 0,
+                        "p50": 0,
+                        "p90": 0,
+                        "p95": 0,
+                        "p99": 0
+                      }]
+                    },
+                    "pps_total": {
+                      "type": "object",
+                      "default": {},
+                      "title": "The pps_total Schema",
+                      "required": [
+                        "live",
+                        "p50",
+                        "p90",
+                        "p95",
+                        "p99"
+                      ],
+                      "properties": {
+                        "live": {
+                          "type": "integer",
+                          "default": 0,
+                          "title": "The live Schema",
+                          "examples": [
+                            0
+                          ]
+                        },
+                        "p50": {
+                          "type": "integer",
+                          "default": 0,
+                          "title": "The p50 Schema",
+                          "examples": [
+                            0
+                          ]
+                        },
+                        "p90": {
+                          "type": "integer",
+                          "default": 0,
+                          "title": "The p90 Schema",
+                          "examples": [
+                            0
+                          ]
+                        },
+                        "p95": {
+                          "type": "integer",
+                          "default": 0,
+                          "title": "The p95 Schema",
+                          "examples": [
+                            0
+                          ]
+                        },
+                        "p99": {
+                          "type": "integer",
+                          "default": 0,
+                          "title": "The p99 Schema",
+                          "examples": [
+                            0
+                          ]
+                        }
+                      },
+                      "examples": [{
+                        "live": 0,
+                        "p50": 0,
+                        "p90": 0,
+                        "p95": 0,
+                        "p99": 0
+                      }]
+                    }
+                  },
+                  "examples": [{
+                    "bytes_in": {
+                      "live": 0,
+                      "p50": 0,
+                      "p90": 10,
+                      "p95": 5,
+                      "p99": 6
+                    },
+                    "bytes_out": {
+                      "live": 0,
+                      "p50": 0,
+                      "p90": 0,
+                      "p95": 0,
+                      "p99": 0
+                    },
+                    "pps_in": {
+                      "live": 0,
+                      "p50": 0,
+                      "p90": 0,
+                      "p95": 0,
+                      "p99": 0
+                    },
+                    "pps_out": {
+                      "live": 0,
+                      "p50": 0,
+                      "p90": 0,
+                      "p95": 0,
+                      "p99": 0
+                    },
+                    "pps_total": {
+                      "live": 0,
+                      "p50": 0,
+                      "p90": 0,
+                      "p95": 0,
+                      "p99": 0
+                    }
+                  }]
+                },
+                "tcp": {
+                  "type": "integer",
+                  "default": 0,
+                  "title": "The tcp Schema",
+                  "examples": [
+                    0
+                  ]
+                },
+                "top_ASN": {
+                  "type": "array",
+                  "default": [],
+                  "title": "The top_ASN Schema",
+                  "items": {},
+                  "examples": [
+                    []
+                  ]
+                },
+                "top_geoLoc": {
+                  "type": "array",
+                  "default": [],
+                  "title": "The top_geoLoc Schema",
+                  "items": {},
+                  "examples": [
+                    []
+                  ]
+                },
+                "top_ipv4": {
+                  "type": "array",
+                  "default": [],
+                  "title": "The top_ipv4 Schema",
+                  "items": {},
+                  "examples": [
+                    []
+                  ]
+                },
+                "top_ipv6": {
+                  "type": "array",
+                  "default": [],
+                  "title": "The top_ipv6 Schema",
+                  "items": {
+                    "type": "object",
+                    "default": {},
+                    "title": "A Schema",
+                    "required": [
+                      "estimate",
+                      "name"
+                    ],
+                    "properties": {
+                      "estimate": {
+                        "type": "integer",
+                        "default": 0,
+                        "title": "The estimate Schema",
+                        "examples": [
+                          3
+                        ]
+                      },
+                      "name": {
+                        "type": "string",
+                        "default": "",
+                        "title": "The name Schema",
+                        "examples": [
+                          "ff02::2"
+                        ]
+                      }
+                    },
+                    "examples": [{
+                      "estimate": 3,
+                      "name": "ff02::2"
+                    }]
+                  },
+                  "examples": [
+                    [{
+                      "estimate": 3,
+                      "name": "ff02::2"
+                    }]
+                  ]
+                },
+                "total": {
+                  "type": "integer",
+                  "default": 0,
+                  "title": "The total Schema",
+                  "examples": [
+                    140
+                  ]
+                },
+                "udp": {
+                  "type": "integer",
+                  "default": 0,
+                  "title": "The udp Schema",
+                  "examples": [
+                    140
+                  ]
+                }
+              },
+              "examples": [{
+                "cardinality": {
+                  "dst_ips_out": 0,
+                  "src_ips_in": 0
+                },
+                "deep_samples": 140,
+                "filtered": 0,
+                "in": 0,
+                "ipv4": 0,
+                "ipv6": 140,
+                "other_l4": 0,
+                "out": 0,
+                "payload_size": {
+                  "p50": 112,
+                  "p90": 130,
+                  "p95": 135,
+                  "p99": 141
+                },
+                "period": {
+                  "length": 1,
+                  "start_ts": 1652448116
+                },
+                "protocol": {
+                  "tcp": {
+                    "syn": 0
+                  }
+                },
+                "rates": {
+                  "bytes_in": {
+                    "live": 0,
+                    "p50": 0,
+                    "p90": 10,
+                    "p95": 5,
+                    "p99": 6
+                  },
+                  "bytes_out": {
+                    "live": 0,
+                    "p50": 0,
+                    "p90": 0,
+                    "p95": 0,
+                    "p99": 0
+                  },
+                  "pps_in": {
+                    "live": 0,
+                    "p50": 0,
+                    "p90": 0,
+                    "p95": 0,
+                    "p99": 0
+                  },
+                  "pps_out": {
+                    "live": 0,
+                    "p50": 0,
+                    "p90": 0,
+                    "p95": 0,
+                    "p99": 0
+                  },
+                  "pps_total": {
+                    "live": 0,
+                    "p50": 0,
+                    "p90": 0,
+                    "p95": 0,
+                    "p99": 0
+                  }
+                },
+                "tcp": 0,
+                "top_ASN": [],
+                "top_geoLoc": [],
+                "top_ipv4": [],
+                "top_ipv6": [{
+                  "estimate": 3,
+                  "name": "ff02::2"
+                }],
+                "total": 140,
+                "udp": 140
+              }]
+            }
+          },
+          "examples": [{
+            "packets": {
+              "cardinality": {
+                "dst_ips_out": 0,
+                "src_ips_in": 0
+              },
+              "deep_samples": 140,
+              "filtered": 0,
+              "in": 0,
+              "ipv4": 0,
+              "ipv6": 140,
+              "other_l4": 0,
+              "out": 0,
+              "payload_size": {
+                "p50": 112,
+                "p90": 130,
+                "p95": 135,
+                "p99": 141
+              },
+              "period": {
+                "length": 1,
+                "start_ts": 1652448116
+              },
+              "protocol": {
+                "tcp": {
+                  "syn": 0
+                }
+              },
+              "rates": {
+                "bytes_in": {
+                  "live": 0,
+                  "p50": 0,
+                  "p90": 10,
+                  "p95": 5,
+                  "p99": 6
+                },
+                "bytes_out": {
+                  "live": 0,
+                  "p50": 0,
+                  "p90": 0,
+                  "p95": 0,
+                  "p99": 0
+                },
+                "pps_in": {
+                  "live": 0,
+                  "p50": 0,
+                  "p90": 0,
+                  "p95": 0,
+                  "p99": 0
+                },
+                "pps_out": {
+                  "live": 0,
+                  "p50": 0,
+                  "p90": 0,
+                  "p95": 0,
+                  "p99": 0
+                },
+                "pps_total": {
+                  "live": 0,
+                  "p50": 0,
+                  "p90": 0,
+                  "p95": 0,
+                  "p99": 0
+                }
+              },
+              "tcp": 0,
+              "top_ASN": [],
+              "top_geoLoc": [],
+              "top_ipv4": [],
+              "top_ipv6": [{
+                "estimate": 3,
+                "name": "ff02::2"
+              }],
+              "total": 140,
+              "udp": 140
+            }
+          }]
+        },
+        "default-pcap_stats": {
+          "type": "object",
+          "default": {},
+          "title": "The default-pcap_stats Schema",
+          "required": [
+            "pcap"
+          ],
+          "properties": {
+            "pcap": {
+              "type": "object",
+              "default": {},
+              "title": "The pcap Schema",
+              "required": [
+                "if_drops",
+                "os_drops",
+                "period",
+                "tcp_reassembly_errors"
+              ],
+              "properties": {
+                "if_drops": {
+                  "type": "integer",
+                  "default": 0,
+                  "title": "The if_drops Schema",
+                  "examples": [
+                    0
+                  ]
+                },
+                "os_drops": {
+                  "type": "integer",
+                  "default": 0,
+                  "title": "The os_drops Schema",
+                  "examples": [
+                    0
+                  ]
+                },
+                "period": {
+                  "type": "object",
+                  "default": {},
+                  "title": "The period Schema",
+                  "required": [
+                    "length",
+                    "start_ts"
+                  ],
+                  "properties": {
+                    "length": {
+                      "type": "integer",
+                      "default": 0,
+                      "title": "The length Schema",
+                      "examples": [
+                        1
+                      ]
+                    },
+                    "start_ts": {
+                      "type": "integer",
+                      "default": 0,
+                      "title": "The start_ts Schema",
+                      "examples": [
+                        1652448116
+                      ]
+                    }
+                  },
+                  "examples": [{
+                    "length": 1,
+                    "start_ts": 1652448116
+                  }]
+                },
+                "tcp_reassembly_errors": {
+                  "type": "integer",
+                  "default": 0,
+                  "title": "The tcp_reassembly_errors Schema",
+                  "examples": [
+                    0
+                  ]
+                }
+              },
+              "examples": [{
+                "if_drops": 0,
+                "os_drops": 0,
+                "period": {
+                  "length": 1,
+                  "start_ts": 1652448116
+                },
+                "tcp_reassembly_errors": 0
+              }]
+            }
+          },
+          "examples": [{
+            "pcap": {
+              "if_drops": 0,
+              "os_drops": 0,
+              "period": {
+                "length": 1,
+                "start_ts": 1652448116
+              },
+              "tcp_reassembly_errors": 0
+            }
+          }]
+        }
+      },
+      "examples": [{
+        "default-dhcp": {
+          "dhcp": {
+            "period": {
+              "length": 1,
+              "start_ts": 1652448116
+            },
+            "rates": {
+              "total": {
+                "live": 0,
+                "p50": 0,
+                "p90": 0,
+                "p95": 0,
+                "p99": 0
+              }
+            },
+            "wire_packets": {
+              "ack": 0,
+              "deep_samples": 0,
+              "discover": 0,
+              "filtered": 0,
+              "offer": 0,
+              "request": 0,
+              "total": 0
+            }
+          }
+        },
+        "default-dns": {
+          "dns": {
+            "cardinality": {
+              "qname": 69
+            },
+            "period": {
+              "length": 1,
+              "start_ts": 1652448116
+            },
+            "rates": {
+              "total": {
+                "live": 0,
+                "p50": 0,
+                "p90": 0,
+                "p95": 0,
+                "p99": 0
+              }
+            },
+            "top_nodata": [],
+            "top_nxdomain": [],
+            "top_qname2": [{
+              "estimate": 140,
+              "name": ".test.com"
+            }],
+            "top_qname3": [{
+              "estimate": 2,
+              "name": ".q6jjpf6kv.test.com"
+            },
+              {
+                "estimate": 2,
+                "name": ".ogl8.test.com"
+              },
+              {
+                "estimate": 2,
+                "name": "lfv2-uf4p9.test.com"
+              },
+              {
+                "estimate": 2,
+                "name": ".8a3cpmzb5.test.com"
+              },
+              {
+                "estimate": 2,
+                "name": ".ew_.test.com"
+              },
+              {
+                "estimate": 2,
+                "name": ".dnn1o5nnk.test.com"
+              },
+              {
+                "estimate": 2,
+                "name": ".pap4y.test.com"
+              },
+              {
+                "estimate": 2,
+                "name": "jde.test.com"
+              },
+              {
+                "estimate": 2,
+                "name": ".nlwk1xsm.test.com"
+              },
+              {
+                "estimate": 2,
+                "name": ".kn.test.com"
+              }],
+            "top_qname_by_resp_bytes": [{
+              "estimate": 69,
+              "name": "n22dzh9iev.62fq.lewasapcsq.fzkbbdhugt.a9ju.test.com"
+            },
+              {
+                "estimate": 68,
+                "name": "qjs1k.v1rk4_zpd.lpc3evyi9.s8yuzj19yq.zotw.test.com"
+              },
+              {
+                "estimate": 66,
+                "name": "ubjaakm.kenh7yfyju.anq_k8.1yehorab9o.rh.test.com"
+              },
+              {
+                "estimate": 65,
+                "name": "loj5pq2._empluapr.ppliop.1f8j2r1.emvq5.test.com"
+              },
+              {
+                "estimate": 64,
+                "name": "b4.mdx9df4iz.hyoap.gs6hjlb.gakdjq-m1m.test.com"
+              },
+              {
+                "estimate": 62,
+                "name": "7i55rusl.0yg.ybujicpf.zfor.prb5dt94.test.com"
+              },
+              {
+                "estimate": 62,
+                "name": "w0fl7oss.wncitowvw.dyx4to6hm.edk.nu.test.com"
+              },
+              {
+                "estimate": 61,
+                "name": "57ojczk.nuj-cq5e2.dudl6si.4ozcqyax.test.com"
+              },
+              {
+                "estimate": 60,
+                "name": "me_3y.vrqzhd.e7c2.zahor.dnn1o5nnk.test.com"
+              },
+              {
+                "estimate": 58,
+                "name": "ajazg.us.92virkhez.27.q6jjpf6kv.test.com"
+              }],
+            "top_qtype": [{
+              "estimate": 34,
+              "name": "AAAA"
+            },
+              {
+                "estimate": 22,
+                "name": "A"
+              },
+              {
+                "estimate": 22,
+                "name": "SOA"
+              },
+              {
+                "estimate": 22,
+                "name": "NS"
+              },
+              {
+                "estimate": 14,
+                "name": "MX"
+              },
+              {
+                "estimate": 14,
+                "name": "CNAME"
+              },
+              {
+                "estimate": 12,
+                "name": "TXT"
+              }],
+            "top_rcode": [{
+              "estimate": 70,
+              "name": "NOTIMP"
+            }],
+            "top_refused": [],
+            "top_srvfail": [],
+            "top_udp_ports": [{
+              "estimate": 14,
+              "name": "46590"
+            },
+              {
+                "estimate": 14,
+                "name": "58571"
+              },
+              {
+                "estimate": 14,
+                "name": "36484"
+              },
+              {
+                "estimate": 14,
+                "name": "43798"
+              },
+              {
+                "estimate": 14,
+                "name": "46567"
+              },
+              {
+                "estimate": 14,
+                "name": "59640"
+              },
+              {
+                "estimate": 14,
+                "name": "44741"
+              },
+              {
+                "estimate": 14,
+                "name": "51811"
+              },
+              {
+                "estimate": 14,
+                "name": "38920"
+              },
+              {
+                "estimate": 14,
+                "name": "52826"
+              }],
+            "wire_packets": {
+              "deep_samples": 140,
+              "filtered": 0,
+              "ipv4": 0,
+              "ipv6": 140,
+              "nodata": 0,
+              "noerror": 0,
+              "nxdomain": 0,
+              "queries": 70,
+              "refused": 0,
+              "replies": 70,
+              "srvfail": 0,
+              "tcp": 0,
+              "total": 140,
+              "udp": 140
+            },
+            "xact": {
+              "counts": {
+                "timed_out": 0,
+                "total": 70
+              },
+              "in": {
+                "top_slow": [],
+                "total": 0
+              },
+              "out": {
+                "top_slow": [],
+                "total": 0
+              },
+              "ratio": {
+                "quantiles": {
+                  "p50": 0.8,
+                  "p90": 0.8493150684931506,
+                  "p95": 0.8552631578947368,
+                  "p99": 0.8625
+                }
+              }
+            }
+          }
+        },
+        "default-net": {
+          "packets": {
+            "cardinality": {
+              "dst_ips_out": 0,
+              "src_ips_in": 0
+            },
+            "deep_samples": 140,
+            "filtered": 0,
+            "in": 0,
+            "ipv4": 0,
+            "ipv6": 140,
+            "other_l4": 0,
+            "out": 0,
+            "payload_size": {
+              "p50": 112,
+              "p90": 130,
+              "p95": 135,
+              "p99": 141
+            },
+            "period": {
+              "length": 1,
+              "start_ts": 1652448116
+            },
+            "protocol": {
+              "tcp": {
+                "syn": 0
+              }
+            },
+            "rates": {
+              "bytes_in": {
+                "live": 0,
+                "p50": 0,
+                "p90": 0,
+                "p95": 0,
+                "p99": 0
+              },
+              "bytes_out": {
+                "live": 0,
+                "p50": 0,
+                "p90": 0,
+                "p95": 70,
+                "p99": 70
+              },
+              "pps_in": {
+                "live": 0,
+                "p50": 0,
+                "p90": 0,
+                "p95": 0,
+                "p99": 0
+              },
+              "pps_out": {
+                "live": 0,
+                "p50": 0,
+                "p90": 0,
+                "p95": 0,
+                "p99": 0
+              },
+              "pps_total": {
+                "live": 0,
+                "p50": 0,
+                "p90": 0,
+                "p95": 0,
+                "p99": 0
+              }
+            },
+            "tcp": 0,
+            "top_ASN": [],
+            "top_geoLoc": [],
+            "top_ipv4": [],
+            "top_ipv6": [{
+              "estimate": 3,
+              "name": "ff02::2"
+            }],
+            "total": 140,
+            "udp": 140
+          }
+        },
+        "default-pcap_stats": {
+          "pcap": {
+            "if_drops": 0,
+            "os_drops": 0,
+            "period": {
+              "length": 1,
+              "start_ts": 1652448116
+            },
+            "tcp_reassembly_errors": 0
+          }
+        }
+      }]
+    },
+    "^default-([a-zA-Z]+([0-9]+[a-zA-Z]+)+)-resources$": {
+      "type": "object",
+      "default": {},
+      "title": "The default-14f94e24c2d175cf-resources Schema",
+      "pattern": "^default-([a-zA-Z]+([0-9]+[a-zA-Z]+)+)-resources$",
+      "required": [
+        "^default-([a-zA-Z]+([0-9]+[a-zA-Z]+)+)-resources$"
+      ],
+      "properties": {
+        "^default-([a-zA-Z]+([0-9]+[a-zA-Z]+)+)-resources$": {
+          "type": "object",
+          "default": {},
+          "title": "The default-14f94e24c2d175cf-resources Schema",
+          "required": [
+            "input_resources"
+          ],
+          "properties": {
+            "input_resources": {
+              "type": "object",
+              "default": {},
+              "title": "The input_resources Schema",
+              "required": [
+                "cpu_usage",
+                "deep_samples",
+                "event_rate",
+                "handler_count",
+                "memory_bytes",
+                "period",
+                "policy_count",
+                "total"
+              ],
+              "properties": {
+                "cpu_usage": {
+                  "type": "object",
+                  "default": {},
+                  "title": "The cpu_usage Schema",
+                  "required": [
+                    "p50",
+                    "p90",
+                    "p95",
+                    "p99"
+                  ],
+                  "properties": {
+                    "p50": {
+                      "type": "number",
+                      "default": 0.0,
+                      "title": "The p50 Schema",
+                      "examples": [
+                        0.20161290322580644
+                      ]
+                    },
+                    "p90": {
+                      "type": "number",
+                      "default": 0.0,
+                      "title": "The p90 Schema",
+                      "examples": [
+                        0.33222591362126247
+                      ]
+                    },
+                    "p95": {
+                      "type": "number",
+                      "default": 0.0,
+                      "title": "The p95 Schema",
+                      "examples": [
+                        0.33222591362126247
+                      ]
+                    },
+                    "p99": {
+                      "type": "number",
+                      "default": 0.0,
+                      "title": "The p99 Schema",
+                      "examples": [
+                        0.33222591362126247
+                      ]
+                    }
+                  },
+                  "examples": [{
+                    "p50": 0.20161290322580644,
+                    "p90": 0.33222591362126247,
+                    "p95": 0.33222591362126247,
+                    "p99": 0.33222591362126247
+                  }]
+                },
+                "deep_samples": {
+                  "type": "integer",
+                  "default": 0,
+                  "title": "The deep_samples Schema",
+                  "examples": [
+                    5
+                  ]
+                },
+                "event_rate": {
+                  "type": "object",
+                  "default": {},
+                  "title": "The event_rate Schema",
+                  "required": [
+                    "live",
+                    "p50",
+                    "p90",
+                    "p95",
+                    "p99"
+                  ],
+                  "properties": {
+                    "live": {
+                      "type": "integer",
+                      "default": 0,
+                      "title": "The live Schema",
+                      "examples": [
+                        0
+                      ]
+                    },
+                    "p50": {
+                      "type": "integer",
+                      "default": 0,
+                      "title": "The p50 Schema",
+                      "examples": [
+                        0
+                      ]
+                    },
+                    "p90": {
+                      "type": "integer",
+                      "default": 0,
+                      "title": "The p90 Schema",
+                      "examples": [
+                        0
+                      ]
+                    },
+                    "p95": {
+                      "type": "integer",
+                      "default": 0,
+                      "title": "The p95 Schema",
+                      "examples": [
+                        1
+                      ]
+                    },
+                    "p99": {
+                      "type": "integer",
+                      "default": 0,
+                      "title": "The p99 Schema",
+                      "examples": [
+                        2
+                      ]
+                    }
+                  },
+                  "examples": [{
+                    "live": 0,
+                    "p50": 0,
+                    "p90": 0,
+                    "p95": 1,
+                    "p99": 2
+                  }]
+                },
+                "handler_count": {
+                  "type": "integer",
+                  "default": 0,
+                  "title": "The handler_count Schema",
+                  "examples": [
+                    5
+                  ]
+                },
+                "memory_bytes": {
+                  "type": "object",
+                  "default": {},
+                  "title": "The memory_bytes Schema",
+                  "required": [
+                    "p50",
+                    "p90",
+                    "p95",
+                    "p99"
+                  ],
+                  "properties": {
+                    "p50": {
+                      "type": "integer",
+                      "default": 0,
+                      "title": "The p50 Schema",
+                      "examples": [
+                        18022400
+                      ]
+                    },
+                    "p90": {
+                      "type": "integer",
+                      "default": 0,
+                      "title": "The p90 Schema",
+                      "examples": [
+                        18022400
+                      ]
+                    },
+                    "p95": {
+                      "type": "integer",
+                      "default": 0,
+                      "title": "The p95 Schema",
+                      "examples": [
+                        18022400
+                      ]
+                    },
+                    "p99": {
+                      "type": "integer",
+                      "default": 0,
+                      "title": "The p99 Schema",
+                      "examples": [
+                        18022400
+                      ]
+                    }
+                  },
+                  "examples": [{
+                    "p50": 18022400,
+                    "p90": 18022400,
+                    "p95": 18022400,
+                    "p99": 18022400
+                  }]
+                },
+                "period": {
+                  "type": "object",
+                  "default": {},
+                  "title": "The period Schema",
+                  "required": [
+                    "length",
+                    "start_ts"
+                  ],
+                  "properties": {
+                    "length": {
+                      "type": "integer",
+                      "default": 0,
+                      "title": "The length Schema",
+                      "examples": [
+                        57
+                      ]
+                    },
+                    "start_ts": {
+                      "type": "integer",
+                      "default": 0,
+                      "title": "The start_ts Schema",
+                      "examples": [
+                        1658846746
+                      ]
+                    }
+                  },
+                  "examples": [{
+                    "length": 57,
+                    "start_ts": 1658846746
+                  }]
+                },
+                "policy_count": {
+                  "type": "integer",
+                  "default": 0,
+                  "title": "The policy_count Schema",
+                  "examples": [
+                    2
+                  ]
+                },
+                "total": {
+                  "type": "integer",
+                  "default": 0,
+                  "title": "The total Schema",
+                  "examples": [
+                    5
+                  ]
+                }
+              },
+              "examples": [{
+                "cpu_usage": {
+                  "p50": 0.20161290322580644,
+                  "p90": 0.33222591362126247,
+                  "p95": 0.33222591362126247,
+                  "p99": 0.33222591362126247
+                },
+                "deep_samples": 5,
+                "event_rate": {
+                  "live": 0,
+                  "p50": 0,
+                  "p90": 0,
+                  "p95": 1,
+                  "p99": 2
+                },
+                "handler_count": 5,
+                "memory_bytes": {
+                  "p50": 18022400,
+                  "p90": 18022400,
+                  "p95": 18022400,
+                  "p99": 18022400
+                },
+                "period": {
+                  "length": 57,
+                  "start_ts": 1658846746
+                },
+                "policy_count": 2,
+                "total": 5
+              }]
+            }
+          },
+          "examples": [{
+            "input_resources": {
+              "cpu_usage": {
+                "p50": 0.20161290322580644,
+                "p90": 0.33222591362126247,
+                "p95": 0.33222591362126247,
+                "p99": 0.33222591362126247
+              },
+              "deep_samples": 5,
+              "event_rate": {
+                "live": 0,
+                "p50": 0,
+                "p90": 0,
+                "p95": 1,
+                "p99": 2
+              },
+              "handler_count": 5,
+              "memory_bytes": {
+                "p50": 18022400,
+                "p90": 18022400,
+                "p95": 18022400,
+                "p99": 18022400
+              },
+              "period": {
+                "length": 57,
+                "start_ts": 1658846746
+              },
+              "policy_count": 2,
+              "total": 5
+            }
+          }]
+        }
+      },
+      "examples": [{
+        "default-14f94e24c2d175cf-resources": {
+          "input_resources": {
+            "cpu_usage": {
+              "p50": 0.20161290322580644,
+              "p90": 0.33222591362126247,
+              "p95": 0.33222591362126247,
+              "p99": 0.33222591362126247
+            },
+            "deep_samples": 5,
+            "event_rate": {
+              "live": 0,
+              "p50": 0,
+              "p90": 0,
+              "p95": 1,
+              "p99": 2
+            },
+            "handler_count": 5,
+            "memory_bytes": {
+              "p50": 18022400,
+              "p90": 18022400,
+              "p95": 18022400,
+              "p99": 18022400
+            },
+            "period": {
+              "length": 57,
+              "start_ts": 1658846746
+            },
+            "policy_count": 2,
+            "total": 5
+          }
+        }
+      }]
+    }
+  },
+  "examples": [{
+    "default": {
+      "default-dhcp": {
+        "dhcp": {
+          "period": {
+            "length": 1,
+            "start_ts": 1652448116
+          },
+          "rates": {
+            "total": {
+              "live": 0,
+              "p50": 0,
+              "p90": 0,
+              "p95": 0,
+              "p99": 0
+            }
+          },
+          "wire_packets": {
+            "ack": 0,
+            "deep_samples": 0,
+            "discover": 0,
+            "filtered": 0,
+            "offer": 0,
+            "request": 0,
+            "total": 0
+          }
+        }
+      },
+      "default-dns": {
+        "dns": {
+          "cardinality": {
+            "qname": 69
+          },
+          "period": {
+            "length": 1,
+            "start_ts": 1652448116
+          },
+          "rates": {
+            "total": {
+              "live": 0,
+              "p50": 0,
+              "p90": 0,
+              "p95": 0,
+              "p99": 0
+            }
+          },
+          "top_nodata": [],
+          "top_nxdomain": [],
+          "top_qname2": [{
+            "estimate": 140,
+            "name": ".test.com"
+          }],
+          "top_qname3": [{
+            "estimate": 2,
+            "name": ".q6jjpf6kv.test.com"
+          },
+            {
+              "estimate": 2,
+              "name": ".ogl8.test.com"
+            },
+            {
+              "estimate": 2,
+              "name": "lfv2-uf4p9.test.com"
+            },
+            {
+              "estimate": 2,
+              "name": ".8a3cpmzb5.test.com"
+            },
+            {
+              "estimate": 2,
+              "name": ".ew_.test.com"
+            },
+            {
+              "estimate": 2,
+              "name": ".dnn1o5nnk.test.com"
+            },
+            {
+              "estimate": 2,
+              "name": ".pap4y.test.com"
+            },
+            {
+              "estimate": 2,
+              "name": "jde.test.com"
+            },
+            {
+              "estimate": 2,
+              "name": ".nlwk1xsm.test.com"
+            },
+            {
+              "estimate": 2,
+              "name": ".kn.test.com"
+            }],
+          "top_qname_by_resp_bytes": [{
+            "estimate": 69,
+            "name": "n22dzh9iev.62fq.lewasapcsq.fzkbbdhugt.a9ju.test.com"
+          },
+            {
+              "estimate": 68,
+              "name": "qjs1k.v1rk4_zpd.lpc3evyi9.s8yuzj19yq.zotw.test.com"
+            },
+            {
+              "estimate": 66,
+              "name": "ubjaakm.kenh7yfyju.anq_k8.1yehorab9o.rh.test.com"
+            },
+            {
+              "estimate": 65,
+              "name": "loj5pq2._empluapr.ppliop.1f8j2r1.emvq5.test.com"
+            },
+            {
+              "estimate": 64,
+              "name": "b4.mdx9df4iz.hyoap.gs6hjlb.gakdjq-m1m.test.com"
+            },
+            {
+              "estimate": 62,
+              "name": "7i55rusl.0yg.ybujicpf.zfor.prb5dt94.test.com"
+            },
+            {
+              "estimate": 62,
+              "name": "w0fl7oss.wncitowvw.dyx4to6hm.edk.nu.test.com"
+            },
+            {
+              "estimate": 61,
+              "name": "57ojczk.nuj-cq5e2.dudl6si.4ozcqyax.test.com"
+            },
+            {
+              "estimate": 60,
+              "name": "me_3y.vrqzhd.e7c2.zahor.dnn1o5nnk.test.com"
+            },
+            {
+              "estimate": 58,
+              "name": "ajazg.us.92virkhez.27.q6jjpf6kv.test.com"
+            }],
+          "top_qtype": [{
+            "estimate": 34,
+            "name": "AAAA"
+          },
+            {
+              "estimate": 22,
+              "name": "A"
+            },
+            {
+              "estimate": 22,
+              "name": "SOA"
+            },
+            {
+              "estimate": 22,
+              "name": "NS"
+            },
+            {
+              "estimate": 14,
+              "name": "MX"
+            },
+            {
+              "estimate": 14,
+              "name": "CNAME"
+            },
+            {
+              "estimate": 12,
+              "name": "TXT"
+            }],
+          "top_rcode": [{
+            "estimate": 70,
+            "name": "NOTIMP"
+          }],
+          "top_refused": [],
+          "top_srvfail": [],
+          "top_udp_ports": [{
+            "estimate": 14,
+            "name": "46590"
+          },
+            {
+              "estimate": 14,
+              "name": "58571"
+            },
+            {
+              "estimate": 14,
+              "name": "36484"
+            },
+            {
+              "estimate": 14,
+              "name": "43798"
+            },
+            {
+              "estimate": 14,
+              "name": "46567"
+            },
+            {
+              "estimate": 14,
+              "name": "59640"
+            },
+            {
+              "estimate": 14,
+              "name": "44741"
+            },
+            {
+              "estimate": 14,
+              "name": "51811"
+            },
+            {
+              "estimate": 14,
+              "name": "38920"
+            },
+            {
+              "estimate": 14,
+              "name": "52826"
+            }],
+          "wire_packets": {
+            "deep_samples": 140,
+            "filtered": 0,
+            "ipv4": 0,
+            "ipv6": 140,
+            "nodata": 0,
+            "noerror": 0,
+            "nxdomain": 0,
+            "queries": 70,
+            "refused": 0,
+            "replies": 70,
+            "srvfail": 0,
+            "tcp": 0,
+            "total": 140,
+            "udp": 140
+          },
+          "xact": {
+            "counts": {
+              "timed_out": 0,
+              "total": 70
+            },
+            "in": {
+              "top_slow": [],
+              "total": 0
+            },
+            "out": {
+              "top_slow": [],
+              "total": 0
+            },
+            "ratio": {
+              "quantiles": {
+                "p50": 0.8,
+                "p90": 0.8493150684931506,
+                "p95": 0.8552631578947368,
+                "p99": 0.8625
+              }
+            }
+          }
+        }
+      },
+      "default-net": {
+        "packets": {
+          "cardinality": {
+            "dst_ips_out": 0,
+            "src_ips_in": 0
+          },
+          "deep_samples": 140,
+          "in": 0,
+          "ipv4": 0,
+          "ipv6": 140,
+          "other_l4": 0,
+          "out": 0,
+          "payload_size": {
+            "p50": 112,
+            "p90": 130,
+            "p95": 135,
+            "p99": 141
+          },
+          "period": {
+            "length": 1,
+            "start_ts": 1652448116
+          },
+          "protocol": {
+            "tcp": {
+              "syn": 0
+            }
+          },
+          "rates": {
+            "bytes_in": {
+              "live": 0,
+              "p50": 0,
+              "p90": 0,
+              "p95": 0,
+              "p99": 0
+            },
+            "bytes_out": {
+              "live": 0,
+              "p50": 0,
+              "p90": 0,
+              "p95": 70,
+              "p99": 70
+            },
+            "pps_in": {
+              "live": 0,
+              "p50": 0,
+              "p90": 0,
+              "p95": 0,
+              "p99": 0
+            },
+            "pps_out": {
+              "live": 0,
+              "p50": 0,
+              "p90": 0,
+              "p95": 0,
+              "p99": 0
+            },
+            "pps_total": {
+              "live": 0,
+              "p50": 0,
+              "p90": 0,
+              "p95": 1,
+              "p99": 140
+            }
+          },
+          "tcp": 0,
+          "top_ASN": [],
+          "top_geoLoc": [],
+          "top_ipv4": [],
+          "top_ipv6": [{
+            "estimate": 3,
+            "name": "ff02::2"
+          }],
+          "total": 143,
+          "udp": 140
+        }
+      },
+      "default-pcap_stats": {
+        "pcap": {
+          "if_drops": 0,
+          "os_drops": 0,
+          "period": {
+            "length": 1,
+            "start_ts": 1652448116
+          },
+          "tcp_reassembly_errors": 0
+        }
+      }
+    }
+  }]
+}

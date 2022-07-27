@@ -128,15 +128,15 @@ Scenario Outline: pktvisor metrics
     And run mocked data <file_name> for this network
   Then the pktvisor container status must be <pkt_status>
     And pktvisor API must be enabled
-    And metrics must be correctly generated
+    And metrics must be correctly generated as per the <schema_file> schema
   Examples:
-    | status_port | role | file_name | pkt_status |
-    | available   | user | dns_ipv6_udp.pcap | running    |
-    | available   | user | dns_ipv6_tcp.pcap | running    |
-    | available   | user | dns_ipv4_udp.pcap | running    |
-    | available   | user | dns_ipv4_tcp.pcap | running    |
-    | available   | user | dhcp-flow.pcap | running    |
-    | available   | user | dns_udp_mixed_rcode.pcap | running    |
+    | status_port | role | file_name | pkt_status | schema_file |
+    | available   | user | dhcp-flow.pcap | running    | dhcp_metrics_schema.json   |
+    | available   | user | dns_ipv6_udp.pcap | running    | dns_metrics_schema.json |
+    | available   | user | dns_ipv6_tcp.pcap | running    | dns_metrics_schema.json |
+    | available   | user | dns_ipv4_udp.pcap | running    | dns_metrics_schema.json |
+    | available   | user | dns_ipv4_tcp.pcap | running    | dns_metrics_schema.json |
+    | available   | user | dns_udp_mixed_rcode.pcap | running    | dns_metrics_schema.json |
 
 
 @smoke

@@ -1,6 +1,7 @@
 import docker
 from steps import test_config
 from steps import utils
+from hamcrest import *
 
 
 PKTVISOR_CONTAINER_NAME = "pktvisor-test"
@@ -10,8 +11,10 @@ sudo = test_config.TestConfig.configs().get("sudo")
 def before_scenario(context, scenario):
     context.containers_id = dict()
     context.mock_iface_name = utils.random_string(10)
-    test_config.send_terminal_commands(f"ip link add {context.mock_iface_name} type dummy", sudo=sudo)
-    test_config.send_terminal_commands(f"ip link set {context.mock_iface_name} up", sudo=sudo)
+    add_return = test_config.send_terminal_commands(f"ip link add {context.mock_iface_name} type dummy", sudo=sudo)
+    set_return = test_config.send_terminal_commands(f"ip link set {context.mock_iface_name} up", sudo=sudo)
+    assert_that(add_return[1], not_(contains_string("Operation not permitted")), "Unable to add dummy iface")
+    assert_that(set_return, equal_to(('', '')), "Unable to up dummy iface")
 
 
 def after_scenario(context, scenario):
