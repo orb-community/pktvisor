@@ -77,10 +77,10 @@ jobs:
 #        run: CONAN_USER_HOME=${{github.workspace}}/build/conan_home conan upload "*" --all -r ns1labs -c
 
   package:
-    needs: unit-tests
+    needs: [ unit-tests ]
     runs-on: ubuntu-latest
     outputs:
-      version: ${{ steps.version.outputs.build }}
+      version_number: ${{ steps.build.outputs.version }}
     # if this is a push into one of our main branches (rather than just a pull request), we will also package
     if: github.event_name != 'pull_request'
     steps:
@@ -105,15 +105,15 @@ jobs:
         run: echo ${{ env.BRANCH_NAME }}
 
       - name: Get VERSION
-        id: version
+        id: build
         run: |
           echo "VERSION=`cat ${{github.workspace}}/build/VERSION`" >> $GITHUB_ENV
-          echo "::set-output name=build::$(cat ${{github.workspace}}/build/VERSION)"
+          echo "::set-output name=version::$(cat ${{github.workspace}}/build/VERSION)"
 
       - name: Debug version
         run: |
           echo ${{ env.VERSION }}
-          echo ${{ steps.version.outputs.build }}
+          echo ${{ steps.build.outputs.version }}
 
       - name: Generate ref tag (develop)
         if: ${{ env.BRANCH_NAME == 'develop' || env.BRANCH_NAME == 'multi-arch-images' }}
@@ -262,7 +262,7 @@ jobs:
           retention-days: 1
 
   integration-tests:
-    needs: [ spinup-amd64-runner ]
+    needs: [ spinup-amd64-runner, package ]
     runs-on: [ self-hosted, linux, x64 ]
     outputs:
       commit_hash: ${{ steps.commit_hash.outputs.sha_short }}
@@ -308,8 +308,7 @@ jobs:
 
       - name: Copy VERSION file
         run: |
-          echo ${{ needs.package.outputs.version }}
-          echo ${{ needs.package.outputs.version }} > ./automated_tests/output/VERSION 
+          echo ${{ needs.package.outputs.version_number }} > ./automated_tests/output/VERSION 
 
       - name: Persist to workspace
         uses: actions/upload-artifact@v2
