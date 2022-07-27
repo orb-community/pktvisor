@@ -255,8 +255,8 @@ void PolicyManager::_validate_policy(const YAML::Node &policy_yaml, const std::s
     }
 
     // if and only if policy succeeds, we will return this in result set
-    policy_ptr->set_tap(tap);
-    policy_ptr->set_input_stream(input_ptr);
+    policy_ptr->add_tap(tap);
+    policy_ptr->add_input_stream(input_ptr);
 
     // Handler Section
 
@@ -293,7 +293,7 @@ void PolicyManager::_validate_policy(const YAML::Node &policy_yaml, const std::s
     if (input_stream) {
         // create new policy with resources handler for input stream
         input_resources_policy = std::make_unique<Policy>(input_stream_module_name + "-resources");
-        input_resources_policy->set_input_stream(input_ptr);
+        input_resources_policy->add_input_stream(input_ptr);
         auto resources_handler_plugin = _registry->handler_plugins().find("input_resources");
         if (resources_handler_plugin != _registry->handler_plugins().end()) {
             resources_module = resources_handler_plugin->second->instantiate(input_stream_module_name + "-resources", input_event_proxy, &window_config, nullptr);
@@ -519,7 +519,7 @@ void PolicyManager::remove_policy(const std::string &name)
 }
 void Policy::info_json(json &j) const
 {
-    for (auto &input : _input_stream) {
+    for (auto &input : _input_streams) {
         input->info_json(j["input"][input->name()]);
     }
     for (auto &mod : _modules) {
@@ -531,7 +531,7 @@ void Policy::start()
     if (_running) {
         return;
     }
-    assert(_input_stream.size());
+    assert(_input_streams.size());
     spdlog::get("visor")->info("policy [{}]: starting", _name);
     for (auto &mod : _modules) {
         spdlog::get("visor")->debug("policy [{}]: starting handler instance: {}", _name, mod->name());
@@ -539,7 +539,7 @@ void Policy::start()
     }
     // start input stream _after_ modules, since input stream will create a new thread and we need to catch any startup errors
     // from handlers in the same thread we are starting the policy from
-    for (auto &input : _input_stream) {
+    for (auto &input : _input_streams) {
         spdlog::get("visor")->debug("policy [{}]: starting input instance: {}", _name, input->name());
         input->start();
     }
@@ -551,7 +551,7 @@ void Policy::stop()
         return;
     }
     spdlog::get("visor")->info("policy [{}]: stopping", _name);
-    for (auto &input : _input_stream) {
+    for (auto &input : _input_streams) {
         if (input->running()) {
             if (input->policies_count() <= 1) {
                 spdlog::get("visor")->debug("policy [{}]: stopping input instance: {}", _name, input->name());

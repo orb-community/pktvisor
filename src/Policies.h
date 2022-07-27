@@ -31,8 +31,8 @@ class Policy : public AbstractRunnableModule
 {
     static constexpr size_t HANDLERS_SEQUENCE_SIZE = 1;
 
-    std::vector<Tap *> _tap;
-    std::vector<InputStream *> _input_stream;
+    std::vector<Tap *> _taps;
+    std::vector<InputStream *> _input_streams;
     bool _modules_sequence;
     std::vector<AbstractRunnableModule *> _modules;
 
@@ -53,19 +53,19 @@ public:
         _modules_sequence = sequence;
     }
 
-    void set_tap(Tap *tap)
+    void add_tap(Tap *tap)
     {
-        _tap.push_back(tap);
+        _taps.push_back(tap);
     }
 
-    void set_input_stream(InputStream *input_stream)
+    void add_input_stream(InputStream *input_stream)
     {
-        _input_stream.push_back(input_stream);
+        _input_streams.push_back(input_stream);
     }
 
-    const std::vector<InputStream *> &input_stream()
+    const std::vector<InputStream *> &input_stream() const
     {
-        return _input_stream;
+        return _input_streams;
     }
 
     void add_module(AbstractRunnableModule *m)
