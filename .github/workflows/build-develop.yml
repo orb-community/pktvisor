@@ -108,10 +108,12 @@ jobs:
         id: version
         run: |
           echo "VERSION=`cat ${{github.workspace}}/build/VERSION`" >> $GITHUB_ENV
-          echo "::set-output name=version::$(echo ${{ env.VERSION }})" 
+          echo "::set-output name=version::${{ env.VERSION }}"
 
       - name: Debug version
-        run: echo ${{ env.VERSION }}
+        run: |
+          echo ${{ env.VERSION }}
+          echo ${{ steps.version.output.version }}
 
       - name: Generate ref tag (develop)
         if: ${{ env.BRANCH_NAME == 'develop' || env.BRANCH_NAME == 'multi-arch-images' }}
