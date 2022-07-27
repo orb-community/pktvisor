@@ -7,6 +7,9 @@ from hamcrest import *
 import socket
 import requests
 import multiprocessing
+from jsonschema import validate
+import jsonschema
+import json
 
 
 def random_string(k=10):
@@ -81,13 +84,12 @@ def threading_wait_until(func):
     return wait_event
 
 
-def check_port_is_available(containers_id, available=True, time_to_wait=5):
+def check_port_is_available(containers_id, available=True):
 
     """
     :param (dict) containers_id: dictionary in which the keys are the ids of the containers and the values are the ports
     on which the containers are running
     :param (bool) available: Status of the port on which agent must try to run. Default: available.
-    :param (int) time_to_wait: seconds that threading must wait after run the agent
     :return: (int) port number
     """
 
@@ -116,7 +118,7 @@ def check_port_is_available(containers_id, available=True, time_to_wait=5):
 
 
 @threading_wait_until
-def make_get_request(end_point, pkt_port=10853, expected_status_code=200, event=None):
+def make_get_request(end_point, pkt_port=10853, expected_status_code=200, time_to_wait=1, event=None):
     """
 
     :param end_point: endpoint to which the request must be sent
@@ -130,6 +132,38 @@ def make_get_request(end_point, pkt_port=10853, expected_status_code=200, event=
     response = requests.get(path)
     if response.status_code == int(expected_status_code):
         event.set()
+    event.wait(int(time_to_wait))
     assert_that(response.status_code, equal_to(int(expected_status_code)),
                 f"Get request to endpoint {path} failed with status {response.status_code}")
     return response
+
+
+def get_schema(path_to_file):
+    """
+        Loads the given schema available
+
+    :param path_to_file: path to schema json file
+    :return: schema json
+    """
+    with open(path_to_file, 'r') as file:
+        schema = json.load(file)
+    return schema
+
+
+def validate_json(json_data, path_to_file):
+    """
+        Compare a file with the schema and validate if the structure is correct
+    :param json_data: json to be validated
+    :param path_to_file: path to schema json file
+    :return: bool. False if the json is not valid according to the schema and True if it is
+    """
+
+    execute_api_schema = get_schema(path_to_file)
+
+    try:
+        validate(instance=json_data, schema=execute_api_schema)
+    except jsonschema.exceptions.ValidationError as err:
+        print(err)
+        return False
+
+    return True
