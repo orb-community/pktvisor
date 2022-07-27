@@ -65,14 +65,9 @@ void FlowStreamHandler::start()
         _f_enabled.set(Filters::OnlyPorts);
     }
 
-    if (config_exists("only_in_interfaces")) {
-        _parse_ports_or_interfaces(config_get<StringList>("only_in_interfaces"), ParserType::InterfaceIn);
-        _f_enabled.set(Filters::OnlyInInterfaces);
-    }
-
-    if (config_exists("only_out_interfaces")) {
-        _parse_ports_or_interfaces(config_get<StringList>("only_out_interfaces"), ParserType::InterfaceOut);
-        _f_enabled.set(Filters::OnlyOutInterfaces);
+    if (config_exists("only_interfaces")) {
+        _parse_ports_or_interfaces(config_get<StringList>("only_interfaces"), ParserType::Interface);
+        _f_enabled.set(Filters::OnlyInterfaces);
     }
 
     if (config_exists("geoloc_notfound") && config_get<bool>("geoloc_notfound")) {
@@ -297,10 +292,8 @@ bool FlowStreamHandler::_filtering(const FlowData &flow)
         && !_match_parser(flow.dst_port, ParserType::Port)) {
         return true;
     }
-    if (_f_enabled[Filters::OnlyInInterfaces] && !_match_parser(flow.if_in_index, ParserType::InterfaceIn)) {
-        return true;
-    }
-    if (_f_enabled[Filters::OnlyOutInterfaces] && !_match_parser(flow.if_out_index, ParserType::InterfaceOut)) {
+    if (_f_enabled[Filters::OnlyInterfaces] && !_match_parser(flow.if_in_index, ParserType::Interface)
+        && !_match_parser(flow.if_out_index, ParserType::Interface)) {
         return true;
     }
     if (_f_enabled[Filters::GeoLocNotFound] && geo::GeoIP().enabled()) {
@@ -357,7 +350,7 @@ void FlowStreamHandler::_parse_ports_or_interfaces(const std::vector<std::string
                 _parsed_list[type].push_back(std::make_pair(value, value));
             }
         } catch ([[maybe_unused]] const std::exception &e) {
-            throw StreamHandlerException(fmt::format("FlowHandler: invalid '{}' filter value: {}",  _parser_types_string.at(type), port_or_interface));
+            throw StreamHandlerException(fmt::format("FlowHandler: invalid '{}' filter value: {}", _parser_types_string.at(type), port_or_interface));
         }
     }
 }

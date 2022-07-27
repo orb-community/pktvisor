@@ -261,14 +261,12 @@ class FlowStreamHandler final : public visor::StreamMetricsHandler<FlowMetricsMa
 
     enum class ParserType {
         Port,
-        InterfaceIn,
-        InterfaceOut,
+        Interface,
     };
     std::map<ParserType, std::vector<std::pair<uint32_t, uint32_t>>> _parsed_list;
     static const inline std::map<ParserType, std::string> _parser_types_string = {
         {ParserType::Port, "only_ports"},
-        {ParserType::InterfaceIn, "only_in_interfaces"},
-        {ParserType::InterfaceOut, "only_out_interfaces"},
+        {ParserType::Interface, "only_interfaces"},
     };
 
     bool _sample_rate_scaling;
@@ -277,8 +275,7 @@ class FlowStreamHandler final : public visor::StreamMetricsHandler<FlowMetricsMa
         OnlyIps,
         OnlyDevices,
         OnlyPorts,
-        OnlyInInterfaces,
-        OnlyOutInterfaces,
+        OnlyInterfaces,
         GeoLocNotFound,
         AsnNotFound,
         FiltersMAX
