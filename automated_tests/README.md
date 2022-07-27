@@ -34,6 +34,18 @@ Activate your virtual environment: `source name_of_virtualenv/bin/activate`
 
 Install the required libraries: `pip install -r requirements.txt`
 
+## Test settings
+Create the test config file from the template: `cp test_config.ini.tpl test_config.ini`.
+
+The best way to run the tests is with root permissions. In this case, set the root variable to True:
+- **root=True**
+
+The other way is to pass the password as a variable. <span style="color:red">Warning</span>: This method is insecure.
+- **sudo_password=<sudo-password>**
+
+- **pktvisor_docker_image_tag**:
+  - Docker image tag of pktvisor.
+  - Default value: `latest`
 
 ## Run behave
 From the root of the repository simply run `behave`, optionally passing the feature file as follows:

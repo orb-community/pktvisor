@@ -49,7 +49,7 @@ def remove_policies(context, amount_of_policies, policy_type):
     assert_that(policy_type, any_of(equal_to("resource"), equal_to("non-resource")), "Unexpected type of policy")
     names_of_all_policies = make_get_request('policies', context.pkt_port).json().keys()
     for name in names_of_all_policies:
-        matching = re.match(r'^.+\-[a-zA-Z0-9]{16}\-resources$', name)
+        matching = re.match(r'^default\-[a-zA-Z0-9]+\-resources$', name)
         if matching:
             resources.append(matching.group())
         else:
