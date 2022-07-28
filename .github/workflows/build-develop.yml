@@ -296,11 +296,15 @@ jobs:
         run: |
           echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"    
 
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.8'
+
       - name: Test
         continue-on-error: true
         run: |
           cd ./automated_tests/
-          python3 -m venv behave_pktvisor
+          python3.8 -m venv behave_pktvisor
           source behave_pktvisor/bin/activate
           pip3 install --upgrade pip
           pip3 install -r requirements.txt
