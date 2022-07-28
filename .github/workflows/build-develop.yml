@@ -81,6 +81,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version_number: ${{ steps.build.outputs.version }}
+      branch_name: ${{ steps.branch.outputs.name }}
     # if this is a push into one of our main branches (rather than just a pull request), we will also package
     if: github.event_name != 'pull_request'
     steps:
@@ -98,8 +99,11 @@ jobs:
         run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE
 
       - name: Get branch name
+        id: branch
         shell: bash
-        run: echo "BRANCH_NAME=$(echo ${GITHUB_REF#refs/heads/} | tr / -)" >> $GITHUB_ENV
+        run: |
+          echo "BRANCH_NAME=$(echo ${GITHUB_REF#refs/heads/} | tr / -)" >> $GITHUB_ENV
+          echo "::set-output name=name::$(echo ${GITHUB_REF#refs/heads/} | tr / -)"          
 
       - name: Debug branch name
         run: echo ${{ env.BRANCH_NAME }}
@@ -227,7 +231,7 @@ jobs:
           sed -i -e "s/AWSID/$ESCAPED_REPLACE_KEY_ID/g" vars.tf
           ESCAPED_REPLACE_ACCESS_KEY=$(printf '%s\n' "${{ secrets.AWS_SECRET_ACCESS_KEY }}" | sed -e 's/[\/&]/\\&/g')
           sed -i -e "s/AWSSECRET/$ESCAPED_REPLACE_ACCESS_KEY/g" vars.tf
-          ESCAPED_REPLACE_ENVIRONMENT=$(printf '%s\n' "${{ env.BRANCH_NAME }}" | sed -e 's/[\/&]/\\&/g')
+          ESCAPED_REPLACE_ENVIRONMENT=$(printf '%s\n' "${{ needs.package.outputs.branch_name }}" | sed -e 's/[\/&]/\\&/g')
           sed -i -e "s/ENVIRONMENT/$ESCAPED_REPLACE_ENVIRONMENT/g" vars.tf
 
       - name: setup terraform
