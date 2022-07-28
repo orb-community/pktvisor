@@ -198,7 +198,7 @@ jobs:
 #          name: pktvisor-x86_64-${{ env.VERSION }}.AppImage
 #          path: ${{github.workspace}}/appimage/pktvisor-x86_64-${{ env.VERSION }}.AppImage
 
-  spinup-amd64-runner:
+  spinup-arm64-runner:
     needs: [ package ]
     runs-on: ubuntu-latest
     outputs:
@@ -216,13 +216,13 @@ jobs:
 
       - name: Inject runner token in user_data.sh
         run: |
-          cd .github/hosted-runner/amd64/
+          cd .github/hosted-runner/arm64/
           ESCAPED_REPLACE_RUNNER_TOKEN=$(printf '%s\n' "${{ steps.token.outputs.runner }}" | sed -e 's/[\/&]/\\&/g')
           sed -i -e "s/RUNNER_TOKEN/$ESCAPED_REPLACE_RUNNER_TOKEN/g" user_data.sh
 
       - name: Inject AWS key
         run: |
-          cd .github/hosted-runner/amd64/
+          cd .github/hosted-runner/arm64/
           ESCAPED_REPLACE_KEY_ID=$(printf '%s\n' "${{ secrets.AWS_ACCESS_KEY_ID }}" | sed -e 's/[\/&]/\\&/g')
           sed -i -e "s/AWSID/$ESCAPED_REPLACE_KEY_ID/g" vars.tf
           ESCAPED_REPLACE_ACCESS_KEY=$(printf '%s\n' "${{ secrets.AWS_SECRET_ACCESS_KEY }}" | sed -e 's/[\/&]/\\&/g')
@@ -235,22 +235,22 @@ jobs:
 
       - name: Terraform Init
         run: |
-          cd .github/hosted-runner/amd64/
+          cd .github/hosted-runner/arm64/
           terraform init -input=false
 
       - name: Terraform plan
         run: |
-          cd .github/hosted-runner/amd64/
+          cd .github/hosted-runner/arm64/
           terraform plan -out=tfplan
 
       - name: Terraform apply
         run: |
-          cd .github/hosted-runner/amd64/
+          cd .github/hosted-runner/arm64/
           terraform apply -auto-approve tfplan
 
       - name: Terraform output
         run: |
-          cd .github/hosted-runner/amd64/
+          cd .github/hosted-runner/arm64/
           terraform output -raw ip
 
       - name: Persist to workspace
@@ -258,12 +258,12 @@ jobs:
         with:
           name: terraform
           path: |
-            .github/hosted-runner/amd64/terraform.tfstate
+            .github/hosted-runner/arm64/terraform.tfstate
           retention-days: 1
 
   integration-tests:
-    needs: [ spinup-amd64-runner, package ]
-    runs-on: [ self-hosted, linux, x64 ]
+    needs: [ spinup-arm64-runner, package ]
+    runs-on: [self-hosted, linux, ARM64]
     outputs:
       commit_hash: ${{ steps.commit_hash.outputs.sha_short }}
     # if this is a push into one of our main branches (rather than just a pull request), we will also package
@@ -278,7 +278,7 @@ jobs:
       - name: Debug version
         run: |
           echo ${{ env.VERSION }}
-          echo ${{ needs.package.outputs.version }}
+          echo ${{ needs.package.outputs.version_number }}
 
       - name: Prepare test config
         run: |
@@ -352,7 +352,7 @@ jobs:
           source: "./output/*"
           target: "/usr/share/nginx/html/pktvisor/develop/${{ needs.integration-tests.outputs.commit_hash }}/pktvisor/python-test"
 
-  remove-amd64-runner:
+  remove-arm64-runner:
     needs: [ integration-tests ]
     runs-on: ubuntu-latest
     steps:
@@ -363,11 +363,11 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: terraform
-          path: .github/hosted-runner/amd64/
+          path: .github/hosted-runner/arm64/
 
       - name: Inject AWS key
         run: |
-          cd .github/hosted-runner/amd64/
+          cd .github/hosted-runner/arm64/
           ESCAPED_REPLACE_KEY_ID=$(printf '%s\n' "${{ secrets.AWS_ACCESS_KEY_ID }}" | sed -e 's/[\/&]/\\&/g')
           sed -i -e "s/AWSID/$ESCAPED_REPLACE_KEY_ID/g" vars.tf
           ESCAPED_REPLACE_ACCESS_KEY=$(printf '%s\n' "${{ secrets.AWS_SECRET_ACCESS_KEY }}" | sed -e 's/[\/&]/\\&/g')
@@ -380,23 +380,23 @@ jobs:
 
       - name: Terraform Init
         run: |
-          cd .github/hosted-runner/amd64/
+          cd .github/hosted-runner/arm64/
           terraform init -input=false
 
       - name: Terraform plan destroy
         run: |
-          cd .github/hosted-runner/amd64/
+          cd .github/hosted-runner/arm64/
           terraform plan -destroy
         continue-on-error: true
 
       - name: Terraform destroy
         run: |
-          cd .github/hosted-runner/amd64/
+          cd .github/hosted-runner/arm64/
           terraform destroy -auto-approve
 
   removing-github-runners:
     needs:
-      - remove-amd64-runner
+      - remove-arm64-runner
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
     steps:
