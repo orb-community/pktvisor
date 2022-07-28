@@ -1,5 +1,5 @@
 resource "aws_security_group" "sg_SelfRunner_arm64" {
-  name        = "sg_pktvisor_SelfRunner_arm64"
+  name        = "sg_pktvisor_SelfRunner_arm64_${var.environment}"
   description = "Allow all outbound traffic and inbound 22/80"
   vpc_id      = "vpc-00dc7180d351353d1"
 
@@ -25,7 +25,7 @@ resource "aws_security_group" "sg_SelfRunner_arm64" {
   }
 
   tags = {
-    Name        = "SelfRunner_arm64"
+    Name        = "SelfRunner_arm64_${var.environment}"
     Provisioner = "terraform"
 
   }

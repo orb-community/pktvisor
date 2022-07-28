@@ -227,6 +227,8 @@ jobs:
           sed -i -e "s/AWSID/$ESCAPED_REPLACE_KEY_ID/g" vars.tf
           ESCAPED_REPLACE_ACCESS_KEY=$(printf '%s\n' "${{ secrets.AWS_SECRET_ACCESS_KEY }}" | sed -e 's/[\/&]/\\&/g')
           sed -i -e "s/AWSSECRET/$ESCAPED_REPLACE_ACCESS_KEY/g" vars.tf
+          ESCAPED_REPLACE_ENVIRONMENT=$(printf '%s\n' "${{ env.BRANCH_NAME }}" | sed -e 's/[\/&]/\\&/g')
+          sed -i -e "s/ENVIRONMENT/$ESCAPED_REPLACE_ENVIRONMENT/g" vars.tf
 
       - name: setup terraform
         uses: hashicorp/setup-terraform@v2
@@ -289,10 +291,6 @@ jobs:
         id: commit_hash
         run: |
           echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"    
-
-      - uses: actions/setup-python@v4
-        with:
-          python-version: '3.8'
 
       - name: Test
         continue-on-error: true
