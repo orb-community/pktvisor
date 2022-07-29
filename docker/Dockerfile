@@ -28,7 +28,7 @@ RUN \
 
 RUN \
     PKG_CONFIG_PATH=/local/lib/pkgconfig cmake -DCMAKE_BUILD_TYPE=Release /pktvisor-src && \
-    make all test -j 4
+    make all -j 4
 
 FROM golang:latest AS gobuild
 COPY golang/ /src/
