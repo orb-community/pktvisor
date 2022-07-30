@@ -333,6 +333,10 @@ jobs:
       - name: Unlocking pktvisor integration test state
         run: |
           curl -X POST -H "Content-Type: application/x-www-form-urlencoded" -u "${{ secrets.QA_AUTH_CREDENTIALS }}" -d "change=pktvisor-dev&state=inactive" https://qa.ops.orb.live/api.php
+
+      - name: Removing runner
+        run: |
+          ./config.sh remove --token ${{ needs.spinup-amd64-runner.outputs.runner_token }}
           
   upload-qa-artifact:
     needs: [ integration-tests ]
@@ -398,15 +402,3 @@ jobs:
         run: |
           cd .github/hosted-runner/amd64/
           terraform destroy -auto-approve
-
-  removing-github-runners:
-    needs:
-      - remove-amd64-runner
-    runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request'
-    steps:
-      - name: Remove runner from github
-        run: |
-          curl -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/etaques/pktvisor/actions/runners | jq '.runners[0].id' --raw-output > runner_id_0.txt
-          RUNNER_ID=$(cat runner_id_0.txt)
-          curl -X DELETE -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/etaques/pktvisor/actions/runners/$RUNNER_ID
