@@ -326,6 +326,7 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
     enum Filters {
         ExcludingRCode,
         OnlyRCode,
+        OnlyQtype,
         AnswerCount,
         OnlyQNameSuffix,
         DnstapMsgType,
@@ -340,6 +341,7 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
     uint16_t _f_rcode{0};
     uint64_t _f_answer_count{0};
     std::vector<std::string> _f_qnames;
+    std::vector<uint16_t> _f_qtypes;
     size_t _static_suffix_size{0};
     std::bitset<DNSTAP_TYPE_SIZE> _f_dnstap_types;
 
