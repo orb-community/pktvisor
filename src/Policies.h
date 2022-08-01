@@ -31,17 +31,15 @@ class Policy : public AbstractRunnableModule
 {
     static constexpr size_t HANDLERS_SEQUENCE_SIZE = 1;
 
-    Tap *_tap;
+    std::vector<Tap *> _taps;
+    std::vector<InputStream *> _input_streams;
     bool _modules_sequence;
-    InputStream *_input_stream;
     std::vector<AbstractRunnableModule *> _modules;
 
 public:
-    Policy(const std::string &name, Tap *tap, bool modules_sequence)
+    Policy(const std::string &name)
         : AbstractRunnableModule(name)
-        , _tap(tap)
-        , _modules_sequence(modules_sequence)
-        , _input_stream(nullptr)
+        , _modules_sequence(false)
     {
     }
 
@@ -50,14 +48,24 @@ public:
         return "policy";
     }
 
-    void set_input_stream(InputStream *input_stream)
+    void set_modules_sequence(bool sequence)
     {
-        _input_stream = input_stream;
+        _modules_sequence = sequence;
     }
 
-    const InputStream *input_stream() const
+    void add_tap(Tap *tap)
     {
-        return _input_stream;
+        _taps.push_back(tap);
+    }
+
+    void add_input_stream(InputStream *input_stream)
+    {
+        _input_streams.push_back(input_stream);
+    }
+
+    const std::vector<InputStream *> &input_stream() const
+    {
+        return _input_streams;
     }
 
     void add_module(AbstractRunnableModule *m)
@@ -98,6 +106,16 @@ class PolicyManager : public AbstractManager<Policy>
     unsigned int _default_num_periods{5};
     uint32_t _default_deep_sample_rate{100};
     std::map<std::string, std::unique_ptr<Configurable>> _global_handler_config;
+
+    struct HandlerData {
+        std::string name;
+        std::string type;
+        Config config;
+        Config filter;
+    };
+
+    void _validate_policy(const YAML::Node &policy_yaml, const std::string &policy_name, Policy *policy_ptr, Tap *tap = nullptr);
+    HandlerData _validate_handler(const YAML::const_iterator &hander_iterator, const std::string &policy_name, Config &window_config, bool sequence);
 
 public:
     PolicyManager(CoreRegistry *registry)

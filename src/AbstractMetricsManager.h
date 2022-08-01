@@ -226,7 +226,7 @@ private:
     // this protects changes to the bucket container, _not_ changes to the bucket itself
     mutable std::shared_mutex _bucket_mutex;
     std::deque<std::unique_ptr<MetricsBucketClass>> _metric_buckets;
-
+    std::string _tap_name;
     mutable std::shared_mutex _base_mutex;
 
     /**
@@ -356,6 +356,10 @@ public:
         }
         if (_deep_sample_rate < 1) {
             _deep_sample_rate = 1;
+        }
+
+        if (window_config->config_exists("_internal_tap_name")) {
+            _tap_name = window_config->config_get<std::string>("_internal_tap_name");
         }
 
         if (window_config->config_exists("num_periods")) {
@@ -502,6 +506,10 @@ public:
             std::stringstream err;
             err << "requested metrics period has not yet accumulated, current range is [0, " << _metric_buckets.size() - 1 << "]";
             throw PeriodException(err.str());
+        }
+
+        if (!_tap_name.empty() && add_labels.find("tap") == add_labels.end()) {
+            add_labels["tap"] = _tap_name;
         }
 
         _metric_buckets.at(period)->to_prometheus(out, add_labels);

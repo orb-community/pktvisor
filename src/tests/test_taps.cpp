@@ -20,10 +20,16 @@ visor:
         iface: en7
         number: 123
         boolean: true
+      tags:
+        number: 123
+        boolean: true
+        string: "value"
     wireless:
       input_type: pcap
       config:
         iface: en0
+      tags:
+        string: "value"
 )";
 
 auto tap_config_bad = R"(
@@ -78,5 +84,29 @@ TEST_CASE("Taps", "[taps]")
         CHECK(config_file["visor"]["taps"]);
         CHECK(config_file["visor"]["taps"].IsMap());
         CHECK_THROWS(registry.tap_manager()->load(config_file["visor"]["taps"], true));
+    }
+
+    SECTION("Json validation")
+    {
+        CoreRegistry registry;
+        registry.start(nullptr);
+        YAML::Node config_file = YAML::Load(tap_config);
+
+        CHECK(config_file["visor"]["taps"]);
+        CHECK(config_file["visor"]["taps"].IsMap());
+        CHECK_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
+        auto [tap, lock] = registry.tap_manager()->module_get_locked("wired");
+        CHECK(tap->name() == "wired");
+
+        json j;
+        tap->info_json(j);
+
+        CHECK(j["input_type"] == "pcap");
+        CHECK(j["config"]["boolean"] == true);
+        CHECK(j["config"]["number"] == 123);
+        CHECK(j["config"]["iface"] == "en7");
+        CHECK(j["tags"]["boolean"] == true);
+        CHECK(j["tags"]["number"] == 123);
+        CHECK(j["tags"]["string"] == "value");
     }
 }

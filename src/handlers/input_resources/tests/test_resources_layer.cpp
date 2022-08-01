@@ -22,7 +22,7 @@ TEST_CASE("Check resources for pcap input", "[pcap][resources]")
     resources_handler.start();
     stream.start();
     //add and remove policy
-    auto policy = std::make_unique<visor::Policy>("policy-test", nullptr, false);
+    auto policy = std::make_unique<visor::Policy>("policy-test");
     stream.add_policy(policy.get());
     stream.remove_policy(policy.get());
     resources_handler.stop();
