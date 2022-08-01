@@ -109,9 +109,10 @@ class PcapInputEventProxy : public visor::InputEventProxy
 {
 public:
     // a predicate takes same signature as UdpSignalCB, but returns the value needed for a particular predicate key, i.e. the second half of key in _udp_predicate_signals
-    typedef std::function<std::string(pcpp::Packet &, PacketDirection, pcpp::ProtocolType, pcpp::ProtocolType, timespec)> UdpPredicate;
-    // signature for udp callback, should be same as non predicate
-    typedef std::function<void(pcpp::Packet &, PacketDirection, pcpp::ProtocolType, pcpp::ProtocolType, timespec)> UdpSignalCB;
+    // predicate should not need context (function pointer)
+    typedef std::string (*UdpPredicate)(pcpp::Packet &, PacketDirection, pcpp::ProtocolType, uint32_t, timespec);
+    // signature for udp callback, should be same as non predicate. Signal needs context.
+    typedef std::function<void(pcpp::Packet &, PacketDirection, pcpp::ProtocolType, uint32_t , timespec)> UdpSignalCB;
 
     typedef sigslot::signal<pcpp::Packet &, PacketDirection, pcpp::ProtocolType, uint32_t, timespec> UdpPredicateSignal;
 
@@ -180,7 +181,6 @@ public:
             for (const auto &[key, predicate] : _udp_predicates) {
                 auto predicate_jump_key = predicate(payload, dir, l3, flowkey, stamp);
                 if (_udp_predicate_signals.find(predicate_jump_key) != _udp_predicate_signals.end()) {
-                    auto i = _udp_predicate_signals[predicate_jump_key].slot_count();
                     _udp_predicate_signals[predicate_jump_key](payload, dir, l3, flowkey, stamp);
                 }
             }
