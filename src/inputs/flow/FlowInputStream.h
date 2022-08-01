@@ -63,21 +63,21 @@ public:
         return policy_signal.slot_count() + heartbeat_signal.slot_count() + sflow_signal.slot_count() + netflow_signal.slot_count();
     }
 
-    void sflow_cb(const SFSample &sflow)
+    void sflow_cb(const SFSample &sflow, std::size_t size)
     {
-        sflow_signal(sflow);
+        sflow_signal(sflow, size);
     }
 
-    void netflow_cb(const NFSample &netflow)
+    void netflow_cb(const std::string &srcip, const NFSample &netflow, std::size_t size)
     {
-        netflow_signal(netflow);
+        netflow_signal(srcip, netflow, size);
     }
 
     // handler functionality
     // IF THIS changes, see consumer_count()
     // note: these are mutable because consumer_count() calls slot_count() which is not const (unclear if it could/should be)
-    mutable sigslot::signal<const SFSample &> sflow_signal;
-    mutable sigslot::signal<const NFSample &> netflow_signal;
+    mutable sigslot::signal<const SFSample &, std::size_t> sflow_signal;
+    mutable sigslot::signal<const std::string &, const NFSample &, std::size_t> netflow_signal;
 };
 
 }
