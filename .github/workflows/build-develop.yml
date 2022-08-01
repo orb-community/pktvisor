@@ -336,6 +336,7 @@ jobs:
 
       - name: Removing runner
         run: |
+          cd /actions_runner/
           ./config.sh remove --token ${{ needs.spinup-amd64-runner.outputs.runner_token }}
           
   upload-qa-artifact:
