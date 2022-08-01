@@ -253,6 +253,7 @@ class FlowStreamHandler final : public visor::StreamMetricsHandler<FlowMetricsMa
 
     sigslot::connection _sflow_connection;
     sigslot::connection _netflow_connection;
+    sigslot::connection _heartbeat_connection;
 
     std::vector<Ipv4Subnet> _IPv4_ips_list;
     std::vector<Ipv6Subnet> _IPv6_ips_list;
