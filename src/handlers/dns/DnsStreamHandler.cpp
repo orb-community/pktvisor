@@ -96,6 +96,12 @@ void DnsStreamHandler::start()
             _f_qnames.emplace_back(std::move(qname_ci));
         }
     }
+    if (config_exists("geoloc_notfound") && config_get<bool>("geoloc_notfound")) {
+        _f_enabled.set(Filters::GeoLocNotFound);
+    }
+    if (config_exists("asn_notfound") && config_get<bool>("asn_notfound")) {
+        _f_enabled.set(Filters::AsnNotFound);
+    }
     if (config_exists("dnstap_msg_type")) {
         auto type = config_get<std::string>("dnstap_msg_type");
         try {
@@ -349,17 +355,42 @@ inline bool DnsStreamHandler::_filtering(DnsLayer &payload, [[maybe_unused]] Pac
             goto will_filter;
         }
         std::string_view qname_ci = payload.getFirstQuery()->getNameLower();
-        for (const auto &fqn : _f_qnames) {
-            // if it matched, we know we are not filtering
-            if (ends_with(qname_ci, fqn)) {
-                _static_suffix_size = fqn.size();
-                goto will_not_filter;
-            }
+        if (std::none_of(_f_qnames.begin(), _f_qnames.end(), [this, qname_ci](std::string fqn) {
+                if (ends_with(qname_ci, fqn)) {
+                    _static_suffix_size = fqn.size();
+                    return true;
+                }
+                return false;
+            })) {
+            // checked the whole list and none of them matched: filter
+            goto will_filter;
         }
-        // checked the whole list and none of them matched: filter
-        goto will_filter;
     }
-will_not_filter:
+    if (_f_enabled[Filters::GeoLocNotFound]) {
+        if (!geo::GeoIP().enabled() || (payload.getDnsHeader()->queryOrResponse != QR::query) || !payload.getAdditionalRecordCount()) {
+            goto will_filter;
+        }
+        if (!payload.parseResources(false, true, true) || payload.getFirstAdditionalRecord() == nullptr) {
+            goto will_filter;
+        }
+        auto ecs = parse_additional_records_ecs(payload.getFirstAdditionalRecord());
+        if (!ecs || ecs->client_subnet.empty() || (geo::GeoIP().getGeoLocString(ecs->client_subnet.c_str()) != "Unknown")) {
+            goto will_filter;
+        }
+    }
+    if (_f_enabled[Filters::AsnNotFound]) {
+        if (!geo::GeoASN().enabled() || (payload.getDnsHeader()->queryOrResponse != QR::query) || !payload.getAdditionalRecordCount()) {
+            goto will_filter;
+        }
+        if (!payload.parseResources(false, true, true) || payload.getFirstAdditionalRecord() == nullptr) {
+            goto will_filter;
+        }
+        auto ecs = parse_additional_records_ecs(payload.getFirstAdditionalRecord());
+        if (!ecs || ecs->client_subnet.empty() || (geo::GeoASN().getASNString(ecs->client_subnet.c_str()) != "Unknown")) {
+            goto will_filter;
+        }
+    }
+
     return false;
 will_filter:
     _metrics->process_filtered(stamp);
@@ -415,6 +446,7 @@ void DnsMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
         _dns_qnameCard.merge(other._dns_qnameCard);
     }
     if (group_enabled(group::DnsMetrics::TopEcs)) {
+        group_enabled(group::DnsMetrics::Counters) ? _counters.queryECS += other._counters.queryECS : void();
         _dns_topGeoLocECS.merge(other._dns_topGeoLocECS);
         _dns_topASNECS.merge(other._dns_topASNECS);
         _dns_topQueryECS.merge(other._dns_topQueryECS);
@@ -487,6 +519,7 @@ void DnsMetricsBucket::to_json(json &j) const
     _dns_topUDPPort.to_json(j, [](const uint16_t &val) { return std::to_string(val); });
 
     if (group_enabled(group::DnsMetrics::TopEcs)) {
+        group_enabled(group::DnsMetrics::Counters) ? _counters.queryECS.to_json(j) : void();
         _dns_topGeoLocECS.to_json(j);
         _dns_topASNECS.to_json(j);
         _dns_topQueryECS.to_json(j);
@@ -522,7 +555,7 @@ void DnsMetricsBucket::process_dnstap(bool deep, const dnstap::Dnstap &payload)
 {
     std::unique_lock lock(_mutex);
 
-    pcpp::ProtocolType l3;
+    pcpp::ProtocolType l3{pcpp::UnknownProtocol};
     if (payload.message().has_socket_family()) {
         if (payload.message().socket_family() == dnstap::INET6) {
             l3 = pcpp::IPv6;
@@ -530,7 +563,7 @@ void DnsMetricsBucket::process_dnstap(bool deep, const dnstap::Dnstap &payload)
             l3 = pcpp::IPv4;
         }
     }
-    Protocol l4;
+    Protocol l4{PCPP_UNKOWN};
     if (payload.message().has_socket_protocol()) {
         l4 = static_cast<Protocol>(payload.message().socket_protocol());
     }
@@ -614,6 +647,8 @@ void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, pcpp::Pro
             break;
         case DNSTAP_DOH:
             ++_counters.DOH;
+            break;
+        case PCPP_UNKOWN:
             break;
         }
 
@@ -708,6 +743,9 @@ void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, pcpp::Pro
 
             auto ecs = parse_additional_records_ecs(additional);
             if (ecs && !(ecs->client_subnet.empty())) {
+                if (group_enabled(group::DnsMetrics::Counters)) {
+                    ++_counters.queryECS;
+                }
                 _dns_topQueryECS.update(ecs->client_subnet);
                 if (geo::GeoIP().enabled()) {
                     _dns_topGeoLocECS.update(geo::GeoIP().getGeoLocString(ecs->client_subnet.c_str()));
@@ -745,6 +783,8 @@ void DnsMetricsBucket::process_dns_layer(pcpp::ProtocolType l3, Protocol l4, QR 
             break;
         case DNSTAP_DOH:
             ++_counters.DOH;
+            break;
+        case PCPP_UNKOWN:
             break;
         }
 
@@ -850,6 +890,7 @@ void DnsMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap ad
     _dns_topUDPPort.to_prometheus(out, add_labels, [](const uint16_t &val) { return std::to_string(val); });
 
     if (group_enabled(group::DnsMetrics::TopEcs)) {
+        group_enabled(group::DnsMetrics::Counters) ? _counters.queryECS.to_prometheus(out, add_labels) : void();
         _dns_topGeoLocECS.to_prometheus(out, add_labels);
         _dns_topASNECS.to_prometheus(out, add_labels);
         _dns_topQueryECS.to_prometheus(out, add_labels);

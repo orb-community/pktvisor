@@ -43,7 +43,8 @@ enum Protocol : uint64_t {
     DNSTAP_DOT = dnstap::SocketProtocol::DOT,
     DNSTAP_DOH = dnstap::SocketProtocol::DOH,
     PCPP_TCP = pcpp::TCP,
-    PCPP_UDP = pcpp::UDP
+    PCPP_UDP = pcpp::UDP,
+    PCPP_UNKOWN = pcpp::UnknownProtocol
 };
 
 class DnsMetricsBucket final : public visor::AbstractMetricsBucket
@@ -93,6 +94,7 @@ protected:
         Counter NOERROR;
         Counter NODATA;
         Counter filtered;
+        Counter queryECS;
         counters()
             : xacts_total("dns", {"xact", "counts", "total"}, "Total DNS transactions (query/reply pairs)")
             , xacts_in("dns", {"xact", "in", "total"}, "Total ingress DNS transactions (host is server)")
@@ -112,6 +114,7 @@ protected:
             , NOERROR("dns", {"wire_packets", "noerror"}, "Total DNS wire packets flagged as reply with return code NOERROR (ingress and egress)")
             , NODATA("dns", {"wire_packets", "nodata"}, "Total DNS wire packets flagged as reply with return code NOERROR and no answer section data (ingress and egress)")
             , filtered("dns", {"wire_packets", "filtered"}, "Total DNS wire packets seen that did not match the configured filter(s) (if any)")
+            , queryECS("dns", {"wire_packets", "query_ecs"}, "Total of queries that have EDNS Client Subnet (ECS) field set")
         {
         }
     };
@@ -329,6 +332,8 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
         AnswerCount,
         OnlyQNameSuffix,
         DnstapMsgType,
+        GeoLocNotFound,
+        AsnNotFound,
         FiltersMAX
     };
     std::bitset<Filters::FiltersMAX> _f_enabled;
