@@ -128,6 +128,13 @@ jobs:
 
       - name: Debug ref tag
         run: echo ${{ env.REF_TAG }}
+        
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Login to Docker Hub
         uses: docker/login-action@v1
@@ -145,6 +152,7 @@ jobs:
       - name: Build + push - pktvisor (multi-arch)
         env:
           IMAGE_NAME: ns1labs/pktvisor
+          IMAGE_NAME2: ghcr.io/etaques/pktvisor
         uses: docker/build-push-action@v3
         with:
           builder: ${{ steps.buildx.outputs.name }}
@@ -152,7 +160,7 @@ jobs:
           file: ./docker/Dockerfile
           platforms: linux/amd64
           push: false
-          tags: ${{ env.IMAGE_NAME }}:${{ env.VERSION }} , ${{ env.IMAGE_NAME }}:${{ env.REF_TAG }}
+          tags: ${{ env.IMAGE_NAME }}:${{ env.VERSION }} , ${{ env.IMAGE_NAME }}:${{ env.REF_TAG }} , ${{ env.IMAGE_NAME2 }}:${{ env.REF_TAG }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -256,8 +264,16 @@ jobs:
 
       - name: Terraform output
         run: |
-          cd .github/hosted-runner/amd64/
-          terraform output -raw ip
+          cd .github/workflows/hosted-runner/
+          terraform output -raw ip > ip.txt
+          
+      - name: Persist IP to workspace
+        uses: actions/upload-artifact@v2
+        with:
+          name: ip
+          path: |
+            .github/workflows/hosted-runner/ip.txt
+          retention-days: 1
 
       - name: Persist to workspace
         uses: actions/upload-artifact@v2
@@ -334,10 +350,6 @@ jobs:
         run: |
           curl -X POST -H "Content-Type: application/x-www-form-urlencoded" -u "${{ secrets.QA_AUTH_CREDENTIALS }}" -d "change=pktvisor-dev&state=inactive" https://qa.ops.orb.live/api.php
 
-      - name: Removing runner
-        run: |
-          cd /actions_runner/
-          ./config.sh remove --token ${{ needs.spinup-amd64-runner.outputs.runner_token }}
           
   upload-qa-artifact:
     needs: [ integration-tests ]
@@ -361,6 +373,34 @@ jobs:
           port: 2022
           source: "./output/*"
           target: "/usr/share/nginx/html/pktvisor/develop/${{ needs.integration-tests.outputs.commit_hash }}/pktvisor/python-test"
+          
+  remove-github-runner-amd64:
+    needs: [ spinup-amd64-runner , upload-qa-artifact ]
+    runs-on: ubuntu-latest
+    if: ${{ needs.pre-test.outputs.prd == 'true' }}
+    steps:
+      - name: Attach to workspace
+        uses: actions/download-artifact@v2
+        with:
+          name: ip
+
+      - name: Get runner ip
+        id: address
+        run: |
+          ls -lha
+          echo "::set-output name=ip::$(cat ip.txt)"
+
+      - name: Executing remote ssh commands on runner
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ steps.address.outputs.ip }}
+          username: ubuntu
+          key: ${{ secrets.RUNNER_SSH_KEY }}
+          port: 22
+          script: |
+               cd /actions-runner
+               sudo chmod 777 . -R
+               ./config.sh remove --token ${{ needs.spinup-amd64-runner.outputs.runner_token }}
 
   remove-amd64-runner:
     needs: [ integration-tests ]
