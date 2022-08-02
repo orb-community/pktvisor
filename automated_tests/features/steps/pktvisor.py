@@ -8,6 +8,7 @@ from hamcrest import *
 import os
 import json
 from deepdiff import DeepDiff
+from metrics import welcome_from_dict, welcome_to_dict
 
 configs = TestConfig.configs()
 
@@ -120,10 +121,10 @@ def bucket_check(context, amount_of_buckets):
 
 @step("metrics must be correctly generated as per the {schema_file} schema")
 def check_metrics(context, schema_file):
-    pkt_api_get_endpoints = ['policies/default/metrics/window/2',
-                             'policies/default/metrics/window/3',
-                             'policies/default/metrics/window/4',
-                             'policies/default/metrics/window/5']
+    pkt_api_get_endpoints = ['policies/__all/metrics/window/2',
+                             'policies/__all/metrics/window/3',
+                             'policies/__all/metrics/window/4',
+                             'policies/__all/metrics/window/5']
     event = threading.Event()
     event.wait(1)
     schema_file_path = f"{context.directory_of_network_data_files}schemas/{schema_file}"
@@ -153,7 +154,9 @@ def remove_all_pktvisors_containers_with_test_prefix(context):
 
 @threading_wait_until
 def check_metrics_per_endpoint(endpoint, pkt_port, path_to_schema_file, event=None):
+    threading.Event().wait(10)
     response = make_get_request(endpoint, pkt_port)
+    result = welcome_from_dict(response.json())
     is_json_valid = validate_json(response.json(), path_to_schema_file)
     if is_json_valid is True:
         event.set()

@@ -150,17 +150,14 @@ class Policies:
                    tap: default
                    input_type: pcap
                  handlers:
-                    window_config:
-                      num_periods: 5
-                      deep_sample_rate: 100
                     modules:
-                        net:
+                        default_net:
                           type: net
-                        dhcp:
+                        default_dhcp:
                           type: dhcp
-                        dns:
+                        default_dns:
                           type: dns
-                        pcap_stats:
+                        default_pcap_stats:
                           type: pcap
             """
         return policy_yaml
@@ -178,12 +175,9 @@ class Policies:
                    tap: default
                    input_type: pcap
                  handlers:
-                    window_config:
-                      num_periods: 5
-                      deep_sample_rate: 100
                     modules:
-                        net:
-                          type: net
+                      default_net:
+                        type: net
             """
         return policy_yaml
 
@@ -200,9 +194,6 @@ class Policies:
                    tap: default
                    input_type: pcap
                  handlers:
-                    window_config:
-                      num_periods: 5
-                      deep_sample_rate: 100
                     modules:
                         dhcp:
                           type: dhcp
@@ -222,9 +213,6 @@ class Policies:
                    tap: default
                    input_type: pcap
                  handlers:
-                    window_config:
-                      num_periods: 5
-                      deep_sample_rate: 100
                     modules:
                         dns:
                           type: dns
@@ -244,9 +232,6 @@ class Policies:
                    tap: default
                    input_type: pcap
                  handlers:
-                    window_config:
-                      num_periods: 5
-                      deep_sample_rate: 100
                     modules:
                         pcap_stats:
                           type: pcap
