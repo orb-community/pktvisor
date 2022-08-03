@@ -472,7 +472,7 @@ jobs:
           sed -i -e "s/AWSID/$ESCAPED_REPLACE_KEY_ID/g" vars.tf
           ESCAPED_REPLACE_ACCESS_KEY=$(printf '%s\n' "${{ secrets.AWS_SECRET_ACCESS_KEY }}" | sed -e 's/[\/&]/\\&/g')
           sed -i -e "s/AWSSECRET/$ESCAPED_REPLACE_ACCESS_KEY/g" vars.tf
-          ESCAPED_REPLACE_ENVIRONMENT=$(printf '%s\n' "${{ needs.prebuild-package.outputs.branch_name }}-package" | sed -e 's/[\/&]/\\&/g')
+          ESCAPED_REPLACE_ENVIRONMENT=$(printf '%s\n' "develop-package" | sed -e 's/[\/&]/\\&/g')
           sed -i -e "s/ENVIRONMENT/$ESCAPED_REPLACE_ENVIRONMENT/g" vars.tf
 
       - name: setup terraform
