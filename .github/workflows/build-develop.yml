@@ -159,7 +159,7 @@ jobs:
           context: .
           file: ./docker/Dockerfile
           platforms: linux/amd64
-          push: false
+          push: true
           tags: ${{ env.IMAGE_NAME }}:${{ env.VERSION }} , ${{ env.IMAGE_NAME }}:${{ env.REF_TAG }} , ${{ env.IMAGE_NAME2 }}:amd64
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -539,19 +539,12 @@ jobs:
       - name: Debug version
         run: echo ${{ env.VERSION }}
 
-      - name: Generate ref tag (master)
-        if: ${{ env.BRANCH_NAME == 'master' || env.BRANCH_NAME == 'multi-arch-images' }}
+      - name: Generate ref tag (develop)
+        if: ${{ env.BRANCH_NAME == 'develop' || env.BRANCH_NAME == 'multi-arch-images' }}
         run: |
-          echo "REF_TAG=latest" >> $GITHUB_ENV
+          echo "REF_TAG=latest-develop" >> $GITHUB_ENV
           echo "PRERELEASE=false" >> $GITHUB_ENV
           echo "DRAFT=true" >> $GITHUB_ENV
-
-      - name: Generate ref tag (release candidate)
-        if: ${{ env.BRANCH_NAME == 'release' }}
-        run: |
-          echo "REF_TAG=latest-rc" >> $GITHUB_ENV
-          echo "PRERELEASE=true" >> $GITHUB_ENV
-          echo "DRAFT=false" >> $GITHUB_ENV
 
       - name: Debug ref tag
         run: echo ${{ env.REF_TAG }}
@@ -669,9 +662,8 @@ jobs:
 
       - name: Create docker manifest
         run: |
-          docker manifest create ghcr.io/etaques/pktvisor:latest \
+          docker manifest create ghcr.io/etaques/pktvisor:latest-develop \
           ghcr.io/etaques/pktvisor:amd64 \
-          ghcr.io/etaques/pktvisor:armv7 \
           ghcr.io/etaques/pktvisor:arm64
 
       - name: Push manifest to ghcr.io
@@ -691,7 +683,7 @@ jobs:
         run: |
           sudo skopeo copy \
           --all \
-          docker://ghcr.io/etaques/pktvisor:latest \
-          docker://docker.io/ns1labs/pktvisor:latest
+          docker://ghcr.io/etaques/pktvisor:latest-develop \
+          docker://docker.io/ns1labs/pktvisor:latest-develop
 
 
