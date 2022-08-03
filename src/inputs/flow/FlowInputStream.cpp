@@ -4,6 +4,8 @@
 
 #include "FlowInputStream.h"
 #include "FlowException.h"
+#include <IPv4Layer.h>
+#include <IPv6Layer.h>
 #include <Packet.h>
 #include <PcapFileDevice.h>
 #include <UdpLayer.h>
@@ -75,24 +77,30 @@ void FlowInputStream::_read_from_pcap_file()
                     read_sflow_datagram(&sample);
                     std::shared_lock lock(_input_mutex);
                     for (auto &proxy : _event_proxies) {
-                        static_cast<FlowInputEventProxy *>(proxy.get())->sflow_cb(sample);
+                        static_cast<FlowInputEventProxy *>(proxy.get())->sflow_cb(sample, rawPacket.getRawDataLen());
                     }
                 } catch (const std::exception &e) {
                     _logger->error(e.what());
                 }
             }
         } else if (_flow_type == Type::NETFLOW) {
-            pcpp::Packet sflow_pkt(&rawPacket);
-            if (sflow_pkt.isPacketOfType(pcpp::UDP)) {
-                pcpp::UdpLayer *udpLayer = sflow_pkt.getLayerOfType<pcpp::UdpLayer>();
+            pcpp::Packet netflow_pkt(&rawPacket);
+            if (netflow_pkt.isPacketOfType(pcpp::UDP)) {
+                pcpp::UdpLayer *udpLayer = netflow_pkt.getLayerOfType<pcpp::UdpLayer>();
                 NFSample sample;
                 std::memset(&sample, 0, sizeof(sample));
                 sample.raw_sample = udpLayer->getLayerPayload();
                 sample.raw_sample_len = udpLayer->getLayerPayloadSize();
                 if (process_netflow_packet(&sample)) {
+                    std::string src_ip;
+                    if (auto IP4layer = netflow_pkt.getLayerOfType<pcpp::IPv4Layer>(); IP4layer) {
+                        src_ip = IP4layer->getSrcIPv4Address().toString();
+                    } else if (auto IP6layer = netflow_pkt.getLayerOfType<pcpp::IPv6Layer>(); IP6layer) {
+                        src_ip = IP6layer->getSrcIPv6Address().toString();
+                    }
                     std::shared_lock lock(_input_mutex);
                     for (auto &proxy : _event_proxies) {
-                        static_cast<FlowInputEventProxy *>(proxy.get())->netflow_cb(sample);
+                        static_cast<FlowInputEventProxy *>(proxy.get())->netflow_cb(src_ip, sample, rawPacket.getRawDataLen());
                     }
                 } else {
                     _logger->error("invalid netflow packet");
@@ -177,7 +185,7 @@ void FlowInputStream::_create_frame_stream_udp_socket()
                 read_sflow_datagram(&sample);
                 std::shared_lock lock(_input_mutex);
                 for (auto &proxy : _event_proxies) {
-                    static_cast<FlowInputEventProxy *>(proxy.get())->sflow_cb(sample);
+                    static_cast<FlowInputEventProxy *>(proxy.get())->sflow_cb(sample, event.length);
                 }
             } catch (const std::exception &e) {
                 ++_error_count;
@@ -192,7 +200,7 @@ void FlowInputStream::_create_frame_stream_udp_socket()
             if (process_netflow_packet(&sample)) {
                 std::shared_lock lock(_input_mutex);
                 for (auto &proxy : _event_proxies) {
-                    static_cast<FlowInputEventProxy *>(proxy.get())->netflow_cb(sample);
+                    static_cast<FlowInputEventProxy *>(proxy.get())->netflow_cb(event.sender.ip, sample, event.length);
                 }
             } else {
                 ++_error_count;

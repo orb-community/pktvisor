@@ -151,13 +151,13 @@ class Policies:
                    input_type: pcap
                  handlers:
                     modules:
-                        default_net:
+                        default-net:
                           type: net
-                        default_dhcp:
+                        default-dhcp:
                           type: dhcp
-                        default_dns:
+                        default-dns:
                           type: dns
-                        default_pcap_stats:
+                        default-pcap_stats:
                           type: pcap
             """
         return policy_yaml
@@ -176,7 +176,7 @@ class Policies:
                    input_type: pcap
                  handlers:
                     modules:
-                      default_net:
+                      default-net:
                         type: net
             """
         return policy_yaml
@@ -195,7 +195,7 @@ class Policies:
                    input_type: pcap
                  handlers:
                     modules:
-                        dhcp:
+                        default-dhcp:
                           type: dhcp
             """
         return policy_yaml
@@ -214,7 +214,7 @@ class Policies:
                    input_type: pcap
                  handlers:
                     modules:
-                        dns:
+                        default-dns:
                           type: dns
             """
         return policy_yaml
@@ -233,7 +233,7 @@ class Policies:
                    input_type: pcap
                  handlers:
                     modules:
-                        pcap_stats:
+                        default-pcap_stats:
                           type: pcap
             """
         return policy_yaml

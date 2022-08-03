@@ -96,7 +96,7 @@ void InputResourcesStreamHandler::process_policies_cb(const Policy *policy, Acti
     _metrics->process_policies(policies_number, handlers_count);
 }
 
-void InputResourcesStreamHandler::process_sflow_cb([[maybe_unused]] const SFSample &)
+void InputResourcesStreamHandler::process_sflow_cb([[maybe_unused]] const SFSample &, [[maybe_unused]] size_t)
 {
     if (difftime(time(NULL), _timer) >= MEASURE_INTERVAL) {
         _timer = time(NULL);
@@ -104,7 +104,7 @@ void InputResourcesStreamHandler::process_sflow_cb([[maybe_unused]] const SFSamp
     }
 }
 
-void InputResourcesStreamHandler::process_netflow_cb([[maybe_unused]] const NFSample &)
+void InputResourcesStreamHandler::process_netflow_cb([[maybe_unused]] const std::string &, [[maybe_unused]] const NFSample &, [[maybe_unused]] size_t)
 {
     if (difftime(time(NULL), _timer) >= MEASURE_INTERVAL) {
         _timer = time(NULL);

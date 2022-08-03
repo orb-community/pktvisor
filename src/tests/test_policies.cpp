@@ -95,6 +95,94 @@ visor:
             type: net
 )";
 
+auto policies_config_tap_selector_all = R"(
+version: "1.0"
+
+visor:
+  taps:
+    anycast1:
+      input_type: mock
+      config:
+        iface: eth0
+      tags:
+        virtual: true
+        vhost: 1
+        key: value
+    anycast2:
+      input_type: mock
+      config:
+        iface: eth0
+      tags:
+        virtual: true
+        vhost: 2
+        key: value
+  policies:
+   default_view:
+     kind: collection
+     input:
+       tap_selector:
+         all:
+           virtual: true
+           vhost: 1
+           key: value
+       input_type: mock
+       config:
+         sample: value
+     handlers:
+        window_config:
+          num_periods: 5
+          deep_sample_rate: 100
+        modules:
+          default_dns:
+            type: dns
+          default_net:
+            type: net
+)";
+
+auto policies_config_tap_selector_any = R"(
+version: "1.0"
+
+visor:
+  taps:
+    anycast1:
+      input_type: mock
+      config:
+        iface: eth0
+      tags:
+        virtual: true
+        vhost: 1
+        key: value
+    anycast2:
+      input_type: mock
+      config:
+        iface: eth0
+      tags:
+        virtual: true
+        vhost: 2
+        key: value
+  policies:
+   default_view:
+     kind: collection
+     input:
+       tap_selector:
+         any:
+           virtual: true
+           vhost: 1
+           key: value
+       input_type: mock
+       config:
+         sample: value
+     handlers:
+        window_config:
+          num_periods: 5
+          deep_sample_rate: 100
+        modules:
+          default_dns:
+            type: dns
+          default_net:
+            type: net
+)";
+
 auto policies_config_same_input = R"(
 version: "1.0"
 
@@ -140,6 +228,10 @@ visor:
       input:
         tap: nonexist
         input_type: mock
+      handlers:
+        modules:
+          net:
+            type: net
 )";
 
 auto policies_config_bad3 = R"(
@@ -452,6 +544,104 @@ visor:
             type: net
 )";
 
+auto policies_config_tap_selector_bad1 = R"(
+version: "1.0"
+
+visor:
+  taps:
+    anycast1:
+      input_type: mock
+      config:
+        iface: eth0
+      tags:
+        virtual: true
+        vhost: "1"
+        key: value
+    anycast2:
+      input_type: mock
+      config:
+        iface: eth0
+      tags:
+        virtual: true
+        vhost: "2"
+        key: value
+  policies:
+   default_view:
+     kind: collection
+     input:
+       tap_selector:
+         all:
+           virtual: true
+           vhost: "1"
+           non_existent_key: value
+       input_type: mock
+)";
+
+auto policies_config_tap_selector_bad2 = R"(
+version: "1.0"
+
+visor:
+  taps:
+    anycast1:
+      input_type: mock
+      config:
+        iface: eth0
+      tags:
+        virtual: true
+        vhost: 1
+        key: value
+    anycast2:
+      input_type: mock
+      config:
+        iface: eth0
+      tags:
+        virtual: true
+        vhost: 2
+        key: value
+  policies:
+   default_view:
+     kind: collection
+     input:
+       tap_selector:
+         any:
+           virtual:
+             vhost: 1
+             non_existent_key: value
+       input_type: mock
+)";
+
+auto policies_config_tap_selector_bad3 = R"(
+version: "1.0"
+
+visor:
+  taps:
+    anycast1:
+      input_type: mock
+      config:
+        iface: eth0
+      tags:
+        virtual: true
+        vhost: 1
+        key: value
+    anycast2:
+      input_type: mock
+      config:
+        iface: eth0
+      tags:
+        virtual: true
+        vhost: 2
+        key: value
+  policies:
+   default_view:
+     kind: collection
+     input:
+       tap: anycast1
+       tap_selector:
+         any:
+           virtual: true
+       input_type: mock
+)";
+
 TEST_CASE("Policies", "[policies]")
 {
 
@@ -471,17 +661,17 @@ TEST_CASE("Policies", "[policies]")
         REQUIRE(registry.policy_manager()->module_exists("default_view"));
         auto [policy, lock] = registry.policy_manager()->module_get_locked("default_view");
         CHECK(policy->name() == "default_view");
-        CHECK(policy->input_stream()->name().find("anycast-") != std::string::npos);
-        CHECK(policy->input_stream()->config_get<std::string>("bpf") == "tcp or udp"); // TODO this will move to filter member variable
-        CHECK(policy->input_stream()->config_get<std::string>("sample") == "value");
-        CHECK(policy->modules()[0]->name() == "default_view-default_net");
-        CHECK(policy->modules()[1]->name() == "default_view-default_dns");
+        CHECK(policy->input_stream().back()->name().find("anycast-") != std::string::npos);
+        CHECK(policy->input_stream().back()->config_get<std::string>("bpf") == "tcp or udp"); // TODO this will move to filter member variable
+        CHECK(policy->input_stream().back()->config_get<std::string>("sample") == "value");
+        CHECK(policy->modules()[0]->name() == "default_view-anycast-default_net");
+        CHECK(policy->modules()[1]->name() == "default_view-anycast-default_dns");
         CHECK(policy->modules()[1]->config_get<uint64_t>("only_rcode") == 2);
-        CHECK(policy->modules()[2]->name() == "default_view-special_domain");
+        CHECK(policy->modules()[2]->name() == "default_view-anycast-special_domain");
         CHECK(policy->modules()[2]->config_get<Configurable::StringList>("only_qname_suffix")[0] == ".google.com");
         CHECK(policy->modules()[2]->config_get<uint64_t>("only_rcode") == 2);
         // TODO check window config settings made it through
-        CHECK(policy->input_stream()->running());
+        CHECK(policy->input_stream().back()->running());
         CHECK(policy->modules()[0]->running());
         CHECK(policy->modules()[1]->running());
         CHECK(policy->modules()[2]->running());
@@ -500,10 +690,10 @@ TEST_CASE("Policies", "[policies]")
         REQUIRE(registry.policy_manager()->module_exists("default_view"));
         auto [policy, lock] = registry.policy_manager()->module_get_locked("default_view");
         CHECK(policy->name() == "default_view");
-        CHECK(policy->input_stream()->name().find("anycast-") != std::string::npos);
-        CHECK(policy->modules()[0]->name() == "default_view-default_dns");
-        CHECK(policy->modules()[1]->name() == "default_view-default_net");
-        CHECK(policy->input_stream()->running());
+        CHECK(policy->input_stream().back()->name().find("anycast-") != std::string::npos);
+        CHECK(policy->modules()[0]->name() == "default_view-anycast-default_dns");
+        CHECK(policy->modules()[1]->name() == "default_view-anycast-default_net");
+        CHECK(policy->input_stream().back()->running());
         CHECK(policy->modules()[0]->running());
         CHECK(policy->modules()[1]->running());
     }
@@ -523,6 +713,33 @@ TEST_CASE("Policies", "[policies]")
         REQUIRE(registry.policy_manager()->module_exists("default_view"));
         auto [policy, lock] = registry.policy_manager()->module_get_locked("default_view");
         CHECK(policy->name() == "default_view");
+    }
+
+    SECTION("Good Config tap selector all")
+    {
+        CoreRegistry registry;
+        registry.start(nullptr);
+        YAML::Node config_file = YAML::Load(policies_config_tap_selector_all);
+        CHECK(config_file["visor"]["policies"]);
+        CHECK(config_file["visor"]["policies"].IsMap());
+        REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
+        REQUIRE_NOTHROW(registry.policy_manager()->load(config_file["visor"]["policies"]));
+
+        REQUIRE(registry.policy_manager()->module_exists("default_view"));
+        REQUIRE_FALSE(registry.policy_manager()->module_exists("default_view_anycast2"));
+    }
+
+    SECTION("Good Config tap selector any")
+    {
+        CoreRegistry registry;
+        registry.start(nullptr);
+        YAML::Node config_file = YAML::Load(policies_config_tap_selector_any);
+        CHECK(config_file["visor"]["policies"]);
+        CHECK(config_file["visor"]["policies"].IsMap());
+        REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
+        REQUIRE_NOTHROW(registry.policy_manager()->load(config_file["visor"]["policies"]));
+
+        REQUIRE(registry.policy_manager()->module_exists("default_view"));
     }
 
     SECTION("Bad Config")
@@ -668,7 +885,7 @@ TEST_CASE("Policies", "[policies]")
         YAML::Node config_file = YAML::Load(policies_config_hseq_bad1);
 
         REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
-        REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["policies"]), "DnsStreamHandler: unsupported upstream chained stream handler default_view-default_net");
+        REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["policies"]), "DnsStreamHandler: unsupported upstream chained stream handler default_view-anycast-default_net");
     }
 
     SECTION("Bad Config: invalid handler modules YAML type")
@@ -676,6 +893,36 @@ TEST_CASE("Policies", "[policies]")
         CoreRegistry registry;
         registry.start(nullptr);
         REQUIRE_THROWS_WITH(YAML::Load(policies_config_hseq_bad2), "yaml-cpp: error at line 23, column 11: end of map not found");
+    }
+
+    SECTION("Bad Config: invalid matching tags for tap selector")
+    {
+        CoreRegistry registry;
+        registry.start(nullptr);
+        YAML::Node config_file = YAML::Load(policies_config_tap_selector_bad1);
+
+        REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
+        REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["policies"]), "no tap match found for specified 'input.tap_selector' tags");
+    }
+
+    SECTION("Bad Config: invalid matching tags for tap selector")
+    {
+        CoreRegistry registry;
+        registry.start(nullptr);
+        YAML::Node config_file = YAML::Load(policies_config_tap_selector_bad2);
+
+        REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
+        REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["policies"]), "tag key 'virtual' must have scalar value");
+    }
+
+    SECTION("Bad Config: both tap and tap selector")
+    {
+        CoreRegistry registry;
+        registry.start(nullptr);
+        YAML::Node config_file = YAML::Load(policies_config_tap_selector_bad3);
+
+        REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
+        REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["policies"]), "input can have only key 'input.tap' or key 'input.tap_selector'");
     }
 
     SECTION("Roll Back")
@@ -694,9 +941,9 @@ TEST_CASE("Policies", "[policies]")
         Config filter;
         auto input_stream = registry.input_plugins()["mock"]->instantiate("mymock", &config, &filter);
         auto stream_proxy = input_stream->add_event_proxy(filter);
-        auto mod = registry.handler_plugins()["net"]->instantiate("default_view-default_net", stream_proxy, &config, &filter);
+        auto mod = registry.handler_plugins()["net"]->instantiate("default_view-anycast-default_net", stream_proxy, &config, &filter);
         registry.handler_manager()->module_add(std::move(mod));
-        REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["policies"]), "policy [default_view-default_net] creation failed (handler: default_view): module name 'default_view-default_net' already exists");
+        REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["policies"]), "policy [default_view-anycast-default_net] creation failed (handler: default_view): module name 'default_view-anycast-default_net' already exists");
 
         auto input_node = config_file["visor"]["policies"]["default_view"]["input"];
         Config input_config;
@@ -722,12 +969,12 @@ TEST_CASE("Policies", "[policies]")
         REQUIRE(registry.policy_manager()->module_exists("default_view"));
         auto [policy, lock] = registry.policy_manager()->module_get_locked("default_view");
         CHECK(policy->name() == "default_view");
-        CHECK(policy->input_stream()->running());
+        CHECK(policy->input_stream().back()->running());
         CHECK(policy->modules()[0]->running());
         CHECK(policy->modules()[1]->running());
         CHECK(policy->modules()[2]->running());
         policy->stop();
-        CHECK(policy->input_stream()->running());
+        CHECK(policy->input_stream().back()->running());
         CHECK(!policy->modules()[0]->running());
         CHECK(!policy->modules()[1]->running());
         CHECK(!policy->modules()[2]->running());
@@ -750,7 +997,7 @@ TEST_CASE("Policies", "[policies]")
         REQUIRE(registry.policy_manager()->module_exists("default_view"));
         auto [policy, lock] = registry.policy_manager()->module_get_locked("default_view");
         CHECK(policy->name() == "default_view");
-        CHECK(policy->input_stream()->running());
+        CHECK(policy->input_stream().back()->running());
         CHECK(policy->modules()[0]->running());
         CHECK(policy->modules()[1]->running());
         CHECK(policy->modules()[2]->running());
@@ -762,7 +1009,7 @@ TEST_CASE("Policies", "[policies]")
         REQUIRE(registry.policy_manager()->module_exists("default_view"));
         auto [new_policy, new_lock] = registry.policy_manager()->module_get_locked("default_view");
         CHECK(new_policy->name() == "default_view");
-        CHECK(new_policy->input_stream()->running());
+        CHECK(new_policy->input_stream().back()->running());
         CHECK(new_policy->modules()[0]->running());
         CHECK(new_policy->modules()[1]->running());
         CHECK(new_policy->modules()[2]->running());
@@ -785,7 +1032,7 @@ TEST_CASE("Policies", "[policies]")
         REQUIRE(registry.policy_manager()->module_exists("default_view"));
         auto [policy, lock] = registry.policy_manager()->module_get_locked("default_view");
         CHECK(policy->name() == "default_view");
-        CHECK(policy->input_stream()->running());
+        CHECK(policy->input_stream().back()->running());
         CHECK(policy->modules()[0]->running());
         CHECK(policy->modules()[1]->running());
         lock.unlock();
@@ -796,7 +1043,7 @@ TEST_CASE("Policies", "[policies]")
         REQUIRE(registry.policy_manager()->module_exists("default_view"));
         auto [new_policy, new_lock] = registry.policy_manager()->module_get_locked("default_view");
         CHECK(new_policy->name() == "default_view");
-        CHECK(new_policy->input_stream()->running());
+        CHECK(new_policy->input_stream().back()->running());
         CHECK(new_policy->modules()[0]->running());
         CHECK(new_policy->modules()[1]->running());
         new_lock.unlock();
@@ -818,7 +1065,7 @@ TEST_CASE("Policies", "[policies]")
         REQUIRE(registry.policy_manager()->module_exists("default_view"));
         auto [policy, lock] = registry.policy_manager()->module_get_locked("default_view");
         CHECK(policy->name() == "default_view");
-        CHECK(policy->input_stream()->name().find("anycast-") != std::string::npos);
+        CHECK(policy->input_stream().back()->name().find("anycast-") != std::string::npos);
         lock.unlock();
 
         YAML::Node config_file2 = YAML::Load(policies_config_same_input);
@@ -830,7 +1077,7 @@ TEST_CASE("Policies", "[policies]")
         REQUIRE(registry.policy_manager()->module_exists("same_input"));
         auto [policy2, lock2] = registry.policy_manager()->module_get_locked("same_input");
         CHECK(policy2->name() == "same_input");
-        CHECK(policy2->input_stream()->name() == policy->input_stream()->name());
+        CHECK(policy2->input_stream().back()->name() == policy->input_stream().back()->name());
         lock2.unlock();
     }
 }

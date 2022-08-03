@@ -1,11 +1,3 @@
-# To use this code, make sure you
-#
-#     import json
-#
-# and then, to convert JSON from a string, do
-#
-#     result = welcome_from_dict(json.loads(json_string))
-import threading
 from typing import Any, Optional, List, Dict, TypeVar, Type, cast, Callable
 
 T = TypeVar("T")
@@ -130,7 +122,6 @@ class Quantiles:
     @staticmethod
     def from_dict(obj: Any) -> 'Quantiles':
         assert isinstance(obj, dict)
-        live = from_union([from_int, from_none], obj.get("live"))
         p50 = from_float(obj.get("p50"))
         p90 = from_float(obj.get("p90"))
         p95 = from_float(obj.get("p95"))
@@ -690,48 +681,19 @@ class DefaultPcapStats:
         return result
 
 
-class Default:
-    default_dhcp: DefaultDHCP
-    default_dns: DefaultDNS
-    default_net: DefaultNet
-    default_pcap_stats: DefaultPcapStats
-
-    def __init__(self, default_dhcp: DefaultDHCP, default_dns: DefaultDNS, default_net: DefaultNet,
-                 default_pcap_stats: DefaultPcapStats) -> None:
-        self.default_dhcp = default_dhcp
-        self.default_dns = default_dns
-        self.default_net = default_net
-        self.default_pcap_stats = default_pcap_stats
-
-    @staticmethod
-    def from_dict(obj: Any) -> 'Default':
-        assert isinstance(obj, dict)
-        default_dhcp = DefaultDHCP.from_dict(obj.get("default-default-dhcp"))
-        default_dns = DefaultDNS.from_dict(obj.get("default-default-dns"))
-        default_net = DefaultNet.from_dict(obj.get("default-default-net"))
-        default_pcap_stats = DefaultPcapStats.from_dict(obj.get("default-default-pcap_stats"))
-        return Default(default_dhcp, default_dns, default_net, default_pcap_stats)
-
-    def to_dict(self) -> dict:
-        result: dict = {"default-default-dhcp": to_class(DefaultDHCP, self.default_dhcp),
-                        "default-default-dns": to_class(DefaultDNS, self.default_dns),
-                        "default-default-net": to_class(DefaultNet, self.default_net),
-                        "default-default-pcap_stats": to_class(DefaultPcapStats, self.default_pcap_stats)}
-        return result
-
-
 class InputResources:
-    cpu_usage: PayloadSize
+    cpu_usage: Optional[Quantiles]
     deep_samples: int
-    event_rate: PayloadSize
+    event_rate: Optional[PayloadSize]
     handler_count: int
-    memory_bytes: PayloadSize
+    memory_bytes: Optional[PayloadSize]
     period: Period
     policy_count: int
     total: int
 
-    def __init__(self, cpu_usage: PayloadSize, deep_samples: int, event_rate: PayloadSize, handler_count: int,
-                 memory_bytes: PayloadSize, period: Period, policy_count: int, total: int) -> None:
+    def __init__(self, cpu_usage: Optional[Quantiles], deep_samples: int, event_rate: Optional[PayloadSize],
+                 handler_count: int, memory_bytes: Optional[PayloadSize], period: Period, policy_count: int,
+                 total: int) -> None:
         self.cpu_usage = cpu_usage
         self.deep_samples = deep_samples
         self.event_rate = event_rate
@@ -744,7 +706,7 @@ class InputResources:
     @staticmethod
     def from_dict(obj: Any) -> 'InputResources':
         assert isinstance(obj, dict)
-        cpu_usage = PayloadSize.from_dict(obj.get("cpu_usage"))
+        cpu_usage = Quantiles.from_dict(obj.get("cpu_usage"))
         deep_samples = from_int(obj.get("deep_samples"))
         event_rate = PayloadSize.from_dict(obj.get("event_rate"))
         handler_count = from_int(obj.get("handler_count"))
@@ -765,64 +727,59 @@ class InputResources:
         return result
 
 
-class DefaultResourcesDefaultResources:
+class Resources:
     input_resources: InputResources
 
     def __init__(self, input_resources: InputResources) -> None:
         self.input_resources = input_resources
 
     @staticmethod
-    def from_dict(obj: Any) -> 'DefaultResourcesDefaultResources':
+    def from_dict(obj: Any) -> 'Resources':
         assert isinstance(obj, dict)
         input_resources = InputResources.from_dict(obj.get("input_resources"))
-        return DefaultResourcesDefaultResources(input_resources)
+        return Resources(input_resources)
 
     def to_dict(self) -> dict:
         result: dict = {"input_resources": to_class(InputResources, self.input_resources)}
         return result
 
 
-class WelcomeDefaultResources:
-    default_resources: DefaultResourcesDefaultResources
+class PktPolicies:
 
-    def __init__(self,
-                 default_resources: DefaultResourcesDefaultResources) -> None:
-        self.default_resources = default_resources
-
-    @staticmethod
-    def from_dict(obj: Any) -> 'WelcomeDefaultResources':
+    def __init__(self, obj: dict) -> None:
         assert isinstance(obj, dict)
-        default_resources = DefaultResourcesDefaultResources.from_dict(
-            obj.get("default-995f1f110d78e4ee-resources"))
-        return WelcomeDefaultResources(default_resources)
+        self.obj = obj
+        policies_name = list(self.obj.keys())
+        self.policies_name = policies_name
 
-    def to_dict(self) -> dict:
-        result: dict = {"default-995f1f110d78e4ee-resources": to_class(
-            DefaultResourcesDefaultResources,
-            self.default_resources)}
-        return result
+    def check_policy_handlers(self) -> dict:
 
+        policies_by_handler: dict = {"DHCP": list(), "DNS": list(), "NET": list(), "PCAPSTATS": list(),
+                                     "RESOURCES": list()}
 
-class WelcomeDefault:
-    default: Default
+        for policy_name in self.policies_name:
+            policy = self.obj.get(policy_name)
+            for handler, handler_data in policy.items():
+                assert isinstance(handler, str)
+                if handler.lower().endswith("default-net"):
+                    policies_by_handler['NET'].append(handler)
+                    DefaultNet.from_dict(handler_data)
+                elif handler.lower().endswith('default-dhcp'):
+                    policies_by_handler['DHCP'].append(handler)
+                    DefaultDHCP.from_dict(handler_data)
+                elif handler.lower().endswith('default-dns'):
+                    policies_by_handler['DNS'].append(handler)
+                    DefaultDNS.from_dict(handler_data)
+                elif handler.lower().endswith('default-pcap_stats'):
+                    policies_by_handler['PCAPSTATS'].append(handler)
+                    DefaultPcapStats.from_dict(handler_data)
+                elif handler.lower().endswith('-resources'):
+                    policies_by_handler['RESOURCES'].append(handler)
+                    Resources.from_dict(handler_data)
+                else:
+                    raise Exception(f"Invalid handler {handler} for policy {policy_name}")
+        return self.obj
 
-    def __init__(self, default: Default) -> None:
-        self.default = default
-
-    @staticmethod
-    def from_dict(obj: Any) -> 'WelcomeDefault':
-        assert isinstance(obj, dict)
-        default = Default.from_dict(obj.get("default"))
-        return WelcomeDefault(default)
-
-    def to_dict(self) -> dict:
-        result: dict = {"default": to_class(Default, self.default)}
-        return result
-
-
-def welcome_default_from_dict(s: Any) -> WelcomeDefault:
-    return WelcomeDefault.from_dict(s)
-
-
-def welcome_default_to_dict(x: WelcomeDefault) -> Any:
-    return to_class(WelcomeDefault, x)
+    # def to_dict(self) -> dict: #todo
+    #     result: dict = {"default": to_class(PktPolicies, self.default)}
+    #     return result

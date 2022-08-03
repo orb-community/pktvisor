@@ -84,8 +84,12 @@ visor:
       description: "base chaning NET to DNS policy"
       # input stream to create based on the given tap and optional filter config
       input:
-        # this must reference a tap name, or application of the policy will fail
-        tap: anycast
+        # this must reference valid tags existent on applied taps, or application of the policy will fail
+        tap_selector:
+          # It can be either "any" or "all"
+          any:
+            virtual: true
+            vhost: 1
         # this must match the input_type of the matching tap name, or application of the policy will fail
         input_type: pcap
         filter:
