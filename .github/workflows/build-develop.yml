@@ -160,7 +160,7 @@ jobs:
           file: ./docker/Dockerfile
           platforms: linux/amd64
           push: false
-          tags: ${{ env.IMAGE_NAME }}:${{ env.VERSION }} , ${{ env.IMAGE_NAME }}:${{ env.REF_TAG }} , ${{ env.IMAGE_NAME2 }}:${{ env.REF_TAG }}
+          tags: ${{ env.IMAGE_NAME }}:${{ env.VERSION }} , ${{ env.IMAGE_NAME }}:${{ env.REF_TAG }} , ${{ env.IMAGE_NAME2 }}:amd64
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -203,7 +203,7 @@ jobs:
 #        run: |
 #          DEV_IMAGE="${{ env.IMAGE_NAME }}:${{ env.VERSION }}" DEV_MODE=t make pktvisor-x86_64.AppImage
 #          mv pktvisor-x86_64.AppImage pktvisor-x86_64-${{ env.VERSION }}.AppImage
-#
+
 #      - name: Upload AppImage artifact
 #        uses: actions/upload-artifact@v2
 #        with:
@@ -522,10 +522,8 @@ jobs:
     runs-on: [self-hosted, linux, ARM64]
     if: github.event_name != 'pull_request'
     steps:
-      - name: Attach to workspace
-        uses: actions/download-artifact@v2
-        with:
-          name: workspace
+      - name: Checkout
+        uses: actions/checkout@v2
 
       - name: Get branch name
         shell: bash
