@@ -617,7 +617,7 @@ jobs:
             
   remove-arm64-runner:
     needs:
-      - package-arm64
+      - remove-github-runner-arm64
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
