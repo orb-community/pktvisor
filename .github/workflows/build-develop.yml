@@ -403,7 +403,7 @@ jobs:
                ./config.sh remove --token ${{ needs.spinup-amd64-runner.outputs.runner_token }}
 
   remove-amd64-runner:
-    needs: [ integration-tests ]
+    needs: [ remove-github-runner-amd64 ]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
