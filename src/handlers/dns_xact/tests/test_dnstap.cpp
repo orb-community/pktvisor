@@ -1,9 +1,9 @@
 #include <catch2/catch.hpp>
 
-#include "DnsStreamHandler.h"
+#include "DnsXactStreamHandler.h"
 #include "DnstapInputStream.h"
 
-using namespace visor::handler::dns;
+using namespace visor::handler::dnsxact;
 using namespace visor::input::pcap;
 using namespace nlohmann;
 
@@ -15,7 +15,7 @@ TEST_CASE("Parse DNSTAP", "[dnstap][dns]")
     visor::Config c;
     c.config_set<uint64_t>("num_periods", 1);
     auto stream_proxy = stream.add_event_proxy(c);
-    DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
+    DnsXactStreamHandler dns_handler{"dns-test", stream_proxy, &c};
 
     dns_handler.start();
     stream.start();
@@ -33,6 +33,10 @@ TEST_CASE("Parse DNSTAP", "[dnstap][dns]")
     CHECK(counters.IPv6.value() == 0);
     CHECK(counters.queries.value() == 79);
     CHECK(counters.replies.value() == 74);
+    CHECK(counters.xacts_total.value() == 0);
+    CHECK(counters.xacts_in.value() == 0);
+    CHECK(counters.xacts_out.value() == 0);
+    CHECK(counters.xacts_timed_out.value() == 0);
     CHECK(counters.NOERROR.value() == 70);
     CHECK(counters.NX.value() == 0);
     CHECK(counters.REFUSED.value() == 0);
@@ -64,7 +68,7 @@ TEST_CASE("Parse filtered DNSTAP empty data", "[dnstap][dns][filter]")
     visor::Config c;
     auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
-    DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
+    DnsXactStreamHandler dns_handler{"dns-test", stream_proxy, &c};
 
     dns_handler.config_set<std::string>("dnstap_msg_type", "auth");
 
@@ -84,6 +88,10 @@ TEST_CASE("Parse filtered DNSTAP empty data", "[dnstap][dns][filter]")
     CHECK(counters.IPv6.value() == 0);
     CHECK(counters.queries.value() == 0);
     CHECK(counters.replies.value() == 0);
+    CHECK(counters.xacts_total.value() == 0);
+    CHECK(counters.xacts_in.value() == 0);
+    CHECK(counters.xacts_out.value() == 0);
+    CHECK(counters.xacts_timed_out.value() == 0);
     CHECK(counters.NOERROR.value() == 0);
     CHECK(counters.NX.value() == 0);
     CHECK(counters.REFUSED.value() == 0);
@@ -99,7 +107,7 @@ TEST_CASE("Parse filtered DNSTAP with data", "[dnstap][dns][filter]")
     visor::Config c;
     auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
-    DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
+    DnsXactStreamHandler dns_handler{"dns-test", stream_proxy, &c};
 
     dns_handler.config_set<std::string>("dnstap_msg_type", "client");
 
@@ -119,6 +127,10 @@ TEST_CASE("Parse filtered DNSTAP with data", "[dnstap][dns][filter]")
     CHECK(counters.IPv6.value() == 0);
     CHECK(counters.queries.value() == 79);
     CHECK(counters.replies.value() == 74);
+    CHECK(counters.xacts_total.value() == 0);
+    CHECK(counters.xacts_in.value() == 0);
+    CHECK(counters.xacts_out.value() == 0);
+    CHECK(counters.xacts_timed_out.value() == 0);
     CHECK(counters.NOERROR.value() == 70);
     CHECK(counters.NX.value() == 0);
     CHECK(counters.REFUSED.value() == 0);
@@ -150,8 +162,8 @@ TEST_CASE("Invalid DNSTAP filter", "[dnstap][dns][filter]")
     visor::Config c;
     auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
-    DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
+    DnsXactStreamHandler dns_handler{"dns-test", stream_proxy, &c};
 
     dns_handler.config_set<std::string>("dnstap_msg_type", "sender");
-    REQUIRE_THROWS_WITH(dns_handler.start(), "DnsStreamHandler: dnstap_msg_type contained an invalid/unsupported type. Valid types: auth, client, forwarder, resolver, stub, tool, update");
+    REQUIRE_THROWS_WITH(dns_handler.start(), "DnsXactStreamHandler: dnstap_msg_type contained an invalid/unsupported type. Valid types: auth, client, forwarder, resolver, stub, tool, update");
 }

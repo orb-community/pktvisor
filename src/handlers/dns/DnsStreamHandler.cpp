@@ -49,7 +49,6 @@ void DnsStreamHandler::start()
     // default enabled groups
     _groups.set(group::DnsMetrics::Cardinality);
     _groups.set(group::DnsMetrics::Counters);
-    _groups.set(group::DnsMetrics::DnsTransactions);
     _groups.set(group::DnsMetrics::TopQnames);
     process_groups(_group_defs);
 
@@ -362,7 +361,6 @@ void DnsStreamHandler::set_end_tstamp(timespec stamp)
 void DnsStreamHandler::info_json(json &j) const
 {
     common_info_json(j);
-    j[schema_key()]["xact"]["open"] = _metrics->num_open_transactions();
 }
 inline bool DnsStreamHandler::_filtering(DnsLayer &payload, [[maybe_unused]] PacketDirection dir, [[maybe_unused]] pcpp::ProtocolType l3, [[maybe_unused]] pcpp::ProtocolType l4, [[maybe_unused]] uint16_t port, timespec stamp)
 {
@@ -485,19 +483,6 @@ void DnsMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
 
     _counters.filtered += other._counters.filtered;
 
-    if (group_enabled(group::DnsMetrics::DnsTransactions)) {
-        _counters.xacts_total += other._counters.xacts_total;
-        _counters.xacts_in += other._counters.xacts_in;
-        _counters.xacts_out += other._counters.xacts_out;
-        _counters.xacts_timed_out += other._counters.xacts_timed_out;
-
-        _dnsXactFromTimeUs.merge(other._dnsXactFromTimeUs);
-        _dnsXactToTimeUs.merge(other._dnsXactToTimeUs);
-        _dnsXactRatio.merge(other._dnsXactRatio);
-        _dns_slowXactIn.merge(other._dns_slowXactIn);
-        _dns_slowXactOut.merge(other._dns_slowXactOut);
-    }
-
     if (group_enabled(group::DnsMetrics::Cardinality)) {
         _dns_qnameCard.merge(other._dns_qnameCard);
     }
@@ -555,21 +540,6 @@ void DnsMetricsBucket::to_json(json &j) const
 
     if (group_enabled(group::DnsMetrics::Cardinality)) {
         _dns_qnameCard.to_json(j);
-    }
-
-    if (group_enabled(group::DnsMetrics::DnsTransactions)) {
-        _counters.xacts_total.to_json(j);
-        _counters.xacts_timed_out.to_json(j);
-
-        _counters.xacts_in.to_json(j);
-        _dns_slowXactIn.to_json(j);
-
-        _dnsXactFromTimeUs.to_json(j);
-        _dnsXactToTimeUs.to_json(j);
-        _dnsXactRatio.to_json(j);
-
-        _counters.xacts_out.to_json(j);
-        _dns_slowXactOut.to_json(j);
     }
 
     _dns_topUDPPort.to_json(j, [](const uint16_t &val) { return std::to_string(val); });
@@ -856,46 +826,6 @@ void DnsMetricsBucket::process_dns_layer(pcpp::ProtocolType l3, Protocol l4, QR 
     }
 }
 
-void DnsMetricsBucket::new_dns_transaction(bool deep, float to90th, float from90th, DnsLayer &dns, PacketDirection dir, DnsTransaction xact)
-{
-
-    uint64_t xactTime = ((xact.totalTS.tv_sec * 1'000'000'000L) + xact.totalTS.tv_nsec) / 1'000; // nanoseconds to microseconds
-
-    // lock for write
-    std::unique_lock lock(_mutex);
-
-    ++_counters.xacts_total;
-
-    if (dir == PacketDirection::toHost) {
-        ++_counters.xacts_out;
-        if (deep) {
-            _dnsXactFromTimeUs.update(xactTime);
-        }
-    } else if (dir == PacketDirection::fromHost) {
-        ++_counters.xacts_in;
-        if (deep) {
-            _dnsXactToTimeUs.update(xactTime);
-        }
-    }
-
-    if (deep) {
-        if (xact.querySize) {
-            _dnsXactRatio.update(static_cast<double>(dns.getDataLen()) / xact.querySize);
-        }
-
-        auto query = dns.getFirstQuery();
-        if (query) {
-            auto name = query->getName();
-            // dir is the direction of the last packet, meaning the reply so from a transaction perspective
-            // we look at it from the direction of the query, so the opposite side than we have here
-            if (dir == PacketDirection::toHost && from90th > 0 && xactTime >= from90th) {
-                _dns_slowXactOut.update(name);
-            } else if (dir == PacketDirection::fromHost && to90th > 0 && xactTime >= to90th) {
-                _dns_slowXactIn.update(name);
-            }
-        }
-    }
-}
 void DnsMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap add_labels) const
 {
 
@@ -926,21 +856,6 @@ void DnsMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap ad
 
     if (group_enabled(group::DnsMetrics::Cardinality)) {
         _dns_qnameCard.to_prometheus(out, add_labels);
-    }
-
-    if (group_enabled(group::DnsMetrics::DnsTransactions)) {
-        _counters.xacts_total.to_prometheus(out, add_labels);
-        _counters.xacts_timed_out.to_prometheus(out, add_labels);
-
-        _counters.xacts_in.to_prometheus(out, add_labels);
-        _dns_slowXactIn.to_prometheus(out, add_labels);
-
-        _dnsXactFromTimeUs.to_prometheus(out, add_labels);
-        _dnsXactToTimeUs.to_prometheus(out, add_labels);
-        _dnsXactRatio.to_prometheus(out, add_labels);
-
-        _counters.xacts_out.to_prometheus(out, add_labels);
-        _dns_slowXactOut.to_prometheus(out, add_labels);
     }
 
     _dns_topUDPPort.to_prometheus(out, add_labels, [](const uint16_t &val) { return std::to_string(val); });
@@ -990,19 +905,8 @@ void DnsMetricsManager::process_dns_layer(DnsLayer &payload, PacketDirection dir
     new_event(stamp);
     // process in the "live" bucket. this will parse the resources if we are deep sampling
     live_bucket()->process_dns_layer(_deep_sampling_now, payload, l3, static_cast<Protocol>(l4), port, suffix_size);
-
-    if (group_enabled(group::DnsMetrics::DnsTransactions)) {
-        // handle dns transactions (query/response pairs)
-        if (payload.getDnsHeader()->queryOrResponse == QR::response) {
-            auto xact = _qr_pair_manager.maybe_end_transaction(flowkey, payload.getDnsHeader()->transactionID, stamp);
-            if (xact.first) {
-                live_bucket()->new_dns_transaction(_deep_sampling_now, _to90th, _from90th, payload, dir, xact.second);
-            }
-        } else {
-            _qr_pair_manager.start_transaction(flowkey, payload.getDnsHeader()->transactionID, stamp, payload.getDataLen());
-        }
-    }
 }
+
 void DnsMetricsManager::process_filtered(timespec stamp)
 {
     // base event, no sample

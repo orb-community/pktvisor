@@ -2,7 +2,7 @@
 
 #include "dns.h"
 
-using namespace visor::handler::dns;
+using namespace visor::dns;
 
 TEST_CASE("DNS Utilities", "[dns]")
 {

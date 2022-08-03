@@ -8,7 +8,7 @@
 #include <memory>
 #include <robin_hood.h>
 
-namespace visor::handler::dns {
+namespace visor::handler::dnsxact {
 
 using hr_clock = std::chrono::high_resolution_clock;
 

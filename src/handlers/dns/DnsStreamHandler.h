@@ -10,7 +10,6 @@
 #include "StreamHandler.h"
 #include "dns.h"
 #include "dnstap.pb.h"
-#include "querypairmgr.h"
 #include <Corrade/Utility/Debug.h>
 #include <bitset>
 #include <limits>
@@ -22,16 +21,17 @@ class DnstapInputEventProxy;
 
 namespace visor::handler::dns {
 
+using namespace visor::dns;
 using namespace visor::input::pcap;
 using namespace visor::input::dnstap;
 using namespace visor::input::mock;
+
 
 // DNS Groups
 namespace group {
 enum DnsMetrics : visor::MetricGroupIntType {
     Cardinality,
     Counters,
-    DnsTransactions,
     TopEcs,
     TopQnames
 };
@@ -52,10 +52,6 @@ class DnsMetricsBucket final : public visor::AbstractMetricsBucket
 protected:
     mutable std::shared_mutex _mutex;
 
-    Quantile<uint64_t> _dnsXactFromTimeUs;
-    Quantile<uint64_t> _dnsXactToTimeUs;
-    Quantile<double> _dnsXactRatio;
-
     Cardinality _dns_qnameCard;
 
     TopN<std::string> _dns_topGeoLocECS;
@@ -72,14 +68,8 @@ protected:
     TopN<uint16_t> _dns_topUDPPort;
     TopN<uint16_t> _dns_topQType;
     TopN<uint16_t> _dns_topRCode;
-    TopN<std::string> _dns_slowXactIn;
-    TopN<std::string> _dns_slowXactOut;
 
     struct counters {
-        Counter xacts_total;
-        Counter xacts_in;
-        Counter xacts_out;
-        Counter xacts_timed_out;
         Counter queries;
         Counter replies;
         Counter UDP;
@@ -96,11 +86,7 @@ protected:
         Counter filtered;
         Counter queryECS;
         counters()
-            : xacts_total("dns", {"xact", "counts", "total"}, "Total DNS transactions (query/reply pairs)")
-            , xacts_in("dns", {"xact", "in", "total"}, "Total ingress DNS transactions (host is server)")
-            , xacts_out("dns", {"xact", "out", "total"}, "Total egress DNS transactions (host is client)")
-            , xacts_timed_out("dns", {"xact", "counts", "timed_out"}, "Total number of DNS transactions that timed out")
-            , queries("dns", {"wire_packets", "queries"}, "Total DNS wire packets flagged as query (ingress and egress)")
+            : queries("dns", {"wire_packets", "queries"}, "Total DNS wire packets flagged as query (ingress and egress)")
             , replies("dns", {"wire_packets", "replies"}, "Total DNS wire packets flagged as reply (ingress and egress)")
             , UDP("dns", {"wire_packets", "udp"}, "Total DNS wire packets received over UDP (ingress and egress)")
             , TCP("dns", {"wire_packets", "tcp"}, "Total DNS wire packets received over TCP (ingress and egress)")
@@ -122,10 +108,7 @@ protected:
 
 public:
     DnsMetricsBucket()
-        : _dnsXactFromTimeUs("dns", {"xact", "out", "quantiles_us"}, "Quantiles of transaction timing (query/reply pairs) when host is client, in microseconds")
-        , _dnsXactToTimeUs("dns", {"xact", "in", "quantiles_us"}, "Quantiles of transaction timing (query/reply pairs) when host is server, in microseconds")
-        , _dnsXactRatio("dns", {"xact", "ratio", "quantiles"}, "Quantiles of ratio of packet sizes in a DNS transaction (reply/query)")
-        , _dns_qnameCard("dns", {"cardinality", "qname"}, "Cardinality of unique QNAMES, both ingress and egress")
+        : _dns_qnameCard("dns", {"cardinality", "qname"}, "Cardinality of unique QNAMES, both ingress and egress")
         , _dns_topGeoLocECS("dns", "geo_loc", {"top_geoLoc_ecs"}, "Top GeoIP ECS locations")
         , _dns_topASNECS("dns", "asn", {"top_asn_ecs"}, "Top ASNs by ECS")
         , _dns_topQueryECS("dns", "ecs", {"top_query_ecs"}, "Top EDNS Client Subnet (ECS) observed in DNS queries")
@@ -139,29 +122,10 @@ public:
         , _dns_topUDPPort("dns", "port", {"top_udp_ports"}, "Top UDP source port on the query side of a transaction")
         , _dns_topQType("dns", "qtype", {"top_qtype"}, "Top query types")
         , _dns_topRCode("dns", "rcode", {"top_rcode"}, "Top result codes")
-        , _dns_slowXactIn("dns", "qname", {"xact", "in", "top_slow"}, "Top QNAMES in transactions where host is the server and transaction speed is slower than p90")
-        , _dns_slowXactOut("dns", "qname", {"xact", "out", "top_slow"}, "Top QNAMES in transactions where host is the client and transaction speed is slower than p90")
     {
         set_event_rate_info("dns", {"rates", "total"}, "Rate of all DNS wire packets (combined ingress and egress) per second");
         set_num_events_info("dns", {"wire_packets", "total"}, "Total DNS wire packets");
         set_num_sample_info("dns", {"wire_packets", "deep_samples"}, "Total DNS wire packets that were sampled for deep inspection");
-    }
-
-    auto get_xact_data_locked() const
-    {
-        std::shared_lock lock(_mutex);
-        struct retVals {
-            const Quantile<uint64_t> &xact_to;
-            const Quantile<uint64_t> &xact_from;
-            std::shared_lock<std::shared_mutex> lock;
-        };
-        return retVals{_dnsXactToTimeUs, _dnsXactFromTimeUs, std::move(lock)};
-    }
-
-    void inc_xact_timed_out(uint64_t c)
-    {
-        std::unique_lock lock(_mutex);
-        _counters.xacts_timed_out += c;
     }
 
     // get a copy of the counters
@@ -190,21 +154,16 @@ public:
         _dns_topUDPPort.set_topn_count(topn_count);
         _dns_topQType.set_topn_count(topn_count);
         _dns_topRCode.set_topn_count(topn_count);
-        _dns_slowXactIn.set_topn_count(topn_count);
-        _dns_slowXactOut.set_topn_count(topn_count);
     }
 
     void process_filtered();
     void process_dns_layer(bool deep, DnsLayer &payload, pcpp::ProtocolType l3, Protocol l4, uint16_t port, size_t suffix_size = 0);
     void process_dns_layer(pcpp::ProtocolType l3, Protocol l4, QR side, uint16_t port);
     void process_dnstap(bool deep, const dnstap::Dnstap &payload);
-
-    void new_dns_transaction(bool deep, float to90th, float from90th, DnsLayer &dns, PacketDirection dir, DnsTransaction xact);
 };
 
 class DnsMetricsManager final : public visor::AbstractMetricsManager<DnsMetricsBucket>
 {
-    QueryResponsePairMgr _qr_pair_manager;
     float _to90th{0.0};
     float _from90th{0.0};
 
@@ -214,26 +173,9 @@ public:
     {
     }
 
-    void on_period_shift(timespec stamp, [[maybe_unused]] const DnsMetricsBucket *maybe_expiring_bucket) override
+    void on_period_shift([[maybe_unused]] timespec stamp, [[maybe_unused]] const DnsMetricsBucket *maybe_expiring_bucket) override
     {
         // DNS transaction support
-        auto timed_out = _qr_pair_manager.purge_old_transactions(stamp);
-        if (timed_out) {
-            live_bucket()->inc_xact_timed_out(timed_out);
-        }
-        // collect to/from 90th percentile every period shift to judge slow xacts
-        auto [xact_to, xact_from, lock] = bucket(1)->get_xact_data_locked();
-        if (xact_from.get_n()) {
-            _from90th = xact_from.get_quantile(0.90);
-        }
-        if (xact_to.get_n()) {
-            _to90th = xact_to.get_quantile(0.90);
-        }
-    }
-
-    size_t num_open_transactions() const
-    {
-        return _qr_pair_manager.open_transaction_count();
     }
 
     void process_filtered(timespec stamp);
@@ -325,7 +267,7 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
         {"tool", {dnstap::Message_Type_TOOL_QUERY, dnstap::Message_Type_TOOL_RESPONSE}},
         {"update", {dnstap::Message_Type_UPDATE_QUERY, dnstap::Message_Type_UPDATE_RESPONSE}}};
 
-    // DNS Filters
+    // DNS Xact Filters
     enum Filters {
         ExcludingRCode,
         OnlyRCode,
@@ -354,7 +296,6 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
     static const inline StreamMetricsHandler::GroupDefType _group_defs = {
         {"cardinality", group::DnsMetrics::Cardinality},
         {"counters", group::DnsMetrics::Counters},
-        {"dns_transaction", group::DnsMetrics::DnsTransactions},
         {"top_ecs", group::DnsMetrics::TopEcs},
         {"top_qnames", group::DnsMetrics::TopQnames}};
 

@@ -218,10 +218,6 @@ TEST_CASE("Parse DNS random UDP/TCP tests", "[pcap][dns]")
     CHECK(counters.IPv6.value() == 0);
     CHECK(counters.queries.value() == 2930);
     CHECK(counters.replies.value() == 2921);     // wireshark: 2908
-    CHECK(counters.xacts_total.value() == 2921); // wireshark: 2894
-    CHECK(counters.xacts_in.value() == 0);
-    CHECK(counters.xacts_out.value() == 2921); // wireshark: 2894
-    CHECK(counters.xacts_timed_out.value() == 0);
     CHECK(counters.NODATA.value() == 2254);
     CHECK(counters.NOERROR.value() == 2921); // wireshark: 5838 (we only count reply result codes)
     CHECK(counters.NOERROR.value() == 2921); // wireshark: 5838 (we only count reply result codes)
@@ -818,10 +814,6 @@ TEST_CASE("DNS groups", "[pcap][dns]")
         CHECK(counters.IPv6.value() == 0);
         CHECK(counters.queries.value() == 0);
         CHECK(counters.replies.value() == 0);
-        CHECK(counters.xacts_total.value() == 2921);
-        CHECK(counters.xacts_in.value() == 0);
-        CHECK(counters.xacts_out.value() == 2921);
-        CHECK(counters.xacts_timed_out.value() == 0);
 
         nlohmann::json j;
         dns_handler.metrics()->bucket(0)->to_json(j);
@@ -830,12 +822,11 @@ TEST_CASE("DNS groups", "[pcap][dns]")
         CHECK(j["top_qname2"][0]["name"] == ".test.com");
         CHECK(j["top_udp_ports"][0]["name"] == "57975");
         CHECK(j["top_udp_ports"][0]["estimate"] == 302);
-        CHECK(j["xact"]["ratio"]["quantiles"]["p50"] != nullptr);
     }
 
-    SECTION("disable TopQname and Dns Transactions")
+    SECTION("disable TopQname")
     {
-        dns_handler.config_set<visor::Configurable::StringList>("disable", {"top_qnames", "dns_transaction"});
+        dns_handler.config_set<visor::Configurable::StringList>("disable", {"top_qnames"});
 
         dns_handler.start();
         stream.start();
@@ -853,10 +844,6 @@ TEST_CASE("DNS groups", "[pcap][dns]")
         CHECK(counters.IPv6.value() == 0);
         CHECK(counters.queries.value() == 2930);
         CHECK(counters.replies.value() == 2921);
-        CHECK(counters.xacts_total.value() == 0);
-        CHECK(counters.xacts_in.value() == 0);
-        CHECK(counters.xacts_out.value() == 0);
-        CHECK(counters.xacts_timed_out.value() == 0);
 
         nlohmann::json j;
         dns_handler.metrics()->bucket(0)->to_json(j);
@@ -870,12 +857,12 @@ TEST_CASE("DNS groups", "[pcap][dns]")
     SECTION("disable invalid dns group")
     {
         dns_handler.config_set<visor::Configurable::StringList>("disable", {"top_qnames", "dns_top_wired"});
-        REQUIRE_THROWS_WITH(dns_handler.start(), "dns_top_wired is an invalid/unsupported metric group. The valid groups are cardinality, counters, dns_transaction, top_ecs, top_qnames");
+        REQUIRE_THROWS_WITH(dns_handler.start(), "dns_top_wired is an invalid/unsupported metric group. The valid groups are cardinality, counters, top_ecs, top_qnames");
     }
 
     SECTION("enable invalid dns group")
     {
         dns_handler.config_set<visor::Configurable::StringList>("enable", {"top_qnames", "dns_top_wired"});
-        REQUIRE_THROWS_WITH(dns_handler.start(), "dns_top_wired is an invalid/unsupported metric group. The valid groups are cardinality, counters, dns_transaction, top_ecs, top_qnames");
+        REQUIRE_THROWS_WITH(dns_handler.start(), "dns_top_wired is an invalid/unsupported metric group. The valid groups are cardinality, counters, top_ecs, top_qnames");
     }
 }

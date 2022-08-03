@@ -2,10 +2,10 @@
 
 #include "DnsResourceData.h"
 #include "EndianPortable.h"
-#include <GeneralUtils.h>
+#include "GeneralUtils.h"
 #pragma GCC diagnostic push
 #pragma clang diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"
-#include <Logger.h>
+#include "Logger.h"
 #pragma GCC diagnostic pop
 #include <sstream>
 #include <string.h>
@@ -13,7 +13,7 @@
 // forked code
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 
-namespace visor::handler::dns {
+namespace visor::dns {
 
 size_t IDnsResourceData::decodeName(const char *encodedName, char *result, IDnsResource *dnsResource) const
 {

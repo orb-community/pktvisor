@@ -5,12 +5,12 @@
 #include "fmt/format.h"
 #pragma GCC diagnostic push
 #pragma clang diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"
-#include <Logger.h>
+#include "Logger.h"
 #pragma GCC diagnostic pop
 #include <sstream>
 #include <string.h>
 
-namespace visor::handler::dns {
+namespace visor::dns {
 
 IDnsResource::IDnsResource(DnsLayer *dnsLayer, size_t offsetInLayer)
     : m_DnsLayer(dnsLayer)
@@ -203,6 +203,42 @@ void IDnsResource::setDnsClass(DnsClass newClass)
 {
     uint16_t newClassAsInt = htobe16((uint16_t)newClass);
     memcpy(getRawData() + m_NameLength + sizeof(uint16_t), &newClassAsInt, sizeof(uint16_t));
+}
+
+std::basic_string_view<uint8_t> IDnsResource::getRawName() const
+{
+    // scan starts at the domain name
+    auto scan = std::basic_string_view<uint8_t>{m_DnsLayer->m_Data, m_DnsLayer->m_DataLen}
+                    .substr(m_OffsetInLayer) // skip to the name offset
+                    .substr(0, 255);         // enforce name length limit
+
+    // find the end of the scan
+    size_t pos = 0;
+    while (pos < scan.size()) {
+        if (scan[pos] == 0) {
+            // root label at the end
+            pos += 1;
+            break;
+        } else if (scan[pos] < 0xc0) {
+            // normal scan label
+            pos += scan[pos] + 1;
+        } else if (scan[pos] == 0xc0) {
+            // compression label at the end
+            pos += 3;
+            break;
+        } else {
+            // malformed name
+            pos = std::string_view::npos;
+            break;
+        }
+    }
+
+    if (pos >= scan.size()) {
+        // malformed name
+        return {};
+    }
+
+    return scan.substr(0, pos);
 }
 
 bool IDnsResource::setName(const std::string &newName)

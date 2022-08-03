@@ -6,10 +6,10 @@
 
 #include "DnsResource.h"
 #include "EndianPortable.h"
-#include <algorithm>
-#include <array>
+#include <c++/9/algorithm>
+#include <c++/9/array>
 
-namespace visor::handler::dns {
+namespace visor::dns {
 
 static constexpr size_t IPV4_BYTE_SIZE = 4;
 static constexpr size_t IPV6_BYTE_SIZE = 16;
