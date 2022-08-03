@@ -130,7 +130,7 @@ def check_metrics(context, traffic_type):
     for network_file in context.network_data_files:
         for endpoint in pkt_api_get_endpoints:
             response_json, is_json_valid = check_metrics_per_endpoint(endpoint, context.pkt_port,
-                                                                      None, timeout=10)
+                                                                      traffic_type, timeout=10)
             assert_that(is_json_valid, equal_to(True),
                         f"Wrong data generated for {network_file}_{endpoint.replace('/', '_')}")
 
@@ -157,7 +157,7 @@ def remove_all_pktvisors_containers_with_test_prefix(context):
 #         lala = a.check_policy_handlers()
 
 @threading_wait_until #todo use threading wait to validate metrics per endpoint
-def check_metrics_per_endpoint(endpoint, pkt_port, path_to_schema_file, event=None):
+def check_metrics_per_endpoint(endpoint, pkt_port, traffic_type, event=None):
     response = make_get_request(endpoint, pkt_port)
     # is_json_valid = validate_json(response.json(), path_to_schema_file)
     pkt_policies = PktPolicies(response.json())

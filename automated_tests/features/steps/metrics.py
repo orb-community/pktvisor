@@ -1,4 +1,5 @@
 from typing import Any, Optional, List, Dict, TypeVar, Type, cast, Callable
+import warnings
 
 T = TypeVar("T")
 
@@ -68,6 +69,11 @@ class Period:
     @staticmethod
     def from_dict(obj: Any) -> 'Period':
         assert isinstance(obj, dict)
+        expected = {"length", "start_ts"}
+        dif = set(obj.keys()).difference(expected)
+        if dif != set():
+            warnings.warn(f"The following fields are not being validated on class Period: {dif}")
+
         length = from_int(obj.get("length"))
         start_ts = from_int(obj.get("start_ts"))
         return Period(length, start_ts)
@@ -94,6 +100,12 @@ class PayloadSize:
     @staticmethod
     def from_dict(obj: Any) -> 'PayloadSize':
         assert isinstance(obj, dict)
+        expected_full = {"p50", "p90", "p95", "p99"}
+        expected_partial = {"live", "p50", "p90", "p95", "p99"}
+        dif_full = set(obj.keys()).difference(expected_full)
+        dif_partial = set(obj.keys()).difference(expected_partial)
+        if dif_full != set() and dif_partial != set():
+            warnings.warn(f"The following fields are not being validated on class PayloadSize: {set(obj.keys()).difference(expected_full)}")
         live = from_union([from_int, from_none], obj.get("live"))
         p50 = from_int(obj.get("p50"))
         p90 = from_int(obj.get("p90"))
@@ -122,6 +134,10 @@ class Quantiles:
     @staticmethod
     def from_dict(obj: Any) -> 'Quantiles':
         assert isinstance(obj, dict)
+        expected = {"p50", "p90", "p95", "p99"}
+        dif = set(obj.keys()).difference(expected)
+        if dif != set():
+            warnings.warn(f"The following fields are not being validated on class Quantiles: {dif}")
         p50 = from_float(obj.get("p50"))
         p90 = from_float(obj.get("p90"))
         p95 = from_float(obj.get("p95"))
@@ -143,6 +159,11 @@ class DHCPRates:
     @staticmethod
     def from_dict(obj: Any) -> 'DHCPRates':
         assert isinstance(obj, dict)
+        expected = {"total"}
+        dif = set(obj.keys()).difference(expected)
+        if dif != set():
+            warnings.warn(f"The following fields are not being validated on class DHCPRates: "
+                          f"{set(obj.keys()).difference(dif)}")
         total = PayloadSize.from_dict(obj.get("total"))
         return DHCPRates(total)
 
@@ -173,6 +194,10 @@ class WirePackets:
     @staticmethod
     def from_dict(obj: Any) -> 'WirePackets':
         assert isinstance(obj, dict)
+        expected = {"ack", "deep_samples", "discover", "filtered", "offer", "request", "total"}
+        dif = set(obj.keys()).difference(expected)
+        if dif != set():
+            warnings.warn(f"The following fields are not being validated on class WirePackets: {dif}")
         ack = from_int(obj.get("ack"))
         deep_samples = from_int(obj.get("deep_samples"))
         discover = from_int(obj.get("discover"))
@@ -202,6 +227,10 @@ class DHCP:
     @staticmethod
     def from_dict(obj: Any) -> 'DHCP':
         assert isinstance(obj, dict)
+        expected = {"period", "rates", "wire_packets"}
+        dif = set(obj.keys()).difference(expected)
+        if dif != set():
+            warnings.warn(f"The following fields are not being validated on class DHCP: {dif}")
         period = Period.from_dict(obj.get("period"))
         rates = DHCPRates.from_dict(obj.get("rates"))
         wire_packets = WirePackets.from_dict(obj.get("wire_packets"))
@@ -222,6 +251,10 @@ class DefaultDHCP:
     @staticmethod
     def from_dict(obj: Any) -> 'DefaultDHCP':
         assert isinstance(obj, dict)
+        expected = {"dhcp"}
+        dif = set(obj.keys()).difference(expected)
+        if dif != set():
+            warnings.warn(f"The following fields are not being validated on class DefaultDHCP: {dif}")
         dhcp = DHCP.from_dict(obj.get("dhcp"))
         return DefaultDHCP(dhcp)
 
@@ -239,6 +272,10 @@ class DNSCardinality:
     @staticmethod
     def from_dict(obj: Any) -> 'DNSCardinality':
         assert isinstance(obj, dict)
+        expected = {"qname"}
+        dif = set(obj.keys()).difference(expected)
+        if dif != set():
+            warnings.warn(f"The following fields are not being validated on class DNSCardinality: {dif}")
         qname = from_int(obj.get("qname"))
         return DNSCardinality(qname)
 
@@ -258,6 +295,10 @@ class Top:
     @staticmethod
     def from_dict(obj: Any) -> 'Top':
         assert isinstance(obj, dict)
+        expected = {"estimate", "name"}
+        dif = set(obj.keys()).difference(expected)
+        if dif != set():
+            warnings.warn(f"The following fields are not being validated on class Top: {dif}")
         estimate = from_int(obj.get("estimate"))
         name = from_str(obj.get("name"))
         return Top(estimate, name)
@@ -278,6 +319,10 @@ class Counts:
     @staticmethod
     def from_dict(obj: Any) -> 'Counts':
         assert isinstance(obj, dict)
+        expected = {"timed_out", "total"}
+        dif = set(obj.keys()).difference(expected)
+        if dif != set():
+            warnings.warn(f"The following fields are not being validated on class Counts: {dif}")
         timed_out = from_int(obj.get("timed_out"))
         total = from_int(obj.get("total"))
         return Counts(timed_out, total)
@@ -292,20 +337,32 @@ class Counts:
 class In:
     top_slow: List[Any]
     total: int
+    quantiles_us: Quantiles
 
-    def __init__(self, top_slow: List[Any], total: int) -> None:
+    def __init__(self, top_slow: List[Any], total: int, quantiles_us: Quantiles) -> None:
         self.top_slow = top_slow
         self.total = total
+        self.quantiles_us = quantiles_us
 
     @staticmethod
     def from_dict(obj: Any) -> 'In':
         assert isinstance(obj, dict)
+        expected = {"top_slow", "total", "quantiles_us"}
+        dif = set(obj.keys()).difference(expected)
+        dif = set(obj.keys()).difference(expected)
+        if dif != set():
+            warnings.warn(f"The following fields are not being validated on class In: {dif}")
         top_slow = from_list(lambda x: x, obj.get("top_slow"))
         total = from_int(obj.get("total"))
-        return In(top_slow, total)
+        if total > 0:
+            quantiles_us = Quantiles.from_dict(obj.get("quantiles_us"))
+            return In(top_slow, total, quantiles_us)
+        else:
+            return In(top_slow, total, Quantiles(0, 0, 0, 0))
 
     def to_dict(self) -> dict:
-        result: dict = {"top_slow": from_list(lambda x: x, self.top_slow), "total": from_int(self.total)}
+        result: dict = {"top_slow": from_list(lambda x: x, self.top_slow), "total": from_int(self.total),
+                        "quantiles_us": to_class(Quantiles, self.quantiles_us)}
         return result
 
 
@@ -318,6 +375,10 @@ class Ratio:
     @staticmethod
     def from_dict(obj: Any) -> 'Ratio':
         assert isinstance(obj, dict)
+        expected = {"quantiles"}
+        dif = set(obj.keys()).difference(expected)
+        if dif != set():
+            warnings.warn(f"The following fields are not being validated on class Ratio: {dif}")
         quantiles = Quantiles.from_dict(obj.get("quantiles"))
         return Ratio(quantiles)
 
@@ -341,11 +402,23 @@ class Xact:
     @staticmethod
     def from_dict(obj: Any) -> 'Xact':
         assert isinstance(obj, dict)
+        expected = {"in", "out", "ratio", "counts"}
+        dif = set(obj.keys()).difference(expected)
+        if dif != set():
+            warnings.warn(f"The following fields are not being validated on class Xact: {dif}")
         counts = Counts.from_dict(obj.get("counts"))
         xact_in = In.from_dict(obj.get("in"))
         out = In.from_dict(obj.get("out"))
-        ratio = Ratio.from_dict(obj.get("ratio"))
-        return Xact(counts, xact_in, out, ratio)
+        if xact_in.to_dict().get("in") != 0:
+            ratio = Ratio.from_dict(obj.get("ratio"))
+            return Xact(counts, xact_in, out, ratio)
+        else:
+            return Xact(counts, xact_in, out, Ratio.from_dict({"quantiles": {
+                "p50": float(5.69),
+                "p90": float(0.00),
+                "p95": float(0.00),
+                "p99": float(0.00)
+            }}))
 
     def to_dict(self) -> dict:
         result: dict = {"counts": to_class(Counts, self.counts), "in": to_class(In, self.xact_in),
@@ -393,6 +466,12 @@ class DNS:
     @staticmethod
     def from_dict(obj: Any) -> 'DNS':
         assert isinstance(obj, dict)
+        expected = {"cardinality", "period", "rates", "top_nodata", "top_nxdomain", "top_qname2", "top_qname3",
+                    "top_qname_by_resp_bytes", "top_qtype", "top_rcode", "top_refused", "top_srvfail", "top_udp_ports",
+                    "wire_packets", "xact"}
+        dif = set(obj.keys()).difference(expected)
+        if dif != set():
+            warnings.warn(f"The following fields are not being validated on class DNS: {dif}")
         cardinality = DNSCardinality.from_dict(obj.get("cardinality"))
         period = Period.from_dict(obj.get("period"))
         rates = DHCPRates.from_dict(obj.get("rates"))
@@ -438,6 +517,10 @@ class DefaultDNS:
     @staticmethod
     def from_dict(obj: Any) -> 'DefaultDNS':
         assert isinstance(obj, dict)
+        expected = {"dns"}
+        dif = set(obj.keys()).difference(expected)
+        if dif != set():
+            warnings.warn(f"The following fields are not being validated on class DefaultDNS: {dif}")
         dns = DNS.from_dict(obj.get("dns"))
         return DefaultDNS(dns)
 
@@ -457,6 +540,10 @@ class PacketsCardinality:
     @staticmethod
     def from_dict(obj: Any) -> 'PacketsCardinality':
         assert isinstance(obj, dict)
+        expected = {"dst_ips_out", "src_ips_in"}
+        dif = set(obj.keys()).difference(expected)
+        if dif != set():
+            warnings.warn(f"The following fields are not being validated on class PacketsCardinality: {dif}")
         dst_ips_out = from_int(obj.get("dst_ips_out"))
         src_ips_in = from_int(obj.get("src_ips_in"))
         return PacketsCardinality(dst_ips_out, src_ips_in)
@@ -475,6 +562,10 @@ class TCP:
     @staticmethod
     def from_dict(obj: Any) -> 'TCP':
         assert isinstance(obj, dict)
+        expected = {"syn"}
+        dif = set(obj.keys()).difference(expected)
+        if dif != set():
+            warnings.warn(f"The following fields are not being validated on class TCP: {dif}")
         syn = from_int(obj.get("syn"))
         return TCP(syn)
 
@@ -492,6 +583,10 @@ class Protocol:
     @staticmethod
     def from_dict(obj: Any) -> 'Protocol':
         assert isinstance(obj, dict)
+        expected = {"tcp"}
+        dif = set(obj.keys()).difference(expected)
+        if dif != set():
+            warnings.warn(f"The following fields are not being validated on class Protocol: {dif}")
         tcp = TCP.from_dict(obj.get("tcp"))
         return Protocol(tcp)
 
@@ -518,6 +613,10 @@ class PacketsRates:
     @staticmethod
     def from_dict(obj: Any) -> 'PacketsRates':
         assert isinstance(obj, dict)
+        expected = {"bytes_in", "bytes_out", "pps_in", "pps_out", "pps_total"}
+        dif = set(obj.keys()).difference(expected)
+        if dif != set():
+            warnings.warn(f"The following fields are not being validated on class PacketsRates: {dif}")
         bytes_in = PayloadSize.from_dict(obj.get("bytes_in"))
         bytes_out = PayloadSize.from_dict(obj.get("bytes_out"))
         pps_in = PayloadSize.from_dict(obj.get("pps_in"))
@@ -581,6 +680,12 @@ class Packets:
     @staticmethod
     def from_dict(obj: Any) -> 'Packets':
         assert isinstance(obj, dict)
+        expected = {"cardinality", "deep_samples", "filtered", "in", "ipv4", "ipv6", "other_l4", "out", "payload_size",
+                    "period", "protocol", "rates", "tcp", "top_ASN", "top_geoLoc", "top_ipv4", "top_ipv6", "total",
+                    "udp"}
+        dif = set(obj.keys()).difference(expected)
+        if dif != set():
+            warnings.warn(f"The following fields are not being validated on class Packets: {dif}")
         cardinality = PacketsCardinality.from_dict(obj.get("cardinality"))
         deep_samples = from_int(obj.get("deep_samples"))
         filtered = from_int(obj.get("filtered"))
@@ -628,6 +733,10 @@ class DefaultNet:
     @staticmethod
     def from_dict(obj: Any) -> 'DefaultNet':
         assert isinstance(obj, dict)
+        expected = {"packets"}
+        dif = set(obj.keys()).difference(expected)
+        if dif != set():
+            warnings.warn(f"The following fields are not being validated on class DefaultNet: {dif}")
         packets = Packets.from_dict(obj.get("packets"))
         return DefaultNet(packets)
 
@@ -651,6 +760,10 @@ class Pcap:
     @staticmethod
     def from_dict(obj: Any) -> 'Pcap':
         assert isinstance(obj, dict)
+        expected = {"if_drops", "os_drops", "period", "tcp_reassembly_errors"}
+        dif = set(obj.keys()).difference(expected)
+        if dif != set():
+            warnings.warn(f"The following fields are not being validated on class Pcap: {dif}")
         if_drops = from_int(obj.get("if_drops"))
         os_drops = from_int(obj.get("os_drops"))
         period = Period.from_dict(obj.get("period"))
@@ -673,6 +786,10 @@ class DefaultPcapStats:
     @staticmethod
     def from_dict(obj: Any) -> 'DefaultPcapStats':
         assert isinstance(obj, dict)
+        expected = {"pcap"}
+        dif = set(obj.keys()).difference(expected)
+        if dif != set():
+            warnings.warn(f"The following fields are not being validated on class DefaultPcapStats: {dif}")
         pcap = Pcap.from_dict(obj.get("pcap"))
         return DefaultPcapStats(pcap)
 
@@ -706,6 +823,11 @@ class InputResources:
     @staticmethod
     def from_dict(obj: Any) -> 'InputResources':
         assert isinstance(obj, dict)
+        expected = {"cpu_usage", "deep_samples", "event_rate", "handler_count", "memory_bytes", "period",
+                    "policy_count", "total"}
+        dif = set(obj.keys()).difference(expected)
+        if dif != set():
+            warnings.warn(f"The following fields are not being validated on class InputResources: {dif}")
         cpu_usage = Quantiles.from_dict(obj.get("cpu_usage"))
         deep_samples = from_int(obj.get("deep_samples"))
         event_rate = PayloadSize.from_dict(obj.get("event_rate"))
@@ -736,6 +858,10 @@ class Resources:
     @staticmethod
     def from_dict(obj: Any) -> 'Resources':
         assert isinstance(obj, dict)
+        expected = {"input_resources"}
+        dif = set(obj.keys()).difference(expected)
+        if dif != set():
+            warnings.warn(f"The following fields are not being validated on class Resources: {dif}")
         input_resources = InputResources.from_dict(obj.get("input_resources"))
         return Resources(input_resources)
 
