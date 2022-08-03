@@ -1,7 +1,7 @@
 resource "aws_security_group" "sg_SelfRunner_arm64" {
   name        = "sg_pktvisor_SelfRunner_arm64_${var.environment}"
   description = "Allow all outbound traffic and inbound 22/80"
-  vpc_id      = "vpc-00dc7180d351353d1"
+  vpc_id      = "vpc-0cd4a525c008d8d71"
 
   ingress {
     from_port   = 22
