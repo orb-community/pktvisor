@@ -378,7 +378,6 @@ jobs:
   remove-github-runner-amd64:
     needs: [ spinup-amd64-runner , upload-qa-artifact ]
     runs-on: ubuntu-latest
-    if: ${{ needs.pre-test.outputs.prd == 'true' }}
     steps:
       - name: Attach to workspace
         uses: actions/download-artifact@v2
