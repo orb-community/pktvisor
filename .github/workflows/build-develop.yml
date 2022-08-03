@@ -350,8 +350,7 @@ jobs:
       - name: Unlocking pktvisor integration test state
         run: |
           curl -X POST -H "Content-Type: application/x-www-form-urlencoded" -u "${{ secrets.QA_AUTH_CREDENTIALS }}" -d "change=pktvisor-dev&state=inactive" https://qa.ops.orb.live/api.php
-
-          
+         
   upload-qa-artifact:
     needs: [ integration-tests ]
     runs-on: ubuntu-latest
@@ -443,3 +442,219 @@ jobs:
         run: |
           cd .github/hosted-runner/amd64/
           terraform destroy -auto-approve
+          
+  spinup-arm64-runner:
+    needs: [ package ]
+    runs-on: ubuntu-latest
+    outputs:
+      runner_token: ${{ steps.token.outputs.runner }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Generate runner token
+        id: token
+        run: |
+          curl -X POST -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/etaques/pktvisor/actions/runners/registration-token -o token.json
+          echo "::set-output name=runner::$(cat token.json | jq .token --raw-output )"
+          cat token.json
+
+      - name: Inject runner token in user_data.sh
+        run: |
+          cd .github/hosted-runner/arm64/
+          ESCAPED_REPLACE_RUNNER_TOKEN=$(printf '%s\n' "${{ steps.token.outputs.runner }}" | sed -e 's/[\/&]/\\&/g')
+          sed -i -e "s/RUNNER_TOKEN/$ESCAPED_REPLACE_RUNNER_TOKEN/g" user_data.sh
+
+      - name: Inject AWS key
+        run: |
+          cd .github/hosted-runner/arm64/
+          ESCAPED_REPLACE_KEY_ID=$(printf '%s\n' "${{ secrets.AWS_ACCESS_KEY_ID }}" | sed -e 's/[\/&]/\\&/g')
+          sed -i -e "s/AWSID/$ESCAPED_REPLACE_KEY_ID/g" vars.tf
+          ESCAPED_REPLACE_ACCESS_KEY=$(printf '%s\n' "${{ secrets.AWS_SECRET_ACCESS_KEY }}" | sed -e 's/[\/&]/\\&/g')
+          sed -i -e "s/AWSSECRET/$ESCAPED_REPLACE_ACCESS_KEY/g" vars.tf
+          ESCAPED_REPLACE_ENVIRONMENT=$(printf '%s\n' "${{ needs.prebuild-package.outputs.branch_name }}-package" | sed -e 's/[\/&]/\\&/g')
+          sed -i -e "s/ENVIRONMENT/$ESCAPED_REPLACE_ENVIRONMENT/g" vars.tf
+
+      - name: setup terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.1.7
+          terraform_wrapper: false
+
+      - name: Terraform Init
+        run: |
+          cd .github/hosted-runner/arm64/
+          terraform init -input=false
+
+      - name: Terraform plan
+        run: |
+          cd .github/hosted-runner/arm64/
+          terraform plan -out=tfplan
+
+      - name: Terraform apply
+        run: |
+          cd .github/hosted-runner/arm64/
+          terraform apply -auto-approve tfplan
+
+      - name: Terraform output
+        run: |
+          cd .github/hosted-runner/arm64/
+          terraform output -raw ip > ip.txt
+          
+      - name: Persist IP to workspace
+        uses: actions/upload-artifact@v2
+        with:
+          name: ip-arm
+          path: |
+            .github/hosted-runner/arm64/ip.txt
+          retention-days: 1
+
+      - name: Persist to workspace
+        uses: actions/upload-artifact@v2
+        with:
+          name: terraform
+          path: |
+            .github/hosted-runner/arm64/terraform.tfstate
+          retention-days: 1
+          
+  package-arm64:
+    needs: [ spinup-arm64-runner ]
+    runs-on: [self-hosted, linux, ARM64]
+    if: github.event_name != 'pull_request'
+    steps:
+      - name: Attach to workspace
+        uses: actions/download-artifact@v2
+        with:
+          name: workspace
+
+      - name: Get branch name
+        shell: bash
+        run: echo "BRANCH_NAME=$(echo ${GITHUB_REF#refs/heads/} | tr / -)" >> $GITHUB_ENV
+
+      - name: Debug branch name
+        run: echo ${{ env.BRANCH_NAME }}
+
+      - name: Get VERSION
+        run: |
+          echo "VERSION=`cat ${{github.workspace}}/build/VERSION`" >> $GITHUB_ENV
+
+      - name: Debug version
+        run: echo ${{ env.VERSION }}
+
+      - name: Generate ref tag (master)
+        if: ${{ env.BRANCH_NAME == 'master' || env.BRANCH_NAME == 'multi-arch-images' }}
+        run: |
+          echo "REF_TAG=latest" >> $GITHUB_ENV
+          echo "PRERELEASE=false" >> $GITHUB_ENV
+          echo "DRAFT=true" >> $GITHUB_ENV
+
+      - name: Generate ref tag (release candidate)
+        if: ${{ env.BRANCH_NAME == 'release' }}
+        run: |
+          echo "REF_TAG=latest-rc" >> $GITHUB_ENV
+          echo "PRERELEASE=true" >> $GITHUB_ENV
+          echo "DRAFT=false" >> $GITHUB_ENV
+
+      - name: Debug ref tag
+        run: echo ${{ env.REF_TAG }}
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build + push - pktvisor (multi-arch)
+        env:
+          IMAGE_NAME: ghcr.io/etaques/pktvisor
+        uses: docker/build-push-action@v3
+        with:
+          builder: ${{ steps.buildx.outputs.name }}
+          context: .
+          file: ./docker/Dockerfile
+          platforms: linux/arm64
+          push: true
+          tags: ${{ env.IMAGE_NAME }}:arm64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            ghtoken=${{ secrets.GITHUB_TOKEN }}
+            
+  remove-github-runner-arm64:
+    needs: [ spinup-arm64-runner, package-arm64 ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Attach to workspace
+        uses: actions/download-artifact@v2
+        with:
+          name: ip-arm
+
+      - name: Get runner ip
+        id: address
+        run: |
+          ls -lha
+          echo "::set-output name=ip::$(cat ip.txt)"
+
+      - name: Executing remote ssh commands on runner
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ steps.address.outputs.ip }}
+          username: ubuntu
+          key: ${{ secrets.RUNNER_SSH_KEY }}
+          port: 22
+          script: |
+               cd /actions-runner
+               sudo chmod 777 . -R
+               ./config.sh remove --token ${{ needs.spinup-arm64-runner.outputs.runner_token }}            
+            
+  remove-arm64-runner:
+    needs:
+      - package-arm64
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Attach to workspace
+        uses: actions/download-artifact@v2
+        with:
+          name: terraform
+          path: .github/hosted-runner/arm64/
+
+      - name: Inject AWS key
+        run: |
+          cd .github/hosted-runner/arm64/
+          ESCAPED_REPLACE_KEY_ID=$(printf '%s\n' "${{ secrets.AWS_ACCESS_KEY_ID }}" | sed -e 's/[\/&]/\\&/g')
+          sed -i -e "s/AWSID/$ESCAPED_REPLACE_KEY_ID/g" vars.tf
+          ESCAPED_REPLACE_ACCESS_KEY=$(printf '%s\n' "${{ secrets.AWS_SECRET_ACCESS_KEY }}" | sed -e 's/[\/&]/\\&/g')
+          sed -i -e "s/AWSSECRET/$ESCAPED_REPLACE_ACCESS_KEY/g" vars.tf
+
+      - name: setup terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.1.7
+
+      - name: Terraform Init
+        run: |
+          cd .github/hosted-runner/arm64/
+          terraform init -input=false
+
+      - name: Terraform plan destroy
+        run: |
+          cd .github/hosted-runner/arm64/
+          terraform plan -destroy
+        continue-on-error: true
+
+      - name: Terraform destroy
+        run: |
+          cd .github/hosted-runner/arm64/
+          terraform destroy -auto-approve
+
