@@ -5,7 +5,7 @@ resource "aws_instance" "orb-devops" {
   key_name        = var.key_name
   user_data       = file("user_data.sh")
   associate_public_ip_address = true
-  subnet_id       = "subnet-086909352c7cc4e61"
+  subnet_id       = "subnet-0e4137bca8a8a81da"
 
   ebs_block_device {
     device_name = "/dev/sda1"
