@@ -470,6 +470,51 @@ TEST_CASE("DNS Filters: answer_count", "[pcap][dns]")
     CHECK(j["top_qname3"][0]["name"] == "sirius.mwbsys.com");
 }
 
+TEST_CASE("DNS Filters: only_dns_sec_response", "[pcap][dns]")
+{
+
+    PcapInputStream stream{"pcap-test"};
+    stream.config_set("pcap_file", "tests/fixtures/dnssec.pcap");
+    stream.config_set("bpf", "");
+    stream.config_set("host_spec", "192.168.0.0/24");
+    stream.parse_host_spec();
+
+    visor::Config c;
+    auto stream_proxy = stream.add_event_proxy(c);
+    c.config_set<uint64_t>("num_periods", 1);
+    DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
+    dns_handler.config_set<bool>("only_dns_sec_response", true);
+    dns_handler.start();
+    stream.start();
+    stream.stop();
+    dns_handler.stop();
+
+    auto counters = dns_handler.metrics()->bucket(0)->counters();
+    auto event_data = dns_handler.metrics()->bucket(0)->event_data_locked();
+
+    CHECK(event_data.num_events->value() == 14);
+    CHECK(event_data.num_samples->value() == 14);
+    CHECK(counters.TCP.value() == 0);
+    CHECK(counters.UDP.value() == 6);
+    CHECK(counters.IPv4.value() == 6);
+    CHECK(counters.IPv6.value() == 0);
+    CHECK(counters.queries.value() == 0);
+    CHECK(counters.replies.value() == 6);
+    CHECK(counters.NOERROR.value() == 6);
+
+    nlohmann::json j;
+    dns_handler.metrics()->bucket(0)->to_json(j);
+
+    CHECK(j["cardinality"]["qname"] == 3);
+
+    CHECK(j["top_qtype"][0]["name"] == "DNSKEY");
+    CHECK(j["top_qtype"][0]["estimate"] == 3);
+    CHECK(j["top_qtype"][1]["name"] == "DS");
+    CHECK(j["top_qtype"][1]["estimate"] == 2);
+    CHECK(j["top_qtype"][2]["name"] == "A");
+    CHECK(j["top_qtype"][2]["estimate"] == 1);
+}
+
 TEST_CASE("DNS Configs: public_suffix_list", "[pcap][dns]")
 {
 
