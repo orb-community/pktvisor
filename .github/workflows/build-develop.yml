@@ -614,8 +614,7 @@ jobs:
                ./config.sh remove --token ${{ needs.spinup-arm64-runner.outputs.runner_token }}            
             
   remove-arm64-runner:
-    needs:
-      - remove-github-runner-arm64
+    needs: [ remove-github-runner-arm64 ]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -655,4 +654,44 @@ jobs:
         run: |
           cd .github/hosted-runner/arm64/
           terraform destroy -auto-approve
+          
+  pushing-manifests:
+    needs: [ remove-github-runner-arm64 ]
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
+    steps:
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create docker manifest
+        run: |
+          docker manifest create ghcr.io/etaques/pktvisor:latest \
+          ghcr.io/etaques/pktvisor:amd64 \
+          ghcr.io/etaques/pktvisor:armv7 \
+          ghcr.io/etaques/pktvisor:arm64
+
+      - name: Push manifest to ghcr.io
+        run: |
+          docker manifest push ghcr.io/etaques/pktvisor:latest
+
+      - name: Install skopeo
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y skopeo
+
+      - name: Login skopeo to dockerhub
+        run: |
+          sudo skopeo login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }} docker.io
+
+      - name: Copy from ghcr.io to docker.io
+        run: |
+          sudo skopeo copy \
+          --all \
+          docker://ghcr.io/etaques/pktvisor:latest \
+          docker://docker.io/ns1labs/pktvisor:latest
+
 

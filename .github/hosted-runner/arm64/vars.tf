@@ -10,7 +10,7 @@ variable "environment" {
 }
 
 variable "aws_region" {
-  default = "us-east-1a"
+  default = "us-east-1"
 }
 
 variable "amis" {
