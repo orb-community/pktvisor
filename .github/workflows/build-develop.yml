@@ -152,7 +152,7 @@ jobs:
       - name: Build + push - pktvisor (multi-arch)
         env:
           IMAGE_NAME: ns1labs/pktvisor
-          IMAGE_NAME2: ghcr.io/etaques/pktvisor
+          IMAGE_NAME2: ghcr.io/ns1labs/pktvisor
         uses: docker/build-push-action@v3
         with:
           builder: ${{ steps.buildx.outputs.name }}
@@ -221,7 +221,7 @@ jobs:
       - name: Generate runner token
         id: token
         run: |
-          curl -X POST -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/etaques/pktvisor/actions/runners/registration-token -o token.json
+          curl -X POST -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/ns1labs/pktvisor/actions/runners/registration-token -o token.json
           echo "::set-output name=runner::$(cat token.json | jq .token --raw-output )"
           cat token.json
 
@@ -458,7 +458,7 @@ jobs:
       - name: Generate runner token
         id: token
         run: |
-          curl -X POST -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/etaques/pktvisor/actions/runners/registration-token -o token.json
+          curl -X POST -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/ns1labs/pktvisor/actions/runners/registration-token -o token.json
           echo "::set-output name=runner::$(cat token.json | jq .token --raw-output )"
           cat token.json
 
