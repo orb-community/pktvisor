@@ -33,11 +33,6 @@ def from_float(x: Any) -> float:
     return float(x)
 
 
-def to_float(x: Any) -> float:
-    assert isinstance(x, float)
-    return x
-
-
 def to_class(c: Type[T], x: Any) -> dict:
     assert isinstance(x, c)
     return cast(Any, x).to_dict()
@@ -145,8 +140,8 @@ class Quantiles:
         return Quantiles(p50, p90, p95, p99)
 
     def to_dict(self) -> dict:
-        result: dict = {"p50": to_float(self.p50), "p90": to_float(self.p90), "p95": to_float(self.p95),
-                        "p99": to_float(self.p99)}
+        result: dict = {"p50": from_float(self.p50), "p90": from_float(self.p90), "p95": from_float(self.p95),
+                        "p99": from_float(self.p99)}
         return result
 
 
@@ -409,15 +404,15 @@ class Xact:
         counts = Counts.from_dict(obj.get("counts"))
         xact_in = In.from_dict(obj.get("in"))
         out = In.from_dict(obj.get("out"))
-        if xact_in.to_dict().get("in") != 0:
+        if xact_in.to_dict().get('total') != 0:
             ratio = Ratio.from_dict(obj.get("ratio"))
             return Xact(counts, xact_in, out, ratio)
         else:
             return Xact(counts, xact_in, out, Ratio.from_dict({"quantiles": {
-                "p50": float(5.69),
-                "p90": float(0.00),
-                "p95": float(0.00),
-                "p99": float(0.00)
+                "p50": 0,
+                "p90": 0,
+                "p95": 0,
+                "p99": 0
             }}))
 
     def to_dict(self) -> dict:
