@@ -360,6 +360,50 @@ TEST_CASE("DNS Filters: only_rcode refused", "[pcap][dns]")
     dns_handler.metrics()->bucket(0)->to_json(j);
     REQUIRE(j["wire_packets"]["filtered"] == 23);
 }
+TEST_CASE("DNS Filters: only_qtypes AAAA and TXT", "[pcap][dns]")
+{
+
+    PcapInputStream stream{"pcap-test"};
+    stream.config_set("pcap_file", "tests/fixtures/dns_udp_tcp_random.pcap");
+    stream.config_set("bpf", "");
+    stream.config_set("host_spec", "192.168.0.0/24");
+    stream.parse_host_spec();
+
+    visor::Config c;
+    auto stream_proxy = stream.add_event_proxy(c);
+    c.config_set<uint64_t>("num_periods", 1);
+    DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
+
+    //notice case insensitive
+    dns_handler.config_set<visor::Configurable::StringList>("only_qtype", {"AAAA", "TxT"});
+    dns_handler.start();
+    stream.start();
+    stream.stop();
+    dns_handler.stop();
+
+    auto counters = dns_handler.metrics()->bucket(0)->counters();
+    auto event_data = dns_handler.metrics()->bucket(0)->event_data_locked();
+
+    // confirmed with wireshark. there are 14 TCP retransmissions which are counted differently in our state machine
+    // and account for some minor differences in TCP based stats
+    CHECK(event_data.num_events->value() == 5851); // wireshark: 5838
+    CHECK(event_data.num_samples->value() == 5851);
+    CHECK(counters.IPv4.value() == 2096);
+    CHECK(counters.IPv6.value() == 0);
+    CHECK(counters.queries.value() == 1050);
+    CHECK(counters.replies.value() == 1046);
+    CHECK(counters.NODATA.value() == 737);
+    CHECK(counters.NOERROR.value() == 1046);
+
+    nlohmann::json j;
+    dns_handler.metrics()->bucket(0)->to_json(j);
+
+    CHECK(j["top_qtype"][0]["name"] == "AAAA");
+    CHECK(j["top_qtype"][0]["estimate"] == 1476);
+    CHECK(j["top_qtype"][1]["name"] == "TXT");
+    CHECK(j["top_qtype"][1]["estimate"] == 620);
+    CHECK(j["top_qtype"][2]== nullptr);
+}
 
 TEST_CASE("DNS TopN custom size", "[pcap][dns]")
 {
@@ -577,6 +621,18 @@ TEST_CASE("DNS filter exceptions", "[pcap][dns][filter]")
     {
         dns_handler.config_set<uint64_t>("only_rcode", 133);
         REQUIRE_THROWS_WITH(dns_handler.start(), "DnsStreamHandler: only_rcode filter contained an invalid/unsupported rcode");
+    }
+
+    SECTION("only_qtype invalid qtype string")
+    {
+        dns_handler.config_set<visor::Configurable::StringList>("only_qtype", {"AAAA", "TEXT"});
+        REQUIRE_THROWS_WITH(dns_handler.start(), "DnsStreamHandler: only_qtype filter contained an invalid/unsupported qtype: TEXT");
+    }
+
+    SECTION("only_qtype invalid qtype number")
+    {
+        dns_handler.config_set<visor::Configurable::StringList>("only_qtype", {"AAAA", "270"});
+        REQUIRE_THROWS_WITH(dns_handler.start(), "DnsStreamHandler: only_qtype filter contained an invalid/unsupported qtype: 270");
     }
 
     SECTION("answer_count as string")
