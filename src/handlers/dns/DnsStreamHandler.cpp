@@ -390,6 +390,7 @@ inline bool DnsStreamHandler::_filtering(DnsLayer &payload, [[maybe_unused]] Pac
         if (!has_ssig) {
             goto will_filter;
         }
+    }
     if (_f_enabled[Filters::OnlyQtype]) {
         if (!payload.parseResources(true) || payload.getFirstQuery() == nullptr) {
             goto will_filter;
