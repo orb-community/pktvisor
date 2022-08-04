@@ -668,7 +668,7 @@ jobs:
 
       - name: Push manifest to ghcr.io
         run: |
-          docker manifest push ghcr.io/etaques/pktvisor:latest
+          docker manifest push ghcr.io/etaques/pktvisor:latest-develop
 
       - name: Install skopeo
         run: |
