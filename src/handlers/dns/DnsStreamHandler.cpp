@@ -76,6 +76,9 @@ void DnsStreamHandler::start()
             throw ConfigException("DnsStreamHandler: only_rcode filter contained an invalid/unsupported rcode");
         }
     }
+    if (config_exists("only_dnssec_response")) {
+        _f_enabled.set(Filters::OnlyDNSSECResponse);
+    }
     if (config_exists("answer_count")) {
         try {
             _f_answer_count = config_get<uint64_t>("answer_count");
@@ -364,6 +367,29 @@ inline bool DnsStreamHandler::_filtering(DnsLayer &payload, [[maybe_unused]] Pac
     }
     if (_f_enabled[Filters::AnswerCount] && payload.getAnswerCount() != _f_answer_count) {
         goto will_filter;
+    }
+    if (_f_enabled[Filters::OnlyDNSSECResponse]) {
+        if ((payload.getDnsHeader()->queryOrResponse != QR::response) || !payload.getAnswerCount()) {
+            goto will_filter;
+        }
+        if (!payload.parseResources(false, true, true) || payload.getFirstAnswer() == nullptr) {
+            goto will_filter;
+        }
+        bool has_ssig{false};
+        auto dns_answer = payload.getFirstAnswer();
+        for (size_t i = 0; i < payload.getAnswerCount(); ++i) {
+            if (!dns_answer) {
+                break;
+            }
+            if (dns_answer->getDnsType() == pcpp::DNS_TYPE_RRSIG) {
+                has_ssig = true;
+                break;
+            }
+            dns_answer = payload.getNextAnswer(dns_answer);
+        }
+        if (!has_ssig) {
+            goto will_filter;
+        }
     }
     if (_f_enabled[Filters::OnlyQtype]) {
         if (!payload.parseResources(true) || payload.getFirstQuery() == nullptr) {

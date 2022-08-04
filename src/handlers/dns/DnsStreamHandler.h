@@ -329,6 +329,7 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
         OnlyQtype,
         AnswerCount,
         OnlyQNameSuffix,
+        OnlyDNSSECResponse,
         DnstapMsgType,
         FiltersMAX
     };
