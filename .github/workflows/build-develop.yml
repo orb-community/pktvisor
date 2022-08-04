@@ -161,8 +161,6 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: ${{ env.IMAGE_NAME }}:${{ env.VERSION }} , ${{ env.IMAGE_NAME }}:${{ env.REF_TAG }} , ${{ env.IMAGE_NAME2 }}:amd64
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
 
       - name: Build + push - pktvisor-cli
         env:
@@ -579,8 +577,6 @@ jobs:
           platforms: linux/arm64
           push: true
           tags: ${{ env.IMAGE_NAME }}:arm64
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
           build-args: |
             ghtoken=${{ secrets.GITHUB_TOKEN }}
             
