@@ -87,6 +87,27 @@ void DnsStreamHandler::start()
             throw ConfigException("DnsStreamHandler: wrong value type for answer_count filter. It should be an integer");
         }
     }
+    if (config_exists("only_qtype")) {
+        _f_enabled.set(Filters::OnlyQtype);
+        for (const auto &qtype : config_get<StringList>("only_qtype")) {
+            if (std::all_of(qtype.begin(), qtype.end(), ::isdigit)) {
+                auto value = std::stoul(qtype);
+                if (QTypeNames.find(value) == QTypeNames.end()) {
+                    throw ConfigException(fmt::format("DnsStreamHandler: only_qtype filter contained an invalid/unsupported qtype: {}", value));
+                }
+                _f_qtypes.push_back(value);
+            } else {
+                std::string upper_qtype{qtype};
+                std::transform(upper_qtype.begin(), upper_qtype.end(), upper_qtype.begin(),
+                    [](unsigned char c) { return std::toupper(c); });
+                if (QTypeNumbers.find(upper_qtype) != QTypeNumbers.end()) {
+                    _f_qtypes.push_back(QTypeNumbers[upper_qtype]);
+                } else {
+                    throw ConfigException(fmt::format("DnsStreamHandler: only_qtype filter contained an invalid/unsupported qtype: {}", qtype));
+                }
+            }
+        }
+    }
     if (config_exists("only_qname_suffix")) {
         _f_enabled.set(Filters::OnlyQNameSuffix);
         for (const auto &qname : config_get<StringList>("only_qname_suffix")) {
@@ -367,6 +388,14 @@ inline bool DnsStreamHandler::_filtering(DnsLayer &payload, [[maybe_unused]] Pac
             dns_answer = payload.getNextAnswer(dns_answer);
         }
         if (!has_ssig) {
+            goto will_filter;
+        }
+    if (_f_enabled[Filters::OnlyQtype]) {
+        if (!payload.parseResources(true) || payload.getFirstQuery() == nullptr) {
+            goto will_filter;
+        }
+        auto qtype = payload.getFirstQuery()->getDnsType();
+        if (!std::any_of(_f_qtypes.begin(), _f_qtypes.end(), [qtype](uint16_t f_qtype) { return qtype == f_qtype; })) {
             goto will_filter;
         }
     }
