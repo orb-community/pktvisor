@@ -76,12 +76,36 @@ void DnsStreamHandler::start()
             throw ConfigException("DnsStreamHandler: only_rcode filter contained an invalid/unsupported rcode");
         }
     }
+    if (config_exists("only_dnssec_response")) {
+        _f_enabled.set(Filters::OnlyDNSSECResponse);
+    }
     if (config_exists("answer_count")) {
         try {
             _f_answer_count = config_get<uint64_t>("answer_count");
             _f_enabled.set(Filters::AnswerCount);
         } catch (const std::exception &e) {
             throw ConfigException("DnsStreamHandler: wrong value type for answer_count filter. It should be an integer");
+        }
+    }
+    if (config_exists("only_qtype")) {
+        _f_enabled.set(Filters::OnlyQtype);
+        for (const auto &qtype : config_get<StringList>("only_qtype")) {
+            if (std::all_of(qtype.begin(), qtype.end(), ::isdigit)) {
+                auto value = std::stoul(qtype);
+                if (QTypeNames.find(value) == QTypeNames.end()) {
+                    throw ConfigException(fmt::format("DnsStreamHandler: only_qtype filter contained an invalid/unsupported qtype: {}", value));
+                }
+                _f_qtypes.push_back(value);
+            } else {
+                std::string upper_qtype{qtype};
+                std::transform(upper_qtype.begin(), upper_qtype.end(), upper_qtype.begin(),
+                    [](unsigned char c) { return std::toupper(c); });
+                if (QTypeNumbers.find(upper_qtype) != QTypeNumbers.end()) {
+                    _f_qtypes.push_back(QTypeNumbers[upper_qtype]);
+                } else {
+                    throw ConfigException(fmt::format("DnsStreamHandler: only_qtype filter contained an invalid/unsupported qtype: {}", qtype));
+                }
+            }
         }
     }
     if (config_exists("only_qname_suffix")) {
@@ -343,6 +367,38 @@ inline bool DnsStreamHandler::_filtering(DnsLayer &payload, [[maybe_unused]] Pac
     }
     if (_f_enabled[Filters::AnswerCount] && payload.getAnswerCount() != _f_answer_count) {
         goto will_filter;
+    }
+    if (_f_enabled[Filters::OnlyDNSSECResponse]) {
+        if ((payload.getDnsHeader()->queryOrResponse != QR::response) || !payload.getAnswerCount()) {
+            goto will_filter;
+        }
+        if (!payload.parseResources(false, true, true) || payload.getFirstAnswer() == nullptr) {
+            goto will_filter;
+        }
+        bool has_ssig{false};
+        auto dns_answer = payload.getFirstAnswer();
+        for (size_t i = 0; i < payload.getAnswerCount(); ++i) {
+            if (!dns_answer) {
+                break;
+            }
+            if (dns_answer->getDnsType() == pcpp::DNS_TYPE_RRSIG) {
+                has_ssig = true;
+                break;
+            }
+            dns_answer = payload.getNextAnswer(dns_answer);
+        }
+        if (!has_ssig) {
+            goto will_filter;
+        }
+    }
+    if (_f_enabled[Filters::OnlyQtype]) {
+        if (!payload.parseResources(true) || payload.getFirstQuery() == nullptr) {
+            goto will_filter;
+        }
+        auto qtype = payload.getFirstQuery()->getDnsType();
+        if (!std::any_of(_f_qtypes.begin(), _f_qtypes.end(), [qtype](uint16_t f_qtype) { return qtype == f_qtype; })) {
+            goto will_filter;
+        }
     }
     if (_f_enabled[Filters::OnlyQNameSuffix]) {
         if (!payload.parseResources(true) || payload.getFirstQuery() == nullptr) {
