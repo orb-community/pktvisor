@@ -21,6 +21,7 @@ COPY ./CMakeLists.txt /pktvisor-src/
 COPY ./conanfile.txt /pktvisor-src/
 
 WORKDIR /tmp/build
+
 RUN \
     conan profile new --detect default && \
     conan profile update settings.compiler.libcxx=libstdc++11 default && \
