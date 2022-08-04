@@ -470,7 +470,7 @@ TEST_CASE("DNS Filters: answer_count", "[pcap][dns]")
     CHECK(j["top_qname3"][0]["name"] == "sirius.mwbsys.com");
 }
 
-TEST_CASE("DNS Filters: only_dns_sec_response", "[pcap][dns]")
+TEST_CASE("DNS Filters: only_dnssec_response", "[pcap][dns]")
 {
 
     PcapInputStream stream{"pcap-test"};
@@ -483,7 +483,7 @@ TEST_CASE("DNS Filters: only_dns_sec_response", "[pcap][dns]")
     auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
     DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
-    dns_handler.config_set<bool>("only_dns_sec_response", true);
+    dns_handler.config_set<bool>("only_dnssec_response", true);
     dns_handler.start();
     stream.start();
     stream.stop();
