@@ -132,7 +132,7 @@ jobs:
       - name: Generate runner token
         id: token
         run: |
-          curl -X POST -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/etaques/pktvisor/actions/runners/registration-token -o token.json
+          curl -X POST -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/ns1labs/pktvisor/actions/runners/registration-token -o token.json
           echo "::set-output name=runner::$(cat token.json | jq .token --raw-output )"
           cat token.json
 
@@ -156,6 +156,7 @@ jobs:
         uses: hashicorp/setup-terraform@v2
         with:
           terraform_version: 1.1.7
+          terraform_wrapper: false
 
       - name: Terraform Init
         run: |
@@ -175,7 +176,15 @@ jobs:
       - name: Terraform output
         run: |
           cd .github/hosted-runner/arm64/
-          terraform output -raw ip
+          terraform output -raw ip > ip.txt
+          
+      - name: Persist IP to workspace
+        uses: actions/upload-artifact@v2
+        with:
+          name: ip-arm
+          path: |
+            .github/hosted-runner/arm64/ip.txt
+          retention-days: 1
 
       - name: Persist to workspace
         uses: actions/upload-artifact@v2
@@ -199,7 +208,7 @@ jobs:
       - name: Generate runner token
         id: token
         run: |
-          curl -X POST -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/etaques/pktvisor/actions/runners/registration-token -o token.json
+          curl -X POST -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/ns1labs/pktvisor/actions/runners/registration-token -o token.json
           echo "::set-output name=runner::$(cat token.json | jq .token --raw-output )"
           cat token.json
 
@@ -217,13 +226,13 @@ jobs:
           ESCAPED_REPLACE_ACCESS_KEY=$(printf '%s\n' "${{ secrets.AWS_SECRET_ACCESS_KEY }}" | sed -e 's/[\/&]/\\&/g')
           sed -i -e "s/AWSSECRET/$ESCAPED_REPLACE_ACCESS_KEY/g" vars.tf
           ESCAPED_REPLACE_ENVIRONMENT=$(printf '%s\n' "${{ needs.prebuild-package.outputs.branch_name }}-release" | sed -e 's/[\/&]/\\&/g')
-          sed -i -e "s/ENVIRONMENT/$ESCAPED_REPLACE_ENVIRONMENT/g" vars.tf
-          
+          sed -i -e "s/ENVIRONMENT/$ESCAPED_REPLACE_ENVIRONMENT/g" vars.tf         
 
       - name: setup terraform
         uses: hashicorp/setup-terraform@v2
         with:
           terraform_version: 1.1.7
+          terraform_wrapper: false
 
       - name: Terraform Init
         run: |
@@ -243,7 +252,15 @@ jobs:
       - name: Terraform output
         run: |
           cd .github/hosted-runner/amd64/
-          terraform output -raw ip
+          terraform output -raw ip > ip.txt
+          
+      - name: Persist IP to workspace
+        uses: actions/upload-artifact@v2
+        with:
+          name: ip
+          path: |
+            .github/hosted-runner/amd64/ip.txt
+          retention-days: 1
 
       - name: Persist to workspace
         uses: actions/upload-artifact@v2
@@ -284,13 +301,6 @@ jobs:
           echo "PRERELEASE=false" >> $GITHUB_ENV
           echo "DRAFT=true" >> $GITHUB_ENV
 
-      - name: Generate ref tag (release candidate)
-        if: ${{ env.BRANCH_NAME == 'release' }}
-        run: |
-          echo "REF_TAG=latest-rc" >> $GITHUB_ENV
-          echo "PRERELEASE=true" >> $GITHUB_ENV
-          echo "DRAFT=false" >> $GITHUB_ENV
-
       - name: Debug ref tag
         run: echo ${{ env.REF_TAG }}
 
@@ -310,7 +320,7 @@ jobs:
 
       - name: Build + push - pktvisor (multi-arch)
         env:
-          IMAGE_NAME: ghcr.io/etaques/pktvisor
+          IMAGE_NAME: ghcr.io/ns1labs/pktvisor
         uses: docker/build-push-action@v3
         with:
           builder: ${{ steps.buildx.outputs.name }}
@@ -355,13 +365,6 @@ jobs:
           echo "PRERELEASE=false" >> $GITHUB_ENV
           echo "DRAFT=true" >> $GITHUB_ENV
 
-      - name: Generate ref tag (release candidate)
-        if: ${{ env.BRANCH_NAME == 'release' }}
-        run: |
-          echo "REF_TAG=latest-rc" >> $GITHUB_ENV
-          echo "PRERELEASE=true" >> $GITHUB_ENV
-          echo "DRAFT=false" >> $GITHUB_ENV
-
       - name: Debug ref tag
         run: echo ${{ env.REF_TAG }}
 
@@ -381,7 +384,7 @@ jobs:
 
       - name: Build + push - pktvisor (multi-arch)
         env:
-          IMAGE_NAME: ghcr.io/etaques/pktvisor
+          IMAGE_NAME: ghcr.io/ns1labs/pktvisor
         uses: docker/build-push-action@v3
         with:
           builder: ${{ steps.buildx.outputs.name }}
@@ -425,13 +428,6 @@ jobs:
           echo "PRERELEASE=false" >> $GITHUB_ENV
           echo "DRAFT=true" >> $GITHUB_ENV
 
-      - name: Generate ref tag (release candidate)
-        if: ${{ env.BRANCH_NAME == 'release' }}
-        run: |
-          echo "REF_TAG=latest-rc" >> $GITHUB_ENV
-          echo "PRERELEASE=true" >> $GITHUB_ENV
-          echo "DRAFT=false" >> $GITHUB_ENV
-
       - name: Debug ref tag
         run: echo ${{ env.REF_TAG }}
 
@@ -448,7 +444,7 @@ jobs:
 
       - name: Build + push - pktvisor (multi-arch)
         env:
-          IMAGE_NAME: ghcr.io/etaques/pktvisor
+          IMAGE_NAME: ghcr.io/ns1labs/pktvisor
         uses: docker/build-push-action@v3
         with:
           builder: ${{ steps.buildx.outputs.name }}
@@ -462,9 +458,36 @@ jobs:
           build-args: |
             ghtoken=${{ secrets.GITHUB_TOKEN }}
 
+  remove-github-runner-arm64:
+    needs: [ spinup-arm64-runner, package-arm64 ]
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
+    steps:
+      - name: Attach to workspace
+        uses: actions/download-artifact@v2
+        with:
+          name: ip-arm
+
+      - name: Get runner ip
+        id: address
+        run: |
+          ls -lha
+          echo "::set-output name=ip::$(cat ip.txt)"
+
+      - name: Executing remote ssh commands on runner
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ steps.address.outputs.ip }}
+          username: ubuntu
+          key: ${{ secrets.RUNNER_SSH_KEY }}
+          port: 22
+          script: |
+               cd /actions-runner
+               sudo chmod 777 . -R
+               ./config.sh remove --token ${{ needs.spinup-arm64-runner.outputs.runner_token }}
+
   remove-arm64-runner:
-    needs:
-      - package-arm64
+    needs: [ remove-github-runner-arm64 ]
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
     steps:
@@ -506,9 +529,36 @@ jobs:
           cd .github/hosted-runner/arm64/
           terraform destroy -auto-approve
 
+  remove-github-runner-amd64:
+    needs: [ spinup-amd64-runner, package-armv7, package-arm64 ]
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
+    steps:
+      - name: Attach to workspace
+        uses: actions/download-artifact@v2
+        with:
+          name: ip
+
+      - name: Get runner ip
+        id: address
+        run: |
+          ls -lha
+          echo "::set-output name=ip::$(cat ip.txt)"
+
+      - name: Executing remote ssh commands on runner
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ steps.address.outputs.ip }}
+          username: ubuntu
+          key: ${{ secrets.RUNNER_SSH_KEY }}
+          port: 22
+          script: |
+               cd /actions-runner
+               sudo chmod 777 . -R
+               ./config.sh remove --token ${{ needs.spinup-amd64-runner.outputs.runner_token }}
+
   remove-amd64-runner:
-    needs:
-      - package-armv7
+    needs: [ remove-github-runner-amd64 ]
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
     steps:
@@ -550,27 +600,6 @@ jobs:
           cd .github/hosted-runner/amd64/
           terraform destroy -auto-approve
 
-  removing-runners:
-    needs:
-      - remove-arm64-runner
-      - remove-amd64-runner
-      - package-amd64
-    runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request'
-    steps:
-      - name: Remove first runner from github
-        run: |
-          curl -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/etaques/pktvisor/actions/runners | jq '.runners[1].id' --raw-output > runner_id_1.txt
-          RUNNER_ID=$(cat runner_id_1.txt)
-          curl -X DELETE -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/etaques/pktvisor/actions/runners/$RUNNER_ID
-          
-      - name: Remove second runner from github
-        run: |
-          curl -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/etaques/pktvisor/actions/runners | jq '.runners[0].id' --raw-output > runner_id_0.txt
-          RUNNER_ID=$(cat runner_id_0.txt)
-          curl -X DELETE -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/etaques/pktvisor/actions/runners/$RUNNER_ID
-
-
   pushing-manifests:
     needs:
       - removing-runners
@@ -586,19 +615,23 @@ jobs:
 
       - name: Create docker manifest
         run: |
-          docker manifest create ghcr.io/etaques/pktvisor:latest \
-          ghcr.io/etaques/pktvisor:amd64 \
-          ghcr.io/etaques/pktvisor:armv7 \
-          ghcr.io/etaques/pktvisor:arm64
+          docker manifest create ghcr.io/ns1labs/pktvisor:latest \
+          ghcr.io/ns1labs/pktvisor:amd64 \
+          ghcr.io/ns1labs/pktvisor:armv7 \
+          ghcr.io/ns1labs/pktvisor:arm64
 
       - name: Push manifest to ghcr.io
         run: |
-          docker manifest push ghcr.io/etaques/pktvisor:latest
+          docker manifest push ghcr.io/ns1labs/pktvisor:latest
 
       - name: Install skopeo
         run: |
           sudo apt-get update
           sudo apt-get install -y skopeo
+          
+      - name: Login skopeo to ghcr
+        run: |
+          sudo skopeo login -u ${{ github.repository_owner }} -p ${{ secrets.GITHUB_TOKEN }} ghcr.io
 
       - name: Login skopeo to dockerhub
         run: |
@@ -608,5 +641,5 @@ jobs:
         run: |
           sudo skopeo copy \
           --all \
-          docker://ghcr.io/etaques/pktvisor:latest \
+          docker://ghcr.io/ns1labs/pktvisor:latest \
           docker://docker.io/ns1labs/pktvisor:latest
