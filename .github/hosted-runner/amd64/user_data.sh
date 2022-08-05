@@ -22,6 +22,6 @@ curl -o actions-runner-linux-x64-2.291.1.tar.gz -L https://github.com/actions/ru
 #extract git actions runner installer
 tar xzf ./actions-runner-linux-x64-2.291.1.tar.gz
 
-RUNNER_ALLOW_RUNASROOT="1" ./config.sh --url https://github.com/etaques/pktvisor --token RUNNER_TOKEN --name amd64_runner --work _work --runasservice
+RUNNER_ALLOW_RUNASROOT="1" ./config.sh --url https://github.com/ns1labs/pktvisor --token RUNNER_TOKEN --name amd64_runner --work _work --runasservice
 
 RUNNER_ALLOW_RUNASROOT="1" ./run.sh
