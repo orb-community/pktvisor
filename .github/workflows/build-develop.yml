@@ -5,11 +5,10 @@ on:
   pull_request:
     branches:
       - develop
-      - multi-arch-images
+
   push:
     branches:
       - develop
-      - multi-arch-images
 
 env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
