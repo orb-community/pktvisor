@@ -368,8 +368,8 @@ jobs:
         uses: appleboy/scp-action@master
         with:
           host: qa.ops.orb.live
-          username: ${{ secrets.SSH_USERNAME }}
-          password: ${{ secrets.SSH_PASSWORD }}
+          username: root
+          key: ${{ secrets.RUNNER_SSH_KEY }}
           port: 2022
           source: "./output/*"
           target: "/usr/share/nginx/html/pktvisor/develop/${{ needs.integration-tests.outputs.commit_hash }}/pktvisor/python-test"
@@ -677,6 +677,10 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y skopeo
+          
+      - name: Login skopeo to ghcr
+        run: |
+          sudo skopeo login -u ${{ github.repository_owner }} -p ${{ secrets.GITHUB_TOKEN }} ghcr.io
 
       - name: Login skopeo to dockerhub
         run: |
