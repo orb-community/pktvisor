@@ -601,8 +601,7 @@ jobs:
           terraform destroy -auto-approve
 
   pushing-manifests:
-    needs:
-      - removing-runners
+    needs: [ remove-amd64-runner , remove-arm64-runner ]
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
     steps:
