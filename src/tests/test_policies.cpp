@@ -750,6 +750,24 @@ TEST_CASE("Policies", "[policies]")
         REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["policies"]), "expecting policy configuration map");
     }
 
+    SECTION("Bad Config: empty data")
+    {
+        CoreRegistry registry;
+        REQUIRE_THROWS_WITH(registry.policy_manager()->load_from_str(""), "empty data");
+    }
+
+    SECTION("Bad Config: invalid schema")
+    {
+        CoreRegistry registry;
+        REQUIRE_THROWS_WITH(registry.policy_manager()->load_from_str("invalid: schema"), "invalid schema");
+    }
+
+    SECTION("Bad Config: missing version")
+    {
+        CoreRegistry registry;
+        REQUIRE_THROWS_WITH(registry.policy_manager()->load_from_str(policies_config_bad1), "missing or unsupported version");
+    }
+
     SECTION("Bad Config: invalid tap")
     {
         CoreRegistry registry;
@@ -772,10 +790,9 @@ TEST_CASE("Policies", "[policies]")
     {
         CoreRegistry registry;
         registry.start(nullptr);
-        YAML::Node config_file = YAML::Load(policies_config_bad4);
 
-        REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
-        REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["policies"]), "policy [default_view] failed to start: mock error on start");
+        REQUIRE_NOTHROW(registry.tap_manager()->load_from_str(policies_config_bad4));
+        REQUIRE_THROWS_WITH(registry.policy_manager()->load_from_str(policies_config_bad4), "policy [default_view] failed to start: mock error on start");
     }
 
     SECTION("Bad Config: mis-matched input_type on tap")

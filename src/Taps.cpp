@@ -12,12 +12,34 @@
 
 namespace visor {
 
+std::vector<Tap *> TapManager::load_from_str(const std::string &str)
+{
+    if (str.empty()) {
+        throw TapException("empty data");
+    }
+
+    YAML::Node node = YAML::Load(str);
+
+    if (!node.IsMap() || !node["visor"]) {
+        throw TapException("invalid schema");
+    }
+    if (!node["version"] || !node["version"].IsScalar() || node["version"].as<std::string>() != "1.0") {
+        throw TapException("missing or unsupported version");
+    }
+    if (node["visor"]["taps"] && node["visor"]["taps"].IsMap()) {
+        return load(node["visor"]["taps"], true);
+    } else {
+        throw TapException("no taps found in schema");
+    }
+}
+
 // needs to be thread safe and transactional: any errors mean resources get cleaned up with no side effects
-void TapManager::load(const YAML::Node &tap_yaml, bool strict)
+std::vector<Tap *> TapManager::load(const YAML::Node &tap_yaml, bool strict)
 {
     assert(tap_yaml.IsMap());
     assert(spdlog::get("visor"));
 
+    std::vector<Tap *> result;
     for (YAML::const_iterator it = tap_yaml.begin(); it != tap_yaml.end(); ++it) {
         if (!it->first.IsScalar()) {
             throw TapException("expecting tap identifier");
@@ -60,9 +82,21 @@ void TapManager::load(const YAML::Node &tap_yaml, bool strict)
 
         // will throw if it already exists. nothing else to clean up
         module_add(std::move(tap_module));
-
+        result.push_back(tap_module.get());
         spdlog::get("visor")->info("tap [{}]: loaded, type {}", tap_name, input_type);
     }
+
+    return result;
+}
+
+void TapManager::remove_tap(const std::string &name)
+{
+    std::unique_lock lock(_map_mutex);
+    if (_map.count(name) == 0) {
+        throw ModuleException(name, fmt::format("module name '{}' does not exist", name));
+    }
+    //TODO: add logic to remove policies that uses the specific deleted TAP
+    _map.erase(name);
 }
 
 std::string Tap::get_input_name(const Configurable &config, const Configurable &filter)
