@@ -25,33 +25,59 @@ Scenario: run multiple pktvisors instances using the same port
 
 
 @smoke
-Scenario: create a policy with all handlers using admin permission
+Scenario Outline: create a policy with all handlers using admin permission
   Given that a pktvisor instance is running on port available with admin permission
   When create a new policy with all handler(s)
+    And run mocked data <file_name> for this network
   Then 4 policies must be running
 #1 policy default, 2 policies with resources and 1 policy created
+    And metrics must be correctly generated for <traffic_type> traffic
+  Examples:
+    |file_name| traffic_type |
+    | dhcp-flow.pcap | dhcp  |
+    | dns_ipv6_udp.pcap| dns |
 
 
 @smoke
-Scenario: create a policy with net handler using admin permission
+Scenario Outline: create a policy with net handler using admin permission
   Given that a pktvisor instance is running on port available with admin permission
   When create a new policy with net handler(s)
+    And run mocked data <file_name> for this network
   Then 4 policies must be running
-
+    And metrics must be correctly generated for <traffic_type> traffic
+  Examples:
+    |file_name| traffic_type |
+    | dhcp-flow.pcap | dhcp  |
+    | dns_ipv6_udp.pcap| dns |
 
 @smoke
-Scenario: create a policy with dhcp handler using admin permission
+Scenario Outline: create a policy with dhcp handler using admin permission
   Given that a pktvisor instance is running on port available with admin permission
   When create a new policy with dhcp handler(s)
+    And run mocked data <file_name> for this network
   Then 4 policies must be running
+    And metrics must be correctly generated for <traffic_type> traffic
+  Examples:
+    |file_name| traffic_type |
+    | dhcp-flow.pcap | dhcp  |
+    | dns_ipv6_udp.pcap| dns |
 
 
 @smoke
-Scenario: create a policy with dns handler using admin permission
-  Given that a pktvisor instance is running on port available with admin permission
+Scenario Outline: create a policy with dns handler using admin permission
+  Given that a pktvisor instance is running on port <status_port> with <role> permission
   When create a new policy with dns handler(s)
+    And run mocked data <file_name> for this network
   Then 4 policies must be running
-
+    And metrics must be correctly generated for <traffic_type> traffic
+  Examples:
+    | status_port | role | file_name | traffic_type |
+    | available   | admin | dhcp-flow.pcap | dhcp   |
+    | available   | admin | dns_ipv6_udp.pcap | dns |
+    | available   | admin | dns_ipv6_tcp.pcap | dns |
+    | available   | admin | dns_ipv4_udp.pcap | dns |
+    | available   | admin | dns_ipv4_tcp.pcap | dns |
+    | available   | admin | dns_udp_mixed_rcode.pcap | dns |
 
 @smoke
 Scenario: create a policy with pcap stats handler using admin permission
@@ -128,22 +154,32 @@ Scenario Outline: pktvisor metrics
     And run mocked data <file_name> for this network
   Then the pktvisor container status must be <pkt_status>
     And pktvisor API must be enabled
-    And metrics must be correctly generated as per the <schema_file> schema
+    And metrics must be correctly generated for <traffic_type> traffic
   Examples:
-    | status_port | role | file_name | pkt_status | schema_file |
-    | available   | user | dhcp-flow.pcap | running    | dhcp_metrics_schema.json   |
-    | available   | user | dns_ipv6_udp.pcap | running    | dns_metrics_schema.json |
-    | available   | user | dns_ipv6_tcp.pcap | running    | dns_metrics_schema.json |
-    | available   | user | dns_ipv4_udp.pcap | running    | dns_metrics_schema.json |
-    | available   | user | dns_ipv4_tcp.pcap | running    | dns_metrics_schema.json |
-    | available   | user | dns_udp_mixed_rcode.pcap | running    | dns_metrics_schema.json |
+    | status_port | role | file_name | pkt_status | traffic_type |
+    | available   | user | dhcp-flow.pcap | running    | dhcp   |
+    | available   | user | dns_ipv6_udp.pcap | running    | dns |
+    | available   | user | dns_ipv6_tcp.pcap | running    | dns |
+    | available   | user | dns_ipv4_udp.pcap | running    | dns |
+    | available   | user | dns_ipv4_tcp.pcap | running    | dns |
+    | available   | user | dns_udp_mixed_rcode.pcap | running    | dns |
 
 
 @smoke
-Scenario Outline: pktvisor bucket metrics
+Scenario Outline: pktvisor bucket metrics dns traffic
   Given that a pktvisor instance is running on port <status_port> with <role> permission
   When run mocked data <file_name> for this network
   Then Metrics must go through the 5 bucket(s) queue correctly
   Examples:
     | status_port | role | file_name |
     | available   | user | dns_ipv6_udp.pcap |
+
+
+@smoke
+Scenario Outline: pktvisor bucket metrics dhcp traffic
+  Given that a pktvisor instance is running on port <status_port> with <role> permission
+  When run mocked data <file_name> for this network
+  Then Metrics must go through the 5 bucket(s) queue correctly
+  Examples:
+    | status_port | role | file_name |
+    | available   | user | dhcp-flow.pcap |

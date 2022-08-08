@@ -2,12 +2,13 @@ from utils import random_string, threading_wait_until
 import docker
 from behave import step
 from test_config import TestConfig, send_terminal_commands
-from utils import check_port_is_available, make_get_request, validate_json
+from utils import check_port_is_available, make_get_request
 import threading
 from hamcrest import *
 import os
 import json
 from deepdiff import DeepDiff
+from metrics import *
 
 configs = TestConfig.configs()
 
@@ -19,7 +20,8 @@ def run_pktvisor(context, status_port, role):
     availability = {"available": True, "unavailable": False}
 
     context.pkt_port = check_port_is_available(context.containers_id, availability[status_port])
-    context.container_id = run_pktvisor_container(configs['pktvisor_docker_image'], context.mock_iface_name, context.pkt_port, role)
+    context.container_id = run_pktvisor_container(configs['pktvisor_docker_image'], context.mock_iface_name,
+                                                  context.pkt_port, role)
     assert_that(context.container_id, not_(equal_to(None)), "Failed to provision pktvisor container")
     if context.container_id not in context.containers_id.keys():
         context.containers_id[context.container_id] = str(context.pkt_port)
@@ -118,22 +120,20 @@ def bucket_check(context, amount_of_buckets):
                                             f"All buckets: {buckets}")
 
 
-@step("metrics must be correctly generated as per the {schema_file} schema")
-def check_metrics(context, schema_file):
-    pkt_api_get_endpoints = ['policies/default/metrics/window/2',
-                             'policies/default/metrics/window/3',
-                             'policies/default/metrics/window/4',
-                             'policies/default/metrics/window/5']
+@step("metrics must be correctly generated for {traffic_type} traffic")
+def check_metrics(context, traffic_type):
+    pkt_api_get_endpoints = ['policies/__all/metrics/window/2',
+                             'policies/__all/metrics/window/3',
+                             'policies/__all/metrics/window/4',
+                             'policies/__all/metrics/window/5']
     event = threading.Event()
-    event.wait(1)
-    schema_file_path = f"{context.directory_of_network_data_files}schemas/{schema_file}"
-    assert_that(os.path.exists(schema_file_path), equal_to(True), f"Unable to find {schema_file_path}. Path not exist.")
+    event.wait(5)  # cpu metrics and quantiles need some time to generate metrics
     for network_file in context.network_data_files:
         for endpoint in pkt_api_get_endpoints:
-            response_json, is_json_valid = check_metrics_per_endpoint(endpoint, context.pkt_port,
-                                                                      schema_file_path, timeout=10)
-            assert_that(is_json_valid, equal_to(True),
-                        f"Wrong data generated for {network_file}_{endpoint.replace('/', '_')}")
+            response = make_get_request(endpoint, context.pkt_port)
+            pkt_policies = PktPolicies(response.json())
+            pkt_policies.check_policy_handlers()
+
 
 
 @step("Remove dummy interface")
@@ -149,16 +149,6 @@ def remove_all_pktvisors_containers_with_test_prefix(context):
         test_container = container.name.startswith(PKTVISOR_CONTAINER_NAME)
         if test_container is True:
             container.remove(force=True)
-
-
-@threading_wait_until
-def check_metrics_per_endpoint(endpoint, pkt_port, path_to_schema_file, event=None):
-    response = make_get_request(endpoint, pkt_port)
-    is_json_valid = validate_json(response.json(), path_to_schema_file)
-    if is_json_valid is True:
-        event.set()
-    assert_that(is_json_valid, equal_to(True), f"Failed to {endpoint}")
-    return response.json(), is_json_valid
 
 
 def run_pktvisor_container(container_image, iface, port, role="user", container_name=PKTVISOR_CONTAINER_NAME):

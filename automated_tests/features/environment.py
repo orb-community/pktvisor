@@ -2,6 +2,7 @@ import docker
 from steps import test_config
 from steps import utils
 from hamcrest import *
+from behave.model_core import Status
 
 
 PKTVISOR_CONTAINER_NAME = "pktvisor-test"
@@ -18,9 +19,10 @@ def before_scenario(context, scenario):
 
 
 def after_scenario(context, scenario):
-    cleanup_container(context.containers_id.keys())
-    test_config.send_terminal_commands(f"ip link set {context.mock_iface_name} down", sudo=sudo)
-    test_config.send_terminal_commands(f"ip link delete {context.mock_iface_name} type dummy", sudo=sudo)
+    if scenario.status != Status.failed:
+        cleanup_container(context.containers_id.keys())
+        test_config.send_terminal_commands(f"ip link set {context.mock_iface_name} down", sudo=sudo)
+        test_config.send_terminal_commands(f"ip link delete {context.mock_iface_name} type dummy", sudo=sudo)
 
 
 def cleanup_container(containers_id):

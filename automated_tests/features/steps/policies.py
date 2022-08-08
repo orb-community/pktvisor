@@ -150,17 +150,14 @@ class Policies:
                    tap: default
                    input_type: pcap
                  handlers:
-                    window_config:
-                      num_periods: 5
-                      deep_sample_rate: 100
                     modules:
-                        net:
+                        default-net:
                           type: net
-                        dhcp:
+                        default-dhcp:
                           type: dhcp
-                        dns:
+                        default-dns:
                           type: dns
-                        pcap_stats:
+                        default-pcap_stats:
                           type: pcap
             """
         return policy_yaml
@@ -178,12 +175,9 @@ class Policies:
                    tap: default
                    input_type: pcap
                  handlers:
-                    window_config:
-                      num_periods: 5
-                      deep_sample_rate: 100
                     modules:
-                        net:
-                          type: net
+                      default-net:
+                        type: net
             """
         return policy_yaml
 
@@ -200,11 +194,8 @@ class Policies:
                    tap: default
                    input_type: pcap
                  handlers:
-                    window_config:
-                      num_periods: 5
-                      deep_sample_rate: 100
                     modules:
-                        dhcp:
+                        default-dhcp:
                           type: dhcp
             """
         return policy_yaml
@@ -222,11 +213,8 @@ class Policies:
                    tap: default
                    input_type: pcap
                  handlers:
-                    window_config:
-                      num_periods: 5
-                      deep_sample_rate: 100
                     modules:
-                        dns:
+                        default-dns:
                           type: dns
             """
         return policy_yaml
@@ -244,11 +232,8 @@ class Policies:
                    tap: default
                    input_type: pcap
                  handlers:
-                    window_config:
-                      num_periods: 5
-                      deep_sample_rate: 100
                     modules:
-                        pcap_stats:
+                        default-pcap_stats:
                           type: pcap
             """
         return policy_yaml
