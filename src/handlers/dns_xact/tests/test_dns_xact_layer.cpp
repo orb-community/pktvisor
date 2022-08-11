@@ -215,7 +215,7 @@ TEST_CASE("DNS Xact Filters: exclude_noerror", "[pcap][dns_xact]")
     REQUIRE(counters.filtered.value() == 10);
     nlohmann::json j;
     dns_xact_handler.metrics()->bucket(0)->to_json(j);
-    REQUIRE(j["wire_packets"]["filtered"] == 10);
+    REQUIRE(j["xact"]["packets"]["filtered"] == 10);
 }
 
 TEST_CASE("DNS Xact Filters: only_rcode nx", "[pcap][net]")
@@ -251,7 +251,7 @@ TEST_CASE("DNS Xact Filters: only_rcode nx", "[pcap][net]")
     REQUIRE(counters.filtered.value() == 11);
     nlohmann::json j;
     dns_xact_handler.metrics()->bucket(0)->to_json(j);
-    REQUIRE(j["wire_packets"]["filtered"] == 11);
+    REQUIRE(j["xact"]["packets"]["filtered"] == 11);
 }
 
 TEST_CASE("DNS Xact Filters: only_rcode refused", "[pcap][dns_xact]")
@@ -287,7 +287,7 @@ TEST_CASE("DNS Xact Filters: only_rcode refused", "[pcap][dns_xact]")
     REQUIRE(counters.filtered.value() == 11);
     nlohmann::json j;
     dns_xact_handler.metrics()->bucket(0)->to_json(j);
-    REQUIRE(j["wire_packets"]["filtered"] == 11);
+    REQUIRE(j["xact"]["packets"]["filtered"] == 11);
 }
 
 TEST_CASE("DNS Xact Filters: only_qname_suffix", "[pcap][dns_xact]")

@@ -21,6 +21,10 @@
             "top_slow": [],
             "total": 0
           },
+          "packets": {
+            "top_slow": [],
+            "total": 0
+          },
           "out": {
             "quantiles_us": {
               "p50": 31582,

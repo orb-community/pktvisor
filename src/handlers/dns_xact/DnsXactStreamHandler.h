@@ -9,11 +9,11 @@
 #include "StreamHandler.h"
 #include "dnstap.pb.h"
 #include "querypairmgr.h"
+#include "visor_dns/DnsLayer.h"
 #include <Corrade/Utility/Debug.h>
 #include <bitset>
 #include <limits>
 #include <string>
-#include "visor_dns/DnsLayer.h"
 
 namespace visor::input::dnstap {
 class DnstapInputEventProxy;
@@ -61,7 +61,7 @@ protected:
             , xacts_in("dns", {"xact", "in", "total"}, "Total ingress DNS transactions (host is server)")
             , xacts_out("dns", {"xact", "out", "total"}, "Total egress DNS transactions (host is client)")
             , xacts_timed_out("dns", {"xact", "counts", "timed_out"}, "Total number of DNS transactions that timed out")
-            , filtered("dns", {"wire_packets", "filtered"}, "Total DNS wire packets seen that did not match the configured filter(s) (if any)")
+            , filtered("dns", {"xact", "packets", "filtered"}, "Total DNS packets seen that did not match the configured filter(s) (if any)")
         {
         }
     };
@@ -75,9 +75,9 @@ public:
         , _dns_slowXactIn("dns", "qname", {"xact", "in", "top_slow"}, "Top QNAMES in transactions where host is the server and transaction speed is slower than p90")
         , _dns_slowXactOut("dns", "qname", {"xact", "out", "top_slow"}, "Top QNAMES in transactions where host is the client and transaction speed is slower than p90")
     {
-        set_event_rate_info("dns", {"rates", "total"}, "Rate of all DNS wire packets (combined ingress and egress) per second");
-        set_num_events_info("dns", {"wire_packets", "total"}, "Total DNS wire packets");
-        set_num_sample_info("dns", {"wire_packets", "deep_samples"}, "Total DNS wire packets that were sampled for deep inspection");
+        set_event_rate_info("dns", {"rates", "total"}, "Rate of all DNS packets (combined ingress and egress) per second");
+        set_num_events_info("dns", {"xact", "packets", "events"}, "Total DNS packets events");
+        set_num_sample_info("dns", {"xact", "packets", "deep_samples"}, "Total DNS packets that were sampled for deep inspection");
     }
 
     auto get_xact_data_locked() const
@@ -264,7 +264,6 @@ class DnsXactStreamHandler final : public visor::StreamMetricsHandler<DnsXactMet
     std::vector<std::string> _f_qnames;
     std::vector<uint16_t> _f_qtypes;
     std::bitset<DNSTAP_TYPE_SIZE> _f_dnstap_types;
-
 
     bool _filtering(DnsLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint16_t port, timespec stamp);
 
