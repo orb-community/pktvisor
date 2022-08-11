@@ -76,12 +76,36 @@ void DnsStreamHandler::start()
             throw ConfigException("DnsStreamHandler: only_rcode filter contained an invalid/unsupported rcode");
         }
     }
+    if (config_exists("only_dnssec_response")) {
+        _f_enabled.set(Filters::OnlyDNSSECResponse);
+    }
     if (config_exists("answer_count")) {
         try {
             _f_answer_count = config_get<uint64_t>("answer_count");
             _f_enabled.set(Filters::AnswerCount);
         } catch (const std::exception &e) {
             throw ConfigException("DnsStreamHandler: wrong value type for answer_count filter. It should be an integer");
+        }
+    }
+    if (config_exists("only_qtype")) {
+        _f_enabled.set(Filters::OnlyQtype);
+        for (const auto &qtype : config_get<StringList>("only_qtype")) {
+            if (std::all_of(qtype.begin(), qtype.end(), ::isdigit)) {
+                auto value = std::stoul(qtype);
+                if (QTypeNames.find(value) == QTypeNames.end()) {
+                    throw ConfigException(fmt::format("DnsStreamHandler: only_qtype filter contained an invalid/unsupported qtype: {}", value));
+                }
+                _f_qtypes.push_back(value);
+            } else {
+                std::string upper_qtype{qtype};
+                std::transform(upper_qtype.begin(), upper_qtype.end(), upper_qtype.begin(),
+                    [](unsigned char c) { return std::toupper(c); });
+                if (QTypeNumbers.find(upper_qtype) != QTypeNumbers.end()) {
+                    _f_qtypes.push_back(QTypeNumbers[upper_qtype]);
+                } else {
+                    throw ConfigException(fmt::format("DnsStreamHandler: only_qtype filter contained an invalid/unsupported qtype: {}", qtype));
+                }
+            }
         }
     }
     if (config_exists("only_qname_suffix")) {
@@ -96,12 +120,17 @@ void DnsStreamHandler::start()
             _f_qnames.emplace_back(std::move(qname_ci));
         }
     }
-
     if (config_exists("only_qname2")) {
         auto qname2 = config_get<std::string>("only_qname2");
         std::transform(qname2.begin(), qname2.end(), qname2.begin(),
             [](unsigned char c) { return std::tolower(c); });
         _register_predicate_filter("only_qname2", qname2);
+    }
+    if (config_exists("geoloc_notfound") && config_get<bool>("geoloc_notfound")) {
+        _f_enabled.set(Filters::GeoLocNotFound);
+    }
+    if (config_exists("asn_notfound") && config_get<bool>("asn_notfound")) {
+        _f_enabled.set(Filters::AsnNotFound);
     }
     if (config_exists("dnstap_msg_type")) {
         auto type = config_get<std::string>("dnstap_msg_type");
@@ -395,22 +424,79 @@ inline bool DnsStreamHandler::_filtering(DnsLayer &payload, [[maybe_unused]] Pac
     if (_f_enabled[Filters::AnswerCount] && payload.getAnswerCount() != _f_answer_count) {
         goto will_filter;
     }
+    if (_f_enabled[Filters::OnlyDNSSECResponse]) {
+        if ((payload.getDnsHeader()->queryOrResponse != QR::response) || !payload.getAnswerCount()) {
+            goto will_filter;
+        }
+        if (!payload.parseResources(false, true, true) || payload.getFirstAnswer() == nullptr) {
+            goto will_filter;
+        }
+        bool has_ssig{false};
+        auto dns_answer = payload.getFirstAnswer();
+        for (size_t i = 0; i < payload.getAnswerCount(); ++i) {
+            if (!dns_answer) {
+                break;
+            }
+            if (dns_answer->getDnsType() == pcpp::DNS_TYPE_RRSIG) {
+                has_ssig = true;
+                break;
+            }
+            dns_answer = payload.getNextAnswer(dns_answer);
+        }
+        if (!has_ssig) {
+            goto will_filter;
+        }
+    }
+    if (_f_enabled[Filters::OnlyQtype]) {
+        if (!payload.parseResources(true) || payload.getFirstQuery() == nullptr) {
+            goto will_filter;
+        }
+        auto qtype = payload.getFirstQuery()->getDnsType();
+        if (!std::any_of(_f_qtypes.begin(), _f_qtypes.end(), [qtype](uint16_t f_qtype) { return qtype == f_qtype; })) {
+            goto will_filter;
+        }
+    }
     if (_f_enabled[Filters::OnlyQNameSuffix]) {
         if (!payload.parseResources(true) || payload.getFirstQuery() == nullptr) {
             goto will_filter;
         }
         std::string_view qname_ci = payload.getFirstQuery()->getNameLower();
-        for (const auto &fqn : _f_qnames) {
-            // if it matched, we know we are not filtering
-            if (ends_with(qname_ci, fqn)) {
-                _static_suffix_size = fqn.size();
-                goto will_not_filter;
-            }
+        if (std::none_of(_f_qnames.begin(), _f_qnames.end(), [this, qname_ci](std::string fqn) {
+                if (ends_with(qname_ci, fqn)) {
+                    _static_suffix_size = fqn.size();
+                    return true;
+                }
+                return false;
+            })) {
+            // checked the whole list and none of them matched: filter
+            goto will_filter;
         }
-        // checked the whole list and none of them matched: filter
-        goto will_filter;
     }
-will_not_filter:
+    if (_f_enabled[Filters::GeoLocNotFound]) {
+        if (!geo::GeoIP().enabled() || (payload.getDnsHeader()->queryOrResponse != QR::query) || !payload.getAdditionalRecordCount()) {
+            goto will_filter;
+        }
+        if (!payload.parseResources(false, true, true) || payload.getFirstAdditionalRecord() == nullptr) {
+            goto will_filter;
+        }
+        auto ecs = parse_additional_records_ecs(payload.getFirstAdditionalRecord());
+        if (!ecs || ecs->client_subnet.empty() || (geo::GeoIP().getGeoLocString(ecs->client_subnet.c_str()) != "Unknown")) {
+            goto will_filter;
+        }
+    }
+    if (_f_enabled[Filters::AsnNotFound]) {
+        if (!geo::GeoASN().enabled() || (payload.getDnsHeader()->queryOrResponse != QR::query) || !payload.getAdditionalRecordCount()) {
+            goto will_filter;
+        }
+        if (!payload.parseResources(false, true, true) || payload.getFirstAdditionalRecord() == nullptr) {
+            goto will_filter;
+        }
+        auto ecs = parse_additional_records_ecs(payload.getFirstAdditionalRecord());
+        if (!ecs || ecs->client_subnet.empty() || (geo::GeoASN().getASNString(ecs->client_subnet.c_str()) != "Unknown")) {
+            goto will_filter;
+        }
+    }
+
     return false;
 will_filter:
     _metrics->process_filtered(stamp);
@@ -466,6 +552,7 @@ void DnsMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
         _dns_qnameCard.merge(other._dns_qnameCard);
     }
     if (group_enabled(group::DnsMetrics::TopEcs)) {
+        group_enabled(group::DnsMetrics::Counters) ? _counters.queryECS += other._counters.queryECS : void();
         _dns_topGeoLocECS.merge(other._dns_topGeoLocECS);
         _dns_topASNECS.merge(other._dns_topASNECS);
         _dns_topQueryECS.merge(other._dns_topQueryECS);
@@ -538,6 +625,7 @@ void DnsMetricsBucket::to_json(json &j) const
     _dns_topUDPPort.to_json(j, [](const uint16_t &val) { return std::to_string(val); });
 
     if (group_enabled(group::DnsMetrics::TopEcs)) {
+        group_enabled(group::DnsMetrics::Counters) ? _counters.queryECS.to_json(j) : void();
         _dns_topGeoLocECS.to_json(j);
         _dns_topASNECS.to_json(j);
         _dns_topQueryECS.to_json(j);
@@ -573,7 +661,7 @@ void DnsMetricsBucket::process_dnstap(bool deep, const dnstap::Dnstap &payload)
 {
     std::unique_lock lock(_mutex);
 
-    pcpp::ProtocolType l3;
+    pcpp::ProtocolType l3{pcpp::UnknownProtocol};
     if (payload.message().has_socket_family()) {
         if (payload.message().socket_family() == dnstap::INET6) {
             l3 = pcpp::IPv6;
@@ -581,7 +669,7 @@ void DnsMetricsBucket::process_dnstap(bool deep, const dnstap::Dnstap &payload)
             l3 = pcpp::IPv4;
         }
     }
-    Protocol l4;
+    Protocol l4{PCPP_UNKOWN};
     if (payload.message().has_socket_protocol()) {
         l4 = static_cast<Protocol>(payload.message().socket_protocol());
     }
@@ -665,6 +753,8 @@ void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, pcpp::Pro
             break;
         case DNSTAP_DOH:
             ++_counters.DOH;
+            break;
+        case PCPP_UNKOWN:
             break;
         }
 
@@ -759,6 +849,9 @@ void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, pcpp::Pro
 
             auto ecs = parse_additional_records_ecs(additional);
             if (ecs && !(ecs->client_subnet.empty())) {
+                if (group_enabled(group::DnsMetrics::Counters)) {
+                    ++_counters.queryECS;
+                }
                 _dns_topQueryECS.update(ecs->client_subnet);
                 if (geo::GeoIP().enabled()) {
                     _dns_topGeoLocECS.update(geo::GeoIP().getGeoLocString(ecs->client_subnet.c_str()));
@@ -796,6 +889,8 @@ void DnsMetricsBucket::process_dns_layer(pcpp::ProtocolType l3, Protocol l4, QR 
             break;
         case DNSTAP_DOH:
             ++_counters.DOH;
+            break;
+        case PCPP_UNKOWN:
             break;
         }
 
@@ -901,6 +996,7 @@ void DnsMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap ad
     _dns_topUDPPort.to_prometheus(out, add_labels, [](const uint16_t &val) { return std::to_string(val); });
 
     if (group_enabled(group::DnsMetrics::TopEcs)) {
+        group_enabled(group::DnsMetrics::Counters) ? _counters.queryECS.to_prometheus(out, add_labels) : void();
         _dns_topGeoLocECS.to_prometheus(out, add_labels);
         _dns_topASNECS.to_prometheus(out, add_labels);
         _dns_topQueryECS.to_prometheus(out, add_labels);

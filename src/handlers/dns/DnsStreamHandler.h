@@ -43,7 +43,8 @@ enum Protocol : uint64_t {
     DNSTAP_DOT = dnstap::SocketProtocol::DOT,
     DNSTAP_DOH = dnstap::SocketProtocol::DOH,
     PCPP_TCP = pcpp::TCP,
-    PCPP_UDP = pcpp::UDP
+    PCPP_UDP = pcpp::UDP,
+    PCPP_UNKOWN = pcpp::UnknownProtocol
 };
 
 class DnsMetricsBucket final : public visor::AbstractMetricsBucket
@@ -93,6 +94,7 @@ protected:
         Counter NOERROR;
         Counter NODATA;
         Counter filtered;
+        Counter queryECS;
         counters()
             : xacts_total("dns", {"xact", "counts", "total"}, "Total DNS transactions (query/reply pairs)")
             , xacts_in("dns", {"xact", "in", "total"}, "Total ingress DNS transactions (host is server)")
@@ -112,6 +114,7 @@ protected:
             , NOERROR("dns", {"wire_packets", "noerror"}, "Total DNS wire packets flagged as reply with return code NOERROR (ingress and egress)")
             , NODATA("dns", {"wire_packets", "nodata"}, "Total DNS wire packets flagged as reply with return code NOERROR and no answer section data (ingress and egress)")
             , filtered("dns", {"wire_packets", "filtered"}, "Total DNS wire packets seen that did not match the configured filter(s) (if any)")
+            , queryECS("dns", {"wire_packets", "query_ecs"}, "Total queries that have EDNS Client Subnet (ECS) field set")
         {
         }
     };
@@ -326,9 +329,13 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
     enum Filters {
         ExcludingRCode,
         OnlyRCode,
+        OnlyQtype,
         AnswerCount,
         OnlyQNameSuffix,
+        OnlyDNSSECResponse,
         DnstapMsgType,
+        GeoLocNotFound,
+        AsnNotFound,
         FiltersMAX
     };
     std::bitset<Filters::FiltersMAX> _f_enabled;
@@ -340,6 +347,7 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
     uint16_t _f_rcode{0};
     uint64_t _f_answer_count{0};
     std::vector<std::string> _f_qnames;
+    std::vector<uint16_t> _f_qtypes;
     size_t _static_suffix_size{0};
     std::bitset<DNSTAP_TYPE_SIZE> _f_dnstap_types;
     bool _using_predicate_signals{false};

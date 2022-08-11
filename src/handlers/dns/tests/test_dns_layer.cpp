@@ -360,6 +360,50 @@ TEST_CASE("DNS Filters: only_rcode refused", "[pcap][dns]")
     dns_handler.metrics()->bucket(0)->to_json(j);
     REQUIRE(j["wire_packets"]["filtered"] == 23);
 }
+TEST_CASE("DNS Filters: only_qtypes AAAA and TXT", "[pcap][dns]")
+{
+
+    PcapInputStream stream{"pcap-test"};
+    stream.config_set("pcap_file", "tests/fixtures/dns_udp_tcp_random.pcap");
+    stream.config_set("bpf", "");
+    stream.config_set("host_spec", "192.168.0.0/24");
+    stream.parse_host_spec();
+
+    visor::Config c;
+    auto stream_proxy = stream.add_event_proxy(c);
+    c.config_set<uint64_t>("num_periods", 1);
+    DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
+
+    //notice case insensitive
+    dns_handler.config_set<visor::Configurable::StringList>("only_qtype", {"AAAA", "TxT"});
+    dns_handler.start();
+    stream.start();
+    stream.stop();
+    dns_handler.stop();
+
+    auto counters = dns_handler.metrics()->bucket(0)->counters();
+    auto event_data = dns_handler.metrics()->bucket(0)->event_data_locked();
+
+    // confirmed with wireshark. there are 14 TCP retransmissions which are counted differently in our state machine
+    // and account for some minor differences in TCP based stats
+    CHECK(event_data.num_events->value() == 5851); // wireshark: 5838
+    CHECK(event_data.num_samples->value() == 5851);
+    CHECK(counters.IPv4.value() == 2096);
+    CHECK(counters.IPv6.value() == 0);
+    CHECK(counters.queries.value() == 1050);
+    CHECK(counters.replies.value() == 1046);
+    CHECK(counters.NODATA.value() == 737);
+    CHECK(counters.NOERROR.value() == 1046);
+
+    nlohmann::json j;
+    dns_handler.metrics()->bucket(0)->to_json(j);
+
+    CHECK(j["top_qtype"][0]["name"] == "AAAA");
+    CHECK(j["top_qtype"][0]["estimate"] == 1476);
+    CHECK(j["top_qtype"][1]["name"] == "TXT");
+    CHECK(j["top_qtype"][1]["estimate"] == 620);
+    CHECK(j["top_qtype"][2]== nullptr);
+}
 
 TEST_CASE("DNS TopN custom size", "[pcap][dns]")
 {
@@ -470,6 +514,51 @@ TEST_CASE("DNS Filters: answer_count", "[pcap][dns]")
     CHECK(j["top_qname3"][0]["name"] == "sirius.mwbsys.com");
 }
 
+TEST_CASE("DNS Filters: only_dnssec_response", "[pcap][dns]")
+{
+
+    PcapInputStream stream{"pcap-test"};
+    stream.config_set("pcap_file", "tests/fixtures/dnssec.pcap");
+    stream.config_set("bpf", "");
+    stream.config_set("host_spec", "192.168.0.0/24");
+    stream.parse_host_spec();
+
+    visor::Config c;
+    auto stream_proxy = stream.add_event_proxy(c);
+    c.config_set<uint64_t>("num_periods", 1);
+    DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
+    dns_handler.config_set<bool>("only_dnssec_response", true);
+    dns_handler.start();
+    stream.start();
+    stream.stop();
+    dns_handler.stop();
+
+    auto counters = dns_handler.metrics()->bucket(0)->counters();
+    auto event_data = dns_handler.metrics()->bucket(0)->event_data_locked();
+
+    CHECK(event_data.num_events->value() == 14);
+    CHECK(event_data.num_samples->value() == 14);
+    CHECK(counters.TCP.value() == 0);
+    CHECK(counters.UDP.value() == 6);
+    CHECK(counters.IPv4.value() == 6);
+    CHECK(counters.IPv6.value() == 0);
+    CHECK(counters.queries.value() == 0);
+    CHECK(counters.replies.value() == 6);
+    CHECK(counters.NOERROR.value() == 6);
+
+    nlohmann::json j;
+    dns_handler.metrics()->bucket(0)->to_json(j);
+
+    CHECK(j["cardinality"]["qname"] == 3);
+
+    CHECK(j["top_qtype"][0]["name"] == "DNSKEY");
+    CHECK(j["top_qtype"][0]["estimate"] == 3);
+    CHECK(j["top_qtype"][1]["name"] == "DS");
+    CHECK(j["top_qtype"][1]["estimate"] == 2);
+    CHECK(j["top_qtype"][2]["name"] == "A");
+    CHECK(j["top_qtype"][2]["estimate"] == 1);
+}
+
 TEST_CASE("DNS Configs: public_suffix_list", "[pcap][dns]")
 {
 
@@ -539,6 +628,8 @@ TEST_CASE("Parse DNS with ECS data", "[pcap][dns][ecs]")
     CHECK(counters.IPv6.value() == 30);
     CHECK(counters.queries.value() == 22);
     CHECK(counters.replies.value() == 14);
+    CHECK(counters.filtered.value() == 0);
+    CHECK(counters.queryECS.value() == 5);
 
     nlohmann::json j;
     dns_handler.metrics()->bucket(0)->to_json(j);
@@ -550,6 +641,102 @@ TEST_CASE("Parse DNS with ECS data", "[pcap][dns][ecs]")
     CHECK(j["top_query_ecs"][1] == nullptr);
     CHECK(j["top_geoLoc_ecs"][0]["name"] == "Unknown");
     CHECK(j["top_geoLoc_ecs"][0]["estimate"] == 5);
+    CHECK(j["top_asn_ecs"][0]["name"] == "Unknown");
+    CHECK(j["top_asn_ecs"][0]["estimate"] == 5);
+}
+
+TEST_CASE("DNS filter: GeoLoc not found", "[pcap][dns][ecs]")
+{
+    CHECK_NOTHROW(visor::geo::GeoIP().enable("tests/fixtures/GeoIP2-City-Test.mmdb"));
+    CHECK_NOTHROW(visor::geo::GeoASN().enable("tests/fixtures/GeoIP2-ISP-Test.mmdb"));
+
+    PcapInputStream stream{"pcap-test"};
+    stream.config_set("pcap_file", "tests/fixtures/ecs.pcap");
+    stream.config_set("bpf", "");
+    stream.config_set("host_spec", "192.168.0.0/24");
+    stream.parse_host_spec();
+
+    visor::Config c;
+    auto stream_proxy = stream.add_event_proxy(c);
+    c.config_set<uint64_t>("num_periods", 1);
+    DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
+    dns_handler.config_set<visor::Configurable::StringList>("enable", visor::Configurable::StringList({"top_ecs"}));
+    dns_handler.config_set<bool>("geoloc_notfound", true);
+    dns_handler.start();
+    stream.start();
+    stream.stop();
+    dns_handler.stop();
+
+    auto counters = dns_handler.metrics()->bucket(0)->counters();
+    auto event_data = dns_handler.metrics()->bucket(0)->event_data_locked();
+
+    CHECK(event_data.num_events->value() == 36);
+    CHECK(event_data.num_samples->value() == 36);
+    CHECK(counters.TCP.value() == 0);
+    CHECK(counters.UDP.value() == 5);
+    CHECK(counters.IPv4.value() == 1);
+    CHECK(counters.IPv6.value() == 4);
+    CHECK(counters.queries.value() == 5);
+    CHECK(counters.replies.value() == 0);
+    CHECK(counters.filtered.value() == 31);
+    CHECK(counters.queryECS.value() == 5);
+
+    nlohmann::json j;
+    dns_handler.metrics()->bucket(0)->to_json(j);
+
+    CHECK(j["cardinality"]["qname"] == 2);
+
+    CHECK(j["top_query_ecs"][0]["name"] == "2001:470:1f0b:1600::"); // wireshark
+    CHECK(j["top_query_ecs"][0]["estimate"] == 5);
+    CHECK(j["top_query_ecs"][1] == nullptr);
+    CHECK(j["top_geoLoc_ecs"][0]["name"] == "Unknown");
+    CHECK(j["top_geoLoc_ecs"][0]["estimate"] == 5);
+}
+
+TEST_CASE("DNS filter: ASN not found", "[pcap][dns][ecs]")
+{
+    CHECK_NOTHROW(visor::geo::GeoIP().enable("tests/fixtures/GeoIP2-City-Test.mmdb"));
+    CHECK_NOTHROW(visor::geo::GeoASN().enable("tests/fixtures/GeoIP2-ISP-Test.mmdb"));
+
+    PcapInputStream stream{"pcap-test"};
+    stream.config_set("pcap_file", "tests/fixtures/ecs.pcap");
+    stream.config_set("bpf", "");
+    stream.config_set("host_spec", "192.168.0.0/24");
+    stream.parse_host_spec();
+
+    visor::Config c;
+    auto stream_proxy = stream.add_event_proxy(c);
+    c.config_set<uint64_t>("num_periods", 1);
+    DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
+    dns_handler.config_set<visor::Configurable::StringList>("enable", visor::Configurable::StringList({"top_ecs"}));
+    dns_handler.config_set<bool>("asn_notfound", true);
+    dns_handler.start();
+    stream.start();
+    stream.stop();
+    dns_handler.stop();
+
+    auto counters = dns_handler.metrics()->bucket(0)->counters();
+    auto event_data = dns_handler.metrics()->bucket(0)->event_data_locked();
+
+    CHECK(event_data.num_events->value() == 36);
+    CHECK(event_data.num_samples->value() == 36);
+    CHECK(counters.TCP.value() == 0);
+    CHECK(counters.UDP.value() == 5);
+    CHECK(counters.IPv4.value() == 1);
+    CHECK(counters.IPv6.value() == 4);
+    CHECK(counters.queries.value() == 5);
+    CHECK(counters.replies.value() == 0);
+    CHECK(counters.filtered.value() == 31);
+    CHECK(counters.queryECS.value() == 5);
+
+    nlohmann::json j;
+    dns_handler.metrics()->bucket(0)->to_json(j);
+
+    CHECK(j["cardinality"]["qname"] == 2);
+
+    CHECK(j["top_query_ecs"][0]["name"] == "2001:470:1f0b:1600::"); // wireshark
+    CHECK(j["top_query_ecs"][0]["estimate"] == 5);
+    CHECK(j["top_query_ecs"][1] == nullptr);
     CHECK(j["top_asn_ecs"][0]["name"] == "Unknown");
     CHECK(j["top_asn_ecs"][0]["estimate"] == 5);
 }
@@ -577,6 +764,18 @@ TEST_CASE("DNS filter exceptions", "[pcap][dns][filter]")
     {
         dns_handler.config_set<uint64_t>("only_rcode", 133);
         REQUIRE_THROWS_WITH(dns_handler.start(), "DnsStreamHandler: only_rcode filter contained an invalid/unsupported rcode");
+    }
+
+    SECTION("only_qtype invalid qtype string")
+    {
+        dns_handler.config_set<visor::Configurable::StringList>("only_qtype", {"AAAA", "TEXT"});
+        REQUIRE_THROWS_WITH(dns_handler.start(), "DnsStreamHandler: only_qtype filter contained an invalid/unsupported qtype: TEXT");
+    }
+
+    SECTION("only_qtype invalid qtype number")
+    {
+        dns_handler.config_set<visor::Configurable::StringList>("only_qtype", {"AAAA", "270"});
+        REQUIRE_THROWS_WITH(dns_handler.start(), "DnsStreamHandler: only_qtype filter contained an invalid/unsupported qtype: 270");
     }
 
     SECTION("answer_count as string")

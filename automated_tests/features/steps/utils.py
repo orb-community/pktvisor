@@ -10,6 +10,7 @@ import multiprocessing
 from jsonschema import validate
 import jsonschema
 import json
+import re
 
 
 def random_string(k=10):
@@ -69,6 +70,36 @@ def remove_empty_from_json(json_file):
     return json_file
 
 
+def remove_key_from_json(json_file, key_to_be_removed):
+    """
+
+    :param json_file: json object
+    :param key_to_be_removed: key that need to be removed
+    :return: json object without keys removed
+    """
+    for key, value in list(json_file.items()):
+        if key == key_to_be_removed:
+            del json_file[key]
+        elif isinstance(value, dict):
+            remove_key_from_json(value, key_to_be_removed)
+    return json_file
+
+
+def remove_key_regex_from_json(json_file, regex):
+    """
+
+    :param json_file: json object
+    :param regex: regex
+    :return: json object without keys removed
+    """
+    for key, value in list(json_file.items()):
+        if re.match(regex, key):
+            del json_file[re.match(regex, key).group()]
+        elif isinstance(value, dict):
+            remove_key_regex_from_json(value, regex)
+    return json_file
+
+
 def threading_wait_until(func):
     def wait_event(*args, wait_time=0.5, timeout=10, start_func_value=False, **kwargs):
         event = threading.Event()
@@ -85,7 +116,6 @@ def threading_wait_until(func):
 
 
 def check_port_is_available(containers_id, available=True):
-
     """
     :param (dict) containers_id: dictionary in which the keys are the ids of the containers and the values are the ports
     on which the containers are running

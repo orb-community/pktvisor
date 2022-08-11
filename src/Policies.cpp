@@ -120,6 +120,7 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
                 module_remove(policy_name);
                 throw;
             }
+            result.push_back(policy_ptr);
         } else if (input_node["tap_selector"]) {
             auto tap_selector = input_node["tap_selector"];
             if (!tap_selector.IsMap()) {
@@ -169,8 +170,8 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
                 spdlog::get("visor")->info("policy [{}]: no tap match found for specified 'input.tap_selector' tags", policy_name);
                 throw std::invalid_argument("no tap match found for specified 'input.tap_selector' tags");
             }
+            result.push_back(policy_ptr);
         }
-        result.push_back(policy.get());
     }
 
     return result;

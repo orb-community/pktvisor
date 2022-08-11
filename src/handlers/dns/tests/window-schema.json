@@ -162,7 +162,8 @@
           "srvfail": 0,
           "tcp": 2880,
           "total": 5851,
-          "udp": 2971
+          "udp": 2971,
+          "queryECS": 10
         },
         "xact": {
           "counts": {
@@ -928,7 +929,8 @@
               "srvfail": 0,
               "tcp": 2880,
               "total": 5851,
-              "udp": 2971
+              "udp": 2971,
+              "queryECS": 10
             }
           ],
           "required": [
@@ -945,7 +947,8 @@
             "tcp",
             "total",
             "udp",
-            "filtered"
+            "filtered",
+            "query_ecs"
           ],
           "properties": {
             "deep_samples": {
@@ -1076,6 +1079,16 @@
               "default": 0,
               "examples": [
                 2971
+              ]
+            },
+            "query_ecs": {
+              "$id": "#/properties/dns/properties/wire_packets/properties/query_ecs",
+              "type": "integer",
+              "title": "The query_ecs schema",
+              "description": "An explanation about the purpose of this instance.",
+              "default": 0,
+              "examples": [
+                10
               ]
             },
             "filtered": {

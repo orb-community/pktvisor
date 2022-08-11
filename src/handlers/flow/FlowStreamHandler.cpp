@@ -89,6 +89,7 @@ void FlowStreamHandler::start()
     if (_flow_proxy) {
         _sflow_connection = _flow_proxy->sflow_signal.connect(&FlowStreamHandler::process_sflow_cb, this);
         _netflow_connection = _flow_proxy->netflow_signal.connect(&FlowStreamHandler::process_netflow_cb, this);
+        _heartbeat_connection = _flow_proxy->heartbeat_signal.connect(&FlowStreamHandler::check_period_shift, this);
     }
 
     _running = true;
@@ -103,6 +104,7 @@ void FlowStreamHandler::stop()
     if (_flow_proxy) {
         _sflow_connection.disconnect();
         _netflow_connection.disconnect();
+        _heartbeat_connection.disconnect();
     }
 
     _running = false;
