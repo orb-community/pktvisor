@@ -77,8 +77,7 @@ jobs:
         run: CONAN_USER_HOME=${{github.workspace}}/build/conan_home conan upload "*" --all -r ns1labs -c
 
   prebuild-package:
-    needs:
-      - unit-tests
+    needs: [ unit-tests ]
     runs-on: ubuntu-latest
     outputs:
       version_number: ${{ steps.build.outputs.version }}
@@ -86,6 +85,11 @@ jobs:
     if: github.event_name != 'pull_request'
     steps:
       - uses: actions/checkout@v2
+      
+      - name: Remove suffix from Cmakelists.txt file
+        run: |
+          ESCAPED_REPLACE_RELEASE=$(printf '%s\n' 'VISOR_PRERELEASE ""' | sed -e 's/[\/&]/\\&/g')
+          sed -i -e "s/VISOR_PRERELEASE \"-develop\"/$ESCAPED_REPLACE_RELEASE/g" CMakeLists.txt
 
       - name: Create Build Environment
         run: cmake -E make_directory ${{github.workspace}}/build
@@ -96,7 +100,7 @@ jobs:
       - name: Configure CMake to generate VERSION
         shell: bash
         working-directory: ${{github.workspace}}/build
-        run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE
+        run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE     
 
       - name: Get VERSION
         id: build
@@ -119,8 +123,7 @@ jobs:
           retention-days: 1
 
   spinup-arm64-runner:
-    needs:
-      - prebuild-package
+    needs: [ package-amd64 ]
     runs-on: ubuntu-latest
     outputs:
       runner_token: ${{ steps.token.outputs.runner }}
@@ -132,6 +135,7 @@ jobs:
       - name: Generate runner token
         id: token
         run: |
+          sleep 3
           curl -X POST -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/ns1labs/pktvisor/actions/runners/registration-token -o token.json
           echo "::set-output name=runner::$(cat token.json | jq .token --raw-output )"
           cat token.json
@@ -195,8 +199,7 @@ jobs:
           retention-days: 1
 
   spinup-amd64-runner:
-    needs:
-      - prebuild-package
+    needs: [ prebuild-package ]
     runs-on: ubuntu-latest
     outputs:
       runner_token: ${{ steps.token.outputs.runner }}
@@ -271,7 +274,7 @@ jobs:
           retention-days: 1
 
   package-arm64:
-    needs: spinup-arm64-runner
+    needs: [ spinup-arm64-runner ]
     runs-on: [self-hosted, linux, ARM64]
     if: github.event_name != 'pull_request'
     steps:
@@ -335,7 +338,7 @@ jobs:
             ghtoken=${{ secrets.GITHUB_TOKEN }}
 
   package-armv7:
-    needs: spinup-amd64-runner
+    needs: [ spinup-amd64-runner ]
     runs-on: [self-hosted, linux, x64]
     if: github.event_name != 'pull_request'
     steps:
@@ -397,8 +400,7 @@ jobs:
             ghtoken=${{ secrets.GITHUB_TOKEN }}
 
   package-amd64:
-    needs: 
-      - prebuild-package
+    needs: [ prebuild-package ]
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
     steps:
@@ -459,7 +461,7 @@ jobs:
             ghtoken=${{ secrets.GITHUB_TOKEN }}
 
   remove-github-runner-arm64:
-    needs: [ spinup-arm64-runner, package-arm64 ]
+    needs: [ package-arm64 ]
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
     steps:
@@ -530,7 +532,7 @@ jobs:
           terraform destroy -auto-approve
 
   remove-github-runner-amd64:
-    needs: [ spinup-amd64-runner, package-armv7, package-arm64 ]
+    needs: [ package-armv7 ]
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
     steps:
@@ -601,7 +603,7 @@ jobs:
           terraform destroy -auto-approve
 
   pushing-manifests:
-    needs: [ remove-amd64-runner , remove-arm64-runner ]
+    needs: [ package-amd64 , package-arm64 , package-armv7 ]
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
     steps:
