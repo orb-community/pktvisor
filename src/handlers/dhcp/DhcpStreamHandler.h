@@ -29,6 +29,7 @@ protected:
         Counter OFFER;
         Counter REQUEST;
         Counter ACK;
+        Counter total;
         Counter filtered;
 
         counters()
@@ -36,6 +37,7 @@ protected:
             , OFFER("dhcp", {"wire_packets", "offer"}, "Total DHCP packets with message type OFFER")
             , REQUEST("dhcp", {"wire_packets", "request"}, "Total DHCP packets with message type REQUEST")
             , ACK("dhcp", {"wire_packets", "ack"}, "Total DHCP packets with message type ACK")
+            , total("dhcp", {"wire_packets", "total"}, "Total DHCP wire packets seen that match the configured filter(s)")
             , filtered("dhcp", {"wire_packets", "filtered"}, "Total DHCP wire packets seen that did not match the configured filter(s) (if any)")
         {
         }
@@ -46,7 +48,7 @@ public:
     DhcpMetricsBucket()
     {
         set_event_rate_info("dhcp", {"rates", "total"}, "Rate of all DHCP wire packets (combined ingress and egress) per second");
-        set_num_events_info("dhcp", {"wire_packets", "total"}, "Total DHCP wire packets");
+        set_num_events_info("dhcp", {"wire_packets", "events"}, "Total DHCP wire packets events");
         set_num_sample_info("dhcp", {"wire_packets", "deep_samples"}, "Total DHCP wire packets that were sampled for deep inspection");
     }
 

@@ -212,6 +212,8 @@ void NetworkMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
         _counters.IPv6 += other._counters.IPv6;
         _counters.total_in += other._counters.total_in;
         _counters.total_out += other._counters.total_out;
+        _counters.total_unk += other._counters.total_unk;
+        _counters.total += other._counters.total;
         _counters.filtered += other._counters.filtered;
     }
 
@@ -259,6 +261,8 @@ void NetworkMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMa
         _counters.IPv6.to_prometheus(out, add_labels);
         _counters.total_in.to_prometheus(out, add_labels);
         _counters.total_out.to_prometheus(out, add_labels);
+        _counters.total_unk.to_prometheus(out, add_labels);
+        _counters.total.to_prometheus(out, add_labels);
         _counters.filtered.to_prometheus(out, add_labels);
     }
 
@@ -309,6 +313,8 @@ void NetworkMetricsBucket::to_json(json &j) const
         _counters.IPv6.to_json(j);
         _counters.total_in.to_json(j);
         _counters.total_out.to_json(j);
+        _counters.total_unk.to_json(j);
+        _counters.total.to_json(j);
         _counters.filtered.to_json(j);
     }
 
@@ -334,7 +340,9 @@ void NetworkMetricsBucket::to_json(json &j) const
 void NetworkMetricsBucket::process_filtered()
 {
     std::unique_lock lock(_mutex);
-    ++_counters.filtered;
+    if (group_enabled(group::NetMetrics::Counters)) {
+        ++_counters.filtered;
+    }
 }
 
 void NetworkMetricsBucket::process_packet(bool deep, pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4)
@@ -458,6 +466,8 @@ void NetworkMetricsBucket::process_net_layer(PacketDirection dir, pcpp::Protocol
     }
 
     if (group_enabled(group::NetMetrics::Counters)) {
+        ++_counters.total;
+
         switch (dir) {
         case PacketDirection::fromHost:
             ++_counters.total_out;
@@ -466,6 +476,7 @@ void NetworkMetricsBucket::process_net_layer(PacketDirection dir, pcpp::Protocol
             ++_counters.total_in;
             break;
         case PacketDirection::unknown:
+            ++_counters.total_unk;
             break;
         }
 
@@ -514,6 +525,8 @@ void NetworkMetricsBucket::process_net_layer(NetworkPacket &packet)
     }
 
     if (group_enabled(group::NetMetrics::Counters)) {
+        ++_counters.total;
+
         switch (packet.dir) {
         case PacketDirection::fromHost:
             ++_counters.total_out;
@@ -522,6 +535,7 @@ void NetworkMetricsBucket::process_net_layer(NetworkPacket &packet)
             ++_counters.total_in;
             break;
         case PacketDirection::unknown:
+            ++_counters.total_unk;
             break;
         }
 

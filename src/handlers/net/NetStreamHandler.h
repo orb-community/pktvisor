@@ -76,6 +76,8 @@ protected:
         Counter TCP_SYN;
         Counter total_in;
         Counter total_out;
+        Counter total_unk;
+        Counter total;
         Counter filtered;
         counters()
             : UDP("packets", {"udp"}, "Count of UDP packets")
@@ -86,6 +88,8 @@ protected:
             , TCP_SYN("packets", {"protocol", "tcp", "syn"}, "Count of TCP SYN packets")
             , total_in("packets", {"in"}, "Count of total ingress packets")
             , total_out("packets", {"out"}, "Count of total egress packets")
+            , total_unk("packets", {"unknown"}, "Count of total unknown direction packets")
+            , total("packets", {"total"}, "Count of total packets that did match the configured filter(s)")
             , filtered("packets", {"filtered"}, "Count of total packets that did not match the configured filter(s) (if any)")
         {
         }
@@ -117,7 +121,7 @@ public:
         , _throughput_out("payload", {"rates", "bytes_out"}, "Rate of egress throughput in bytes per second")
     {
         set_event_rate_info("packets", {"rates", "pps_total"}, "Rate of all packets (combined ingress and egress) in packets per second");
-        set_num_events_info("packets", {"total"}, "Total packets processed");
+        set_num_events_info("packets", {"events"}, "Total packets events generated");
         set_num_sample_info("packets", {"deep_samples"}, "Total packets that were sampled for deep inspection");
     }
 

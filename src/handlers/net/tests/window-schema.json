@@ -7,40 +7,42 @@
   "default": {},
   "examples": [
     {
-        "packets": {
-          "cardinality": {
-            "dst_ips_out": 1,
-            "src_ips_in": 1
-          },
-          "deep_samples": 16147,
-          "in": 6648,
-          "ipv4": 16147,
-          "ipv6": 0,
-          "other_l4": 0,
-          "out": 9499,
-          "period": {
-            "length": 31,
-            "start_ts": 1614874231
-          },
-          "tcp": 13176,
-          "protocol": {
-            "tcp": {
-              "syn":2846
-            }
-          },
-          "top_ASN": [],
-          "top_geoLoc": [],
-          "top_ipv4": [
-            {
-              "estimate": 16147,
-              "name": "8.8.8.8"
-            }
-          ],
-          "top_ipv6": [],
-          "total": 16147,
-          "udp": 2971
-        }
+      "packets": {
+        "cardinality": {
+          "dst_ips_out": 1,
+          "src_ips_in": 1
+        },
+        "deep_samples": 16147,
+        "events": 16147,
+        "in": 6648,
+        "ipv4": 16147,
+        "ipv6": 0,
+        "other_l4": 0,
+        "out": 9499,
+        "period": {
+          "length": 31,
+          "start_ts": 1614874231
+        },
+        "tcp": 13176,
+        "protocol": {
+          "tcp": {
+            "syn": 2846
+          }
+        },
+        "top_ASN": [],
+        "top_geoLoc": [],
+        "top_ipv4": [
+          {
+            "estimate": 16147,
+            "name": "8.8.8.8"
+          }
+        ],
+        "top_ipv6": [],
+        "total": 16147,
+        "udp": 2971,
+        "unknown": 0
       }
+    }
   ],
   "required": [
     "packets"
@@ -59,6 +61,7 @@
             "src_ips_in": 1
           },
           "deep_samples": 16147,
+          "events": 16147,
           "in": 6648,
           "ipv4": 16147,
           "ipv6": 0,
@@ -78,7 +81,7 @@
           "tcp": 13176,
           "protocol": {
             "tcp": {
-              "syn":2846
+              "syn": 2846
             }
           },
           "top_ASN": [],
@@ -91,12 +94,14 @@
           ],
           "top_ipv6": [],
           "total": 16147,
-          "udp": 2971
+          "udp": 2971,
+          "unknown": 0
         }
       ],
       "required": [
         "cardinality",
         "deep_samples",
+        "events",
         "in",
         "ipv4",
         "ipv6",
@@ -112,7 +117,8 @@
         "top_ipv4",
         "top_ipv6",
         "total",
-        "udp"
+        "udp",
+        "unknown"
       ],
       "properties": {
         "cardinality": {
@@ -159,6 +165,16 @@
           "$id": "#/properties/packets/properties/deep_samples",
           "type": "integer",
           "title": "The deep_samples schema",
+          "description": "An explanation about the purpose of this instance.",
+          "default": 0,
+          "examples": [
+            16147
+          ]
+        },
+        "events": {
+          "$id": "#/properties/packets/properties/events",
+          "type": "integer",
+          "title": "The events schema",
           "description": "An explanation about the purpose of this instance.",
           "default": 0,
           "examples": [
@@ -452,6 +468,16 @@
           "default": 0,
           "examples": [
             2971
+          ]
+        },
+        "unknown": {
+          "$id": "#/properties/packets/properties/unknown",
+          "type": "integer",
+          "title": "The unknown schema",
+          "description": "An explanation about the purpose of this instance.",
+          "default": 0,
+          "examples": [
+            0
           ]
         }
       },

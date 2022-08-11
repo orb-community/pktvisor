@@ -93,6 +93,7 @@ protected:
         Counter SRVFAIL;
         Counter NOERROR;
         Counter NODATA;
+        Counter total;
         Counter filtered;
         Counter queryECS;
         counters()
@@ -113,6 +114,7 @@ protected:
             , SRVFAIL("dns", {"wire_packets", "srvfail"}, "Total DNS wire packets flagged as reply with return code SRVFAIL (ingress and egress)")
             , NOERROR("dns", {"wire_packets", "noerror"}, "Total DNS wire packets flagged as reply with return code NOERROR (ingress and egress)")
             , NODATA("dns", {"wire_packets", "nodata"}, "Total DNS wire packets flagged as reply with return code NOERROR and no answer section data (ingress and egress)")
+            , total("dns", {"wire_packets", "total"}, "Total DNS wire packets seen that did match the configured filter(s)")
             , filtered("dns", {"wire_packets", "filtered"}, "Total DNS wire packets seen that did not match the configured filter(s) (if any)")
             , queryECS("dns", {"wire_packets", "query_ecs"}, "Total queries that have EDNS Client Subnet (ECS) field set")
         {
@@ -143,7 +145,7 @@ public:
         , _dns_slowXactOut("dns", "qname", {"xact", "out", "top_slow"}, "Top QNAMES in transactions where host is the client and transaction speed is slower than p90")
     {
         set_event_rate_info("dns", {"rates", "total"}, "Rate of all DNS wire packets (combined ingress and egress) per second");
-        set_num_events_info("dns", {"wire_packets", "total"}, "Total DNS wire packets");
+        set_num_events_info("dns", {"wire_packets", "events"}, "Total DNS wire packets events");
         set_num_sample_info("dns", {"wire_packets", "deep_samples"}, "Total DNS wire packets that were sampled for deep inspection");
     }
 
