@@ -461,7 +461,7 @@ jobs:
             ghtoken=${{ secrets.GITHUB_TOKEN }}
 
   remove-github-runner-arm64:
-    needs: [ package-arm64 ]
+    needs: [ package-arm64, spinup-arm64-runner ]
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
     steps:
@@ -532,7 +532,7 @@ jobs:
           terraform destroy -auto-approve
 
   remove-github-runner-amd64:
-    needs: [ package-armv7 ]
+    needs: [ package-armv7, spinup-amd64-runner ]
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
     steps:

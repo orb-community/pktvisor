@@ -75,7 +75,7 @@ jobs:
       - name: Cache conan packages
         run: CONAN_USER_HOME=${{github.workspace}}/build/conan_home conan upload "*" --all -r ns1labs -c
 
-  package:
+  package-amd64:
     needs: [ unit-tests ]
     runs-on: ubuntu-latest
     outputs:
@@ -208,7 +208,7 @@ jobs:
           path: ${{github.workspace}}/appimage/pktvisor-x86_64-${{ env.VERSION }}.AppImage
 
   spinup-amd64-runner:
-    needs: [ package ]
+    needs: [ package-amd64 ]
     runs-on: ubuntu-latest
     outputs:
       runner_token: ${{ steps.token.outputs.runner }}
@@ -220,6 +220,7 @@ jobs:
       - name: Generate runner token
         id: token
         run: |
+          sleep 3
           curl -X POST -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/ns1labs/pktvisor/actions/runners/registration-token -o token.json
           echo "::set-output name=runner::$(cat token.json | jq .token --raw-output )"
           cat token.json
@@ -237,7 +238,7 @@ jobs:
           sed -i -e "s/AWSID/$ESCAPED_REPLACE_KEY_ID/g" vars.tf
           ESCAPED_REPLACE_ACCESS_KEY=$(printf '%s\n' "${{ secrets.AWS_SECRET_ACCESS_KEY }}" | sed -e 's/[\/&]/\\&/g')
           sed -i -e "s/AWSSECRET/$ESCAPED_REPLACE_ACCESS_KEY/g" vars.tf
-          ESCAPED_REPLACE_ENVIRONMENT=$(printf '%s\n' "${{ needs.package.outputs.branch_name }}-tests" | sed -e 's/[\/&]/\\&/g')
+          ESCAPED_REPLACE_ENVIRONMENT=$(printf '%s\n' "${{ needs.package-amd64.outputs.branch_name }}-tests" | sed -e 's/[\/&]/\\&/g')
           sed -i -e "s/ENVIRONMENT/$ESCAPED_REPLACE_ENVIRONMENT/g" vars.tf
 
       - name: setup terraform
@@ -283,7 +284,7 @@ jobs:
           retention-days: 1
 
   integration-tests:
-    needs: [ spinup-amd64-runner, package ]
+    needs: [ spinup-amd64-runner, package-amd64 ]
     runs-on: [self-hosted, linux, x64]
     outputs:
       commit_hash: ${{ steps.commit_hash.outputs.sha_short }}
@@ -299,7 +300,7 @@ jobs:
       - name: Debug version
         run: |
           echo ${{ env.VERSION }}
-          echo ${{ needs.package.outputs.version_number }}
+          echo ${{ needs.package-amd64.outputs.version_number }}
 
       - name: Prepare test config
         run: |
@@ -328,7 +329,7 @@ jobs:
 
       - name: Copy VERSION file
         run: |
-          echo ${{ needs.package.outputs.version_number }} > ./automated_tests/output/VERSION 
+          echo ${{ needs.package-amd64.outputs.version_number }} > ./automated_tests/output/VERSION 
 
       - name: Persist to workspace
         uses: actions/upload-artifact@v2
@@ -445,7 +446,7 @@ jobs:
           terraform destroy -auto-approve
           
   spinup-arm64-runner:
-    needs: [ package ]
+    needs: [ package-amd64 ]
     runs-on: ubuntu-latest
     outputs:
       runner_token: ${{ steps.token.outputs.runner }}
@@ -474,7 +475,7 @@ jobs:
           sed -i -e "s/AWSID/$ESCAPED_REPLACE_KEY_ID/g" vars.tf
           ESCAPED_REPLACE_ACCESS_KEY=$(printf '%s\n' "${{ secrets.AWS_SECRET_ACCESS_KEY }}" | sed -e 's/[\/&]/\\&/g')
           sed -i -e "s/AWSSECRET/$ESCAPED_REPLACE_ACCESS_KEY/g" vars.tf
-          ESCAPED_REPLACE_ENVIRONMENT=$(printf '%s\n' "${{ needs.package.outputs.branch_name }}-package" | sed -e 's/[\/&]/\\&/g')
+          ESCAPED_REPLACE_ENVIRONMENT=$(printf '%s\n' "${{ needs.package-amd64.outputs.branch_name }}-package" | sed -e 's/[\/&]/\\&/g')
           sed -i -e "s/ENVIRONMENT/$ESCAPED_REPLACE_ENVIRONMENT/g" vars.tf
 
       - name: setup terraform
