@@ -123,7 +123,7 @@ jobs:
           retention-days: 1
 
   spinup-arm64-runner:
-    needs: [ package-amd64 ]
+    needs: [ package-amd64, prebuild-package ]
     runs-on: ubuntu-latest
     outputs:
       runner_token: ${{ steps.token.outputs.runner }}
