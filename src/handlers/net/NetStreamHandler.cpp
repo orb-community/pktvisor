@@ -374,7 +374,7 @@ void NetworkMetricsBucket::process_packet(bool deep, pcpp::Packet &payload, Pack
 }
 void NetworkMetricsBucket::process_dnstap(bool deep, const dnstap::Dnstap &payload, size_t size)
 {
-    pcpp::ProtocolType l3;
+    pcpp::ProtocolType l3{pcpp::UnknownProtocol};
     bool is_ipv6{false};
     if (payload.message().has_socket_family()) {
         if (payload.message().socket_family() == dnstap::INET6) {
@@ -385,7 +385,7 @@ void NetworkMetricsBucket::process_dnstap(bool deep, const dnstap::Dnstap &paylo
         }
     }
 
-    pcpp::ProtocolType l4;
+    pcpp::ProtocolType l4{pcpp::UnknownProtocol};
     if (payload.message().has_socket_protocol()) {
         switch (payload.message().socket_protocol()) {
         case dnstap::UDP:
