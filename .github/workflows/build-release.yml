@@ -535,7 +535,7 @@ jobs:
         continue-on-error: true
 
       - name: Terraform destroy
-        run: |env.TOKEN_RUNNER_ARM64
+        run: |
           cd .github/hosted-runner/arm64/
           terraform destroy -auto-approve
 
