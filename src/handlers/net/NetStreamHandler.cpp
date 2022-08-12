@@ -397,7 +397,7 @@ void NetworkMetricsBucket::process_dnstap(bool deep, const dnstap::Dnstap &paylo
         }
     }
 
-    PacketDirection dir;
+    PacketDirection dir{PacketDirection::unknown};
     switch (payload.message().type()) {
     case dnstap::Message_Type_FORWARDER_RESPONSE:
     case dnstap::Message_Type_STUB_RESPONSE:

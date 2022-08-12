@@ -176,7 +176,7 @@ void FlowStreamHandler::process_sflow_cb(const SFSample &payload, size_t rawSize
 
         if (_sample_rate_scaling) {
             flow.packets = sample.meanSkipCount;
-            flow.payload_size = sample.meanSkipCount * sample.sampledPacketSize;
+            flow.payload_size = static_cast<size_t>(sample.meanSkipCount) * sample.sampledPacketSize;
         } else {
             flow.packets = 1;
             flow.payload_size = sample.sampledPacketSize;
