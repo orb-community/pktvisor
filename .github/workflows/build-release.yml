@@ -477,11 +477,12 @@ jobs:
           echo "::set-output name=ip::$(cat ip.txt)"
           
       - name: Generate remove runner token
-        id: remove_token_arm64
+        id: remove-token-arm64
         run: |
           curl -X POST -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/ns1labs/pktvisor/actions/runners/remove-token -o token.json
-          echo "::set-output name=remove_runner::$(cat token.json | jq .token --raw-output )"
+          echo "::set-output name=remove-runner::$(cat token.json | jq .token --raw-output )"
           cat token.json
+          echo "TOKEN_RUNNER_ARM64=$(cat token.json | jq .token --raw-output )" >> $GITHUB_ENV
 
       - name: Executing remote ssh commands on runner
         uses: appleboy/ssh-action@master
@@ -493,7 +494,7 @@ jobs:
           script: |
                cd /actions-runner
                sudo chmod 777 . -R
-               ./config.sh remove --token $remove_runner
+               ./config.sh remove --token ${{ env.TOKEN_RUNNER_ARM64 }}
 
   remove-arm64-runner:
     needs: [ remove-github-runner-arm64 ]
@@ -534,7 +535,7 @@ jobs:
         continue-on-error: true
 
       - name: Terraform destroy
-        run: |
+        run: |env.TOKEN_RUNNER_ARM64
           cd .github/hosted-runner/arm64/
           terraform destroy -auto-approve
 
@@ -555,11 +556,12 @@ jobs:
           echo "::set-output name=ip::$(cat ip.txt)"
           
       - name: Generate remove runner token
-        id: remove_token_amd64
+        id: remove-token-amd64
         run: |
           curl -X POST -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/ns1labs/pktvisor/actions/runners/remove-token -o token.json
-          echo "::set-output name=remove_runner::$(cat token.json | jq .token --raw-output )"
+          echo "::set-output name=remove-runner::$(cat token.json | jq .token --raw-output )"
           cat token.json
+          echo "TOKEN_RUNNER_AMD64=$(cat token.json | jq .token --raw-output )" >> $GITHUB_ENV
 
       - name: Executing remote ssh commands on runner
         uses: appleboy/ssh-action@master
@@ -571,7 +573,7 @@ jobs:
           script: |
                cd /actions-runner
                sudo chmod 777 . -R
-               ./config.sh remove --token $remove_runner
+               ./config.sh remove --token ${{ env.TOKEN_RUNNER_AMD64 }}
 
   remove-amd64-runner:
     needs: [ remove-github-runner-amd64 ]
