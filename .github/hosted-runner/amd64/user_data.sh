@@ -17,10 +17,10 @@ apt-get install docker.io containerd -y
 mkdir actions-runner && cd actions-runner
 
 #get git actions self-runner
-curl -o actions-runner-linux-x64-2.291.1.tar.gz -L https://github.com/actions/runner/releases/download/v2.291.1/actions-runner-linux-x64-2.291.1.tar.gz
+curl -o actions-runner-linux-x64-2.294.0.tar.gz -L https://github.com/actions/runner/releases/download/v2.294.0/actions-runner-linux-x64-2.294.0.tar.gz
 
 #extract git actions runner installer
-tar xzf ./actions-runner-linux-x64-2.291.1.tar.gz
+tar xzf ./actions-runner-linux-x64-2.294.0.tar.gz
 
 RUNNER_ALLOW_RUNASROOT="1" ./config.sh --url https://github.com/ns1labs/pktvisor --token RUNNER_TOKEN --name amd64_runner --work _work --runasservice
 

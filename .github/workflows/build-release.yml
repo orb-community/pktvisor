@@ -461,7 +461,7 @@ jobs:
             ghtoken=${{ secrets.GITHUB_TOKEN }}
 
   remove-github-runner-arm64:
-    needs: [ package-arm64, spinup-arm64-runner ]
+    needs: [ package-arm64 ]
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
     steps:
@@ -475,6 +475,13 @@ jobs:
         run: |
           ls -lha
           echo "::set-output name=ip::$(cat ip.txt)"
+          
+      - name: Generate remove runner token
+        id: remove_token_arm64
+        run: |
+          curl -X POST -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/ns1labs/pktvisor/actions/runners/remove-token -o token.json
+          echo "::set-output name=remove_runner::$(cat token.json | jq .token --raw-output )"
+          cat token.json
 
       - name: Executing remote ssh commands on runner
         uses: appleboy/ssh-action@master
@@ -486,7 +493,7 @@ jobs:
           script: |
                cd /actions-runner
                sudo chmod 777 . -R
-               ./config.sh remove --token ${{ needs.spinup-arm64-runner.outputs.runner_token }}
+               ./config.sh remove --token ${{ steps.remove_runner_arm64.outputs.remove_runner }}
 
   remove-arm64-runner:
     needs: [ remove-github-runner-arm64 ]
@@ -509,7 +516,7 @@ jobs:
           sed -i -e "s/AWSID/$ESCAPED_REPLACE_KEY_ID/g" vars.tf
           ESCAPED_REPLACE_ACCESS_KEY=$(printf '%s\n' "${{ secrets.AWS_SECRET_ACCESS_KEY }}" | sed -e 's/[\/&]/\\&/g')
           sed -i -e "s/AWSSECRET/$ESCAPED_REPLACE_ACCESS_KEY/g" vars.tf
-
+         
       - name: setup terraform
         uses: hashicorp/setup-terraform@v2
         with:
@@ -532,7 +539,7 @@ jobs:
           terraform destroy -auto-approve
 
   remove-github-runner-amd64:
-    needs: [ package-armv7, spinup-amd64-runner ]
+    needs: [ package-armv7 ]
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
     steps:
@@ -546,6 +553,13 @@ jobs:
         run: |
           ls -lha
           echo "::set-output name=ip::$(cat ip.txt)"
+          
+      - name: Generate remove runner token
+        id: remove_token_amd64
+        run: |
+          curl -X POST -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/ns1labs/pktvisor/actions/runners/remove-token -o token.json
+          echo "::set-output name=remove_runner::$(cat token.json | jq .token --raw-output )"
+          cat token.json
 
       - name: Executing remote ssh commands on runner
         uses: appleboy/ssh-action@master
@@ -557,7 +571,7 @@ jobs:
           script: |
                cd /actions-runner
                sudo chmod 777 . -R
-               ./config.sh remove --token ${{ needs.spinup-amd64-runner.outputs.runner_token }}
+               ./config.sh remove --token ${{ steps.remove_token_amd64.outputs.remove_runner }}
 
   remove-amd64-runner:
     needs: [ remove-github-runner-amd64 ]
