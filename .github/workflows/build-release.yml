@@ -493,7 +493,7 @@ jobs:
           script: |
                cd /actions-runner
                sudo chmod 777 . -R
-               ./config.sh remove --token ${{ steps.remove_runner_arm64.outputs.remove_runner }}
+               ./config.sh remove --token $remove_runner
 
   remove-arm64-runner:
     needs: [ remove-github-runner-arm64 ]
@@ -571,7 +571,7 @@ jobs:
           script: |
                cd /actions-runner
                sudo chmod 777 . -R
-               ./config.sh remove --token ${{ steps.remove_token_amd64.outputs.remove_runner }}
+               ./config.sh remove --token $remove_runner
 
   remove-amd64-runner:
     needs: [ remove-github-runner-amd64 ]
