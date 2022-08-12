@@ -5,11 +5,9 @@ on:
   pull_request:
     branches:
       - master
-      - multi-arch-images
   push:
     branches:
       - master
-      - multi-arch-images
 
 env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
@@ -298,7 +296,7 @@ jobs:
         run: echo ${{ env.VERSION }}
 
       - name: Generate ref tag (master)
-        if: ${{ env.BRANCH_NAME == 'master' || env.BRANCH_NAME == 'multi-arch-images' }}
+        if: ${{ env.BRANCH_NAME == 'master' }}
         run: |
           echo "REF_TAG=latest" >> $GITHUB_ENV
           echo "PRERELEASE=false" >> $GITHUB_ENV
@@ -362,7 +360,7 @@ jobs:
         run: echo ${{ env.VERSION }}
 
       - name: Generate ref tag (master)
-        if: ${{ env.BRANCH_NAME == 'master' || env.BRANCH_NAME == 'multi-arch-images' }}
+        if: ${{ env.BRANCH_NAME == 'master' }}
         run: |
           echo "REF_TAG=latest" >> $GITHUB_ENV
           echo "PRERELEASE=false" >> $GITHUB_ENV
@@ -424,7 +422,7 @@ jobs:
         run: echo ${{ env.VERSION }}
 
       - name: Generate ref tag (master)
-        if: ${{ env.BRANCH_NAME == 'master' || env.BRANCH_NAME == 'multi-arch-images' }}
+        if: ${{ env.BRANCH_NAME == 'master' }}
         run: |
           echo "REF_TAG=latest" >> $GITHUB_ENV
           echo "PRERELEASE=false" >> $GITHUB_ENV
