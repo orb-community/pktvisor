@@ -1,6 +1,6 @@
 FROM debian:bullseye-slim AS cppbuild
 
-ENV BUILD_DEPS "g++ cmake make git pkgconf jq python3-pip python3-setuptools ca-certificates"
+ENV BUILD_DEPS "g++ cmake make git pkgconf jq python3-pip python3-setuptools python ca-certificates"
 
 RUN \
     apt-get update && \
@@ -21,6 +21,7 @@ COPY ./CMakeLists.txt /pktvisor-src/
 COPY ./conanfile.txt /pktvisor-src/
 
 WORKDIR /tmp/build
+
 RUN \
     conan profile new --detect default && \
     conan profile update settings.compiler.libcxx=libstdc++11 default && \
@@ -28,7 +29,7 @@ RUN \
 
 RUN \
     PKG_CONFIG_PATH=/local/lib/pkgconfig cmake -DCMAKE_BUILD_TYPE=Release /pktvisor-src && \
-    make all test -j 4
+    make all -j 4
 
 FROM golang:latest AS gobuild
 COPY golang/ /src/
