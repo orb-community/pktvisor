@@ -197,8 +197,10 @@ void NetworkMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
     // rates maintain their own thread safety
     _rate_in.merge(other._rate_in);
     _rate_out.merge(other._rate_out);
+    _rate_total.merge(other._rate_total);
     _throughput_in.merge(other._throughput_in);
     _throughput_out.merge(other._throughput_out);
+    _throughput_total.merge(other._throughput_total);
 
     std::shared_lock r_lock(other._mutex);
     std::unique_lock w_lock(_mutex);
@@ -239,8 +241,10 @@ void NetworkMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMa
 
     _rate_in.to_prometheus(out, add_labels);
     _rate_out.to_prometheus(out, add_labels);
+    _rate_total.to_prometheus(out, add_labels);
     _throughput_in.to_prometheus(out, add_labels);
     _throughput_out.to_prometheus(out, add_labels);
+    _throughput_total.to_prometheus(out, add_labels);
 
     {
         auto [num_events, num_samples, event_rate, event_lock] = event_data_locked(); // thread safe
@@ -291,8 +295,10 @@ void NetworkMetricsBucket::to_json(json &j) const
     bool live_rates = !read_only() && !recorded_stream();
     _rate_in.to_json(j, live_rates);
     _rate_out.to_json(j, live_rates);
+    _rate_total.to_json(j, live_rates);
     _throughput_in.to_json(j, live_rates);
     _throughput_out.to_json(j, live_rates);
+    _throughput_total.to_json(j, live_rates);
 
     {
         auto [num_events, num_samples, event_rate, event_lock] = event_data_locked(); // thread safe
@@ -402,6 +408,11 @@ void NetworkMetricsBucket::process_dnstap(bool deep, const dnstap::Dnstap &paylo
         case dnstap::TCP:
             l4 = pcpp::TCP;
             break;
+        case dnstap::DOT:
+        case dnstap::DOH:
+        case dnstap::DNSCryptUDP:
+        case dnstap::DNSCryptTCP:
+            break;
         }
     }
 
@@ -464,6 +475,8 @@ void NetworkMetricsBucket::process_net_layer(PacketDirection dir, pcpp::Protocol
     case PacketDirection::unknown:
         break;
     }
+    ++_rate_total;
+    _throughput_total += payload_size;
 
     if (group_enabled(group::NetMetrics::Counters)) {
         ++_counters.total;
@@ -523,6 +536,8 @@ void NetworkMetricsBucket::process_net_layer(NetworkPacket &packet)
     case PacketDirection::unknown:
         break;
     }
+    ++_rate_total;
+    _throughput_total += packet.payload_size;
 
     if (group_enabled(group::NetMetrics::Counters)) {
         ++_counters.total;

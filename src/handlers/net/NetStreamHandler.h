@@ -88,7 +88,7 @@ protected:
             , TCP_SYN("packets", {"protocol", "tcp", "syn"}, "Count of TCP SYN packets")
             , total_in("packets", {"in"}, "Count of total ingress packets")
             , total_out("packets", {"out"}, "Count of total egress packets")
-            , total_unk("packets", {"unknown"}, "Count of total unknown direction packets")
+            , total_unk("packets", {"unknown_dir"}, "Count of total unknown direction packets")
             , total("packets", {"total"}, "Count of total packets that did match the configured filter(s)")
             , filtered("packets", {"filtered"}, "Count of total packets that did not match the configured filter(s) (if any)")
         {
@@ -100,8 +100,10 @@ protected:
 
     Rate _rate_in;
     Rate _rate_out;
+    Rate _rate_total;
     Rate _throughput_in;
     Rate _throughput_out;
+    Rate _throughput_total;
 
     void _process_geo_metrics(const pcpp::IPv4Address &ipv4);
     void _process_geo_metrics(const pcpp::IPv6Address &ipv6);
@@ -117,10 +119,12 @@ public:
         , _payload_size("packets", {"payload_size"}, "Quantiles of payload sizes, in bytes")
         , _rate_in("packets", {"rates", "pps_in"}, "Rate of ingress in packets per second")
         , _rate_out("packets", {"rates", "pps_out"}, "Rate of egress in packets per second")
+        , _rate_total("packets", {"rates", "pps_total"}, "Rate of all packets (combined ingress and egress) in packets per second")
         , _throughput_in("payload", {"rates", "bytes_in"}, "Rate of ingress throughput in bytes per second")
         , _throughput_out("payload", {"rates", "bytes_out"}, "Rate of egress throughput in bytes per second")
+        , _throughput_total("payload", {"rates", "bytes_total"}, "Rate of all packets (combined ingress and egress) throughput in bytes per second")
     {
-        set_event_rate_info("packets", {"rates", "pps_total"}, "Rate of all packets (combined ingress and egress) in packets per second");
+        set_event_rate_info("packets", {"rates", "pps_events"}, "Rate of all packets before filtering in packets per second");
         set_num_events_info("packets", {"events"}, "Total packets events generated");
         set_num_sample_info("packets", {"deep_samples"}, "Total packets that were sampled for deep inspection");
     }
@@ -150,8 +154,10 @@ public:
         // stop rate collection
         _rate_in.cancel();
         _rate_out.cancel();
+        _rate_total.cancel();
         _throughput_in.cancel();
         _throughput_out.cancel();
+        _throughput_total.cancel();
     }
 
     void process_filtered();

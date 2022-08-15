@@ -40,7 +40,7 @@
         "top_ipv6": [],
         "total": 16147,
         "udp": 2971,
-        "unknown": 0
+        "unknown_dir": 0
       }
     }
   ],
@@ -95,7 +95,7 @@
           "top_ipv6": [],
           "total": 16147,
           "udp": 2971,
-          "unknown": 0
+          "unknown_dir": 0
         }
       ],
       "required": [
@@ -118,7 +118,7 @@
         "top_ipv6",
         "total",
         "udp",
-        "unknown"
+        "unknown_dir"
       ],
       "properties": {
         "cardinality": {
@@ -470,10 +470,10 @@
             2971
           ]
         },
-        "unknown": {
-          "$id": "#/properties/packets/properties/unknown",
+        "unknown_dir": {
+          "$id": "#/properties/packets/properties/unknown_dir",
           "type": "integer",
-          "title": "The unknown schema",
+          "title": "The unknown_dir schema",
           "description": "An explanation about the purpose of this instance.",
           "default": 0,
           "examples": [

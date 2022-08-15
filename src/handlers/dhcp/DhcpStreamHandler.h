@@ -47,7 +47,7 @@ protected:
 public:
     DhcpMetricsBucket()
     {
-        set_event_rate_info("dhcp", {"rates", "total"}, "Rate of all DHCP wire packets (combined ingress and egress) per second");
+        set_event_rate_info("dhcp", {"rates", "pps_events"}, "Rate of all DHCP wire packets (combined ingress and egress) before filtering per second");
         set_num_events_info("dhcp", {"wire_packets", "events"}, "Total DHCP wire packets events");
         set_num_sample_info("dhcp", {"wire_packets", "deep_samples"}, "Total DHCP wire packets that were sampled for deep inspection");
     }
