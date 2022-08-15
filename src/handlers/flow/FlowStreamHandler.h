@@ -165,18 +165,16 @@ protected:
     mutable std::shared_mutex _mutex;
 
     struct counters {
-        Counter volume;
         Counter filtered;
         Counter total;
         counters()
-            : volume(FLOW_SCHEMA, {"volume_bytes"}, "Count of total raw packet bytes")
-            , filtered(FLOW_SCHEMA, {"filtered"}, "Count of total flows seen that did not match the configured filter(s) (if any)")
-            , total(FLOW_SCHEMA, {"flows"}, "Count of total flows that match the configured filter(s) (if any)")
+            : filtered(FLOW_SCHEMA, {"filtered"}, "Count of total flows seen that did not match the configured filter(s) (if any)")
+            , total(FLOW_SCHEMA, {"total"}, "Count of total flows that match the configured filter(s) (if any)")
         {
         }
     };
     counters _counters;
-
+    Quantile<std::size_t> _volume;
     size_t _topn_count{10};
     Rate _rate;
     Rate _throughput;
@@ -190,9 +188,13 @@ protected:
 
 public:
     FlowMetricsBucket()
-        : _rate(FLOW_SCHEMA, {"rates", "packets"}, "Rate of combined flow throughput in packets per second")
+        : _volume(FLOW_SCHEMA, {"volume", "bytes"}, "Quantiles of raw packet bytes")
+        , _rate(FLOW_SCHEMA, {"rates", "packets"}, "Rate of combined flow throughput in packets per second")
         , _throughput("payload", {"rates", "bytes"}, "Rate of combined flow throughput in bytes per second")
     {
+        set_event_rate_info(FLOW_SCHEMA, {"rates", "pps_events"}, "Rate of all flow events per second");
+        set_num_events_info(FLOW_SCHEMA, {"events"}, "Total flow events processed");
+        set_num_sample_info(FLOW_SCHEMA, {"deep_samples"}, "Total flow events that were sampled for deep inspection");
     }
 
     // get a copy of the counters
@@ -219,10 +221,11 @@ public:
         _throughput.cancel();
     }
 
-    void process_filtered(uint64_t filtered = 1)
+    inline void process_filtered(uint64_t filtered, uint64_t raw_size)
     {
         std::unique_lock lock(_mutex);
         _counters.filtered += filtered;
+        _volume.update(raw_size);
     }
     void process_flow(bool deep, const FlowPacket &payload);
 };
@@ -235,11 +238,11 @@ public:
     {
     }
 
-    void process_filtered(timespec stamp, uint64_t filtered)
+    inline void process_filtered(timespec stamp, uint64_t filtered, uint64_t raw_size)
     {
         // base event, no sample
         new_event(stamp, false);
-        live_bucket()->process_filtered(filtered);
+        live_bucket()->process_filtered(filtered, raw_size);
     }
     void process_flow(const FlowPacket &payload);
 };
