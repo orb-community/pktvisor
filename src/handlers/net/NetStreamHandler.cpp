@@ -21,7 +21,7 @@
 
 namespace visor::handler::net {
 
-NetStreamHandler::NetStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config, StreamHandler *handler)
+NetStreamHandler::NetStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config, HandlerEventProxy *h_proxy)
     : visor::StreamMetricsHandler<NetworkMetricsManager>(name, window_config)
 {
     // figure out which input event proxy we have
@@ -34,10 +34,10 @@ NetStreamHandler::NetStreamHandler(const std::string &name, InputEventProxy *pro
         }
     }
 
-    if (handler) {
-        _dns_handler = dynamic_cast<DnsStreamHandler *>(handler);
-        if (!_dns_handler) {
-            throw StreamHandlerException(fmt::format("NetStreamHandler: unsupported upstream chained stream handler {}", handler->name()));
+    if (h_proxy) {
+        _dns_proxy = dynamic_cast<DnsHandlerEventProxy *>(h_proxy);
+        if (!_dns_proxy) {
+            throw StreamHandlerException(fmt::format("NetStreamHandler: unsupported upstream chained stream handler {}", h_proxy->name()));
         }
     }
 }
@@ -77,11 +77,11 @@ void NetStreamHandler::start()
     } else if (_dnstap_proxy) {
         _dnstap_connection = _dnstap_proxy->dnstap_signal.connect(&NetStreamHandler::process_dnstap_cb, this);
         _heartbeat_connection = _dnstap_proxy->heartbeat_signal.connect(&NetStreamHandler::check_period_shift, this);
-    } else if (_dns_handler) {
-        _pkt_udp_connection = _dns_handler->udp_signal.connect(&NetStreamHandler::process_udp_packet_cb, this);
-        _start_tstamp_connection = _dns_handler->start_tstamp_signal.connect(&NetStreamHandler::set_start_tstamp, this);
-        _end_tstamp_connection = _dns_handler->end_tstamp_signal.connect(&NetStreamHandler::set_end_tstamp, this);
-        _heartbeat_connection = _dns_handler->heartbeat_signal.connect(&NetStreamHandler::check_period_shift, this);
+    } else if (_dns_proxy) {
+        _pkt_udp_connection = _dns_proxy->udp_signal.connect(&NetStreamHandler::process_udp_packet_cb, this);
+        _start_tstamp_connection = _dns_proxy->start_tstamp_signal.connect(&NetStreamHandler::set_start_tstamp, this);
+        _end_tstamp_connection = _dns_proxy->end_tstamp_signal.connect(&NetStreamHandler::set_end_tstamp, this);
+        _heartbeat_connection = _dns_proxy->heartbeat_signal.connect(&NetStreamHandler::check_period_shift, this);
     }
 
     _running = true;
@@ -99,7 +99,7 @@ void NetStreamHandler::stop()
         _end_tstamp_connection.disconnect();
     } else if (_dnstap_proxy) {
         _dnstap_connection.disconnect();
-    } else if (_dns_handler) {
+    } else if (_dns_proxy) {
         _pkt_udp_connection.disconnect();
         _start_tstamp_connection.disconnect();
         _end_tstamp_connection.disconnect();
@@ -107,6 +107,11 @@ void NetStreamHandler::stop()
     _heartbeat_connection.disconnect();
 
     _running = false;
+}
+
+std::unique_ptr<HandlerEventProxy> NetStreamHandler::create_event_proxy()
+{
+    return std::make_unique<HandlerEventProxy>(_name);
 }
 
 NetStreamHandler::~NetStreamHandler()

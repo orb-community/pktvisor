@@ -302,7 +302,7 @@ class FlowStreamHandler final : public visor::StreamMetricsHandler<FlowMetricsMa
     bool _filtering(const FlowData &flow);
 
 public:
-    FlowStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config, StreamHandler *handler = nullptr);
+    FlowStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config, HandlerEventProxy *h_proxy = nullptr);
     ~FlowStreamHandler() override;
 
     // visor::AbstractModule
@@ -311,12 +311,8 @@ public:
         return FLOW_SCHEMA;
     }
 
-    size_t consumer_count() const override
-    {
-        return 0;
-    }
-
     void start() override;
     void stop() override;
+    std::unique_ptr<HandlerEventProxy> create_event_proxy() override;
 };
 }

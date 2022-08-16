@@ -187,7 +187,7 @@ TEST_CASE("Parse net (dns) with DNS filter only_qname_suffix", "[pcap][dns][net]
     auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
     DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
-    NetStreamHandler net_handler{"net-test", nullptr, &c, &dns_handler};
+    NetStreamHandler net_handler{"net-test", nullptr, &c, dns_handler.get_event_proxy()};
 
     dns_handler.config_set<visor::Configurable::StringList>("only_qname_suffix", {"google.com"});
 

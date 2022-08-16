@@ -5,6 +5,7 @@
 #pragma once
 
 #include "AbstractMetricsManager.h"
+#include "DnsHandlerEventProxy.h"
 #include "DnsStreamHandler.h"
 #include "DnstapInputStream.h"
 #include "MockInputStream.h"
@@ -179,7 +180,7 @@ class NetStreamHandler final : public visor::StreamMetricsHandler<NetworkMetrics
     MockInputEventProxy *_mock_proxy{nullptr};
 
     // the stream handlers sources we support (only one will be in use at a time)
-    DnsStreamHandler *_dns_handler{nullptr};
+    DnsHandlerEventProxy *_dns_proxy{nullptr};
 
     sigslot::connection _dnstap_connection;
 
@@ -215,7 +216,7 @@ class NetStreamHandler final : public visor::StreamMetricsHandler<NetworkMetrics
     bool _filtering(pcpp::Packet &payload, PacketDirection dir, timespec stamp);
 
 public:
-    NetStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config, StreamHandler *handler = nullptr);
+    NetStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config, HandlerEventProxy *h_proxy = nullptr);
     ~NetStreamHandler() override;
 
     // visor::AbstractModule
@@ -224,13 +225,9 @@ public:
         return "packets";
     }
 
-    size_t consumer_count() const override
-    {
-        return 0;
-    }
-
     void start() override;
     void stop() override;
+    std::unique_ptr<HandlerEventProxy> create_event_proxy() override;
 };
 
 }

@@ -21,10 +21,10 @@ using json = nlohmann::json;
 void NetHandlerModulePlugin::setup_routes(HttpServer *svr)
 {
 }
-std::unique_ptr<StreamHandler> NetHandlerModulePlugin::instantiate(const std::string &name, InputEventProxy *proxy, const Configurable *config, const Configurable *filter, StreamHandler *stream_handler)
+std::unique_ptr<StreamHandler> NetHandlerModulePlugin::instantiate(const std::string &name, InputEventProxy *proxy, const Configurable *config, const Configurable *filter, HandlerEventProxy *h_proxy)
 {
     // TODO using config as both window config and module config
-    auto handler_module = std::make_unique<NetStreamHandler>(name, proxy, config, stream_handler);
+    auto handler_module = std::make_unique<NetStreamHandler>(name, proxy, config, h_proxy);
     handler_module->config_merge(*config);
     handler_module->config_merge(*filter);
     return handler_module;

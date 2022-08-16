@@ -6,11 +6,11 @@
 
 namespace visor::handler::dhcp {
 
-DhcpStreamHandler::DhcpStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config, StreamHandler *handler)
+DhcpStreamHandler::DhcpStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config, HandlerEventProxy *h_proxy)
     : visor::StreamMetricsHandler<DhcpMetricsManager>(name, window_config)
 {
-    if (handler) {
-        throw StreamHandlerException(fmt::format("DhcpStreamHandler: unsupported upstream chained stream handler {}", handler->name()));
+    if (h_proxy) {
+        throw StreamHandlerException(fmt::format("DhcpStreamHandler: unsupported upstream chained stream handler proxy {}", h_proxy->name()));
     }
 
     assert(proxy);
@@ -73,6 +73,11 @@ void DhcpStreamHandler::stop()
     _running = false;
 }
 
+std::unique_ptr<HandlerEventProxy> DhcpStreamHandler::create_event_proxy()
+{
+    return std::make_unique<HandlerEventProxy>(_name);
+}
+
 // callback from input module
 void DhcpStreamHandler::set_start_tstamp(timespec stamp)
 {
@@ -96,7 +101,6 @@ void DhcpMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
     _counters.REQUEST += other._counters.REQUEST;
     _counters.ACK += other._counters.ACK;
     _counters.filtered += other._counters.filtered;
-
 }
 
 void DhcpMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap add_labels) const
@@ -117,7 +121,6 @@ void DhcpMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap a
     _counters.REQUEST.to_prometheus(out, add_labels);
     _counters.ACK.to_prometheus(out, add_labels);
     _counters.filtered.to_prometheus(out, add_labels);
-
 }
 
 void DhcpMetricsBucket::to_json(json &j) const
@@ -140,7 +143,6 @@ void DhcpMetricsBucket::to_json(json &j) const
     _counters.REQUEST.to_json(j);
     _counters.ACK.to_json(j);
     _counters.filtered.to_json(j);
-
 }
 
 void DhcpMetricsBucket::process_filtered()

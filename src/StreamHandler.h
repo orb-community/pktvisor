@@ -8,6 +8,7 @@
 #include "AbstractModule.h"
 #include <fmt/ostream.h>
 #include <nlohmann/json.hpp>
+#include <sigslot/signal.hpp>
 #include <sstream>
 
 namespace visor {
@@ -23,8 +24,34 @@ public:
     }
 };
 
+class HandlerEventProxy
+{
+protected:
+    std::string _handler_name;
+
+public:
+    HandlerEventProxy(const std::string &name)
+        : _handler_name(name){};
+
+    virtual ~HandlerEventProxy() = default;
+
+    const std::string &name() const
+    {
+        return _handler_name;
+    }
+
+    virtual size_t consumer_count() const
+    {
+        return heartbeat_signal.slot_count();
+    }
+
+    mutable sigslot::signal<const timespec> heartbeat_signal;
+};
+
 class StreamHandler : public AbstractRunnableModule
 {
+protected:
+    std::unique_ptr<HandlerEventProxy> _event_proxy;
 
 public:
     StreamHandler(const std::string &name)
@@ -34,7 +61,23 @@ public:
 
     virtual ~StreamHandler(){};
 
-    virtual size_t consumer_count() const = 0;
+    size_t consumer_count() const
+    {
+        if (_event_proxy) {
+            return _event_proxy->consumer_count();
+        }
+        return 0;
+    }
+
+    HandlerEventProxy *get_event_proxy()
+    {
+        if (!_event_proxy) {
+            _event_proxy = create_event_proxy();
+        }
+        return _event_proxy.get();
+    }
+
+    virtual std::unique_ptr<HandlerEventProxy> create_event_proxy() = 0;
     virtual void window_json(json &j, uint64_t period, bool merged) = 0;
     virtual void window_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) = 0;
 };

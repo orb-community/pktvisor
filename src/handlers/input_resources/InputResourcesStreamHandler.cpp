@@ -7,13 +7,13 @@
 
 namespace visor::handler::resources {
 
-InputResourcesStreamHandler::InputResourcesStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config, StreamHandler *handler)
+InputResourcesStreamHandler::InputResourcesStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config, HandlerEventProxy *h_proxy)
     : visor::StreamMetricsHandler<InputResourcesMetricsManager>(name, window_config)
     , _timer(0)
     , _timestamp(timespec())
 {
-    if (handler) {
-        throw StreamHandlerException(fmt::format("ResourcesStreamHandler: unsupported upstream chained stream handler {}", handler->name()));
+    if (h_proxy) {
+        throw StreamHandlerException(fmt::format("InputResourcesStreamHandler: unsupported upstream chained stream handler proxy {}", h_proxy->name()));
     }
 
     assert(proxy);
@@ -24,7 +24,7 @@ InputResourcesStreamHandler::InputResourcesStreamHandler(const std::string &name
         _mock_proxy = dynamic_cast<MockInputEventProxy *>(proxy);
         _flow_proxy = dynamic_cast<FlowInputEventProxy *>(proxy);
         if (!_pcap_proxy && !_mock_proxy && !_dnstap_proxy && !_flow_proxy) {
-            throw StreamHandlerException(fmt::format("ResourcesStreamHandler: unsupported input event proxy {}", proxy->name()));
+            throw StreamHandlerException(fmt::format("InputResourcesStreamHandler: unsupported input event proxy {}", proxy->name()));
         }
     }
 }
@@ -75,6 +75,11 @@ void InputResourcesStreamHandler::stop()
     _heartbeat_connection.disconnect();
 
     _running = false;
+}
+
+std::unique_ptr<HandlerEventProxy> InputResourcesStreamHandler::create_event_proxy()
+{
+    return std::make_unique<HandlerEventProxy>(_name);
 }
 
 void InputResourcesStreamHandler::process_policies_cb(const Policy *policy, Action action)
