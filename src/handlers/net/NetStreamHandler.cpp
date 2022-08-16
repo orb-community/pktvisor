@@ -65,6 +65,20 @@ void NetStreamHandler::start()
         _f_enabled.set(Filters::AsnNotFound);
     }
 
+    if (config_exists("only_geoloc_prefix")) {
+        _f_enabled.set(Filters::GeoLocPrefix);
+        for (const auto &prefix : config_get<StringList>("only_geoloc_prefix")) {
+            _f_geoloc_prefix.push_back(prefix);
+        }
+    }
+
+    if (config_exists("only_asn_prefix")) {
+        _f_enabled.set(Filters::AsnPrefix);
+        for (const auto &prefix : config_get<StringList>("only_asn_prefix")) {
+            _f_asn_prefix.push_back(prefix);
+        }
+    }
+
     if (config_exists("recorded_stream")) {
         _metrics->set_recorded_stream();
     }
@@ -143,6 +157,11 @@ void NetStreamHandler::process_udp_packet_cb(pcpp::Packet &payload, PacketDirect
     }
 }
 
+static inline bool begins_with(std::string_view str, std::string_view prefix)
+{
+    return str.size() >= prefix.size() && 0 == str.compare(0, prefix.size(), prefix);
+}
+
 bool NetStreamHandler::_filtering(pcpp::Packet &payload, PacketDirection dir, timespec stamp)
 {
     if (_f_enabled[Filters::GeoLocNotFound]) {
@@ -179,6 +198,60 @@ bool NetStreamHandler::_filtering(pcpp::Packet &payload, PacketDirection dir, ti
             if (dir == PacketDirection::toHost && IPv6tosockaddr(IPv6layer->getSrcIPv6Address(), &sa6) && geo::GeoASN().getASNString(&sa6) != "Unknown") {
                 goto will_filter;
             } else if (dir == PacketDirection::fromHost && IPv6tosockaddr(IPv6layer->getDstIPv6Address(), &sa6) && geo::GeoASN().getASNString(&sa6) != "Unknown") {
+                goto will_filter;
+            }
+        }
+    }
+    if (_f_enabled[Filters::GeoLocPrefix]) {
+        if (!geo::GeoIP().enabled() || dir == PacketDirection::unknown) {
+            goto will_filter;
+        } else if (auto IPv4Layer = payload.getLayerOfType<pcpp::IPv4Layer>(); IPv4Layer) {
+            struct sockaddr_in sa4;
+            if (dir == PacketDirection::toHost && IPv4tosockaddr(IPv4Layer->getSrcIPv4Address(), &sa4) && std::none_of(_f_geoloc_prefix.begin(), _f_geoloc_prefix.end(), [sa4](const auto &prefix) {
+                    return begins_with(geo::GeoIP().getGeoLocString(&sa4), prefix);
+                })) {
+                goto will_filter;
+            } else if (dir == PacketDirection::fromHost && IPv4tosockaddr(IPv4Layer->getDstIPv4Address(), &sa4) && std::none_of(_f_geoloc_prefix.begin(), _f_geoloc_prefix.end(), [sa4](const auto &prefix) {
+                           return begins_with(geo::GeoIP().getGeoLocString(&sa4), prefix);
+                       })) {
+                goto will_filter;
+            }
+        } else if (auto IPv6layer = payload.getLayerOfType<pcpp::IPv6Layer>(); IPv6layer) {
+            struct sockaddr_in6 sa6;
+            if (dir == PacketDirection::toHost && IPv6tosockaddr(IPv6layer->getSrcIPv6Address(), &sa6) && std::none_of(_f_geoloc_prefix.begin(), _f_geoloc_prefix.end(), [sa6](const auto &prefix) {
+                    return begins_with(geo::GeoIP().getGeoLocString(&sa6), prefix);
+                })) {
+                goto will_filter;
+            } else if (dir == PacketDirection::fromHost && IPv6tosockaddr(IPv6layer->getDstIPv6Address(), &sa6) && std::none_of(_f_geoloc_prefix.begin(), _f_geoloc_prefix.end(), [sa6](const auto &prefix) {
+                           return begins_with(geo::GeoIP().getGeoLocString(&sa6), prefix);
+                       })) {
+                goto will_filter;
+            }
+        }
+    }
+    if (_f_enabled[Filters::AsnPrefix]) {
+        if (!geo::GeoASN().enabled() || dir == PacketDirection::unknown) {
+            goto will_filter;
+        } else if (auto IPv4Layer = payload.getLayerOfType<pcpp::IPv4Layer>(); IPv4Layer) {
+            struct sockaddr_in sa4;
+            if (dir == PacketDirection::toHost && IPv4tosockaddr(IPv4Layer->getSrcIPv4Address(), &sa4) && std::none_of(_f_asn_prefix.begin(), _f_asn_prefix.end(), [sa4](const auto &prefix) {
+                    return begins_with(geo::GeoASN().getASNString(&sa4), prefix);
+                })) {
+                goto will_filter;
+            } else if (dir == PacketDirection::fromHost && IPv4tosockaddr(IPv4Layer->getDstIPv4Address(), &sa4) && std::none_of(_f_asn_prefix.begin(), _f_asn_prefix.end(), [sa4](const auto &prefix) {
+                           return begins_with(geo::GeoASN().getASNString(&sa4), prefix);
+                       })) {
+                goto will_filter;
+            }
+        } else if (auto IPv6layer = payload.getLayerOfType<pcpp::IPv6Layer>(); IPv6layer) {
+            struct sockaddr_in6 sa6;
+            if (dir == PacketDirection::toHost && IPv6tosockaddr(IPv6layer->getSrcIPv6Address(), &sa6) && std::none_of(_f_asn_prefix.begin(), _f_asn_prefix.end(), [sa6](const auto &prefix) {
+                    return begins_with(geo::GeoASN().getASNString(&sa6), prefix);
+                })) {
+                goto will_filter;
+            } else if (dir == PacketDirection::fromHost && IPv6tosockaddr(IPv6layer->getDstIPv6Address(), &sa6) && std::none_of(_f_asn_prefix.begin(), _f_asn_prefix.end(), [sa6](const auto &prefix) {
+                           return begins_with(geo::GeoASN().getASNString(&sa6), prefix);
+                       })) {
                 goto will_filter;
             }
         }
