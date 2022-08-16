@@ -192,7 +192,7 @@ public:
         , _rate(FLOW_SCHEMA, {"rates", "packets"}, "Rate of combined flow throughput in packets per second")
         , _throughput("payload", {"rates", "bytes"}, "Rate of combined flow throughput in bytes per second")
     {
-        set_event_rate_info(FLOW_SCHEMA, {"rates", "pps_events"}, "Rate of all flow events per second");
+        set_event_rate_info(FLOW_SCHEMA, {"rates", "events"}, "Rate of all flow events per second");
         set_num_events_info(FLOW_SCHEMA, {"events"}, "Total flow events processed");
         set_num_sample_info(FLOW_SCHEMA, {"deep_samples"}, "Total flow events that were sampled for deep inspection");
     }
