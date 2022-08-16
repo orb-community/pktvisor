@@ -88,6 +88,9 @@ void DhcpMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
     // static because caller guarantees only our own bucket type
     const auto &other = static_cast<const DhcpMetricsBucket &>(o);
 
+    // rates maintain their own thread safety
+    _rate_total.merge(other._rate_total);
+
     std::shared_lock r_lock(other._mutex);
     std::unique_lock w_lock(_mutex);
 
@@ -101,6 +104,8 @@ void DhcpMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
 
 void DhcpMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap add_labels) const
 {
+
+    _rate_total.to_prometheus(out, add_labels);
 
     {
         auto [num_events, num_samples, event_rate, event_lock] = event_data_locked(); // thread safe
@@ -124,6 +129,7 @@ void DhcpMetricsBucket::to_json(json &j) const
 {
 
     bool live_rates = !read_only() && !recorded_stream();
+    _rate_total.to_json(j, live_rates);
 
     {
         auto [num_events, num_samples, event_rate, event_lock] = event_data_locked(); // thread safe
@@ -160,6 +166,7 @@ void DhcpMetricsBucket::process_dhcp_layer(bool deep, pcpp::DhcpLayer *payload, 
     std::unique_lock lock(_mutex);
 
     ++_counters.total;
+    ++_rate_total;
 
     switch (payload->getMesageType()) {
     case pcpp::DHCP_DISCOVER:

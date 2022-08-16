@@ -122,6 +122,8 @@ protected:
     };
     counters _counters;
 
+    Rate _rate_total;
+
 public:
     DnsMetricsBucket()
         : _dnsXactFromTimeUs("dns", {"xact", "out", "quantiles_us"}, "Quantiles of transaction timing (query/reply pairs) when host is client, in microseconds")
@@ -143,8 +145,9 @@ public:
         , _dns_topRCode("dns", "rcode", {"top_rcode"}, "Top result codes")
         , _dns_slowXactIn("dns", "qname", {"xact", "in", "top_slow"}, "Top QNAMES in transactions where host is the server and transaction speed is slower than p90")
         , _dns_slowXactOut("dns", "qname", {"xact", "out", "top_slow"}, "Top QNAMES in transactions where host is the client and transaction speed is slower than p90")
+        , _rate_total("dns", {"rates", "total"}, "Rate of all DNS wire packets (combined ingress and egress) in packets per second")
     {
-        set_event_rate_info("dns", {"rates", "pps_events"}, "Rate of all DNS wire packets (combined ingress and egress) before filtering per second");
+        set_event_rate_info("dns", {"rates", "events"}, "Rate of all DNS wire packets before filtering per second");
         set_num_events_info("dns", {"wire_packets", "events"}, "Total DNS wire packets events");
         set_num_sample_info("dns", {"wire_packets", "deep_samples"}, "Total DNS wire packets that were sampled for deep inspection");
     }
@@ -194,6 +197,12 @@ public:
         _dns_topRCode.set_topn_count(topn_count);
         _dns_slowXactIn.set_topn_count(topn_count);
         _dns_slowXactOut.set_topn_count(topn_count);
+    }
+
+    void on_set_read_only() override
+    {
+        // stop rate collection
+        _rate_total.cancel();
     }
 
     void process_filtered();

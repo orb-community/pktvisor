@@ -387,7 +387,7 @@ inline bool DnsStreamHandler::_filtering(DnsLayer &payload, [[maybe_unused]] Pac
             if (!dns_answer) {
                 break;
             }
-            if (dns_answer->getDnsType() == pcpp::DNS_TYPE_RRSIG) {
+            if (dns_answer->getDnsType() == DNS_TYPE_RRSIG) {
                 has_ssig = true;
                 break;
             }
@@ -466,6 +466,9 @@ void DnsMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
     // static because caller guarantees only our own bucket type
     const auto &other = static_cast<const DnsMetricsBucket &>(o);
 
+    // rates maintain their own thread safety
+    _rate_total.merge(other._rate_total);
+
     std::shared_lock r_lock(other._mutex);
     std::unique_lock w_lock(_mutex);
 
@@ -526,6 +529,7 @@ void DnsMetricsBucket::to_json(json &j) const
 {
 
     bool live_rates = !read_only() && !recorded_stream();
+    _rate_total.to_json(j, live_rates);
 
     {
         auto [num_events, num_samples, event_rate, event_lock] = event_data_locked(); // thread safe
@@ -682,6 +686,8 @@ void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, pcpp::Pro
 {
     std::unique_lock lock(_mutex);
 
+    ++_rate_total;
+
     if (group_enabled(group::DnsMetrics::Counters)) {
         ++_counters.total;
 
@@ -820,6 +826,8 @@ void DnsMetricsBucket::process_dns_layer(pcpp::ProtocolType l3, Protocol l4, QR 
 {
     std::unique_lock lock(_mutex);
 
+    ++_rate_total;
+
     if (group_enabled(group::DnsMetrics::Counters)) {
         ++_counters.total;
 
@@ -902,6 +910,7 @@ void DnsMetricsBucket::new_dns_transaction(bool deep, float to90th, float from90
 }
 void DnsMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap add_labels) const
 {
+    _rate_total.to_prometheus(out, add_labels);
 
     {
         auto [num_events, num_samples, event_rate, event_lock] = event_data_locked(); // thread safe
