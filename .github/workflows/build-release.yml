@@ -119,6 +119,56 @@ jobs:
           name: workspace
           path: ./
           retention-days: 1
+          
+  release:
+    needs: [ unit-tests ]
+    runs-on: ubuntu-latest
+    # if this is a push into one of our main branches (rather than just a pull request), we will also package
+    if: github.event_name != 'pull_request'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+          
+      - name: Remove suffix from Cmakelists.txt file
+        run: |
+          ESCAPED_REPLACE_RELEASE=$(printf '%s\n' 'VISOR_PRERELEASE ""' | sed -e 's/[\/&]/\\&/g')
+          sed -i -e "s/VISOR_PRERELEASE \"-develop\"/$ESCAPED_REPLACE_RELEASE/g" CMakeLists.txt
+
+      - name: Create Build Environment
+        run: cmake -E make_directory ${{github.workspace}}/build
+
+      - name: Get Conan
+        uses: turtlebrowser/get-conan@v1.0
+
+      - name: Configure CMake to generate VERSION
+        shell: bash
+        working-directory: ${{github.workspace}}/build
+        run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE
+        
+      - name: Set variables
+        run: |
+          echo "LAST_TAG=`git tag --sort=committerdate | tail -1`" >> $GITHUB_ENV
+          echo "TAG=v`cat ${{github.workspace}}/build/VERSION`" >> $GITHUB_ENV
+          echo "VERSION=`cat ${{github.workspace}}/build/VERSION`" >> $GITHUB_ENV
+        
+      - name: Generate release changelog
+        run: |
+          echo "# What's new" > changelog.md
+          git log ${{ env.LAST_TAG }}..HEAD --pretty=format:"$ad- %s [%an]" >> changelog.md
+
+      - name: Create release
+        id: create_release
+        uses: actions/create-release@latest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
+        with:
+          tag_name: ${{ env.TAG }}
+          release_name: ${{ env.VERSION }}
+          body_path: ${{github.workspace}}/changelog.md
+          draft: false
+          prerelease: false
 
   spinup-arm64-runner:
     needs: [ package-amd64, prebuild-package ]
