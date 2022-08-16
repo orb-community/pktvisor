@@ -26,6 +26,8 @@ using namespace visor::input::pcap;
 using namespace visor::input::dnstap;
 using namespace visor::input::mock;
 
+static constexpr const char *DNS_SCHEMA{"dns"};
+
 // DNS Groups
 namespace group {
 enum DnsMetrics : visor::MetricGroupIntType {
@@ -97,26 +99,26 @@ protected:
         Counter filtered;
         Counter queryECS;
         counters()
-            : xacts_total("dns", {"xact", "counts", "total"}, "Total DNS transactions (query/reply pairs)")
-            , xacts_in("dns", {"xact", "in", "total"}, "Total ingress DNS transactions (host is server)")
-            , xacts_out("dns", {"xact", "out", "total"}, "Total egress DNS transactions (host is client)")
-            , xacts_timed_out("dns", {"xact", "counts", "timed_out"}, "Total number of DNS transactions that timed out")
-            , queries("dns", {"wire_packets", "queries"}, "Total DNS wire packets flagged as query (ingress and egress)")
-            , replies("dns", {"wire_packets", "replies"}, "Total DNS wire packets flagged as reply (ingress and egress)")
-            , UDP("dns", {"wire_packets", "udp"}, "Total DNS wire packets received over UDP (ingress and egress)")
-            , TCP("dns", {"wire_packets", "tcp"}, "Total DNS wire packets received over TCP (ingress and egress)")
-            , DOT("dns", {"wire_packets", "dot"}, "Total DNS wire packets received over DNS over TLS")
-            , DOH("dns", {"wire_packets", "doh"}, "Total DNS wire packets received over DNS over HTTPS")
-            , IPv4("dns", {"wire_packets", "ipv4"}, "Total DNS wire packets received over IPv4 (ingress and egress)")
-            , IPv6("dns", {"wire_packets", "ipv6"}, "Total DNS wire packets received over IPv6 (ingress and egress)")
-            , NX("dns", {"wire_packets", "nxdomain"}, "Total DNS wire packets flagged as reply with return code NXDOMAIN (ingress and egress)")
-            , REFUSED("dns", {"wire_packets", "refused"}, "Total DNS wire packets flagged as reply with return code REFUSED (ingress and egress)")
-            , SRVFAIL("dns", {"wire_packets", "srvfail"}, "Total DNS wire packets flagged as reply with return code SRVFAIL (ingress and egress)")
-            , NOERROR("dns", {"wire_packets", "noerror"}, "Total DNS wire packets flagged as reply with return code NOERROR (ingress and egress)")
-            , NODATA("dns", {"wire_packets", "nodata"}, "Total DNS wire packets flagged as reply with return code NOERROR and no answer section data (ingress and egress)")
-            , total("dns", {"wire_packets", "total"}, "Total DNS wire packets seen that did match the configured filter(s)")
-            , filtered("dns", {"wire_packets", "filtered"}, "Total DNS wire packets seen that did not match the configured filter(s) (if any)")
-            , queryECS("dns", {"wire_packets", "query_ecs"}, "Total queries that have EDNS Client Subnet (ECS) field set")
+            : xacts_total(DNS_SCHEMA, {"xact", "counts", "total"}, "Total DNS transactions (query/reply pairs)")
+            , xacts_in(DNS_SCHEMA, {"xact", "in", "total"}, "Total ingress DNS transactions (host is server)")
+            , xacts_out(DNS_SCHEMA, {"xact", "out", "total"}, "Total egress DNS transactions (host is client)")
+            , xacts_timed_out(DNS_SCHEMA, {"xact", "counts", "timed_out"}, "Total number of DNS transactions that timed out")
+            , queries(DNS_SCHEMA, {"wire_packets", "queries"}, "Total DNS wire packets flagged as query (ingress and egress)")
+            , replies(DNS_SCHEMA, {"wire_packets", "replies"}, "Total DNS wire packets flagged as reply (ingress and egress)")
+            , UDP(DNS_SCHEMA, {"wire_packets", "udp"}, "Total DNS wire packets received over UDP (ingress and egress)")
+            , TCP(DNS_SCHEMA, {"wire_packets", "tcp"}, "Total DNS wire packets received over TCP (ingress and egress)")
+            , DOT(DNS_SCHEMA, {"wire_packets", "dot"}, "Total DNS wire packets received over DNS over TLS")
+            , DOH(DNS_SCHEMA, {"wire_packets", "doh"}, "Total DNS wire packets received over DNS over HTTPS")
+            , IPv4(DNS_SCHEMA, {"wire_packets", "ipv4"}, "Total DNS wire packets received over IPv4 (ingress and egress)")
+            , IPv6(DNS_SCHEMA, {"wire_packets", "ipv6"}, "Total DNS wire packets received over IPv6 (ingress and egress)")
+            , NX(DNS_SCHEMA, {"wire_packets", "nxdomain"}, "Total DNS wire packets flagged as reply with return code NXDOMAIN (ingress and egress)")
+            , REFUSED(DNS_SCHEMA, {"wire_packets", "refused"}, "Total DNS wire packets flagged as reply with return code REFUSED (ingress and egress)")
+            , SRVFAIL(DNS_SCHEMA, {"wire_packets", "srvfail"}, "Total DNS wire packets flagged as reply with return code SRVFAIL (ingress and egress)")
+            , NOERROR(DNS_SCHEMA, {"wire_packets", "noerror"}, "Total DNS wire packets flagged as reply with return code NOERROR (ingress and egress)")
+            , NODATA(DNS_SCHEMA, {"wire_packets", "nodata"}, "Total DNS wire packets flagged as reply with return code NOERROR and no answer section data (ingress and egress)")
+            , total(DNS_SCHEMA, {"wire_packets", "total"}, "Total DNS wire packets matching the configured filter(s)")
+            , filtered(DNS_SCHEMA, {"wire_packets", "filtered"}, "Total DNS wire packets seen that did not match the configured filter(s) (if any)")
+            , queryECS(DNS_SCHEMA, {"wire_packets", "query_ecs"}, "Total queries that have EDNS Client Subnet (ECS) field set")
         {
         }
     };
@@ -126,30 +128,30 @@ protected:
 
 public:
     DnsMetricsBucket()
-        : _dnsXactFromTimeUs("dns", {"xact", "out", "quantiles_us"}, "Quantiles of transaction timing (query/reply pairs) when host is client, in microseconds")
-        , _dnsXactToTimeUs("dns", {"xact", "in", "quantiles_us"}, "Quantiles of transaction timing (query/reply pairs) when host is server, in microseconds")
-        , _dnsXactRatio("dns", {"xact", "ratio", "quantiles"}, "Quantiles of ratio of packet sizes in a DNS transaction (reply/query)")
-        , _dns_qnameCard("dns", {"cardinality", "qname"}, "Cardinality of unique QNAMES, both ingress and egress")
-        , _dns_topGeoLocECS("dns", "geo_loc", {"top_geoLoc_ecs"}, "Top GeoIP ECS locations")
-        , _dns_topASNECS("dns", "asn", {"top_asn_ecs"}, "Top ASNs by ECS")
-        , _dns_topQueryECS("dns", "ecs", {"top_query_ecs"}, "Top EDNS Client Subnet (ECS) observed in DNS queries")
-        , _dns_topQname2("dns", "qname", {"top_qname2"}, "Top QNAMES, aggregated at a depth of two labels")
-        , _dns_topQname3("dns", "qname", {"top_qname3"}, "Top QNAMES, aggregated at a depth of three labels")
-        , _dns_topNX("dns", "qname", {"top_nxdomain"}, "Top QNAMES with result code NXDOMAIN")
-        , _dns_topREFUSED("dns", "qname", {"top_refused"}, "Top QNAMES with result code REFUSED")
-        , _dns_topSizedQnameResp("dns", "qname", {"top_qname_by_resp_bytes"}, "Top QNAMES by response volume in bytes")
-        , _dns_topSRVFAIL("dns", "qname", {"top_srvfail"}, "Top QNAMES with result code SRVFAIL")
-        , _dns_topNODATA("dns", "qname", {"top_nodata"}, "Top QNAMES with result code NOERROR and no answer section")
-        , _dns_topUDPPort("dns", "port", {"top_udp_ports"}, "Top UDP source port on the query side of a transaction")
-        , _dns_topQType("dns", "qtype", {"top_qtype"}, "Top query types")
-        , _dns_topRCode("dns", "rcode", {"top_rcode"}, "Top result codes")
-        , _dns_slowXactIn("dns", "qname", {"xact", "in", "top_slow"}, "Top QNAMES in transactions where host is the server and transaction speed is slower than p90")
-        , _dns_slowXactOut("dns", "qname", {"xact", "out", "top_slow"}, "Top QNAMES in transactions where host is the client and transaction speed is slower than p90")
-        , _rate_total("dns", {"rates", "total"}, "Rate of all DNS wire packets (combined ingress and egress) in packets per second")
+        : _dnsXactFromTimeUs(DNS_SCHEMA, {"xact", "out", "quantiles_us"}, "Quantiles of transaction timing (query/reply pairs) when host is client, in microseconds")
+        , _dnsXactToTimeUs(DNS_SCHEMA, {"xact", "in", "quantiles_us"}, "Quantiles of transaction timing (query/reply pairs) when host is server, in microseconds")
+        , _dnsXactRatio(DNS_SCHEMA, {"xact", "ratio", "quantiles"}, "Quantiles of ratio of packet sizes in a DNS transaction (reply/query)")
+        , _dns_qnameCard(DNS_SCHEMA, {"cardinality", "qname"}, "Cardinality of unique QNAMES, both ingress and egress")
+        , _dns_topGeoLocECS(DNS_SCHEMA, "geo_loc", {"top_geoLoc_ecs"}, "Top GeoIP ECS locations")
+        , _dns_topASNECS(DNS_SCHEMA, "asn", {"top_asn_ecs"}, "Top ASNs by ECS")
+        , _dns_topQueryECS(DNS_SCHEMA, "ecs", {"top_query_ecs"}, "Top EDNS Client Subnet (ECS) observed in DNS queries")
+        , _dns_topQname2(DNS_SCHEMA, "qname", {"top_qname2"}, "Top QNAMES, aggregated at a depth of two labels")
+        , _dns_topQname3(DNS_SCHEMA, "qname", {"top_qname3"}, "Top QNAMES, aggregated at a depth of three labels")
+        , _dns_topNX(DNS_SCHEMA, "qname", {"top_nxdomain"}, "Top QNAMES with result code NXDOMAIN")
+        , _dns_topREFUSED(DNS_SCHEMA, "qname", {"top_refused"}, "Top QNAMES with result code REFUSED")
+        , _dns_topSizedQnameResp(DNS_SCHEMA, "qname", {"top_qname_by_resp_bytes"}, "Top QNAMES by response volume in bytes")
+        , _dns_topSRVFAIL(DNS_SCHEMA, "qname", {"top_srvfail"}, "Top QNAMES with result code SRVFAIL")
+        , _dns_topNODATA(DNS_SCHEMA, "qname", {"top_nodata"}, "Top QNAMES with result code NOERROR and no answer section")
+        , _dns_topUDPPort(DNS_SCHEMA, "port", {"top_udp_ports"}, "Top UDP source port on the query side of a transaction")
+        , _dns_topQType(DNS_SCHEMA, "qtype", {"top_qtype"}, "Top query types")
+        , _dns_topRCode(DNS_SCHEMA, "rcode", {"top_rcode"}, "Top result codes")
+        , _dns_slowXactIn(DNS_SCHEMA, "qname", {"xact", "in", "top_slow"}, "Top QNAMES in transactions where host is the server and transaction speed is slower than p90")
+        , _dns_slowXactOut(DNS_SCHEMA, "qname", {"xact", "out", "top_slow"}, "Top QNAMES in transactions where host is the client and transaction speed is slower than p90")
+        , _rate_total(DNS_SCHEMA, {"rates", "total"}, "Rate of all DNS wire packets (combined ingress and egress) in packets per second")
     {
-        set_event_rate_info("dns", {"rates", "events"}, "Rate of all DNS wire packets before filtering per second");
-        set_num_events_info("dns", {"wire_packets", "events"}, "Total DNS wire packets events");
-        set_num_sample_info("dns", {"wire_packets", "deep_samples"}, "Total DNS wire packets that were sampled for deep inspection");
+        set_event_rate_info(DNS_SCHEMA, {"rates", "events"}, "Rate of all DNS wire packets before filtering per second");
+        set_num_events_info(DNS_SCHEMA, {"wire_packets", "events"}, "Total DNS wire packets events");
+        set_num_sample_info(DNS_SCHEMA, {"wire_packets", "deep_samples"}, "Total DNS wire packets that were sampled for deep inspection");
     }
 
     auto get_xact_data_locked() const
@@ -379,7 +381,7 @@ public:
     // visor::AbstractModule
     std::string schema_key() const override
     {
-        return "dns";
+        return DNS_SCHEMA;
     }
 
     size_t consumer_count() const override
