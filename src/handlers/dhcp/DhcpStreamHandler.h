@@ -39,7 +39,7 @@ protected:
             , OFFER(DHCP_SCHEMA, {"wire_packets", "offer"}, "Total DHCP packets with message type OFFER")
             , REQUEST(DHCP_SCHEMA, {"wire_packets", "request"}, "Total DHCP packets with message type REQUEST")
             , ACK(DHCP_SCHEMA, {"wire_packets", "ack"}, "Total DHCP packets with message type ACK")
-            , total(DHCP_SCHEMA, {"wire_packets", "total"}, "Total DHCP wire packets seen that match the configured filter(s)")
+            , total(DHCP_SCHEMA, {"wire_packets", "total"}, "Total DHCP wire packets matching the configured filter(s)")
             , filtered(DHCP_SCHEMA, {"wire_packets", "filtered"}, "Total DHCP wire packets seen that did not match the configured filter(s) (if any)")
         {
         }
