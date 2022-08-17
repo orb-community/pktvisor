@@ -364,7 +364,7 @@ TEST_CASE("Net geolocation filtering", "[pcap][net][geo]")
     PcapInputStream stream{"pcap-test"};
     stream.config_set("pcap_file", "tests/fixtures/dns_udp_mixed_rcode.pcap");
     stream.config_set("bpf", "");
-    stream.config_set("host_spec", "192.168.0.0/23");
+    stream.config_set("host_spec", "192.168.0.0/24");
     stream.parse_host_spec();
 
     visor::Config c;
@@ -374,7 +374,7 @@ TEST_CASE("Net geolocation filtering", "[pcap][net][geo]")
 
     SECTION("Enable geoloc not found")
     {
-        net_handler.config_set<bool>("geloc_notfound", true);
+        net_handler.config_set<bool>("geoloc_notfound", true);
 
         net_handler.start();
         stream.start();
@@ -408,7 +408,7 @@ TEST_CASE("Net geolocation filtering", "[pcap][net][geo]")
 
     SECTION("Enable geoloc and asn not found")
     {
-        net_handler.config_set<bool>("geloc_notfound", true);
+        net_handler.config_set<bool>("geoloc_notfound", true);
         net_handler.config_set<bool>("asn_notfound", true);
 
         net_handler.start();
@@ -424,5 +424,41 @@ TEST_CASE("Net geolocation filtering", "[pcap][net][geo]")
         CHECK(j["top_geoLoc"][0]["name"] == "Unknown");
         CHECK(j["top_ASN"][0]["estimate"] == 24);
         CHECK(j["top_ASN"][0]["name"] == "Unknown");
+    }
+
+    SECTION("Enable geoloc prefix")
+    {
+        net_handler.config_set<visor::Configurable::StringList>("only_geoloc_prefix", {"NA/United States"});
+
+        net_handler.start();
+        stream.start();
+        stream.stop();
+        net_handler.stop();
+
+        nlohmann::json j;
+        net_handler.metrics()->bucket(0)->to_json(j);
+        CHECK(j["filtered"] == 24);
+        CHECK(j["top_geoLoc"][0]["name"] == nullptr);
+    }
+
+    SECTION("Enable asn number")
+    {
+        net_handler.config_set<visor::Configurable::StringList>("only_asn_number", {"16509", "22131"});
+
+        net_handler.start();
+        stream.start();
+        stream.stop();
+        net_handler.stop();
+
+        nlohmann::json j;
+        net_handler.metrics()->bucket(0)->to_json(j);
+        CHECK(j["filtered"] == 24);
+        CHECK(j["top_ASN"][0]["name"] == nullptr);
+    }
+
+    SECTION("Invalid asn number")
+    {
+        net_handler.config_set<visor::Configurable::StringList>("only_asn_number", {"16509/Amazon"});
+        REQUIRE_THROWS_WITH(net_handler.start(), "NetStreamHandler: only_asn_number filter contained an invalid/unsupported value: 16509/Amazon");
     }
 }
