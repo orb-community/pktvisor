@@ -274,8 +274,10 @@ void NetworkMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
     // rates maintain their own thread safety
     _rate_in.merge(other._rate_in);
     _rate_out.merge(other._rate_out);
+    _rate_total.merge(other._rate_total);
     _throughput_in.merge(other._throughput_in);
     _throughput_out.merge(other._throughput_out);
+    _throughput_total.merge(other._throughput_total);
 
     std::shared_lock r_lock(other._mutex);
     std::unique_lock w_lock(_mutex);
@@ -289,6 +291,8 @@ void NetworkMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
         _counters.IPv6 += other._counters.IPv6;
         _counters.total_in += other._counters.total_in;
         _counters.total_out += other._counters.total_out;
+        _counters.total_unk += other._counters.total_unk;
+        _counters.total += other._counters.total;
         _counters.filtered += other._counters.filtered;
     }
 
@@ -314,8 +318,10 @@ void NetworkMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMa
 
     _rate_in.to_prometheus(out, add_labels);
     _rate_out.to_prometheus(out, add_labels);
+    _rate_total.to_prometheus(out, add_labels);
     _throughput_in.to_prometheus(out, add_labels);
     _throughput_out.to_prometheus(out, add_labels);
+    _throughput_total.to_prometheus(out, add_labels);
 
     {
         auto [num_events, num_samples, event_rate, event_lock] = event_data_locked(); // thread safe
@@ -336,6 +342,8 @@ void NetworkMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMa
         _counters.IPv6.to_prometheus(out, add_labels);
         _counters.total_in.to_prometheus(out, add_labels);
         _counters.total_out.to_prometheus(out, add_labels);
+        _counters.total_unk.to_prometheus(out, add_labels);
+        _counters.total.to_prometheus(out, add_labels);
         _counters.filtered.to_prometheus(out, add_labels);
     }
 
@@ -364,8 +372,10 @@ void NetworkMetricsBucket::to_json(json &j) const
     bool live_rates = !read_only() && !recorded_stream();
     _rate_in.to_json(j, live_rates);
     _rate_out.to_json(j, live_rates);
+    _rate_total.to_json(j, live_rates);
     _throughput_in.to_json(j, live_rates);
     _throughput_out.to_json(j, live_rates);
+    _throughput_total.to_json(j, live_rates);
 
     {
         auto [num_events, num_samples, event_rate, event_lock] = event_data_locked(); // thread safe
@@ -386,6 +396,8 @@ void NetworkMetricsBucket::to_json(json &j) const
         _counters.IPv6.to_json(j);
         _counters.total_in.to_json(j);
         _counters.total_out.to_json(j);
+        _counters.total_unk.to_json(j);
+        _counters.total.to_json(j);
         _counters.filtered.to_json(j);
     }
 
@@ -411,7 +423,9 @@ void NetworkMetricsBucket::to_json(json &j) const
 void NetworkMetricsBucket::process_filtered()
 {
     std::unique_lock lock(_mutex);
-    ++_counters.filtered;
+    if (group_enabled(group::NetMetrics::Counters)) {
+        ++_counters.filtered;
+    }
 }
 
 void NetworkMetricsBucket::process_packet(bool deep, pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4)
@@ -470,6 +484,11 @@ void NetworkMetricsBucket::process_dnstap(bool deep, const dnstap::Dnstap &paylo
             break;
         case dnstap::TCP:
             l4 = pcpp::TCP;
+            break;
+        case dnstap::DOT:
+        case dnstap::DOH:
+        case dnstap::DNSCryptUDP:
+        case dnstap::DNSCryptTCP:
             break;
         }
     }
@@ -533,8 +552,12 @@ void NetworkMetricsBucket::process_net_layer(PacketDirection dir, pcpp::Protocol
     case PacketDirection::unknown:
         break;
     }
+    ++_rate_total;
+    _throughput_total += payload_size;
 
     if (group_enabled(group::NetMetrics::Counters)) {
+        ++_counters.total;
+
         switch (dir) {
         case PacketDirection::fromHost:
             ++_counters.total_out;
@@ -543,6 +566,7 @@ void NetworkMetricsBucket::process_net_layer(PacketDirection dir, pcpp::Protocol
             ++_counters.total_in;
             break;
         case PacketDirection::unknown:
+            ++_counters.total_unk;
             break;
         }
 
@@ -589,8 +613,12 @@ void NetworkMetricsBucket::process_net_layer(NetworkPacket &packet)
     case PacketDirection::unknown:
         break;
     }
+    ++_rate_total;
+    _throughput_total += packet.payload_size;
 
     if (group_enabled(group::NetMetrics::Counters)) {
+        ++_counters.total;
+
         switch (packet.dir) {
         case PacketDirection::fromHost:
             ++_counters.total_out;
@@ -599,6 +627,7 @@ void NetworkMetricsBucket::process_net_layer(NetworkPacket &packet)
             ++_counters.total_in;
             break;
         case PacketDirection::unknown:
+            ++_counters.total_unk;
             break;
         }
 

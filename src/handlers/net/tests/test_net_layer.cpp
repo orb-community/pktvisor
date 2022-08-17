@@ -163,6 +163,7 @@ TEST_CASE("Parse net (dns) random UDP/TCP tests", "[pcap][net]")
     CHECK(counters.OtherL4.value() == 0);
     CHECK(counters.total_in.value() == 6648);
     CHECK(counters.total_out.value() == 9499);
+    CHECK(counters.total_unk.value() == 0);
 
     nlohmann::json j;
     net_handler.metrics()->bucket(0)->to_json(j);

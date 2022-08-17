@@ -16,6 +16,8 @@ namespace visor::handler::dhcp {
 
 using namespace visor::input::pcap;
 
+static constexpr const char *DHCP_SCHEMA{"dhcp"};
+
 class DhcpMetricsBucket final : public visor::AbstractMetricsBucket
 {
 
@@ -29,25 +31,29 @@ protected:
         Counter OFFER;
         Counter REQUEST;
         Counter ACK;
+        Counter total;
         Counter filtered;
 
         counters()
-            : DISCOVER("dhcp", {"wire_packets", "discover"}, "Total DHCP packets with message type DISCOVER")
-            , OFFER("dhcp", {"wire_packets", "offer"}, "Total DHCP packets with message type OFFER")
-            , REQUEST("dhcp", {"wire_packets", "request"}, "Total DHCP packets with message type REQUEST")
-            , ACK("dhcp", {"wire_packets", "ack"}, "Total DHCP packets with message type ACK")
-            , filtered("dhcp", {"wire_packets", "filtered"}, "Total DHCP wire packets seen that did not match the configured filter(s) (if any)")
+            : DISCOVER(DHCP_SCHEMA, {"wire_packets", "discover"}, "Total DHCP packets with message type DISCOVER")
+            , OFFER(DHCP_SCHEMA, {"wire_packets", "offer"}, "Total DHCP packets with message type OFFER")
+            , REQUEST(DHCP_SCHEMA, {"wire_packets", "request"}, "Total DHCP packets with message type REQUEST")
+            , ACK(DHCP_SCHEMA, {"wire_packets", "ack"}, "Total DHCP packets with message type ACK")
+            , total(DHCP_SCHEMA, {"wire_packets", "total"}, "Total DHCP wire packets matching the configured filter(s)")
+            , filtered(DHCP_SCHEMA, {"wire_packets", "filtered"}, "Total DHCP wire packets seen that did not match the configured filter(s) (if any)")
         {
         }
     };
     counters _counters;
+    Rate _rate_total;
 
 public:
     DhcpMetricsBucket()
+        : _rate_total(DHCP_SCHEMA, {"rates", "total"}, "Rate of all DHCP wire packets (combined ingress and egress) in packets per second")
     {
-        set_event_rate_info("dhcp", {"rates", "total"}, "Rate of all DHCP wire packets (combined ingress and egress) per second");
-        set_num_events_info("dhcp", {"wire_packets", "total"}, "Total DHCP wire packets");
-        set_num_sample_info("dhcp", {"wire_packets", "deep_samples"}, "Total DHCP wire packets that were sampled for deep inspection");
+        set_event_rate_info(DHCP_SCHEMA, {"rates", "events"}, "Rate of all DHCP wire packets before filtering per second");
+        set_num_events_info(DHCP_SCHEMA, {"wire_packets", "events"}, "Total DHCP wire packets events");
+        set_num_sample_info(DHCP_SCHEMA, {"wire_packets", "deep_samples"}, "Total DHCP wire packets that were sampled for deep inspection");
     }
 
     // get a copy of the counters
@@ -63,6 +69,12 @@ public:
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override;
     void update_topn_metrics(size_t) override
     {
+    }
+
+    void on_set_read_only() override
+    {
+        // stop rate collection
+        _rate_total.cancel();
     }
 
     void process_filtered();
@@ -106,7 +118,7 @@ public:
     // visor::AbstractModule
     std::string schema_key() const override
     {
-        return "dhcp";
+        return DHCP_SCHEMA;
     }
 
     size_t consumer_count() const override

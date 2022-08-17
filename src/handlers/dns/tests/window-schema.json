@@ -151,6 +151,7 @@
         ],
         "wire_packets": {
           "deep_samples": 5851,
+          "events": 5851,
           "ipv4": 5851,
           "ipv6": 0,
           "nodata": 2254,
@@ -349,6 +350,7 @@
           ],
           "wire_packets": {
             "deep_samples": 5851,
+            "events": 5851,
             "ipv4": 5851,
             "ipv6": 0,
             "nodata": 2254,
@@ -935,6 +937,7 @@
           ],
           "required": [
             "deep_samples",
+            "events",
             "ipv4",
             "ipv6",
             "nodata",
@@ -955,6 +958,16 @@
               "$id": "#/properties/dns/properties/wire_packets/properties/deep_samples",
               "type": "integer",
               "title": "The deep_samples schema",
+              "description": "An explanation about the purpose of this instance.",
+              "default": 0,
+              "examples": [
+                5851
+              ]
+            },
+            "events": {
+              "$id": "#/properties/dns/properties/wire_packets/properties/events",
+              "type": "integer",
+              "title": "The events schema",
               "description": "An explanation about the purpose of this instance.",
               "default": 0,
               "examples": [

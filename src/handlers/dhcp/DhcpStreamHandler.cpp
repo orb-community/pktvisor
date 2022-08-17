@@ -88,6 +88,9 @@ void DhcpMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
     // static because caller guarantees only our own bucket type
     const auto &other = static_cast<const DhcpMetricsBucket &>(o);
 
+    // rates maintain their own thread safety
+    _rate_total.merge(other._rate_total);
+
     std::shared_lock r_lock(other._mutex);
     std::unique_lock w_lock(_mutex);
 
@@ -95,12 +98,14 @@ void DhcpMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
     _counters.OFFER += other._counters.OFFER;
     _counters.REQUEST += other._counters.REQUEST;
     _counters.ACK += other._counters.ACK;
+    _counters.total += other._counters.total;
     _counters.filtered += other._counters.filtered;
-
 }
 
 void DhcpMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap add_labels) const
 {
+
+    _rate_total.to_prometheus(out, add_labels);
 
     {
         auto [num_events, num_samples, event_rate, event_lock] = event_data_locked(); // thread safe
@@ -116,14 +121,15 @@ void DhcpMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap a
     _counters.OFFER.to_prometheus(out, add_labels);
     _counters.REQUEST.to_prometheus(out, add_labels);
     _counters.ACK.to_prometheus(out, add_labels);
+    _counters.total.to_prometheus(out, add_labels);
     _counters.filtered.to_prometheus(out, add_labels);
-
 }
 
 void DhcpMetricsBucket::to_json(json &j) const
 {
 
     bool live_rates = !read_only() && !recorded_stream();
+    _rate_total.to_json(j, live_rates);
 
     {
         auto [num_events, num_samples, event_rate, event_lock] = event_data_locked(); // thread safe
@@ -139,8 +145,8 @@ void DhcpMetricsBucket::to_json(json &j) const
     _counters.OFFER.to_json(j);
     _counters.REQUEST.to_json(j);
     _counters.ACK.to_json(j);
+    _counters.total.to_json(j);
     _counters.filtered.to_json(j);
-
 }
 
 void DhcpMetricsBucket::process_filtered()
@@ -157,8 +163,10 @@ bool DhcpStreamHandler::_filtering(pcpp::DhcpLayer *payload, PacketDirection dir
 
 void DhcpMetricsBucket::process_dhcp_layer(bool deep, pcpp::DhcpLayer *payload, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint16_t src_port, uint16_t dst_port)
 {
-
     std::unique_lock lock(_mutex);
+
+    ++_counters.total;
+    ++_rate_total;
 
     switch (payload->getMesageType()) {
     case pcpp::DHCP_DISCOVER:
@@ -176,7 +184,7 @@ void DhcpMetricsBucket::process_dhcp_layer(bool deep, pcpp::DhcpLayer *payload, 
     }
 }
 
-void DhcpMetricsManager::process_dhcp_layer(pcpp::DhcpLayer *payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowkey, uint16_t src_port, uint16_t dst_port, timespec stamp)
+void DhcpMetricsManager::process_dhcp_layer(pcpp::DhcpLayer *payload, [[maybe_unused]] PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, [[maybe_unused]] uint32_t flowkey, uint16_t src_port, uint16_t dst_port, timespec stamp)
 {
     // base event
     new_event(stamp);
