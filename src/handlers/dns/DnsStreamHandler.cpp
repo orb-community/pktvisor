@@ -385,7 +385,7 @@ inline bool DnsStreamHandler::_filtering(DnsLayer &payload, [[maybe_unused]] Pac
             if (!dns_answer) {
                 break;
             }
-            if (dns_answer->getDnsType() == pcpp::DNS_TYPE_RRSIG) {
+            if (dns_answer->getDnsType() == DNS_TYPE_RRSIG) {
                 has_ssig = true;
                 break;
             }
@@ -464,6 +464,9 @@ void DnsMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
     // static because caller guarantees only our own bucket type
     const auto &other = static_cast<const DnsMetricsBucket &>(o);
 
+    // rates maintain their own thread safety
+    _rate_total.merge(other._rate_total);
+
     std::shared_lock r_lock(other._mutex);
     std::unique_lock w_lock(_mutex);
 
@@ -479,9 +482,9 @@ void DnsMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
         _counters.SRVFAIL += other._counters.SRVFAIL;
         _counters.NOERROR += other._counters.NOERROR;
         _counters.NODATA += other._counters.NODATA;
+        _counters.total += other._counters.total;
+        _counters.filtered += other._counters.filtered;
     }
-
-    _counters.filtered += other._counters.filtered;
 
     if (group_enabled(group::DnsMetrics::Cardinality)) {
         _dns_qnameCard.merge(other._dns_qnameCard);
@@ -511,6 +514,7 @@ void DnsMetricsBucket::to_json(json &j) const
 {
 
     bool live_rates = !read_only() && !recorded_stream();
+    _rate_total.to_json(j, live_rates);
 
     {
         auto [num_events, num_samples, event_rate, event_lock] = event_data_locked(); // thread safe
@@ -534,9 +538,9 @@ void DnsMetricsBucket::to_json(json &j) const
         _counters.SRVFAIL.to_json(j);
         _counters.NOERROR.to_json(j);
         _counters.NODATA.to_json(j);
+        _counters.total.to_json(j);
+        _counters.filtered.to_json(j);
     }
-
-    _counters.filtered.to_json(j);
 
     if (group_enabled(group::DnsMetrics::Cardinality)) {
         _dns_qnameCard.to_json(j);
@@ -652,7 +656,11 @@ void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, pcpp::Pro
 {
     std::unique_lock lock(_mutex);
 
+    ++_rate_total;
+
     if (group_enabled(group::DnsMetrics::Counters)) {
+        ++_counters.total;
+
         if (l3 == pcpp::IPv6) {
             ++_counters.IPv6;
         } else if (l3 == pcpp::IPv4) {
@@ -788,7 +796,11 @@ void DnsMetricsBucket::process_dns_layer(pcpp::ProtocolType l3, Protocol l4, QR 
 {
     std::unique_lock lock(_mutex);
 
+    ++_rate_total;
+
     if (group_enabled(group::DnsMetrics::Counters)) {
+        ++_counters.total;
+
         if (l3 == pcpp::IPv6) {
             ++_counters.IPv6;
         } else if (l3 == pcpp::IPv4) {
@@ -828,6 +840,7 @@ void DnsMetricsBucket::process_dns_layer(pcpp::ProtocolType l3, Protocol l4, QR 
 
 void DnsMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap add_labels) const
 {
+    _rate_total.to_prometheus(out, add_labels);
 
     {
         auto [num_events, num_samples, event_rate, event_lock] = event_data_locked(); // thread safe
@@ -850,9 +863,9 @@ void DnsMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap ad
         _counters.SRVFAIL.to_prometheus(out, add_labels);
         _counters.NOERROR.to_prometheus(out, add_labels);
         _counters.NODATA.to_prometheus(out, add_labels);
+        _counters.total.to_prometheus(out, add_labels);
+        _counters.filtered.to_prometheus(out, add_labels);
     }
-
-    _counters.filtered.to_prometheus(out, add_labels);
 
     if (group_enabled(group::DnsMetrics::Cardinality)) {
         _dns_qnameCard.to_prometheus(out, add_labels);
@@ -895,7 +908,9 @@ void DnsMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap ad
 void DnsMetricsBucket::process_filtered()
 {
     std::unique_lock lock(_mutex);
-    ++_counters.filtered;
+    if (group_enabled(group::DnsMetrics::Counters)) {
+        ++_counters.filtered;
+    }
 }
 
 // the general metrics manager entry point (both UDP and TCP)

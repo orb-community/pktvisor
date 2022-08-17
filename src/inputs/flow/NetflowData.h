@@ -330,16 +330,16 @@ static void nf9_rec_to_flow(NFSample::Flows *flow, struct peer_nf9_record *rec, 
     }
 }
 
-static bool process_netflow_v9_data(std::vector<NFSample::Flows> *flows, uint8_t *pkt, size_t len, uint32_t source_id, uint32_t *num_flows)
+static bool process_netflow_v9_data(std::vector<NFSample::Flows> *flows, uint8_t *pkt, size_t len, uint32_t source_id, uint32_t &num_flows)
 {
     struct NF9_DATA_FLOWSET_HEADER *dath;
-    uint16_t flowset_id, i, j, offset, num_flowsets;
+    uint16_t flowset_id, offset, num_flowsets;
 
     if (nf9_template_map.empty()) {
         return false;
     }
 
-    *num_flows = 0;
+    num_flows = 0;
 
     dath = reinterpret_cast<struct NF9_DATA_FLOWSET_HEADER *>(pkt);
     if (len < sizeof(*dath)) {
@@ -365,7 +365,8 @@ static bool process_netflow_v9_data(std::vector<NFSample::Flows> *flows, uint8_t
         return false;
     }
 
-    for (i = 0; i < num_flowsets; i++) {
+    uint32_t j;
+    for (uint16_t i = 0; i < num_flowsets; i++) {
         uint32_t offset_recs = 0;
         NFSample::Flows flow = {};
         for (j = 0; j < nf9_template.num_records; j++) {
@@ -376,7 +377,7 @@ static bool process_netflow_v9_data(std::vector<NFSample::Flows> *flows, uint8_t
         offset += nf9_template.total_len;
     }
 
-    *num_flows = j;
+    num_flows = j;
 
     return true;
 }
@@ -431,7 +432,7 @@ static bool process_netflow_v9(NFSample *sample)
                 /* XXX ratelimit */
                 break;
             }
-            if (!process_netflow_v9_data(&flows, sample->raw_sample + offset, flowset_len, sample->source_id, &flowset_flows)) {
+            if (!process_netflow_v9_data(&flows, sample->raw_sample + offset, flowset_len, sample->source_id, flowset_flows)) {
                 return false;
             }
             total_flows += flowset_flows;
@@ -508,16 +509,16 @@ static void nf10_rec_to_flow(NFSample::Flows *flow, struct peer_nf10_record *rec
     }
 }
 
-static bool process_netflow_v10_data(std::vector<NFSample::Flows> *flows, uint8_t *pkt, size_t len, uint32_t source_id, uint32_t *num_flows)
+static bool process_netflow_v10_data(std::vector<NFSample::Flows> *flows, uint8_t *pkt, size_t len, uint32_t source_id, uint32_t &num_flows)
 {
     struct NF10_DATA_FLOWSET_HEADER *dath;
-    uint16_t flowset_id, i, j, offset, num_flowsets;
+    uint16_t flowset_id, offset, num_flowsets;
 
     if (nf10_template_map.empty()) {
         return false;
     }
 
-    *num_flows = 0;
+    num_flows = 0;
 
     dath = reinterpret_cast<struct NF10_DATA_FLOWSET_HEADER *>(pkt);
     if (len < sizeof(*dath)) {
@@ -543,7 +544,8 @@ static bool process_netflow_v10_data(std::vector<NFSample::Flows> *flows, uint8_
         return false;
     }
 
-    for (i = 0; i < num_flowsets; i++) {
+    uint32_t j;
+    for (uint16_t i = 0; i < num_flowsets; i++) {
         uint32_t offset_recs = 0;
         NFSample::Flows flow = {};
         for (j = 0; j < nf10_template.num_records; j++) {
@@ -554,7 +556,7 @@ static bool process_netflow_v10_data(std::vector<NFSample::Flows> *flows, uint8_
         offset += nf10_template.total_len;
     }
 
-    *num_flows = j;
+    num_flows = j;
     return true;
 }
 
@@ -660,7 +662,7 @@ static bool process_netflow_v10(NFSample *sample)
                 /* XXX ratelimit */
                 break;
             }
-            if (!process_netflow_v10_data(&flows, sample->raw_sample + offset, flowset_len, sample->source_id, &flowset_flows)) {
+            if (!process_netflow_v10_data(&flows, sample->raw_sample + offset, flowset_len, sample->source_id, flowset_flows)) {
                 return false;
             }
             total_flows += flowset_flows;

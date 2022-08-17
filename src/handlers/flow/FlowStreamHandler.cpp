@@ -143,11 +143,11 @@ void FlowStreamHandler::process_sflow_cb(const SFSample &payload, size_t rawSize
     if (_f_enabled[Filters::OnlyDevices]) {
         if (auto ipv4 = pcpp::IPv4Address(packet.device_id); ipv4.isValid()
             && !_match_subnet(_IPv4_devices_list, _IPv6_devices_list, ipv4.toInt())) {
-            _metrics->process_filtered(stamp, payload.elements.size());
+            _metrics->process_filtered(stamp, payload.elements.size(), rawSize);
             return;
         } else if (auto ipv6 = pcpp::IPv6Address(packet.device_id); ipv6.isValid()
                    && !_match_subnet(_IPv4_devices_list, _IPv6_devices_list, 0, ipv6.toBytes())) {
-            _metrics->process_filtered(stamp, payload.elements.size());
+            _metrics->process_filtered(stamp, payload.elements.size(), rawSize);
             return;
         }
     }
@@ -176,7 +176,7 @@ void FlowStreamHandler::process_sflow_cb(const SFSample &payload, size_t rawSize
 
         if (_sample_rate_scaling) {
             flow.packets = sample.meanSkipCount;
-            flow.payload_size = sample.meanSkipCount * sample.sampledPacketSize;
+            flow.payload_size = static_cast<size_t>(sample.meanSkipCount) * sample.sampledPacketSize;
         } else {
             flow.packets = 1;
             flow.payload_size = sample.sampledPacketSize;
@@ -228,11 +228,11 @@ void FlowStreamHandler::process_netflow_cb(const std::string &senderIP, const NF
     if (_f_enabled[Filters::OnlyDevices]) {
         if (auto ipv4 = pcpp::IPv4Address(packet.device_id); ipv4.isValid()
             && !_match_subnet(_IPv4_devices_list, _IPv6_devices_list, ipv4.toInt())) {
-            _metrics->process_filtered(stamp, payload.flows.size());
+            _metrics->process_filtered(stamp, payload.flows.size(), rawSize);
             return;
         } else if (auto ipv6 = pcpp::IPv6Address(packet.device_id); ipv6.isValid()
                    && !_match_subnet(_IPv4_devices_list, _IPv6_devices_list, 0, ipv6.toBytes())) {
-            _metrics->process_filtered(stamp, payload.flows.size());
+            _metrics->process_filtered(stamp, payload.flows.size(), rawSize);
             return;
         }
     }
@@ -456,10 +456,11 @@ void FlowMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
     std::unique_lock w_lock(_mutex);
 
     if (group_enabled(group::FlowMetrics::Counters)) {
-        _counters.volume += other._counters.volume;
         _counters.filtered += other._counters.filtered;
         _counters.total += other._counters.total;
     }
+
+    _volume.merge(other._volume);
 
     for (const auto &device : other._devices_metrics) {
         const auto &deviceId = device.first;
@@ -521,13 +522,22 @@ void FlowMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap a
     _rate.to_prometheus(out, add_labels);
     _throughput.to_prometheus(out, add_labels);
 
+    {
+        auto [num_events, num_samples, event_rate, event_lock] = event_data_locked(); // thread safe
+
+        event_rate->to_prometheus(out, add_labels);
+        num_events->to_prometheus(out, add_labels);
+        num_samples->to_prometheus(out, add_labels);
+    }
+
     std::shared_lock r_lock(_mutex);
 
     if (group_enabled(group::FlowMetrics::Counters)) {
-        _counters.volume.to_prometheus(out, add_labels);
         _counters.filtered.to_prometheus(out, add_labels);
         _counters.total.to_prometheus(out, add_labels);
     }
+
+    _volume.to_prometheus(out, add_labels);
 
     for (const auto &device : _devices_metrics) {
         auto device_labels = add_labels;
@@ -592,13 +602,22 @@ void FlowMetricsBucket::to_json(json &j) const
     _rate.to_json(j, live_rates);
     _throughput.to_json(j, live_rates);
 
+    {
+        auto [num_events, num_samples, event_rate, event_lock] = event_data_locked(); // thread safe
+
+        event_rate->to_json(j, live_rates);
+        num_events->to_json(j);
+        num_samples->to_json(j);
+    }
+
     std::shared_lock r_lock(_mutex);
 
     if (group_enabled(group::FlowMetrics::Counters)) {
-        _counters.volume.to_json(j);
         _counters.filtered.to_json(j);
         _counters.total.to_json(j);
     }
+
+    _volume.to_json(j);
 
     for (const auto &device : _devices_metrics) {
         auto deviceId = device.first;
@@ -666,9 +685,10 @@ void FlowMetricsBucket::process_flow(bool deep, const FlowPacket &payload)
 
     if (group_enabled(group::FlowMetrics::Counters)) {
         _counters.filtered += payload.filtered;
-        _counters.volume += payload.raw_size;
         device_flow->counters.filtered += payload.filtered;
     }
+
+    _volume.update(payload.raw_size);
 
     for (const auto &flow : payload.flow_data) {
         _rate += flow.packets;
