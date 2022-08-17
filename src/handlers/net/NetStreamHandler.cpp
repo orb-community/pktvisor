@@ -73,7 +73,7 @@ void NetStreamHandler::start()
     }
 
     if (config_exists("only_asn_number")) {
-        _f_enabled.set(Filters::AsnPrefix);
+        _f_enabled.set(Filters::AsnNumber);
         for (const auto &number : config_get<StringList>("only_asn_number")) {
             if (std::all_of(number.begin(), number.end(), ::isdigit)) {
                 _f_asn_number.push_back(number + '/');
@@ -233,7 +233,7 @@ bool NetStreamHandler::_filtering(pcpp::Packet &payload, PacketDirection dir, ti
             }
         }
     }
-    if (_f_enabled[Filters::AsnPrefix]) {
+    if (_f_enabled[Filters::AsnNumber]) {
         if (!geo::GeoASN().enabled() || dir == PacketDirection::unknown) {
             goto will_filter;
         } else if (auto IPv4Layer = payload.getLayerOfType<pcpp::IPv4Layer>(); IPv4Layer) {

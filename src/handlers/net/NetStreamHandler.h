@@ -208,7 +208,7 @@ class NetStreamHandler final : public visor::StreamMetricsHandler<NetworkMetrics
         GeoLocNotFound,
         AsnNotFound,
         GeoLocPrefix,
-        AsnPrefix,
+        AsnNumber,
         FiltersMAX
     };
 
