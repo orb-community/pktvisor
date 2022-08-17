@@ -127,8 +127,6 @@ public:
         , _dns_topUDPPort(DNS_SCHEMA, "port", {"top_udp_ports"}, "Top UDP source port on the query side of a transaction")
         , _dns_topQType(DNS_SCHEMA, "qtype", {"top_qtype"}, "Top query types")
         , _dns_topRCode(DNS_SCHEMA, "rcode", {"top_rcode"}, "Top result codes")
-        , _dns_slowXactIn(DNS_SCHEMA, "qname", {"xact", "in", "top_slow"}, "Top QNAMES in transactions where host is the server and transaction speed is slower than p90")
-        , _dns_slowXactOut(DNS_SCHEMA, "qname", {"xact", "out", "top_slow"}, "Top QNAMES in transactions where host is the client and transaction speed is slower than p90")
         , _rate_total(DNS_SCHEMA, {"rates", "total"}, "Rate of all DNS wire packets (combined ingress and egress) in packets per second")
     {
         set_event_rate_info(DNS_SCHEMA, {"rates", "events"}, "Rate of all DNS wire packets before filtering per second");
