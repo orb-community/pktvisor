@@ -382,7 +382,7 @@ inline void DnsStreamHandler::_register_predicate_filter(std::string f_key, std:
     if (!_using_predicate_signals) {
     // all DnsStreamHandler race to install this predicate, which is only installed once and called once per udp event
     // it's job is to return the predicate "jump key" to call matching signals
-        static auto udp_qname_predicate = [](pcpp::Packet &payload, PacketDirection, pcpp::ProtocolType, uint32_t flowkey, timespec stamp) -> std::string {
+        static thread_local auto udp_qname_predicate = [](pcpp::Packet &payload, PacketDirection, pcpp::ProtocolType, uint32_t flowkey, timespec stamp) -> std::string {
             pcpp::UdpLayer *udpLayer = payload.getLayerOfType<pcpp::UdpLayer>();
             assert(udpLayer);
             if (flowkey != _cached_dns_layer.flowKey || stamp.tv_sec != _cached_dns_layer.timestamp.tv_sec || stamp.tv_nsec != _cached_dns_layer.timestamp.tv_nsec) {
