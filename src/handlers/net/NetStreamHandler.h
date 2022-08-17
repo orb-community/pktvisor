@@ -214,7 +214,7 @@ class NetStreamHandler final : public visor::StreamMetricsHandler<NetworkMetrics
 
     std::bitset<Filters::FiltersMAX> _f_enabled;
     std::vector<std::string> _f_geoloc_prefix;
-    std::vector<std::string> _f_asn_prefix;
+    std::vector<std::string> _f_asn_number;
     bool _filtering(pcpp::Packet &payload, PacketDirection dir, timespec stamp);
 
 public:

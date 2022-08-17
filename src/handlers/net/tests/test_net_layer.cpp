@@ -441,9 +441,9 @@ TEST_CASE("Net geolocation filtering", "[pcap][net][geo]")
         CHECK(j["top_geoLoc"][0]["name"] == nullptr);
     }
 
-    SECTION("Enable asn prefix")
+    SECTION("Enable asn number")
     {
-        net_handler.config_set<visor::Configurable::StringList>("only_asn_prefix", {"16509/Amazon"});
+        net_handler.config_set<visor::Configurable::StringList>("only_asn_number", {"16509", "22131"});
 
         net_handler.start();
         stream.start();
@@ -454,5 +454,11 @@ TEST_CASE("Net geolocation filtering", "[pcap][net][geo]")
         net_handler.metrics()->bucket(0)->to_json(j);
         CHECK(j["filtered"] == 24);
         CHECK(j["top_ASN"][0]["name"] == nullptr);
+    }
+
+    SECTION("Invalid asn number")
+    {
+        net_handler.config_set<visor::Configurable::StringList>("only_asn_number", {"16509/Amazon"});
+        REQUIRE_THROWS_WITH(net_handler.start(), "NetStreamHandler: only_asn_number filter contained an invalid/unsupported value: 16509/Amazon");
     }
 }
