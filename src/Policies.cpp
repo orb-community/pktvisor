@@ -495,8 +495,8 @@ void PolicyManager::remove_policy(const std::string &name)
     }
     policy->stop();
 
-    for (const auto &name : module_names) {
-        _registry->handler_manager()->module_remove(name);
+    for (const auto &mod_name : module_names) {
+        _registry->handler_manager()->module_remove(mod_name);
     }
 
     for (const auto &input : input_stream) {

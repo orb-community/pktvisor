@@ -168,6 +168,7 @@ func (u *ui) Layout(g *gocui.Gui) error {
 	maxX, _ := u.gui.Size()
 
 	viewsWidth := 15
+	viewsWidthCopy := 15
 	viewsHeight := 7
 	//tableHeight := 10
 	//tableWidth := (maxX / 4) - 1
@@ -194,7 +195,7 @@ func (u *ui) Layout(g *gocui.Gui) error {
 	//	}
 	//}
 
-	if v, err := u.gui.SetView("header", viewsWidth-viewsWidth, 0, maxX-3, row1Y-1); err != nil {
+	if v, err := u.gui.SetView("header", viewsWidth-viewsWidthCopy, 0, maxX-3, row1Y-1); err != nil {
 		if err != gocui.ErrUnknownView {
 			return err
 		}
