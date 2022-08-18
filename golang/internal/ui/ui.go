@@ -194,7 +194,7 @@ func (u *ui) Layout(g *gocui.Gui) error {
 	//	}
 	//}
 
-	if v, err := u.gui.SetView("header", viewsWidth-viewsWidth, 0, maxX-3, row1Y-1); err != nil {
+	if v, err := u.gui.SetView("header", 0, 0, maxX-3, row1Y-1); err != nil {
 		if err != gocui.ErrUnknownView {
 			return err
 		}

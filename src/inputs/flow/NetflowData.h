@@ -365,7 +365,7 @@ static bool process_netflow_v9_data(std::vector<NFSample::Flows> *flows, uint8_t
         return false;
     }
 
-    uint32_t j;
+    uint32_t j = 0;
     for (uint16_t i = 0; i < num_flowsets; i++) {
         uint32_t offset_recs = 0;
         NFSample::Flows flow = {};
@@ -376,9 +376,7 @@ static bool process_netflow_v9_data(std::vector<NFSample::Flows> *flows, uint8_t
         flows->push_back(flow);
         offset += nf9_template.total_len;
     }
-
     num_flows = j;
-
     return true;
 }
 
@@ -544,7 +542,7 @@ static bool process_netflow_v10_data(std::vector<NFSample::Flows> *flows, uint8_
         return false;
     }
 
-    uint32_t j;
+    uint32_t j = 0;
     for (uint16_t i = 0; i < num_flowsets; i++) {
         uint32_t offset_recs = 0;
         NFSample::Flows flow = {};
@@ -555,7 +553,6 @@ static bool process_netflow_v10_data(std::vector<NFSample::Flows> *flows, uint8_
         flows->push_back(flow);
         offset += nf10_template.total_len;
     }
-
     num_flows = j;
     return true;
 }

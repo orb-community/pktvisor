@@ -256,10 +256,10 @@ void TcpSessionData::receive_dns_wire_data(const uint8_t *data, size_t len)
         }
 
         if (_buffer.size() >= sizeof(size) + size) {
-            auto data = std::make_unique<uint8_t[]>(size);
-            std::memcpy(data.get(), _buffer.data() + sizeof(size), size);
+            auto dns_data = std::make_unique<uint8_t[]>(size);
+            std::memcpy(dns_data.get(), _buffer.data() + sizeof(size), size);
             _buffer.erase(0, sizeof(size) + size);
-            _got_dns_msg(std::move(data), size);
+            _got_dns_msg(std::move(dns_data), size);
         } else {
             // Nope, we need more data.
             break;
