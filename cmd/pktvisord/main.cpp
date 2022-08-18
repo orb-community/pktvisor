@@ -9,6 +9,7 @@
 #include "CrashpadHandler.h"
 #include "HandlerManager.h"
 #include "InputStreamManager.h"
+#include "NetworkInterfaceScan.h"
 #include "Policies.h"
 #include "handlers/static_plugins.h"
 #include "inputs/static_plugins.h"
@@ -571,7 +572,17 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
+    std::string iface;
     if (args["IFACE"]) {
+        iface = args["IFACE"].asString();
+    } else {
+        iface = visor::most_used_interface();
+        if (!iface.empty()) {
+            logger->info("Network Interface not set at startup, picked the most used interface: '{}'", iface);
+        }
+    }
+
+    if (!iface.empty()) {
         // pcap command line functionality, create default policy
         try {
             std::string bpf;
@@ -584,7 +595,7 @@ int main(int argc, char *argv[])
                 host_spec = args["-H"].asString();
             }
 
-            auto policy_str = fmt::format(default_tap_policy, args["IFACE"].asString(), host_spec, bpf, periods, sample_rate);
+            auto policy_str = fmt::format(default_tap_policy, iface, host_spec, bpf, periods, sample_rate);
             logger->debug(policy_str);
             svr->registry()->configure_from_str(policy_str);
 
