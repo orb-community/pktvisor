@@ -604,7 +604,7 @@ int main(int argc, char *argv[])
             logger->info("exit with failure");
             exit(EXIT_FAILURE);
         }
-    } else if (!options.web_server.admin_api) {
+    } else if (!options.web_server.admin_api && !options.config.has_value()) {
         // if they didn't specify pcap target, or config file, or admin api then there is nothing to do
         logger->error("Nothing to do: specify --admin-api or IFACE.");
         std::cerr << USAGE << std::endl;
