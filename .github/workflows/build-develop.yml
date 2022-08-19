@@ -340,12 +340,6 @@ jobs:
             !./automated_tests/behave_pktvisor
           retention-days: 1
 
-      - name: Clean
-        continue-on-error: true
-        run: |
-          cd ./automated_tests/
-          behavex -t=@cleanup
-
       - name: Unlocking pktvisor integration test state
         run: |
           curl -X POST -H "Content-Type: application/x-www-form-urlencoded" -u "${{ secrets.QA_AUTH_CREDENTIALS }}" -d "change=pktvisor-dev&state=inactive" https://qa.ops.orb.live/api.php
