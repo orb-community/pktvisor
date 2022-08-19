@@ -103,6 +103,8 @@ public:
     {
     }
 
+    ~BgpTcpSessionData() = default;
+
     void receive_tcp_data(const uint8_t *data, size_t len) override;
 };
 

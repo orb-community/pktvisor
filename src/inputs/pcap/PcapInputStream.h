@@ -55,6 +55,10 @@ public:
     {
     }
 
+    virtual ~TcpSessionData()
+    {
+    }
+
     // called from pcpp::TcpReassembly callback, matches types
     virtual void receive_tcp_data(const uint8_t *data, size_t len) = 0;
 };
