@@ -76,7 +76,7 @@ void DnsStreamHandler::start()
             throw ConfigException("DnsStreamHandler: only_rcode filter contained an invalid/unsupported rcode");
         }
     }
-    if (config_exists("only_dnssec_response")) {
+    if (config_exists("only_dnssec_response") && config_get<bool>("only_dnssec_response")) {
         _f_enabled.set(Filters::OnlyDNSSECResponse);
     }
     if (config_exists("answer_count")) {
