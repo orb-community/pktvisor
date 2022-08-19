@@ -229,7 +229,7 @@ void DnsStreamHandler::process_udp_packet_cb(pcpp::Packet &payload, PacketDirect
     }
 }
 
-void TcpSessionData::receive_dns_wire_data(const uint8_t *data, size_t len)
+void DnsTcpSessionData::receive_tcp_data(const uint8_t *data, size_t len)
 {
     if (_invalid_data) {
         return;
@@ -259,7 +259,7 @@ void TcpSessionData::receive_dns_wire_data(const uint8_t *data, size_t len)
             auto dns_data = std::make_unique<uint8_t[]>(size);
             std::memcpy(dns_data.get(), _buffer.data() + sizeof(size), size);
             _buffer.erase(0, sizeof(size) + size);
-            _got_dns_msg(std::move(dns_data), size);
+            _got_msg(std::move(dns_data), size);
         } else {
             // Nope, we need more data.
             break;
@@ -313,10 +313,10 @@ void DnsStreamHandler::tcp_message_ready_cb(int8_t side, const pcpp::TcpStreamDa
     };
 
     if (!iter->second.sessionData[side]) {
-        iter->second.sessionData[side] = std::make_unique<TcpSessionData>(got_dns_message);
+        iter->second.sessionData[side] = std::make_unique<DnsTcpSessionData>(got_dns_message);
     }
 
-    iter->second.sessionData[side]->receive_dns_wire_data(tcpData.getData(), tcpData.getDataLength());
+    iter->second.sessionData[side]->receive_tcp_data(tcpData.getData(), tcpData.getDataLength());
 }
 
 void DnsStreamHandler::tcp_connection_start_cb(const pcpp::ConnectionData &connectionData)

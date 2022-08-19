@@ -254,40 +254,17 @@ public:
     void process_dnstap(const dnstap::Dnstap &payload, bool filtered);
 };
 
-class TcpSessionData final
+class DnsTcpSessionData final : public TcpSessionData
 {
 public:
     static constexpr size_t MIN_DNS_QUERY_SIZE = 17;
-    using got_msg_cb = std::function<void(std::unique_ptr<uint8_t[]> data, size_t size)>;
 
-private:
-    std::string _buffer;
-    got_msg_cb _got_dns_msg;
-    bool _invalid_data;
-
-public:
-    TcpSessionData(
-        got_msg_cb got_data_handler)
-        : _got_dns_msg{std::move(got_data_handler)}
-        , _invalid_data(false)
+    DnsTcpSessionData(got_msg_cb got_data_handler)
+        : TcpSessionData(got_data_handler)
     {
     }
 
-    // called from pcpp::TcpReassembly callback, matches types
-    void receive_dns_wire_data(const uint8_t *data, size_t len);
-};
-
-struct TcpFlowData {
-
-    std::unique_ptr<TcpSessionData> sessionData[2];
-    pcpp::ProtocolType l3Type;
-    uint16_t port;
-
-    TcpFlowData(bool isIPv4, uint16_t port)
-        : port(port)
-    {
-        (isIPv4) ? l3Type = pcpp::IPv4 : l3Type = pcpp::IPv6;
-    }
+    void receive_tcp_data(const uint8_t *data, size_t len) override;
 };
 
 class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsManager>
