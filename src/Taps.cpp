@@ -81,8 +81,8 @@ std::vector<Tap *> TapManager::load(const YAML::Node &tap_yaml, bool strict)
         }
 
         // will throw if it already exists. nothing else to clean up
-        module_add(std::move(tap_module));
         result.push_back(tap_module.get());
+        module_add(std::move(tap_module));
         spdlog::get("visor")->info("tap [{}]: loaded, type {}", tap_name, input_type);
     }
 
@@ -95,7 +95,7 @@ void TapManager::remove_tap(const std::string &name)
     if (_map.count(name) == 0) {
         throw ModuleException(name, fmt::format("module name '{}' does not exist", name));
     }
-    //TODO: add logic to remove policies that uses the specific deleted TAP
+    // TODO: add logic to remove policies that uses the specific deleted TAP
     _map.erase(name);
 }
 
