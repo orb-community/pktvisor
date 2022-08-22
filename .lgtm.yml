@@ -7,7 +7,6 @@ extraction:
       - mkdir ~/.conan
       - python3 -m pip install conan
       - cat /usr/local/share/ca-certificates/semmle-cache-ca/semmle-cache-ca.crt >> ~/.conan/cacert.pem
-      - openssl s_client -showcerts -connect center.conan.io:443 2>/dev/null </dev/null |  sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' >> ~/.conan/cacert.pem
       - export CONAN_CACERT_PATH=~/.conan/cacert.pem
       - source ~/.profile
     configure:
