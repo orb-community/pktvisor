@@ -69,12 +69,6 @@ jobs:
         # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
         run: ctest -C $BUILD_TYPE
 
-      - name: Login to ns1labs conan
-        run: CONAN_USER_HOME=${{github.workspace}}/build/conan_home conan user -p ${{ secrets.CONAN_LABS_PASSWORD }} -r ns1labs ${{ secrets.CONAN_LABS_USERNAME }}
-
-      - name: Cache conan packages
-        run: CONAN_USER_HOME=${{github.workspace}}/build/conan_home conan upload "*" --all -r ns1labs -c
-
   package-amd64:
     needs: [ unit-tests ]
     runs-on: ubuntu-latest

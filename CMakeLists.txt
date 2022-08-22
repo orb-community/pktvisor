@@ -57,7 +57,6 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 add_compile_options(-Wall -pedantic -W -Wextra -Wno-unknown-pragmas)
 
 # Conan setup
-
 include(conan)
 conan_cmake_autodetect(CONAN_SETTINGS)
 message(STATUS "Detected conan settings: ${CONAN_SETTINGS}")
