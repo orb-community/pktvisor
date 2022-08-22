@@ -5,7 +5,6 @@ extraction:
   cpp:
     after_prepare:
       - python3 -m pip install conan
-      - sed -i -e "s/VERIFY_SSL True/VERIFY_SSL False/g" CMakeLists.txt
       - source ~/.profile
     configure:
       command:
