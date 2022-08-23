@@ -59,10 +59,12 @@ void NetStreamHandler::start()
     // Setup Filters
     if (config_exists("geoloc_notfound") && config_get<bool>("geoloc_notfound")) {
         _f_enabled.set(Filters::GeoLocNotFound);
+        _f_geoloc_prefix.push_back("Unknown");
     }
 
     if (config_exists("asn_notfound") && config_get<bool>("asn_notfound")) {
         _f_enabled.set(Filters::AsnNotFound);
+        _f_asn_number.push_back("Unknown");
     }
 
     if (config_exists("only_geoloc_prefix")) {
@@ -168,45 +170,7 @@ static inline bool begins_with(std::string_view str, std::string_view prefix)
 
 bool NetStreamHandler::_filtering(pcpp::Packet &payload, PacketDirection dir, timespec stamp)
 {
-    if (_f_enabled[Filters::GeoLocNotFound]) {
-        if (!geo::GeoIP().enabled() || dir == PacketDirection::unknown) {
-            goto will_filter;
-        } else if (auto IPv4Layer = payload.getLayerOfType<pcpp::IPv4Layer>(); IPv4Layer) {
-            struct sockaddr_in sa4;
-            if (dir == PacketDirection::toHost && IPv4tosockaddr(IPv4Layer->getSrcIPv4Address(), &sa4) && geo::GeoIP().getGeoLocString(&sa4) != "Unknown") {
-                goto will_filter;
-            } else if (dir == PacketDirection::fromHost && IPv4tosockaddr(IPv4Layer->getDstIPv4Address(), &sa4) && geo::GeoIP().getGeoLocString(&sa4) != "Unknown") {
-                goto will_filter;
-            }
-        } else if (auto IPv6layer = payload.getLayerOfType<pcpp::IPv6Layer>(); IPv6layer) {
-            struct sockaddr_in6 sa6;
-            if (dir == PacketDirection::toHost && IPv6tosockaddr(IPv6layer->getSrcIPv6Address(), &sa6) && geo::GeoIP().getGeoLocString(&sa6) != "Unknown") {
-                goto will_filter;
-            } else if (dir == PacketDirection::fromHost && IPv6tosockaddr(IPv6layer->getDstIPv6Address(), &sa6) && geo::GeoIP().getGeoLocString(&sa6) != "Unknown") {
-                goto will_filter;
-            }
-        }
-    }
-    if (_f_enabled[Filters::AsnNotFound]) {
-        if (!geo::GeoASN().enabled() || dir == PacketDirection::unknown) {
-            goto will_filter;
-        } else if (auto IPv4Layer = payload.getLayerOfType<pcpp::IPv4Layer>(); IPv4Layer) {
-            struct sockaddr_in sa4;
-            if (dir == PacketDirection::toHost && IPv4tosockaddr(IPv4Layer->getSrcIPv4Address(), &sa4) && geo::GeoASN().getASNString(&sa4) != "Unknown") {
-                goto will_filter;
-            } else if (dir == PacketDirection::fromHost && IPv4tosockaddr(IPv4Layer->getDstIPv4Address(), &sa4) && geo::GeoASN().getASNString(&sa4) != "Unknown") {
-                goto will_filter;
-            }
-        } else if (auto IPv6layer = payload.getLayerOfType<pcpp::IPv6Layer>(); IPv6layer) {
-            struct sockaddr_in6 sa6;
-            if (dir == PacketDirection::toHost && IPv6tosockaddr(IPv6layer->getSrcIPv6Address(), &sa6) && geo::GeoASN().getASNString(&sa6) != "Unknown") {
-                goto will_filter;
-            } else if (dir == PacketDirection::fromHost && IPv6tosockaddr(IPv6layer->getDstIPv6Address(), &sa6) && geo::GeoASN().getASNString(&sa6) != "Unknown") {
-                goto will_filter;
-            }
-        }
-    }
-    if (_f_enabled[Filters::GeoLocPrefix]) {
+    if (_f_enabled[Filters::GeoLocPrefix] || _f_enabled[Filters::GeoLocNotFound]) {
         if (!geo::GeoIP().enabled() || dir == PacketDirection::unknown) {
             goto will_filter;
         } else if (auto IPv4Layer = payload.getLayerOfType<pcpp::IPv4Layer>(); IPv4Layer) {
@@ -233,7 +197,7 @@ bool NetStreamHandler::_filtering(pcpp::Packet &payload, PacketDirection dir, ti
             }
         }
     }
-    if (_f_enabled[Filters::AsnNumber]) {
+    if (_f_enabled[Filters::AsnNumber] || _f_enabled[Filters::AsnNotFound]) {
         if (!geo::GeoASN().enabled() || dir == PacketDirection::unknown) {
             goto will_filter;
         } else if (auto IPv4Layer = payload.getLayerOfType<pcpp::IPv4Layer>(); IPv4Layer) {
