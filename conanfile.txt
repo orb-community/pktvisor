@@ -9,7 +9,7 @@ json-schema-validator/2.1.0
 libmaxminddb/1.6.0
 nlohmann_json/3.10.5
 openssl/1.1.1k
-pcapplusplus/ns1-upstream
+pcapplusplus/22.05
 protobuf/3.19.2
 sigslot/1.2.1
 spdlog/1.9.2

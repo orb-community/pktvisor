@@ -4,8 +4,10 @@ path_classifiers:
 extraction:
   cpp:
     after_prepare:
+      - mkdir ~/.conan
       - python3 -m pip install conan
-      - sed -i -e "s/VERIFY_SSL True/VERIFY_SSL False/g" CMakeLists.txt
+      - cat /usr/local/share/ca-certificates/semmle-cache-ca/semmle-cache-ca.crt >> ~/.conan/cacert.pem
+      - export CONAN_CACERT_PATH=~/.conan/cacert.pem
       - source ~/.profile
     configure:
       command:
