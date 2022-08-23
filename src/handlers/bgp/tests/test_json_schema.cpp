@@ -16,7 +16,7 @@ using namespace visor::input::pcap;
 using namespace nlohmann;
 using nlohmann::json_schema::json_validator;
 
-TEST_CASE("DHCP JSON Schema", "[bgp][iface][json]")
+TEST_CASE("BGP JSON Schema", "[bgp][iface][json]")
 {
 
     SECTION("json iface")
