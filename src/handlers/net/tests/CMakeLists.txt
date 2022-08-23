@@ -9,7 +9,8 @@ add_executable(unit-tests-handler-net
 target_link_libraries(unit-tests-handler-net
         PRIVATE
         ${CONAN_LIBS_JSON-SCHEMA-VALIDATOR}
-        Visor::Handler::Net)
+        Visor::Handler::Net
+        Visor::Handler::Dns)
 
 add_test(NAME unit-tests-handler-net
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/src

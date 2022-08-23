@@ -7,13 +7,9 @@
 
 namespace visor::handler::mock {
 
-MockStreamHandler::MockStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config, HandlerEventProxy *h_proxy)
+MockStreamHandler::MockStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config)
     : visor::StreamMetricsHandler<MockMetricsManager>(name, window_config)
 {
-    if (h_proxy) {
-        throw StreamHandlerException(fmt::format("MockStreamHandler: unsupported upstream chained stream handler proxy {}", h_proxy->name()));
-    }
-
     assert(proxy);
 
     _logger = spdlog::get("dyn-mock-handler");
@@ -62,11 +58,6 @@ void MockStreamHandler::stop()
     _logger->info("mock handler stop()");
 
     _running = false;
-}
-
-std::unique_ptr<HandlerEventProxy> MockStreamHandler::create_event_proxy()
-{
-    return std::make_unique<HandlerEventProxy>(_name);
 }
 
 void MockMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)

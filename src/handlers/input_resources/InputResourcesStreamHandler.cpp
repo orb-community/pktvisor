@@ -7,15 +7,11 @@
 
 namespace visor::handler::resources {
 
-InputResourcesStreamHandler::InputResourcesStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config, HandlerEventProxy *h_proxy)
+InputResourcesStreamHandler::InputResourcesStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config)
     : visor::StreamMetricsHandler<InputResourcesMetricsManager>(name, window_config)
     , _timer(0)
     , _timestamp(timespec())
 {
-    if (h_proxy) {
-        throw StreamHandlerException(fmt::format("InputResourcesStreamHandler: unsupported upstream chained stream handler proxy {}", h_proxy->name()));
-    }
-
     assert(proxy);
     // figure out which input stream we have
     if (proxy) {
@@ -75,11 +71,6 @@ void InputResourcesStreamHandler::stop()
     _heartbeat_connection.disconnect();
 
     _running = false;
-}
-
-std::unique_ptr<HandlerEventProxy> InputResourcesStreamHandler::create_event_proxy()
-{
-    return std::make_unique<HandlerEventProxy>(_name);
 }
 
 void InputResourcesStreamHandler::process_policies_cb(const Policy *policy, Action action)

@@ -362,7 +362,7 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
     bool _configs(DnsLayer &payload);
 
 public:
-    DnsStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config, HandlerEventProxy *h_proxy = nullptr);
+    DnsStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config);
     ~DnsStreamHandler() = default;
 
     // visor::AbstractModule
@@ -374,6 +374,5 @@ public:
     void start() override;
     void stop() override;
     void info_json(json &j) const override;
-    std::unique_ptr<HandlerEventProxy> create_event_proxy() override;
 };
 }

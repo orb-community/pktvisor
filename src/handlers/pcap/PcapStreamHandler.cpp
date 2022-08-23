@@ -6,13 +6,9 @@
 
 namespace visor::handler::pcap {
 
-PcapStreamHandler::PcapStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config, HandlerEventProxy *h_proxy)
+PcapStreamHandler::PcapStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config)
     : visor::StreamMetricsHandler<PcapMetricsManager>(name, window_config)
 {
-    if (h_proxy) {
-        throw StreamHandlerException(fmt::format("PcapStreamHandler: unsupported upstream chained stream handler proxy {}", h_proxy->name()));
-    }
-
     assert(proxy);
     // figure out which input event proxy we have
     _pcap_proxy = dynamic_cast<PcapInputEventProxy *>(proxy);
@@ -58,11 +54,6 @@ void PcapStreamHandler::stop()
     _heartbeat_connection.disconnect();
 
     _running = false;
-}
-
-std::unique_ptr<HandlerEventProxy> PcapStreamHandler::create_event_proxy()
-{
-    return std::make_unique<HandlerEventProxy>(_name);
 }
 
 // callback from input module

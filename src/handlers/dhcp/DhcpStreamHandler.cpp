@@ -6,13 +6,9 @@
 
 namespace visor::handler::dhcp {
 
-DhcpStreamHandler::DhcpStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config, HandlerEventProxy *h_proxy)
+DhcpStreamHandler::DhcpStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config)
     : visor::StreamMetricsHandler<DhcpMetricsManager>(name, window_config)
 {
-    if (h_proxy) {
-        throw StreamHandlerException(fmt::format("DhcpStreamHandler: unsupported upstream chained stream handler proxy {}", h_proxy->name()));
-    }
-
     assert(proxy);
     // figure out which input event proxy we have
     _pcap_proxy = dynamic_cast<PcapInputEventProxy *>(proxy);
@@ -71,11 +67,6 @@ void DhcpStreamHandler::stop()
     }
 
     _running = false;
-}
-
-std::unique_ptr<HandlerEventProxy> DhcpStreamHandler::create_event_proxy()
-{
-    return std::make_unique<HandlerEventProxy>(_name);
 }
 
 // callback from input module

@@ -18,13 +18,10 @@
 
 namespace visor::handler::flow {
 
-FlowStreamHandler::FlowStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config, HandlerEventProxy *h_proxy)
+FlowStreamHandler::FlowStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config)
     : visor::StreamMetricsHandler<FlowMetricsManager>(name, window_config)
     , _sample_rate_scaling(true)
 {
-    if (h_proxy) {
-        throw StreamHandlerException(fmt::format("FlowStreamHandler: unsupported upstream chained stream handler proxy {}", h_proxy->name()));
-    }
     // figure out which input event proxy we have
     if (proxy) {
         _mock_proxy = dynamic_cast<MockInputEventProxy *>(proxy);
@@ -108,11 +105,6 @@ void FlowStreamHandler::stop()
     }
 
     _running = false;
-}
-
-std::unique_ptr<HandlerEventProxy> FlowStreamHandler::create_event_proxy()
-{
-    return std::make_unique<HandlerEventProxy>(_name);
 }
 
 FlowStreamHandler::~FlowStreamHandler()

@@ -21,10 +21,10 @@ using json = nlohmann::json;
 void DnsHandlerModulePlugin::setup_routes(HttpServer *svr)
 {
 }
-std::unique_ptr<StreamHandler> DnsHandlerModulePlugin::instantiate(const std::string &name, InputEventProxy *proxy, const Configurable *config, const Configurable *filter, HandlerEventProxy *h_proxy)
+std::unique_ptr<StreamHandler> DnsHandlerModulePlugin::instantiate(const std::string &name, InputEventProxy *proxy, const Configurable *config, const Configurable *filter)
 {
     // TODO using config as both window config and module config
-    auto handler_module = std::make_unique<DnsStreamHandler>(name, proxy, config, h_proxy);
+    auto handler_module = std::make_unique<DnsStreamHandler>(name, proxy, config);
     handler_module->config_merge(*config);
     handler_module->config_merge(*filter);
     return handler_module;

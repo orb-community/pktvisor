@@ -19,6 +19,6 @@ public:
         : visor::HandlerModulePlugin{manager, plugin}
     {
     }
-    std::unique_ptr<StreamHandler> instantiate(const std::string &name, InputEventProxy *proxy, const Configurable *config, const Configurable *filter, HandlerEventProxy *h_proxy = nullptr) override;
+    std::unique_ptr<StreamHandler> instantiate(const std::string &name, InputEventProxy *proxy, const Configurable *config, const Configurable *filter) override;
 };
 }

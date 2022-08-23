@@ -3,7 +3,6 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 #include "DnsStreamHandler.h"
-#include "DnsHandlerEventProxy.h"
 #include "DnstapInputStream.h"
 #include "GeoDB.h"
 #include "utils.h"
@@ -24,13 +23,9 @@ namespace visor::handler::dns {
 
 thread_local DnsStreamHandler::DnsCacheData DnsStreamHandler::_cached_dns_layer;
 
-DnsStreamHandler::DnsStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config, HandlerEventProxy *h_proxy)
+DnsStreamHandler::DnsStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config)
     : visor::StreamMetricsHandler<DnsMetricsManager>(name, window_config)
 {
-    if (h_proxy) {
-        throw StreamHandlerException(fmt::format("DnsStreamHandler: unsupported upstream chained stream handler proxy {}", h_proxy->name()));
-    }
-
     assert(proxy);
     // figure out which input event proxy we have
     _pcap_proxy = dynamic_cast<PcapInputEventProxy *>(proxy);
@@ -155,11 +150,11 @@ void DnsStreamHandler::start()
         _pkt_udp_connection = _pcap_proxy->udp_signal.connect(&DnsStreamHandler::process_udp_packet_cb, this);
         _start_tstamp_connection = _pcap_proxy->start_tstamp_signal.connect([this](timespec stamp) {
             set_start_tstamp(stamp);
-            _event_proxy ? static_cast<DnsHandlerEventProxy *>(_event_proxy.get())->start_tstamp_signal(stamp) : void();
+            _event_proxy ? static_cast<PcapInputEventProxy *>(_event_proxy.get())->start_tstamp_signal(stamp) : void();
         });
         _end_tstamp_connection = _pcap_proxy->end_tstamp_signal.connect([this](timespec stamp) {
             set_end_tstamp(stamp);
-            _event_proxy ? static_cast<DnsHandlerEventProxy *>(_event_proxy.get())->end_tstamp_signal(stamp) : void();
+            _event_proxy ? static_cast<PcapInputEventProxy *>(_event_proxy.get())->end_tstamp_signal(stamp) : void();
         });
         _tcp_start_connection = _pcap_proxy->tcp_connection_start_signal.connect(&DnsStreamHandler::tcp_connection_start_cb, this);
         _tcp_end_connection = _pcap_proxy->tcp_connection_end_signal.connect(&DnsStreamHandler::tcp_connection_end_cb, this);
@@ -238,7 +233,8 @@ void DnsStreamHandler::process_udp_packet_cb(pcpp::Packet &payload, PacketDirect
             _static_suffix_size = 0;
             // signal for chained stream handlers, if we have any
             if (_event_proxy) {
-                static_cast<DnsHandlerEventProxy *>(_event_proxy.get())->udp_signal(payload, dir, l3, flowkey, stamp);
+                static_cast<PcapInputEventProxy *>(_event_proxy.get())->packet_signal(payload, dir, l3, pcpp::UDP, stamp);
+                static_cast<PcapInputEventProxy *>(_event_proxy.get())->udp_signal(payload, dir, l3, flowkey, stamp);
             }
         }
     }
@@ -378,10 +374,6 @@ void DnsStreamHandler::info_json(json &j) const
 {
     common_info_json(j);
     j[schema_key()]["xact"]["open"] = _metrics->num_open_transactions();
-}
-std::unique_ptr<HandlerEventProxy> DnsStreamHandler::create_event_proxy()
-{
-    return std::make_unique<DnsHandlerEventProxy>(_name);
 }
 inline bool DnsStreamHandler::_filtering(DnsLayer &payload, [[maybe_unused]] PacketDirection dir, [[maybe_unused]] pcpp::ProtocolType l3, [[maybe_unused]] pcpp::ProtocolType l4, [[maybe_unused]] uint16_t port, timespec stamp)
 {

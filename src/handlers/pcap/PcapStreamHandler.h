@@ -97,7 +97,7 @@ class PcapStreamHandler final : public visor::StreamMetricsHandler<PcapMetricsMa
     void set_end_tstamp(timespec stamp);
 
 public:
-    PcapStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config, HandlerEventProxy *h_proxy = nullptr);
+    PcapStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config);
     ~PcapStreamHandler() = default;
 
     // visor::AbstractModule
@@ -108,7 +108,6 @@ public:
 
     void start() override;
     void stop() override;
-    std::unique_ptr<HandlerEventProxy> create_event_proxy() override;
 };
 
 }

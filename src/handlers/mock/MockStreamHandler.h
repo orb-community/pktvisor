@@ -79,7 +79,7 @@ class MockStreamHandler final : public visor::StreamMetricsHandler<MockMetricsMa
     void process_random_int(uint64_t i);
 
 public:
-    MockStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config, HandlerEventProxy *h_proxy = nullptr);
+    MockStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config);
     ~MockStreamHandler();
 
     // visor::AbstractModule
@@ -90,7 +90,6 @@ public:
 
     void start() override;
     void stop() override;
-    std::unique_ptr<HandlerEventProxy> create_event_proxy() override;
 };
 
 }
