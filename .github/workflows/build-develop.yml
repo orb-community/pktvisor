@@ -5,12 +5,10 @@ on:
   pull_request:
     branches:
       - develop
-      - multi-arch-images
 
   push:
     branches:
       - develop
-      - multi-arch-images
 
 env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
@@ -121,7 +119,7 @@ jobs:
           echo ${{ steps.build.outputs.version }}
 
       - name: Generate ref tag (develop)
-        if: ${{ env.BRANCH_NAME == 'develop' || env.BRANCH_NAME == 'multi-arch-images' }}
+        if: ${{ env.BRANCH_NAME == 'develop' }}
         run: |
           echo "REF_TAG=latest-develop" >> $GITHUB_ENV
           echo "PRERELEASE=true" >> $GITHUB_ENV
@@ -342,12 +340,6 @@ jobs:
             !./automated_tests/behave_pktvisor
           retention-days: 1
 
-      - name: Clean
-        continue-on-error: true
-        run: |
-          cd ./automated_tests/
-          behavex -t=@cleanup
-
       - name: Unlocking pktvisor integration test state
         run: |
           curl -X POST -H "Content-Type: application/x-www-form-urlencoded" -u "${{ secrets.QA_AUTH_CREDENTIALS }}" -d "change=pktvisor-dev&state=inactive" https://qa.ops.orb.live/api.php
@@ -545,7 +537,7 @@ jobs:
         run: echo ${{ env.VERSION }}
 
       - name: Generate ref tag (develop)
-        if: ${{ env.BRANCH_NAME == 'develop' || env.BRANCH_NAME == 'multi-arch-images' }}
+        if: ${{ env.BRANCH_NAME == 'develop' }}
         run: |
           echo "REF_TAG=latest-develop" >> $GITHUB_ENV
           echo "PRERELEASE=false" >> $GITHUB_ENV

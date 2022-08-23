@@ -72,7 +72,7 @@ void DnsStreamHandler::start()
             throw ConfigException("DnsStreamHandler: only_rcode filter contained an invalid/unsupported rcode");
         }
     }
-    if (config_exists("only_dnssec_response")) {
+    if (config_exists("only_dnssec_response") && config_get<bool>("only_dnssec_response")) {
         _f_enabled.set(Filters::OnlyDNSSECResponse);
     }
     if (config_exists("answer_count")) {
@@ -267,10 +267,10 @@ void TcpSessionData::receive_dns_wire_data(const uint8_t *data, size_t len)
         }
 
         if (_buffer.size() >= sizeof(size) + size) {
-            auto data = std::make_unique<uint8_t[]>(size);
-            std::memcpy(data.get(), _buffer.data() + sizeof(size), size);
+            auto dns_data = std::make_unique<uint8_t[]>(size);
+            std::memcpy(dns_data.get(), _buffer.data() + sizeof(size), size);
             _buffer.erase(0, sizeof(size) + size);
-            _got_dns_msg(std::move(data), size);
+            _got_dns_msg(std::move(dns_data), size);
         } else {
             // Nope, we need more data.
             break;
@@ -477,6 +477,9 @@ void DnsMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
     // static because caller guarantees only our own bucket type
     const auto &other = static_cast<const DnsMetricsBucket &>(o);
 
+    // rates maintain their own thread safety
+    _rate_total.merge(other._rate_total);
+
     std::shared_lock r_lock(other._mutex);
     std::unique_lock w_lock(_mutex);
 
@@ -492,9 +495,9 @@ void DnsMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
         _counters.SRVFAIL += other._counters.SRVFAIL;
         _counters.NOERROR += other._counters.NOERROR;
         _counters.NODATA += other._counters.NODATA;
+        _counters.total += other._counters.total;
+        _counters.filtered += other._counters.filtered;
     }
-
-    _counters.filtered += other._counters.filtered;
 
     if (group_enabled(group::DnsMetrics::DnsTransactions)) {
         _counters.xacts_total += other._counters.xacts_total;
@@ -537,6 +540,7 @@ void DnsMetricsBucket::to_json(json &j) const
 {
 
     bool live_rates = !read_only() && !recorded_stream();
+    _rate_total.to_json(j, live_rates);
 
     {
         auto [num_events, num_samples, event_rate, event_lock] = event_data_locked(); // thread safe
@@ -560,9 +564,9 @@ void DnsMetricsBucket::to_json(json &j) const
         _counters.SRVFAIL.to_json(j);
         _counters.NOERROR.to_json(j);
         _counters.NODATA.to_json(j);
+        _counters.total.to_json(j);
+        _counters.filtered.to_json(j);
     }
-
-    _counters.filtered.to_json(j);
 
     if (group_enabled(group::DnsMetrics::Cardinality)) {
         _dns_qnameCard.to_json(j);
@@ -693,7 +697,11 @@ void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, pcpp::Pro
 {
     std::unique_lock lock(_mutex);
 
+    ++_rate_total;
+
     if (group_enabled(group::DnsMetrics::Counters)) {
+        ++_counters.total;
+
         if (l3 == pcpp::IPv6) {
             ++_counters.IPv6;
         } else if (l3 == pcpp::IPv4) {
@@ -829,7 +837,11 @@ void DnsMetricsBucket::process_dns_layer(pcpp::ProtocolType l3, Protocol l4, QR 
 {
     std::unique_lock lock(_mutex);
 
+    ++_rate_total;
+
     if (group_enabled(group::DnsMetrics::Counters)) {
+        ++_counters.total;
+
         if (l3 == pcpp::IPv6) {
             ++_counters.IPv6;
         } else if (l3 == pcpp::IPv4) {
@@ -909,6 +921,7 @@ void DnsMetricsBucket::new_dns_transaction(bool deep, float to90th, float from90
 }
 void DnsMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap add_labels) const
 {
+    _rate_total.to_prometheus(out, add_labels);
 
     {
         auto [num_events, num_samples, event_rate, event_lock] = event_data_locked(); // thread safe
@@ -931,9 +944,9 @@ void DnsMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap ad
         _counters.SRVFAIL.to_prometheus(out, add_labels);
         _counters.NOERROR.to_prometheus(out, add_labels);
         _counters.NODATA.to_prometheus(out, add_labels);
+        _counters.total.to_prometheus(out, add_labels);
+        _counters.filtered.to_prometheus(out, add_labels);
     }
-
-    _counters.filtered.to_prometheus(out, add_labels);
 
     if (group_enabled(group::DnsMetrics::Cardinality)) {
         _dns_qnameCard.to_prometheus(out, add_labels);
@@ -991,7 +1004,9 @@ void DnsMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap ad
 void DnsMetricsBucket::process_filtered()
 {
     std::unique_lock lock(_mutex);
-    ++_counters.filtered;
+    if (group_enabled(group::DnsMetrics::Counters)) {
+        ++_counters.filtered;
+    }
 }
 
 // the general metrics manager entry point (both UDP and TCP)
