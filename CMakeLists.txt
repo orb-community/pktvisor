@@ -57,6 +57,7 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 add_compile_options(-Wall -pedantic -W -Wextra -Wno-unknown-pragmas)
 
 # Conan setup
+
 include(conan)
 conan_cmake_autodetect(CONAN_SETTINGS)
 message(STATUS "Detected conan settings: ${CONAN_SETTINGS}")
@@ -70,6 +71,9 @@ if(PKTVISOR_CONAN_INIT)
     message(STATUS "Using new Conan environment")
     set(ENV{CONAN_USER_HOME} ${CMAKE_BINARY_DIR}/conan_home)
     set(ENV{CONAN_REVISIONS_ENABLED} 1)
+    conan_add_remote(NAME ns1labs INDEX 0
+            URL https://ns1labs.jfrog.io/artifactory/api/conan/ns1labs-conan
+            VERIFY_SSL True)
 endif()
 
 conan_cmake_install(
