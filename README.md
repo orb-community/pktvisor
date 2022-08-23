@@ -1,7 +1,7 @@
 ![pktvisor](docs/images/pktvisor-header.png)
 
 ![Build status](https://github.com/ns1labs/pktvisor/workflows/Build/badge.svg)
-[![LGTM alerts](https://img.shields.io/lgtm/alerts/g/ns1/pktvisor.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/ns1/pktvisor/alerts/)
+![CodeQL](https://github.com/ns1labs/pktvisor/workflows/CodeQL/badge.svg)
 
 <p align="left">
   <strong>
