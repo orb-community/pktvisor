@@ -6,6 +6,7 @@
 
 #include "AbstractMetricsManager.h"
 #include "AbstractModule.h"
+#include "InputEventProxy.h"
 #include <ctime>
 #include <fmt/ostream.h>
 #include <nlohmann/json.hpp>
@@ -26,6 +27,8 @@ public:
 
 class StreamHandler : public AbstractRunnableModule
 {
+protected:
+    std::unique_ptr<InputEventProxy> _event_proxy;
 
 public:
     StreamHandler(const std::string &name)
@@ -35,7 +38,24 @@ public:
 
     virtual ~StreamHandler(){};
 
-    virtual size_t consumer_count() const = 0;
+    size_t consumer_count() const
+    {
+        if (_event_proxy) {
+            return _event_proxy->consumer_count();
+        }
+        return 0;
+    }
+
+    void set_event_proxy(std::unique_ptr<InputEventProxy> proxy)
+    {
+        _event_proxy = std::move(proxy);
+    }
+
+    InputEventProxy *get_event_proxy()
+    {
+        return _event_proxy.get();
+    }
+
     virtual void window_json(json &j, uint64_t period, bool merged) = 0;
     virtual void window_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) = 0;
 };

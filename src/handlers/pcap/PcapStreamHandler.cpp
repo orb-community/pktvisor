@@ -6,13 +6,9 @@
 
 namespace visor::handler::pcap {
 
-PcapStreamHandler::PcapStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config, StreamHandler *handler)
+PcapStreamHandler::PcapStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config)
     : visor::StreamMetricsHandler<PcapMetricsManager>(name, window_config)
 {
-    if (handler) {
-        throw StreamHandlerException(fmt::format("PcapStreamHandler: unsupported upstream chained stream handler {}", handler->name()));
-    }
-
     assert(proxy);
     // figure out which input event proxy we have
     _pcap_proxy = dynamic_cast<PcapInputEventProxy *>(proxy);

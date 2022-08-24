@@ -112,18 +112,13 @@ class DhcpStreamHandler final : public visor::StreamMetricsHandler<DhcpMetricsMa
     bool _filtering(pcpp::DhcpLayer *payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint16_t src_port, uint16_t dst_port, timespec stamp);
 
 public:
-    DhcpStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config, StreamHandler *handler = nullptr);
+    DhcpStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config);
     ~DhcpStreamHandler() = default;
 
     // visor::AbstractModule
     std::string schema_key() const override
     {
         return DHCP_SCHEMA;
-    }
-
-    size_t consumer_count() const override
-    {
-        return 0;
     }
 
     void start() override;

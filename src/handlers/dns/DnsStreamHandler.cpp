@@ -23,13 +23,9 @@ namespace visor::handler::dns {
 
 thread_local DnsStreamHandler::DnsCacheData DnsStreamHandler::_cached_dns_layer;
 
-DnsStreamHandler::DnsStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config, StreamHandler *handler)
+DnsStreamHandler::DnsStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config)
     : visor::StreamMetricsHandler<DnsMetricsManager>(name, window_config)
 {
-    if (handler) {
-        throw StreamHandlerException(fmt::format("DnsStreamHandler: unsupported upstream chained stream handler {}", handler->name()));
-    }
-
     assert(proxy);
     // figure out which input event proxy we have
     _pcap_proxy = dynamic_cast<PcapInputEventProxy *>(proxy);
@@ -152,15 +148,27 @@ void DnsStreamHandler::start()
 
     if (_pcap_proxy) {
         _pkt_udp_connection = _pcap_proxy->udp_signal.connect(&DnsStreamHandler::process_udp_packet_cb, this);
-        _start_tstamp_connection = _pcap_proxy->start_tstamp_signal.connect([this](timespec stamp) { set_start_tstamp(stamp); start_tstamp_signal(stamp); });
-        _end_tstamp_connection = _pcap_proxy->end_tstamp_signal.connect([this](timespec stamp) { set_end_tstamp(stamp); end_tstamp_signal(stamp); });
+        _start_tstamp_connection = _pcap_proxy->start_tstamp_signal.connect([this](timespec stamp) {
+            set_start_tstamp(stamp);
+            _event_proxy ? static_cast<PcapInputEventProxy *>(_event_proxy.get())->start_tstamp_signal(stamp) : void();
+        });
+        _end_tstamp_connection = _pcap_proxy->end_tstamp_signal.connect([this](timespec stamp) {
+            set_end_tstamp(stamp);
+            _event_proxy ? static_cast<PcapInputEventProxy *>(_event_proxy.get())->end_tstamp_signal(stamp) : void();
+        });
         _tcp_start_connection = _pcap_proxy->tcp_connection_start_signal.connect(&DnsStreamHandler::tcp_connection_start_cb, this);
         _tcp_end_connection = _pcap_proxy->tcp_connection_end_signal.connect(&DnsStreamHandler::tcp_connection_end_cb, this);
         _tcp_message_connection = _pcap_proxy->tcp_message_ready_signal.connect(&DnsStreamHandler::tcp_message_ready_cb, this);
-        _heartbeat_connection = _pcap_proxy->heartbeat_signal.connect([this](const timespec stamp) { check_period_shift(stamp); heartbeat_signal(stamp); });
+        _heartbeat_connection = _pcap_proxy->heartbeat_signal.connect([this](const timespec stamp) {
+            check_period_shift(stamp);
+            _event_proxy ? _event_proxy->heartbeat_signal(stamp) : void();
+        });
     } else if (_dnstap_proxy) {
         _dnstap_connection = _dnstap_proxy->dnstap_signal.connect(&DnsStreamHandler::process_dnstap_cb, this);
-        _heartbeat_connection = _dnstap_proxy->heartbeat_signal.connect([this](const timespec stamp) { check_period_shift(stamp); heartbeat_signal(stamp); });
+        _heartbeat_connection = _dnstap_proxy->heartbeat_signal.connect([this](const timespec stamp) {
+            check_period_shift(stamp);
+            _event_proxy ? _event_proxy->heartbeat_signal(stamp) : void();
+        });
     }
 
     _running = true;
@@ -224,7 +232,10 @@ void DnsStreamHandler::process_udp_packet_cb(pcpp::Packet &payload, PacketDirect
             _metrics->process_dns_layer(*dnsLayer, dir, l3, pcpp::UDP, flowkey, metric_port, _static_suffix_size, stamp);
             _static_suffix_size = 0;
             // signal for chained stream handlers, if we have any
-            udp_signal(payload, dir, l3, flowkey, stamp);
+            if (_event_proxy) {
+                static_cast<PcapInputEventProxy *>(_event_proxy.get())->packet_signal(payload, dir, l3, pcpp::UDP, stamp);
+                static_cast<PcapInputEventProxy *>(_event_proxy.get())->udp_signal(payload, dir, l3, flowkey, stamp);
+            }
         }
     }
 }

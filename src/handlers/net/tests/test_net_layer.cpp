@@ -1,10 +1,12 @@
 #include <catch2/catch.hpp>
 
+#include "DnsStreamHandler.h"
 #include "GeoDB.h"
 #include "NetStreamHandler.h"
 #include "PcapInputStream.h"
 
 using namespace visor::handler::net;
+using namespace visor::handler::dns;
 using namespace visor::input::pcap;
 
 TEST_CASE("Parse net (dns) UDP IPv4 tests", "[pcap][ipv4][udp][net]")
@@ -188,7 +190,8 @@ TEST_CASE("Parse net (dns) with DNS filter only_qname_suffix", "[pcap][dns][net]
     auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
     DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
-    NetStreamHandler net_handler{"net-test", nullptr, &c, &dns_handler};
+    dns_handler.set_event_proxy(stream.create_event_proxy(c));
+    NetStreamHandler net_handler{"net-test", dns_handler.get_event_proxy(), &c};
 
     dns_handler.config_set<visor::Configurable::StringList>("only_qname_suffix", {"google.com"});
 

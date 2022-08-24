@@ -5,7 +5,6 @@
 #pragma once
 
 #include "AbstractMetricsManager.h"
-#include "DnsStreamHandler.h"
 #include "DnstapInputStream.h"
 #include "MockInputStream.h"
 #include "PcapInputStream.h"
@@ -18,7 +17,6 @@ namespace visor::handler::net {
 using namespace visor::input::pcap;
 using namespace visor::input::dnstap;
 using namespace visor::input::mock;
-using namespace visor::handler::dns;
 
 static constexpr const char *NET_SCHEMA{"packets"};
 
@@ -190,9 +188,6 @@ class NetStreamHandler final : public visor::StreamMetricsHandler<NetworkMetrics
     DnstapInputEventProxy *_dnstap_proxy{nullptr};
     MockInputEventProxy *_mock_proxy{nullptr};
 
-    // the stream handlers sources we support (only one will be in use at a time)
-    DnsStreamHandler *_dns_handler{nullptr};
-
     sigslot::connection _dnstap_connection;
 
     sigslot::connection _pkt_connection;
@@ -211,7 +206,6 @@ class NetStreamHandler final : public visor::StreamMetricsHandler<NetworkMetrics
 
     void process_dnstap_cb(const dnstap::Dnstap &, size_t);
     void process_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp);
-    void process_udp_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp);
     void set_start_tstamp(timespec stamp);
     void set_end_tstamp(timespec stamp);
 
@@ -230,18 +224,13 @@ class NetStreamHandler final : public visor::StreamMetricsHandler<NetworkMetrics
     bool _filtering(pcpp::Packet &payload, PacketDirection dir, timespec stamp);
 
 public:
-    NetStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config, StreamHandler *handler = nullptr);
+    NetStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config);
     ~NetStreamHandler() override;
 
     // visor::AbstractModule
     std::string schema_key() const override
     {
         return NET_SCHEMA;
-    }
-
-    size_t consumer_count() const override
-    {
-        return 0;
     }
 
     void start() override;

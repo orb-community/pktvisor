@@ -354,7 +354,7 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
     bool _configs(DnsLayer &payload);
 
 public:
-    DnsStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config, StreamHandler *handler = nullptr);
+    DnsStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config);
     ~DnsStreamHandler() = default;
 
     // visor::AbstractModule
@@ -363,19 +363,8 @@ public:
         return DNS_SCHEMA;
     }
 
-    size_t consumer_count() const override
-    {
-        return udp_signal.slot_count();
-    }
-
     void start() override;
     void stop() override;
     void info_json(json &j) const override;
-
-    mutable sigslot::signal<timespec> start_tstamp_signal;
-    mutable sigslot::signal<timespec> end_tstamp_signal;
-    mutable sigslot::signal<const timespec> heartbeat_signal;
-    mutable sigslot::signal<pcpp::Packet &, PacketDirection, pcpp::ProtocolType, uint32_t, timespec> udp_signal;
 };
-
 }

@@ -107,18 +107,13 @@ class InputResourcesStreamHandler final : public visor::StreamMetricsHandler<Inp
     void process_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp);
 
 public:
-    InputResourcesStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config, StreamHandler *handler = nullptr);
+    InputResourcesStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config);
     ~InputResourcesStreamHandler() = default;
 
     // visor::AbstractModule
     std::string schema_key() const override
     {
         return "input_resources";
-    }
-
-    size_t consumer_count() const override
-    {
-        return 0;
     }
 
     void start() override;

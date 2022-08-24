@@ -313,7 +313,8 @@ void PolicyManager::_validate_policy(const YAML::Node &policy_yaml, const std::s
             handler_module = handler_plugin->second->instantiate(handler_name, input_event_proxy, &handler_config.config, &handler_config.filter);
         } else {
             // for sequence, use only previous handler
-            handler_module = handler_plugin->second->instantiate(handler_name, nullptr, &handler_config.config, &handler_config.filter, handler_modules.back().get());
+            handler_modules.back()->set_event_proxy(input_ptr->create_event_proxy(Configurable()));
+            handler_module = handler_plugin->second->instantiate(handler_name, handler_modules.back()->get_event_proxy(), &handler_config.config, &handler_config.filter);
         }
         policy_ptr->add_module(handler_module.get());
         handler_modules.emplace_back(std::move(handler_module));

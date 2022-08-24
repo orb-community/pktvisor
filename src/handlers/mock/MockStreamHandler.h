@@ -79,18 +79,13 @@ class MockStreamHandler final : public visor::StreamMetricsHandler<MockMetricsMa
     void process_random_int(uint64_t i);
 
 public:
-    MockStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config, StreamHandler *handler = nullptr);
+    MockStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config);
     ~MockStreamHandler();
 
     // visor::AbstractModule
     std::string schema_key() const override
     {
         return "mock";
-    }
-
-    size_t consumer_count() const override
-    {
-        return 0;
     }
 
     void start() override;
