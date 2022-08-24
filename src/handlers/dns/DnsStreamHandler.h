@@ -342,6 +342,7 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
     std::vector<uint16_t> _f_qtypes;
     size_t _static_suffix_size{0};
     std::bitset<DNSTAP_TYPE_SIZE> _f_dnstap_types;
+    bool _using_predicate_signals{false};
 
     static const inline StreamMetricsHandler::GroupDefType _group_defs = {
         {"cardinality", group::DnsMetrics::Cardinality},
@@ -352,6 +353,7 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
 
     bool _filtering(DnsLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint16_t port, timespec stamp);
     bool _configs(DnsLayer &payload);
+    void _register_predicate_filter(Filters filter, std::string f_key, std::string f_value);
 
 public:
     DnsStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config);

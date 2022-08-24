@@ -71,6 +71,7 @@ void DnsStreamHandler::start()
         default:
             throw ConfigException("DnsStreamHandler: only_rcode filter contained an invalid/unsupported rcode");
         }
+        _register_predicate_filter(Filters::OnlyRCode, "only_rcode", std::to_string(_f_rcode));
     }
     if (config_exists("only_dnssec_response") && config_get<bool>("only_dnssec_response")) {
         _f_enabled.set(Filters::OnlyDNSSECResponse);
@@ -147,7 +148,9 @@ void DnsStreamHandler::start()
     }
 
     if (_pcap_proxy) {
-        _pkt_udp_connection = _pcap_proxy->udp_signal.connect(&DnsStreamHandler::process_udp_packet_cb, this);
+        if (!_using_predicate_signals) {
+            _pkt_udp_connection = _pcap_proxy->udp_signal.connect(&DnsStreamHandler::process_udp_packet_cb, this);
+        }
         _start_tstamp_connection = _pcap_proxy->start_tstamp_signal.connect([this](timespec stamp) {
             set_start_tstamp(stamp);
             _event_proxy ? static_cast<PcapInputEventProxy *>(_event_proxy.get())->start_tstamp_signal(stamp) : void();
@@ -187,6 +190,9 @@ void DnsStreamHandler::stop()
         _tcp_start_connection.disconnect();
         _tcp_end_connection.disconnect();
         _tcp_message_connection.disconnect();
+        if (_using_predicate_signals) {
+            _pcap_proxy->unregister_udp_predicate_signal(name());
+        }
     } else if (_dnstap_proxy) {
         _dnstap_connection.disconnect();
     }
@@ -374,12 +380,42 @@ void DnsStreamHandler::info_json(json &j) const
 {
     common_info_json(j);
     j[schema_key()]["xact"]["open"] = _metrics->num_open_transactions();
+    j[schema_key()]["predicate"]["enabled"] = _using_predicate_signals;
+}
+
+inline void DnsStreamHandler::_register_predicate_filter(Filters filter, std::string f_key, std::string f_value)
+{
+    if (!_using_predicate_signals && filter == Filters::OnlyRCode) {
+        // all DnsStreamHandler race to install this predicate, which is only installed once and called once per udp event
+        // it's job is to return the predicate "jump key" to call matching signals
+        static thread_local auto udp_rcode_predicate = [](pcpp::Packet &payload, PacketDirection, pcpp::ProtocolType, uint32_t flowkey, timespec stamp) -> std::string {
+            pcpp::UdpLayer *udpLayer = payload.getLayerOfType<pcpp::UdpLayer>();
+            assert(udpLayer);
+            if (flowkey != _cached_dns_layer.flowKey || stamp.tv_sec != _cached_dns_layer.timestamp.tv_sec || stamp.tv_nsec != _cached_dns_layer.timestamp.tv_nsec) {
+                _cached_dns_layer.flowKey = flowkey;
+                _cached_dns_layer.timestamp = stamp;
+                _cached_dns_layer.dnsLayer = std::make_unique<DnsLayer>(udpLayer, &payload);
+            }
+            auto dnsLayer = _cached_dns_layer.dnsLayer.get();
+            // return the 'jump key' for pcap to make O(1) call to appropriate signals
+            return "dnsonly_rcode" + std::to_string(dnsLayer->getDnsHeader()->responseCode);
+        };
+
+        // if the jump key matches, this callback fires
+        auto rcode_signal = [this](pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp) {
+            process_udp_packet_cb(payload, dir, l3, flowkey, stamp);
+        };
+        if (_pcap_proxy) {
+            // even though predicate and callback are sent, pcap will only install the first one it sees from dns handler
+            // module name is sent to allow disconnect at shutdown time
+            _pcap_proxy->register_udp_predicate_signal(schema_key(), name(), f_key, f_value, udp_rcode_predicate, rcode_signal);
+            _using_predicate_signals = true;
+        }
+    }
 }
 inline bool DnsStreamHandler::_filtering(DnsLayer &payload, [[maybe_unused]] PacketDirection dir, [[maybe_unused]] pcpp::ProtocolType l3, [[maybe_unused]] pcpp::ProtocolType l4, [[maybe_unused]] uint16_t port, timespec stamp)
 {
     if (_f_enabled[Filters::ExcludingRCode] && payload.getDnsHeader()->responseCode == _f_rcode) {
-        goto will_filter;
-    } else if (_f_enabled[Filters::OnlyRCode] && payload.getDnsHeader()->responseCode != _f_rcode) {
         goto will_filter;
     }
     if (_f_enabled[Filters::AnswerCount] && payload.getAnswerCount() != _f_answer_count) {
