@@ -193,6 +193,11 @@ jobs:
           cd .github/hosted-runner/arm64/
           ESCAPED_REPLACE_RUNNER_TOKEN=$(printf '%s\n' "${{ steps.token.outputs.runner }}" | sed -e 's/[\/&]/\\&/g')
           sed -i -e "s/RUNNER_TOKEN/$ESCAPED_REPLACE_RUNNER_TOKEN/g" user_data.sh
+          
+      - name: Get short commit hash to a variable
+        id: commit_hash
+        run: |
+          echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
 
       - name: Inject AWS key
         run: |
@@ -201,7 +206,7 @@ jobs:
           sed -i -e "s/AWSID/$ESCAPED_REPLACE_KEY_ID/g" vars.tf
           ESCAPED_REPLACE_ACCESS_KEY=$(printf '%s\n' "${{ secrets.AWS_SECRET_ACCESS_KEY }}" | sed -e 's/[\/&]/\\&/g')
           sed -i -e "s/AWSSECRET/$ESCAPED_REPLACE_ACCESS_KEY/g" vars.tf
-          ESCAPED_REPLACE_ENVIRONMENT=$(printf '%s\n' "${{ needs.prebuild-package.outputs.branch_name }}-release" | sed -e 's/[\/&]/\\&/g')
+          ESCAPED_REPLACE_ENVIRONMENT=$(printf '%s\n' "${{ needs.prebuild-package.outputs.branch_name }}-${{ steps.commit_hash.outputs.sha_short }}-release" | sed -e 's/[\/&]/\\&/g')
           sed -i -e "s/ENVIRONMENT/$ESCAPED_REPLACE_ENVIRONMENT/g" vars.tf
 
       - name: setup terraform
@@ -268,6 +273,11 @@ jobs:
           cd .github/hosted-runner/amd64/
           ESCAPED_REPLACE_RUNNER_TOKEN=$(printf '%s\n' "${{ steps.token.outputs.runner }}" | sed -e 's/[\/&]/\\&/g')
           sed -i -e "s/RUNNER_TOKEN/$ESCAPED_REPLACE_RUNNER_TOKEN/g" user_data.sh
+          
+      - name: Get short commit hash to a variable
+        id: commit_hash
+        run: |
+          echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
 
       - name: Inject AWS key
         run: |
@@ -276,7 +286,7 @@ jobs:
           sed -i -e "s/AWSID/$ESCAPED_REPLACE_KEY_ID/g" vars.tf
           ESCAPED_REPLACE_ACCESS_KEY=$(printf '%s\n' "${{ secrets.AWS_SECRET_ACCESS_KEY }}" | sed -e 's/[\/&]/\\&/g')
           sed -i -e "s/AWSSECRET/$ESCAPED_REPLACE_ACCESS_KEY/g" vars.tf
-          ESCAPED_REPLACE_ENVIRONMENT=$(printf '%s\n' "${{ needs.prebuild-package.outputs.branch_name }}-release" | sed -e 's/[\/&]/\\&/g')
+          ESCAPED_REPLACE_ENVIRONMENT=$(printf '%s\n' "${{ needs.prebuild-package.outputs.branch_name }}-${{ steps.commit_hash.outputs.sha_short }}-release" | sed -e 's/[\/&]/\\&/g')
           sed -i -e "s/ENVIRONMENT/$ESCAPED_REPLACE_ENVIRONMENT/g" vars.tf         
 
       - name: setup terraform
