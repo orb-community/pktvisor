@@ -6,13 +6,9 @@
 
 namespace visor::handler::bgp {
 
-BgpStreamHandler::BgpStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config, StreamHandler *handler)
+BgpStreamHandler::BgpStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config)
     : visor::StreamMetricsHandler<BgpMetricsManager>(name, window_config)
 {
-    if (handler) {
-        throw StreamHandlerException(fmt::format("BgpStreamHandler: unsupported upstream chained stream handler {}", handler->name()));
-    }
-
     assert(proxy);
     // figure out which input event proxy we have
     _pcap_proxy = dynamic_cast<PcapInputEventProxy *>(proxy);
