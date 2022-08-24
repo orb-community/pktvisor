@@ -219,7 +219,7 @@ public:
 template <typename T>
 class TopN final : public Metric
 {
-    static constexpr uint64_t KLL_DEFAULT = 10;
+    static constexpr uint64_t KLL_DEFAULT = 0;
 
 public:
     //
