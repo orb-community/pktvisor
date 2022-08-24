@@ -186,7 +186,6 @@ public:
         packet_signal(payload, dir, l3, l4, stamp);
     }
 
-    // dns, <handlerid> by_qname2, google.com, <func that returns current qname>, <func that processes udp>
     void register_udp_predicate_signal(const std::string &schema_key, const std::string &handler_id, const std::string &predicate_key, const std::string &conditional_value, UdpPredicate predicate, UdpSignalCB callback)
     {
         std::unique_lock lock(_pcap_proxy_mutex);
