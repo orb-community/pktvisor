@@ -117,10 +117,10 @@ public:
     typedef sigslot::signal<pcpp::Packet &, PacketDirection, pcpp::ProtocolType, uint32_t, timespec> UdpPredicateSignal;
 
 private:
-    // key example: dnsonly_qname2
+    // key example: dnsonly_rcode0
     std::map<std::string, UdpPredicate> _udp_predicates;
-    // key example: dnsonly_qname2.google.com
-    std::map<std::string, UdpPredicateSignal> _udp_predicate_signals;
+    // key example: dnsonly_rcode3
+    std::unordered_map<std::string, UdpPredicateSignal> _udp_predicate_signals;
     // key: <handlerid>
     std::map<std::string, sigslot::connection> _udp_predicate_connections;
 

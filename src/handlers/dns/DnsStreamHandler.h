@@ -361,7 +361,7 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
 
     bool _filtering(DnsLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint16_t port, timespec stamp);
     bool _configs(DnsLayer &payload);
-    void _register_predicate_filter(std::string f_key, std::string f_value);
+    void _register_predicate_filter(Filters filter, std::string f_key, std::string f_value);
 
 public:
     DnsStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config, StreamHandler *handler = nullptr);

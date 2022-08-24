@@ -75,6 +75,7 @@ void DnsStreamHandler::start()
         default:
             throw ConfigException("DnsStreamHandler: only_rcode filter contained an invalid/unsupported rcode");
         }
+        _register_predicate_filter(Filters::OnlyRCode, "only_rcode", std::to_string(_f_rcode));
     }
     if (config_exists("only_dnssec_response")) {
         _f_enabled.set(Filters::OnlyDNSSECResponse);
@@ -119,12 +120,6 @@ void DnsStreamHandler::start()
                 [](unsigned char c) { return std::tolower(c); });
             _f_qnames.emplace_back(std::move(qname_ci));
         }
-    }
-    if (config_exists("only_qname2")) {
-        auto qname2 = config_get<std::string>("only_qname2");
-        std::transform(qname2.begin(), qname2.end(), qname2.begin(),
-            [](unsigned char c) { return std::tolower(c); });
-        _register_predicate_filter("only_qname2", qname2);
     }
     if (config_exists("geoloc_notfound") && config_get<bool>("geoloc_notfound")) {
         _f_enabled.set(Filters::GeoLocNotFound);
@@ -377,12 +372,12 @@ void DnsStreamHandler::info_json(json &j) const
     j[schema_key()]["predicate"]["enabled"] = _using_predicate_signals;
 }
 
-inline void DnsStreamHandler::_register_predicate_filter(std::string f_key, std::string f_value)
+inline void DnsStreamHandler::_register_predicate_filter(Filters filter, std::string f_key, std::string f_value)
 {
-    if (!_using_predicate_signals) {
-    // all DnsStreamHandler race to install this predicate, which is only installed once and called once per udp event
-    // it's job is to return the predicate "jump key" to call matching signals
-        static thread_local auto udp_qname_predicate = [](pcpp::Packet &payload, PacketDirection, pcpp::ProtocolType, uint32_t flowkey, timespec stamp) -> std::string {
+    if (!_using_predicate_signals && filter == Filters::OnlyRCode) {
+        // all DnsStreamHandler race to install this predicate, which is only installed once and called once per udp event
+        // it's job is to return the predicate "jump key" to call matching signals
+        static thread_local auto udp_rcode_predicate = [](pcpp::Packet &payload, PacketDirection, pcpp::ProtocolType, uint32_t flowkey, timespec stamp) -> std::string {
             pcpp::UdpLayer *udpLayer = payload.getLayerOfType<pcpp::UdpLayer>();
             assert(udpLayer);
             if (flowkey != _cached_dns_layer.flowKey || stamp.tv_sec != _cached_dns_layer.timestamp.tv_sec || stamp.tv_nsec != _cached_dns_layer.timestamp.tv_nsec) {
@@ -391,25 +386,18 @@ inline void DnsStreamHandler::_register_predicate_filter(std::string f_key, std:
                 _cached_dns_layer.dnsLayer = std::make_unique<DnsLayer>(udpLayer, &payload);
             }
             auto dnsLayer = _cached_dns_layer.dnsLayer.get();
-            if (!dnsLayer->parseResources(true) || dnsLayer->getFirstQuery() == nullptr) {
-                return "X"; // always filter by returning a key that will never match
-            }
-
-            std::string qname = dnsLayer->getFirstQuery()->getNameLower();
-            auto aggDomain = aggregateDomain(qname);
-
             // return the 'jump key' for pcap to make O(1) call to appropriate signals
-            return "dnsonly_qname2" + std::string(aggDomain.first);
+            return "dnsonly_rcode" + std::to_string(dnsLayer->getDnsHeader()->responseCode);
         };
 
         // if the jump key matches, this callback fires
-        auto qname_signal = [this](pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp) {
+        auto rcode_signal = [this](pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp) {
             process_udp_packet_cb(payload, dir, l3, flowkey, stamp);
         };
         if (_pcap_proxy) {
             // even though predicate and callback are sent, pcap will only install the first one it sees from dns handler
             // module name is sent to allow disconnect at shutdown time
-            _pcap_proxy->register_udp_predicate_signal(schema_key(), name(), f_key, f_value, udp_qname_predicate, qname_signal);
+            _pcap_proxy->register_udp_predicate_signal(schema_key(), name(), f_key, f_value, udp_rcode_predicate, rcode_signal);
             _using_predicate_signals = true;
         }
     }
@@ -417,8 +405,6 @@ inline void DnsStreamHandler::_register_predicate_filter(std::string f_key, std:
 inline bool DnsStreamHandler::_filtering(DnsLayer &payload, [[maybe_unused]] PacketDirection dir, [[maybe_unused]] pcpp::ProtocolType l3, [[maybe_unused]] pcpp::ProtocolType l4, [[maybe_unused]] uint16_t port, timespec stamp)
 {
     if (_f_enabled[Filters::ExcludingRCode] && payload.getDnsHeader()->responseCode == _f_rcode) {
-        goto will_filter;
-    } else if (_f_enabled[Filters::OnlyRCode] && payload.getDnsHeader()->responseCode != _f_rcode) {
         goto will_filter;
     }
     if (_f_enabled[Filters::AnswerCount] && payload.getAnswerCount() != _f_answer_count) {

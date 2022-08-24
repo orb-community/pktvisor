@@ -322,10 +322,9 @@ TEST_CASE("DNS Filters: only_rcode nx", "[pcap][net]")
     REQUIRE(counters.REFUSED.value() == 0);
     REQUIRE(counters.NX.value() == 1);
     REQUIRE(counters.NODATA.value() == 0);
-    REQUIRE(counters.filtered.value() == 23);
     nlohmann::json j;
     dns_handler.metrics()->bucket(0)->to_json(j);
-    REQUIRE(j["wire_packets"]["filtered"] == 23);
+    REQUIRE(j["wire_packets"]["filtered"] == 0);
 }
 
 TEST_CASE("DNS Filters: only_rcode refused", "[pcap][dns]")
@@ -355,10 +354,9 @@ TEST_CASE("DNS Filters: only_rcode refused", "[pcap][dns]")
     REQUIRE(counters.REFUSED.value() == 1);
     REQUIRE(counters.NX.value() == 0);
     REQUIRE(counters.NODATA.value() == 0);
-    REQUIRE(counters.filtered.value() == 23);
     nlohmann::json j;
     dns_handler.metrics()->bucket(0)->to_json(j);
-    REQUIRE(j["wire_packets"]["filtered"] == 23);
+    REQUIRE(j["wire_packets"]["filtered"] == 0);
 }
 TEST_CASE("DNS Filters: only_qtypes AAAA and TXT", "[pcap][dns]")
 {
@@ -505,7 +503,7 @@ TEST_CASE("DNS Filters: answer_count", "[pcap][dns]")
     CHECK(counters.REFUSED.value() == 0);
     CHECK(counters.NX.value() == 0);
     CHECK(counters.NODATA.value() == 4);
-    CHECK(counters.filtered.value() == 8);
+    CHECK(counters.filtered.value() == 6);
 
     nlohmann::json j;
     dns_handler.metrics()->bucket(0)->to_json(j);
@@ -880,7 +878,7 @@ TEST_CASE("DNS groups", "[pcap][dns]")
     }
 }
 
-TEST_CASE("DNS Filters: Qname2 with predicate", "[pcap][dns][filter]")
+TEST_CASE("DNS Filters: only_rcode with predicate", "[pcap][dns][filter]")
 {
     PcapInputStream stream{"pcap-test"};
     stream.config_set("pcap_file", "tests/fixtures/dns_udp_mixed_rcode.pcap");
@@ -894,9 +892,8 @@ TEST_CASE("DNS Filters: Qname2 with predicate", "[pcap][dns][filter]")
     DnsStreamHandler dns_handler_1{"dns-test-1", stream_proxy, &c};
     DnsStreamHandler dns_handler_2{"dns-test-2", stream_proxy, &c};
 
-
-    dns_handler_1.config_set<std::string>("only_qname2", ".test.com");
-    dns_handler_2.config_set<std::string>("only_qname2", ".google.com");
+    dns_handler_1.config_set<uint64_t>("only_rcode", 2);
+    dns_handler_2.config_set<uint64_t>("only_rcode", 3);
 
     dns_handler_1.start();
     dns_handler_2.start();
@@ -912,12 +909,9 @@ TEST_CASE("DNS Filters: Qname2 with predicate", "[pcap][dns][filter]")
 
     auto event_data_2 = dns_handler_2.metrics()->bucket(0)->event_data_locked();
 
-    CHECK(event_data_2.num_events->value() == 6);
-    CHECK(event_data_2.num_samples->value() == 6);
+    CHECK(event_data_2.num_events->value() == 1);
+    CHECK(event_data_2.num_samples->value() == 1);
 
     nlohmann::json j;
     dns_handler_2.metrics()->bucket(0)->to_json(j);
-
-    CHECK(j["top_qname2"][0]["name"] == ".google.com");
-    CHECK(j["top_qname2"][1]["name"] == nullptr);
 }
