@@ -199,7 +199,6 @@ TEST_CASE("Parse DNS random UDP/TCP tests", "[pcap][dns]")
     auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
     DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
-    dns_handler.config_set<visor::Configurable::StringList>("enable", visor::Configurable::StringList({"top_ports"}));
 
     dns_handler.start();
     stream.start();

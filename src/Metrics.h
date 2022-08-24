@@ -219,6 +219,8 @@ public:
 template <typename T>
 class TopN final : public Metric
 {
+    static constexpr uint64_t KLL_DEFAULT = 10;
+
 public:
     //
     // https://datasketches.github.io/docs/Frequency/FrequentItemsErrorTable.html
@@ -235,12 +237,27 @@ private:
     datasketches::frequent_items_sketch<T> _fi;
     size_t _top_count = 10;
     std::string _item_key;
+    double _percentile;
+
+    uint64_t _get_threshold() const
+    {
+        auto items = _fi.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
+        datasketches::kll_sketch<uint64_t> quantile;
+        for (uint64_t i = 0; i < std::min(_top_count, items.size()); i++) {
+            quantile.update(items[i].get_estimate());
+        }
+        if (quantile.is_empty()) {
+            return 0;
+        }
+        return quantile.get_quantile(_percentile);
+    }
 
 public:
-    TopN(std::string schema_key, std::string item_key, std::initializer_list<std::string> names, std::string desc)
+    TopN(std::string schema_key, std::string item_key, std::initializer_list<std::string> names, std::string desc, uint64_t percentile = KLL_DEFAULT)
         : Metric(schema_key, names, std::move(desc))
         , _fi(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
         , _item_key(item_key)
+        , _percentile(static_cast<double>(percentile) / 100)
     {
     }
 
@@ -278,9 +295,12 @@ public:
     {
         auto section = json::array();
         auto items = _fi.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
+        auto threshold = _get_threshold();
         for (uint64_t i = 0; i < std::min(_top_count, items.size()); i++) {
-            section[i]["name"] = formatter(items[i].get_item());
-            section[i]["estimate"] = items[i].get_estimate();
+            if (items[i].get_estimate() >= threshold) {
+                section[i]["name"] = formatter(items[i].get_item());
+                section[i]["estimate"] = items[i].get_estimate();
+            }
         }
         name_json_assign(j, section);
     }
@@ -289,11 +309,14 @@ public:
     {
         LabelMap l(add_labels);
         auto items = _fi.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
+        auto threshold = _get_threshold();
         out << "# HELP " << base_name_snake() << ' ' << _desc << std::endl;
         out << "# TYPE " << base_name_snake() << " gauge" << std::endl;
         for (uint64_t i = 0; i < std::min(_top_count, items.size()); i++) {
-            l[_item_key] = formatter(items[i].get_item());
-            out << name_snake({}, l) << ' ' << items[i].get_estimate() << std::endl;
+            if (items[i].get_estimate() >= threshold) {
+                l[_item_key] = formatter(items[i].get_item());
+                out << name_snake({}, l) << ' ' << items[i].get_estimate() << std::endl;
+            }
         }
     }
 
@@ -302,9 +325,12 @@ public:
     {
         auto section = json::array();
         auto items = _fi.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
+        auto threshold = _get_threshold();
         for (uint64_t i = 0; i < std::min(_top_count, items.size()); i++) {
-            section[i]["name"] = items[i].get_item();
-            section[i]["estimate"] = items[i].get_estimate();
+            if (items[i].get_estimate() >= threshold) {
+                section[i]["name"] = items[i].get_item();
+                section[i]["estimate"] = items[i].get_estimate();
+            }
         }
         name_json_assign(j, section);
     }
@@ -313,13 +339,16 @@ public:
     {
         LabelMap l(add_labels);
         auto items = _fi.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
+        auto threshold = _get_threshold();
         out << "# HELP " << base_name_snake() << ' ' << _desc << std::endl;
         out << "# TYPE " << base_name_snake() << " gauge" << std::endl;
         for (uint64_t i = 0; i < std::min(_top_count, items.size()); i++) {
-            std::stringstream name_text;
-            name_text << items[i].get_item();
-            l[_item_key] = name_text.str();
-            out << name_snake({}, l) << ' ' << items[i].get_estimate() << std::endl;
+            if (items[i].get_estimate() >= threshold) {
+                std::stringstream name_text;
+                name_text << items[i].get_item();
+                l[_item_key] = name_text.str();
+                out << name_snake({}, l) << ' ' << items[i].get_estimate() << std::endl;
+            }
         }
     }
 };

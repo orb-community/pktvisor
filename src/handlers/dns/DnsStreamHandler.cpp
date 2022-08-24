@@ -51,6 +51,7 @@ void DnsStreamHandler::start()
     _groups.set(group::DnsMetrics::Counters);
     _groups.set(group::DnsMetrics::DnsTransactions);
     _groups.set(group::DnsMetrics::TopQnames);
+    _groups.set(group::DnsMetrics::TopPorts);
     process_groups(_group_defs);
 
     // Setup Filters
