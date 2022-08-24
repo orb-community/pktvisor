@@ -16,6 +16,7 @@ TEST_CASE("Parse DNSTAP", "[dnstap][dns]")
     c.config_set<uint64_t>("num_periods", 1);
     auto stream_proxy = stream.add_event_proxy(c);
     DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
+    dns_handler.config_set<visor::Configurable::StringList>("enable", visor::Configurable::StringList({"top_ports"}));
 
     dns_handler.start();
     stream.start();
@@ -108,7 +109,7 @@ TEST_CASE("Parse filtered DNSTAP with data", "[dnstap][dns][filter]")
     auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
     DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
-
+    dns_handler.config_set<visor::Configurable::StringList>("enable", visor::Configurable::StringList({"top_ports"}));
     dns_handler.config_set<std::string>("dnstap_msg_type", "client");
 
     dns_handler.start();

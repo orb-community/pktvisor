@@ -35,7 +35,8 @@ enum DnsMetrics : visor::MetricGroupIntType {
     Counters,
     DnsTransactions,
     TopEcs,
-    TopQnames
+    TopQnames,
+    TopPorts
 };
 }
 
@@ -209,7 +210,7 @@ public:
 
     void process_filtered();
     void process_dns_layer(bool deep, DnsLayer &payload, pcpp::ProtocolType l3, Protocol l4, uint16_t port, size_t suffix_size = 0);
-    void process_dns_layer(pcpp::ProtocolType l3, Protocol l4, QR side, uint16_t port);
+    void process_dns_layer(pcpp::ProtocolType l3, Protocol l4, QR side);
     void process_dnstap(bool deep, const dnstap::Dnstap &payload);
 
     void new_dns_transaction(bool deep, float to90th, float from90th, DnsLayer &dns, PacketDirection dir, DnsTransaction xact);
@@ -348,7 +349,8 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
         {"counters", group::DnsMetrics::Counters},
         {"dns_transaction", group::DnsMetrics::DnsTransactions},
         {"top_ecs", group::DnsMetrics::TopEcs},
-        {"top_qnames", group::DnsMetrics::TopQnames}};
+        {"top_qnames", group::DnsMetrics::TopQnames},
+        {"top_ports", group::DnsMetrics::TopPorts}};
 
     bool _filtering(DnsLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint16_t port, timespec stamp);
     bool _configs(DnsLayer &payload);

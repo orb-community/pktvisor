@@ -520,7 +520,10 @@ void DnsMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
         _dns_topNODATA.merge(other._dns_topNODATA);
     }
 
-    _dns_topUDPPort.merge(other._dns_topUDPPort);
+    if (group_enabled(group::DnsMetrics::TopPorts)) {
+        _dns_topUDPPort.merge(other._dns_topUDPPort);
+    }
+
     _dns_topQType.merge(other._dns_topQType);
     _dns_topRCode.merge(other._dns_topRCode);
 }
@@ -576,7 +579,9 @@ void DnsMetricsBucket::to_json(json &j) const
         _dns_slowXactOut.to_json(j);
     }
 
-    _dns_topUDPPort.to_json(j, [](const uint16_t &val) { return std::to_string(val); });
+    if (group_enabled(group::DnsMetrics::TopPorts)) {
+        _dns_topUDPPort.to_json(j, [](const uint16_t &val) { return std::to_string(val); });
+    }
 
     if (group_enabled(group::DnsMetrics::TopEcs)) {
         group_enabled(group::DnsMetrics::Counters) ? _counters.queryECS.to_json(j) : void();
@@ -655,7 +660,7 @@ void DnsMetricsBucket::process_dnstap(bool deep, const dnstap::Dnstap &payload)
     }
 
     if (!deep || (!payload.message().has_query_message() && !payload.message().has_response_message())) {
-        process_dns_layer(l3, l4, side, 0);
+        process_dns_layer(l3, l4, side);
         return;
     }
 
@@ -744,7 +749,7 @@ void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, pcpp::Pro
         return;
     }
 
-    if (port) {
+    if (port && group_enabled(group::DnsMetrics::TopPorts)) {
         _dns_topUDPPort.update(port);
     }
 
@@ -822,7 +827,7 @@ void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, pcpp::Pro
     }
 }
 
-void DnsMetricsBucket::process_dns_layer(pcpp::ProtocolType l3, Protocol l4, QR side, uint16_t port)
+void DnsMetricsBucket::process_dns_layer(pcpp::ProtocolType l3, Protocol l4, QR side)
 {
     std::unique_lock lock(_mutex);
 
@@ -861,10 +866,6 @@ void DnsMetricsBucket::process_dns_layer(pcpp::ProtocolType l3, Protocol l4, QR 
         } else if (side == QR::response) {
             ++_counters.replies;
         }
-    }
-
-    if (port) {
-        _dns_topUDPPort.update(port);
     }
 }
 
@@ -956,8 +957,9 @@ void DnsMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap ad
         _dns_slowXactOut.to_prometheus(out, add_labels);
     }
 
-    _dns_topUDPPort.to_prometheus(out, add_labels, [](const uint16_t &val) { return std::to_string(val); });
-
+    if (group_enabled(group::DnsMetrics::TopPorts)) {
+        _dns_topUDPPort.to_prometheus(out, add_labels, [](const uint16_t &val) { return std::to_string(val); });
+    }
     if (group_enabled(group::DnsMetrics::TopEcs)) {
         group_enabled(group::DnsMetrics::Counters) ? _counters.queryECS.to_prometheus(out, add_labels) : void();
         _dns_topGeoLocECS.to_prometheus(out, add_labels);
