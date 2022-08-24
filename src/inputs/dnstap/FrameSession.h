@@ -103,21 +103,21 @@ bool FrameSessionData<C>::_decode_control_frame(const void *control_frame, size_
             // bi-directional: got READY, send ACCEPT
             fstrm_res res;
             struct fstrm_control *c;
-            auto control_frame = std::make_unique<char[]>(FSTRM_CONTROL_FRAME_LENGTH_MAX);
-            size_t len_control_frame = FSTRM_CONTROL_FRAME_LENGTH_MAX;
+            auto control_frame_data = std::make_unique<char[]>(FSTRM_CONTROL_FRAME_LENGTH_MAX);
+            size_t length_control_frame = FSTRM_CONTROL_FRAME_LENGTH_MAX;
             c = fstrm_control_init();
             res = fstrm_control_set_type(c, FSTRM_CONTROL_ACCEPT);
             if (res != fstrm_res_success) {
                 throw DnstapException("unable to send ACCEPT: fstrm_control_set_type");
             }
             // Serialize the control frame.
-            res = fstrm_control_encode(c, control_frame.get(), &len_control_frame, FSTRM_CONTROL_FLAG_WITH_HEADER);
+            res = fstrm_control_encode(c, control_frame_data.get(), &length_control_frame, FSTRM_CONTROL_FLAG_WITH_HEADER);
             if (res != fstrm_res_success) {
                 throw DnstapException("unable to send ACCEPT: fstrm_control_encode");
             }
             fstrm_control_destroy(&c);
             // don't write to client in unit tests
-            _client_h->write(std::move(control_frame), len_control_frame);
+            _client_h->write(std::move(control_frame_data), length_control_frame);
         }
         break;
     }

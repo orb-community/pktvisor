@@ -20,10 +20,10 @@ using json = nlohmann::json;
 void FlowHandlerModulePlugin::setup_routes(HttpServer *svr)
 {
 }
-std::unique_ptr<StreamHandler> FlowHandlerModulePlugin::instantiate(const std::string &name, InputEventProxy *proxy, const Configurable *config, const Configurable *filter, StreamHandler *stream_handler)
+std::unique_ptr<StreamHandler> FlowHandlerModulePlugin::instantiate(const std::string &name, InputEventProxy *proxy, const Configurable *config, const Configurable *filter)
 {
     // TODO using config as both window config and module config
-    auto handler_module = std::make_unique<FlowStreamHandler>(name, proxy, config, stream_handler);
+    auto handler_module = std::make_unique<FlowStreamHandler>(name, proxy, config);
     handler_module->config_merge(*config);
     handler_module->config_merge(*filter);
     return handler_module;

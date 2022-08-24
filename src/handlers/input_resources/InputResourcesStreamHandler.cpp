@@ -7,15 +7,11 @@
 
 namespace visor::handler::resources {
 
-InputResourcesStreamHandler::InputResourcesStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config, StreamHandler *handler)
+InputResourcesStreamHandler::InputResourcesStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config)
     : visor::StreamMetricsHandler<InputResourcesMetricsManager>(name, window_config)
     , _timer(0)
     , _timestamp(timespec())
 {
-    if (handler) {
-        throw StreamHandlerException(fmt::format("ResourcesStreamHandler: unsupported upstream chained stream handler {}", handler->name()));
-    }
-
     assert(proxy);
     // figure out which input stream we have
     if (proxy) {
@@ -24,7 +20,7 @@ InputResourcesStreamHandler::InputResourcesStreamHandler(const std::string &name
         _mock_proxy = dynamic_cast<MockInputEventProxy *>(proxy);
         _flow_proxy = dynamic_cast<FlowInputEventProxy *>(proxy);
         if (!_pcap_proxy && !_mock_proxy && !_dnstap_proxy && !_flow_proxy) {
-            throw StreamHandlerException(fmt::format("ResourcesStreamHandler: unsupported input event proxy {}", proxy->name()));
+            throw StreamHandlerException(fmt::format("InputResourcesStreamHandler: unsupported input event proxy {}", proxy->name()));
         }
     }
 }

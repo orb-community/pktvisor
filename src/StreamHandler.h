@@ -6,6 +6,8 @@
 
 #include "AbstractMetricsManager.h"
 #include "AbstractModule.h"
+#include "InputEventProxy.h"
+#include <ctime>
 #include <fmt/ostream.h>
 #include <nlohmann/json.hpp>
 #include <sstream>
@@ -25,6 +27,9 @@ public:
 
 class StreamHandler : public AbstractRunnableModule
 {
+protected:
+    std::unique_ptr<InputEventProxy> _event_proxy;
+
 public:
     StreamHandler(const std::string &name)
         : AbstractRunnableModule(name)
@@ -33,7 +38,24 @@ public:
 
     virtual ~StreamHandler(){};
 
-    virtual size_t consumer_count() const = 0;
+    size_t consumer_count() const
+    {
+        if (_event_proxy) {
+            return _event_proxy->consumer_count();
+        }
+        return 0;
+    }
+
+    void set_event_proxy(std::unique_ptr<InputEventProxy> proxy)
+    {
+        _event_proxy = std::move(proxy);
+    }
+
+    InputEventProxy *get_event_proxy()
+    {
+        return _event_proxy.get();
+    }
+
     virtual void window_json(json &j, uint64_t period, bool merged) = 0;
     virtual void window_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) = 0;
 };
@@ -92,13 +114,17 @@ protected:
             {
                 std::stringstream ssts;
                 time_t b_time_t = _metrics->bucket(i)->start_tstamp().tv_sec;
-                ssts << std::put_time(std::gmtime(&b_time_t), "%Y-%m-%d %X");
+                std::tm bt{};
+                gmtime_r(&b_time_t, &bt);
+                ssts << std::put_time(&bt, "%Y-%m-%d %X");
                 j["metrics"]["periods"][i]["start_tstamp"] = ssts.str();
             }
             if (_metrics->bucket(i)->read_only()) {
                 std::stringstream ssts;
                 time_t b_time_t = _metrics->bucket(i)->end_tstamp().tv_sec;
-                ssts << std::put_time(std::gmtime(&b_time_t), "%Y-%m-%d %X");
+                std::tm bt{};
+                gmtime_r(&b_time_t, &bt);
+                ssts << std::put_time(&bt, "%Y-%m-%d %X");
                 j["metrics"]["periods"][i]["end_tstamp"] = ssts.str();
             }
             j["metrics"]["periods"][i]["read_only"] = _metrics->bucket(i)->read_only();

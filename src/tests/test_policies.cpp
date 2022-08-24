@@ -492,32 +492,6 @@ visor:
             type: net
 )";
 
-auto policies_config_hseq_bad1 = R"(
-version: "1.0"
-
-visor:
-  taps:
-    anycast:
-      input_type: mock
-      config:
-        iface: eth0
-  policies:
-    default_view:
-      kind: collection
-      input:
-        tap: anycast
-        input_type: mock
-      handlers:
-        window_config:
-          num_periods: 5
-          deep_sample_rate: 100
-        modules:
-          - default_net:
-            type: net
-          - default_dns:
-            type: dns
-)";
-
 auto policies_config_hseq_bad2 = R"(
 version: "1.0"
 
@@ -750,6 +724,24 @@ TEST_CASE("Policies", "[policies]")
         REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["policies"]), "expecting policy configuration map");
     }
 
+    SECTION("Bad Config: empty data")
+    {
+        CoreRegistry registry;
+        REQUIRE_THROWS_WITH(registry.policy_manager()->load_from_str(""), "empty data");
+    }
+
+    SECTION("Bad Config: invalid schema")
+    {
+        CoreRegistry registry;
+        REQUIRE_THROWS_WITH(registry.policy_manager()->load_from_str("invalid: schema"), "invalid schema");
+    }
+
+    SECTION("Bad Config: missing version")
+    {
+        CoreRegistry registry;
+        REQUIRE_THROWS_WITH(registry.policy_manager()->load_from_str(policies_config_bad1), "missing or unsupported version");
+    }
+
     SECTION("Bad Config: invalid tap")
     {
         CoreRegistry registry;
@@ -772,10 +764,9 @@ TEST_CASE("Policies", "[policies]")
     {
         CoreRegistry registry;
         registry.start(nullptr);
-        YAML::Node config_file = YAML::Load(policies_config_bad4);
 
-        REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
-        REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["policies"]), "policy [default_view] failed to start: mock error on start");
+        REQUIRE_NOTHROW(registry.tap_manager()->load_from_str(policies_config_bad4));
+        REQUIRE_THROWS_WITH(registry.policy_manager()->load_from_str(policies_config_bad4), "policy [default_view] failed to start: mock error on start");
     }
 
     SECTION("Bad Config: mis-matched input_type on tap")
@@ -876,16 +867,6 @@ TEST_CASE("Policies", "[policies]")
 
         REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
         REQUIRE_THROWS_WITH(registry.policy_manager()->set_default_handler_config(config_file["visor"]["global_handler_config"]), "expecting global_handler_config configuration map");
-    }
-
-    SECTION("Bad Config: invalid handler modules order")
-    {
-        CoreRegistry registry;
-        registry.start(nullptr);
-        YAML::Node config_file = YAML::Load(policies_config_hseq_bad1);
-
-        REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
-        REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["policies"]), "DnsStreamHandler: unsupported upstream chained stream handler default_view-anycast-default_net");
     }
 
     SECTION("Bad Config: invalid handler modules YAML type")

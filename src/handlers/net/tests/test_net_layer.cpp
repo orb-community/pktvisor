@@ -1,10 +1,12 @@
 #include <catch2/catch.hpp>
 
+#include "DnsStreamHandler.h"
 #include "GeoDB.h"
 #include "NetStreamHandler.h"
 #include "PcapInputStream.h"
 
 using namespace visor::handler::net;
+using namespace visor::handler::dns;
 using namespace visor::input::pcap;
 
 TEST_CASE("Parse net (dns) UDP IPv4 tests", "[pcap][ipv4][udp][net]")
@@ -163,6 +165,7 @@ TEST_CASE("Parse net (dns) random UDP/TCP tests", "[pcap][net]")
     CHECK(counters.OtherL4.value() == 0);
     CHECK(counters.total_in.value() == 6648);
     CHECK(counters.total_out.value() == 9499);
+    CHECK(counters.total_unk.value() == 0);
 
     nlohmann::json j;
     net_handler.metrics()->bucket(0)->to_json(j);
@@ -187,7 +190,8 @@ TEST_CASE("Parse net (dns) with DNS filter only_qname_suffix", "[pcap][dns][net]
     auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
     DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
-    NetStreamHandler net_handler{"net-test", nullptr, &c, &dns_handler};
+    dns_handler.set_event_proxy(stream.create_event_proxy(c));
+    NetStreamHandler net_handler{"net-test", dns_handler.get_event_proxy(), &c};
 
     dns_handler.config_set<visor::Configurable::StringList>("only_qname_suffix", {"google.com"});
 
@@ -364,7 +368,7 @@ TEST_CASE("Net geolocation filtering", "[pcap][net][geo]")
     PcapInputStream stream{"pcap-test"};
     stream.config_set("pcap_file", "tests/fixtures/dns_udp_mixed_rcode.pcap");
     stream.config_set("bpf", "");
-    stream.config_set("host_spec", "192.168.0.0/23");
+    stream.config_set("host_spec", "192.168.0.0/24");
     stream.parse_host_spec();
 
     visor::Config c;
@@ -374,7 +378,7 @@ TEST_CASE("Net geolocation filtering", "[pcap][net][geo]")
 
     SECTION("Enable geoloc not found")
     {
-        net_handler.config_set<bool>("geloc_notfound", true);
+        net_handler.config_set<bool>("geoloc_notfound", true);
 
         net_handler.start();
         stream.start();
@@ -408,7 +412,7 @@ TEST_CASE("Net geolocation filtering", "[pcap][net][geo]")
 
     SECTION("Enable geoloc and asn not found")
     {
-        net_handler.config_set<bool>("geloc_notfound", true);
+        net_handler.config_set<bool>("geoloc_notfound", true);
         net_handler.config_set<bool>("asn_notfound", true);
 
         net_handler.start();
@@ -424,5 +428,41 @@ TEST_CASE("Net geolocation filtering", "[pcap][net][geo]")
         CHECK(j["top_geoLoc"][0]["name"] == "Unknown");
         CHECK(j["top_ASN"][0]["estimate"] == 24);
         CHECK(j["top_ASN"][0]["name"] == "Unknown");
+    }
+
+    SECTION("Enable geoloc prefix")
+    {
+        net_handler.config_set<visor::Configurable::StringList>("only_geoloc_prefix", {"NA/United States"});
+
+        net_handler.start();
+        stream.start();
+        stream.stop();
+        net_handler.stop();
+
+        nlohmann::json j;
+        net_handler.metrics()->bucket(0)->to_json(j);
+        CHECK(j["filtered"] == 24);
+        CHECK(j["top_geoLoc"][0]["name"] == nullptr);
+    }
+
+    SECTION("Enable asn number")
+    {
+        net_handler.config_set<visor::Configurable::StringList>("only_asn_number", {"16509", "22131"});
+
+        net_handler.start();
+        stream.start();
+        stream.stop();
+        net_handler.stop();
+
+        nlohmann::json j;
+        net_handler.metrics()->bucket(0)->to_json(j);
+        CHECK(j["filtered"] == 24);
+        CHECK(j["top_ASN"][0]["name"] == nullptr);
+    }
+
+    SECTION("Invalid asn number")
+    {
+        net_handler.config_set<visor::Configurable::StringList>("only_asn_number", {"16509/Amazon"});
+        REQUIRE_THROWS_WITH(net_handler.start(), "NetStreamHandler: only_asn_number filter contained an invalid/unsupported value: 16509/Amazon");
     }
 }

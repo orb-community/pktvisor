@@ -39,6 +39,45 @@ enum class PacketDirection {
     unknown
 };
 
+class TcpSessionData
+{
+public:
+    using got_msg_cb = std::function<void(std::unique_ptr<uint8_t[]> data, size_t size)>;
+
+protected:
+    std::string _buffer;
+    got_msg_cb _got_msg;
+    bool _invalid_data;
+
+public:
+    TcpSessionData(
+        got_msg_cb got_data_handler)
+        : _got_msg{std::move(got_data_handler)}
+        , _invalid_data(false)
+    {
+    }
+
+    virtual ~TcpSessionData()
+    {
+    }
+
+    // called from pcpp::TcpReassembly callback, matches types
+    virtual void receive_tcp_data(const uint8_t *data, size_t len) = 0;
+};
+
+struct TcpFlowData {
+
+    std::unique_ptr<TcpSessionData> sessionData[2];
+    pcpp::ProtocolType l3Type;
+    uint16_t port;
+
+    TcpFlowData(bool isIPv4, uint16_t port)
+        : port(port)
+    {
+        (isIPv4) ? l3Type = pcpp::IPv4 : l3Type = pcpp::IPv6;
+    }
+};
+
 class PcapInputStream : public visor::InputStream
 {
 

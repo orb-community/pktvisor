@@ -23,13 +23,9 @@ namespace visor::handler::dns {
 
 thread_local DnsStreamHandler::DnsCacheData DnsStreamHandler::_cached_dns_layer;
 
-DnsStreamHandler::DnsStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config, StreamHandler *handler)
+DnsStreamHandler::DnsStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config)
     : visor::StreamMetricsHandler<DnsMetricsManager>(name, window_config)
 {
-    if (handler) {
-        throw StreamHandlerException(fmt::format("DnsStreamHandler: unsupported upstream chained stream handler {}", handler->name()));
-    }
-
     assert(proxy);
     // figure out which input event proxy we have
     _pcap_proxy = dynamic_cast<PcapInputEventProxy *>(proxy);
@@ -77,7 +73,7 @@ void DnsStreamHandler::start()
         }
         _register_predicate_filter(Filters::OnlyRCode, "only_rcode", std::to_string(_f_rcode));
     }
-    if (config_exists("only_dnssec_response")) {
+    if (config_exists("only_dnssec_response") && config_get<bool>("only_dnssec_response")) {
         _f_enabled.set(Filters::OnlyDNSSECResponse);
     }
     if (config_exists("answer_count")) {
@@ -155,15 +151,27 @@ void DnsStreamHandler::start()
         if (!_using_predicate_signals) {
             _pkt_udp_connection = _pcap_proxy->udp_signal.connect(&DnsStreamHandler::process_udp_packet_cb, this);
         }
-        _start_tstamp_connection = _pcap_proxy->start_tstamp_signal.connect([this](timespec stamp) { set_start_tstamp(stamp); start_tstamp_signal(stamp); });
-        _end_tstamp_connection = _pcap_proxy->end_tstamp_signal.connect([this](timespec stamp) { set_end_tstamp(stamp); end_tstamp_signal(stamp); });
+        _start_tstamp_connection = _pcap_proxy->start_tstamp_signal.connect([this](timespec stamp) {
+            set_start_tstamp(stamp);
+            _event_proxy ? static_cast<PcapInputEventProxy *>(_event_proxy.get())->start_tstamp_signal(stamp) : void();
+        });
+        _end_tstamp_connection = _pcap_proxy->end_tstamp_signal.connect([this](timespec stamp) {
+            set_end_tstamp(stamp);
+            _event_proxy ? static_cast<PcapInputEventProxy *>(_event_proxy.get())->end_tstamp_signal(stamp) : void();
+        });
         _tcp_start_connection = _pcap_proxy->tcp_connection_start_signal.connect(&DnsStreamHandler::tcp_connection_start_cb, this);
         _tcp_end_connection = _pcap_proxy->tcp_connection_end_signal.connect(&DnsStreamHandler::tcp_connection_end_cb, this);
         _tcp_message_connection = _pcap_proxy->tcp_message_ready_signal.connect(&DnsStreamHandler::tcp_message_ready_cb, this);
-        _heartbeat_connection = _pcap_proxy->heartbeat_signal.connect([this](const timespec stamp) { check_period_shift(stamp); heartbeat_signal(stamp); });
+        _heartbeat_connection = _pcap_proxy->heartbeat_signal.connect([this](const timespec stamp) {
+            check_period_shift(stamp);
+            _event_proxy ? _event_proxy->heartbeat_signal(stamp) : void();
+        });
     } else if (_dnstap_proxy) {
         _dnstap_connection = _dnstap_proxy->dnstap_signal.connect(&DnsStreamHandler::process_dnstap_cb, this);
-        _heartbeat_connection = _dnstap_proxy->heartbeat_signal.connect([this](const timespec stamp) { check_period_shift(stamp); heartbeat_signal(stamp); });
+        _heartbeat_connection = _dnstap_proxy->heartbeat_signal.connect([this](const timespec stamp) {
+            check_period_shift(stamp);
+            _event_proxy ? _event_proxy->heartbeat_signal(stamp) : void();
+        });
     }
 
     _running = true;
@@ -230,12 +238,15 @@ void DnsStreamHandler::process_udp_packet_cb(pcpp::Packet &payload, PacketDirect
             _metrics->process_dns_layer(*dnsLayer, dir, l3, pcpp::UDP, flowkey, metric_port, _static_suffix_size, stamp);
             _static_suffix_size = 0;
             // signal for chained stream handlers, if we have any
-            udp_signal(payload, dir, l3, flowkey, stamp);
+            if (_event_proxy) {
+                static_cast<PcapInputEventProxy *>(_event_proxy.get())->packet_signal(payload, dir, l3, pcpp::UDP, stamp);
+                static_cast<PcapInputEventProxy *>(_event_proxy.get())->udp_signal(payload, dir, l3, flowkey, stamp);
+            }
         }
     }
 }
 
-void TcpSessionData::receive_dns_wire_data(const uint8_t *data, size_t len)
+void DnsTcpSessionData::receive_tcp_data(const uint8_t *data, size_t len)
 {
     if (_invalid_data) {
         return;
@@ -262,10 +273,10 @@ void TcpSessionData::receive_dns_wire_data(const uint8_t *data, size_t len)
         }
 
         if (_buffer.size() >= sizeof(size) + size) {
-            auto data = std::make_unique<uint8_t[]>(size);
-            std::memcpy(data.get(), _buffer.data() + sizeof(size), size);
+            auto dns_data = std::make_unique<uint8_t[]>(size);
+            std::memcpy(dns_data.get(), _buffer.data() + sizeof(size), size);
             _buffer.erase(0, sizeof(size) + size);
-            _got_dns_msg(std::move(data), size);
+            _got_msg(std::move(dns_data), size);
         } else {
             // Nope, we need more data.
             break;
@@ -319,10 +330,10 @@ void DnsStreamHandler::tcp_message_ready_cb(int8_t side, const pcpp::TcpStreamDa
     };
 
     if (!iter->second.sessionData[side]) {
-        iter->second.sessionData[side] = std::make_unique<TcpSessionData>(got_dns_message);
+        iter->second.sessionData[side] = std::make_unique<DnsTcpSessionData>(got_dns_message);
     }
 
-    iter->second.sessionData[side]->receive_dns_wire_data(tcpData.getData(), tcpData.getDataLength());
+    iter->second.sessionData[side]->receive_tcp_data(tcpData.getData(), tcpData.getDataLength());
 }
 
 void DnsStreamHandler::tcp_connection_start_cb(const pcpp::ConnectionData &connectionData)
@@ -423,7 +434,7 @@ inline bool DnsStreamHandler::_filtering(DnsLayer &payload, [[maybe_unused]] Pac
             if (!dns_answer) {
                 break;
             }
-            if (dns_answer->getDnsType() == pcpp::DNS_TYPE_RRSIG) {
+            if (dns_answer->getDnsType() == DNS_TYPE_RRSIG) {
                 has_ssig = true;
                 break;
             }
@@ -502,6 +513,9 @@ void DnsMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
     // static because caller guarantees only our own bucket type
     const auto &other = static_cast<const DnsMetricsBucket &>(o);
 
+    // rates maintain their own thread safety
+    _rate_total.merge(other._rate_total);
+
     std::shared_lock r_lock(other._mutex);
     std::unique_lock w_lock(_mutex);
 
@@ -517,9 +531,9 @@ void DnsMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
         _counters.SRVFAIL += other._counters.SRVFAIL;
         _counters.NOERROR += other._counters.NOERROR;
         _counters.NODATA += other._counters.NODATA;
+        _counters.total += other._counters.total;
+        _counters.filtered += other._counters.filtered;
     }
-
-    _counters.filtered += other._counters.filtered;
 
     if (group_enabled(group::DnsMetrics::DnsTransactions)) {
         _counters.xacts_total += other._counters.xacts_total;
@@ -562,6 +576,7 @@ void DnsMetricsBucket::to_json(json &j) const
 {
 
     bool live_rates = !read_only() && !recorded_stream();
+    _rate_total.to_json(j, live_rates);
 
     {
         auto [num_events, num_samples, event_rate, event_lock] = event_data_locked(); // thread safe
@@ -585,9 +600,9 @@ void DnsMetricsBucket::to_json(json &j) const
         _counters.SRVFAIL.to_json(j);
         _counters.NOERROR.to_json(j);
         _counters.NODATA.to_json(j);
+        _counters.total.to_json(j);
+        _counters.filtered.to_json(j);
     }
-
-    _counters.filtered.to_json(j);
 
     if (group_enabled(group::DnsMetrics::Cardinality)) {
         _dns_qnameCard.to_json(j);
@@ -718,7 +733,11 @@ void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, pcpp::Pro
 {
     std::unique_lock lock(_mutex);
 
+    ++_rate_total;
+
     if (group_enabled(group::DnsMetrics::Counters)) {
+        ++_counters.total;
+
         if (l3 == pcpp::IPv6) {
             ++_counters.IPv6;
         } else if (l3 == pcpp::IPv4) {
@@ -854,7 +873,11 @@ void DnsMetricsBucket::process_dns_layer(pcpp::ProtocolType l3, Protocol l4, QR 
 {
     std::unique_lock lock(_mutex);
 
+    ++_rate_total;
+
     if (group_enabled(group::DnsMetrics::Counters)) {
+        ++_counters.total;
+
         if (l3 == pcpp::IPv6) {
             ++_counters.IPv6;
         } else if (l3 == pcpp::IPv4) {
@@ -934,6 +957,7 @@ void DnsMetricsBucket::new_dns_transaction(bool deep, float to90th, float from90
 }
 void DnsMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap add_labels) const
 {
+    _rate_total.to_prometheus(out, add_labels);
 
     {
         auto [num_events, num_samples, event_rate, event_lock] = event_data_locked(); // thread safe
@@ -956,9 +980,9 @@ void DnsMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap ad
         _counters.SRVFAIL.to_prometheus(out, add_labels);
         _counters.NOERROR.to_prometheus(out, add_labels);
         _counters.NODATA.to_prometheus(out, add_labels);
+        _counters.total.to_prometheus(out, add_labels);
+        _counters.filtered.to_prometheus(out, add_labels);
     }
-
-    _counters.filtered.to_prometheus(out, add_labels);
 
     if (group_enabled(group::DnsMetrics::Cardinality)) {
         _dns_qnameCard.to_prometheus(out, add_labels);
@@ -1016,7 +1040,9 @@ void DnsMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap ad
 void DnsMetricsBucket::process_filtered()
 {
     std::unique_lock lock(_mutex);
-    ++_counters.filtered;
+    if (group_enabled(group::DnsMetrics::Counters)) {
+        ++_counters.filtered;
+    }
 }
 
 // the general metrics manager entry point (both UDP and TCP)

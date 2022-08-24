@@ -21,7 +21,7 @@
 
 namespace visor::handler::net {
 
-NetStreamHandler::NetStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config, StreamHandler *handler)
+NetStreamHandler::NetStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config)
     : visor::StreamMetricsHandler<NetworkMetricsManager>(name, window_config)
 {
     // figure out which input event proxy we have
@@ -31,13 +31,6 @@ NetStreamHandler::NetStreamHandler(const std::string &name, InputEventProxy *pro
         _mock_proxy = dynamic_cast<MockInputEventProxy *>(proxy);
         if (!_pcap_proxy && !_dnstap_proxy && !_mock_proxy) {
             throw StreamHandlerException(fmt::format("NetStreamHandler: unsupported input event proxy {}", proxy->name()));
-        }
-    }
-
-    if (handler) {
-        _dns_handler = dynamic_cast<DnsStreamHandler *>(handler);
-        if (!_dns_handler) {
-            throw StreamHandlerException(fmt::format("NetStreamHandler: unsupported upstream chained stream handler {}", handler->name()));
         }
     }
 }
@@ -59,10 +52,30 @@ void NetStreamHandler::start()
     // Setup Filters
     if (config_exists("geoloc_notfound") && config_get<bool>("geoloc_notfound")) {
         _f_enabled.set(Filters::GeoLocNotFound);
+        _f_geoloc_prefix.push_back("Unknown");
     }
 
     if (config_exists("asn_notfound") && config_get<bool>("asn_notfound")) {
         _f_enabled.set(Filters::AsnNotFound);
+        _f_asn_number.push_back("Unknown");
+    }
+
+    if (config_exists("only_geoloc_prefix")) {
+        _f_enabled.set(Filters::GeoLocPrefix);
+        for (const auto &prefix : config_get<StringList>("only_geoloc_prefix")) {
+            _f_geoloc_prefix.push_back(prefix);
+        }
+    }
+
+    if (config_exists("only_asn_number")) {
+        _f_enabled.set(Filters::AsnNumber);
+        for (const auto &number : config_get<StringList>("only_asn_number")) {
+            if (std::all_of(number.begin(), number.end(), ::isdigit)) {
+                _f_asn_number.push_back(number + '/');
+            } else {
+                throw ConfigException(fmt::format("NetStreamHandler: only_asn_number filter contained an invalid/unsupported value: {}", number));
+            }
+        }
     }
 
     if (config_exists("recorded_stream")) {
@@ -77,11 +90,6 @@ void NetStreamHandler::start()
     } else if (_dnstap_proxy) {
         _dnstap_connection = _dnstap_proxy->dnstap_signal.connect(&NetStreamHandler::process_dnstap_cb, this);
         _heartbeat_connection = _dnstap_proxy->heartbeat_signal.connect(&NetStreamHandler::check_period_shift, this);
-    } else if (_dns_handler) {
-        _pkt_udp_connection = _dns_handler->udp_signal.connect(&NetStreamHandler::process_udp_packet_cb, this);
-        _start_tstamp_connection = _dns_handler->start_tstamp_signal.connect(&NetStreamHandler::set_start_tstamp, this);
-        _end_tstamp_connection = _dns_handler->end_tstamp_signal.connect(&NetStreamHandler::set_end_tstamp, this);
-        _heartbeat_connection = _dns_handler->heartbeat_signal.connect(&NetStreamHandler::check_period_shift, this);
     }
 
     _running = true;
@@ -99,10 +107,6 @@ void NetStreamHandler::stop()
         _end_tstamp_connection.disconnect();
     } else if (_dnstap_proxy) {
         _dnstap_connection.disconnect();
-    } else if (_dns_handler) {
-        _pkt_udp_connection.disconnect();
-        _start_tstamp_connection.disconnect();
-        _end_tstamp_connection.disconnect();
     }
     _heartbeat_connection.disconnect();
 
@@ -136,49 +140,63 @@ void NetStreamHandler::process_dnstap_cb(const dnstap::Dnstap &payload, size_t s
     _metrics->process_dnstap(payload, size);
 }
 
-void NetStreamHandler::process_udp_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, [[maybe_unused]] uint32_t flowkey, timespec stamp)
+static inline bool begins_with(std::string_view str, std::string_view prefix)
 {
-    if (!_filtering(payload, dir, stamp)) {
-        _metrics->process_packet(payload, dir, l3, pcpp::UDP, stamp);
-    }
+    return str.size() >= prefix.size() && 0 == str.compare(0, prefix.size(), prefix);
 }
 
 bool NetStreamHandler::_filtering(pcpp::Packet &payload, PacketDirection dir, timespec stamp)
 {
-    if (_f_enabled[Filters::GeoLocNotFound]) {
+    if (_f_enabled[Filters::GeoLocPrefix] || _f_enabled[Filters::GeoLocNotFound]) {
         if (!geo::GeoIP().enabled() || dir == PacketDirection::unknown) {
             goto will_filter;
         } else if (auto IPv4Layer = payload.getLayerOfType<pcpp::IPv4Layer>(); IPv4Layer) {
             struct sockaddr_in sa4;
-            if (dir == PacketDirection::toHost && IPv4tosockaddr(IPv4Layer->getSrcIPv4Address(), &sa4) && geo::GeoIP().getGeoLocString(&sa4) != "Unknown") {
+            if (dir == PacketDirection::toHost && IPv4tosockaddr(IPv4Layer->getSrcIPv4Address(), &sa4) && std::none_of(_f_geoloc_prefix.begin(), _f_geoloc_prefix.end(), [sa4](const auto &prefix) {
+                    return begins_with(geo::GeoIP().getGeoLocString(&sa4), prefix);
+                })) {
                 goto will_filter;
-            } else if (dir == PacketDirection::fromHost && IPv4tosockaddr(IPv4Layer->getDstIPv4Address(), &sa4) && geo::GeoIP().getGeoLocString(&sa4) != "Unknown") {
+            } else if (dir == PacketDirection::fromHost && IPv4tosockaddr(IPv4Layer->getDstIPv4Address(), &sa4) && std::none_of(_f_geoloc_prefix.begin(), _f_geoloc_prefix.end(), [sa4](const auto &prefix) {
+                           return begins_with(geo::GeoIP().getGeoLocString(&sa4), prefix);
+                       })) {
                 goto will_filter;
             }
         } else if (auto IPv6layer = payload.getLayerOfType<pcpp::IPv6Layer>(); IPv6layer) {
             struct sockaddr_in6 sa6;
-            if (dir == PacketDirection::toHost && IPv6tosockaddr(IPv6layer->getSrcIPv6Address(), &sa6) && geo::GeoIP().getGeoLocString(&sa6) != "Unknown") {
+            if (dir == PacketDirection::toHost && IPv6tosockaddr(IPv6layer->getSrcIPv6Address(), &sa6) && std::none_of(_f_geoloc_prefix.begin(), _f_geoloc_prefix.end(), [sa6](const auto &prefix) {
+                    return begins_with(geo::GeoIP().getGeoLocString(&sa6), prefix);
+                })) {
                 goto will_filter;
-            } else if (dir == PacketDirection::fromHost && IPv6tosockaddr(IPv6layer->getDstIPv6Address(), &sa6) && geo::GeoIP().getGeoLocString(&sa6) != "Unknown") {
+            } else if (dir == PacketDirection::fromHost && IPv6tosockaddr(IPv6layer->getDstIPv6Address(), &sa6) && std::none_of(_f_geoloc_prefix.begin(), _f_geoloc_prefix.end(), [sa6](const auto &prefix) {
+                           return begins_with(geo::GeoIP().getGeoLocString(&sa6), prefix);
+                       })) {
                 goto will_filter;
             }
         }
     }
-    if (_f_enabled[Filters::AsnNotFound]) {
+    if (_f_enabled[Filters::AsnNumber] || _f_enabled[Filters::AsnNotFound]) {
         if (!geo::GeoASN().enabled() || dir == PacketDirection::unknown) {
             goto will_filter;
         } else if (auto IPv4Layer = payload.getLayerOfType<pcpp::IPv4Layer>(); IPv4Layer) {
             struct sockaddr_in sa4;
-            if (dir == PacketDirection::toHost && IPv4tosockaddr(IPv4Layer->getSrcIPv4Address(), &sa4) && geo::GeoASN().getASNString(&sa4) != "Unknown") {
+            if (dir == PacketDirection::toHost && IPv4tosockaddr(IPv4Layer->getSrcIPv4Address(), &sa4) && std::none_of(_f_asn_number.begin(), _f_asn_number.end(), [sa4](const auto &prefix) {
+                    return begins_with(geo::GeoASN().getASNString(&sa4), prefix);
+                })) {
                 goto will_filter;
-            } else if (dir == PacketDirection::fromHost && IPv4tosockaddr(IPv4Layer->getDstIPv4Address(), &sa4) && geo::GeoASN().getASNString(&sa4) != "Unknown") {
+            } else if (dir == PacketDirection::fromHost && IPv4tosockaddr(IPv4Layer->getDstIPv4Address(), &sa4) && std::none_of(_f_asn_number.begin(), _f_asn_number.end(), [sa4](const auto &prefix) {
+                           return begins_with(geo::GeoASN().getASNString(&sa4), prefix);
+                       })) {
                 goto will_filter;
             }
         } else if (auto IPv6layer = payload.getLayerOfType<pcpp::IPv6Layer>(); IPv6layer) {
             struct sockaddr_in6 sa6;
-            if (dir == PacketDirection::toHost && IPv6tosockaddr(IPv6layer->getSrcIPv6Address(), &sa6) && geo::GeoASN().getASNString(&sa6) != "Unknown") {
+            if (dir == PacketDirection::toHost && IPv6tosockaddr(IPv6layer->getSrcIPv6Address(), &sa6) && std::none_of(_f_asn_number.begin(), _f_asn_number.end(), [sa6](const auto &prefix) {
+                    return begins_with(geo::GeoASN().getASNString(&sa6), prefix);
+                })) {
                 goto will_filter;
-            } else if (dir == PacketDirection::fromHost && IPv6tosockaddr(IPv6layer->getDstIPv6Address(), &sa6) && geo::GeoASN().getASNString(&sa6) != "Unknown") {
+            } else if (dir == PacketDirection::fromHost && IPv6tosockaddr(IPv6layer->getDstIPv6Address(), &sa6) && std::none_of(_f_asn_number.begin(), _f_asn_number.end(), [sa6](const auto &prefix) {
+                           return begins_with(geo::GeoASN().getASNString(&sa6), prefix);
+                       })) {
                 goto will_filter;
             }
         }
@@ -197,8 +215,10 @@ void NetworkMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
     // rates maintain their own thread safety
     _rate_in.merge(other._rate_in);
     _rate_out.merge(other._rate_out);
+    _rate_total.merge(other._rate_total);
     _throughput_in.merge(other._throughput_in);
     _throughput_out.merge(other._throughput_out);
+    _throughput_total.merge(other._throughput_total);
 
     std::shared_lock r_lock(other._mutex);
     std::unique_lock w_lock(_mutex);
@@ -212,6 +232,8 @@ void NetworkMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
         _counters.IPv6 += other._counters.IPv6;
         _counters.total_in += other._counters.total_in;
         _counters.total_out += other._counters.total_out;
+        _counters.total_unk += other._counters.total_unk;
+        _counters.total += other._counters.total;
         _counters.filtered += other._counters.filtered;
     }
 
@@ -237,8 +259,10 @@ void NetworkMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMa
 
     _rate_in.to_prometheus(out, add_labels);
     _rate_out.to_prometheus(out, add_labels);
+    _rate_total.to_prometheus(out, add_labels);
     _throughput_in.to_prometheus(out, add_labels);
     _throughput_out.to_prometheus(out, add_labels);
+    _throughput_total.to_prometheus(out, add_labels);
 
     {
         auto [num_events, num_samples, event_rate, event_lock] = event_data_locked(); // thread safe
@@ -259,6 +283,8 @@ void NetworkMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMa
         _counters.IPv6.to_prometheus(out, add_labels);
         _counters.total_in.to_prometheus(out, add_labels);
         _counters.total_out.to_prometheus(out, add_labels);
+        _counters.total_unk.to_prometheus(out, add_labels);
+        _counters.total.to_prometheus(out, add_labels);
         _counters.filtered.to_prometheus(out, add_labels);
     }
 
@@ -287,8 +313,10 @@ void NetworkMetricsBucket::to_json(json &j) const
     bool live_rates = !read_only() && !recorded_stream();
     _rate_in.to_json(j, live_rates);
     _rate_out.to_json(j, live_rates);
+    _rate_total.to_json(j, live_rates);
     _throughput_in.to_json(j, live_rates);
     _throughput_out.to_json(j, live_rates);
+    _throughput_total.to_json(j, live_rates);
 
     {
         auto [num_events, num_samples, event_rate, event_lock] = event_data_locked(); // thread safe
@@ -309,6 +337,8 @@ void NetworkMetricsBucket::to_json(json &j) const
         _counters.IPv6.to_json(j);
         _counters.total_in.to_json(j);
         _counters.total_out.to_json(j);
+        _counters.total_unk.to_json(j);
+        _counters.total.to_json(j);
         _counters.filtered.to_json(j);
     }
 
@@ -334,7 +364,9 @@ void NetworkMetricsBucket::to_json(json &j) const
 void NetworkMetricsBucket::process_filtered()
 {
     std::unique_lock lock(_mutex);
-    ++_counters.filtered;
+    if (group_enabled(group::NetMetrics::Counters)) {
+        ++_counters.filtered;
+    }
 }
 
 void NetworkMetricsBucket::process_packet(bool deep, pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4)
@@ -394,10 +426,15 @@ void NetworkMetricsBucket::process_dnstap(bool deep, const dnstap::Dnstap &paylo
         case dnstap::TCP:
             l4 = pcpp::TCP;
             break;
+        case dnstap::DOT:
+        case dnstap::DOH:
+        case dnstap::DNSCryptUDP:
+        case dnstap::DNSCryptTCP:
+            break;
         }
     }
 
-    PacketDirection dir;
+    PacketDirection dir{PacketDirection::unknown};
     switch (payload.message().type()) {
     case dnstap::Message_Type_FORWARDER_RESPONSE:
     case dnstap::Message_Type_STUB_RESPONSE:
@@ -456,8 +493,12 @@ void NetworkMetricsBucket::process_net_layer(PacketDirection dir, pcpp::Protocol
     case PacketDirection::unknown:
         break;
     }
+    ++_rate_total;
+    _throughput_total += payload_size;
 
     if (group_enabled(group::NetMetrics::Counters)) {
+        ++_counters.total;
+
         switch (dir) {
         case PacketDirection::fromHost:
             ++_counters.total_out;
@@ -466,6 +507,7 @@ void NetworkMetricsBucket::process_net_layer(PacketDirection dir, pcpp::Protocol
             ++_counters.total_in;
             break;
         case PacketDirection::unknown:
+            ++_counters.total_unk;
             break;
         }
 
@@ -512,8 +554,12 @@ void NetworkMetricsBucket::process_net_layer(NetworkPacket &packet)
     case PacketDirection::unknown:
         break;
     }
+    ++_rate_total;
+    _throughput_total += packet.payload_size;
 
     if (group_enabled(group::NetMetrics::Counters)) {
+        ++_counters.total;
+
         switch (packet.dir) {
         case PacketDirection::fromHost:
             ++_counters.total_out;
@@ -522,6 +568,7 @@ void NetworkMetricsBucket::process_net_layer(NetworkPacket &packet)
             ++_counters.total_in;
             break;
         case PacketDirection::unknown:
+            ++_counters.total_unk;
             break;
         }
 

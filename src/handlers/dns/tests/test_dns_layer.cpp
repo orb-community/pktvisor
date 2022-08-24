@@ -466,6 +466,7 @@ TEST_CASE("DNS Filters: only_qname_suffix", "[pcap][dns]")
     CHECK(counters.REFUSED.value() == 0);
     CHECK(counters.NX.value() == 1);
     CHECK(counters.NODATA.value() == 2);
+    CHECK(counters.total.value() == 10);
     CHECK(counters.filtered.value() == 14);
 
     nlohmann::json j;
