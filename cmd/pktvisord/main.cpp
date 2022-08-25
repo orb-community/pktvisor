@@ -575,7 +575,7 @@ int main(int argc, char *argv[])
     std::string iface;
     if (args["IFACE"]) {
         iface = args["IFACE"].asString();
-    } else {
+    } else if (!options.config.has_value()) {
         iface = visor::most_used_interface();
         if (!iface.empty()) {
             logger->info("Network Interface not set at startup, picked the most used interface: '{}'", iface);
@@ -604,7 +604,7 @@ int main(int argc, char *argv[])
             logger->info("exit with failure");
             exit(EXIT_FAILURE);
         }
-    } else if (!options.web_server.admin_api && !options.config.has_value()) {
+    } else if (!options.web_server.admin_api) {
         // if they didn't specify pcap target, or config file, or admin api then there is nothing to do
         logger->error("Nothing to do: specify --admin-api or IFACE.");
         std::cerr << USAGE << std::endl;
