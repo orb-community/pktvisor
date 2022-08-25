@@ -15,6 +15,8 @@ namespace visor::handler::pcap {
 
 using namespace visor::input::pcap;
 
+static constexpr const char *PCAP_SCHEMA{"pcap"};
+
 class PcapMetricsBucket final : public visor::AbstractMetricsBucket
 {
 
@@ -33,9 +35,9 @@ protected:
         uint64_t pcap_last_if_drop{std::numeric_limits<uint64_t>::max()};
 
         counters()
-            : pcap_TCP_reassembly_errors("pcap", {"tcp_reassembly_errors"}, "Count of TCP reassembly errors")
-            , pcap_os_drop("pcap", {"os_drops"}, "Count of packets dropped by the operating system (if supported)")
-            , pcap_if_drop("pcap", {"if_drops"}, "Count of packets dropped by the interface (if supported)")
+            : pcap_TCP_reassembly_errors(PCAP_SCHEMA, {"tcp_reassembly_errors"}, "Count of TCP reassembly errors")
+            , pcap_os_drop(PCAP_SCHEMA, {"os_drops"}, "Count of packets dropped by the operating system (if supported)")
+            , pcap_if_drop(PCAP_SCHEMA, {"if_drops"}, "Count of packets dropped by the interface (if supported)")
         {
         }
     };
@@ -97,18 +99,13 @@ class PcapStreamHandler final : public visor::StreamMetricsHandler<PcapMetricsMa
     void set_end_tstamp(timespec stamp);
 
 public:
-    PcapStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config, StreamHandler *handler = nullptr);
+    PcapStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config);
     ~PcapStreamHandler() = default;
 
     // visor::AbstractModule
     std::string schema_key() const override
     {
-        return "pcap";
-    }
-
-    size_t consumer_count() const override
-    {
-        return 0;
+        return PCAP_SCHEMA;
     }
 
     void start() override;

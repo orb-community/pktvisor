@@ -903,7 +903,7 @@ void kll_sketch<T, C, S, A>::merge_higher_levels(O&& other, uint64_t final_n) {
     levels_.resize(new_levels_size);
   }
   const uint32_t offset = free_space_at_bottom - outlevels[0];
-  for (uint8_t lvl = 0; lvl < levels_.size(); lvl++) { // includes the "extra" index
+  for (uint8_t lvl = 0; lvl < static_cast<uint8_t>(levels_.size()); lvl++) { // includes the "extra" index
     levels_[lvl] = outlevels[lvl] + offset;
   }
   num_levels_ = result.final_num_levels;

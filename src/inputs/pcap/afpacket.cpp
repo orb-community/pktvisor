@@ -61,7 +61,7 @@ AFPacket::~AFPacket()
         fd = -1;
     }
     if (map != nullptr) {
-        munmap(map, block_size * num_blocks);
+        munmap(map,  static_cast<size_t>(block_size) * num_blocks);
     }
 }
 
@@ -181,7 +181,7 @@ void AFPacket::setup()
     set_socket_opts();
 
     // Enable mmap for PACKET_RX_RING.
-    map = reinterpret_cast<uint8_t *>(mmap(nullptr, block_size * num_blocks, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_LOCKED, fd, 0));
+    map = reinterpret_cast<uint8_t *>(mmap(nullptr, static_cast<size_t>(block_size) * num_blocks, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_LOCKED, fd, 0));
 
     if (map == MAP_FAILED) {
         throw PcapException("Failed to initialize RX_RING mmap: " + std::string(strerror(errno)));

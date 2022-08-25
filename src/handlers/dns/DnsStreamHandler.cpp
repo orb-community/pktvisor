@@ -23,13 +23,9 @@ namespace visor::handler::dns {
 
 thread_local DnsStreamHandler::DnsCacheData DnsStreamHandler::_cached_dns_layer;
 
-DnsStreamHandler::DnsStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config, StreamHandler *handler)
+DnsStreamHandler::DnsStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config)
     : visor::StreamMetricsHandler<DnsMetricsManager>(name, window_config)
 {
-    if (handler) {
-        throw StreamHandlerException(fmt::format("DnsStreamHandler: unsupported upstream chained stream handler {}", handler->name()));
-    }
-
     assert(proxy);
     // figure out which input event proxy we have
     _pcap_proxy = dynamic_cast<PcapInputEventProxy *>(proxy);
@@ -75,6 +71,10 @@ void DnsStreamHandler::start()
         default:
             throw ConfigException("DnsStreamHandler: only_rcode filter contained an invalid/unsupported rcode");
         }
+        _register_predicate_filter(Filters::OnlyRCode, "only_rcode", std::to_string(_f_rcode));
+    }
+    if (config_exists("only_dnssec_response") && config_get<bool>("only_dnssec_response")) {
+        _f_enabled.set(Filters::OnlyDNSSECResponse);
     }
     if (config_exists("answer_count")) {
         try {
@@ -82,6 +82,27 @@ void DnsStreamHandler::start()
             _f_enabled.set(Filters::AnswerCount);
         } catch (const std::exception &e) {
             throw ConfigException("DnsStreamHandler: wrong value type for answer_count filter. It should be an integer");
+        }
+    }
+    if (config_exists("only_qtype")) {
+        _f_enabled.set(Filters::OnlyQtype);
+        for (const auto &qtype : config_get<StringList>("only_qtype")) {
+            if (std::all_of(qtype.begin(), qtype.end(), ::isdigit)) {
+                auto value = std::stoul(qtype);
+                if (QTypeNames.find(value) == QTypeNames.end()) {
+                    throw ConfigException(fmt::format("DnsStreamHandler: only_qtype filter contained an invalid/unsupported qtype: {}", value));
+                }
+                _f_qtypes.push_back(value);
+            } else {
+                std::string upper_qtype{qtype};
+                std::transform(upper_qtype.begin(), upper_qtype.end(), upper_qtype.begin(),
+                    [](unsigned char c) { return std::toupper(c); });
+                if (QTypeNumbers.find(upper_qtype) != QTypeNumbers.end()) {
+                    _f_qtypes.push_back(QTypeNumbers[upper_qtype]);
+                } else {
+                    throw ConfigException(fmt::format("DnsStreamHandler: only_qtype filter contained an invalid/unsupported qtype: {}", qtype));
+                }
+            }
         }
     }
     if (config_exists("only_qname_suffix")) {
@@ -95,6 +116,12 @@ void DnsStreamHandler::start()
                 [](unsigned char c) { return std::tolower(c); });
             _f_qnames.emplace_back(std::move(qname_ci));
         }
+    }
+    if (config_exists("geoloc_notfound") && config_get<bool>("geoloc_notfound")) {
+        _f_enabled.set(Filters::GeoLocNotFound);
+    }
+    if (config_exists("asn_notfound") && config_get<bool>("asn_notfound")) {
+        _f_enabled.set(Filters::AsnNotFound);
     }
     if (config_exists("dnstap_msg_type")) {
         auto type = config_get<std::string>("dnstap_msg_type");
@@ -121,16 +148,30 @@ void DnsStreamHandler::start()
     }
 
     if (_pcap_proxy) {
-        _pkt_udp_connection = _pcap_proxy->udp_signal.connect(&DnsStreamHandler::process_udp_packet_cb, this);
-        _start_tstamp_connection = _pcap_proxy->start_tstamp_signal.connect([this](timespec stamp) { set_start_tstamp(stamp); start_tstamp_signal(stamp); });
-        _end_tstamp_connection = _pcap_proxy->end_tstamp_signal.connect([this](timespec stamp) { set_end_tstamp(stamp); end_tstamp_signal(stamp); });
+        if (!_using_predicate_signals) {
+            _pkt_udp_connection = _pcap_proxy->udp_signal.connect(&DnsStreamHandler::process_udp_packet_cb, this);
+        }
+        _start_tstamp_connection = _pcap_proxy->start_tstamp_signal.connect([this](timespec stamp) {
+            set_start_tstamp(stamp);
+            _event_proxy ? static_cast<PcapInputEventProxy *>(_event_proxy.get())->start_tstamp_signal(stamp) : void();
+        });
+        _end_tstamp_connection = _pcap_proxy->end_tstamp_signal.connect([this](timespec stamp) {
+            set_end_tstamp(stamp);
+            _event_proxy ? static_cast<PcapInputEventProxy *>(_event_proxy.get())->end_tstamp_signal(stamp) : void();
+        });
         _tcp_start_connection = _pcap_proxy->tcp_connection_start_signal.connect(&DnsStreamHandler::tcp_connection_start_cb, this);
         _tcp_end_connection = _pcap_proxy->tcp_connection_end_signal.connect(&DnsStreamHandler::tcp_connection_end_cb, this);
         _tcp_message_connection = _pcap_proxy->tcp_message_ready_signal.connect(&DnsStreamHandler::tcp_message_ready_cb, this);
-        _heartbeat_connection = _pcap_proxy->heartbeat_signal.connect([this](const timespec stamp) { check_period_shift(stamp); heartbeat_signal(stamp); });
+        _heartbeat_connection = _pcap_proxy->heartbeat_signal.connect([this](const timespec stamp) {
+            check_period_shift(stamp);
+            _event_proxy ? _event_proxy->heartbeat_signal(stamp) : void();
+        });
     } else if (_dnstap_proxy) {
         _dnstap_connection = _dnstap_proxy->dnstap_signal.connect(&DnsStreamHandler::process_dnstap_cb, this);
-        _heartbeat_connection = _dnstap_proxy->heartbeat_signal.connect([this](const timespec stamp) { check_period_shift(stamp); heartbeat_signal(stamp); });
+        _heartbeat_connection = _dnstap_proxy->heartbeat_signal.connect([this](const timespec stamp) {
+            check_period_shift(stamp);
+            _event_proxy ? _event_proxy->heartbeat_signal(stamp) : void();
+        });
     }
 
     _running = true;
@@ -149,6 +190,9 @@ void DnsStreamHandler::stop()
         _tcp_start_connection.disconnect();
         _tcp_end_connection.disconnect();
         _tcp_message_connection.disconnect();
+        if (_using_predicate_signals) {
+            _pcap_proxy->unregister_udp_predicate_signal(name());
+        }
     } else if (_dnstap_proxy) {
         _dnstap_connection.disconnect();
     }
@@ -194,12 +238,15 @@ void DnsStreamHandler::process_udp_packet_cb(pcpp::Packet &payload, PacketDirect
             _metrics->process_dns_layer(*dnsLayer, dir, l3, pcpp::UDP, flowkey, metric_port, _static_suffix_size, stamp);
             _static_suffix_size = 0;
             // signal for chained stream handlers, if we have any
-            udp_signal(payload, dir, l3, flowkey, stamp);
+            if (_event_proxy) {
+                static_cast<PcapInputEventProxy *>(_event_proxy.get())->packet_signal(payload, dir, l3, pcpp::UDP, stamp);
+                static_cast<PcapInputEventProxy *>(_event_proxy.get())->udp_signal(payload, dir, l3, flowkey, stamp);
+            }
         }
     }
 }
 
-void TcpSessionData::receive_dns_wire_data(const uint8_t *data, size_t len)
+void DnsTcpSessionData::receive_tcp_data(const uint8_t *data, size_t len)
 {
     if (_invalid_data) {
         return;
@@ -226,10 +273,10 @@ void TcpSessionData::receive_dns_wire_data(const uint8_t *data, size_t len)
         }
 
         if (_buffer.size() >= sizeof(size) + size) {
-            auto data = std::make_unique<uint8_t[]>(size);
-            std::memcpy(data.get(), _buffer.data() + sizeof(size), size);
+            auto dns_data = std::make_unique<uint8_t[]>(size);
+            std::memcpy(dns_data.get(), _buffer.data() + sizeof(size), size);
             _buffer.erase(0, sizeof(size) + size);
-            _got_dns_msg(std::move(data), size);
+            _got_msg(std::move(dns_data), size);
         } else {
             // Nope, we need more data.
             break;
@@ -283,10 +330,10 @@ void DnsStreamHandler::tcp_message_ready_cb(int8_t side, const pcpp::TcpStreamDa
     };
 
     if (!iter->second.sessionData[side]) {
-        iter->second.sessionData[side] = std::make_unique<TcpSessionData>(got_dns_message);
+        iter->second.sessionData[side] = std::make_unique<DnsTcpSessionData>(got_dns_message);
     }
 
-    iter->second.sessionData[side]->receive_dns_wire_data(tcpData.getData(), tcpData.getDataLength());
+    iter->second.sessionData[side]->receive_tcp_data(tcpData.getData(), tcpData.getDataLength());
 }
 
 void DnsStreamHandler::tcp_connection_start_cb(const pcpp::ConnectionData &connectionData)
@@ -333,33 +380,120 @@ void DnsStreamHandler::info_json(json &j) const
 {
     common_info_json(j);
     j[schema_key()]["xact"]["open"] = _metrics->num_open_transactions();
+    j[schema_key()]["predicate"]["enabled"] = _using_predicate_signals;
+}
+
+inline void DnsStreamHandler::_register_predicate_filter(Filters filter, std::string f_key, std::string f_value)
+{
+    if (!_using_predicate_signals && filter == Filters::OnlyRCode) {
+        // all DnsStreamHandler race to install this predicate, which is only installed once and called once per udp event
+        // it's job is to return the predicate "jump key" to call matching signals
+        static thread_local auto udp_rcode_predicate = [](pcpp::Packet &payload, PacketDirection, pcpp::ProtocolType, uint32_t flowkey, timespec stamp) -> std::string {
+            pcpp::UdpLayer *udpLayer = payload.getLayerOfType<pcpp::UdpLayer>();
+            assert(udpLayer);
+            if (flowkey != _cached_dns_layer.flowKey || stamp.tv_sec != _cached_dns_layer.timestamp.tv_sec || stamp.tv_nsec != _cached_dns_layer.timestamp.tv_nsec) {
+                _cached_dns_layer.flowKey = flowkey;
+                _cached_dns_layer.timestamp = stamp;
+                _cached_dns_layer.dnsLayer = std::make_unique<DnsLayer>(udpLayer, &payload);
+            }
+            auto dnsLayer = _cached_dns_layer.dnsLayer.get();
+            // return the 'jump key' for pcap to make O(1) call to appropriate signals
+            return "dnsonly_rcode" + std::to_string(dnsLayer->getDnsHeader()->responseCode);
+        };
+
+        // if the jump key matches, this callback fires
+        auto rcode_signal = [this](pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp) {
+            process_udp_packet_cb(payload, dir, l3, flowkey, stamp);
+        };
+        if (_pcap_proxy) {
+            // even though predicate and callback are sent, pcap will only install the first one it sees from dns handler
+            // module name is sent to allow disconnect at shutdown time
+            _pcap_proxy->register_udp_predicate_signal(schema_key(), name(), f_key, f_value, udp_rcode_predicate, rcode_signal);
+            _using_predicate_signals = true;
+        }
+    }
 }
 inline bool DnsStreamHandler::_filtering(DnsLayer &payload, [[maybe_unused]] PacketDirection dir, [[maybe_unused]] pcpp::ProtocolType l3, [[maybe_unused]] pcpp::ProtocolType l4, [[maybe_unused]] uint16_t port, timespec stamp)
 {
     if (_f_enabled[Filters::ExcludingRCode] && payload.getDnsHeader()->responseCode == _f_rcode) {
         goto will_filter;
-    } else if (_f_enabled[Filters::OnlyRCode] && payload.getDnsHeader()->responseCode != _f_rcode) {
-        goto will_filter;
     }
     if (_f_enabled[Filters::AnswerCount] && payload.getAnswerCount() != _f_answer_count) {
         goto will_filter;
+    }
+    if (_f_enabled[Filters::OnlyDNSSECResponse]) {
+        if ((payload.getDnsHeader()->queryOrResponse != QR::response) || !payload.getAnswerCount()) {
+            goto will_filter;
+        }
+        if (!payload.parseResources(false, true, true) || payload.getFirstAnswer() == nullptr) {
+            goto will_filter;
+        }
+        bool has_ssig{false};
+        auto dns_answer = payload.getFirstAnswer();
+        for (size_t i = 0; i < payload.getAnswerCount(); ++i) {
+            if (!dns_answer) {
+                break;
+            }
+            if (dns_answer->getDnsType() == DNS_TYPE_RRSIG) {
+                has_ssig = true;
+                break;
+            }
+            dns_answer = payload.getNextAnswer(dns_answer);
+        }
+        if (!has_ssig) {
+            goto will_filter;
+        }
+    }
+    if (_f_enabled[Filters::OnlyQtype]) {
+        if (!payload.parseResources(true) || payload.getFirstQuery() == nullptr) {
+            goto will_filter;
+        }
+        auto qtype = payload.getFirstQuery()->getDnsType();
+        if (!std::any_of(_f_qtypes.begin(), _f_qtypes.end(), [qtype](uint16_t f_qtype) { return qtype == f_qtype; })) {
+            goto will_filter;
+        }
     }
     if (_f_enabled[Filters::OnlyQNameSuffix]) {
         if (!payload.parseResources(true) || payload.getFirstQuery() == nullptr) {
             goto will_filter;
         }
         std::string_view qname_ci = payload.getFirstQuery()->getNameLower();
-        for (const auto &fqn : _f_qnames) {
-            // if it matched, we know we are not filtering
-            if (ends_with(qname_ci, fqn)) {
-                _static_suffix_size = fqn.size();
-                goto will_not_filter;
-            }
+        if (std::none_of(_f_qnames.begin(), _f_qnames.end(), [this, qname_ci](std::string fqn) {
+                if (ends_with(qname_ci, fqn)) {
+                    _static_suffix_size = fqn.size();
+                    return true;
+                }
+                return false;
+            })) {
+            // checked the whole list and none of them matched: filter
+            goto will_filter;
         }
-        // checked the whole list and none of them matched: filter
-        goto will_filter;
     }
-will_not_filter:
+    if (_f_enabled[Filters::GeoLocNotFound]) {
+        if (!geo::GeoIP().enabled() || (payload.getDnsHeader()->queryOrResponse != QR::query) || !payload.getAdditionalRecordCount()) {
+            goto will_filter;
+        }
+        if (!payload.parseResources(false, true, true) || payload.getFirstAdditionalRecord() == nullptr) {
+            goto will_filter;
+        }
+        auto ecs = parse_additional_records_ecs(payload.getFirstAdditionalRecord());
+        if (!ecs || ecs->client_subnet.empty() || (geo::GeoIP().getGeoLocString(ecs->client_subnet.c_str()) != "Unknown")) {
+            goto will_filter;
+        }
+    }
+    if (_f_enabled[Filters::AsnNotFound]) {
+        if (!geo::GeoASN().enabled() || (payload.getDnsHeader()->queryOrResponse != QR::query) || !payload.getAdditionalRecordCount()) {
+            goto will_filter;
+        }
+        if (!payload.parseResources(false, true, true) || payload.getFirstAdditionalRecord() == nullptr) {
+            goto will_filter;
+        }
+        auto ecs = parse_additional_records_ecs(payload.getFirstAdditionalRecord());
+        if (!ecs || ecs->client_subnet.empty() || (geo::GeoASN().getASNString(ecs->client_subnet.c_str()) != "Unknown")) {
+            goto will_filter;
+        }
+    }
+
     return false;
 will_filter:
     _metrics->process_filtered(stamp);
@@ -379,6 +513,9 @@ void DnsMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
     // static because caller guarantees only our own bucket type
     const auto &other = static_cast<const DnsMetricsBucket &>(o);
 
+    // rates maintain their own thread safety
+    _rate_total.merge(other._rate_total);
+
     std::shared_lock r_lock(other._mutex);
     std::unique_lock w_lock(_mutex);
 
@@ -394,9 +531,9 @@ void DnsMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
         _counters.SRVFAIL += other._counters.SRVFAIL;
         _counters.NOERROR += other._counters.NOERROR;
         _counters.NODATA += other._counters.NODATA;
+        _counters.total += other._counters.total;
+        _counters.filtered += other._counters.filtered;
     }
-
-    _counters.filtered += other._counters.filtered;
 
     if (group_enabled(group::DnsMetrics::DnsTransactions)) {
         _counters.xacts_total += other._counters.xacts_total;
@@ -415,6 +552,7 @@ void DnsMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
         _dns_qnameCard.merge(other._dns_qnameCard);
     }
     if (group_enabled(group::DnsMetrics::TopEcs)) {
+        group_enabled(group::DnsMetrics::Counters) ? _counters.queryECS += other._counters.queryECS : void();
         _dns_topGeoLocECS.merge(other._dns_topGeoLocECS);
         _dns_topASNECS.merge(other._dns_topASNECS);
         _dns_topQueryECS.merge(other._dns_topQueryECS);
@@ -438,6 +576,7 @@ void DnsMetricsBucket::to_json(json &j) const
 {
 
     bool live_rates = !read_only() && !recorded_stream();
+    _rate_total.to_json(j, live_rates);
 
     {
         auto [num_events, num_samples, event_rate, event_lock] = event_data_locked(); // thread safe
@@ -461,9 +600,9 @@ void DnsMetricsBucket::to_json(json &j) const
         _counters.SRVFAIL.to_json(j);
         _counters.NOERROR.to_json(j);
         _counters.NODATA.to_json(j);
+        _counters.total.to_json(j);
+        _counters.filtered.to_json(j);
     }
-
-    _counters.filtered.to_json(j);
 
     if (group_enabled(group::DnsMetrics::Cardinality)) {
         _dns_qnameCard.to_json(j);
@@ -487,6 +626,7 @@ void DnsMetricsBucket::to_json(json &j) const
     _dns_topUDPPort.to_json(j, [](const uint16_t &val) { return std::to_string(val); });
 
     if (group_enabled(group::DnsMetrics::TopEcs)) {
+        group_enabled(group::DnsMetrics::Counters) ? _counters.queryECS.to_json(j) : void();
         _dns_topGeoLocECS.to_json(j);
         _dns_topASNECS.to_json(j);
         _dns_topQueryECS.to_json(j);
@@ -522,7 +662,7 @@ void DnsMetricsBucket::process_dnstap(bool deep, const dnstap::Dnstap &payload)
 {
     std::unique_lock lock(_mutex);
 
-    pcpp::ProtocolType l3;
+    pcpp::ProtocolType l3{pcpp::UnknownProtocol};
     if (payload.message().has_socket_family()) {
         if (payload.message().socket_family() == dnstap::INET6) {
             l3 = pcpp::IPv6;
@@ -530,7 +670,7 @@ void DnsMetricsBucket::process_dnstap(bool deep, const dnstap::Dnstap &payload)
             l3 = pcpp::IPv4;
         }
     }
-    Protocol l4;
+    Protocol l4{PCPP_UNKOWN};
     if (payload.message().has_socket_protocol()) {
         l4 = static_cast<Protocol>(payload.message().socket_protocol());
     }
@@ -593,7 +733,11 @@ void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, pcpp::Pro
 {
     std::unique_lock lock(_mutex);
 
+    ++_rate_total;
+
     if (group_enabled(group::DnsMetrics::Counters)) {
+        ++_counters.total;
+
         if (l3 == pcpp::IPv6) {
             ++_counters.IPv6;
         } else if (l3 == pcpp::IPv4) {
@@ -614,6 +758,8 @@ void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, pcpp::Pro
             break;
         case DNSTAP_DOH:
             ++_counters.DOH;
+            break;
+        case PCPP_UNKOWN:
             break;
         }
 
@@ -708,6 +854,9 @@ void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, pcpp::Pro
 
             auto ecs = parse_additional_records_ecs(additional);
             if (ecs && !(ecs->client_subnet.empty())) {
+                if (group_enabled(group::DnsMetrics::Counters)) {
+                    ++_counters.queryECS;
+                }
                 _dns_topQueryECS.update(ecs->client_subnet);
                 if (geo::GeoIP().enabled()) {
                     _dns_topGeoLocECS.update(geo::GeoIP().getGeoLocString(ecs->client_subnet.c_str()));
@@ -724,7 +873,11 @@ void DnsMetricsBucket::process_dns_layer(pcpp::ProtocolType l3, Protocol l4, QR 
 {
     std::unique_lock lock(_mutex);
 
+    ++_rate_total;
+
     if (group_enabled(group::DnsMetrics::Counters)) {
+        ++_counters.total;
+
         if (l3 == pcpp::IPv6) {
             ++_counters.IPv6;
         } else if (l3 == pcpp::IPv4) {
@@ -745,6 +898,8 @@ void DnsMetricsBucket::process_dns_layer(pcpp::ProtocolType l3, Protocol l4, QR 
             break;
         case DNSTAP_DOH:
             ++_counters.DOH;
+            break;
+        case PCPP_UNKOWN:
             break;
         }
 
@@ -802,6 +957,7 @@ void DnsMetricsBucket::new_dns_transaction(bool deep, float to90th, float from90
 }
 void DnsMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap add_labels) const
 {
+    _rate_total.to_prometheus(out, add_labels);
 
     {
         auto [num_events, num_samples, event_rate, event_lock] = event_data_locked(); // thread safe
@@ -824,9 +980,9 @@ void DnsMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap ad
         _counters.SRVFAIL.to_prometheus(out, add_labels);
         _counters.NOERROR.to_prometheus(out, add_labels);
         _counters.NODATA.to_prometheus(out, add_labels);
+        _counters.total.to_prometheus(out, add_labels);
+        _counters.filtered.to_prometheus(out, add_labels);
     }
-
-    _counters.filtered.to_prometheus(out, add_labels);
 
     if (group_enabled(group::DnsMetrics::Cardinality)) {
         _dns_qnameCard.to_prometheus(out, add_labels);
@@ -850,6 +1006,7 @@ void DnsMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap ad
     _dns_topUDPPort.to_prometheus(out, add_labels, [](const uint16_t &val) { return std::to_string(val); });
 
     if (group_enabled(group::DnsMetrics::TopEcs)) {
+        group_enabled(group::DnsMetrics::Counters) ? _counters.queryECS.to_prometheus(out, add_labels) : void();
         _dns_topGeoLocECS.to_prometheus(out, add_labels);
         _dns_topASNECS.to_prometheus(out, add_labels);
         _dns_topQueryECS.to_prometheus(out, add_labels);
@@ -883,7 +1040,9 @@ void DnsMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap ad
 void DnsMetricsBucket::process_filtered()
 {
     std::unique_lock lock(_mutex);
-    ++_counters.filtered;
+    if (group_enabled(group::DnsMetrics::Counters)) {
+        ++_counters.filtered;
+    }
 }
 
 // the general metrics manager entry point (both UDP and TCP)

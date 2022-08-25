@@ -203,6 +203,70 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
             res.set_content(j.dump(), "text/json");
         }
     });
+    _svr.Get(fmt::format("/api/v1/taps/({})", AbstractModule::MODULE_ID_REGEX).c_str(), [&](const httplib::Request &req, httplib::Response &res) {
+        json j = json::object();
+        auto name = req.matches[1];
+        if (!_registry->tap_manager()->module_exists(name)) {
+            res.status = 404;
+            j["error"] = "tap does not exists";
+            res.set_content(j.dump(), "text/json");
+            return;
+        }
+        try {
+            auto [tap, lock] = _registry->tap_manager()->module_get_locked(name);
+            tap->info_json(j[name]);
+            res.set_content(j.dump(), "text/json");
+        } catch (const std::exception &e) {
+            res.status = 500;
+            j["error"] = e.what();
+            res.set_content(j.dump(), "text/json");
+        }
+    });
+    _svr.Post(R"(/api/v1/taps)", [&]([[maybe_unused]] const httplib::Request &req, httplib::Response &res) {
+        json j = json::object();
+        if (!req.has_header("Content-Type")) {
+            res.status = 400;
+            j["error"] = "must include Content-Type header";
+            res.set_content(j.dump(), "text/json");
+            return;
+        }
+        auto content_type = req.get_header_value("Content-Type");
+        if (content_type != "application/x-yaml" && content_type != "application/json") {
+            res.status = 400;
+            j["error"] = "Content-Type not supported";
+            res.set_content(j.dump(), "text/json");
+            return;
+        }
+        try {
+            auto taps = _registry->tap_manager()->load_from_str(req.body);
+            for (auto &mod : taps) {
+                mod->info_json(j[mod->name()]);
+            }
+            res.set_content(j.dump(), "text/json");
+        } catch (const std::exception &e) {
+            res.status = 500;
+            j["error"] = e.what();
+            res.set_content(j.dump(), "text/json");
+        }
+    });
+    _svr.Delete(fmt::format("/api/v1/taps/({})", AbstractModule::MODULE_ID_REGEX).c_str(), [&](const httplib::Request &req, httplib::Response &res) {
+        json j = json::object();
+        auto name = req.matches[1];
+        if (!_registry->tap_manager()->module_exists(name)) {
+            res.status = 404;
+            j["error"] = "tap does not exists";
+            res.set_content(j.dump(), "text/json");
+            return;
+        }
+        try {
+            _registry->tap_manager()->remove_tap(name);
+            res.set_content(j.dump(), "text/json");
+        } catch (const std::exception &e) {
+            res.status = 500;
+            j["error"] = e.what();
+            res.set_content(j.dump(), "text/json");
+        }
+    });
     // Policies
     _svr.Get(R"(/api/v1/policies)", [&]([[maybe_unused]] const httplib::Request &req, httplib::Response &res) {
         json j = json::object();
@@ -375,5 +439,4 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
         }
     });
 }
-
 }
