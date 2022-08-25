@@ -27,7 +27,7 @@ Scenario: run multiple pktvisors instances using the same port
 @smoke
 Scenario Outline: create a policy with all handlers using admin permission
   Given that a pktvisor instance is running on port available with admin permission
-  When create a new policy with all handler(s)
+  When create a new policy with all handler(s) and tap default
     And run mocked data <file_name> for this network
   Then 4 policies must be running
 #1 policy default, 2 policies with resources and 1 policy created
@@ -41,7 +41,7 @@ Scenario Outline: create a policy with all handlers using admin permission
 @smoke
 Scenario Outline: create a policy with net handler using admin permission
   Given that a pktvisor instance is running on port available with admin permission
-  When create a new policy with net handler(s)
+  When create a new policy with net handler(s) and tap default
     And run mocked data <file_name> for this network
   Then 4 policies must be running
     And metrics must be correctly generated for <traffic_type> traffic
@@ -53,7 +53,7 @@ Scenario Outline: create a policy with net handler using admin permission
 @smoke
 Scenario Outline: create a policy with dhcp handler using admin permission
   Given that a pktvisor instance is running on port available with admin permission
-  When create a new policy with dhcp handler(s)
+  When create a new policy with dhcp handler(s) and tap default
     And run mocked data <file_name> for this network
   Then 4 policies must be running
     And metrics must be correctly generated for <traffic_type> traffic
@@ -66,7 +66,7 @@ Scenario Outline: create a policy with dhcp handler using admin permission
 @smoke
 Scenario Outline: create a policy with dns handler using admin permission
   Given that a pktvisor instance is running on port <status_port> with <role> permission
-  When create a new policy with dns handler(s)
+  When create a new policy with dns handler(s) and tap default
     And run mocked data <file_name> for this network
   Then 4 policies must be running
     And metrics must be correctly generated for <traffic_type> traffic
@@ -82,7 +82,7 @@ Scenario Outline: create a policy with dns handler using admin permission
 @smoke
 Scenario: create a policy with pcap stats handler using admin permission
   Given that a pktvisor instance is running on port available with admin permission
-  When create a new policy with pcap_stats handler(s)
+  When create a new policy with pcap_stats handler(s) and tap default
   Then 4 policies must be running
 
 
@@ -96,7 +96,7 @@ Scenario: delete the default policy using admin permission
 @smoke
 Scenario: delete all non-resource policies using admin permission
   Given that a pktvisor instance is running on port available with admin permission
-    And create a new policy with all handler(s)
+    And create a new policy with all handler(s) and tap default
   When delete 2 non-resource policies
   Then 0 policies must be running
 
@@ -104,7 +104,7 @@ Scenario: delete all non-resource policies using admin permission
 @smoke
 Scenario: delete 1 non-resource policy using admin permission
   Given that a pktvisor instance is running on port available with admin permission
-  When create a new policy with all handler(s)
+  When create a new policy with all handler(s) and tap default
     And delete 1 non-resource policies
   Then 2 policies must be running
 
@@ -119,7 +119,7 @@ Scenario: delete the default-resource policy using admin permission
 @smoke
 Scenario: delete all resource policies using admin permission
   Given that a pktvisor instance is running on port available with admin permission
-    And create a new policy with all handler(s)
+    And create a new policy with all handler(s) and tap default
   When delete 2 resource policies
   Then 2 policies must be running
 
@@ -127,7 +127,7 @@ Scenario: delete all resource policies using admin permission
 @smoke
 Scenario: delete 1 resource policy using admin permission
   Given that a pktvisor instance is running on port available with admin permission
-  When create a new policy with all handler(s)
+  When create a new policy with all handler(s) and tap default
     And delete 1 resource policies
   Then 3 policies must be running
 
@@ -183,3 +183,100 @@ Scenario Outline: pktvisor bucket metrics dhcp traffic
   Examples:
     | status_port | role | file_name |
     | available   | user | dhcp-flow.pcap |
+
+
+@smoke
+Scenario Outline: test taps endpoint
+  Given that a pktvisor instance is running on port <status_port> with <role> permission
+  When a user makes a GET request on the taps endpoint
+  Then the tap endpoint must be available with the default tap
+  Examples:
+    | status_port | role |
+    | available   | user |
+    | available   | admin |
+
+
+@smoke
+Scenario Outline: test default tap endpoint
+  Given that a pktvisor instance is running on port <status_port> with <role> permission
+  When a user makes a GET request on the taps/default endpoint
+  Then the tap endpoint must be available with the default tap
+  Examples:
+    | status_port | role |
+    | available   | user |
+    | available   | admin |
+
+
+@smoke
+Scenario: create new tap through API
+  Given that a pktvisor instance is running on port available with admin permission
+  When a user creates a new pcap tap with 0 tag(s)
+  Then the new pcap tap should be accessible and correctly created
+    And 2 tap(s) must exist
+    #default tap + created tap
+
+
+@smoke
+Scenario: remove 1 tap
+  Given that a pktvisor instance is running on port available with admin permission
+    And a user creates a new pcap tap with 0 tag(s)
+  When a user remove 1 tap(s)
+  Then 1 tap(s) must exist
+
+
+@smoke
+Scenario: remove all taps
+  Given that a pktvisor instance is running on port available with admin permission
+    And a user creates a new pcap tap with 0 tag(s)
+  When a user remove all tap(s)
+  Then 0 tap(s) must exist
+
+
+@smoke
+Scenario: create policy with 2 taps (matching any)
+  Given that a pktvisor instance is running on port available with admin permission
+  When a user creates a new pcap tap with 2 tag(s)
+    And a user creates a new pcap tap with 2 tag(s)
+    And create a new policy with all handler(s) and 1 new and 3 matching existing tag(s). Tap selector: any
+  Then 3 tap(s) must exist
+    And policy must have 2 inputs
+    And defined handlers must be generated for each input
+    And 5 policies must be running
+    #default + default resource + created + resource for each tap
+
+
+
+@smoke
+Scenario: create policy with 2 taps (matching all)
+  Given that a pktvisor instance is running on port available with admin permission
+  When a user creates a new pcap tap with 2 tag(s)
+    And a user creates a new pcap tap with 2 tag(s)
+    And create a new policy with all handler(s) and 0 new and 1 matching existing tag(s). Tap selector: all
+  Then 3 tap(s) must exist
+    And policy must have 1 inputs
+    And defined handlers must be generated for each input
+    And 4 policies must be running
+
+
+@smoke
+Scenario: create policy with 2 taps (matching all)
+  Given that a pktvisor instance is running on port available with admin permission
+  When a user creates a new pcap tap with 2 tag(s)
+    And a user creates a new pcap tap with 2 tag(s)
+    And try to create a new policy with all handler(s) and 1 new and 3 matching existing tag(s). Tap selector: all
+  Then policy creation must fail with status: 422 and message: {"error":"no tap match found for specified 'input.tap_selector' tags"}
+    And 3 tap(s) must exist
+    And 2 policies must be running
+    #default + default resource
+
+
+@smoke
+Scenario: create policy with 0 taps (matching any)
+  Given that a pktvisor instance is running on port available with admin permission
+  When a user creates a new pcap tap with 2 tag(s)
+    And a user creates a new pcap tap with 2 tag(s)
+    And create a new policy with all handler(s) and 1 new and 3 matching existing tag(s). Tap selector: any
+  Then 3 tap(s) must exist
+    And policy must have 2 inputs
+    And defined handlers must be generated for each input
+    And 5 policies must be running
