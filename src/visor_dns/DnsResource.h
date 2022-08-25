@@ -13,7 +13,7 @@
 /**
  * \namespace visor
  */
-namespace visor::handler::dns {
+namespace visor::dns {
 // forward declarations
 class DnsLayer;
 class IDnsResourceData;

@@ -6,13 +6,6 @@ corrade_add_static_plugin(VisorHandlerDns
         ${CMAKE_CURRENT_BINARY_DIR}
         DnsHandler.conf
         DnsHandlerModulePlugin.cpp
-        DnsStreamHandler.cpp
-        dns.cpp
-        querypairmgr.cpp
-        # DnsLayer
-        DnsLayer.cpp
-        DnsResource.cpp
-        DnsResourceData.cpp
         )
 add_library(Visor::Handler::Dns ALIAS VisorHandlerDns)
 
@@ -24,9 +17,12 @@ target_include_directories(VisorHandlerDns
 target_link_libraries(VisorHandlerDns
         PUBLIC
         ${CONAN_LIBS_ROBIN-HOOD-HASHING}
+        Visor::Dns
         Visor::Input::Pcap
         Visor::Input::Dnstap
         Visor::Input::Mock
+        Visor::Handler::Dns::Wire
+        Visor::Handler::Dns::Xact
         )
 
 set(VISOR_STATIC_PLUGINS ${VISOR_STATIC_PLUGINS} Visor::Handler::Dns PARENT_SCOPE)

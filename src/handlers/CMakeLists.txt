@@ -1,5 +1,7 @@
 
 add_subdirectory(net)
+add_subdirectory(dns_wire)
+add_subdirectory(dns_xact)
 add_subdirectory(dns)
 add_subdirectory(bgp)
 add_subdirectory(flow)

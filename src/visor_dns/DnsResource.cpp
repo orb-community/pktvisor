@@ -5,12 +5,12 @@
 #include "fmt/format.h"
 #pragma GCC diagnostic push
 #pragma clang diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"
-#include <Logger.h>
+#include "Logger.h"
 #pragma GCC diagnostic pop
 #include <sstream>
 #include <string.h>
 
-namespace visor::handler::dns {
+namespace visor::dns {
 
 IDnsResource::IDnsResource(DnsLayer *dnsLayer, size_t offsetInLayer)
     : m_DnsLayer(dnsLayer)

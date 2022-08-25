@@ -8,7 +8,7 @@
 #include <streambuf>
 #include <string>
 
-#include "DnsStreamHandler.h"
+#include "DnsXactStreamHandler.h"
 #include "PcapInputStream.h"
 
 using namespace visor::handler::dns;
@@ -29,10 +29,9 @@ TEST_CASE("DNS JSON Schema", "[dns][iface][json]")
 
         visor::Config c;
         auto stream_proxy = stream.add_event_proxy(c);
-        DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
-        dns_handler.wire_dns()->config_set("recorded_stream", true);
-        dns_handler.xact_dns()->config_set("recorded_stream", true);
-        dns_handler.wire_dns()->config_set<visor::Configurable::StringList>("enable", visor::Configurable::StringList({"top_ecs"}));
+        DnsXactStreamHandler dns_handler{"dns-test", stream_proxy, &c};
+        dns_handler.config_set("recorded_stream", true);
+        dns_handler.config_set<visor::Configurable::StringList>("enable", visor::Configurable::StringList({"top_ecs"}));
 
         dns_handler.start();
         stream.start();
@@ -40,9 +39,9 @@ TEST_CASE("DNS JSON Schema", "[dns][iface][json]")
         dns_handler.stop();
 
         json dns_json;
-        dns_handler.window_json(dns_json, 5, true);
+        dns_handler.metrics()->window_merged_json(dns_json, dns_handler.schema_key(), 5);
 
-        std::ifstream sfile("handlers/dns/tests/window-schema.json");
+        std::ifstream sfile("handlers/dns_xact/tests/window-schema.json");
         CHECK(sfile.is_open());
         std::string schema;
 

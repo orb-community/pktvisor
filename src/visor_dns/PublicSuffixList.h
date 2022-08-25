@@ -10,10 +10,10 @@
 #pragma once
 
 #include "robin_hood.h"
-#include <string_view>
-#include <vector>
+#include <c++/9/string_view>
+#include <c++/9/vector>
 
-namespace visor::handler::dns {
+namespace visor::dns {
 
 using namespace std::literals;
 

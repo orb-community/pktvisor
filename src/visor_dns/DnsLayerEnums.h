@@ -6,7 +6,7 @@
 /**
  * \namespace visor
  */
-namespace visor::handler::dns {
+namespace visor::dns {
 /**
 	 * An enum for all possible DNS record types
 	 */
