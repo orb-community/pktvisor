@@ -31,9 +31,8 @@ static inline std::string most_used_interface()
             continue;
         }
         if (int family = ifa->ifa_addr->sa_family; family == AF_LINK && ifa->ifa_data != nullptr) {
-            uint32_t *stats = reinterpret_cast<uint32_t *>(ifa->ifa_data);
-            // first 4 bytes are txpackets and next 4 bytes are rxpackets
-            uint64_t packets = stats[0] + stats[1];
+            if_data *stats = reinterpret_cast<if_data *>(ifa->ifa_data);
+            auto packets = stats->ifi_ipackets + stats->ifi_opackets;
             if (packets > most_used) {
                 most_used = packets;
                 interface = std::string(ifa->ifa_name);

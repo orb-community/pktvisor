@@ -42,10 +42,11 @@ static const char USAGE[] =
     Taps and Collection Policies may be created by passing the appropriate YAML configuration file to
     --config, and/or by enabling the admin REST API with --admin-api and using the appropriate endpoints.
 
-    Alternatively, for simple use cases you may specify IFACE, which is either a network interface or an
-    IP address (4 or 6). If this is specified, "default" Tap and Collection Policies will be created with
+    Alternatively, for simple use cases you may specify IFACE, which is either a network interface, an
+    IP address (4 or 6), or "auto". If this is specified, "default" Tap and Collection Policies will be created with
     a "pcap" input stream on the specified interfaced, along with the built in "net", "dns", and "pcap"
-    Stream Handler modules attached. Note that this feature may be deprecated in the future.
+    Stream Handler modules attached. If "auto" is specified, the most used ethernet interface will be chosen.
+    Note that this feature may be deprecated in the future.
 
     For more documentation, see https://pktvisor.dev
 
@@ -575,10 +576,11 @@ int main(int argc, char *argv[])
     std::string iface;
     if (args["IFACE"]) {
         iface = args["IFACE"].asString();
-    } else if (!options.config.has_value()) {
-        iface = visor::most_used_interface();
-        if (!iface.empty()) {
-            logger->info("Network Interface not set at startup, picked the most used interface: '{}'", iface);
+        if (iface == "auto") {
+            iface = visor::most_used_interface();
+            if (!iface.empty()) {
+                logger->info("Network interface set to 'auto', picked the most used interface: '{}'", iface);
+            }
         }
     }
 
