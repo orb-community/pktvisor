@@ -13,7 +13,7 @@
 #endif
 #include <string>
 
-namespace visor {
+namespace visor::input::pcap {
 
 static inline std::string most_used_interface()
 {

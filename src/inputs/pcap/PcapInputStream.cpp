@@ -3,6 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 #include "PcapInputStream.h"
+#include "NetworkInterfaceScan.h"
 #include <pcap.h>
 #include <timer.hpp>
 #pragma GCC diagnostic push
@@ -133,6 +134,12 @@ void PcapInputStream::start()
             config_set("bpf", "");
         }
         TARGET = config_get<std::string>("iface");
+        if (TARGET == "auto") {
+            TARGET = most_used_interface();
+            if (TARGET.empty()) {
+                throw PcapException("iface was set to 'auto' but no interface was found");
+            }
+        }
         interfaceIP4 = TARGET;
         interfaceIP6 = TARGET;
     }
