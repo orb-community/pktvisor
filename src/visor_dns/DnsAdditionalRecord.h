@@ -6,8 +6,8 @@
 
 #include "DnsResource.h"
 #include "EndianPortable.h"
-#include <c++/9/algorithm>
-#include <c++/9/array>
+#include <algorithm>
+#include <array>
 
 namespace visor::dns {
 
