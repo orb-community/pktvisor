@@ -193,7 +193,7 @@ TEST_CASE("Parse net (dns) with DNS filter only_qname_suffix", "[pcap][dns][net]
     dns_handler.set_event_proxy(stream.create_event_proxy(c));
     NetStreamHandler net_handler{"net-test", dns_handler.get_event_proxy(), &c};
 
-    dns_handler.wire_dns()->config_set<visor::Configurable::StringList>("only_qname_suffix", {"google.com"});
+    dns_handler.config_set<visor::Configurable::StringList>("only_qname_suffix", {"google.com"});
 
     net_handler.start();
     dns_handler.start();

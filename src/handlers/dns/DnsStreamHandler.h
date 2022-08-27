@@ -55,9 +55,12 @@ public:
         if (_running) {
             return;
         }
+        _wire_dns->config_merge(dynamic_cast<const Configurable &>(*this));
+        _xact_dns->config_merge(dynamic_cast<const Configurable &>(*this));
         if (_event_proxy) {
             _wire_dns->set_event_proxy(std::move(_event_proxy));
         }
+
         _wire_dns->start();
         _xact_dns->start();
         _running = true;

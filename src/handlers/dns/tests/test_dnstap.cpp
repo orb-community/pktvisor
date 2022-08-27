@@ -70,9 +70,7 @@ TEST_CASE("Parse filtered DNSTAP empty data", "[dnstap][dns][filter]")
     auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
     DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
-
-    dns_handler.wire_dns()->config_set<std::string>("dnstap_msg_type", "auth");
-    dns_handler.xact_dns()->config_set<std::string>("dnstap_msg_type", "auth");
+    dns_handler.config_set<std::string>("dnstap_msg_type", "auth");
 
     dns_handler.start();
     stream.start();
@@ -168,6 +166,6 @@ TEST_CASE("Invalid DNSTAP filter", "[dnstap][dns][filter]")
     c.config_set<uint64_t>("num_periods", 1);
     DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
 
-    dns_handler.wire_dns()->config_set<std::string>("dnstap_msg_type", "sender");
+    dns_handler.config_set<std::string>("dnstap_msg_type", "sender");
     REQUIRE_THROWS_WITH(dns_handler.start(), "DnsWireStreamHandler: dnstap_msg_type contained an invalid/unsupported type. Valid types: auth, client, forwarder, resolver, stub, tool, update");
 }

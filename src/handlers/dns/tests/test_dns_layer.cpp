@@ -218,7 +218,7 @@ TEST_CASE("Parse DNS random UDP/TCP tests", "[pcap][dns]")
     CHECK(counters.IPv4.value() == 5851); // wireshark: 5838
     CHECK(counters.IPv6.value() == 0);
     CHECK(counters.queries.value() == 2930);
-    CHECK(counters.replies.value() == 2921);     // wireshark: 2908
+    CHECK(counters.replies.value() == 2921);          // wireshark: 2908
     CHECK(counters_xact.xacts_total.value() == 2921); // wireshark: 2894
     CHECK(counters_xact.xacts_in.value() == 0);
     CHECK(counters_xact.xacts_out.value() == 2921); // wireshark: 2894
@@ -276,8 +276,7 @@ TEST_CASE("DNS Filters: exclude_noerror", "[pcap][dns]")
     auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
     DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
-
-    dns_handler.wire_dns()->config_set<bool>("exclude_noerror", true);
+    dns_handler.config_set<bool>("exclude_noerror", true);
 
     dns_handler.start();
     stream.start();
@@ -309,8 +308,7 @@ TEST_CASE("DNS Filters: only_rcode nx", "[pcap][net]")
     auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
     DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
-
-    dns_handler.wire_dns()->config_set<uint64_t>("only_rcode", NXDomain);
+    dns_handler.config_set<uint64_t>("only_rcode", NXDomain);
 
     dns_handler.start();
     stream.start();
@@ -341,8 +339,7 @@ TEST_CASE("DNS Filters: only_rcode refused", "[pcap][dns]")
     auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
     DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
-
-    dns_handler.wire_dns()->config_set<uint64_t>("only_rcode", Refused);
+    dns_handler.config_set<uint64_t>("only_rcode", Refused);
 
     dns_handler.start();
     stream.start();
@@ -373,8 +370,8 @@ TEST_CASE("DNS Filters: only_qtypes AAAA and TXT", "[pcap][dns]")
     c.config_set<uint64_t>("num_periods", 1);
     DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
 
-    //notice case insensitive
-    dns_handler.wire_dns()->config_set<visor::Configurable::StringList>("only_qtype", {"AAAA", "TxT"});
+    // notice case insensitive
+    dns_handler.config_set<visor::Configurable::StringList>("only_qtype", {"AAAA", "TxT"});
     dns_handler.start();
     stream.start();
     stream.stop();
@@ -401,7 +398,7 @@ TEST_CASE("DNS Filters: only_qtypes AAAA and TXT", "[pcap][dns]")
     CHECK(j["top_qtype"][0]["estimate"] == 1476);
     CHECK(j["top_qtype"][1]["name"] == "TXT");
     CHECK(j["top_qtype"][1]["estimate"] == 620);
-    CHECK(j["top_qtype"][2]== nullptr);
+    CHECK(j["top_qtype"][2] == nullptr);
 }
 
 TEST_CASE("DNS TopN custom size", "[pcap][dns]")
@@ -453,7 +450,7 @@ TEST_CASE("DNS Filters: only_qname_suffix", "[pcap][dns]")
     DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
 
     // notice, case insensitive
-    dns_handler.wire_dns()->config_set<visor::Configurable::StringList>("only_qname_suffix", {"GooGle.com"});
+    dns_handler.config_set<visor::Configurable::StringList>("only_qname_suffix", {"GooGle.com"});
     dns_handler.start();
     stream.start();
     stream.stop();
@@ -527,7 +524,8 @@ TEST_CASE("DNS Filters: only_dnssec_response", "[pcap][dns]")
     auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
     DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
-    dns_handler.wire_dns()->config_set<bool>("only_dnssec_response", true);
+    dns_handler.config_set<bool>("only_dnssec_response", true);
+
     dns_handler.start();
     stream.start();
     stream.stop();
@@ -611,7 +609,7 @@ TEST_CASE("Parse DNS with ECS data", "[pcap][dns][ecs]")
     auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
     DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
-    dns_handler.wire_dns()->config_set<visor::Configurable::StringList>("enable", visor::Configurable::StringList({"top_ecs"}));
+    dns_handler.config_set<visor::Configurable::StringList>("enable", visor::Configurable::StringList({"top_ecs"}));
     dns_handler.start();
     stream.start();
     stream.stop();
@@ -660,8 +658,8 @@ TEST_CASE("DNS filter: GeoLoc not found", "[pcap][dns][ecs]")
     auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
     DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
-    dns_handler.wire_dns()->config_set<visor::Configurable::StringList>("enable", visor::Configurable::StringList({"top_ecs"}));
-    dns_handler.wire_dns()->config_set<bool>("geoloc_notfound", true);
+    dns_handler.config_set<visor::Configurable::StringList>("enable", visor::Configurable::StringList({"top_ecs"}));
+    dns_handler.config_set<bool>("geoloc_notfound", true);
     dns_handler.start();
     stream.start();
     stream.stop();
@@ -708,8 +706,8 @@ TEST_CASE("DNS filter: ASN not found", "[pcap][dns][ecs]")
     auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
     DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
-    dns_handler.wire_dns()->config_set<visor::Configurable::StringList>("enable", visor::Configurable::StringList({"top_ecs"}));
-    dns_handler.wire_dns()->config_set<bool>("asn_notfound", true);
+    dns_handler.config_set<visor::Configurable::StringList>("enable", visor::Configurable::StringList({"top_ecs"}));
+    dns_handler.config_set<bool>("asn_notfound", true);
     dns_handler.start();
     stream.start();
     stream.stop();
@@ -756,31 +754,31 @@ TEST_CASE("DNS filter exceptions", "[pcap][dns][filter]")
 
     SECTION("only_rcode as string")
     {
-        dns_handler.wire_dns()->config_set<std::string>("only_rcode", "1");
+        dns_handler.config_set<std::string>("only_rcode", "1");
         REQUIRE_THROWS_WITH(dns_handler.start(), "DnsWireStreamHandler: wrong value type for only_rcode filter. It should be an integer");
     }
 
     SECTION("only_rcode invalid")
     {
-        dns_handler.wire_dns()->config_set<uint64_t>("only_rcode", 133);
+        dns_handler.config_set<uint64_t>("only_rcode", 133);
         REQUIRE_THROWS_WITH(dns_handler.start(), "DnsWireStreamHandler: only_rcode filter contained an invalid/unsupported rcode");
     }
 
     SECTION("only_qtype invalid qtype string")
     {
-        dns_handler.wire_dns()->config_set<visor::Configurable::StringList>("only_qtype", {"AAAA", "TEXT"});
+        dns_handler.config_set<visor::Configurable::StringList>("only_qtype", {"AAAA", "TEXT"});
         REQUIRE_THROWS_WITH(dns_handler.start(), "DnsWireStreamHandler: only_qtype filter contained an invalid/unsupported qtype: TEXT");
     }
 
     SECTION("only_qtype invalid qtype number")
     {
-        dns_handler.wire_dns()->config_set<visor::Configurable::StringList>("only_qtype", {"AAAA", "270"});
+        dns_handler.config_set<visor::Configurable::StringList>("only_qtype", {"AAAA", "270"});
         REQUIRE_THROWS_WITH(dns_handler.start(), "DnsWireStreamHandler: only_qtype filter contained an invalid/unsupported qtype: 270");
     }
 
     SECTION("answer_count as string")
     {
-        dns_handler.wire_dns()->config_set<std::string>("answer_count", "1");
+        dns_handler.config_set<std::string>("answer_count", "1");
         REQUIRE_THROWS_WITH(dns_handler.start(), "DnsWireStreamHandler: wrong value type for answer_count filter. It should be an integer");
     }
 }
@@ -800,7 +798,7 @@ TEST_CASE("DNS groups", "[pcap][dns]")
 
     SECTION("disable cardinality and counters")
     {
-        dns_handler.wire_dns()->config_set<visor::Configurable::StringList>("disable", {"cardinality", "counters"});
+        dns_handler.config_set<visor::Configurable::StringList>("disable", {"cardinality", "counters"});
 
         dns_handler.start();
         stream.start();
@@ -837,8 +835,7 @@ TEST_CASE("DNS groups", "[pcap][dns]")
 
     SECTION("disable TopQname and Dns Transactions")
     {
-        dns_handler.wire_dns()->config_set<visor::Configurable::StringList>("disable", {"top_qnames", "dns_transaction"});
-        dns_handler.xact_dns()->config_set<visor::Configurable::StringList>("disable", {"top_qnames", "dns_transaction"});
+        dns_handler.config_set<visor::Configurable::StringList>("disable", {"top_qnames", "dns_transaction"});
 
         dns_handler.start();
         stream.start();
@@ -873,13 +870,13 @@ TEST_CASE("DNS groups", "[pcap][dns]")
 
     SECTION("disable invalid dns group")
     {
-        dns_handler.wire_dns()->config_set<visor::Configurable::StringList>("disable", {"top_qnames", "dns_top_wired"});
+        dns_handler.config_set<visor::Configurable::StringList>("disable", {"top_qnames", "dns_top_wired"});
         REQUIRE_THROWS_WITH(dns_handler.start(), "dns_top_wired is an invalid/unsupported metric group. The valid groups are cardinality, counters, dns_transaction, top_ecs, top_qnames");
     }
 
     SECTION("enable invalid dns group")
     {
-        dns_handler.wire_dns()->config_set<visor::Configurable::StringList>("enable", {"top_qnames", "dns_top_wired"});
+        dns_handler.config_set<visor::Configurable::StringList>("enable", {"top_qnames", "dns_top_wired"});
         REQUIRE_THROWS_WITH(dns_handler.start(), "dns_top_wired is an invalid/unsupported metric group. The valid groups are cardinality, counters, dns_transaction, top_ecs, top_qnames");
     }
 }
@@ -898,8 +895,8 @@ TEST_CASE("DNS Filters: only_rcode with predicate", "[pcap][dns][filter]")
     DnsStreamHandler dns_handler_1{"dns-test-1", stream_proxy, &c};
     DnsStreamHandler dns_handler_2{"dns-test-2", stream_proxy, &c};
 
-    dns_handler_1.wire_dns()->config_set<uint64_t>("only_rcode", 2);
-    dns_handler_2.wire_dns()->config_set<uint64_t>("only_rcode", 3);
+    dns_handler_1.config_set<uint64_t>("only_rcode", 2);
+    dns_handler_2.config_set<uint64_t>("only_rcode", 3);
 
     dns_handler_1.start();
     dns_handler_2.start();
