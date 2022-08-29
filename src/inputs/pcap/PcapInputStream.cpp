@@ -98,7 +98,7 @@ void PcapInputStream::start()
         return;
     }
 
-    if (config_exists("debug")) {
+    if (config_exists("debug") && config_get<bool>("debug")) {
         pcpp::Logger::getInstance().setAllModlesToLogLevel(pcpp::Logger::LogLevel::Debug);
     }
 
