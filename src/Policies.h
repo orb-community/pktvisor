@@ -58,6 +58,11 @@ public:
         _taps.push_back(tap);
     }
 
+    void remove_tap(const Tap *tap)
+    {
+        _taps.erase(std::remove(_taps.begin(), _taps.end(), tap), _taps.end());
+    }
+
     void add_input_stream(InputStream *input_stream)
     {
         _input_streams.push_back(input_stream);

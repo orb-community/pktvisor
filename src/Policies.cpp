@@ -521,6 +521,9 @@ void PolicyManager::remove_policy(const std::string &name)
 }
 void Policy::info_json(json &j) const
 {
+    for (auto &tap : _taps) {
+        tap->info_json(j["taps"][tap->name()]);
+    }
     for (auto &input : _input_streams) {
         input->info_json(j["input"][input->name()]);
     }

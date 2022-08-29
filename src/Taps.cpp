@@ -89,16 +89,6 @@ std::vector<Tap *> TapManager::load(const YAML::Node &tap_yaml, bool strict)
     return result;
 }
 
-void TapManager::remove_tap(const std::string &name)
-{
-    std::unique_lock lock(_map_mutex);
-    if (_map.count(name) == 0) {
-        throw ModuleException(name, fmt::format("module name '{}' does not exist", name));
-    }
-    // TODO: add logic to remove policies that uses the specific deleted TAP
-    _map.erase(name);
-}
-
 std::string Tap::get_input_name(const Configurable &config, const Configurable &filter)
 {
     Config c;
