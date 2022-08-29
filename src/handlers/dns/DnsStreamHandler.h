@@ -183,23 +183,23 @@ public:
     void specialized_merge(const AbstractMetricsBucket &other) override;
     void to_json(json &j) const override;
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override;
-    void update_topn_metrics(size_t topn_count) override
+    void update_topn_metrics(size_t topn_count, uint64_t percentile_threshold) override
     {
-        _dns_topGeoLocECS.set_topn_count(topn_count);
-        _dns_topASNECS.set_topn_count(topn_count);
-        _dns_topQueryECS.set_topn_count(topn_count);
-        _dns_topQname2.set_topn_count(topn_count);
-        _dns_topQname3.set_topn_count(topn_count);
-        _dns_topNX.set_topn_count(topn_count);
-        _dns_topREFUSED.set_topn_count(topn_count);
-        _dns_topSizedQnameResp.set_topn_count(topn_count);
-        _dns_topSRVFAIL.set_topn_count(topn_count);
-        _dns_topNODATA.set_topn_count(topn_count);
-        _dns_topUDPPort.set_topn_count(topn_count);
-        _dns_topQType.set_topn_count(topn_count);
-        _dns_topRCode.set_topn_count(topn_count);
-        _dns_slowXactIn.set_topn_count(topn_count);
-        _dns_slowXactOut.set_topn_count(topn_count);
+        _dns_topGeoLocECS.set_settings(topn_count, percentile_threshold);
+        _dns_topASNECS.set_settings(topn_count, percentile_threshold);
+        _dns_topQueryECS.set_settings(topn_count, percentile_threshold);
+        _dns_topQname2.set_settings(topn_count, percentile_threshold);
+        _dns_topQname3.set_settings(topn_count, percentile_threshold);
+        _dns_topNX.set_settings(topn_count, percentile_threshold);
+        _dns_topREFUSED.set_settings(topn_count, percentile_threshold);
+        _dns_topSizedQnameResp.set_settings(topn_count, percentile_threshold);
+        _dns_topSRVFAIL.set_settings(topn_count, percentile_threshold);
+        _dns_topNODATA.set_settings(topn_count, percentile_threshold);
+        _dns_topUDPPort.set_settings(topn_count, percentile_threshold);
+        _dns_topQType.set_settings(topn_count, percentile_threshold);
+        _dns_topRCode.set_settings(topn_count, percentile_threshold);
+        _dns_slowXactIn.set_settings(topn_count, percentile_threshold);
+        _dns_slowXactOut.set_settings(topn_count, percentile_threshold);
     }
 
     void on_set_read_only() override

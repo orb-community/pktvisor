@@ -237,9 +237,9 @@ private:
     datasketches::frequent_items_sketch<T> _fi;
     size_t _top_count = 10;
     std::string _item_key;
-    double _percentile_threshold;
+    double _percentile_threshold = 0.0;
 
-    uint64_t _get_threshold(std::vector<typename datasketches::frequent_items_sketch<T>::row> &items) const
+    uint64_t _get_threshold(const std::vector<typename datasketches::frequent_items_sketch<T>::row> &items) const
     {
         datasketches::kll_sketch<uint64_t> quantile;
         for (uint64_t i = 0; i < std::min(_top_count, items.size()); i++) {
@@ -252,15 +252,11 @@ private:
     }
 
 public:
-    TopN(std::string schema_key, std::string item_key, std::initializer_list<std::string> names, std::string desc, uint64_t percentile_threshold = DEFAULT_PERCENTILE_THRESHOLD)
+    TopN(std::string schema_key, std::string item_key, std::initializer_list<std::string> names, std::string desc)
         : Metric(schema_key, names, std::move(desc))
         , _fi(MAX_FI_MAP_SIZE, START_FI_MAP_SIZE)
         , _item_key(item_key)
-        , _percentile_threshold(static_cast<double>(percentile_threshold) / 100)
     {
-        if (_percentile_threshold > 1.0) {
-            throw std::runtime_error("threshold must be between 0 and 100 but has value " + std::to_string(_percentile_threshold));
-        }
     }
 
     void update(const T &value, uint64_t weight = 1)
@@ -278,14 +274,23 @@ public:
         _fi.merge(other._fi);
     }
 
-    void set_topn_count(const size_t top_count)
+    void set_settings(const size_t top_count, uint64_t percentile_threshold)
     {
         _top_count = top_count;
+        _percentile_threshold = static_cast<double>(percentile_threshold) / 100;
+        if (_percentile_threshold > 1.0) {
+            throw std::runtime_error("threshold must be between 0 and 100 but has value " + std::to_string(_percentile_threshold));
+        }
     }
 
     size_t topn_count() const
     {
         return _top_count;
+    }
+
+    double percentile_threshold() const
+    {
+        return _percentile_threshold;
     }
 
     /**
