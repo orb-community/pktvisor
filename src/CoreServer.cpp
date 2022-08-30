@@ -242,9 +242,10 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
             for (auto &mod : taps) {
                 mod->info_json(j[mod->name()]);
             }
+            res.status = 201;
             res.set_content(j.dump(), "text/json");
         } catch (const std::exception &e) {
-            res.status = 500;
+            (std::string(e.what()).find("already") != std::string::npos) ? res.status = 409 : res.status = 500;
             j["error"] = e.what();
             res.set_content(j.dump(), "text/json");
         }
@@ -269,6 +270,7 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
             }
             lock.unlock();
             _registry->tap_manager()->module_remove(name);
+            res.status = 204;
             res.set_content(j.dump(), "text/json");
         } catch (const std::exception &e) {
             res.status = 500;
@@ -314,13 +316,14 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
             for (auto &mod : policies) {
                 mod->info_json(j[mod->name()]);
             }
+            res.status = 201;
             res.set_content(j.dump(), "text/json");
         } catch (const std::invalid_argument &e) {
             res.status = 422;
             j["error"] = e.what();
             res.set_content(j.dump(), "text/json");
         } catch (const std::exception &e) {
-            res.status = 500;
+            (std::string(e.what()).find("already") != std::string::npos) ? res.status = 409 : res.status = 500;
             j["error"] = e.what();
             res.set_content(j.dump(), "text/json");
         }
@@ -355,6 +358,7 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
         }
         try {
             _registry->policy_manager()->remove_policy(name);
+            res.status = 204;
             res.set_content(j.dump(), "text/json");
         } catch (const std::exception &e) {
             res.status = 500;
