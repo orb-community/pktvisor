@@ -27,17 +27,21 @@ std::vector<Tap *> TapManager::load_from_str(const std::string &str)
         throw TapException("missing or unsupported version");
     }
     if (node["visor"]["taps"] && node["visor"]["taps"].IsMap()) {
-        return load(node["visor"]["taps"], true);
+        return load(node["visor"]["taps"], true, true);
     } else {
         throw TapException("no taps found in schema");
     }
 }
 
 // needs to be thread safe and transactional: any errors mean resources get cleaned up with no side effects
-std::vector<Tap *> TapManager::load(const YAML::Node &tap_yaml, bool strict)
+std::vector<Tap *> TapManager::load(const YAML::Node &tap_yaml, bool strict, bool single)
 {
     assert(tap_yaml.IsMap());
     assert(spdlog::get("visor"));
+
+    if (single && tap_yaml.size() > 1) {
+        throw TapException(fmt::format("only a single tap expected but got {}", tap_yaml.size()));
+    }
 
     std::vector<Tap *> result;
     for (YAML::const_iterator it = tap_yaml.begin(); it != tap_yaml.end(); ++it) {
@@ -85,18 +89,69 @@ std::vector<Tap *> TapManager::load(const YAML::Node &tap_yaml, bool strict)
         module_add(std::move(tap_module));
         spdlog::get("visor")->info("tap [{}]: loaded, type {}", tap_name, input_type);
     }
-
     return result;
 }
 
-void TapManager::remove_tap(const std::string &name)
+std::vector<std::string> TapManager::get_input_taps_name(const YAML::Node &input_node)
 {
-    std::unique_lock lock(_map_mutex);
-    if (_map.count(name) == 0) {
-        throw ModuleException(name, fmt::format("module name '{}' does not exist", name));
+    if (input_node["tap"] && input_node["tap_selector"]) {
+        throw TapException("input can have only key 'input.tap' or key 'input.tap_selector'");
+    } else if (!input_node["tap"] && !input_node["tap_selector"]) {
+        throw TapException("missing key 'input.tap' or key 'input.tap_selector'");
     }
-    // TODO: add logic to remove policies that uses the specific deleted TAP
-    _map.erase(name);
+
+    std::vector<std::string> taps_name;
+
+    if (input_node["tap"]) {
+        if (!input_node["tap"].IsScalar()) {
+            throw PolicyException("invalid tap at key 'input.tap'");
+        }
+        auto tap_name = input_node["tap"].as<std::string>();
+        if (!_registry->tap_manager()->module_exists(tap_name)) {
+            throw TapException(fmt::format("tap '{}' does not exist", tap_name));
+        }
+        taps_name.push_back(tap_name);
+    } else if (input_node["tap_selector"]) {
+
+        auto tap_selector = input_node["tap_selector"];
+        if (!tap_selector.IsMap()) {
+            throw TapException("'input.tap_selector' is not a map");
+        }
+        if (tap_selector["all"] && tap_selector["any"]) {
+            throw TapException("input can have only key 'input.tap_selector.all' or key 'input.tap_selector.any'");
+        } else if (!tap_selector["all"] && !tap_selector["any"]) {
+            throw TapException("missing key 'input.tap_selector.all' or key 'input.tap_selector.any'");
+        }
+
+        std::string binary_op{"all"};
+        if (tap_selector["all"]) {
+            if (!tap_selector["all"].IsSequence()) {
+                throw TapException("'input.tap_selector.all' is not a sequence");
+            }
+        } else if (tap_selector["any"]) {
+            if (!tap_selector["any"].IsSequence()) {
+                throw TapException("'input.tap_selector.any' is not a sequence");
+            }
+            binary_op = "any";
+        }
+
+
+        auto [tap_modules, hm_lock] = module_get_all_locked();
+        bool match {false};
+        for (auto &[name, mod] : tap_modules) {
+            auto tmod = dynamic_cast<Tap *>(mod.get());
+            if (tmod && tmod->tags_match_selector_yaml(tap_selector[binary_op], (binary_op == "all"))) {
+                taps_name.push_back(tmod->name());
+                match = true;
+            }
+        }
+
+        if (!match) {
+            spdlog::get("visor")->info("no tap match found for specified 'input.tap_selector' tags");
+            throw std::invalid_argument("no tap match found for specified 'input.tap_selector' tags");
+        }
+    }
+    return taps_name;
 }
 
 std::string Tap::get_input_name(const Configurable &config, const Configurable &filter)
@@ -121,11 +176,16 @@ bool Tap::tags_match_selector_yaml(const YAML::Node &tag_yaml, bool all)
 {
     bool any_match = false;
     for (YAML::const_iterator it = tag_yaml.begin(); it != tag_yaml.end(); ++it) {
-        if (!it->second.IsScalar()) {
-            throw TapException(fmt::format("tag key '{}' must have scalar value", it->first));
+        //sequence
+        const auto it_module = it->begin();
+        if (!it_module->first.IsScalar()) {
+            throw TapException(fmt::format("tag key '{}' have be scalar", it_module->first));
+        }
+        if (!it_module->second.IsScalar()) {
+            throw TapException(fmt::format("tag key '{}' must have scalar value", it_module->first));
         }
 
-        auto key = it->first.as<std::string>();
+        auto key = it_module->first.as<std::string>();
         if (!_tags->config_exists(key)) {
             if (all) {
                 return false;
@@ -135,16 +195,16 @@ bool Tap::tags_match_selector_yaml(const YAML::Node &tag_yaml, bool all)
         }
 
         // the yaml library doesn't discriminate between scalar types, so we have to do that ourselves
-        auto value = it->second.as<std::string>();
+        auto value = it_module->second.as<std::string>();
         if (std::regex_match(value, std::regex("[0-9]+"))) {
-            if (_tags->config_get<uint64_t>(key) == it->second.as<uint64_t>()) {
+            if (_tags->config_get<uint64_t>(key) == it_module->second.as<uint64_t>()) {
                 any_match = true;
             } else if (all) {
                 return false;
             }
 
         } else if (std::regex_match(value, std::regex("true|false", std::regex_constants::icase))) {
-            if (_tags->config_get<bool>(key) == it->second.as<bool>()) {
+            if (_tags->config_get<bool>(key) == it_module->second.as<bool>()) {
                 any_match = true;
             } else if (all) {
                 return false;
@@ -160,5 +220,4 @@ bool Tap::tags_match_selector_yaml(const YAML::Node &tag_yaml, bool all)
 
     return any_match;
 }
-
 }

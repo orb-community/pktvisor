@@ -223,6 +223,46 @@ TEST_CASE("Parse net (dns) with DNS filter only_qname_suffix", "[pcap][dns][net]
     CHECK(j["top_ipv4"][0]["name"] == "216.239.38.10");
 }
 
+TEST_CASE("Parse DNS with NET filter geo", "[pcap][dns][net]")
+{
+    CHECK_NOTHROW(visor::geo::GeoIP().enable("tests/fixtures/GeoIP2-City-Test.mmdb"));
+    CHECK_NOTHROW(visor::geo::GeoASN().enable("tests/fixtures/GeoIP2-ISP-Test.mmdb"));
+
+    PcapInputStream stream{"pcap-test"};
+    stream.config_set("pcap_file", "tests/fixtures/dns_udp_mixed_rcode.pcap");
+    stream.config_set("bpf", "");
+    stream.config_set("host_spec", "192.168.0.0/24");
+    stream.parse_host_spec();
+
+    visor::Config c;
+    auto stream_proxy = stream.add_event_proxy(c);
+    c.config_set<uint64_t>("num_periods", 1);
+    NetStreamHandler net_handler{"net-test", stream_proxy, &c};
+    net_handler.set_event_proxy(stream.create_event_proxy(c));
+    DnsStreamHandler dns_handler{"dns-test", net_handler.get_event_proxy(), &c};
+
+    net_handler.config_set<bool>("geoloc_notfound", true);
+
+    dns_handler.start();
+    net_handler.start();
+    stream.start();
+    stream.stop();
+    net_handler.stop();
+    dns_handler.stop();
+
+    auto net_counters = net_handler.metrics()->bucket(0)->counters();
+    auto event_data = net_handler.metrics()->bucket(0)->event_data_locked();
+
+    CHECK(event_data.num_events->value() == 24);
+    CHECK(net_counters.TCP.value() == 0);
+    CHECK(net_counters.UDP.value() == 24);
+    CHECK(net_counters.IPv4.value() == 24);
+
+    auto dns_counters = dns_handler.metrics()->bucket(0)->counters();
+    CHECK(dns_counters.UDP.value() == 24);
+    CHECK(dns_counters.IPv4.value() == 24);
+}
+
 TEST_CASE("Parse net dnstap stream", "[dnstap][net]")
 {
 

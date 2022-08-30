@@ -102,8 +102,8 @@ TEST_CASE("Taps", "[taps]")
         CHECK(tap->config_get<bool>("boolean") == true);
         lock.unlock();
 
-        REQUIRE_NOTHROW(registry.tap_manager()->remove_tap("wired"));
-        REQUIRE_NOTHROW(registry.tap_manager()->remove_tap("wireless"));
+        REQUIRE_NOTHROW(registry.tap_manager()->module_remove("wired"));
+        REQUIRE_NOTHROW(registry.tap_manager()->module_remove("wireless"));
 
         CHECK_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
         auto [new_tap, new_lock] = registry.tap_manager()->module_get_locked("wired");

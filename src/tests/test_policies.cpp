@@ -121,10 +121,7 @@ visor:
      kind: collection
      input:
        tap_selector:
-         all:
-           virtual: true
-           vhost: 1
-           key: value
+         all: [virtual: true, vhost: 1, key: value]
        input_type: mock
        config:
          sample: value
@@ -166,9 +163,10 @@ visor:
      input:
        tap_selector:
          any:
-           virtual: true
-           vhost: 1
-           key: value
+           - virtual: true
+           - virtual: false
+           - vhost: 1
+           - key: value
        input_type: mock
        config:
          sample: value
@@ -288,6 +286,10 @@ visor:
   policies:
     default_view:
       kind: collection
+      handlers:
+        modules:
+          default_dns:
+            type: dns
       input:
         tap: anycast
         input_type: wrong_type
@@ -542,12 +544,13 @@ visor:
   policies:
    default_view:
      kind: collection
+     handlers:
+       modules:
+        default_dns:
+          type: dns
      input:
        tap_selector:
-         all:
-           virtual: true
-           vhost: "1"
-           non_existent_key: value
+         all: [virtual: true, vhost: "1", non_existent_key: value]
        input_type: mock
 )";
 
@@ -575,12 +578,16 @@ visor:
   policies:
    default_view:
      kind: collection
+     handlers:
+       modules:
+         default_dns:
+           type: dns
      input:
        tap_selector:
          any:
-           virtual:
-             vhost: 1
-             non_existent_key: value
+            - virtual:
+                vhost: 1
+                non_existent_key: value
        input_type: mock
 )";
 
@@ -608,8 +615,47 @@ visor:
   policies:
    default_view:
      kind: collection
+     handlers:
+       modules:
+         default_dns:
+           type: dns
      input:
        tap: anycast1
+       tap_selector:
+         any:
+           virtual: true
+       input_type: mock
+)";
+
+auto policies_config_tap_selector_bad4 = R"(
+version: "1.0"
+
+visor:
+  taps:
+    anycast1:
+      input_type: mock
+      config:
+        iface: eth0
+      tags:
+        virtual: true
+        vhost: 1
+        key: value
+    anycast2:
+      input_type: mock
+      config:
+        iface: eth0
+      tags:
+        virtual: true
+        vhost: 2
+        key: value
+  policies:
+   default_view:
+     kind: collection
+     handlers:
+       modules:
+         default_dns:
+           type: dns
+     input:
        tap_selector:
          any:
            virtual: true
@@ -628,8 +674,8 @@ TEST_CASE("Policies", "[policies]")
         CHECK(config_file["visor"]["policies"]);
         CHECK(config_file["visor"]["policies"].IsMap());
 
-        REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
-        REQUIRE_NOTHROW(registry.policy_manager()->set_default_handler_config(config_file["visor"]["global_handler_config"]));
+        REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"]));
+        REQUIRE_NOTHROW(registry.handler_manager()->set_default_handler_config(config_file["visor"]["global_handler_config"]));
         REQUIRE_NOTHROW(registry.policy_manager()->load(config_file["visor"]["policies"]));
 
         REQUIRE(registry.policy_manager()->module_exists("default_view"));
@@ -658,7 +704,7 @@ TEST_CASE("Policies", "[policies]")
         YAML::Node config_file = YAML::Load(policies_config_hseq);
         CHECK(config_file["visor"]["policies"]);
         CHECK(config_file["visor"]["policies"].IsMap());
-        REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
+        REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"]));
         REQUIRE_NOTHROW(registry.policy_manager()->load(config_file["visor"]["policies"]));
 
         REQUIRE(registry.policy_manager()->module_exists("default_view"));
@@ -680,7 +726,7 @@ TEST_CASE("Policies", "[policies]")
         registry.start(nullptr);
         YAML::Node config_file = YAML::Load(policies_config);
 
-        REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
+        REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"]));
         REQUIRE_NOTHROW(registry.policy_manager()->load(config_file["visor"]["policies"]));
         REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["policies"]), "policy with name 'default_view' already defined");
 
@@ -696,7 +742,7 @@ TEST_CASE("Policies", "[policies]")
         YAML::Node config_file = YAML::Load(policies_config_tap_selector_all);
         CHECK(config_file["visor"]["policies"]);
         CHECK(config_file["visor"]["policies"].IsMap());
-        REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
+        REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"]));
         REQUIRE_NOTHROW(registry.policy_manager()->load(config_file["visor"]["policies"]));
 
         REQUIRE(registry.policy_manager()->module_exists("default_view"));
@@ -710,7 +756,7 @@ TEST_CASE("Policies", "[policies]")
         YAML::Node config_file = YAML::Load(policies_config_tap_selector_any);
         CHECK(config_file["visor"]["policies"]);
         CHECK(config_file["visor"]["policies"].IsMap());
-        REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
+        REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"]));
         REQUIRE_NOTHROW(registry.policy_manager()->load(config_file["visor"]["policies"]));
 
         REQUIRE(registry.policy_manager()->module_exists("default_view"));
@@ -756,8 +802,8 @@ TEST_CASE("Policies", "[policies]")
         registry.start(nullptr);
         YAML::Node config_file = YAML::Load(policies_config_bad3);
 
-        REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
-        REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["policies"]), "invalid input filter for tap 'anycast': invalid value for key: bpf");
+        REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"]));
+        REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["policies"]), "invalid input filter: invalid value for key: bpf");
     }
 
     SECTION("Bad Config: exception on input start")
@@ -766,7 +812,7 @@ TEST_CASE("Policies", "[policies]")
         registry.start(nullptr);
 
         REQUIRE_NOTHROW(registry.tap_manager()->load_from_str(policies_config_bad4));
-        REQUIRE_THROWS_WITH(registry.policy_manager()->load_from_str(policies_config_bad4), "policy [default_view] failed to start: mock error on start");
+        REQUIRE_THROWS(registry.policy_manager()->load_from_str(policies_config_bad4));
     }
 
     SECTION("Bad Config: mis-matched input_type on tap")
@@ -775,8 +821,8 @@ TEST_CASE("Policies", "[policies]")
         registry.start(nullptr);
         YAML::Node config_file = YAML::Load(policies_config_bad5);
 
-        REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
-        REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["policies"]), "unable to instantiate tap 'anycast': input_type for policy specified tap 'anycast' doesn't match tap's defined input type: wrong_type/mock");
+        REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"]));
+        REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["policies"]), "input_type for policy specified tap 'anycast' doesn't match tap's defined input type: wrong_type/mock");
     }
 
     SECTION("Bad Config: bad policy kind")
@@ -785,7 +831,7 @@ TEST_CASE("Policies", "[policies]")
         registry.start(nullptr);
         YAML::Node config_file = YAML::Load(policies_config_bad6);
 
-        REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
+        REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"]));
         REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["policies"]), "unknown policy kind: unknown_kind");
     }
 
@@ -795,7 +841,7 @@ TEST_CASE("Policies", "[policies]")
         registry.start(nullptr);
         YAML::Node config_file = YAML::Load(policies_config_bad7);
 
-        REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
+        REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"]));
         REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["policies"]), "Policy 'default_view' requires stream handler type 'net2' which is not available");
     }
 
@@ -856,7 +902,7 @@ TEST_CASE("Policies", "[policies]")
         YAML::Node config_file = YAML::Load(policies_config_bad12);
 
         REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
-        REQUIRE_THROWS_WITH(registry.policy_manager()->set_default_handler_config(config_file["visor"]["global_handler_config"]), "global_handler_config requires stream handler type 'dns2' which is not available");
+        REQUIRE_THROWS_WITH(registry.handler_manager()->set_default_handler_config(config_file["visor"]["global_handler_config"]), "global_handler_config requires stream handler type 'dns2' which is not available");
     }
 
     SECTION("Bad Config: global_handler_config with not valid format")
@@ -866,7 +912,7 @@ TEST_CASE("Policies", "[policies]")
         YAML::Node config_file = YAML::Load(policies_config_bad13);
 
         REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
-        REQUIRE_THROWS_WITH(registry.policy_manager()->set_default_handler_config(config_file["visor"]["global_handler_config"]), "expecting global_handler_config configuration map");
+        REQUIRE_THROWS_WITH(registry.handler_manager()->set_default_handler_config(config_file["visor"]["global_handler_config"]), "expecting global_handler_config configuration map");
     }
 
     SECTION("Bad Config: invalid handler modules YAML type")
@@ -906,6 +952,16 @@ TEST_CASE("Policies", "[policies]")
         REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["policies"]), "input can have only key 'input.tap' or key 'input.tap_selector'");
     }
 
+    SECTION("Bad Config: tap selector any must be sequence")
+    {
+        CoreRegistry registry;
+        registry.start(nullptr);
+        YAML::Node config_file = YAML::Load(policies_config_tap_selector_bad4);
+
+        REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
+        REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["policies"]), "'input.tap_selector.any' is not a sequence");
+    }
+
     SECTION("Roll Back")
     {
         CoreRegistry registry;
@@ -924,7 +980,7 @@ TEST_CASE("Policies", "[policies]")
         auto stream_proxy = input_stream->add_event_proxy(filter);
         auto mod = registry.handler_plugins()["net"]->instantiate("default_view-anycast-default_net", stream_proxy, &config, &filter);
         registry.handler_manager()->module_add(std::move(mod));
-        REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["policies"]), "policy [default_view-anycast-default_net] creation failed (handler: default_view): module name 'default_view-anycast-default_net' already exists");
+        REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["policies"]), "module name 'default_view-anycast-default_net' already exists");
 
         auto input_node = config_file["visor"]["policies"]["default_view"]["input"];
         Config input_config;

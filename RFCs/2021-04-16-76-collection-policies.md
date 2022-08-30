@@ -43,9 +43,10 @@ visor:
       handlers:
         # default configuration for the stream handlers
         config:
-          periods: 2 #default is 5
-          max_deep_sample: 50 #default is 100
+          num_periods: 2 #default is 5
+          deep_sample_rate: 50 #default is 100
           topn_count: 5 #default is 10
+          topn_percentile_threshold: 20 #default is 0
         modules:
           # the keys at this level are unique identifiers
           default_net:
@@ -54,6 +55,7 @@ visor:
             type: net
             config:
               topn_count: 7
+              topn_percentile_threshold: 10
             filter:
               protocols: [ udp ]
             metric_groups:
@@ -86,10 +88,10 @@ visor:
       input:
         # this must reference valid tags existent on applied taps, or application of the policy will fail
         tap_selector:
-          # It can be either "any" or "all"
+          # It can be either "any" or "all" and it must be a sequence
           any:
-            virtual: true
-            vhost: 1
+            - virtual: true
+            - vhost: 1
         # this must match the input_type of the matching tap name, or application of the policy will fail
         input_type: pcap
         filter:
@@ -97,8 +99,8 @@ visor:
       handlers:
         # default configuration for the stream handlers
         config:
-          periods: 5
-          max_deep_sample: 50
+          num_periods: 5
+          deep_sample_rate: 50
         modules:
           # the keys at this level are unique identifiers
           # Chaning handlers example. It needs proper indentation as shown below

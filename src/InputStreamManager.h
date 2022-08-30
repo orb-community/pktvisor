@@ -9,6 +9,19 @@
 
 namespace visor {
 
+class InputStreamException : public std::runtime_error
+{
+public:
+    InputStreamException(const char *msg)
+        : std::runtime_error(msg)
+    {
+    }
+    InputStreamException(const std::string &msg)
+        : std::runtime_error(msg)
+    {
+    }
+};
+
 /**
  * called from HTTP threads so must be thread safe
  */
@@ -37,6 +50,39 @@ public:
         }
         _map[name]->stop();
         _map.erase(name);
+    }
+
+    auto get_config_and_filter(const YAML::Node &input_node)
+    {
+        if (!input_node || !input_node.IsMap()) {
+            throw InputStreamException("missing or invalid policy input stream configuration at key 'input'");
+        }
+        if (!input_node["input_type"] || !input_node["input_type"].IsScalar()) {
+            throw InputStreamException("missing or invalid input_type at key 'input.input_type'");
+        }
+        Config input_config;
+        if (input_node["config"]) {
+            if (!input_node["config"].IsMap()) {
+                throw InputStreamException("input configuration is not a map");
+            }
+            try {
+                input_config.config_set_yaml(input_node["config"]);
+            } catch (ConfigException &e) {
+                throw InputStreamException(fmt::format("invalid input config: {}", e.what()));
+            }
+        }
+        Config input_filter;
+        if (input_node["filter"]) {
+            if (!input_node["filter"].IsMap()) {
+                throw InputStreamException("input filter configuration is not a map");
+            }
+            try {
+                input_filter.config_set_yaml(input_node["filter"]);
+            } catch (ConfigException &e) {
+                throw InputStreamException(fmt::format("invalid input filter: {}", e.what()));
+            }
+        }
+        return std::make_pair(input_config, input_filter);
     }
 };
 

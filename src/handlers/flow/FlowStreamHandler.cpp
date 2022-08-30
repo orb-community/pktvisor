@@ -675,7 +675,7 @@ void FlowMetricsBucket::process_flow(bool deep, const FlowPacket &payload)
 
     if (!_devices_metrics.count(payload.device_id)) {
         _devices_metrics[payload.device_id] = std::make_unique<FlowDevice>();
-        _devices_metrics[payload.device_id]->set_topn_count(_topn_count);
+        _devices_metrics[payload.device_id]->set_topn_settings(_topn_count, _topn_percentile_threshold);
     }
 
     auto device_flow = _devices_metrics[payload.device_id].get();

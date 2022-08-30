@@ -5,8 +5,8 @@
 #pragma once
 
 #include "AbstractModule.h"
-#include "StreamHandler.h"
 #include "InputEventProxy.h"
+#include "StreamHandler.h"
 
 namespace visor {
 
@@ -71,7 +71,11 @@ public:
                 return proxy.get();
             }
         }
-        _event_proxies.push_back(create_event_proxy(filter));
+        try {
+            _event_proxies.push_back(create_event_proxy(filter));
+        } catch (ConfigException &e) {
+            throw ConfigException(fmt::format("unable to create event proxy due to invalid input filter config: {}", e.what()));
+        }
         return _event_proxies.back().get();
     }
 

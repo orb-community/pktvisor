@@ -47,6 +47,7 @@ void DnsStreamHandler::start()
     _groups.set(group::DnsMetrics::Counters);
     _groups.set(group::DnsMetrics::DnsTransactions);
     _groups.set(group::DnsMetrics::TopQnames);
+    _groups.set(group::DnsMetrics::TopPorts);
     process_groups(_group_defs);
 
     // Setup Filters
@@ -388,17 +389,17 @@ inline void DnsStreamHandler::_register_predicate_filter(Filters filter, std::st
     if (!_using_predicate_signals && filter == Filters::OnlyRCode) {
         // all DnsStreamHandler race to install this predicate, which is only installed once and called once per udp event
         // it's job is to return the predicate "jump key" to call matching signals
-        static thread_local auto udp_rcode_predicate = [](pcpp::Packet &payload, PacketDirection, pcpp::ProtocolType, uint32_t flowkey, timespec stamp) -> std::string {
+        static thread_local auto udp_rcode_predicate = [&cache = _cached_dns_layer](pcpp::Packet &payload, PacketDirection, pcpp::ProtocolType, uint32_t flowkey, timespec stamp) -> std::string {
             pcpp::UdpLayer *udpLayer = payload.getLayerOfType<pcpp::UdpLayer>();
             assert(udpLayer);
-            if (flowkey != _cached_dns_layer.flowKey || stamp.tv_sec != _cached_dns_layer.timestamp.tv_sec || stamp.tv_nsec != _cached_dns_layer.timestamp.tv_nsec) {
-                _cached_dns_layer.flowKey = flowkey;
-                _cached_dns_layer.timestamp = stamp;
-                _cached_dns_layer.dnsLayer = std::make_unique<DnsLayer>(udpLayer, &payload);
+            if (flowkey != cache.flowKey || stamp.tv_sec != cache.timestamp.tv_sec || stamp.tv_nsec != cache.timestamp.tv_nsec) {
+                cache.flowKey = flowkey;
+                cache.timestamp = stamp;
+                cache.dnsLayer = std::make_unique<DnsLayer>(udpLayer, &payload);
             }
-            auto dnsLayer = _cached_dns_layer.dnsLayer.get();
+            auto dnsLayer = cache.dnsLayer.get();
             // return the 'jump key' for pcap to make O(1) call to appropriate signals
-            return "dnsonly_rcode" + std::to_string(dnsLayer->getDnsHeader()->responseCode);
+            return std::string(DNS_SCHEMA) + "only_rcode" + std::to_string(dnsLayer->getDnsHeader()->responseCode);
         };
 
         // if the jump key matches, this callback fires
@@ -567,7 +568,10 @@ void DnsMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
         _dns_topNODATA.merge(other._dns_topNODATA);
     }
 
-    _dns_topUDPPort.merge(other._dns_topUDPPort);
+    if (group_enabled(group::DnsMetrics::TopPorts)) {
+        _dns_topUDPPort.merge(other._dns_topUDPPort);
+    }
+
     _dns_topQType.merge(other._dns_topQType);
     _dns_topRCode.merge(other._dns_topRCode);
 }
@@ -623,7 +627,9 @@ void DnsMetricsBucket::to_json(json &j) const
         _dns_slowXactOut.to_json(j);
     }
 
-    _dns_topUDPPort.to_json(j, [](const uint16_t &val) { return std::to_string(val); });
+    if (group_enabled(group::DnsMetrics::TopPorts)) {
+        _dns_topUDPPort.to_json(j, [](const uint16_t &val) { return std::to_string(val); });
+    }
 
     if (group_enabled(group::DnsMetrics::TopEcs)) {
         group_enabled(group::DnsMetrics::Counters) ? _counters.queryECS.to_json(j) : void();
@@ -702,7 +708,7 @@ void DnsMetricsBucket::process_dnstap(bool deep, const dnstap::Dnstap &payload)
     }
 
     if (!deep || (!payload.message().has_query_message() && !payload.message().has_response_message())) {
-        process_dns_layer(l3, l4, side, 0);
+        process_dns_layer(l3, l4, side);
         return;
     }
 
@@ -791,7 +797,7 @@ void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, pcpp::Pro
         return;
     }
 
-    if (port) {
+    if (port && group_enabled(group::DnsMetrics::TopPorts)) {
         _dns_topUDPPort.update(port);
     }
 
@@ -869,7 +875,7 @@ void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, pcpp::Pro
     }
 }
 
-void DnsMetricsBucket::process_dns_layer(pcpp::ProtocolType l3, Protocol l4, QR side, uint16_t port)
+void DnsMetricsBucket::process_dns_layer(pcpp::ProtocolType l3, Protocol l4, QR side)
 {
     std::unique_lock lock(_mutex);
 
@@ -908,10 +914,6 @@ void DnsMetricsBucket::process_dns_layer(pcpp::ProtocolType l3, Protocol l4, QR 
         } else if (side == QR::response) {
             ++_counters.replies;
         }
-    }
-
-    if (port) {
-        _dns_topUDPPort.update(port);
     }
 }
 
@@ -1003,8 +1005,9 @@ void DnsMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap ad
         _dns_slowXactOut.to_prometheus(out, add_labels);
     }
 
-    _dns_topUDPPort.to_prometheus(out, add_labels, [](const uint16_t &val) { return std::to_string(val); });
-
+    if (group_enabled(group::DnsMetrics::TopPorts)) {
+        _dns_topUDPPort.to_prometheus(out, add_labels, [](const uint16_t &val) { return std::to_string(val); });
+    }
     if (group_enabled(group::DnsMetrics::TopEcs)) {
         group_enabled(group::DnsMetrics::Counters) ? _counters.queryECS.to_prometheus(out, add_labels) : void();
         _dns_topGeoLocECS.to_prometheus(out, add_labels);

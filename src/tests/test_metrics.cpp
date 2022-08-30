@@ -17,7 +17,7 @@ public:
     {
         out << "test_performed" << std::endl;
     }
-    void update_topn_metrics([[maybe_unused]] size_t topn_count)
+    void update_topn_metrics(size_t, uint64_t)
     {
     }
 };
@@ -250,7 +250,7 @@ TEST_CASE("TopN metrics", "[metrics][topn]")
         top_sting.update("top2");
         top_sting.update("top1");
         CHECK(top_sting.topn_count() == 10);
-        top_sting.set_topn_count(1);
+        top_sting.set_settings(1, 0);
         CHECK(top_sting.topn_count() == 1);
         top_sting.to_json(j["top"]);
         CHECK(j["top"]["test"]["metric"][0]["estimate"] == 2);

@@ -14,6 +14,7 @@
 #include "TcpLayer.h"
 #include <IPv4Layer.h>
 #include <IPv6Layer.h>
+#include <PacketUtils.h>
 #pragma GCC diagnostic pop
 #include <arpa/inet.h>
 #include <cpc_union.hpp>
@@ -86,10 +87,16 @@ void NetStreamHandler::start()
         _pkt_connection = _pcap_proxy->packet_signal.connect(&NetStreamHandler::process_packet_cb, this);
         _start_tstamp_connection = _pcap_proxy->start_tstamp_signal.connect(&NetStreamHandler::set_start_tstamp, this);
         _end_tstamp_connection = _pcap_proxy->end_tstamp_signal.connect(&NetStreamHandler::set_end_tstamp, this);
-        _heartbeat_connection = _pcap_proxy->heartbeat_signal.connect(&NetStreamHandler::check_period_shift, this);
+        _heartbeat_connection = _pcap_proxy->heartbeat_signal.connect([this](const timespec stamp) {
+            check_period_shift(stamp);
+            _event_proxy ? _event_proxy->heartbeat_signal(stamp) : void();
+        });
     } else if (_dnstap_proxy) {
         _dnstap_connection = _dnstap_proxy->dnstap_signal.connect(&NetStreamHandler::process_dnstap_cb, this);
-        _heartbeat_connection = _dnstap_proxy->heartbeat_signal.connect(&NetStreamHandler::check_period_shift, this);
+        _heartbeat_connection = _dnstap_proxy->heartbeat_signal.connect([this](const timespec stamp) {
+            check_period_shift(stamp);
+            _event_proxy ? _event_proxy->heartbeat_signal(stamp) : void();
+        });
     }
 
     _running = true;
@@ -122,17 +129,26 @@ void NetStreamHandler::process_packet_cb(pcpp::Packet &payload, PacketDirection 
 {
     if (!_filtering(payload, dir, stamp)) {
         _metrics->process_packet(payload, dir, l3, l4, stamp);
+        if (_event_proxy && l4 == pcpp::UDP) {
+            static_cast<PcapInputEventProxy *>(_event_proxy.get())->udp_signal(payload, dir, l3, pcpp::hash5Tuple(&payload), stamp);
+        }
     }
 }
 
 void NetStreamHandler::set_start_tstamp(timespec stamp)
 {
     _metrics->set_start_tstamp(stamp);
+    if (_event_proxy) {
+        static_cast<PcapInputEventProxy *>(_event_proxy.get())->start_tstamp_signal(stamp);
+    }
 }
 
 void NetStreamHandler::set_end_tstamp(timespec stamp)
 {
     _metrics->set_end_tstamp(stamp);
+    if (_event_proxy) {
+        static_cast<PcapInputEventProxy *>(_event_proxy.get())->end_tstamp_signal(stamp);
+    }
 }
 
 void NetStreamHandler::process_dnstap_cb(const dnstap::Dnstap &payload, size_t size)

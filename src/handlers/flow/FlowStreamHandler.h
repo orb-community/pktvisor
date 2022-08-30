@@ -87,17 +87,17 @@ struct FlowTopN {
     {
     }
 
-    void set_topn_count(size_t topn_count)
+    void set_settings(size_t topn_count, uint64_t percentile_threshold)
     {
-        topSrcIP.set_topn_count(topn_count);
-        topDstIP.set_topn_count(topn_count);
-        topSrcPort.set_topn_count(topn_count);
-        topDstPort.set_topn_count(topn_count);
-        topSrcIPandPort.set_topn_count(topn_count);
-        topDstIPandPort.set_topn_count(topn_count);
-        topConversations.set_topn_count(topn_count);
-        topInIfIndex.set_topn_count(topn_count);
-        topOutIfIndex.set_topn_count(topn_count);
+        topSrcIP.set_settings(topn_count, percentile_threshold);
+        topDstIP.set_settings(topn_count, percentile_threshold);
+        topSrcPort.set_settings(topn_count, percentile_threshold);
+        topDstPort.set_settings(topn_count, percentile_threshold);
+        topSrcIPandPort.set_settings(topn_count, percentile_threshold);
+        topDstIPandPort.set_settings(topn_count, percentile_threshold);
+        topConversations.set_settings(topn_count, percentile_threshold);
+        topInIfIndex.set_settings(topn_count, percentile_threshold);
+        topOutIfIndex.set_settings(topn_count, percentile_threshold);
     }
 };
 
@@ -149,12 +149,12 @@ struct FlowDevice {
     {
     }
 
-    void set_topn_count(size_t topn_count)
+    void set_topn_settings(size_t topn_count, uint64_t percentile_threshold)
     {
-        topGeoLoc.set_topn_count(topn_count);
-        topASN.set_topn_count(topn_count);
-        topByBytes.set_topn_count(topn_count);
-        topByPackets.set_topn_count(topn_count);
+        topGeoLoc.set_settings(topn_count, percentile_threshold);
+        topASN.set_settings(topn_count, percentile_threshold);
+        topByBytes.set_settings(topn_count, percentile_threshold);
+        topByPackets.set_settings(topn_count, percentile_threshold);
     }
 };
 
@@ -176,6 +176,7 @@ protected:
     counters _counters;
     Quantile<std::size_t> _volume;
     size_t _topn_count{10};
+    uint64_t _topn_percentile_threshold{0};
     Rate _rate;
     Rate _throughput;
 
@@ -208,9 +209,10 @@ public:
     void specialized_merge(const AbstractMetricsBucket &other) override;
     void to_json(json &j) const override;
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override;
-    void update_topn_metrics(size_t topn_count) override
+    void update_topn_metrics(size_t topn_count, uint64_t percentile_threshold) override
     {
         _topn_count = topn_count;
+        _topn_percentile_threshold = percentile_threshold;
     }
 
     // must be thread safe as it is called from time window maintenance thread

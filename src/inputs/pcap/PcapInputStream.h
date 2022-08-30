@@ -148,10 +148,9 @@ class PcapInputEventProxy : public visor::InputEventProxy
 {
 public:
     // a predicate takes same signature as UdpSignalCB, but returns the value needed for a particular predicate key, i.e. the second half of key in _udp_predicate_signals
-    // predicate should not need context (function pointer)
-    typedef std::string (*UdpPredicate)(pcpp::Packet &, PacketDirection, pcpp::ProtocolType, uint32_t, timespec);
+    typedef std::function<std::string(pcpp::Packet &, PacketDirection, pcpp::ProtocolType, uint32_t, timespec)> UdpPredicate;
     // signature for udp callback, should be same as non predicate. Signal needs context.
-    typedef std::function<void(pcpp::Packet &, PacketDirection, pcpp::ProtocolType, uint32_t , timespec)> UdpSignalCB;
+    typedef std::function<void(pcpp::Packet &, PacketDirection, pcpp::ProtocolType, uint32_t, timespec)> UdpSignalCB;
 
     typedef sigslot::signal<pcpp::Packet &, PacketDirection, pcpp::ProtocolType, uint32_t, timespec> UdpPredicateSignal;
 
