@@ -812,7 +812,7 @@ TEST_CASE("Policies", "[policies]")
         registry.start(nullptr);
 
         REQUIRE_NOTHROW(registry.tap_manager()->load_from_str(policies_config_bad4));
-        REQUIRE_THROWS_WITH(registry.policy_manager()->load_from_str(policies_config_bad4), "internal policy [anycast-551932bd9e4a05c9-resources] failed to start: mock error on start");
+        REQUIRE_THROWS(registry.policy_manager()->load_from_str(policies_config_bad4));
     }
 
     SECTION("Bad Config: mis-matched input_type on tap")
