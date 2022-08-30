@@ -214,7 +214,7 @@ public:
 
     virtual void to_json(json &j) const = 0;
     virtual void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const = 0;
-    virtual void update_topn_metrics(size_t topn_count) = 0;
+    virtual void update_topn_metrics(size_t topn_count, uint64_t percentile_threshold) = 0;
 };
 
 template <typename MetricsBucketClass>
@@ -240,6 +240,7 @@ private:
     jsf32 _rng;
     uint32_t _deep_sample_rate{100};
     size_t _topn_count{10};
+    uint64_t _topn_percentile_threshold{0};
 
 protected:
     std::atomic_bool _deep_sampling_now; // atomic so we can reference without mutex
@@ -276,7 +277,7 @@ private:
         _metric_buckets.emplace_front(std::make_unique<MetricsBucketClass>());
         _metric_buckets[0]->configure_groups(_groups);
         _metric_buckets[0]->set_start_tstamp(stamp);
-        _metric_buckets[0]->update_topn_metrics(_topn_count);
+        _metric_buckets[0]->update_topn_metrics(_topn_count, _topn_percentile_threshold);
         if (_recorded_stream) {
             _metric_buckets[0]->set_recorded_stream();
         }
@@ -374,9 +375,12 @@ public:
         if (window_config->config_exists("topn_count")) {
             _topn_count = window_config->config_get<uint64_t>("topn_count");
         }
+        if (window_config->config_exists("topn_percentile_threshold")) {
+            _topn_percentile_threshold = window_config->config_get<uint64_t>("topn_percentile_threshold");
+        }
 
         _metric_buckets.emplace_front(std::make_unique<MetricsBucketClass>());
-        _metric_buckets[0]->update_topn_metrics(_topn_count);
+        _metric_buckets[0]->update_topn_metrics(_topn_count, _topn_percentile_threshold);
     }
 
     virtual ~AbstractMetricsManager() = default;

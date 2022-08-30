@@ -219,6 +219,8 @@ public:
 template <typename T>
 class TopN final : public Metric
 {
+    static constexpr uint64_t DEFAULT_PERCENTILE_THRESHOLD = 0;
+
 public:
     //
     // https://datasketches.github.io/docs/Frequency/FrequentItemsErrorTable.html
@@ -235,6 +237,19 @@ private:
     datasketches::frequent_items_sketch<T> _fi;
     size_t _top_count = 10;
     std::string _item_key;
+    double _percentile_threshold = 0.0;
+
+    uint64_t _get_threshold(const std::vector<typename datasketches::frequent_items_sketch<T>::row> &items) const
+    {
+        datasketches::kll_sketch<uint64_t> quantile;
+        for (uint64_t i = 0; i < std::min(_top_count, items.size()); i++) {
+            quantile.update(items[i].get_estimate());
+        }
+        if (quantile.is_empty()) {
+            return 0;
+        }
+        return quantile.get_quantile(_percentile_threshold);
+    }
 
 public:
     TopN(std::string schema_key, std::string item_key, std::initializer_list<std::string> names, std::string desc)
@@ -259,14 +274,23 @@ public:
         _fi.merge(other._fi);
     }
 
-    void set_topn_count(const size_t top_count)
+    void set_settings(const size_t top_count, uint64_t percentile_threshold)
     {
         _top_count = top_count;
+        _percentile_threshold = static_cast<double>(percentile_threshold) / 100;
+        if (_percentile_threshold > 1.0) {
+            throw std::runtime_error("threshold must be between 0 and 100 but has value " + std::to_string(_percentile_threshold));
+        }
     }
 
     size_t topn_count() const
     {
         return _top_count;
+    }
+
+    double percentile_threshold() const
+    {
+        return _percentile_threshold;
     }
 
     /**
@@ -278,9 +302,14 @@ public:
     {
         auto section = json::array();
         auto items = _fi.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
+        auto threshold = _get_threshold(items);
         for (uint64_t i = 0; i < std::min(_top_count, items.size()); i++) {
-            section[i]["name"] = formatter(items[i].get_item());
-            section[i]["estimate"] = items[i].get_estimate();
+            if (items[i].get_estimate() >= threshold) {
+                section[i]["name"] = formatter(items[i].get_item());
+                section[i]["estimate"] = items[i].get_estimate();
+            } else {
+                break;
+            }
         }
         name_json_assign(j, section);
     }
@@ -289,11 +318,16 @@ public:
     {
         LabelMap l(add_labels);
         auto items = _fi.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
+        auto threshold = _get_threshold(items);
         out << "# HELP " << base_name_snake() << ' ' << _desc << std::endl;
         out << "# TYPE " << base_name_snake() << " gauge" << std::endl;
         for (uint64_t i = 0; i < std::min(_top_count, items.size()); i++) {
-            l[_item_key] = formatter(items[i].get_item());
-            out << name_snake({}, l) << ' ' << items[i].get_estimate() << std::endl;
+            if (items[i].get_estimate() >= threshold) {
+                l[_item_key] = formatter(items[i].get_item());
+                out << name_snake({}, l) << ' ' << items[i].get_estimate() << std::endl;
+            } else {
+                break;
+            }
         }
     }
 
@@ -302,9 +336,14 @@ public:
     {
         auto section = json::array();
         auto items = _fi.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
+        auto threshold = _get_threshold(items);
         for (uint64_t i = 0; i < std::min(_top_count, items.size()); i++) {
-            section[i]["name"] = items[i].get_item();
-            section[i]["estimate"] = items[i].get_estimate();
+            if (items[i].get_estimate() >= threshold) {
+                section[i]["name"] = items[i].get_item();
+                section[i]["estimate"] = items[i].get_estimate();
+            } else {
+                break;
+            }
         }
         name_json_assign(j, section);
     }
@@ -313,13 +352,18 @@ public:
     {
         LabelMap l(add_labels);
         auto items = _fi.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
+        auto threshold = _get_threshold(items);
         out << "# HELP " << base_name_snake() << ' ' << _desc << std::endl;
         out << "# TYPE " << base_name_snake() << " gauge" << std::endl;
         for (uint64_t i = 0; i < std::min(_top_count, items.size()); i++) {
-            std::stringstream name_text;
-            name_text << items[i].get_item();
-            l[_item_key] = name_text.str();
-            out << name_snake({}, l) << ' ' << items[i].get_estimate() << std::endl;
+            if (items[i].get_estimate() >= threshold) {
+                std::stringstream name_text;
+                name_text << items[i].get_item();
+                l[_item_key] = name_text.str();
+                out << name_snake({}, l) << ' ' << items[i].get_estimate() << std::endl;
+            } else {
+                break;
+            }
         }
     }
 };
