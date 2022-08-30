@@ -102,25 +102,9 @@ public:
 class PolicyManager : public AbstractManager<Policy>
 {
     mutable std::mutex _load_mutex;
-
     CoreRegistry *_registry;
 
-    /**
-     * the default number of periods we will maintain in the window for handlers
-     */
-    unsigned int _default_num_periods{5};
-    uint32_t _default_deep_sample_rate{100};
-    std::map<std::string, std::unique_ptr<Configurable>> _global_handler_config;
-
-    struct HandlerData {
-        std::string name;
-        std::string type;
-        Config config;
-        Config filter;
-    };
-
-    void _validate_policy(const YAML::Node &policy_yaml, const std::string &policy_name, Policy *policy_ptr, Tap *tap = nullptr);
-    HandlerData _validate_handler(const YAML::const_iterator &hander_iterator, const std::string &policy_name, Config &window_config, bool sequence);
+    std::string _get_policy_name(YAML::const_iterator it);
 
 public:
     PolicyManager(CoreRegistry *registry)
@@ -132,28 +116,10 @@ public:
     {
     }
 
-    void set_default_num_periods(unsigned int n)
-    {
-        _default_num_periods = n;
-    }
-    void set_default_deep_sample_rate(uint32_t r)
-    {
-        _default_deep_sample_rate = r;
-    }
-
-    unsigned int default_num_periods() const
-    {
-        return _default_num_periods;
-    }
-
-    uint32_t default_deep_sample_rate() const
-    {
-        return _default_deep_sample_rate;
-    }
-
     void set_default_handler_config(const YAML::Node &config_yaml);
     std::vector<Policy *> load_from_str(const std::string &str);
     std::vector<Policy *> load(const YAML::Node &tap_yaml);
+    std::string create_resources_policy(InputStream *input, const Config &window_config);
     void remove_policy(const std::string &name);
 };
 

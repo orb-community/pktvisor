@@ -455,8 +455,8 @@ int main(int argc, char *argv[])
     }
 
     // window config defaults for all policies
-    registry.policy_manager()->set_default_deep_sample_rate(options.max_deep_sample.value());
-    registry.policy_manager()->set_default_num_periods(options.periods.value());
+    registry.handler_manager()->set_default_deep_sample_rate(options.max_deep_sample.value());
+    registry.handler_manager()->set_default_num_periods(options.periods.value());
 
     logger->info("{} starting up", VISOR_VERSION);
 
