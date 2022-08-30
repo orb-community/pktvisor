@@ -18,7 +18,8 @@ PKTVISOR_CONTAINER_NAME = "pktvisor-test"
 @step("run pktvisor instance on port {status_port} with {role} permission")
 def run_pktvisor(context, status_port, role):
     availability = {"available": True, "unavailable": False}
-
+    assert_that(role, any_of(equal_to("user"), equal_to("admin")), "Unexpected permission type")
+    context.role = role
     context.pkt_port = check_port_is_available(context.containers_id, availability[status_port])
     context.container_id = run_pktvisor_container(configs['pktvisor_docker_image'], context.mock_iface_name,
                                                   context.pkt_port, role)
@@ -133,7 +134,6 @@ def check_metrics(context, traffic_type):
             response = make_get_request(endpoint, context.pkt_port)
             pkt_policies = PktPolicies(response.json())
             pkt_policies.check_policy_handlers()
-
 
 
 @step("Remove dummy interface")

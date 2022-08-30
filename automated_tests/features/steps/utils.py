@@ -168,6 +168,27 @@ def make_get_request(end_point, pkt_port=10853, expected_status_code=200, time_t
     return response
 
 
+@threading_wait_until
+def make_delete_request(end_point, pkt_port=10853, expected_status_code=200, time_to_wait=1, event=None):
+    """
+
+    :param end_point: endpoint to which the request must be sent
+    :param pkt_port: port on which pktvisor is running
+    :param expected_status_code: expected status from response
+    :param event: threading.event
+    :return: response
+    """
+    pkt_base_api = 'http://localhost:' + str(pkt_port) + '/api/v1/'
+    path = pkt_base_api + end_point
+    response = requests.delete(path)
+    if response.status_code == int(expected_status_code):
+        event.set()
+    event.wait(int(time_to_wait))
+    assert_that(response.status_code, equal_to(int(expected_status_code)),
+                f"Delete request to endpoint {path} failed with status {response.status_code}")
+    return response
+
+
 def get_schema(path_to_file):
     """
         Loads the given schema available
@@ -197,3 +218,46 @@ def validate_json(json_data, path_to_file):
         return False
 
     return True
+
+
+def create_tags_set(tags, tag_prefix="test_tag_"):
+    """
+    Create a set of tags
+    :param tags: If defined: the defined tags that should compose the set.
+                 If random: the number of tags that the set must contain.
+    :param (str) tag_prefix: prefix for tag's tests.
+    :return: (dict) tag_set
+    """
+    tag_set = dict()
+    if tags.isdigit() is False:
+        assert_that(tags, any_of(matches_regexp("^.+\:.+"), matches_regexp("\d+ orb tag\(s\)"),
+                                 matches_regexp("\d+ orb tag")), f"Unexpected regex for tags. Passed: {tags}."
+                                                                 f"Expected (examples):"
+                                                                 f"If you want 1 randomized tag: 1 tag."
+                                                                 f"If you want more than 1 randomized tags: 2 tags. "
+                                                                 f"Note that you can use any int. 2 its only an "
+                                                                 f"example. "
+                                                                 f"If you want specified tags: test_key:test_value, "
+                                                                 f"second_key:second_value.")
+        if re.match(r"^.+\:.+", tags):  # We expected key values separated by a colon ":" and multiple tags separated
+            # by a comma ",". Example: test_key:test_value, my_orb_key:my_orb_value
+            for tag in tags.split(", "):
+                key, value = tag.split(":")
+                tag_set[key] = value
+                return tag_set
+    amount_of_tags = int(tags.split()[0])
+    for tag in range(amount_of_tags):
+        tag_set[tag_prefix + random_string(10)] = tag_prefix + random_string(5)
+    return tag_set
+
+
+def sample_from_dict(d, k):
+    """
+
+    :param (dict) d: dict to be sampled
+    :param (int) k: amount of sample
+    :return: dict of sample
+    """
+    keys = random.sample(list(d), k)
+    values = [d[k] for k in keys]
+    return dict(zip(keys, values))
