@@ -53,7 +53,7 @@ def create_new_policy(context, handler, **kwargs):
                 assert_that(len(existing_tags_on_taps), greater_than_or_equal_to(amount_match),
                             "number of tags to match exceeds existing amount")
                 tags.update(sample_from_dict(existing_tags_on_taps, amount_match))
-            selector_dict = {"tap_selector": {kwargs["type_selector"]: tags}}
+            selector_dict = {"tap_selector": {kwargs["type_selector"]: [{k: v} for k, v in tags.items()]}}
             del policy_yaml_parsed['visor']['policies'][context.policy_name]['input']['tap']
             policy_yaml_parsed['visor']['policies'][context.policy_name]['input'].update(selector_dict)
             context.taps_matching = return_matching_taps(context.existing_taps, tags, kwargs["type_selector"])
@@ -178,7 +178,6 @@ def get_policy(policy_name, pkt_port=10853, expected_status_code=200):
 
 
 def remove_policy(policy_name, pkt_port=10853, expected_status_code=200):
-
     """
     :param (str) policy_name: name of the policy to be fetched
     :param pkt_port: port on which pktvisor is . Default: 10853
@@ -279,7 +278,7 @@ class Policies:
                           type: dhcp
             """
         return policy_yaml
-    
+
     @classmethod
     def generate_pcap_policy_with_only_dns_handler(cls, name):
         policy_yaml = f"""
@@ -298,7 +297,7 @@ class Policies:
                           type: dns
             """
         return policy_yaml
-    
+
     @classmethod
     def generate_pcap_policy_with_only_pcap_stats_handler(cls, name):
         policy_yaml = f"""

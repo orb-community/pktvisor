@@ -233,7 +233,7 @@ Scenario: remove all taps
 
 
 @smoke
-Scenario: create policy with 2 taps (matching any)
+Scenario: create policy selecting 2 taps (matching any)
   Given that a pktvisor instance is running on port available with admin permission
   When a user creates a new pcap tap with 2 tag(s)
     And a user creates a new pcap tap with 2 tag(s)
@@ -247,7 +247,7 @@ Scenario: create policy with 2 taps (matching any)
 
 
 @smoke
-Scenario: create policy with 2 taps (matching all)
+Scenario: create policy selecting 1 tap (matching all)
   Given that a pktvisor instance is running on port available with admin permission
   When a user creates a new pcap tap with 2 tag(s)
     And a user creates a new pcap tap with 2 tag(s)
@@ -259,7 +259,7 @@ Scenario: create policy with 2 taps (matching all)
 
 
 @smoke
-Scenario: create policy with 2 taps (matching all)
+Scenario: create policy selecting 0 taps (matching all)
   Given that a pktvisor instance is running on port available with admin permission
   When a user creates a new pcap tap with 2 tag(s)
     And a user creates a new pcap tap with 2 tag(s)
@@ -271,12 +271,12 @@ Scenario: create policy with 2 taps (matching all)
 
 
 @smoke
-Scenario: create policy with 0 taps (matching any)
+Scenario: create policy selecting 1 taps (matching any)
   Given that a pktvisor instance is running on port available with admin permission
   When a user creates a new pcap tap with 2 tag(s)
     And a user creates a new pcap tap with 2 tag(s)
-    And create a new policy with all handler(s) and 1 new and 3 matching existing tag(s). Tap selector: any
+    And create a new policy with all handler(s) and 1 new and 1 matching existing tag(s). Tap selector: any
   Then 3 tap(s) must exist
-    And policy must have 2 inputs
+    And policy must have 1 inputs
     And defined handlers must be generated for each input
-    And 5 policies must be running
+    And 4 policies must be running
