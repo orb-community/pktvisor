@@ -28,17 +28,21 @@ std::vector<Policy *> PolicyManager::load_from_str(const std::string &str)
         throw PolicyException("missing or unsupported version");
     }
     if (node["visor"]["policies"] && node["visor"]["policies"].IsMap()) {
-        return load(node["visor"]["policies"]);
+        return load(node["visor"]["policies"], true);
     } else {
         throw PolicyException("no policies found in schema");
     }
 }
 
 // needs to be thread safe and transactional: any errors mean resources get cleaned up with no side effects
-std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml)
+std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml, bool single)
 {
     assert(policy_yaml.IsMap());
     assert(spdlog::get("visor"));
+
+    if (single && policy_yaml.size() > 1) {
+        throw PolicyException(fmt::format("only a single policy expected but got {}", policy_yaml.size()));
+    }
 
     std::vector<Policy *> result;
     for (YAML::const_iterator it = policy_yaml.begin(); it != policy_yaml.end(); ++it) {

@@ -84,7 +84,7 @@ public:
     }
 
     std::vector<Tap *> load_from_str(const std::string &str);
-    std::vector<Tap *> load(const YAML::Node &tap_yaml, bool strict);
+    std::vector<Tap *> load(const YAML::Node &tap_yaml, bool strict = true, bool single = false);
     std::vector<std::string> get_input_taps_name(const YAML::Node &input_node);
 };
 

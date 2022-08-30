@@ -86,10 +86,10 @@ visor:
       input:
         # this must reference valid tags existent on applied taps, or application of the policy will fail
         tap_selector:
-          # It can be either "any" or "all"
+          # It can be either "any" or "all" and it must be a sequence
           any:
-            virtual: true
-            vhost: 1
+            - virtual: true
+            - vhost: 1
         # this must match the input_type of the matching tap name, or application of the policy will fail
         input_type: pcap
         filter:

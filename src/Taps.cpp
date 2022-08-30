@@ -27,17 +27,21 @@ std::vector<Tap *> TapManager::load_from_str(const std::string &str)
         throw TapException("missing or unsupported version");
     }
     if (node["visor"]["taps"] && node["visor"]["taps"].IsMap()) {
-        return load(node["visor"]["taps"], true);
+        return load(node["visor"]["taps"], true, true);
     } else {
         throw TapException("no taps found in schema");
     }
 }
 
 // needs to be thread safe and transactional: any errors mean resources get cleaned up with no side effects
-std::vector<Tap *> TapManager::load(const YAML::Node &tap_yaml, bool strict)
+std::vector<Tap *> TapManager::load(const YAML::Node &tap_yaml, bool strict, bool single)
 {
     assert(tap_yaml.IsMap());
     assert(spdlog::get("visor"));
+
+    if (single && tap_yaml.size() > 1) {
+        throw TapException(fmt::format("only a single tap expected but got {}", tap_yaml.size()));
+    }
 
     std::vector<Tap *> result;
     for (YAML::const_iterator it = tap_yaml.begin(); it != tap_yaml.end(); ++it) {
@@ -85,7 +89,6 @@ std::vector<Tap *> TapManager::load(const YAML::Node &tap_yaml, bool strict)
         module_add(std::move(tap_module));
         spdlog::get("visor")->info("tap [{}]: loaded, type {}", tap_name, input_type);
     }
-
     return result;
 }
 
@@ -148,9 +151,6 @@ std::vector<std::string> TapManager::get_input_taps_name(const YAML::Node &input
             throw std::invalid_argument("no tap match found for specified 'input.tap_selector' tags");
         }
     }
-
-
-
     return taps_name;
 }
 
