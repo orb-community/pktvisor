@@ -25,7 +25,7 @@ CoreRegistry::CoreRegistry()
     _input_manager = std::make_unique<InputStreamManager>();
 
     // handlers
-    _handler_manager = std::make_unique<HandlerManager>();
+    _handler_manager = std::make_unique<HandlerManager>(this);
 
     // taps
     _tap_manager = std::make_unique<TapManager>(this);
@@ -122,7 +122,7 @@ void CoreRegistry::configure_from_yaml(YAML::Node &node)
 
     // global handlers config
     if (node["visor"]["global_handler_config"] && node["visor"]["global_handler_config"].IsMap()) {
-        _policy_manager->set_default_handler_config(node["visor"]["global_handler_config"]);
+        _handler_manager->set_default_handler_config(node["visor"]["global_handler_config"]);
     }
 
     // policies

@@ -389,17 +389,17 @@ inline void DnsStreamHandler::_register_predicate_filter(Filters filter, std::st
     if (!_using_predicate_signals && filter == Filters::OnlyRCode) {
         // all DnsStreamHandler race to install this predicate, which is only installed once and called once per udp event
         // it's job is to return the predicate "jump key" to call matching signals
-        static thread_local auto udp_rcode_predicate = [](pcpp::Packet &payload, PacketDirection, pcpp::ProtocolType, uint32_t flowkey, timespec stamp) -> std::string {
+        static thread_local auto udp_rcode_predicate = [&cache = _cached_dns_layer](pcpp::Packet &payload, PacketDirection, pcpp::ProtocolType, uint32_t flowkey, timespec stamp) -> std::string {
             pcpp::UdpLayer *udpLayer = payload.getLayerOfType<pcpp::UdpLayer>();
             assert(udpLayer);
-            if (flowkey != _cached_dns_layer.flowKey || stamp.tv_sec != _cached_dns_layer.timestamp.tv_sec || stamp.tv_nsec != _cached_dns_layer.timestamp.tv_nsec) {
-                _cached_dns_layer.flowKey = flowkey;
-                _cached_dns_layer.timestamp = stamp;
-                _cached_dns_layer.dnsLayer = std::make_unique<DnsLayer>(udpLayer, &payload);
+            if (flowkey != cache.flowKey || stamp.tv_sec != cache.timestamp.tv_sec || stamp.tv_nsec != cache.timestamp.tv_nsec) {
+                cache.flowKey = flowkey;
+                cache.timestamp = stamp;
+                cache.dnsLayer = std::make_unique<DnsLayer>(udpLayer, &payload);
             }
-            auto dnsLayer = _cached_dns_layer.dnsLayer.get();
+            auto dnsLayer = cache.dnsLayer.get();
             // return the 'jump key' for pcap to make O(1) call to appropriate signals
-            return "dnsonly_rcode" + std::to_string(dnsLayer->getDnsHeader()->responseCode);
+            return std::string(DNS_SCHEMA) + "only_rcode" + std::to_string(dnsLayer->getDnsHeader()->responseCode);
         };
 
         // if the jump key matches, this callback fires
