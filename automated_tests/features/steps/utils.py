@@ -169,7 +169,7 @@ def make_get_request(end_point, pkt_port=10853, expected_status_code=200, time_t
 
 
 @threading_wait_until
-def make_delete_request(end_point, pkt_port=10853, expected_status_code=200, time_to_wait=1, event=None):
+def make_delete_request(end_point, pkt_port=10853, expected_status_code=204, time_to_wait=1, event=None):
     """
 
     :param end_point: endpoint to which the request must be sent

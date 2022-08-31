@@ -14,7 +14,7 @@ def create_new_tap(context, tap_type, amount_of_tags):
     assert_that(tap_type, any_of(equal_to("pcap"), equal_to("flow"), equal_to("dnstap")), "Unexpected tap type")
     tags_set = create_tags_set(amount_of_tags)
     if context.role == "admin":
-        expected_status_code = 200
+        expected_status_code = 201
     else:
         expected_status_code = 404
     context.tap_name = random_string(10)
@@ -78,8 +78,8 @@ def remove_tap(context, amount_of_taps):
         taps_to_be_removed = list(make_get_request(taps_endpoint, context.pkt_port, 200).json().keys())
     for tap in taps_to_be_removed:
         tap_endpoint = f"taps/{tap}"
-        response = make_delete_request(tap_endpoint, context.pkt_port, 200)
-        assert_that(response.status_code, equal_to(200), f"Failed to removed tap {tap}")
+        response = make_delete_request(tap_endpoint, context.pkt_port, 204)
+        assert_that(response.status_code, equal_to(204), f"Failed to removed tap {tap}")
     response_json = make_get_request(taps_endpoint, context.pkt_port, 200).json()
     if response_json is None:
         remaining_taps = list()
@@ -101,7 +101,7 @@ def check_amount_of_taps(context, amount_of_taps):
 @threading_wait_until
 def check_until_amount_of_taps(amount_of_taps, pkt_port, expected_status_code=200, event=None):
     tap_endpoint = f"taps"
-    response_json = make_get_request(tap_endpoint, pkt_port, 200).json()
+    response_json = make_get_request(tap_endpoint, pkt_port, expected_status_code).json()
     if response_json is None:
         remaining_taps = list()
     else:

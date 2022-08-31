@@ -150,7 +150,7 @@ def check_handlers_for_input(context):
                     f"Incorrect handlers for {each_handler} handler. {policy.json()}")
 
 
-def assert_policy_creation(yaml_data, pkt_port=10853, expected_status_code=200):
+def assert_policy_creation(yaml_data, pkt_port=10853, expected_status_code=201):
     """
 
     :param yaml_data: policy configurations
@@ -177,7 +177,7 @@ def get_policy(policy_name, pkt_port=10853, expected_status_code=200):
     return make_get_request(endpoint, pkt_port, expected_status_code)
 
 
-def remove_policy(policy_name, pkt_port=10853, expected_status_code=200):
+def remove_policy(policy_name, pkt_port=10853, expected_status_code=204):
     """
     :param (str) policy_name: name of the policy to be fetched
     :param pkt_port: port on which pktvisor is . Default: 10853
