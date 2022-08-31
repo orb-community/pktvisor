@@ -2,17 +2,17 @@
 #define PV_PACKETPP_DNS_RESOURCE_DATA
 
 #include "DnsResource.h"
-#include <IpAddress.h>
+#include "IpAddress.h"
 #include <memory>
-#include <string>
 #include <stdint.h>
+#include <string>
 
 /// @file
 
 /**
  * \namespace visor
  */
-namespace visor::handler::dns {
+namespace visor::dns {
 
 //Visual studio has always been stupid about returning something useful for __cplusplus
 //Only recently was this fixed - and even then it requires a specific hack to the command line during build

@@ -15,8 +15,8 @@
 #include <IPv4Layer.h>
 #include <IPv6Layer.h>
 #pragma GCC diagnostic pop
-#include "DnsAdditionalRecord.h"
-#include "PublicSuffixList.h"
+#include "visor_dns/DnsAdditionalRecord.h"
+#include "visor_dns/PublicSuffixList.h"
 #include <arpa/inet.h>
 #include <sstream>
 namespace visor::handler::dns {

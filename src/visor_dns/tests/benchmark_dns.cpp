@@ -2,19 +2,19 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-#include "../dns.h"
-#include <benchmark/benchmark.h>
+#include "benchmark/benchmark.h"
+#include "dns.h"
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #pragma clang diagnostic ignored "-Wc99-extensions"
 #pragma GCC diagnostic ignored "-Wpedantic"
-#include <IPv4Layer.h>
-#include <PacketUtils.h>
-#include <PcapFileDevice.h>
+#include "IPv4Layer.h"
+#include "PacketUtils.h"
+#include "PcapFileDevice.h"
 #pragma GCC diagnostic pop
 
-using namespace visor::handler::dns;
+using namespace visor::dns;
 
 static void BM_aggregateDomain(benchmark::State &state)
 {

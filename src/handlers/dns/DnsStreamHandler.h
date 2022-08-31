@@ -8,9 +8,9 @@
 #include "MockInputStream.h"
 #include "PcapInputStream.h"
 #include "StreamHandler.h"
-#include "dns.h"
 #include "dnstap.pb.h"
 #include "querypairmgr.h"
+#include "visor_dns/dns.h"
 #include <Corrade/Utility/Debug.h>
 #include <bitset>
 #include <limits>
@@ -22,6 +22,7 @@ class DnstapInputEventProxy;
 
 namespace visor::handler::dns {
 
+using namespace visor::dns;
 using namespace visor::input::pcap;
 using namespace visor::input::dnstap;
 using namespace visor::input::mock;
