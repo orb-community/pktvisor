@@ -330,7 +330,7 @@ jobs:
           pip3 install --upgrade pip
           pip3 install -r requirements.txt
           pip3 install -r requirements.txt
-          behavex -t=@smoke --parallel-processes=4 --parallel-scheme=scenario
+          behavex -t=@smoke --parallel-processes=20 --parallel-scheme=scenario
 
       - name: Copy VERSION file
         run: |
