@@ -31,6 +31,7 @@ function compact() {
   cd /tmp/build
   zip pktvisord.zip /tmp/build/bin/pktvisord
   cp -rf /tmp/build/bin/pktvisord /github/workspace/
+  strip -s /tmp/build/bin/crashpad_handler
   cp -rf /tmp/build/bin/crashpad_handler /github/workspace/
   cp -rf /tmp/build/bin/pktvisor-reader /github/workspace/
   #version for pktvisor-cli
