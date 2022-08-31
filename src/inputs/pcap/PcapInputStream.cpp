@@ -90,7 +90,9 @@ void PcapInputStream::start()
 
     if (config_exists("pcap_file")) {
         // read from pcap file. this is a special case from a command line utility
-        assert(config_exists("bpf"));
+        if (!config_exists("bpf")) {
+            config_set("bpf", "");
+        }
         _pcapFile = true;
         // note, parse_host_spec should be called manually by now (in CLI)
         _running = true;
