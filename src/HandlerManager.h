@@ -90,7 +90,8 @@ public:
 
             auto handler_plugin = _registry->handler_plugins().find(handler_module_type);
             if (handler_plugin == _registry->handler_plugins().end()) {
-                throw ConfigException(fmt::format("global_handler_config requires stream handler type '{}' which is not available", handler_module_type));
+                spdlog::get("visor")->warn(fmt::format("global_handler_config configures stream handler type '{}' which is not available, ignoring", handler_module_type));
+                return;
             }
 
             if (_global_handler_config.count(handler_module_type) > 0) {
