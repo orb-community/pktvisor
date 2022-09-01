@@ -270,7 +270,8 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
             }
             lock.unlock();
             _registry->tap_manager()->module_remove(name);
-            res.status = 204;
+            res.status = 200;
+            res.set_content(j.dump(), "text/json");
         } catch (const std::exception &e) {
             res.status = 500;
             j["error"] = e.what();
@@ -357,7 +358,8 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
         }
         try {
             _registry->policy_manager()->remove_policy(name);
-            res.status = 204;
+            res.status = 200;
+            res.set_content(j.dump(), "text/json");
         } catch (const std::exception &e) {
             res.status = 500;
             j["error"] = e.what();
