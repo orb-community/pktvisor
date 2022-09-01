@@ -895,16 +895,6 @@ TEST_CASE("Policies", "[policies]")
         REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["policies"]), "stream handler metric groups should contain enable and/or disable tags");
     }
 
-    SECTION("Bad Config: global_handler_config with not valid handler type")
-    {
-        CoreRegistry registry;
-        registry.start(nullptr);
-        YAML::Node config_file = YAML::Load(policies_config_bad12);
-
-        REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
-        REQUIRE_THROWS_WITH(registry.handler_manager()->set_default_handler_config(config_file["visor"]["global_handler_config"]), "global_handler_config requires stream handler type 'dns2' which is not available");
-    }
-
     SECTION("Bad Config: global_handler_config with not valid format")
     {
         CoreRegistry registry;
