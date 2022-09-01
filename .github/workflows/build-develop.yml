@@ -206,6 +206,18 @@ jobs:
         with:
           name: pktvisor-x86_64-${{ env.VERSION }}.AppImage
           path: ${{github.workspace}}/appimage/pktvisor-x86_64-${{ env.VERSION }}.AppImage
+          
+  build-orb-agent:
+    needs: [ package-amd64 ]
+    runs-on: ubuntu-latest
+    steps:
+    - name: Repository Dispatch
+      uses: peter-evans/repository-dispatch@v2
+      with:
+        token: ${{ secrets.BOT_TOKEN }}
+        repository: ns1labs/orb
+        event-type: build-agent
+        client-payload: '{"branch_name": "develop"}'
 
   spinup-amd64-runner:
     needs: [ package-amd64 ]
