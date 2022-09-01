@@ -10,10 +10,10 @@
 #include <Corrade/PluginManager/AbstractManager.h>
 #include <nlohmann/json.hpp>
 
-CORRADE_PLUGIN_REGISTER(VisorHandlerInputResources, visor::handler::resources::InputResourcesHandlerModulePlugin,
+CORRADE_PLUGIN_REGISTER(VisorHandlerInputResourcesV1, visor::handler::resources::v1::InputResourcesHandlerModulePlugin,
     "visor.module.handler/1.0")
 
-namespace visor::handler::resources {
+namespace visor::handler::resources::v1 {
 
 using json = nlohmann::json;
 

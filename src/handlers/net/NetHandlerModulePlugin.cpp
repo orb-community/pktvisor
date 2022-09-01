@@ -10,10 +10,10 @@
 #include <Corrade/PluginManager/AbstractManager.h>
 #include <nlohmann/json.hpp>
 
-CORRADE_PLUGIN_REGISTER(VisorHandlerNet, visor::handler::net::NetHandlerModulePlugin,
+CORRADE_PLUGIN_REGISTER(VisorHandlerNetV1, visor::handler::net::v1::NetHandlerModulePlugin,
     "visor.module.handler/1.0")
 
-namespace visor::handler::net {
+namespace visor::handler::net::v1 {
 
 using namespace visor::input::pcap;
 using json = nlohmann::json;

@@ -6,7 +6,7 @@
 
 #include "HandlerModulePlugin.h"
 
-namespace visor::handler::dhcp {
+namespace visor::handler::dhcp::v1 {
 
 class DhcpHandlerModulePlugin : public HandlerModulePlugin
 {

@@ -1,8 +1,8 @@
 #include <catch2/catch.hpp>
 
-#include "DnsStreamHandler.h"
 #include "GeoDB.h"
 #include "PcapInputStream.h"
+#include "DnsStreamHandler.h"
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 #pragma GCC diagnostic ignored "-Wunused-parameter"

@@ -10,10 +10,10 @@
 #include <Corrade/PluginManager/AbstractManager.h>
 #include <nlohmann/json.hpp>
 
-CORRADE_PLUGIN_REGISTER(VisorHandlerBgp, visor::handler::bgp::BgpHandlerModulePlugin,
+CORRADE_PLUGIN_REGISTER(VisorHandlerBgpV1, visor::handler::bgp::v1::BgpHandlerModulePlugin,
    "visor.module.handler/1.0")
 
-namespace visor::handler::bgp {
+namespace visor::handler::bgp::v1 {
 
 using namespace visor::input::pcap;
 using json = nlohmann::json;

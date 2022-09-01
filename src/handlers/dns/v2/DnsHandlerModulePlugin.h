@@ -6,19 +6,20 @@
 
 #include "HandlerModulePlugin.h"
 
-namespace visor::handler::resources::v1 {
+namespace visor::handler::dns::v2 {
 
-class InputResourcesHandlerModulePlugin : public HandlerModulePlugin
+class DnsHandlerModulePlugin : public HandlerModulePlugin
 {
 
 protected:
     void setup_routes(HttpServer *svr) override;
 
 public:
-    explicit InputResourcesHandlerModulePlugin(Corrade::PluginManager::AbstractManager &manager, const std::string &plugin)
+    explicit DnsHandlerModulePlugin(Corrade::PluginManager::AbstractManager &manager, const std::string &plugin)
         : visor::HandlerModulePlugin{manager, plugin}
     {
     }
     std::unique_ptr<StreamHandler> instantiate(const std::string &name, InputEventProxy *proxy, const Configurable *config, const Configurable *filter) override;
 };
 }
+

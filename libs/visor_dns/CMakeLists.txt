@@ -5,16 +5,18 @@ add_library(VisorDns
         DnsLayer.cpp
         DnsResource.cpp
         DnsResourceData.cpp
+        querypairmgr.cpp
         )
 add_library(Visor::Dns ALIAS VisorDns)
 
 target_include_directories(VisorDns
-        INTERFACE
+        PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
         )
 
 target_link_libraries(VisorDns
         PUBLIC
+        ${CONAN_LIBS_ROBIN-HOOD-HASHING}
         ${CONAN_LIBS_PCAPPLUSPLUS}
         ${CONAN_LIBS_LIBPCAP}
         ${CONAN_LIBS_SPDLOG}

@@ -6,7 +6,7 @@
 
 #include "HandlerModulePlugin.h"
 
-namespace visor::handler::pcap {
+namespace visor::handler::pcap::v1 {
 
 class PcapHandlerModulePlugin : public HandlerModulePlugin
 {

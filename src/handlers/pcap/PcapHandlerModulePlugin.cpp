@@ -11,10 +11,10 @@
 #include <Corrade/PluginManager/AbstractManager.h>
 #include <nlohmann/json.hpp>
 
-CORRADE_PLUGIN_REGISTER(VisorHandlerPcap, visor::handler::pcap::PcapHandlerModulePlugin,
+CORRADE_PLUGIN_REGISTER(VisorHandlerPcapV1, visor::handler::pcap::v1::PcapHandlerModulePlugin,
     "visor.module.handler/1.0")
 
-namespace visor::handler::pcap {
+namespace visor::handler::pcap::v1 {
 
 using namespace visor::input::pcap;
 using json = nlohmann::json;

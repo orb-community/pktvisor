@@ -6,7 +6,7 @@
 
 #include "HandlerModulePlugin.h"
 
-namespace visor::handler::dns {
+namespace visor::handler::dns::v1 {
 
 class DnsHandlerModulePlugin : public HandlerModulePlugin
 {

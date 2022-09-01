@@ -10,10 +10,10 @@
 #include <Corrade/PluginManager/AbstractManager.h>
 #include <nlohmann/json.hpp>
 
-CORRADE_PLUGIN_REGISTER(VisorHandlerDhcp, visor::handler::dhcp::DhcpHandlerModulePlugin,
+CORRADE_PLUGIN_REGISTER(VisorHandlerDhcpV1, visor::handler::dhcp::v1::DhcpHandlerModulePlugin,
     "visor.module.handler/1.0")
 
-namespace visor::handler::dhcp {
+namespace visor::handler::dhcp::v1 {
 
 using namespace visor::input::pcap;
 using json = nlohmann::json;

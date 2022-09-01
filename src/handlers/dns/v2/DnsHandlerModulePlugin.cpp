@@ -4,16 +4,16 @@
 
 #include "DnsHandlerModulePlugin.h"
 #include "CoreRegistry.h"
+#include "Corrade/PluginManager/AbstractManager.h"
 #include "DnsStreamHandler.h"
 #include "HandlerManager.h"
 #include "InputStreamManager.h"
-#include <Corrade/PluginManager/AbstractManager.h>
-#include <nlohmann/json.hpp>
+#include "nlohmann/json.hpp"
 
-CORRADE_PLUGIN_REGISTER(VisorHandlerDns, visor::handler::dns::DnsHandlerModulePlugin,
+CORRADE_PLUGIN_REGISTER(VisorHandlerDnsV2, visor::handler::dns::v2::DnsHandlerModulePlugin,
     "visor.module.handler/1.0")
 
-namespace visor::handler::dns {
+namespace visor::handler::dns::v2 {
 
 using namespace visor::input::pcap;
 using json = nlohmann::json;

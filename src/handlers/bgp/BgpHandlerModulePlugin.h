@@ -6,7 +6,7 @@
 
 #include "HandlerModulePlugin.h"
 
-namespace visor::handler::bgp {
+namespace visor::handler::bgp::v1 {
 
 class BgpHandlerModulePlugin : public HandlerModulePlugin
 {

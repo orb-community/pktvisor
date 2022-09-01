@@ -6,7 +6,7 @@
 
 #include "HandlerModulePlugin.h"
 
-namespace visor::handler::net {
+namespace visor::handler::net::v1 {
 
 class NetHandlerModulePlugin : public HandlerModulePlugin
 {

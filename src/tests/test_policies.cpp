@@ -966,9 +966,9 @@ TEST_CASE("Policies", "[policies]")
         // force a roll back by creating a conflict with a handler module name that already exists
         Config config;
         Config filter;
-        auto input_stream = registry.input_plugins()["mock"]->instantiate("mymock", &config, &filter);
+        auto input_stream = registry.input_plugins()[std::make_pair("mock", "1")]->instantiate("mymock", &config, &filter);
         auto stream_proxy = input_stream->add_event_proxy(filter);
-        auto mod = registry.handler_plugins()["net"]->instantiate("default_view-anycast-default_net", stream_proxy, &config, &filter);
+        auto mod = registry.handler_plugins()[std::make_pair("net", "1")]->instantiate("default_view-anycast-default_net", stream_proxy, &config, &filter);
         registry.handler_manager()->module_add(std::move(mod));
         REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["policies"]), "module name 'default_view-anycast-default_net' already exists");
 

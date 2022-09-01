@@ -2,14 +2,14 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-#include <catch2/catch.hpp>
+#include "catch2/catch.hpp"
+#include "nlohmann/json-schema.hpp"
 #include <fstream>
-#include <nlohmann/json-schema.hpp>
 #include <streambuf>
 #include <string>
 
-#include "DnsStreamHandler.h"
 #include "PcapInputStream.h"
+#include "handlers/dns/v2/DnsStreamHandler.h"
 
 using namespace visor::handler::dns;
 using namespace visor::input::pcap;
@@ -41,7 +41,7 @@ TEST_CASE("DNS JSON Schema", "[dns][iface][json]")
         json dns_json;
         dns_handler.metrics()->window_merged_json(dns_json, dns_handler.schema_key(), 5);
 
-        std::ifstream sfile("handlers/dns/tests/window-schema.json");
+        std::ifstream sfile("handlers/dns/v2/tests/window-schema.json");
         CHECK(sfile.is_open());
         std::string schema;
 

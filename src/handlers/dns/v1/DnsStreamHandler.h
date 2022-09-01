@@ -5,13 +5,13 @@
 #pragma once
 
 #include "AbstractMetricsManager.h"
+#include "Corrade/Utility/Debug.h"
 #include "MockInputStream.h"
 #include "PcapInputStream.h"
 #include "StreamHandler.h"
+#include "dns.h"
 #include "dnstap.pb.h"
 #include "querypairmgr.h"
-#include "visor_dns/dns.h"
-#include <Corrade/Utility/Debug.h>
 #include <bitset>
 #include <limits>
 #include <string>

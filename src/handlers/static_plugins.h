@@ -1,13 +1,15 @@
+#pragma once
 
 int import_handler_plugins()
 {
-    CORRADE_PLUGIN_IMPORT(VisorHandlerNet);
-    CORRADE_PLUGIN_IMPORT(VisorHandlerDns);
-    CORRADE_PLUGIN_IMPORT(VisorHandlerBgp);
-    CORRADE_PLUGIN_IMPORT(VisorHandlerFlow);
-    CORRADE_PLUGIN_IMPORT(VisorHandlerDhcp);
-    CORRADE_PLUGIN_IMPORT(VisorHandlerPcap);
-    CORRADE_PLUGIN_IMPORT(VisorHandlerInputResources);
+    CORRADE_PLUGIN_IMPORT(VisorHandlerNetV1);
+    CORRADE_PLUGIN_IMPORT(VisorHandlerDnsV1);
+    CORRADE_PLUGIN_IMPORT(VisorHandlerDnsV2);
+    CORRADE_PLUGIN_IMPORT(VisorHandlerBgpV1);
+    CORRADE_PLUGIN_IMPORT(VisorHandlerFlowV1);
+    CORRADE_PLUGIN_IMPORT(VisorHandlerDhcpV1);
+    CORRADE_PLUGIN_IMPORT(VisorHandlerPcapV1);
+    CORRADE_PLUGIN_IMPORT(VisorHandlerInputResourcesV1);
     return 0;
 }
 

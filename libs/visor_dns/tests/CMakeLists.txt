@@ -10,7 +10,7 @@ target_link_libraries(unit-tests-visor-dns
         Visor::Dns)
 
 add_test(NAME unit-tests-visor-dns
-        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/src
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         COMMAND unit-tests-visor-dns
         )
 

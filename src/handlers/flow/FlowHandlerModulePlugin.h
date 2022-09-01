@@ -6,7 +6,7 @@
 
 #include "HandlerModulePlugin.h"
 
-namespace visor::handler::flow {
+namespace visor::handler::flow::v1 {
 
 class FlowHandlerModulePlugin : public HandlerModulePlugin
 {

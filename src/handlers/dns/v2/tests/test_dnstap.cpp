@@ -1,7 +1,7 @@
-#include <catch2/catch.hpp>
+#include "catch2/catch.hpp"
 
-#include "DnsStreamHandler.h"
 #include "DnstapInputStream.h"
+#include "handlers/dns/v2/DnsStreamHandler.h"
 
 using namespace visor::handler::dns;
 using namespace visor::input::pcap;

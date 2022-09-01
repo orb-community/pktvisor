@@ -42,7 +42,6 @@ target_link_libraries(visor-core
 configure_file(visor_config.h.in visor_config.h @ONLY)
 
 add_subdirectory(inputs)
-add_subdirectory(visor_dns)
 add_subdirectory(handlers)
 
 set(VISOR_STATIC_PLUGINS ${VISOR_STATIC_PLUGINS} PARENT_SCOPE)

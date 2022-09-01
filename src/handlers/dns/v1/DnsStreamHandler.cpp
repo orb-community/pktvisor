@@ -3,20 +3,20 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 #include "DnsStreamHandler.h"
+#include "Corrade/Utility/Debug.h"
 #include "DnstapInputStream.h"
 #include "GeoDB.h"
 #include "utils.h"
-#include <Corrade/Utility/Debug.h>
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #pragma clang diagnostic ignored "-Wc99-extensions"
 #pragma GCC diagnostic ignored "-Wpedantic"
-#include <IPv4Layer.h>
-#include <IPv6Layer.h>
+#include "IPv4Layer.h"
+#include "IPv6Layer.h"
 #pragma GCC diagnostic pop
-#include "visor_dns/DnsAdditionalRecord.h"
-#include "visor_dns/PublicSuffixList.h"
+#include "DnsAdditionalRecord.h"
+#include "PublicSuffixList.h"
 #include <arpa/inet.h>
 #include <sstream>
 namespace visor::handler::dns {

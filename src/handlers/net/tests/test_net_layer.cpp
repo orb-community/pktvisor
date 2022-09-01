@@ -1,9 +1,9 @@
 #include <catch2/catch.hpp>
 
-#include "DnsStreamHandler.h"
 #include "GeoDB.h"
 #include "NetStreamHandler.h"
 #include "PcapInputStream.h"
+#include "handlers/dns/v1/DnsStreamHandler.h"
 
 using namespace visor::handler::net;
 using namespace visor::handler::dns;
