@@ -812,7 +812,7 @@ TEST_CASE("Policies", "[policies]")
         registry.start(nullptr);
 
         REQUIRE_NOTHROW(registry.tap_manager()->load_from_str(policies_config_bad4));
-        REQUIRE_THROWS(registry.policy_manager()->load_from_str(policies_config_bad4));
+        REQUIRE_THROWS_WITH(registry.policy_manager()->load_from_str(policies_config_bad4), "policy [default_view] failed to start: mock error on start");
     }
 
     SECTION("Bad Config: mis-matched input_type on tap")

@@ -119,7 +119,7 @@ public:
     void set_default_handler_config(const YAML::Node &config_yaml);
     std::vector<Policy *> load_from_str(const std::string &str);
     std::vector<Policy *> load(const YAML::Node &tap_yaml, bool single = false);
-    std::string create_resources_policy(InputStream *input, const Config &window_config);
+    std::string create_resources_policy(const std::string &policy_name, InputStream *input, const Config &window_config);
     void remove_policy(const std::string &name);
 };
 
