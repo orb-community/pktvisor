@@ -4,6 +4,7 @@
 
 #include "PcapInputStream.h"
 #include "NetworkInterfaceScan.h"
+#include "ThreadName.h"
 #include <pcap.h>
 #include <timer.hpp>
 #pragma GCC diagnostic push
@@ -27,6 +28,7 @@
 #include <cstring>
 #include <netinet/in.h>
 #include <sstream>
+
 
 using namespace std::chrono;
 
@@ -360,6 +362,10 @@ void PcapInputStream::_generate_mock_traffic()
 
 void PcapInputStream::process_raw_packet(pcpp::RawPacket *rawPacket)
 {
+    static thread_local bool name_thread = [this]() {
+        thread::change_self_name(schema_key(), name());
+        return true;
+    }();
     pcpp::ProtocolType l3(pcpp::UnknownProtocol), l4(pcpp::UnknownProtocol);
     pcpp::Packet packet(rawPacket, pcpp::TCP | pcpp::UDP);
     if (packet.isPacketOfType(pcpp::IPv4)) {
