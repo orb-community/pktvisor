@@ -78,8 +78,8 @@ def remove_tap(context, amount_of_taps):
         taps_to_be_removed = list(make_get_request(taps_endpoint, context.pkt_port, 200).json().keys())
     for tap in taps_to_be_removed:
         tap_endpoint = f"taps/{tap}"
-        response = make_delete_request(tap_endpoint, context.pkt_port, 204)
-        assert_that(response.status_code, equal_to(204), f"Failed to removed tap {tap}")
+        response = make_delete_request(tap_endpoint, context.pkt_port, 200)
+        assert_that(response.status_code, equal_to(200), f"Failed to removed tap {tap}")
     response_json = make_get_request(taps_endpoint, context.pkt_port, 200).json()
     if response_json is None:
         remaining_taps = list()

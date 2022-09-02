@@ -177,11 +177,11 @@ def get_policy(policy_name, pkt_port=10853, expected_status_code=200):
     return make_get_request(endpoint, pkt_port, expected_status_code)
 
 
-def remove_policy(policy_name, pkt_port=10853, expected_status_code=204):
+def remove_policy(policy_name, pkt_port=10853, expected_status_code=200):
     """
     :param (str) policy_name: name of the policy to be fetched
     :param pkt_port: port on which pktvisor is . Default: 10853
-    :param expected_status_code: expected status from response. Default: 204
+    :param expected_status_code: expected status from response. Default: 200
     :return: response
     """
     pkt_base_api = 'http://localhost:' + str(pkt_port) + '/api/v1/policies/'
