@@ -254,7 +254,7 @@ jobs:
           path: ${{github.workspace}}/appimage/pktvisor-x86_64-${{ env.VERSION }}.AppImage
           
   build-orb-agent:
-    needs: [ package-amd64 ]
+    needs: [ package-amd64, unit-tests-mac ]
     runs-on: ubuntu-latest
     steps:
     - name: Repository Dispatch
@@ -266,7 +266,7 @@ jobs:
         client-payload: '{"branch_name": "develop"}'
 
   spinup-amd64-runner:
-    needs: [ package-amd64 ]
+    needs: [ package-amd64, unit-tests-mac ]
     runs-on: ubuntu-latest
     outputs:
       runner_token: ${{ steps.token.outputs.runner }}
@@ -503,7 +503,7 @@ jobs:
           terraform destroy -auto-approve
           
   spinup-arm64-runner:
-    needs: [ package-amd64 ]
+    needs: [ package-amd64, unit-tests-mac ]
     runs-on: ubuntu-latest
     outputs:
       runner_token: ${{ steps.token.outputs.runner }}
