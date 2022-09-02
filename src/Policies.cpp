@@ -125,7 +125,7 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml, bool si
 
             for (auto &p : added_inputs) {
                 auto [input_ptr, input_lock] = _registry->input_manager()->module_get_locked(p);
-                added_handlers.push_back(create_resources_policy(input_ptr, window_config));
+                added_handlers.push_back(create_resources_policy(policy_name, input_ptr, window_config));
             }
 
         } catch (std::runtime_error &e) {
@@ -158,7 +158,7 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml, bool si
     return result;
 }
 
-std::string PolicyManager::create_resources_policy(InputStream *input, const Config &window_config)
+std::string PolicyManager::create_resources_policy(const std::string &policy_name, InputStream *input, const Config &window_config)
 {
     auto resources_handler_plugin = _registry->handler_plugins().find("input_resources");
     if (resources_handler_plugin == _registry->handler_plugins().end()) {
@@ -179,7 +179,8 @@ std::string PolicyManager::create_resources_policy(InputStream *input, const Con
         resources_policy->start();
         module_add(std::move(resources_policy));
     } catch (std::runtime_error &e) {
-        throw PolicyException(fmt::format("internal policy [{}] failed to start: {}", resources_policy->name(), e.what()));
+        resources_module->stop();
+        throw PolicyException(fmt::format("policy [{}] failed to start: {}", policy_name, e.what()));
     }
 
     _registry->handler_manager()->module_add(std::move(resources_module));
