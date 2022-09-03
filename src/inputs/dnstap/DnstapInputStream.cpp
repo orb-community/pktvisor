@@ -5,6 +5,7 @@
 #include "DnstapInputStream.h"
 #include "DnstapException.h"
 #include "FrameSession.h"
+#include "ThreadName.h"
 #include <filesystem>
 #include <uvw/async.h>
 #include <uvw/loop.h>
@@ -247,6 +248,7 @@ void DnstapInputStream::_create_frame_stream_tcp_socket()
     // spawn the loop
     _io_thread = std::make_unique<std::thread>([this] {
         _timer->start(uvw::TimerHandle::Time{1000}, uvw::TimerHandle::Time{HEARTBEAT_INTERVAL * 1000});
+        thread::change_self_name(schema_key(), name());
         _io_loop->run();
     });
 }
@@ -379,6 +381,7 @@ void DnstapInputStream::_create_frame_stream_unix_socket()
     // spawn the loop
     _io_thread = std::make_unique<std::thread>([this] {
         _timer->start(uvw::TimerHandle::Time{1000}, uvw::TimerHandle::Time{HEARTBEAT_INTERVAL * 1000});
+        thread::change_self_name(schema_key(), name());
         _io_loop->run();
     });
 }

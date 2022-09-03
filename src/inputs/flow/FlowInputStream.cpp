@@ -4,6 +4,7 @@
 
 #include "FlowInputStream.h"
 #include "FlowException.h"
+#include "ThreadName.h"
 #include <IPv4Layer.h>
 #include <IPv6Layer.h>
 #include <Packet.h>
@@ -215,6 +216,7 @@ void FlowInputStream::_create_frame_stream_udp_socket()
     // spawn the loop
     _io_thread = std::make_unique<std::thread>([this] {
         _timer->start(uvw::TimerHandle::Time{1000}, uvw::TimerHandle::Time{HEARTBEAT_INTERVAL * 1000});
+        thread::change_self_name(schema_key(), name());
         _io_loop->run();
     });
 }
