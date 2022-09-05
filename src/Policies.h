@@ -33,19 +33,14 @@ class Policy : public AbstractRunnableModule
 
     std::vector<Tap *> _taps;
     std::vector<InputStream *> _input_streams;
-    bool _modules_sequence;
+    bool _modules_sequence{false};
+    bool _merge_equal{false};
     std::vector<AbstractRunnableModule *> _modules;
 
 public:
-    enum class MetricOutput{
-        Bucket,
-        Prometheus,
-        Window
-    };
 
     Policy(const std::string &name)
         : AbstractRunnableModule(name)
-        , _modules_sequence(false)
     {
     }
 

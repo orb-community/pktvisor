@@ -287,6 +287,10 @@ void Policy::start()
     }
     assert(_input_streams.size());
     spdlog::get("visor")->info("policy [{}]: starting", _name);
+
+    // configurations
+    _merge_equal = (config_exists("merge_equal") && config_get<bool>("merge_equal"));
+
     for (auto &mod : _modules) {
         spdlog::get("visor")->debug("policy [{}]: starting handler instance: {}", _name, mod->name());
         mod->start();
@@ -327,8 +331,7 @@ void Policy::stop()
 
 void Policy::json_metrics(json &j, uint64_t period, bool merge)
 {
-    bool merge_equal = (config_exists("merge_equal") && config_get<bool>("merge_equal"));
-    if (merge_equal) {
+    if (_merge_equal) {
         std::map<std::unique_ptr<AbstractMetricsBucket>, StreamHandler *> bucket_map;
         for (auto &mod : modules()) {
             auto hmod = dynamic_cast<StreamHandler *>(mod);
