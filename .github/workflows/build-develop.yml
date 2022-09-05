@@ -217,6 +217,7 @@ jobs:
   build-app-image-x64:
     needs: [ unit-tests-linux ]
     runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
     steps:
       - uses: actions/checkout@v2
 
