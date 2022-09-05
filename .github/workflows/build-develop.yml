@@ -159,6 +159,17 @@ jobs:
 
       - name: Debug branch name
         run: echo ${{ env.BRANCH_NAME }}
+        
+      - name: Create Build Environment
+        run: cmake -E make_directory ${{github.workspace}}/build
+
+      - name: Get Conan
+        uses: turtlebrowser/get-conan@v1.0
+
+      - name: Configure CMake to generate VERSION
+        shell: bash
+        working-directory: ${{github.workspace}}/build
+        run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE
 
       - name: Get VERSION
         id: build
@@ -217,7 +228,7 @@ jobs:
   build-app-image-x64:
     needs: [ unit-tests-linux ]
     runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request'
+#    if: github.event_name != 'pull_request'
     steps:
       - uses: actions/checkout@v2
 
