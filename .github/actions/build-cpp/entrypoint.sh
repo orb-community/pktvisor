@@ -22,7 +22,7 @@ function build() {
   conan profile new --detect default && \
   conan profile update settings.compiler.libcxx=libstdc++11 default && \
   conan config set general.revisions_enabled=1
-  PKG_CONFIG_PATH=/local/lib/pkgconfig cmake -DCMAKE_BUILD_TYPE=Debug -DASAN=ON /pktvisor-src && \
+  PKG_CONFIG_PATH=/local/lib/pkgconfig cmake -DCMAKE_BUILD_TYPE=$INPUT_BUILD_TYPE -DASAN=$INPUT_ASAN /pktvisor-src && \
   make all -j 4
 }
 
