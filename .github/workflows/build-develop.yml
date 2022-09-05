@@ -183,7 +183,6 @@ jobs:
           echo ${{ steps.build.outputs.version }}
 
       - name: Generate ref tag (develop)
-        if: ${{ env.BRANCH_NAME == 'develop' }}
         run: |
           echo "REF_TAG=latest-develop" >> $GITHUB_ENV
           echo "PRERELEASE=true" >> $GITHUB_ENV
@@ -231,6 +230,34 @@ jobs:
 #    if: github.event_name != 'pull_request'
     steps:
       - uses: actions/checkout@v2
+      
+      - name: Create Build Environment
+        run: cmake -E make_directory ${{github.workspace}}/build
+
+      - name: Get Conan
+        uses: turtlebrowser/get-conan@v1.0
+
+      - name: Configure CMake to generate VERSION
+        shell: bash
+        working-directory: ${{github.workspace}}/build
+        run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE
+
+      - name: Get VERSION
+        id: build
+        run: |
+          echo "VERSION=`cat ${{github.workspace}}/build/VERSION`" >> $GITHUB_ENV
+          echo "::set-output name=version::$(cat ${{github.workspace}}/build/VERSION)"
+
+      - name: Debug version
+        run: |
+          echo ${{ env.VERSION }}
+          echo ${{ steps.build.outputs.version }}
+
+      - name: Generate ref tag (develop)
+        run: |
+          echo "REF_TAG=latest-develop" >> $GITHUB_ENV
+          echo "PRERELEASE=true" >> $GITHUB_ENV
+          echo "DRAFT=false" >> $GITHUB_ENV
 
       - name: Build + push - pktvisor-cli
         env:
