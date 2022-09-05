@@ -78,8 +78,8 @@ func (u *ui) updateHeader(v *gocui.View, window5m *client.StatSnapshot) {
 	)
 	dnsc := window5m.DNS.WirePackets
 	_, _ = fmt.Fprintf(v, "DNS Wire Pkts %d/%d | Rates Total %d/s %d/%d/%d/%d | UDP %d (%3.1f%%) | TCP %d (%3.1f%%) | IPv4 %d (%3.1f%%) | IPv6 %d (%3.1f%%) | Query %d (%3.1f%%) | Response %d (%3.1f%%)\n",
-		dnsc.Total-dnsc.Filtered,
 		dnsc.Total,
+		dnsc.Events,
 		window5m.DNS.Rates.Total.Live,
 		window5m.DNS.Rates.Total.P50,
 		window5m.DNS.Rates.Total.P90,
