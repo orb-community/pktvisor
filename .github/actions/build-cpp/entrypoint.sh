@@ -34,6 +34,7 @@ function compact() {
   strip -s /tmp/build/bin/crashpad_handler
   cp -rf /tmp/build/bin/crashpad_handler /github/workspace/
   cp -rf /tmp/build/bin/pktvisor-reader /github/workspace/
+  cp -rf /tmp/build/VERSION /github/workspace/
   #version for pktvisor-cli
   cp -rf /pktvisor-src/golang/pkg/client/version.go /github/workspace/version.go
 }
