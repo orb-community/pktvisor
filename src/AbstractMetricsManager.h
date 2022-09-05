@@ -519,6 +519,26 @@ public:
         _metric_buckets.at(period)->to_prometheus(out, add_labels);
     }
 
+    void window_external_prometheus(std::stringstream &out, AbstractMetricsBucket *bucket, Metric::LabelMap add_labels = {}) const
+    {
+        if (auto custom = dynamic_cast<MetricsBucketClass *>(bucket); custom) {
+            custom->to_prometheus(out, add_labels);
+        } else {
+            throw std::runtime_error("invalid bucket type");
+        }
+    }
+
+    void window_external_json(json &j, const std::string &key, AbstractMetricsBucket *bucket) const
+    {
+        if (auto custom = dynamic_cast<MetricsBucketClass *>(bucket); custom) {
+            j[key]["period"]["start_ts"] = custom->start_tstamp().tv_sec;
+            j[key]["period"]["length"] = custom->period_length();
+            custom->to_json(j[key]);
+        } else {
+            throw std::runtime_error("invalid bucket type");
+        }
+    }
+
     void window_merged_json(json &j, const std::string &key, uint64_t period) const
     {
         std::shared_lock rl(_base_mutex);
@@ -563,6 +583,32 @@ public:
         merged.to_json(j[key]);
 
         _mergeResultCache[period] = std::pair<std::chrono::high_resolution_clock::time_point, json>(std::chrono::high_resolution_clock::now(), j);
+    }
+
+    std::unique_ptr<AbstractMetricsBucket> merge(AbstractMetricsBucket *bucket, uint64_t period)
+    {
+        if (period > current_periods()) {
+            std::stringstream err;
+            err << "invalid metrics period, specify [0, " << current_periods() << "]";
+            throw PeriodException(err.str());
+        }
+
+        if (auto merged = dynamic_cast<MetricsBucketClass *>(bucket); merged) {
+            std::shared_lock rl(_base_mutex);
+            std::shared_lock rbl(_bucket_mutex);
+
+            merged->merge(*_metric_buckets[period].get());
+            return nullptr;
+        }
+
+        auto merged = std::make_unique<MetricsBucketClass>();
+
+        std::shared_lock rl(_base_mutex);
+        std::shared_lock rbl(_bucket_mutex);
+
+        merged->merge(*_metric_buckets[period].get());
+
+        return merged;
     }
 };
 

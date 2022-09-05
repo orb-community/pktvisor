@@ -382,26 +382,20 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
             plist.emplace_back(name);
         }
         try {
+            uint64_t period(std::stol(req.matches[3]));
+            auto merge = req.matches[2] == "window";
             for (const auto &p_mname : plist) {
                 spdlog::stopwatch psw;
                 auto [policy, lock] = _registry->policy_manager()->module_get_locked(p_mname);
-                uint64_t period(std::stol(req.matches[3]));
-                for (auto &mod : policy->modules()) {
-                    auto hmod = dynamic_cast<StreamHandler *>(mod);
-                    assert(hmod);
-                    try {
-                        spdlog::stopwatch hsw;
-                        hmod->window_json(j[policy->name()][hmod->name()], period, req.matches[2] == "window");
-                        _logger->debug("{} handler bucket json elapsed time: {}", hmod->name(), hsw);
-                    } catch (const PeriodException &e) {
-                        // if period is bad for a single policy in __all mode, skip it. otherwise fail
-                        if (name == "__all") {
-                            _logger->warn("{} handler for policy {} had a PeriodException, skipping: {}", hmod->name(), policy->name(), e.what());
-                            j.erase(policy->name());
-                            continue;
-                        } else {
-                            throw e;
-                        }
+                try {
+                    policy->json_metrics(j, period, merge);
+                } catch (const PeriodException &e) {
+                    // if period is bad for a single policy in __all mode, skip it. otherwise fail
+                    if (name == "__all") {
+                        j.erase(policy->name());
+                        continue;
+                    } else {
+                        throw e;
                     }
                 }
                 _logger->debug("{} policy json metrics elapsed time: {}", policy->name(), psw);

@@ -66,6 +66,17 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml, bool si
         auto policy_ptr = policy.get();
         policy_ptr->set_modules_sequence(handler_sequence);
 
+        if (it->second["config"]) {
+            if (!it->second["config"].IsMap()) {
+                throw PolicyException("policy configuration is not a map");
+            }
+            try {
+                policy_ptr->config_set_yaml(it->second["config"]);
+            } catch (ConfigException &e) {
+                throw HandlerException(fmt::format("invalid policy config for policy '{}': {}", policy_name, e.what()));
+            }
+        }
+
         std::vector<std::string> added_inputs;
         std::vector<std::string> added_handlers;
         try {
@@ -312,5 +323,48 @@ void Policy::stop()
         }
     }
     _running = false;
+}
+
+void Policy::json_metrics(json &j, uint64_t period, bool merge)
+{
+    bool merge_equal = (config_exists("merge_equal") && config_get<bool>("merge_equal"));
+    if (merge_equal) {
+        std::map<std::unique_ptr<AbstractMetricsBucket>, StreamHandler *> bucket_map;
+        for (auto &mod : modules()) {
+            auto hmod = dynamic_cast<StreamHandler *>(mod);
+            assert(hmod);
+            if (bucket_map.empty()) {
+                bucket_map.emplace(hmod->merge(nullptr), hmod);
+                continue;
+            }
+            for (auto &item : bucket_map) {
+                auto bucket = hmod->merge(item.first.get());
+                if (!bucket) {
+                    break;
+                } else if (item.first == std::prev(bucket_map.end())->first) {
+                    bucket_map.emplace(std::move(bucket), hmod);
+                }
+            }
+        }
+        for (auto &[bucket, mod] : bucket_map) {
+            mod->window_json(j, bucket.get());
+        }
+    } else {
+        for (auto &mod : modules()) {
+            auto hmod = dynamic_cast<StreamHandler *>(mod);
+            assert(hmod);
+            try {
+                hmod->window_json(j[name()][hmod->name()], period, merge);
+            } catch (const PeriodException &e) {
+                // if period is bad for a single policy in __all mode, skip it. otherwise fail
+                spdlog::get("visor")->warn("{} handler for policy {} had a PeriodException, skipping: {}", hmod->name(), name(), e.what());
+                throw;
+            }
+        }
+    }
+}
+
+void Policy::prometheus_metrics(json &j)
+{
 }
 }

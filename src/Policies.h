@@ -37,6 +37,12 @@ class Policy : public AbstractRunnableModule
     std::vector<AbstractRunnableModule *> _modules;
 
 public:
+    enum class MetricOutput{
+        Bucket,
+        Prometheus,
+        Window
+    };
+
     Policy(const std::string &name)
         : AbstractRunnableModule(name)
         , _modules_sequence(false)
@@ -97,6 +103,9 @@ public:
     void stop() override;
 
     void info_json(json &j) const override;
+
+    void json_metrics(json &j, uint64_t period, bool merge);
+    void prometheus_metrics(json &j);
 };
 
 class PolicyManager : public AbstractManager<Policy>
@@ -116,7 +125,6 @@ public:
     {
     }
 
-    void set_default_handler_config(const YAML::Node &config_yaml);
     std::vector<Policy *> load_from_str(const std::string &str);
     std::vector<Policy *> load(const YAML::Node &tap_yaml, bool single = false);
     std::string create_resources_policy(const std::string &policy_name, InputStream *input, const Config &window_config);
