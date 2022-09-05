@@ -132,16 +132,23 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: Create Build Environment
-        run: cmake -E make_directory ${{github.workspace}}/build
+      - name: Build pktvisord + push symbol to backtrace.io
+        uses: ./.github/actions/build-cpp
+        with:
+          context: "."
+          build_type: "Release"
+          asan: "OFF"
+          symbol_url: ${{secrets.SYMBOL_URL}}
+          file: "./Dockerfile"
 
-      - name: Get Conan
-        uses: turtlebrowser/get-conan@v1.0
+      - name: Build pktvisor-cli
+        uses: ./.github/actions/build-go
+        with:
+          context: "."
+          file: "./Dockerfile"
 
-      - name: Configure CMake to generate VERSION
-        shell: bash
-        working-directory: ${{github.workspace}}/build
-        run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE
+      - name: Debug artifacts
+        run: ls -lha .
 
       - name: Get branch name
         id: branch
@@ -202,10 +209,16 @@ jobs:
         with:
           builder: ${{ steps.buildx.outputs.name }}
           context: .
-          file: ./docker/Dockerfile
+          file: ./docker/Dockerfile.crashhandler
           platforms: linux/amd64
           push: true
           tags: ${{ env.IMAGE_NAME }}:${{ env.VERSION }} , ${{ env.IMAGE_NAME }}:${{ env.REF_TAG }} , ${{ env.IMAGE_NAME2 }}:amd64
+
+  build-app-image-x64:
+    needs: [ unit-tests-linux ]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
 
       - name: Build + push - pktvisor-cli
         env:
@@ -252,7 +265,7 @@ jobs:
         with:
           name: pktvisor-x86_64-${{ env.VERSION }}.AppImage
           path: ${{github.workspace}}/appimage/pktvisor-x86_64-${{ env.VERSION }}.AppImage
-          
+    
   build-orb-agent:
     needs: [ package-amd64, unit-tests-mac ]
     runs-on: ubuntu-latest
