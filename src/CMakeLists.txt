@@ -15,6 +15,7 @@ add_library(visor-core
         CoreRegistry.cpp
         Metrics.cpp
         Policies.cpp
+        ThreadName.cpp
         Taps.cpp)
 add_library(Visor::Core ALIAS visor-core)
 
