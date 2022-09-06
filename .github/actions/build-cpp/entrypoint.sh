@@ -22,7 +22,7 @@ function build() {
   conan profile new --detect default && \
   conan profile update settings.compiler.libcxx=libstdc++11 default && \
   conan config set general.revisions_enabled=1
-  PKG_CONFIG_PATH=/local/lib/pkgconfig cmake -DCMAKE_BUILD_TYPE=Debug -DASAN=ON /pktvisor-src && \
+  PKG_CONFIG_PATH=/local/lib/pkgconfig cmake -DCMAKE_BUILD_TYPE=$INPUT_BUILD_TYPE -DASAN=$INPUT_ASAN /pktvisor-src && \
   make all -j 4
 }
 
@@ -34,6 +34,7 @@ function compact() {
   strip -s /tmp/build/bin/crashpad_handler
   cp -rf /tmp/build/bin/crashpad_handler /github/workspace/
   cp -rf /tmp/build/bin/pktvisor-reader /github/workspace/
+  cp -rf /tmp/build/VERSION /github/workspace/
   #version for pktvisor-cli
   cp -rf /pktvisor-src/golang/pkg/client/version.go /github/workspace/version.go
 }

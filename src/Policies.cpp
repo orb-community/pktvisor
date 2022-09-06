@@ -77,6 +77,7 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml, bool si
             }
         }
 
+        std::vector<std::string> added_resources_policies;
         std::vector<std::string> added_inputs;
         std::vector<std::string> added_handlers;
         try {
@@ -136,11 +137,16 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml, bool si
 
             for (auto &p : added_inputs) {
                 auto [input_ptr, input_lock] = _registry->input_manager()->module_get_locked(p);
-                added_handlers.push_back(create_resources_policy(policy_name, input_ptr, window_config));
+                auto [resource_name, module_name] = create_resources_policy(policy_name, input_ptr, window_config);
+                added_resources_policies.push_back(resource_name);
+                added_handlers.push_back(module_name);
             }
 
         } catch (std::runtime_error &e) {
             // failed to create policy
+            for (auto &p : added_resources_policies) {
+                module_remove(p);
+            }
             for (auto &m : added_handlers) {
                 _registry->handler_manager()->module_remove(m);
             }
@@ -154,6 +160,9 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml, bool si
             policy_ptr->start();
             module_add(std::move(policy));
         } catch (std::runtime_error &e) {
+            for (auto &p : added_resources_policies) {
+                module_remove(p);
+            }
             for (auto &m : added_handlers) {
                 _registry->handler_manager()->module_remove(m);
             }
@@ -169,16 +178,17 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml, bool si
     return result;
 }
 
-std::string PolicyManager::create_resources_policy(const std::string &policy_name, InputStream *input, const Config &window_config)
+std::pair<std::string, std::string> PolicyManager::create_resources_policy(const std::string &policy_name, InputStream *input, const Config &window_config)
 {
     auto resources_handler_plugin = _registry->handler_plugins().find("input_resources");
     if (resources_handler_plugin == _registry->handler_plugins().end()) {
         spdlog::get("visor")->info("input_resources handler not available, not able to create input resources policy for input stream: {}", input->name());
-        return std::string();
+        return std::make_pair(std::string(), std::string());
     }
 
     // create new policy with resources handler for input stream
     auto resources_policy = std::make_unique<Policy>(input->name() + "-resources");
+    auto resources_policy_name = resources_policy->name();
     auto resources_policy_ptr = resources_policy.get();
     resources_policy->add_input_stream(input);
 
@@ -197,7 +207,7 @@ std::string PolicyManager::create_resources_policy(const std::string &policy_nam
     _registry->handler_manager()->module_add(std::move(resources_module));
     // success
     input->add_policy(resources_policy_ptr);
-    return module_name;
+    return std::make_pair(resources_policy_name, module_name);
 }
 
 std::string PolicyManager::_get_policy_name(YAML::const_iterator it)

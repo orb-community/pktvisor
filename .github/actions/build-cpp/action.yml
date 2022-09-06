@@ -12,6 +12,16 @@ inputs:
     description: "symbol url"
     required: true
     default: ""
+    
+  build_type:
+    description: "build type"
+    required: true
+    default: "Debug"
+    
+  asan:
+    description: "asan"
+    required: true
+    default: "ON"
 
   file:
     description: "Dockerfile used to build the image"
