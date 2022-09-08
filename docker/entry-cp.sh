@@ -4,6 +4,14 @@ set -e
 
 export PATH=$PATH:/usr/local/bin/:/usr/local/sbin/
 
+trapeze () {
+
+printf "\rFinishing container.."
+exit 0
+}
+
+trap trapeze SIGINT
+
 if [ $# -eq 0 ]; then
   echo "No arguments provided: specify either 'pktvisor-cli', 'pktvisor-reader' or 'pktvisord'. Try:"
   echo "docker run ns1labs/pktvisor pktvisor-cli -h"
@@ -40,7 +48,7 @@ if [ "$BINARY" = 'pktvisord' ]; then
     if [ ! -f "/var/run/pktvisord.pid"  ]; then
       # running pktvisord in background
       nohup /run.sh "$@" &
-      sleep 2
+      sleep 3
       tail -f /nohup.out &
     else
       PID=$(cat /var/run/pktvisord.pid)
