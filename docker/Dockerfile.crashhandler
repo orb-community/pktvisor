@@ -16,6 +16,11 @@ COPY ./pktvisor-cli /usr/local/bin/pktvisor-cli
 COPY ./docker/entry-cp.sh /entry-cp.sh
 COPY ./docker/run.sh /run.sh
 
+#create dir and download geo db
+RUN mkdir /geo-db
+RUN wget https://github.com/ns1labs/geo-asn-database/raw/main/asn.mmdb.gz -P /geo-db/asn.mmdb.gz
+RUN wget https://github.com/ns1labs/geo-asn-database/raw/main/city.mmdb.gz -P /geo-db/city.mmdb.gz
+
 # permissions
 RUN chmod a+x /usr/local/sbin/pktvisord
 RUN chmod a+x /usr/local/sbin/crashpad_handler
@@ -25,4 +30,3 @@ RUN chmod a+x /entry-cp.sh
 RUN chmod a+x /run.sh
 
 ENTRYPOINT [ "/entry-cp.sh" ]
-
