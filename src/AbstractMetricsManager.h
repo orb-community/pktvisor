@@ -613,7 +613,7 @@ public:
             throw PeriodException(err.str());
         }
 
-        std::unique_ptr<MetricsBucketClass> merged;
+        auto merged = std::make_unique<MetricsBucketClass>();
         if (_recorded_stream) {
             merged->set_recorded_stream();
         }
