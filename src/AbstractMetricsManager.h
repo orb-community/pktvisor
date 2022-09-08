@@ -519,6 +519,21 @@ public:
         _metric_buckets.at(period)->to_prometheus(out, add_labels);
     }
 
+    void window_external_prometheus(std::stringstream &out, AbstractMetricsBucket *bucket, Metric::LabelMap add_labels = {}) const
+    {
+        // static because caller guarantees only our own bucket type
+        static_cast<MetricsBucketClass *>(bucket)->to_prometheus(out, add_labels);
+    }
+
+    void window_external_json(json &j, const std::string &key, AbstractMetricsBucket *bucket) const
+    {
+        // static because caller guarantees only our own bucket type
+        auto custom = static_cast<MetricsBucketClass *>(bucket);
+        j[key]["period"]["start_ts"] = custom->start_tstamp().tv_sec;
+        j[key]["period"]["length"] = custom->period_length();
+        custom->to_json(j[key]);
+    }
+
     void window_merged_json(json &j, const std::string &key, uint64_t period) const
     {
         std::shared_lock rl(_base_mutex);
@@ -562,7 +577,61 @@ public:
 
         merged.to_json(j[key]);
 
-        _mergeResultCache[period] = std::pair<std::chrono::high_resolution_clock::time_point, json>(std::chrono::high_resolution_clock::now(), j);
+        _mergeResultCache[period] = std::make_pair(std::chrono::high_resolution_clock::now(), j);
+    }
+
+    std::unique_ptr<AbstractMetricsBucket> simple_merge(AbstractMetricsBucket *bucket, uint64_t period)
+    {
+        std::shared_lock rl(_base_mutex);
+        std::shared_lock rbl(_bucket_mutex);
+
+        if (period >= _num_periods) {
+            std::stringstream err;
+            err << "invalid metrics period, specify [0, " << _num_periods - 1 << "]";
+            throw PeriodException(err.str());
+        }
+
+        if (auto merged = dynamic_cast<MetricsBucketClass *>(bucket); merged) {
+            merged->merge(*_metric_buckets[period].get());
+            return nullptr;
+        }
+
+        auto merged = std::make_unique<MetricsBucketClass>();
+        merged->merge(*_metric_buckets[period].get());
+
+        return merged;
+    }
+
+    std::unique_ptr<AbstractMetricsBucket> multiple_merge(AbstractMetricsBucket *bucket, uint64_t period)
+    {
+        std::shared_lock rl(_base_mutex);
+        std::shared_lock rbl(_bucket_mutex);
+
+        if (period <= 1 || period > _num_periods) {
+            std::stringstream err;
+            err << "invalid metrics period, specify [2, " << _num_periods << "]";
+            throw PeriodException(err.str());
+        }
+
+        auto merged = std::make_unique<MetricsBucketClass>();
+        if (_recorded_stream) {
+            merged->set_recorded_stream();
+        }
+
+        auto p = period;
+        for (auto &m : _metric_buckets) {
+            if (p-- == 0) {
+                break;
+            }
+            merged->merge(*m);
+        }
+
+        if (auto external_bucket = dynamic_cast<MetricsBucketClass *>(bucket); external_bucket) {
+            external_bucket->merge(*merged.get());
+            return nullptr;
+        }
+
+        return merged;
     }
 };
 

@@ -17,6 +17,7 @@
 namespace visor {
 
 class CoreRegistry;
+class AbstractMetricsBucket;
 
 class PolicyException : public std::runtime_error
 {
@@ -29,17 +30,23 @@ public:
 
 class Policy : public AbstractRunnableModule
 {
+protected:
+    typedef std::map<std::unique_ptr<AbstractMetricsBucket>, StreamHandler *> BucketMap;
+
+private:
     static constexpr size_t HANDLERS_SEQUENCE_SIZE = 1;
 
     std::vector<Tap *> _taps;
     std::vector<InputStream *> _input_streams;
-    bool _modules_sequence;
+    bool _modules_sequence{false};
+    bool _merge_like_handlers{false};
     std::vector<AbstractRunnableModule *> _modules;
+
+    BucketMap _get_merged_buckets(bool prometheus = true, uint64_t period = 0, bool merged = false);
 
 public:
     Policy(const std::string &name)
         : AbstractRunnableModule(name)
-        , _modules_sequence(false)
     {
     }
 
@@ -97,6 +104,9 @@ public:
     void stop() override;
 
     void info_json(json &j) const override;
+
+    void json_metrics(json &j, uint64_t period, bool merge);
+    void prometheus_metrics(std::stringstream &out);
 };
 
 class PolicyManager : public AbstractManager<Policy>
@@ -116,7 +126,6 @@ public:
     {
     }
 
-    void set_default_handler_config(const YAML::Node &config_yaml);
     std::vector<Policy *> load_from_str(const std::string &str);
     std::vector<Policy *> load(const YAML::Node &tap_yaml, bool single = false);
     std::pair<std::string, std::string> create_resources_policy(const std::string &policy_name, InputStream *input, const Config &window_config);

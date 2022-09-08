@@ -83,6 +83,9 @@ visor:
                 - dns_transaction
     chaning_handlers:
       kind: collection
+      #policy configs
+      config:
+        merge_like_handlers: true
       description: "base chaning NET to DNS policy"
       # input stream to create based on the given tap and optional filter config
       input:

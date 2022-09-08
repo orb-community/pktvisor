@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <fmt/format.h>
 #include <spdlog/spdlog.h>
+#include <spdlog/stopwatch.h>
 
 namespace visor {
 
@@ -65,6 +66,17 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml, bool si
         auto policy = std::make_unique<Policy>(policy_name);
         auto policy_ptr = policy.get();
         policy_ptr->set_modules_sequence(handler_sequence);
+
+        if (it->second["config"]) {
+            if (!it->second["config"].IsMap()) {
+                throw PolicyException("policy configuration is not a map");
+            }
+            try {
+                policy_ptr->config_set_yaml(it->second["config"]);
+            } catch (ConfigException &e) {
+                throw HandlerException(fmt::format("invalid policy config for policy '{}': {}", policy_name, e.what()));
+            }
+        }
 
         std::vector<std::string> added_resources_policies;
         std::vector<std::string> added_inputs;
@@ -286,6 +298,10 @@ void Policy::start()
     }
     assert(_input_streams.size());
     spdlog::get("visor")->info("policy [{}]: starting", _name);
+
+    // configurations
+    _merge_like_handlers = (config_exists("merge_like_handlers") && config_get<bool>("merge_like_handlers"));
+
     for (auto &mod : _modules) {
         spdlog::get("visor")->debug("policy [{}]: starting handler instance: {}", _name, mod->name());
         mod->start();
@@ -322,5 +338,74 @@ void Policy::stop()
         }
     }
     _running = false;
+}
+
+void Policy::json_metrics(json &j, uint64_t period, bool merge)
+{
+    if (_merge_like_handlers) {
+        auto bucket_map = _get_merged_buckets(false, period, merge);
+        for (auto &[bucket, hmod] : bucket_map) {
+            hmod->window_json(j[name()][hmod->schema_key() + "_merged"], bucket.get());
+        }
+    } else {
+        for (auto &mod : modules()) {
+            auto hmod = dynamic_cast<StreamHandler *>(mod);
+            if (hmod) {
+                try {
+                    spdlog::stopwatch sw;
+                    hmod->window_json(j[name()][hmod->name()], period, merge);
+                    spdlog::get("visor")->debug("{} window_json elapsed time: {}", hmod->name(), sw);
+                } catch (const PeriodException &e) {
+                    spdlog::get("visor")->warn("{} handler for policy {} had a PeriodException, skipping: {}", hmod->name(), name(), e.what());
+                    throw;
+                }
+            }
+        }
+    }
+}
+
+void Policy::prometheus_metrics(std::stringstream &out)
+{
+    if (_merge_like_handlers) {
+        auto bucket_map = _get_merged_buckets();
+        for (auto &[bucket, hmod] : bucket_map) {
+            hmod->window_prometheus(out, bucket.get(), {{"policy", name()}, {"module", hmod->schema_key() + "_merged"}});
+        }
+    } else {
+        for (auto &mod : modules()) {
+            auto hmod = dynamic_cast<StreamHandler *>(mod);
+            if (hmod) {
+                spdlog::stopwatch sw;
+                hmod->window_prometheus(out, {{"policy", name()}, {"module", hmod->name()}});
+                spdlog::get("visor")->debug("{} window_prometheus elapsed time: {}", hmod->name(), sw);
+            }
+        }
+    }
+}
+
+Policy::BucketMap Policy::_get_merged_buckets(bool prometheus, uint64_t period, bool merged)
+{
+    BucketMap bucket_map;
+    for (auto &mod : modules()) {
+        auto hmod = dynamic_cast<StreamHandler *>(mod);
+        assert(hmod);
+        if (bucket_map.empty()) {
+            bucket_map.emplace(hmod->merge(nullptr, prometheus, period, merged), hmod);
+            continue;
+        }
+        for (auto &[bucket, handler] : bucket_map) {
+            bool is_last = (bucket == std::prev(bucket_map.end())->first);
+            if (hmod->schema_key() != handler->schema_key() && !is_last) {
+                continue;
+            }
+            auto new_bucket = hmod->merge(bucket.get(), prometheus, period, merged);
+            if (!new_bucket) {
+                break;
+            } else if (is_last) {
+                bucket_map.emplace(std::move(new_bucket), hmod);
+            }
+        }
+    }
+    return bucket_map;
 }
 }

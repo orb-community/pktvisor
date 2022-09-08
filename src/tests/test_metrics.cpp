@@ -74,6 +74,45 @@ TEST_CASE("Abstract metrics manager", "[metrics][abstract]")
     {
         CHECK_THROWS_WITH(manager->window_merged_json(j, "metrics", 0), "invalid metrics period, specify [2, 1]");
     }
+
+    SECTION("Abstract window external json")
+    {
+        auto live = static_cast<AbstractMetricsBucket *>(manager->live_bucket());
+        manager->window_external_json(j, "metrics", live);
+        CHECK(j["metrics"]["period"]["length"] == 0);
+    }
+
+    SECTION("Abstract window external prometheus")
+    {
+        auto live = static_cast<AbstractMetricsBucket *>(manager->live_bucket());
+        manager->window_external_prometheus(output, live, {{"policy", "default"}});
+        std::getline(output, line);
+        CHECK(line == "test_performed");
+    }
+
+    SECTION("Abstract simple merge without bucket")
+    {
+        auto new_bucket = manager->simple_merge(nullptr, 0);
+        CHECK(nullptr != dynamic_cast<TestMetricsBucket *>(new_bucket.get()));
+    }
+
+    SECTION("Abstract simple merge with bucket")
+    {
+        auto bucket = std::make_unique<TestMetricsBucket>();
+        auto new_bucket = manager->simple_merge(bucket.get(), 0);
+        CHECK(nullptr == new_bucket);
+        CHECK(nullptr != dynamic_cast<TestMetricsBucket *>(bucket.get()));
+    }
+
+    SECTION("Abstract simple merge failed")
+    {
+        CHECK_THROWS_WITH(manager->simple_merge(nullptr, 2), "invalid metrics period, specify [0, 0]");
+    }
+
+    SECTION("Abstract multiple merge failed")
+    {
+        CHECK_THROWS_WITH(manager->multiple_merge(nullptr, 0), "invalid metrics period, specify [2, 1]");
+    }
 }
 
 TEST_CASE("Counter metrics", "[metrics][counter]")

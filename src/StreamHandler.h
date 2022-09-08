@@ -57,7 +57,10 @@ public:
     }
 
     virtual void window_json(json &j, uint64_t period, bool merged) = 0;
+    virtual void window_json(json &j, AbstractMetricsBucket *bucket) = 0;
     virtual void window_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) = 0;
+    virtual void window_prometheus(std::stringstream &out, AbstractMetricsBucket *bucket, Metric::LabelMap add_labels = {}) = 0;
+    virtual std::unique_ptr<AbstractMetricsBucket> merge(AbstractMetricsBucket *bucket, uint64_t period, bool prometheus, bool merged) = 0;
 };
 
 template <class MetricsManagerClass>
@@ -157,6 +160,11 @@ public:
         }
     }
 
+    void window_json(json &j, AbstractMetricsBucket *bucket) override
+    {
+        _metrics->window_external_json(j, schema_key(), bucket);
+    }
+
     void window_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) override
     {
         if (_metrics->current_periods() > 1) {
@@ -166,9 +174,26 @@ public:
         }
     }
 
+    void window_prometheus(std::stringstream &out, AbstractMetricsBucket *bucket, Metric::LabelMap add_labels = {}) override
+    {
+        _metrics->window_external_prometheus(out, bucket, add_labels);
+    };
+
     void check_period_shift(timespec stamp)
     {
         _metrics->check_period_shift(stamp);
+    }
+
+    std::unique_ptr<AbstractMetricsBucket> merge(AbstractMetricsBucket *bucket, uint64_t period, bool prometheus, bool merged) override
+    {
+        if (prometheus) {
+            (_metrics->current_periods() > 1) ? period = 1 : period = 0;
+            merged = false;
+        }
+        if (merged) {
+            return _metrics->multiple_merge(bucket, period);
+        }
+        return _metrics->simple_merge(bucket, period);
     }
 
     virtual ~StreamMetricsHandler(){};
