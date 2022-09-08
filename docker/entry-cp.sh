@@ -29,6 +29,10 @@ fi
 
 # if binary is pktvisord
 if [ "$BINARY" = 'pktvisord' ]; then
+  # extract geodb
+  cd /geo-db/
+  gzip -d asn.mmdb.gz
+  gzip -d city.mmdb.gz
   # eternal loop
   while true
   do
