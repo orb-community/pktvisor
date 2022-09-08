@@ -18,8 +18,8 @@ COPY ./docker/run.sh /run.sh
 
 #create dir and download geo db
 RUN mkdir /geo-db
-RUN wget https://github.com/ns1labs/geo-asn-database/raw/main/asn.mmdb.gz -P /geo-db/asn.mmdb.gz
-RUN wget https://github.com/ns1labs/geo-asn-database/raw/main/city.mmdb.gz -P /geo-db/city.mmdb.gz
+RUN cd /geo-db && wget https://github.com/ns1labs/geo-asn-database/raw/main/asn.mmdb.gz
+RUN cd /geo-db && wget https://github.com/ns1labs/geo-asn-database/raw/main/city.mmdb.gz
 
 # permissions
 RUN chmod a+x /usr/local/sbin/pktvisord
