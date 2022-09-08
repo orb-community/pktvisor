@@ -17,6 +17,7 @@
 namespace visor {
 
 class CoreRegistry;
+class AbstractMetricsBucket;
 
 class PolicyException : public std::runtime_error
 {
@@ -29,16 +30,21 @@ public:
 
 class Policy : public AbstractRunnableModule
 {
+protected:
+    typedef std::map<std::unique_ptr<AbstractMetricsBucket>, StreamHandler *> BucketMap;
+
+private:
     static constexpr size_t HANDLERS_SEQUENCE_SIZE = 1;
 
     std::vector<Tap *> _taps;
     std::vector<InputStream *> _input_streams;
     bool _modules_sequence{false};
-    bool _merge_equal{false};
+    bool _merge_like_handlers{false};
     std::vector<AbstractRunnableModule *> _modules;
 
-public:
+    BucketMap _get_merged_buckets(bool prometheus = true, uint64_t period = 0, bool merged = false);
 
+public:
     Policy(const std::string &name)
         : AbstractRunnableModule(name)
     {
@@ -100,7 +106,7 @@ public:
     void info_json(json &j) const override;
 
     void json_metrics(json &j, uint64_t period, bool merge);
-    void prometheus_metrics(json &j);
+    void prometheus_metrics(std::stringstream &out);
 };
 
 class PolicyManager : public AbstractManager<Policy>

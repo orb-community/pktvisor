@@ -430,14 +430,7 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
         for (const auto &p_mname : plist) {
             try {
                 auto [policy, lock] = _registry->policy_manager()->module_get_locked(p_mname);
-                for (auto &mod : policy->modules()) {
-                    auto hmod = dynamic_cast<StreamHandler *>(mod);
-                    if (hmod) {
-                        spdlog::stopwatch sw;
-                        hmod->window_prometheus(output, {{"policy", p_mname}, {"module", hmod->name()}});
-                        _logger->debug("{} window_prometheus elapsed time: {}", hmod->name(), sw);
-                    }
-                }
+                policy->prometheus_metrics(output);
             } catch (const std::exception &e) {
                 res.status = 500;
                 res.set_content(e.what(), "text/plain");

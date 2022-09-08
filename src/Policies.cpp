@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <fmt/format.h>
 #include <spdlog/spdlog.h>
+#include <spdlog/stopwatch.h>
 
 namespace visor {
 
@@ -299,7 +300,7 @@ void Policy::start()
     spdlog::get("visor")->info("policy [{}]: starting", _name);
 
     // configurations
-    _merge_equal = (config_exists("merge_equal") && config_get<bool>("merge_equal"));
+    _merge_like_handlers = (config_exists("merge_like_handlers") && config_get<bool>("merge_like_handlers"));
 
     for (auto &mod : _modules) {
         spdlog::get("visor")->debug("policy [{}]: starting handler instance: {}", _name, mod->name());
@@ -341,43 +342,70 @@ void Policy::stop()
 
 void Policy::json_metrics(json &j, uint64_t period, bool merge)
 {
-    if (_merge_equal) {
-        std::map<std::unique_ptr<AbstractMetricsBucket>, StreamHandler *> bucket_map;
-        for (auto &mod : modules()) {
-            auto hmod = dynamic_cast<StreamHandler *>(mod);
-            assert(hmod);
-            if (bucket_map.empty()) {
-                bucket_map.emplace(hmod->merge(nullptr), hmod);
-                continue;
-            }
-            for (auto &item : bucket_map) {
-                auto bucket = hmod->merge(item.first.get());
-                if (!bucket) {
-                    break;
-                } else if (item.first == std::prev(bucket_map.end())->first) {
-                    bucket_map.emplace(std::move(bucket), hmod);
-                }
-            }
-        }
-        for (auto &[bucket, mod] : bucket_map) {
-            mod->window_json(j, bucket.get());
+    if (_merge_like_handlers) {
+        auto bucket_map = _get_merged_buckets(false, period, merge);
+        for (auto &[bucket, hmod] : bucket_map) {
+            hmod->window_json(j[name()][hmod->schema_key() + "_merged"], bucket.get());
         }
     } else {
         for (auto &mod : modules()) {
             auto hmod = dynamic_cast<StreamHandler *>(mod);
-            assert(hmod);
-            try {
-                hmod->window_json(j[name()][hmod->name()], period, merge);
-            } catch (const PeriodException &e) {
-                // if period is bad for a single policy in __all mode, skip it. otherwise fail
-                spdlog::get("visor")->warn("{} handler for policy {} had a PeriodException, skipping: {}", hmod->name(), name(), e.what());
-                throw;
+            if (hmod) {
+                try {
+                    spdlog::stopwatch sw;
+                    hmod->window_json(j[name()][hmod->name()], period, merge);
+                    spdlog::get("visor")->debug("{} window_json elapsed time: {}", hmod->name(), sw);
+                } catch (const PeriodException &e) {
+                    spdlog::get("visor")->warn("{} handler for policy {} had a PeriodException, skipping: {}", hmod->name(), name(), e.what());
+                    throw;
+                }
             }
         }
     }
 }
 
-void Policy::prometheus_metrics(json &j)
+void Policy::prometheus_metrics(std::stringstream &out)
 {
+    if (_merge_like_handlers) {
+        auto bucket_map = _get_merged_buckets();
+        for (auto &[bucket, hmod] : bucket_map) {
+            hmod->window_prometheus(out, bucket.get(), {{"policy", name()}, {"module", hmod->schema_key() + "_merged"}});
+        }
+    } else {
+        for (auto &mod : modules()) {
+            auto hmod = dynamic_cast<StreamHandler *>(mod);
+            if (hmod) {
+                spdlog::stopwatch sw;
+                hmod->window_prometheus(out, {{"policy", name()}, {"module", hmod->name()}});
+                spdlog::get("visor")->debug("{} window_prometheus elapsed time: {}", hmod->name(), sw);
+            }
+        }
+    }
+}
+
+Policy::BucketMap Policy::_get_merged_buckets(bool prometheus, uint64_t period, bool merged)
+{
+    BucketMap bucket_map;
+    for (auto &mod : modules()) {
+        auto hmod = dynamic_cast<StreamHandler *>(mod);
+        assert(hmod);
+        if (bucket_map.empty()) {
+            bucket_map.emplace(hmod->merge(nullptr, prometheus, period, merged), hmod);
+            continue;
+        }
+        for (auto &[bucket, handler] : bucket_map) {
+            bool is_last = (bucket == std::prev(bucket_map.end())->first);
+            if (hmod->schema_key() != handler->schema_key() && !is_last) {
+                continue;
+            }
+            auto new_bucket = hmod->merge(bucket.get(), prometheus, period, merged);
+            if (!new_bucket) {
+                break;
+            } else if (is_last) {
+                bucket_map.emplace(std::move(new_bucket), hmod);
+            }
+        }
+    }
+    return bucket_map;
 }
 }
