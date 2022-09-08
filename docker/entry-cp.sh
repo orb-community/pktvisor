@@ -41,6 +41,7 @@ if [ "$BINARY" = 'pktvisord' ]; then
   cd /geo-db/
   gzip -d asn.mmdb.gz
   gzip -d city.mmdb.gz
+  cd /
   # eternal loop
   while true
   do
