@@ -18,7 +18,7 @@ DhcpStreamHandler::DhcpStreamHandler(const std::string &name, InputEventProxy *p
 }
 
 // callback from input module
-void DhcpStreamHandler::process_udp_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp)
+void DhcpStreamHandler::process_udp_packet_cb(pcpp::Packet &payload, PacketDirection dir, [[maybe_unused]] pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp)
 {
     pcpp::UdpLayer *udpLayer = payload.getLayerOfType<pcpp::UdpLayer>();
     assert(udpLayer);
@@ -27,8 +27,8 @@ void DhcpStreamHandler::process_udp_packet_cb(pcpp::Packet &payload, PacketDirec
     auto src_port = ntohs(udpLayer->getUdpHeader()->portSrc);
     if (dst_port == 67 || src_port == 67 || dst_port == 68 || src_port == 68) {
         pcpp::DhcpLayer dhcpLayer(udpLayer->getLayerPayload(), udpLayer->getLayerPayloadSize(), udpLayer, &payload);
-        if (!_filtering(&dhcpLayer, dir, l3, pcpp::UDP, src_port, dst_port, stamp)) {
-            _metrics->process_dhcp_layer(&dhcpLayer, dir, l3, pcpp::UDP, flowkey, src_port, dst_port, stamp);
+        if (!_filtering(&dhcpLayer, dir, stamp)) {
+            _metrics->process_dhcp_layer(&dhcpLayer, dir, flowkey, stamp);
         }
     }
 }
@@ -96,6 +96,8 @@ void DhcpMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
     _counters.ACK += other._counters.ACK;
     _counters.total += other._counters.total;
     _counters.filtered += other._counters.filtered;
+
+    _dhcp_clients.merge(other._dhcp_clients);
 }
 
 void DhcpMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap add_labels) const
@@ -119,6 +121,8 @@ void DhcpMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap a
     _counters.ACK.to_prometheus(out, add_labels);
     _counters.total.to_prometheus(out, add_labels);
     _counters.filtered.to_prometheus(out, add_labels);
+
+    _dhcp_clients.to_prometheus(out, add_labels);
 }
 
 void DhcpMetricsBucket::to_json(json &j) const
@@ -143,6 +147,8 @@ void DhcpMetricsBucket::to_json(json &j) const
     _counters.ACK.to_json(j);
     _counters.total.to_json(j);
     _counters.filtered.to_json(j);
+
+    _dhcp_clients.to_json(j);
 }
 
 void DhcpMetricsBucket::process_filtered()
@@ -151,20 +157,20 @@ void DhcpMetricsBucket::process_filtered()
     ++_counters.filtered;
 }
 
-bool DhcpStreamHandler::_filtering(pcpp::DhcpLayer *payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint16_t src_port, uint16_t dst_port, timespec stamp)
+bool DhcpStreamHandler::_filtering([[maybe_unused]] pcpp::DhcpLayer *payload, [[maybe_unused]] PacketDirection dir, [[maybe_unused]] timespec stamp)
 {
     // no filters yet
     return false;
 }
 
-void DhcpMetricsBucket::process_dhcp_layer(bool deep, pcpp::DhcpLayer *payload, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint16_t src_port, uint16_t dst_port)
+void DhcpMetricsBucket::process_dhcp_layer([[maybe_unused]] bool deep, pcpp::DhcpLayer *payload)
 {
     std::unique_lock lock(_mutex);
 
     ++_counters.total;
     ++_rate_total;
 
-    switch (payload->getMesageType()) {
+    switch (payload->getMessageType()) {
     case pcpp::DHCP_DISCOVER:
         ++_counters.DISCOVER;
         break;
@@ -177,15 +183,44 @@ void DhcpMetricsBucket::process_dhcp_layer(bool deep, pcpp::DhcpLayer *payload, 
     case pcpp::DHCP_ACK:
         ++_counters.ACK;
         break;
+    default:
+        break;
+    }
+}
+void DhcpMetricsBucket::new_dhcp_transaction(bool deep, pcpp::DhcpLayer *payload, DhcpTransaction &xact)
+{
+    if (!deep) {
+        return;
+    }
+    // lock for write
+    std::unique_lock lock(_mutex);
+
+    if (auto client_ip = payload->getYourIpAddress(); client_ip.isValid()) {
+        _dhcp_clients.update(client_ip.toString() + "/" + xact.mac_address + "/" + xact.hostname);
     }
 }
 
-void DhcpMetricsManager::process_dhcp_layer(pcpp::DhcpLayer *payload, [[maybe_unused]] PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, [[maybe_unused]] uint32_t flowkey, uint16_t src_port, uint16_t dst_port, timespec stamp)
+void DhcpMetricsManager::process_dhcp_layer(pcpp::DhcpLayer *payload, [[maybe_unused]] PacketDirection dir, [[maybe_unused]] uint32_t flowkey, timespec stamp)
 {
     // base event
     new_event(stamp);
     // process in the "live" bucket. this will parse the resources if we are deep sampling
-    live_bucket()->process_dhcp_layer(_deep_sampling_now, payload, l3, l4, src_port, dst_port);
+    live_bucket()->process_dhcp_layer(_deep_sampling_now, payload);
+
+    auto type = payload->getMessageType();
+    if (type == pcpp::DHCP_REQUEST) {
+        std::string hostname;
+        if (auto option = payload->getOptionData(pcpp::DhcpOptionTypes::DHCPOPT_HOST_NAME); option.isNull() != true) {
+            hostname = option.getValueAsString();
+        }
+        auto mac_address = payload->getClientHardwareAddress().toString();
+        _request_ack_manager.start_transaction(payload->getDhcpHeader()->transactionID, stamp, hostname, mac_address);
+    } else if (type == pcpp::DHCP_ACK) {
+        auto xact = _request_ack_manager.maybe_end_transaction(payload->getDhcpHeader()->transactionID);
+        if (xact.first) {
+            live_bucket()->new_dhcp_transaction(_deep_sampling_now, payload, xact.second);
+        }
+    }
 }
 
 void DhcpMetricsManager::process_filtered(timespec stamp)

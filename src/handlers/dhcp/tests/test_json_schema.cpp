@@ -8,8 +8,8 @@
 #include <streambuf>
 #include <string>
 
-#include "PcapInputStream.h"
 #include "DhcpStreamHandler.h"
+#include "PcapInputStream.h"
 
 using namespace visor::handler::dhcp;
 using namespace visor::input::pcap;
