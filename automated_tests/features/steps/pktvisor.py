@@ -26,8 +26,12 @@ def run_pktvisor(context, status_port, role):
     assert_that(context.container_id, not_(equal_to(None)), "Failed to provision pktvisor container")
     if context.container_id not in context.containers_id.keys():
         context.containers_id[context.container_id] = str(context.pkt_port)
-    event = threading.Event()
-    event.wait(1)
+    if availability[status_port]:
+        message = f"web server listening on localhost:{context.pkt_port}"
+    else:
+        message = f"unable to bind to localhost:{context.pkt_port}"
+    server_listening, logs = get_logs_and_check(context.container_id, message)
+    assert_that(server_listening, equal_to(True), f"Message {message} not found on pkt logs: {logs}")
 
 
 @step("that a pktvisor instance is running on port {status_port} with {role} permission")
@@ -203,3 +207,32 @@ def check_successful_packets(return_command_tcpreplay):
                 equal_to(int(return_command_tcpreplay['Successfulpackets'])), "Some packet may have failure")
 
     return return_command_tcpreplay
+
+
+@threading_wait_until
+def get_logs_and_check(container_id, expected_message, event=None):
+    """
+
+    :param container_id: pktvisor container ID
+    :param (str) expected_message: message that we expect to find in the logs
+    :param (obj) event: threading.event
+    :return: (bool) if the expected message is found return True, if not, False
+    """
+    logs = get_pkt_logs(container_id)
+    for log in logs:
+        if expected_message in log:
+            event.set()
+            return event.is_set(), logs
+    return event.is_set(), logs
+
+
+def get_pkt_logs(container_id):
+    """
+    Gets the logs from pkt container
+
+    :param (str) container_id:  pktvisor container ID
+    :returns: (list) of log lines
+    """
+    docker_client = docker.from_env()
+    container = docker_client.containers.get(container_id)
+    return container.logs().decode("utf-8").split("\n")
