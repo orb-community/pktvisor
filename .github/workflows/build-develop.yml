@@ -9,7 +9,6 @@ on:
   push:
     branches:
       - develop
-      - extract-geodb
 
 env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
