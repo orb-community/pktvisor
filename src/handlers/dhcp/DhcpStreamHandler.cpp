@@ -207,8 +207,7 @@ void DhcpMetricsManager::process_dhcp_layer(pcpp::DhcpLayer *payload, [[maybe_un
     // process in the "live" bucket. this will parse the resources if we are deep sampling
     live_bucket()->process_dhcp_layer(_deep_sampling_now, payload);
 
-    auto type = payload->getMessageType();
-    if (type == pcpp::DHCP_REQUEST) {
+    if (auto type = payload->getMessageType(); type == pcpp::DHCP_REQUEST) {
         std::string hostname{"Unknown"};
         if (auto option = payload->getOptionData(pcpp::DhcpOptionTypes::DHCPOPT_HOST_NAME); option.isNull() != true) {
             hostname = option.getValueAsString();
