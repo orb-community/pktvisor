@@ -39,7 +39,7 @@ fi
 if [ "$BINARY" = 'pktvisord' ]; then
   # extract geodb
   cd /geo-db/
-  if [ -d "asn.mmdb.gz" ]; then
+  if [ -f "asn.mmdb.gz" ]; then
     gzip -d asn.mmdb.gz
     gzip -d city.mmdb.gz
   fi
