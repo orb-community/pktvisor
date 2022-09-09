@@ -209,7 +209,7 @@ void DhcpMetricsManager::process_dhcp_layer(pcpp::DhcpLayer *payload, [[maybe_un
 
     auto type = payload->getMessageType();
     if (type == pcpp::DHCP_REQUEST) {
-        std::string hostname;
+        std::string hostname{"Unknown"};
         if (auto option = payload->getOptionData(pcpp::DhcpOptionTypes::DHCPOPT_HOST_NAME); option.isNull() != true) {
             hostname = option.getValueAsString();
         }
