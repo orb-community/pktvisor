@@ -209,7 +209,7 @@ void DhcpMetricsManager::process_dhcp_layer(pcpp::DhcpLayer *payload, [[maybe_un
 
     if (auto type = payload->getMessageType(); type == pcpp::DHCP_REQUEST) {
         std::string hostname{"Unknown"};
-        if (auto option = payload->getOptionData(pcpp::DhcpOptionTypes::DHCPOPT_HOST_NAME); !option.isNull()) {
+        if (auto option = payload->getOptionData(pcpp::DhcpOptionTypes::DHCPOPT_HOST_NAME); option.isNotNull()) {
             hostname = option.getValueAsString();
         }
         auto mac_address = payload->getClientHardwareAddress().toString();
