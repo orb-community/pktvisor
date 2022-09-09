@@ -51,6 +51,7 @@ if [ "$BINARY" = 'pktvisord' ]; then
     if [ ! -f "/var/run/pktvisord.pid"  ]; then
       # running pktvisord in background
       nohup /run.sh "$@" &
+      sleep 2
       if [ -d "/nohup.out" ]; then
          tail -f /nohup.out &
       fi
