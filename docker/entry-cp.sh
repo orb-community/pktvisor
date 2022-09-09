@@ -4,6 +4,14 @@ set -e
 
 export PATH=$PATH:/usr/local/bin/:/usr/local/sbin/
 
+trapeze () {
+
+printf "\rFinishing container.."
+exit 0
+}
+
+trap trapeze SIGINT
+
 if [ $# -eq 0 ]; then
   echo "No arguments provided: specify either 'pktvisor-cli', 'pktvisor-reader' or 'pktvisord'. Try:"
   echo "docker run ns1labs/pktvisor pktvisor-cli -h"
@@ -29,6 +37,13 @@ fi
 
 # if binary is pktvisord
 if [ "$BINARY" = 'pktvisord' ]; then
+  # extract geodb
+  cd /geo-db/
+  if [ -f "asn.mmdb.gz" ]; then
+    gzip -d asn.mmdb.gz
+    gzip -d city.mmdb.gz
+  fi
+  cd /
   # eternal loop
   while true
   do
@@ -36,8 +51,9 @@ if [ "$BINARY" = 'pktvisord' ]; then
     if [ ! -f "/var/run/pktvisord.pid"  ]; then
       # running pktvisord in background
       nohup /run.sh "$@" &
-      sleep 2
-      tail -f /nohup.out &
+      if [ -d "/nohup.out" ]; then
+         tail -f /nohup.out &
+      fi
     else
       PID=$(cat /var/run/pktvisord.pid)
       if [ ! -d "/proc/$PID" ]; then
