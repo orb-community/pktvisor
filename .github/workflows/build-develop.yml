@@ -570,7 +570,7 @@ jobs:
           terraform destroy -auto-approve
           
   spinup-arm64-runner:
-    needs: [ package-amd64, unit-tests-mac ]
+    needs: [ unit-tests-linux ]
     runs-on: ubuntu-latest
     outputs:
       runner_token: ${{ steps.token.outputs.runner }}
