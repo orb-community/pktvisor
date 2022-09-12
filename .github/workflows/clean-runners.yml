@@ -1,0 +1,15 @@
+name: 'nightly orphaned runners cleanup'
+
+on:
+  workflow_dispatch:
+
+  schedule:
+    - cron: '0 1 * * *' # every night at 1 am UTC
+
+jobs:
+  remove-runners:
+    runs-on: ubuntu-latest
+    steps:
+      - name: list runners
+        run: |
+           curl -X POST -H "Accept: application/vnd.github+json" -H "Authorization: Bearer ${{ secrets.BOT_TOKEN }}" https://api.github.com/repos/ns1labs/pktvisor/actions/runners | jq '.runners[] | {id,status,busy} | select((.busy == false) and (.status == "offline")) | {id} | .[]' --paginate  | xargs -I {} curl -X DELETE -H "Accept: application/vnd.github.v3+json" -H "Authorization: Bearer ${{ secrets.BOT_TOKEN }}" https://api.github.com/repos/ns1labs/pktvisor/actions/runners/{}
