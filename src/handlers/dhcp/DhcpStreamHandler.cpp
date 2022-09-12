@@ -97,7 +97,7 @@ void DhcpMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
     _counters.total += other._counters.total;
     _counters.filtered += other._counters.filtered;
 
-    _dhcp_clients.merge(other._dhcp_clients);
+    _dhcp_topClients.merge(other._dhcp_topClients);
 }
 
 void DhcpMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap add_labels) const
@@ -122,7 +122,7 @@ void DhcpMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap a
     _counters.total.to_prometheus(out, add_labels);
     _counters.filtered.to_prometheus(out, add_labels);
 
-    _dhcp_clients.to_prometheus(out, add_labels);
+    _dhcp_topClients.to_prometheus(out, add_labels);
 }
 
 void DhcpMetricsBucket::to_json(json &j) const
@@ -148,7 +148,7 @@ void DhcpMetricsBucket::to_json(json &j) const
     _counters.total.to_json(j);
     _counters.filtered.to_json(j);
 
-    _dhcp_clients.to_json(j);
+    _dhcp_topClients.to_json(j);
 }
 
 void DhcpMetricsBucket::process_filtered()
@@ -196,7 +196,7 @@ void DhcpMetricsBucket::new_dhcp_transaction(bool deep, pcpp::DhcpLayer *payload
     std::unique_lock lock(_mutex);
 
     if (auto client_ip = payload->getYourIpAddress(); client_ip.isValid()) {
-        _dhcp_clients.update(client_ip.toString() + "/" + xact.mac_address + "/" + xact.hostname);
+        _dhcp_topClients.update(xact.mac_address + "/" + xact.hostname + "/" + client_ip.toString());
     }
 }
 

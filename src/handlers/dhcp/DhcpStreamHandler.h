@@ -25,7 +25,7 @@ class DhcpMetricsBucket final : public visor::AbstractMetricsBucket
 protected:
     mutable std::shared_mutex _mutex;
 
-    TopN<std::string> _dhcp_clients;
+    TopN<std::string> _dhcp_topClients;
 
     // total numPackets is tracked in base class num_events
     struct counters {
@@ -52,7 +52,7 @@ protected:
 
 public:
     DhcpMetricsBucket()
-        : _dhcp_clients(DHCP_SCHEMA, "client", {"top_clients"}, "Top DHCP clients")
+        : _dhcp_topClients(DHCP_SCHEMA, "client", {"top_clients"}, "Top DHCP clients")
         , _rate_total(DHCP_SCHEMA, {"rates", "total"}, "Rate of all DHCP wire packets (combined ingress and egress) in packets per second")
     {
         set_event_rate_info(DHCP_SCHEMA, {"rates", "events"}, "Rate of all DHCP wire packets before filtering per second");
