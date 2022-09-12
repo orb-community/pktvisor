@@ -1,0 +1,12 @@
+name: check-runners
+
+on:
+  workflow_dispatch:
+
+jobs:
+  remove-runners:
+    runs-on: ubuntu-latest
+    steps:
+      - name: list runners
+        run: |
+           curl -H "Accept: application/vnd.github+json" -H "Authorization: Bearer ${{ secrets.BOT_TOKEN }}"   https://api.github.com/repos/ns1labs/pktvisor/actions/runners
