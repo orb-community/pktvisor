@@ -3,9 +3,9 @@
 #installing packages
 apt-get update -y
 apt-get install apt-transport-https qemu qemu-user-static ca-certificates gnupg2 curl tar software-properties-common build-essential zlib1g-dev \
-libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libsqlite3-dev libreadline-dev libffi-dev libbz2-dev python3 python3-pip python3-dev python xvfb \
-libfontconfig1 libfreetype6 xfonts-scalable fonts-liberation fonts-noto-cjk g++-10-arm-linux-gnueabihf g++-10-multilib-arm-linux-gnueabihf \
-gcc-10-arm-linux-gnueabihf gcc-10-arm-linux-gnueabihf-base gcc-10-multilib-arm-linux-gnueabihf python3-venv tcpreplay docker.io containerd -y
+libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libsqlite3-dev libreadline-dev libffi-dev libbz2-dev python3 python3-pip python3-dev python2 xvfb \
+libfontconfig1 libfreetype6 xfonts-scalable fonts-liberation fonts-noto-cjk g++-10-arm-linux-gnueabihf \
+gcc-10-arm-linux-gnueabihf gcc-10-arm-linux-gnueabihf-base python3-venv tcpreplay docker.io containerd -y
 
 #set permission to use docker
 usermod -aG docker ubuntu
