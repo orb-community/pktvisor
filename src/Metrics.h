@@ -142,6 +142,7 @@ template <typename T>
 class Quantile final : public Metric
 {
     datasketches::kll_sketch<T> _quantile;
+    std::vector<T> _quantiles_sum;
 
 public:
     Quantile(std::string schema_key, std::initializer_list<std::string> names, std::string desc)
@@ -165,14 +166,14 @@ public:
             if (other._quantile.is_empty()) {
                 return;
             }
-            const uint32_t num_quantiles = 10;
-            auto quantiles = _quantile.get_quantiles(num_quantiles);
-            auto other_quantiles = other._quantile.get_quantiles(num_quantiles);
-            datasketches::kll_sketch<T> new_quantile;
-            for (uint32_t i = 0; i < num_quantiles; i++) {
-                new_quantile.update(quantiles[i] + other_quantiles[i]);
+            const double fractions[4]{0.50, 0.90, 0.95, 0.99};
+            auto other_quantiles = other._quantile.get_quantiles(fractions, 4);
+            if (_quantiles_sum.empty()) {
+                _quantiles_sum = _quantile.get_quantiles(fractions, 4);
             }
-            _quantile = new_quantile;
+            for (uint8_t i = 0; i < 4; i++) {
+                _quantiles_sum[i] += other_quantiles[i];
+            }
         } else {
             _quantile.merge(other._quantile);
         }
@@ -191,9 +192,14 @@ public:
     // Metric
     void to_json(json &j) const override
     {
-        const double fractions[4]{0.50, 0.90, 0.95, 0.99};
+        std::vector<T> quantiles;
+        if (_quantiles_sum.empty()) {
+            const double fractions[4]{0.50, 0.90, 0.95, 0.99};
+            quantiles = _quantile.get_quantiles(fractions, 4);
+        } else {
+            quantiles = _quantiles_sum;
+        }
 
-        auto quantiles = _quantile.get_quantiles(fractions, 4);
         if (quantiles.size()) {
             name_json_assign(j, {"p50"}, quantiles[0]);
             name_json_assign(j, {"p90"}, quantiles[1]);
@@ -204,9 +210,13 @@ public:
 
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override
     {
-        const double fractions[4]{0.50, 0.90, 0.95, 0.99};
-
-        auto quantiles = _quantile.get_quantiles(fractions, 4);
+        std::vector<T> quantiles;
+        if (_quantiles_sum.empty()) {
+            const double fractions[4]{0.50, 0.90, 0.95, 0.99};
+            quantiles = _quantile.get_quantiles(fractions, 4);
+        } else {
+            quantiles = _quantiles_sum;
+        }
 
         LabelMap l5(add_labels);
         l5["quantile"] = "0.5";
