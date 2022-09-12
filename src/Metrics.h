@@ -154,9 +154,23 @@ public:
         _quantile.update(value);
     }
 
-    void merge(const Quantile &other)
+    void merge(const Quantile &other, bool aggregate)
     {
-        _quantile.merge(other._quantile);
+        if (aggregate && !_quantile.is_empty()) {
+            if (other._quantile.is_empty()) {
+                return;
+            }
+            const uint32_t num_quantiles = 10;
+            auto quantiles = _quantile.get_quantiles(num_quantiles);
+            auto other_quantiles = other._quantile.get_quantiles(num_quantiles);
+            datasketches::kll_sketch<T> new_quantile;
+            for (uint32_t i = 0; i < num_quantiles; i++) {
+                new_quantile.update(quantiles[i] + other_quantiles[i]);
+            }
+            _quantile = new_quantile;
+        } else {
+            _quantile.merge(other._quantile);
+        }
     }
 
     auto get_n() const
@@ -418,7 +432,7 @@ class Rate final : public Metric
     std::atomic_uint64_t _counter;
     std::atomic_uint64_t _rate;
     mutable std::shared_mutex _sketch_mutex;
-    datasketches::kll_sketch<int_fast32_t> _quantile;
+    Quantile<int_fast32_t> _quantile;
 
     std::shared_ptr<timer::interval_handle> _timer_handle;
 
@@ -437,10 +451,10 @@ class Rate final : public Metric
 
 public:
     Rate(std::string schema_key, std::initializer_list<std::string> names, std::string desc)
-        : Metric(schema_key, names, std::move(desc))
+        : Metric(schema_key, names, desc)
         , _counter(0)
         , _rate(0)
-        , _quantile()
+        , _quantile(schema_key, names, std::move(desc))
     {
         _start_timer();
     }
@@ -478,11 +492,11 @@ public:
         return _rate.load(std::memory_order_relaxed);
     }
 
-    void merge(const Rate &other)
+    void merge(const Rate &other, bool aggregate)
     {
         std::shared_lock r_lock(other._sketch_mutex);
         std::unique_lock w_lock(_sketch_mutex);
-        _quantile.merge(other._quantile);
+        _quantile.merge(other._quantile, aggregate);
         // the live rate is simply copied if non zero
         if (other._rate != 0) {
             _rate.store(other._rate, std::memory_order_relaxed);

@@ -79,13 +79,13 @@ void DhcpStreamHandler::set_end_tstamp(timespec stamp)
     _metrics->set_end_tstamp(stamp);
 }
 
-void DhcpMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
+void DhcpMetricsBucket::specialized_merge(const AbstractMetricsBucket &o, bool aggregate)
 {
     // static because caller guarantees only our own bucket type
     const auto &other = static_cast<const DhcpMetricsBucket &>(o);
 
     // rates maintain their own thread safety
-    _rate_total.merge(other._rate_total);
+    _rate_total.merge(other._rate_total, aggregate);
 
     std::shared_lock r_lock(other._mutex);
     std::unique_lock w_lock(_mutex);

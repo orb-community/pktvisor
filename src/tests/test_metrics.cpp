@@ -6,7 +6,7 @@ using namespace visor;
 class TestMetricsBucket : public AbstractMetricsBucket
 {
 public:
-    void specialized_merge([[maybe_unused]] const AbstractMetricsBucket &other)
+    void specialized_merge([[maybe_unused]] const AbstractMetricsBucket &other, [[maybe_unused]] bool aggregate)
     {
     }
     void to_json([[maybe_unused]] json &j) const

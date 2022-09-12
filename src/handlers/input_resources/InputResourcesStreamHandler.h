@@ -48,7 +48,7 @@ public:
 
     // visor::AbstractMetricsBucket
 
-    void specialized_merge(const AbstractMetricsBucket &other) override;
+    void specialized_merge(const AbstractMetricsBucket &other, bool aggregate) override;
     void to_json(json &j) const override;
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override;
     void update_topn_metrics(size_t, uint64_t) override
