@@ -10,6 +10,8 @@ jobs:
   remove-runners:
     runs-on: ubuntu-latest
     steps:
-      - name: list runners
+      - name: removing orphaned self-runners
+        env:
+          GITHUB_TOKEN: ${{ secrets.BOT_TOKEN }}
         run: |
-           curl -X POST -H "Accept: application/vnd.github+json" -H "Authorization: Bearer ${{ secrets.BOT_TOKEN }}" https://api.github.com/repos/ns1labs/pktvisor/actions/runners | jq '.runners[] | {id,status,busy} | select((.busy == false) and (.status == "offline")) | {id} | .[]' --paginate  | xargs -I {} curl -X DELETE -H "Accept: application/vnd.github.v3+json" -H "Authorization: Bearer ${{ secrets.BOT_TOKEN }}" https://api.github.com/repos/ns1labs/pktvisor/actions/runners/{}
+          gh api -H "Accept: application/vnd.github.v3+json" /repos/ns1labs/pktvisor/actions/runners -q '.runners[] | {id,status,busy} | select((.busy == false) and (.status == "offline")) | {id} | .[]' --paginate | xargs -I {} gh api --method DELETE -H "Accept: application/vnd.github.v3+json" /repos/ns1labs/pktvisor/actions/runners/{}
