@@ -30,6 +30,11 @@ class Metric
 public:
     typedef std::map<std::string, std::string> LabelMap;
 
+    enum class Aggregate {
+        DEFAULT,
+        SUM,
+    };
+
 private:
     /**
      * static labels which will be applied to all metrics
@@ -154,9 +159,9 @@ public:
         _quantile.update(value);
     }
 
-    void merge(const Quantile &other, bool aggregate)
+    void merge(const Quantile &other, Aggregate agg_operator)
     {
-        if (aggregate && !_quantile.is_empty()) {
+        if (agg_operator == Aggregate::SUM && !_quantile.is_empty()) {
             if (other._quantile.is_empty()) {
                 return;
             }
@@ -492,11 +497,11 @@ public:
         return _rate.load(std::memory_order_relaxed);
     }
 
-    void merge(const Rate &other, bool aggregate)
+    void merge(const Rate &other, Aggregate agg_operator)
     {
         std::shared_lock r_lock(other._sketch_mutex);
         std::unique_lock w_lock(_sketch_mutex);
-        _quantile.merge(other._quantile, aggregate);
+        _quantile.merge(other._quantile, agg_operator);
         // the live rate is simply copied if non zero
         if (other._rate != 0) {
             _rate.store(other._rate, std::memory_order_relaxed);

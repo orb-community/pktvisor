@@ -144,13 +144,13 @@ void BgpTcpSessionData::receive_tcp_data(const uint8_t *data, size_t len)
     _got_msg(std::move(bgp_data), len);
 }
 
-void BgpMetricsBucket::specialized_merge(const AbstractMetricsBucket &o, bool aggregate)
+void BgpMetricsBucket::specialized_merge(const AbstractMetricsBucket &o, Metric::Aggregate agg_operator)
 {
     // static because caller guarantees only our own bucket type
     const auto &other = static_cast<const BgpMetricsBucket &>(o);
 
     // rates maintain their own thread safety
-    _rate_total.merge(other._rate_total, aggregate);
+    _rate_total.merge(other._rate_total, agg_operator);
 
     std::shared_lock r_lock(other._mutex);
     std::unique_lock w_lock(_mutex);

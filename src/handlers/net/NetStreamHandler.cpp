@@ -223,18 +223,18 @@ will_filter:
     return true;
 }
 
-void NetworkMetricsBucket::specialized_merge(const AbstractMetricsBucket &o, bool aggregate)
+void NetworkMetricsBucket::specialized_merge(const AbstractMetricsBucket &o, Metric::Aggregate agg_operator)
 {
     // static because caller guarantees only our own bucket type
     const auto &other = static_cast<const NetworkMetricsBucket &>(o);
 
     // rates maintain their own thread safety
-    _rate_in.merge(other._rate_in, aggregate);
-    _rate_out.merge(other._rate_out, aggregate);
-    _rate_total.merge(other._rate_total, aggregate);
-    _throughput_in.merge(other._throughput_in, aggregate);
-    _throughput_out.merge(other._throughput_out, aggregate);
-    _throughput_total.merge(other._throughput_total, aggregate);
+    _rate_in.merge(other._rate_in, agg_operator);
+    _rate_out.merge(other._rate_out, agg_operator);
+    _rate_total.merge(other._rate_total, agg_operator);
+    _throughput_in.merge(other._throughput_in, agg_operator);
+    _throughput_out.merge(other._throughput_out, agg_operator);
+    _throughput_total.merge(other._throughput_total, agg_operator);
 
     std::shared_lock r_lock(other._mutex);
     std::unique_lock w_lock(_mutex);
@@ -267,7 +267,7 @@ void NetworkMetricsBucket::specialized_merge(const AbstractMetricsBucket &o, boo
         _topASN.merge(other._topASN);
     }
 
-    _payload_size.merge(other._payload_size, aggregate);
+    _payload_size.merge(other._payload_size, agg_operator);
 }
 
 void NetworkMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap add_labels) const
