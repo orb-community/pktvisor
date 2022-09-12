@@ -1,6 +1,4 @@
 #!/bin/sh
-#scaling privileges
-sudo su
 
 #installing packages
 apt-get update -y
