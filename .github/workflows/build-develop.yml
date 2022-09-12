@@ -187,7 +187,9 @@ jobs:
           echo "REF_TAG=latest-develop" >> $GITHUB_ENV
           echo "PRERELEASE=true" >> $GITHUB_ENV
           echo "DRAFT=false" >> $GITHUB_ENV
-
+      - name: Get branch name
+        shell: bash
+        run: echo "BRANCH_NAME=$(echo ${GITHUB_REF#refs/heads/} | tr / -)" >> $GITHUB_ENV
       - name: Debug ref tag
         run: echo ${{ env.REF_TAG }}
         
@@ -356,7 +358,9 @@ jobs:
           ESCAPED_REPLACE_RUNNER_TOKEN=$(printf '%s\n' "${{ steps.token.outputs.runner }}" | sed -e 's/[\/&]/\\&/g')
           sed -i -e "s/RUNNER_TOKEN/$ESCAPED_REPLACE_RUNNER_TOKEN/g" user_data.sh
           
-      - name: Get short commit hash to a variable
+            - name: Get branch name
+        shell: bash
+        run: echo "BRANCH_NAME=$(echo ${GITHUB_REF#refs/heads/} | tr / -)" >> $GITHUB_ENV- name: Get short commit hash to a variable
         id: commit_hash
         run: |
           echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
@@ -578,6 +582,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
+        
+      - name: Get branch name
+        shell: bash
+        run: echo "BRANCH_NAME=$(echo ${GITHUB_REF#refs/heads/} | tr / -)" >> $GITHUB_ENV
 
       - name: Generate runner token
         id: token
@@ -604,7 +612,7 @@ jobs:
           sed -i -e "s/AWSID/$ESCAPED_REPLACE_KEY_ID/g" vars.tf
           ESCAPED_REPLACE_ACCESS_KEY=$(printf '%s\n' "${{ secrets.AWS_SECRET_ACCESS_KEY }}" | sed -e 's/[\/&]/\\&/g')
           sed -i -e "s/AWSSECRET/$ESCAPED_REPLACE_ACCESS_KEY/g" vars.tf
-          ESCAPED_REPLACE_ENVIRONMENT=$(printf '%s\n' "${{ needs.package-amd64.outputs.branch_name }}-${{ steps.commit_hash.outputs.sha_short }}-package" | sed -e 's/[\/&]/\\&/g')
+          ESCAPED_REPLACE_ENVIRONMENT=$(printf '%s\n' "${{ env.BRANCH_NAME }}-${{ steps.commit_hash.outputs.sha_short }}-package" | sed -e 's/[\/&]/\\&/g')
           sed -i -e "s/ENVIRONMENT/$ESCAPED_REPLACE_ENVIRONMENT/g" vars.tf
 
       - name: setup terraform
