@@ -452,8 +452,7 @@ jobs:
         run: |
           cd ./automated_tests/
           sudo python3.8 -m venv behave_pktvisor
-          sudo source behave_pktvisor/bin/activate
-          sudo pip3 install --upgrade pip
+          source behave_pktvisor/bin/activate
           sudo pip3 install -r requirements.txt
           sudo pip3 install -r requirements.txt
           sudo behavex -t=@smoke --parallel-processes=20 --parallel-scheme=scenario
