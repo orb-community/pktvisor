@@ -662,6 +662,77 @@ visor:
        input_type: mock
 )";
 
+auto policies_config_tap_selector_bad5 = R"(
+version: "1.0"
+
+visor:
+  taps:
+    anycast1:
+      input_type: mock
+      config:
+        iface: eth0
+      tags:
+        virtual: true
+        vhost: 1
+        key: value
+    anycast2:
+      input_type: mock
+      config:
+        iface: eth0
+      tags:
+        virtual: true
+        vhost: 2a
+        key: value
+  policies:
+   default_view:
+     kind: collection
+     handlers:
+       modules:
+         default_dns:
+           type: dns
+     input:
+       tap_selector:
+         any:
+           - vhost: 1
+       input_type: mock
+)";
+
+auto policies_config_tap_selector_bad6 = R"(
+version: "1.0"
+
+visor:
+  taps:
+    anycast1:
+      input_type: mock
+      config:
+        iface: eth0
+      tags:
+        virtual: true
+        vhost: 1
+        key: value
+    anycast2:
+      input_type: mock
+      config:
+        iface: eth0
+      tags:
+        virtual: true
+        vhost: 2
+        key: value
+  policies:
+   default_view:
+     kind: collection
+     handlers:
+       modules:
+         default_dns:
+           type: dns
+     input:
+       tap_selector:
+         any:
+           - vhost: 1
+             key: value
+       input_type: mock
+)";
+
 TEST_CASE("Policies", "[policies]")
 {
 
@@ -950,6 +1021,26 @@ TEST_CASE("Policies", "[policies]")
 
         REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
         REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["policies"]), "'input.tap_selector.any' is not a sequence");
+    }
+
+    SECTION("Bad Config: tap selector tag and selector must have same value type")
+    {
+        CoreRegistry registry;
+        registry.start(nullptr);
+        YAML::Node config_file = YAML::Load(policies_config_tap_selector_bad5);
+
+        REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
+        REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["policies"]), "Tap [anycast2]: tag and selector value types are different for key 'vhost'");
+    }
+
+    SECTION("Bad Config: tap selector must have only one key and value")
+    {
+        CoreRegistry registry;
+        registry.start(nullptr);
+        YAML::Node config_file = YAML::Load(policies_config_tap_selector_bad6);
+
+        REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
+        REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["policies"]), "selector tag must contain only one key/value pair per sequence index");
     }
 
     SECTION("Roll Back")
