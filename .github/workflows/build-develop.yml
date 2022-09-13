@@ -460,7 +460,8 @@ jobs:
 
       - name: Copy VERSION file
         run: |
-          sudo echo ${{ needs.package-amd64.outputs.version_number }} > ./automated_tests/output/VERSION 
+          chmod 777 ./automated_tests/ -R
+          echo ${{ needs.package-amd64.outputs.version_number }} > ./automated_tests/output/VERSION 
 
       - name: Persist to workspace
         uses: actions/upload-artifact@v2
