@@ -8,7 +8,7 @@
 #include "DnsLayerEnums.h"
 #include "DnsResource.h"
 #include "DnsResourceData.h"
-#include "UdpLayer.h"
+#include <UdpLayer.h>
 #pragma GCC diagnostic pop
 
 // forked code

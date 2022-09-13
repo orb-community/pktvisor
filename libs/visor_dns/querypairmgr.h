@@ -4,9 +4,9 @@
 
 #pragma once
 
-#include "robin_hood.h"
 #include <chrono>
 #include <memory>
+#include <robin_hood.h>
 
 namespace visor::handler::dns {
 
@@ -57,4 +57,3 @@ public:
 };
 
 }
-
