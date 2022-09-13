@@ -16,10 +16,10 @@ mkdir actions-runner && cd actions-runner
 chown ubuntu.ubuntu /actions-runner -R
 
 #get git actions self-runner
-/bin/su -c "cd /actions-runner && curl -o actions-runner-linux-x64-2.296.0.tar.gz -L https://github.com/actions/runner/releases/download/v2.296.0/actions-runner-linux-x64-2.296.0.tar.gz" - ubuntu >> /home/ubuntu/user-data.log
+/bin/su -c "cd /actions-runner && curl -o actions-runner-linux-x64-2.296.2.tar.gz -L https://github.com/actions/runner/releases/download/v2.296.2/actions-runner-linux-x64-2.296.2.tar.gz" - ubuntu >> /home/ubuntu/user-data.log
 
 #extract git actions runner installer
-/bin/su -c "cd /actions-runner && tar xzf ./actions-runner-linux-x64-2.296.0.tar.gz" - ubuntu >> /home/ubuntu/user-data.log
+/bin/su -c "cd /actions-runner && tar xzf ./actions-runner-linux-x64-2.296.2.tar.gz" - ubuntu >> /home/ubuntu/user-data.log
 
 /bin/su -c "cd /actions-runner && ./config.sh --unattended --url https://github.com/ns1labs/pktvisor --token RUNNER_TOKEN --name AMD64_RUNNER --work _work --runasservice" - ubuntu >> /home/ubuntu/user-data.log
 
