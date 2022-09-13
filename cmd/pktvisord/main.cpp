@@ -68,6 +68,8 @@ static const char USAGE[] =
       --geo-city FILE             GeoLite2 City database to use for IP to Geo mapping
       --geo-asn FILE              GeoLite2 ASN database to use for IP to ASN mapping
       --geo-cache-size N          GeoLite2 LRU cache size, 0 to disable. (default: 10000)
+      --default-geo-city FILE     Default GeoLite2 City database to be loaded if no other is specified
+      --default-geo-asn FILE      Default GeoLite2 ASN database to be loaded if no other is specified
     Configuration:
       --config FILE               Use specified YAML configuration to configure options, Taps, and Collection Policies
                                   Please see https://pktvisor.dev for more information
@@ -201,6 +203,10 @@ void fill_cmd_options(std::map<std::string, docopt::value> args, CmdOptions &opt
         options.geo_city = args["--geo-city"].asString();
     } else if (config["geo_city"]) {
         options.geo_city = config["geo_city"].as<std::string>();
+    } else if (args["--default-geo-city"]) {
+        options.geo_city = args["--default-geo-city"].asString();
+    } else if (config["default_geo_city"]) {
+        options.geo_city = config["default_geo_city"].as<std::string>();
     } else {
         options.geo_city = "";
     }
@@ -209,6 +215,10 @@ void fill_cmd_options(std::map<std::string, docopt::value> args, CmdOptions &opt
         options.geo_asn = args["--geo-asn"].asString();
     } else if (config["geo_asn"]) {
         options.geo_asn = config["geo_asn"].as<std::string>();
+    } else if (args["--default-geo-asn"]) {
+        options.geo_asn = args["--default-geo-asn"].asString();
+    } else if (config["default_geo_asn"]) {
+        options.geo_asn = config["default_geo_asn"].as<std::string>();
     } else {
         options.geo_asn = "";
     }
