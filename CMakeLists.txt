@@ -97,6 +97,7 @@ enable_testing()
 
 message(STATUS "Building pktvisor version ${CMAKE_PROJECT_VERSION_MAJOR}.${CMAKE_PROJECT_VERSION_MINOR}.${CMAKE_PROJECT_VERSION_PATCH}${VISOR_PRERELEASE}")
 add_subdirectory(3rd)
+add_subdirectory(libs)
 add_subdirectory(src)
 add_subdirectory(cmd)
 add_subdirectory(integration_tests)

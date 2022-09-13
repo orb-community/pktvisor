@@ -2,17 +2,17 @@
 
 #include "DnsLayer.h"
 #include "EndianPortable.h"
-#include <IpAddress.h>
+#include "IpAddress.h"
 #pragma GCC diagnostic push
 #pragma clang diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"
-#include <Logger.h>
+#include "Logger.h"
 #pragma GCC diagnostic pop
 #include <iomanip>
 #include <sstream>
 #include <stdlib.h>
 #include <string.h>
 
-namespace visor::handler::dns {
+namespace visor::dns {
 
 DnsLayer::DnsLayer(uint8_t *data, size_t dataLen, Layer *prevLayer, pcpp::Packet *packet)
     : Layer(data, dataLen, prevLayer, packet)

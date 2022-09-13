@@ -13,7 +13,7 @@
 /**
  * \namespace visor
  */
-namespace visor::handler::dns {
+namespace visor::dns {
 // forward declarations
 class DnsLayer;
 class IDnsResourceData;
@@ -93,6 +93,11 @@ class IDnsResource
 		 * @return The record name's offset in the packet
 		 */
 		size_t getNameOffset() const { return m_OffsetInLayer; }
+
+                /**
+                 * @return The raw name
+                 */
+                std::basic_string_view<uint8_t> getRawName() const;
 
 		/**
 		 * Set the name of this record. The input name can be a standard hostname (e.g 'google.com'), or it may contain
