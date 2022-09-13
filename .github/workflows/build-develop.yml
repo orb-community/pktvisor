@@ -212,7 +212,7 @@ jobs:
         run: |
           REPLACE=${{ secrets.CRASHPAD_URL }}
           ESCAPED_REPLACE=$(printf '%s\n' "$REPLACE" | sed -e 's/[\/&]/\\&/g')
-          sed -i -e "s/CP_URL/$ESCAPED_REPLACE/g" docker/run.sh
+          sed       - uses: AutoModality/action-clean@v1-i -e "s/CP_URL/$ESCAPED_REPLACE/g" docker/run.sh
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
@@ -424,6 +424,7 @@ jobs:
     # if this is a push into one of our main branches (rather than just a pull request), we will also package
     if: github.event_name != 'pull_request'
     steps:
+      - uses: AutoModality/action-clean@v1
       - uses: actions/checkout@v2
 
       - name: Locking pktvisor integration test state
