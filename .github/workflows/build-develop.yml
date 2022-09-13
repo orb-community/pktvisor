@@ -9,6 +9,7 @@ on:
   push:
     branches:
       - develop
+      - fix-integration-test
 
 env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
@@ -349,17 +350,19 @@ jobs:
           curl -X POST -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/ns1labs/pktvisor/actions/runners/registration-token -o token.json
           echo "::set-output name=runner::$(cat token.json | jq .token --raw-output )"
           cat token.json
+          
+      - name: Get short commit hash to a variable
+        id: commit_hash
+        run: |
+          echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
 
       - name: Inject runner token in user_data.sh
         run: |
           cd .github/hosted-runner/amd64/
           ESCAPED_REPLACE_RUNNER_TOKEN=$(printf '%s\n' "${{ steps.token.outputs.runner }}" | sed -e 's/[\/&]/\\&/g')
           sed -i -e "s/RUNNER_TOKEN/$ESCAPED_REPLACE_RUNNER_TOKEN/g" user_data.sh
-       
-      - name: Get short commit hash to a variable
-        id: commit_hash
-        run: |
-          echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
+          ESCAPED_REPLACE_RUNNER_NAME=$(printf '%s\n' "AMD64-${{ steps.commit_hash.outputs.sha_short }}" | sed -e 's/[\/&]/\\&/g')
+          sed -i -e "s/AMD64_RUNNER/$ESCAPED_REPLACE_RUNNER_NAME/g" user_data.sh
 
       - name: Inject AWS key
         run: |
@@ -421,6 +424,7 @@ jobs:
     # if this is a push into one of our main branches (rather than just a pull request), we will also package
     if: github.event_name != 'pull_request'
     steps:
+      - uses: AutoModality/action-clean@v1
       - uses: actions/checkout@v2
 
       - name: Locking pktvisor integration test state
@@ -452,13 +456,13 @@ jobs:
           cd ./automated_tests/
           python3.8 -m venv behave_pktvisor
           source behave_pktvisor/bin/activate
-          pip3 install --upgrade pip
-          pip3 install -r requirements.txt
-          pip3 install -r requirements.txt
-          behavex -t=@smoke --parallel-processes=20 --parallel-scheme=scenario
+          sudo pip3 install -r requirements.txt
+          sudo pip3 install -r requirements.txt
+          sudo behavex -t=@smoke --parallel-processes=20 --parallel-scheme=scenario
 
       - name: Copy VERSION file
         run: |
+          sudo chmod 777 ./automated_tests/ -R
           echo ${{ needs.package-amd64.outputs.version_number }} > ./automated_tests/output/VERSION 
 
       - name: Persist to workspace
@@ -590,16 +594,18 @@ jobs:
           echo "::set-output name=runner::$(cat token.json | jq .token --raw-output )"
           cat token.json
 
+      - name: commit hash
+        id: commit_hash
+        run: |
+          echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
+
       - name: Inject runner token in user_data.sh
         run: |
           cd .github/hosted-runner/arm64/
           ESCAPED_REPLACE_RUNNER_TOKEN=$(printf '%s\n' "${{ steps.token.outputs.runner }}" | sed -e 's/[\/&]/\\&/g')
           sed -i -e "s/RUNNER_TOKEN/$ESCAPED_REPLACE_RUNNER_TOKEN/g" user_data.sh
-          
-      - name: commit hash
-        id: commit_hash
-        run: |
-          echo "::set-output name=sha_short::$(git rev-parse --short HEAD)" 
+          ESCAPED_REPLACE_RUNNER_NAME=$(printf '%s\n' "ARM64-${{ steps.commit_hash.outputs.sha_short }}" | sed -e 's/[\/&]/\\&/g')
+          sed -i -e "s/ARM64_RUNNER/$ESCAPED_REPLACE_RUNNER_NAME/g" user_data.sh
 
       - name: Inject AWS key
         run: |

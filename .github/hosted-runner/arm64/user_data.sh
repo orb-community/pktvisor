@@ -21,6 +21,6 @@ chown ubuntu.ubuntu /actions-runner -R
 #extract git actions runner installer
 /bin/su -c "cd /actions-runner && tar xzf ./actions-runner-linux-arm64-2.294.0.tar.gz" - ubuntu >> /home/ubuntu/user-data.log
 
-/bin/su -c "cd /actions-runner && ./config.sh --unattended --url https://github.com/ns1labs/pktvisor --token RUNNER_TOKEN --name arm64_runner --work _work --runasservice" - ubuntu >> /home/ubuntu/user-data.log
+/bin/su -c "cd /actions-runner && ./config.sh --unattended --url https://github.com/ns1labs/pktvisor --token RUNNER_TOKEN --name ARM64_RUNNER --work _work --runasservice" - ubuntu >> /home/ubuntu/user-data.log
 
 /bin/su -c "cd /actions-runner && ./run.sh" - ubuntu >> /home/ubuntu/user-data.log
