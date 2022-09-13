@@ -440,14 +440,14 @@ inline bool FlowStreamHandler::_match_subnet(std::vector<Ipv4Subnet> &IPv4_subne
     return false;
 }
 
-void FlowMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
+void FlowMetricsBucket::specialized_merge(const AbstractMetricsBucket &o, Metric::Aggregate agg_operator)
 {
     // static because caller guarantees only our own bucket type
     const auto &other = static_cast<const FlowMetricsBucket &>(o);
 
     // rates maintain their own thread safety
-    _rate.merge(other._rate);
-    _throughput.merge(other._throughput);
+    _rate.merge(other._rate, agg_operator);
+    _throughput.merge(other._throughput, agg_operator);
 
     std::shared_lock r_lock(other._mutex);
     std::unique_lock w_lock(_mutex);
@@ -457,13 +457,13 @@ void FlowMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
         _counters.total += other._counters.total;
     }
 
-    _volume.merge(other._volume);
+    _volume.merge(other._volume, agg_operator);
 
     for (const auto &device : other._devices_metrics) {
         const auto &deviceId = device.first;
         const auto &device_data = device.second;
 
-        _devices_metrics[deviceId]->payload_size.merge(device.second->payload_size);
+        _devices_metrics[deviceId]->payload_size.merge(device.second->payload_size, agg_operator);
 
         if (group_enabled(group::FlowMetrics::Counters)) {
             _devices_metrics[deviceId]->counters.UDP += device.second->counters.UDP;

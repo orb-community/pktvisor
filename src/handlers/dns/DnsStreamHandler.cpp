@@ -509,13 +509,13 @@ inline bool DnsStreamHandler::_configs(DnsLayer &payload)
 
     return true;
 }
-void DnsMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
+void DnsMetricsBucket::specialized_merge(const AbstractMetricsBucket &o, Metric::Aggregate agg_operator)
 {
     // static because caller guarantees only our own bucket type
     const auto &other = static_cast<const DnsMetricsBucket &>(o);
 
     // rates maintain their own thread safety
-    _rate_total.merge(other._rate_total);
+    _rate_total.merge(other._rate_total, agg_operator);
 
     std::shared_lock r_lock(other._mutex);
     std::unique_lock w_lock(_mutex);
@@ -542,9 +542,9 @@ void DnsMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
         _counters.xacts_out += other._counters.xacts_out;
         _counters.xacts_timed_out += other._counters.xacts_timed_out;
 
-        _dnsXactFromTimeUs.merge(other._dnsXactFromTimeUs);
-        _dnsXactToTimeUs.merge(other._dnsXactToTimeUs);
-        _dnsXactRatio.merge(other._dnsXactRatio);
+        _dnsXactFromTimeUs.merge(other._dnsXactFromTimeUs, agg_operator);
+        _dnsXactToTimeUs.merge(other._dnsXactToTimeUs, agg_operator);
+        _dnsXactRatio.merge(other._dnsXactRatio, agg_operator);
         _dns_slowXactIn.merge(other._dns_slowXactIn);
         _dns_slowXactOut.merge(other._dns_slowXactOut);
     }

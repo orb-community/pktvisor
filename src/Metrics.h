@@ -30,6 +30,11 @@ class Metric
 public:
     typedef std::map<std::string, std::string> LabelMap;
 
+    enum class Aggregate {
+        DEFAULT,
+        SUM,
+    };
+
 private:
     /**
      * static labels which will be applied to all metrics
@@ -137,6 +142,7 @@ template <typename T>
 class Quantile final : public Metric
 {
     datasketches::kll_sketch<T> _quantile;
+    std::vector<T> _quantiles_sum;
 
 public:
     Quantile(std::string schema_key, std::initializer_list<std::string> names, std::string desc)
@@ -154,9 +160,23 @@ public:
         _quantile.update(value);
     }
 
-    void merge(const Quantile &other)
+    void merge(const Quantile &other, Aggregate agg_operator)
     {
-        _quantile.merge(other._quantile);
+        if (agg_operator == Aggregate::SUM && !_quantile.is_empty()) {
+            if (other._quantile.is_empty()) {
+                return;
+            }
+            const double fractions[4]{0.50, 0.90, 0.95, 0.99};
+            auto other_quantiles = other._quantile.get_quantiles(fractions, 4);
+            if (_quantiles_sum.empty()) {
+                _quantiles_sum = _quantile.get_quantiles(fractions, 4);
+            }
+            for (uint8_t i = 0; i < 4; i++) {
+                _quantiles_sum[i] += other_quantiles[i];
+            }
+        } else {
+            _quantile.merge(other._quantile);
+        }
     }
 
     auto get_n() const
@@ -172,9 +192,14 @@ public:
     // Metric
     void to_json(json &j) const override
     {
-        const double fractions[4]{0.50, 0.90, 0.95, 0.99};
+        std::vector<T> quantiles;
+        if (_quantiles_sum.empty()) {
+            const double fractions[4]{0.50, 0.90, 0.95, 0.99};
+            quantiles = _quantile.get_quantiles(fractions, 4);
+        } else {
+            quantiles = _quantiles_sum;
+        }
 
-        auto quantiles = _quantile.get_quantiles(fractions, 4);
         if (quantiles.size()) {
             name_json_assign(j, {"p50"}, quantiles[0]);
             name_json_assign(j, {"p90"}, quantiles[1]);
@@ -185,9 +210,13 @@ public:
 
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override
     {
-        const double fractions[4]{0.50, 0.90, 0.95, 0.99};
-
-        auto quantiles = _quantile.get_quantiles(fractions, 4);
+        std::vector<T> quantiles;
+        if (_quantiles_sum.empty()) {
+            const double fractions[4]{0.50, 0.90, 0.95, 0.99};
+            quantiles = _quantile.get_quantiles(fractions, 4);
+        } else {
+            quantiles = _quantiles_sum;
+        }
 
         LabelMap l5(add_labels);
         l5["quantile"] = "0.5";
@@ -418,7 +447,7 @@ class Rate final : public Metric
     std::atomic_uint64_t _counter;
     std::atomic_uint64_t _rate;
     mutable std::shared_mutex _sketch_mutex;
-    datasketches::kll_sketch<int_fast32_t> _quantile;
+    Quantile<int_fast32_t> _quantile;
 
     std::shared_ptr<timer::interval_handle> _timer_handle;
 
@@ -437,10 +466,10 @@ class Rate final : public Metric
 
 public:
     Rate(std::string schema_key, std::initializer_list<std::string> names, std::string desc)
-        : Metric(schema_key, names, std::move(desc))
+        : Metric(schema_key, names, desc)
         , _counter(0)
         , _rate(0)
-        , _quantile()
+        , _quantile(schema_key, names, std::move(desc))
     {
         _start_timer();
     }
@@ -478,11 +507,11 @@ public:
         return _rate.load(std::memory_order_relaxed);
     }
 
-    void merge(const Rate &other)
+    void merge(const Rate &other, Aggregate agg_operator)
     {
         std::shared_lock r_lock(other._sketch_mutex);
         std::unique_lock w_lock(_sketch_mutex);
-        _quantile.merge(other._quantile);
+        _quantile.merge(other._quantile, agg_operator);
         // the live rate is simply copied if non zero
         if (other._rate != 0) {
             _rate.store(other._rate, std::memory_order_relaxed);

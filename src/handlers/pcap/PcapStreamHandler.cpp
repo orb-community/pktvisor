@@ -74,7 +74,7 @@ void PcapStreamHandler::set_end_tstamp(timespec stamp)
     _metrics->set_end_tstamp(stamp);
 }
 
-void PcapMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
+void PcapMetricsBucket::specialized_merge(const AbstractMetricsBucket &o, [[maybe_unused]] Metric::Aggregate agg_operator)
 {
     // static because caller guarantees only our own bucket type
     const auto &other = static_cast<const PcapMetricsBucket &>(o);

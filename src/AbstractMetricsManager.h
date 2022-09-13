@@ -65,13 +65,14 @@ protected:
     const std::bitset<GROUP_SIZE> *_groups;
 
     // merge the metrics of the specialized metric bucket
-    virtual void specialized_merge(const AbstractMetricsBucket &other) = 0;
+    virtual void specialized_merge(const AbstractMetricsBucket &other, Metric::Aggregate agg_operator) = 0;
 
     // should be thread safe
     // can be used to set any bucket metrics to read only, e.g. cancel Rate metrics
     virtual void on_set_read_only(){};
 
 public:
+
     AbstractMetricsBucket()
         : _num_samples("base", {"deep_samples"}, "Total number of deep samples")
         , _num_events("base", {"total"}, "Total number of events")
@@ -170,7 +171,7 @@ public:
         return eventData{&_num_events, &_num_samples, &_rate_events, std::move(lock)};
     }
 
-    void merge(const AbstractMetricsBucket &other)
+    void merge(const AbstractMetricsBucket &other, Metric::Aggregate agg_operator = Metric::Aggregate::DEFAULT)
     {
         {
             std::shared_lock r_lock(other._base_mutex);
@@ -184,10 +185,10 @@ public:
             if (other._end_tstamp.tv_sec > _end_tstamp.tv_sec) {
                 _end_tstamp.tv_sec = other._end_tstamp.tv_sec;
             }
-            _rate_events.merge(other._rate_events);
+            _rate_events.merge(other._rate_events, agg_operator);
             _groups = other._groups;
         }
-        specialized_merge(other);
+        specialized_merge(other, agg_operator);
     }
 
     void new_event(bool deep)
@@ -592,7 +593,7 @@ public:
         }
 
         if (auto merged = dynamic_cast<MetricsBucketClass *>(bucket); merged) {
-            merged->merge(*_metric_buckets[period].get());
+            merged->merge(*_metric_buckets[period].get(), Metric::Aggregate::SUM);
             return nullptr;
         }
 
@@ -627,7 +628,7 @@ public:
         }
 
         if (auto external_bucket = dynamic_cast<MetricsBucketClass *>(bucket); external_bucket) {
-            external_bucket->merge(*merged.get());
+            external_bucket->merge(*merged.get(), Metric::Aggregate::SUM);
             return nullptr;
         }
 

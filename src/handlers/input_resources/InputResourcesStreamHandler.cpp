@@ -124,7 +124,7 @@ void InputResourcesStreamHandler::process_packet_cb([[maybe_unused]] pcpp::Packe
     }
 }
 
-void InputResourcesMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
+void InputResourcesMetricsBucket::specialized_merge(const AbstractMetricsBucket &o, Metric::Aggregate agg_operator)
 {
     // static because caller guarantees only our own bucket type
     const auto &other = static_cast<const InputResourcesMetricsBucket &>(o);
@@ -132,8 +132,8 @@ void InputResourcesMetricsBucket::specialized_merge(const AbstractMetricsBucket 
     std::shared_lock r_lock(other._mutex);
     std::unique_lock w_lock(_mutex);
 
-    _cpu_usage.merge(other._cpu_usage);
-    _memory_bytes.merge(other._memory_bytes);
+    _cpu_usage.merge(other._cpu_usage, agg_operator);
+    _memory_bytes.merge(other._memory_bytes, agg_operator);
 
     // Merge only the first bucket which is the more recent
     if (!_merged) {
