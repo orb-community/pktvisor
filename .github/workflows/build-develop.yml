@@ -451,11 +451,11 @@ jobs:
         continue-on-error: true
         run: |
           cd ./automated_tests/
-          python3.8 -m venv behave_pktvisor
-          source behave_pktvisor/bin/activate
-          pip3 install --upgrade pip
-          pip3 install -r requirements.txt
-          pip3 install -r requirements.txt
+          sudo python3.8 -m venv behave_pktvisor
+          sudo source behave_pktvisor/bin/activate
+          sudo pip3 install --upgrade pip
+          sudo pip3 install -r requirements.txt
+          sudo pip3 install -r requirements.txt
           sudo behavex -t=@smoke --parallel-processes=20 --parallel-scheme=scenario
 
       - name: Copy VERSION file
