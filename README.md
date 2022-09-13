@@ -210,6 +210,9 @@ or
     Geo Options:
       --geo-city FILE             GeoLite2 City database to use for IP to Geo mapping
       --geo-asn FILE              GeoLite2 ASN database to use for IP to ASN mapping
+      --geo-cache-size N          GeoLite2 LRU cache size, 0 to disable. (default: 10000)
+      --default-geo-city FILE     Default GeoLite2 City database to be loaded if no other is specified
+      --default-geo-asn FILE      Default GeoLite2 ASN database to be loaded if no other is specified
     Configuration:
       --config FILE               Use specified YAML configuration to configure options, Taps, and Collection Policies
                                   Please see https://pktvisor.dev for more information
