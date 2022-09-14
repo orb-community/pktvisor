@@ -60,7 +60,7 @@ void MockStreamHandler::stop()
     _running = false;
 }
 
-void MockMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
+void MockMetricsBucket::specialized_merge(const AbstractMetricsBucket &o, [[maybe_unused]] Metric::Aggregate agg_operator)
 {
     // static because caller guarantees only our own bucket type
     const auto &other = static_cast<const MockMetricsBucket &>(o);

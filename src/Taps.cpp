@@ -135,9 +135,8 @@ std::vector<std::string> TapManager::get_input_taps_name(const YAML::Node &input
             binary_op = "any";
         }
 
-
         auto [tap_modules, hm_lock] = module_get_all_locked();
-        bool match {false};
+        bool match{false};
         for (auto &[name, mod] : tap_modules) {
             auto tmod = dynamic_cast<Tap *>(mod.get());
             if (tmod && tmod->tags_match_selector_yaml(tap_selector[binary_op], (binary_op == "all"))) {
@@ -176,8 +175,13 @@ bool Tap::tags_match_selector_yaml(const YAML::Node &tag_yaml, bool all)
 {
     bool any_match = false;
     for (YAML::const_iterator it = tag_yaml.begin(); it != tag_yaml.end(); ++it) {
-        //sequence
+        // sequence
+        if (it->size() > 1) {
+            throw TapException("selector tag must contain only one key/value pair per sequence index");
+        }
+
         const auto it_module = it->begin();
+
         if (!it_module->first.IsScalar()) {
             throw TapException(fmt::format("tag key '{}' have be scalar", it_module->first));
         }
@@ -197,14 +201,26 @@ bool Tap::tags_match_selector_yaml(const YAML::Node &tag_yaml, bool all)
         // the yaml library doesn't discriminate between scalar types, so we have to do that ourselves
         auto value = it_module->second.as<std::string>();
         if (std::regex_match(value, std::regex("[0-9]+"))) {
-            if (_tags->config_get<uint64_t>(key) == it_module->second.as<uint64_t>()) {
+            uint64_t tag_value;
+            try {
+                tag_value = _tags->config_get<uint64_t>(key);
+            } catch (ConfigException &e) {
+                throw TapException(fmt::format("Tap [{}]: tag and selector value types are different for key '{}'", name(), key));
+            }
+            if (tag_value == it_module->second.as<uint64_t>()) {
                 any_match = true;
             } else if (all) {
                 return false;
             }
 
         } else if (std::regex_match(value, std::regex("true|false", std::regex_constants::icase))) {
-            if (_tags->config_get<bool>(key) == it_module->second.as<bool>()) {
+            bool tag_value;
+            try {
+                tag_value = _tags->config_get<bool>(key);
+            } catch (ConfigException &e) {
+                throw TapException(fmt::format("Tap [{}]: tag and selector value types are different for key '{}'", name(), key));
+            }
+            if (tag_value == it_module->second.as<bool>()) {
                 any_match = true;
             } else if (all) {
                 return false;
