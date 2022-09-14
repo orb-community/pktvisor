@@ -11,6 +11,7 @@ function build() {
   cp -rf /github/workspace/src/ /pktvisor-src/src/
   cp -rf /github/workspace/cmd/ /pktvisor-src/cmd/
   cp -rf /github/workspace/3rd/ /pktvisor-src/3rd/
+  cp -rf /github/workspace/libs/ /pktvisor-src/libs/
   cp -rf /github/workspace/docker/ /pktvisor-src/docker/
   cp -rf /github/workspace/golang/ /pktvisor-src/golang/
   cp -rf /github/workspace/integration_tests/ /pktvisor-src/integration_tests/
