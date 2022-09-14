@@ -13,7 +13,7 @@
 // forked code
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 
-namespace visor::dns {
+namespace visor::lib::dns {
 
 size_t IDnsResourceData::decodeName(const char *encodedName, char *result, IDnsResource *dnsResource) const
 {

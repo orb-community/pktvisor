@@ -13,7 +13,7 @@
 #include <string_view>
 #include <vector>
 
-namespace visor::dns {
+namespace visor::lib::dns {
 
 using namespace std::literals;
 

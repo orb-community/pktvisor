@@ -13,7 +13,7 @@
 /**
  * \namespace visor
  */
-namespace visor::dns {
+namespace visor::lib::dns {
 
 //Visual studio has always been stupid about returning something useful for __cplusplus
 //Only recently was this fixed - and even then it requires a specific hack to the command line during build

@@ -22,7 +22,7 @@ class DnstapInputEventProxy;
 
 namespace visor::handler::dns {
 
-using namespace visor::dns;
+using namespace visor::lib::dns;
 using namespace visor::input::pcap;
 using namespace visor::input::dnstap;
 using namespace visor::input::mock;

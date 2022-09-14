@@ -10,7 +10,7 @@
 #include <sstream>
 #include <string.h>
 
-namespace visor::dns {
+namespace visor::lib::dns {
 
 IDnsResource::IDnsResource(DnsLayer *dnsLayer, size_t offsetInLayer)
     : m_DnsLayer(dnsLayer)

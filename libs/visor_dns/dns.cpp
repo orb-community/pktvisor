@@ -4,7 +4,7 @@
 
 #include "dns.h"
 
-namespace visor::dns {
+namespace visor::lib::dns {
 
 AggDomainResult aggregateDomain(const std::string &domain, size_t suffix_size)
 {

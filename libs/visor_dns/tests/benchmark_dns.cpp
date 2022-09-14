@@ -14,7 +14,7 @@
 #include "PcapFileDevice.h"
 #pragma GCC diagnostic pop
 
-using namespace visor::dns;
+using namespace visor::lib::dns;
 
 static void BM_aggregateDomain(benchmark::State &state)
 {

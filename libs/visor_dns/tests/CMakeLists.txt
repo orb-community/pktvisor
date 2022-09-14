@@ -7,7 +7,7 @@ add_executable(unit-tests-visor-dns
 target_link_libraries(unit-tests-visor-dns
         PRIVATE
         ${CONAN_LIBS_JSON-SCHEMA-VALIDATOR}
-        Visor::Dns)
+        Visor::Lib::Dns)
 
 add_test(NAME unit-tests-visor-dns
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
@@ -20,5 +20,5 @@ add_executable(benchmark-visor-dns
         )
 
 target_link_libraries(benchmark-visor-dns PRIVATE
-        Visor::Dns
+        Visor::Lib::Dns
         ${CONAN_LIBS_BENCHMARK})

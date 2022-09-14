@@ -9,7 +9,7 @@
 #include <algorithm>
 #include <array>
 
-namespace visor::dns {
+namespace visor::lib::dns {
 
 static constexpr size_t IPV4_BYTE_SIZE = 4;
 static constexpr size_t IPV6_BYTE_SIZE = 16;

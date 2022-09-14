@@ -17,7 +17,7 @@ static inline void timespec_diff(struct timespec *a, struct timespec *b,
     }
 }
 
-namespace visor::handler::dns {
+namespace visor::lib::dns {
 
 void QueryResponsePairMgr::start_transaction(uint32_t flowKey, uint16_t queryID, timespec stamp, size_t querySize)
 {
