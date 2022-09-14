@@ -88,7 +88,7 @@ public:
                 throw ConfigException("expecting global_handler_config configuration map");
             }
 
-            auto handler_plugin = _registry->handler_plugins().find(handler_module_type);
+            auto handler_plugin = _registry->handler_plugins().find(std::make_pair(handler_module_type, CoreRegistry::DEFAULT_HANDLER_PLUGIN_VERSION));
             if (handler_plugin == _registry->handler_plugins().end()) {
                 spdlog::get("visor")->warn(fmt::format("global_handler_config configures stream handler type '{}' which is not available, ignoring", handler_module_type));
                 return;
@@ -134,6 +134,7 @@ public:
     struct HandlerData {
         std::string name;
         std::string type;
+        std::string version;
         Config config;
         Config filter;
     };
@@ -170,8 +171,16 @@ public:
             }
         }
 
+        handler.version = CoreRegistry::DEFAULT_HANDLER_PLUGIN_VERSION;
+        if (module["require_version"]) {
+            if (!module["require_version"].IsScalar()) {
+                throw HandlerException("Invalid stream handler version at key 'require_version'");
+            }
+            handler.version = module["require_version"].as<std::string>();
+        }
+
         handler.type = module["type"].as<std::string>();
-        auto handler_plugin = _registry->handler_plugins().find(handler.type);
+        auto handler_plugin = _registry->handler_plugins().find(std::make_pair(handler.type, handler.version));
         if (handler_plugin == _registry->handler_plugins().end()) {
             throw HandlerException(fmt::format("Policy '{}' requires stream handler type '{}' which is not available", policy_name, handler.type));
         }

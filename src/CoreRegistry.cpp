@@ -42,37 +42,38 @@ void CoreRegistry::start(HttpServer *svr)
 
     // initialize input plugins
     {
-        auto alias_list = _input_registry.aliasList();
         auto plugin_list = _input_registry.pluginList();
-        std::vector<std::string> by_alias;
-        std::set_difference(alias_list.begin(), alias_list.end(),
-            plugin_list.begin(), plugin_list.end(), std::inserter(by_alias, by_alias.begin()));
-        for (auto &s : by_alias) {
+        for (auto &s : plugin_list) {
             auto meta = _input_registry.metadata(s);
             if (!meta) {
                 _logger->error("failed to load plugin metadata: {}", s);
                 continue;
             }
             if (meta->data().hasValue("type") && meta->data().value("type") == "input") {
+                if (!meta->data().hasValue("version")) {
+                    _logger->error("version field is mandatory and was not provided by '{}'", s);
+                }
+                auto version = meta->data().value("version");
                 if (_input_registry.loadState(s) == Corrade::PluginManager::LoadState::NotLoaded) {
                     _input_registry.load(s);
                 }
-                InputPluginPtr mod = _input_registry.instantiate(s);
-                _logger->info("Load input stream plugin: {} {}", s, mod->pluginInterface());
-                mod->init_plugin(this, svr);
-                _input_plugins.insert({s, std::move(mod)});
+                for (const auto &alias : meta->provides()) {
+                    InputPluginPtr mod = _input_registry.instantiate(alias);
+                    _logger->info("Load input stream plugin: {} {}", alias, mod->pluginInterface());
+                    mod->init_plugin(this, svr);
+                    auto result = _input_plugins.insert({std::make_pair(alias, version), std::move(mod)});
+                    if (!result.second) {
+                        throw std::runtime_error(fmt::format("Input alias '{}' with version '{}' was already loaded.", alias, version));
+                    }
+                }
             }
         }
     }
 
     // initialize handler plugins
     {
-        auto alias_list = _handler_registry.aliasList();
         auto plugin_list = _handler_registry.pluginList();
-        std::vector<std::string> by_alias;
-        std::set_difference(alias_list.begin(), alias_list.end(),
-            plugin_list.begin(), plugin_list.end(), std::inserter(by_alias, by_alias.begin()));
-        for (auto &s : by_alias) {
+        for (auto &s : plugin_list) {
             auto meta = _handler_registry.metadata(s);
             if (!meta) {
                 _logger->error("failed to load plugin metadata: {}", s);
@@ -82,10 +83,19 @@ void CoreRegistry::start(HttpServer *svr)
                 if (_handler_registry.loadState(s) == Corrade::PluginManager::LoadState::NotLoaded) {
                     _handler_registry.load(s);
                 }
-                HandlerPluginPtr mod = _handler_registry.instantiate(s);
-                _logger->info("Load stream handler plugin: {} {}", s, mod->pluginInterface());
-                mod->init_plugin(this, svr);
-                _handler_plugins.insert({s, std::move(mod)});
+                if (!meta->data().hasValue("version")) {
+                    _logger->error("version field is mandatory and was not provided by '{}'", s);
+                }
+                auto version = meta->data().value("version");
+                for (const auto &alias : meta->provides()) {
+                    HandlerPluginPtr mod = _handler_registry.instantiate(alias);
+                    _logger->info("Load stream handler plugin: {} {}", alias, mod->pluginInterface());
+                    mod->init_plugin(this, svr);
+                    auto result = _handler_plugins.insert({std::make_pair(alias, version), std::move(mod)});
+                    if (!result.second) {
+                        throw std::runtime_error(fmt::format("Handler alias '{}' with version '{}' was already loaded.", alias, version));
+                    }
+                }
             }
         }
     }
