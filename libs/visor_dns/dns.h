@@ -10,7 +10,7 @@
 #include <string>
 #include <unordered_map>
 
-namespace visor::handler::dns {
+namespace visor::lib::dns {
 
 typedef std::pair<std::string_view, std::string_view> AggDomainResult;
 AggDomainResult aggregateDomain(const std::string &domain, size_t suffix_size = 0);

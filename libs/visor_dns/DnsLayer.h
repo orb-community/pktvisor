@@ -19,7 +19,7 @@
 /**
  * \namespace visor
  */
-namespace visor::handler::dns {
+namespace visor::lib::dns {
 
 /**
 	 * @struct dnshdr

@@ -10,7 +10,7 @@
 #include <sstream>
 #include <string.h>
 
-namespace visor::handler::dns {
+namespace visor::lib::dns {
 
 IDnsResource::IDnsResource(DnsLayer *dnsLayer, size_t offsetInLayer)
     : m_DnsLayer(dnsLayer)
@@ -246,6 +246,42 @@ void IDnsResource::setDnsLayer(DnsLayer *dnsLayer, size_t offsetInLayer)
     m_DnsLayer = dnsLayer;
     m_OffsetInLayer = offsetInLayer;
     m_ExternalRawData = NULL;
+}
+
+std::basic_string_view<uint8_t> IDnsResource::getRawName() const
+{
+    // scan starts at the domain name
+    auto scan = std::basic_string_view<uint8_t>{m_DnsLayer->m_Data, m_DnsLayer->m_DataLen}
+                    .substr(m_OffsetInLayer) // skip to the name offset
+                    .substr(0, 255);         // enforce name length limit
+
+    // find the end of the scan
+    size_t pos = 0;
+    while (pos < scan.size()) {
+        if (scan[pos] == 0) {
+            // root label at the end
+            pos += 1;
+            break;
+        } else if (scan[pos] < 0xc0) {
+            // normal scan label
+            pos += scan[pos] + 1;
+        } else if (scan[pos] == 0xc0) {
+            // compression label at the end
+            pos += 3;
+            break;
+        } else {
+            // malformed name
+            pos = std::string_view::npos;
+            break;
+        }
+    }
+
+    if (pos >= scan.size()) {
+        // malformed name
+        return {};
+    }
+
+    return scan.substr(0, pos);
 }
 
 uint32_t DnsResource::getTTL() const

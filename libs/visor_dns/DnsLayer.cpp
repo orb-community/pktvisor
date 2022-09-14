@@ -12,7 +12,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-namespace visor::handler::dns {
+namespace visor::lib::dns {
 
 DnsLayer::DnsLayer(uint8_t *data, size_t dataLen, Layer *prevLayer, pcpp::Packet *packet)
     : Layer(data, dataLen, prevLayer, packet)

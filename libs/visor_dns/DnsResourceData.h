@@ -7,12 +7,13 @@
 #include <string>
 #include <stdint.h>
 
+
 /// @file
 
 /**
  * \namespace visor
  */
-namespace visor::handler::dns {
+namespace visor::lib::dns {
 
 //Visual studio has always been stupid about returning something useful for __cplusplus
 //Only recently was this fixed - and even then it requires a specific hack to the command line during build
@@ -101,7 +102,7 @@ namespace visor::handler::dns {
 
 		//Visual studio has always been stupid about returning something useful for __cplusplus
 		//Only recently was this fixed - and even then it requires a specific hack to the command line during build
-		//Its easier/more consistent to test _MSC_VER in VS 
+		//Its easier/more consistent to test _MSC_VER in VS
 		//https://docs.microsoft.com/en-us/cpp/build/reference/zc-cplusplus?view=vs-2017
 
 #if __cplusplus <= 199711L && _MSC_VER < 1800 //Maybe this can be 1600 for VS2010
