@@ -47,7 +47,6 @@ TEST_CASE("Parse sflow stream", "[sflow][flow]")
     CHECK(j["devices"]["192.168.0.13"]["top_dst_ports_bytes"][0]["name"] == "5001");
     CHECK(j["devices"]["192.168.0.13"]["top_src_ips_and_port_bytes"][0]["estimate"] == 26838240000);
     CHECK(j["devices"]["192.168.0.13"]["top_src_ips_and_port_bytes"][0]["name"] == "10.4.1.2:57420");
-    CHECK(j["devices"]["192.168.0.13"]["payload_size"]["p50"] == 30360000);
 }
 
 TEST_CASE("Parse sflow stream without sampling", "[sflow][flow]")
@@ -92,7 +91,6 @@ TEST_CASE("Parse sflow stream without sampling", "[sflow][flow]")
     CHECK(j["devices"]["192.168.0.13"]["top_dst_ports_bytes"][0]["name"] == "5001");
     CHECK(j["devices"]["192.168.0.13"]["top_src_ips_and_port_bytes"][0]["estimate"] == 1341912);
     CHECK(j["devices"]["192.168.0.13"]["top_src_ips_and_port_bytes"][0]["name"] == "10.4.1.2:57420");
-    CHECK(j["devices"]["192.168.0.13"]["payload_size"]["p50"] == 1518);
 }
 
 TEST_CASE("Parse sflow stream with ip filter", "[sflow][flow]")
@@ -137,7 +135,6 @@ TEST_CASE("Parse sflow stream with ip filter", "[sflow][flow]")
     CHECK(j["devices"]["192.168.0.13"]["top_dst_ports_bytes"][0]["name"] == "5001");
     CHECK(j["devices"]["192.168.0.13"]["top_src_ips_and_port_bytes"][0]["estimate"] == 26443560000);
     CHECK(j["devices"]["192.168.0.13"]["top_src_ips_and_port_bytes"][0]["name"] == "10.4.3.2:40268");
-    CHECK(j["devices"]["192.168.0.13"]["payload_size"]["p50"] == 30360000);
 }
 
 TEST_CASE("Parse sflow stream with device filter", "[sflow][flow]")
@@ -151,7 +148,7 @@ TEST_CASE("Parse sflow stream with device filter", "[sflow][flow]")
     auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
     FlowStreamHandler flow_handler{"flow-test", stream_proxy, &c};
-    flow_handler.config_set<visor::Configurable::StringList>("only_devices", {"192.168.0.11/32"});
+    flow_handler.config_set<visor::Configurable::StringList>("only_devices", {"192.168.0.11"});
 
     flow_handler.start();
     stream.start();
@@ -182,7 +179,6 @@ TEST_CASE("Parse sflow stream with device filter", "[sflow][flow]")
     CHECK(j["devices"]["192.168.0.11"]["top_dst_ports_bytes"][0]["name"] == "5001");
     CHECK(j["devices"]["192.168.0.11"]["top_src_ips_and_port_bytes"][0]["estimate"] == 25532760000);
     CHECK(j["devices"]["192.168.0.11"]["top_src_ips_and_port_bytes"][0]["name"] == "10.4.3.2:40265");
-    CHECK(j["devices"]["192.168.0.11"]["payload_size"]["p50"] == 30360000);
 
     CHECK(j["devices"]["192.168.0.13"] == nullptr);
 }
@@ -229,7 +225,6 @@ TEST_CASE("Parse sflow stream with port filter", "[sflow][flow]")
     CHECK(j["devices"]["192.168.0.11"]["top_dst_ports_bytes"][0]["name"] == "5001");
     CHECK(j["devices"]["192.168.0.11"]["top_src_ips_and_port_bytes"][0]["estimate"] == 25532760000);
     CHECK(j["devices"]["192.168.0.11"]["top_src_ips_and_port_bytes"][0]["name"] == "10.4.3.2:40265");
-    CHECK(j["devices"]["192.168.0.11"]["payload_size"]["p50"] == 30360000);
 }
 
 TEST_CASE("Parse sflow stream with interfaces filter", "[sflow][flow]")
@@ -274,7 +269,6 @@ TEST_CASE("Parse sflow stream with interfaces filter", "[sflow][flow]")
     CHECK(j["devices"]["192.168.0.11"]["top_dst_ports_bytes"][0]["name"] == "5001");
     CHECK(j["devices"]["192.168.0.11"]["top_src_ips_and_port_bytes"][0]["estimate"] == 25431760000);
     CHECK(j["devices"]["192.168.0.11"]["top_src_ips_and_port_bytes"][0]["name"] == "10.4.1.2:57434");
-    CHECK(j["devices"]["192.168.0.11"]["payload_size"]["p50"] == 30360000);
 }
 
 TEST_CASE("Parse netflow stream", "[netflow][flow]")
@@ -311,5 +305,4 @@ TEST_CASE("Parse netflow stream", "[netflow][flow]")
     CHECK(j["devices"]["192.168.100.1"]["cardinality"]["src_ports_in"] == 0);
     CHECK(j["devices"]["192.168.100.1"]["top_src_ips_bytes"][0]["estimate"] == 6066232);
     CHECK(j["devices"]["192.168.100.1"]["top_src_ips_packets"][0]["estimate"] == 7858);
-    CHECK(j["devices"]["192.168.100.1"]["payload_size"]["p50"] == 5926641);
 }

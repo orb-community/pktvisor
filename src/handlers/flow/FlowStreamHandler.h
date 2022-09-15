@@ -27,6 +27,7 @@ namespace group {
 enum FlowMetrics : visor::MetricGroupIntType {
     Counters,
     Cardinality,
+    Conversations,
     TopGeo,
     TopByPackets,
     TopByBytes
@@ -51,13 +52,11 @@ struct FlowData {
 struct FlowPacket {
     std::string device_id;
     timespec stamp;
-    size_t raw_size;
     uint64_t filtered;
     std::vector<FlowData> flow_data;
 
-    FlowPacket(std::string id, timespec stamp, size_t raw_size)
+    FlowPacket(std::string id, timespec stamp)
         : device_id(id)
-        , raw_size(raw_size)
         , stamp(stamp)
         , filtered(0)
     {
@@ -74,6 +73,8 @@ struct FlowTopN {
     TopN<std::string> topConversations;
     TopN<uint32_t> topInIfIndex;
     TopN<uint32_t> topOutIfIndex;
+    TopN<std::string> topGeoLoc;
+    TopN<std::string> topASN;
     FlowTopN(std::string metric)
         : topSrcIP(FLOW_SCHEMA, "ip", {"top_src_ips_" + metric}, "Top source IP addresses by " + metric)
         , topDstIP(FLOW_SCHEMA, "ip", {"top_dst_ips_" + metric}, "Top destination IP addresses by " + metric)
@@ -84,6 +85,8 @@ struct FlowTopN {
         , topConversations(FLOW_SCHEMA, "conversations", {"top_conversations_" + metric}, "Top source IP addresses and port by " + metric)
         , topInIfIndex(FLOW_SCHEMA, "index", {"top_in_if_index_" + metric}, "Top input interface indexes by " + metric)
         , topOutIfIndex(FLOW_SCHEMA, "index", {"top_out_if_index_" + metric}, "Top output interface indexes by " + metric)
+        , topGeoLoc(FLOW_SCHEMA, "geo_loc", {"top_geoLoc_" + metric}, "Top GeoIP locations by " + metric)
+        , topASN(FLOW_SCHEMA, "asn", {"top_ASN_" + metric}, "Top ASNs by IP by " + metric)
     {
     }
 
@@ -98,6 +101,8 @@ struct FlowTopN {
         topConversations.set_settings(topn_count, percentile_threshold);
         topInIfIndex.set_settings(topn_count, percentile_threshold);
         topOutIfIndex.set_settings(topn_count, percentile_threshold);
+        topGeoLoc.set_settings(topn_count, percentile_threshold);
+        topASN.set_settings(topn_count, percentile_threshold);
     }
 };
 
@@ -117,16 +122,13 @@ struct FlowDevice {
             , OtherL4("flow", {"other_l4"}, "Count of packets which are not UDP or TCP")
             , IPv4("flow", {"ipv4"}, "Count of IPv4 packets")
             , IPv6("flow", {"ipv6"}, "Count of IPv6 packets")
-            , filtered("flow", {"filtered"}, "Count of total flows seen that did not match the configured filter(s) (if any)")
-            , total("flow", {"flows"}, "Count of total flows that match the configured filter(s) (if any)")
+            , filtered("flow", {"records_filtered"}, "Count of total flows records seen that did not match the configured filter(s) (if any)")
+            , total("flow", {"records_flows"}, "Count of total flows records that match the configured filter(s) (if any)")
         {
         }
     };
 
     counters counters;
-    Quantile<std::size_t> payload_size;
-    TopN<std::string> topGeoLoc;
-    TopN<std::string> topASN;
     Cardinality conversationsCard;
     Cardinality srcIPCard;
     Cardinality dstIPCard;
@@ -136,10 +138,7 @@ struct FlowDevice {
     FlowTopN topByPackets;
 
     FlowDevice()
-        : payload_size(FLOW_SCHEMA, {"payload_size"}, "Quantiles of payload sizes, in bytes")
-        , topGeoLoc(FLOW_SCHEMA, "geo_loc", {"top_geoLoc"}, "Top GeoIP locations")
-        , topASN(FLOW_SCHEMA, "asn", {"top_ASN"}, "Top ASNs by IP")
-        , conversationsCard(FLOW_SCHEMA, {"cardinality", "conversations"}, "Conversations cardinality")
+        : conversationsCard(FLOW_SCHEMA, {"cardinality", "conversations"}, "Conversations cardinality")
         , srcIPCard(FLOW_SCHEMA, {"cardinality", "src_ips_in"}, "Source IP cardinality")
         , dstIPCard(FLOW_SCHEMA, {"cardinality", "dst_ips_out"}, "Destination IP cardinality")
         , srcPortCard(FLOW_SCHEMA, {"cardinality", "src_ports_in"}, "Source ports cardinality")
@@ -151,8 +150,6 @@ struct FlowDevice {
 
     void set_topn_settings(size_t topn_count, uint64_t percentile_threshold)
     {
-        topGeoLoc.set_settings(topn_count, percentile_threshold);
-        topASN.set_settings(topn_count, percentile_threshold);
         topByBytes.set_settings(topn_count, percentile_threshold);
         topByPackets.set_settings(topn_count, percentile_threshold);
     }
@@ -168,34 +165,25 @@ protected:
         Counter filtered;
         Counter total;
         counters()
-            : filtered(FLOW_SCHEMA, {"filtered"}, "Count of total flows seen that did not match the configured filter(s) (if any)")
-            , total(FLOW_SCHEMA, {"total"}, "Count of total flows that match the configured filter(s) (if any)")
+            : filtered(FLOW_SCHEMA, {"records_filtered"}, "Count of total flows records seen that did not match the configured filter(s) (if any)")
+            , total(FLOW_SCHEMA, {"records_total"}, "Count of total flows records that match the configured filter(s) (if any)")
         {
         }
     };
     counters _counters;
-    Quantile<std::size_t> _volume;
     size_t _topn_count{10};
     uint64_t _topn_percentile_threshold{0};
-    Rate _rate;
-    Rate _throughput;
 
     using InterfacePair = std::pair<uint32_t, uint32_t>;
     //  <DeviceId, FlowDevice>
     std::map<std::string, std::unique_ptr<FlowDevice>> _devices_metrics;
 
-    void _process_geo_metrics(FlowDevice *device, const pcpp::IPv4Address &ipv4);
-    void _process_geo_metrics(FlowDevice *device, const pcpp::IPv6Address &ipv6);
+    void _process_geo_metrics(FlowDevice *device, const pcpp::IPv4Address &ipv4, size_t payload_size, uint32_t packets);
+    void _process_geo_metrics(FlowDevice *device, const pcpp::IPv6Address &ipv6, size_t payload_size, uint32_t packets);
 
 public:
     FlowMetricsBucket()
-        : _volume(FLOW_SCHEMA, {"volume", "bytes"}, "Quantiles of raw packet bytes")
-        , _rate(FLOW_SCHEMA, {"rates", "packets"}, "Rate of combined flow throughput in packets per second")
-        , _throughput("payload", {"rates", "bytes"}, "Rate of combined flow throughput in bytes per second")
     {
-        set_event_rate_info(FLOW_SCHEMA, {"rates", "events"}, "Rate of all flow events per second");
-        set_num_events_info(FLOW_SCHEMA, {"events"}, "Total flow events processed");
-        set_num_sample_info(FLOW_SCHEMA, {"deep_samples"}, "Total flow events that were sampled for deep inspection");
     }
 
     // get a copy of the counters
@@ -215,19 +203,10 @@ public:
         _topn_percentile_threshold = percentile_threshold;
     }
 
-    // must be thread safe as it is called from time window maintenance thread
-    void on_set_read_only() override
-    {
-        // stop rate collection
-        _rate.cancel();
-        _throughput.cancel();
-    }
-
-    inline void process_filtered(uint64_t filtered, uint64_t raw_size)
+    inline void process_filtered(uint64_t filtered)
     {
         std::unique_lock lock(_mutex);
         _counters.filtered += filtered;
-        _volume.update(raw_size);
     }
     void process_flow(bool deep, const FlowPacket &payload);
 };
@@ -240,11 +219,11 @@ public:
     {
     }
 
-    inline void process_filtered(timespec stamp, uint64_t filtered, uint64_t raw_size)
+    inline void process_filtered(timespec stamp, uint64_t filtered)
     {
         // base event, no sample
         new_event(stamp, false);
-        live_bucket()->process_filtered(filtered, raw_size);
+        live_bucket()->process_filtered(filtered);
     }
     void process_flow(const FlowPacket &payload);
 };
@@ -262,8 +241,9 @@ class FlowStreamHandler final : public visor::StreamMetricsHandler<FlowMetricsMa
 
     std::vector<Ipv4Subnet> _IPv4_ips_list;
     std::vector<Ipv6Subnet> _IPv6_ips_list;
-    std::vector<Ipv4Subnet> _IPv4_devices_list;
-    std::vector<Ipv6Subnet> _IPv6_devices_list;
+
+    std::vector<pcpp::IPv4Address> _IPv4_devices_list;
+    std::vector<pcpp::IPv6Address> _IPv6_devices_list;
 
     enum class ParserType {
         Port,
@@ -290,6 +270,7 @@ class FlowStreamHandler final : public visor::StreamMetricsHandler<FlowMetricsMa
 
     static const inline StreamMetricsHandler::GroupDefType _group_defs = {
         {"cardinality", group::FlowMetrics::Cardinality},
+        {"conversations", group::FlowMetrics::Conversations},
         {"counters", group::FlowMetrics::Counters},
         {"top_geo", group::FlowMetrics::TopGeo},
         {"top_by_bytes", group::FlowMetrics::TopByBytes},
@@ -302,8 +283,9 @@ class FlowStreamHandler final : public visor::StreamMetricsHandler<FlowMetricsMa
 
     void _parse_ports_or_interfaces(const std::vector<std::string> &port_interface_list, ParserType type);
     bool _match_parser(uint32_t value, ParserType type);
-    void _parse_host_specs(const std::vector<std::string> &host_list, bool device = false);
-    bool _match_subnet(std::vector<Ipv4Subnet> &IPv4_subnet_list, std::vector<Ipv6Subnet> &IPv6_subnet_list, uint32_t ipv4 = 0, const uint8_t *ipv6 = nullptr);
+    void _parse_host_specs(const std::vector<std::string> &host_list);
+    void _parse_devices_ips(const std::vector<std::string> &device_list);
+    bool _match_subnet(uint32_t ipv4 = 0, const uint8_t *ipv6 = nullptr);
     bool _filtering(const FlowData &flow);
 
 public:
