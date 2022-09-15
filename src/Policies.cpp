@@ -369,14 +369,14 @@ void Policy::prometheus_metrics(std::stringstream &out)
     if (_merge_like_handlers) {
         auto bucket_map = _get_merged_buckets();
         for (auto &[bucket, hmod] : bucket_map) {
-            hmod->window_prometheus(out, bucket.get(), {{"policy", name()}, {"module", hmod->schema_key() + "_merged"}});
+            hmod->window_prometheus(out, bucket.get(), {{"policy", name()}, {"handler", hmod->schema_key() + "_merged"}});
         }
     } else {
         for (auto &mod : modules()) {
             auto hmod = dynamic_cast<StreamHandler *>(mod);
             if (hmod) {
                 spdlog::stopwatch sw;
-                hmod->window_prometheus(out, {{"policy", name()}, {"module", hmod->name()}});
+                hmod->window_prometheus(out, {{"policy", name()}, {"handler", hmod->name()}});
                 spdlog::get("visor")->debug("{} window_prometheus elapsed time: {}", hmod->name(), sw);
             }
         }
