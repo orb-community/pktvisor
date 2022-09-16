@@ -45,4 +45,6 @@ TEST_CASE("Parse DHCP tests", "[pcap][dhcp]")
     CHECK(counters.REQUEST.value() == 3);
     CHECK(counters.ACK.value() == 3);
 
+    CHECK(j["top_clients"][0]["name"] == "78:4f:43:78:19:bc/Shannons-MBP/192.168.2.205");
+    CHECK(j["top_clients"][1]["name"] == "32:47:73:53:0e:3d/Zenfone-8/192.168.2.248");
 }

@@ -7,6 +7,7 @@
 #include "AbstractMetricsManager.h"
 #include "DhcpLayer.h"
 #include "PcapInputStream.h"
+#include "RequestAckManager.h"
 #include "StreamHandler.h"
 #include <Corrade/Utility/Debug.h>
 #include <limits>
@@ -23,6 +24,8 @@ class DhcpMetricsBucket final : public visor::AbstractMetricsBucket
 
 protected:
     mutable std::shared_mutex _mutex;
+
+    TopN<std::string> _dhcp_topClients;
 
     // total numPackets is tracked in base class num_events
     struct counters {
@@ -49,7 +52,8 @@ protected:
 
 public:
     DhcpMetricsBucket()
-        : _rate_total(DHCP_SCHEMA, {"rates", "total"}, "Rate of all DHCP wire packets (combined ingress and egress) in packets per second")
+        : _dhcp_topClients(DHCP_SCHEMA, "client", {"top_clients"}, "Top DHCP clients")
+        , _rate_total(DHCP_SCHEMA, {"rates", "total"}, "Rate of all DHCP wire packets (combined ingress and egress) in packets per second")
     {
         set_event_rate_info(DHCP_SCHEMA, {"rates", "events"}, "Rate of all DHCP wire packets before filtering per second");
         set_num_events_info(DHCP_SCHEMA, {"wire_packets", "events"}, "Total DHCP wire packets events");
@@ -78,19 +82,28 @@ public:
     }
 
     void process_filtered();
-    void process_dhcp_layer(bool deep, pcpp::DhcpLayer *payload, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint16_t src_port, uint16_t dst_port);
+    void process_dhcp_layer(bool deep, pcpp::DhcpLayer *payload);
+    void new_dhcp_transaction(bool deep, pcpp::DhcpLayer *payload, DhcpTransaction &xact);
 };
 
 class DhcpMetricsManager final : public visor::AbstractMetricsManager<DhcpMetricsBucket>
 {
+    RequestAckManager _request_ack_manager;
+
 public:
     DhcpMetricsManager(const Configurable *window_config)
         : visor::AbstractMetricsManager<DhcpMetricsBucket>(window_config)
     {
     }
 
+    void on_period_shift(timespec stamp, [[maybe_unused]] const DhcpMetricsBucket *maybe_expiring_bucket) override
+    {
+        // Dhcp transaction support
+        _request_ack_manager.purge_old_transactions(stamp);
+    }
+
     void process_filtered(timespec stamp);
-    void process_dhcp_layer(pcpp::DhcpLayer *payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowkey, uint16_t src_port, uint16_t dst_port, timespec stamp);
+    void process_dhcp_layer(pcpp::DhcpLayer *payload, PacketDirection dir, uint32_t flowkey, timespec stamp);
 };
 
 class DhcpStreamHandler final : public visor::StreamMetricsHandler<DhcpMetricsManager>
@@ -109,7 +122,7 @@ class DhcpStreamHandler final : public visor::StreamMetricsHandler<DhcpMetricsMa
     void set_start_tstamp(timespec stamp);
     void set_end_tstamp(timespec stamp);
 
-    bool _filtering(pcpp::DhcpLayer *payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint16_t src_port, uint16_t dst_port, timespec stamp);
+    bool _filtering(pcpp::DhcpLayer *payload, PacketDirection dir, timespec stamp);
 
 public:
     DhcpStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config);
