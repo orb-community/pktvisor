@@ -59,7 +59,7 @@ void CoreRegistry::start(HttpServer *svr)
                 }
                 for (const auto &alias : meta->provides()) {
                     InputPluginPtr mod = _input_registry.instantiate(alias);
-                    _logger->info("Load input stream plugin: {} {}", alias, mod->pluginInterface());
+                    _logger->info("Load input stream plugin: {} version {} interface {}", alias, version, mod->pluginInterface());
                     mod->init_plugin(this, svr);
                     auto result = _input_plugins.insert({std::make_pair(alias, version), std::move(mod)});
                     if (!result.second) {
@@ -89,7 +89,7 @@ void CoreRegistry::start(HttpServer *svr)
                 auto version = meta->data().value("version");
                 for (const auto &alias : meta->provides()) {
                     HandlerPluginPtr mod = _handler_registry.instantiate(alias);
-                    _logger->info("Load stream handler plugin: {} {}", alias, mod->pluginInterface());
+                    _logger->info("Load stream handler plugin: {} version {} interface {}", alias, version, mod->pluginInterface());
                     mod->init_plugin(this, svr);
                     auto result = _handler_plugins.insert({std::make_pair(alias, version), std::move(mod)});
                     if (!result.second) {
