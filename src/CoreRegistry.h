@@ -22,8 +22,10 @@ class PolicyManager;
 class CoreRegistry
 {
 public:
-    typedef std::map<std::string, std::unique_ptr<InputModulePlugin>> InputPluginMap;
-    typedef std::map<std::string, std::unique_ptr<HandlerModulePlugin>> HandlerPluginMap;
+    static constexpr const char *DEFAULT_HANDLER_PLUGIN_VERSION{"1.0"};
+    static constexpr const char *DEFAULT_INPUT_PLUGIN_VERSION{"1.0"};
+    typedef std::map<std::pair<std::string, std::string>, std::unique_ptr<InputModulePlugin>> InputPluginMap;
+    typedef std::map<std::pair<std::string, std::string>, std::unique_ptr<HandlerModulePlugin>> HandlerPluginMap;
 
 private:
     // this is the interface to load/instantiate/unload Corrade plugins (Corrade::PluginManager::Manager)

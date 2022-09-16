@@ -58,7 +58,7 @@ std::vector<Tap *> TapManager::load(const YAML::Node &tap_yaml, bool strict, boo
         }
         auto input_type = it->second["input_type"].as<std::string>();
 
-        auto input_plugin = _registry->input_plugins().find(input_type);
+        auto input_plugin = _registry->input_plugins().find(std::make_pair(input_type, CoreRegistry::DEFAULT_INPUT_PLUGIN_VERSION));
         if (input_plugin == _registry->input_plugins().end()) {
             if (strict) {
                 throw TapException(fmt::format("Tap '{}' requires input stream type '{}' which is not available", tap_name, input_type));

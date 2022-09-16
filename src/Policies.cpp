@@ -113,7 +113,7 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml, bool si
                 for (YAML::const_iterator h_it = handler_node["modules"].begin(); h_it != handler_node["modules"].end(); ++h_it) {
                     auto handler_config = _registry->handler_manager()->validate_handler(h_it, policy_name, window_config, handler_sequence);
                     std::unique_ptr<StreamHandler> handler_module;
-                    auto handler_plugin = _registry->handler_plugins().find(handler_config.type);
+                    auto handler_plugin = _registry->handler_plugins().find(std::make_pair(handler_config.type, handler_config.version));
                     auto handler_name = policy_name + "-" + tap_name + "-" + handler_config.name;
                     if (!handler_sequence || handler_modules.empty()) {
                         handler_module = handler_plugin->second->instantiate(handler_name, input_event_proxy, &handler_config.config, &handler_config.filter);
@@ -181,7 +181,7 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml, bool si
 
 std::pair<std::string, std::string> PolicyManager::create_resources_policy(const std::string &policy_name, InputStream *input, const Config &window_config)
 {
-    auto resources_handler_plugin = _registry->handler_plugins().find("input_resources");
+    auto resources_handler_plugin = _registry->handler_plugins().find(std::make_pair("input_resources", CoreRegistry::DEFAULT_HANDLER_PLUGIN_VERSION));
     if (resources_handler_plugin == _registry->handler_plugins().end()) {
         spdlog::get("visor")->info("input_resources handler not available, not able to create input resources policy for input stream: {}", input->name());
         return std::make_pair(std::string(), std::string());
