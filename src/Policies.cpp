@@ -403,6 +403,7 @@ Policy::BucketMap Policy::_get_merged_buckets(bool prometheus, uint64_t period, 
                 break;
             } else if (is_last) {
                 bucket_map.emplace(std::move(new_bucket), hmod);
+                break;
             }
         }
     }
