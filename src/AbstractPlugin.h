@@ -4,7 +4,6 @@
 
 #pragma once
 
-#include "HttpServer.h"
 #include <Corrade/PluginManager/AbstractPlugin.h>
 #include <exception>
 #include <nlohmann/json.hpp>
@@ -16,6 +15,11 @@ namespace visor {
 using json = nlohmann::json;
 
 class CoreRegistry;
+class HttpServer;
+
+namespace geo {
+class MaxmindDB;
+}
 
 class SchemaException : public std::runtime_error
 {
@@ -39,7 +43,6 @@ public:
 private:
     CoreRegistry *_registry;
 
-protected:
     /**
      * Utility functions for checking json schema
      */
@@ -51,7 +54,7 @@ protected:
      */
     virtual void setup_routes(HttpServer *svr) = 0;
 
-    virtual void on_init_plugin()
+    virtual void on_init_plugin([[maybe_unused]] geo::MaxmindDB *city_db, [[maybe_unused]] geo::MaxmindDB *asn_db)
     {
     }
 
@@ -76,15 +79,14 @@ public:
     {
     }
 
-    void init_plugin(CoreRegistry *mgrs, HttpServer *svr)
+    void init_plugin(CoreRegistry *mgrs, HttpServer *svr, geo::MaxmindDB *city_db, geo::MaxmindDB *asn_db)
     {
         _registry = mgrs;
         if (svr) {
             setup_routes(svr);
         }
-        on_init_plugin();
+        on_init_plugin(city_db, asn_db);
     }
 };
 
 }
-

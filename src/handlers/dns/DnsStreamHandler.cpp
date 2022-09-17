@@ -5,6 +5,7 @@
 #include "DnsStreamHandler.h"
 #include "DnstapInputStream.h"
 #include "GeoDB.h"
+#include "HandlerModulePlugin.h"
 #include "utils.h"
 #include <Corrade/Utility/Debug.h>
 #pragma GCC diagnostic push
@@ -471,26 +472,26 @@ inline bool DnsStreamHandler::_filtering(DnsLayer &payload, [[maybe_unused]] Pac
         }
     }
     if (_f_enabled[Filters::GeoLocNotFound]) {
-        if (!geo::GeoIP().enabled() || (payload.getDnsHeader()->queryOrResponse != QR::query) || !payload.getAdditionalRecordCount()) {
+        if (!HandlerModulePlugin::city->enabled() || (payload.getDnsHeader()->queryOrResponse != QR::query) || !payload.getAdditionalRecordCount()) {
             goto will_filter;
         }
         if (!payload.parseResources(false, true, true) || payload.getFirstAdditionalRecord() == nullptr) {
             goto will_filter;
         }
         auto ecs = parse_additional_records_ecs(payload.getFirstAdditionalRecord());
-        if (!ecs || ecs->client_subnet.empty() || (geo::GeoIP().getGeoLocString(ecs->client_subnet.c_str()) != "Unknown")) {
+        if (!ecs || ecs->client_subnet.empty() || (HandlerModulePlugin::city->getGeoLocString(ecs->client_subnet.c_str()) != "Unknown")) {
             goto will_filter;
         }
     }
     if (_f_enabled[Filters::AsnNotFound]) {
-        if (!geo::GeoASN().enabled() || (payload.getDnsHeader()->queryOrResponse != QR::query) || !payload.getAdditionalRecordCount()) {
+        if (!HandlerModulePlugin::asn->enabled() || (payload.getDnsHeader()->queryOrResponse != QR::query) || !payload.getAdditionalRecordCount()) {
             goto will_filter;
         }
         if (!payload.parseResources(false, true, true) || payload.getFirstAdditionalRecord() == nullptr) {
             goto will_filter;
         }
         auto ecs = parse_additional_records_ecs(payload.getFirstAdditionalRecord());
-        if (!ecs || ecs->client_subnet.empty() || (geo::GeoASN().getASNString(ecs->client_subnet.c_str()) != "Unknown")) {
+        if (!ecs || ecs->client_subnet.empty() || (HandlerModulePlugin::asn->getASNString(ecs->client_subnet.c_str()) != "Unknown")) {
             goto will_filter;
         }
     }
@@ -864,11 +865,11 @@ void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, pcpp::Pro
                     ++_counters.queryECS;
                 }
                 _dns_topQueryECS.update(ecs->client_subnet);
-                if (geo::GeoIP().enabled()) {
-                    _dns_topGeoLocECS.update(geo::GeoIP().getGeoLocString(ecs->client_subnet.c_str()));
+                if (HandlerModulePlugin::city->enabled()) {
+                    _dns_topGeoLocECS.update(HandlerModulePlugin::city->getGeoLocString(ecs->client_subnet.c_str()));
                 }
-                if (geo::GeoASN().enabled()) {
-                    _dns_topASNECS.update(geo::GeoASN().getASNString(ecs->client_subnet.c_str()));
+                if (HandlerModulePlugin::asn->enabled()) {
+                    _dns_topASNECS.update(HandlerModulePlugin::asn->getASNString(ecs->client_subnet.c_str()));
                 }
             }
         }

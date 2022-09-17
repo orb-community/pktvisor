@@ -3,6 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 #include "CoreRegistry.h"
+#include "GeoDB.h"
 #include "HandlerManager.h"
 #include "InputStreamManager.h"
 #include "Policies.h"
@@ -60,7 +61,7 @@ void CoreRegistry::start(HttpServer *svr)
                 for (const auto &alias : meta->provides()) {
                     InputPluginPtr mod = _input_registry.instantiate(alias);
                     _logger->info("Load input stream plugin: {} version {} interface {}", alias, version, mod->pluginInterface());
-                    mod->init_plugin(this, svr);
+                    mod->init_plugin(this, svr, &geo::GeoIP(), &geo::GeoASN());
                     auto result = _input_plugins.insert({std::make_pair(alias, version), std::move(mod)});
                     if (!result.second) {
                         throw std::runtime_error(fmt::format("Input alias '{}' with version '{}' was already loaded.", alias, version));
@@ -90,7 +91,7 @@ void CoreRegistry::start(HttpServer *svr)
                 for (const auto &alias : meta->provides()) {
                     HandlerPluginPtr mod = _handler_registry.instantiate(alias);
                     _logger->info("Load stream handler plugin: {} version {} interface {}", alias, version, mod->pluginInterface());
-                    mod->init_plugin(this, svr);
+                    mod->init_plugin(this, svr, &geo::GeoIP(), &geo::GeoASN());
                     auto result = _handler_plugins.insert({std::make_pair(alias, version), std::move(mod)});
                     if (!result.second) {
                         throw std::runtime_error(fmt::format("Handler alias '{}' with version '{}' was already loaded.", alias, version));
