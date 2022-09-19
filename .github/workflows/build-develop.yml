@@ -9,7 +9,6 @@ on:
   push:
     branches:
       - develop
-      - fix-integration-test
 
 env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
@@ -208,6 +207,7 @@ jobs:
       - name: Replace token
         run: |
           sed -i -e "s/CP_TOKEN/${{ secrets.CRASHPAD_TOKEN }}/g" docker/run.sh
+
       - name: Replace escape url
         run: |
           REPLACE=${{ secrets.CRASHPAD_URL }}
@@ -658,7 +658,7 @@ jobs:
           path: |
             .github/hosted-runner/arm64/terraform.tfstate
           retention-days: 1
-          
+
   package-arm64:
     needs: [ spinup-arm64-runner ]
     runs-on: [self-hosted, linux, ARM64]
@@ -666,6 +666,21 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
+        
+      - name: Build pktvisord + push symbol to backtrace.io
+        uses: ./.github/actions/build-cpp
+        with:
+          context: "."
+          build_type: "Release"
+          asan: "OFF"
+          symbol_url: ${{secrets.SYMBOL_URL}}
+          file: "./Dockerfile"
+
+      - name: Build pktvisor-cli
+        uses: ./.github/actions/build-go
+        with:
+          context: "."
+          file: "./Dockerfile"
 
       - name: Get branch name
         shell: bash
@@ -673,8 +688,20 @@ jobs:
 
       - name: Debug branch name
         run: echo ${{ env.BRANCH_NAME }}
+        
+      - name: Create Build Environment
+        run: cmake -E make_directory ${{github.workspace}}/build
+
+      - name: Get Conan
+        uses: turtlebrowser/get-conan@v1.0
+
+      - name: Configure CMake to generate VERSION
+        shell: bash
+        working-directory: ${{github.workspace}}/build
+        run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE
 
       - name: Get VERSION
+        id: build
         run: |
           echo "VERSION=`cat ${{github.workspace}}/build/VERSION`" >> $GITHUB_ENV
 
@@ -704,6 +731,16 @@ jobs:
       - name: Set up Docker Buildx
         id: buildx
         uses: docker/setup-buildx-action@v2
+        
+      - name: Replace token
+        run: |
+          sed -i -e "s/CP_TOKEN/${{ secrets.CRASHPAD_TOKEN }}/g" docker/run.sh
+
+      - name: Replace escape url
+        run: |
+          REPLACE=${{ secrets.CRASHPAD_URL }}
+          ESCAPED_REPLACE=$(printf '%s\n' "$REPLACE" | sed -e 's/[\/&]/\\&/g')
+          sed -i -e "s/CP_URL/$ESCAPED_REPLACE/g" docker/run.sh
 
       - name: Build + push - pktvisor (multi-arch)
         env:
@@ -712,7 +749,7 @@ jobs:
         with:
           builder: ${{ steps.buildx.outputs.name }}
           context: .
-          file: ./docker/Dockerfile
+          file: ./docker/Dockerfile.crashhandler
           platforms: linux/arm64
           push: true
           tags: ${{ env.IMAGE_NAME }}:arm64
@@ -795,6 +832,29 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
     steps:
+      - name: Get branch name
+        shell: bash
+        run: echo "BRANCH_NAME=$(echo ${GITHUB_REF#refs/heads/} | tr / -)" >> $GITHUB_ENV
+
+      - name: Debug branch name
+        run: echo ${{ env.BRANCH_NAME }}
+        
+      - name: Create Build Environment
+        run: cmake -E make_directory ${{github.workspace}}/build
+
+      - name: Get Conan
+        uses: turtlebrowser/get-conan@v1.0
+
+      - name: Configure CMake to generate VERSION
+        shell: bash
+        working-directory: ${{github.workspace}}/build
+        run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE
+
+      - name: Get VERSION
+        id: build
+        run: |
+          echo "VERSION=`cat ${{github.workspace}}/build/VERSION`" >> $GITHUB_ENV
+    
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v1
         with:
@@ -805,6 +865,9 @@ jobs:
       - name: Create docker manifest
         run: |
           docker manifest create ghcr.io/ns1labs/pktvisor:latest-develop \
+          ghcr.io/ns1labs/pktvisor:amd64 \
+          ghcr.io/ns1labs/pktvisor:arm64
+          docker manifest create ghcr.io/ns1labs/pktvisor:${{ env.VERSION }} \
           ghcr.io/ns1labs/pktvisor:amd64 \
           ghcr.io/ns1labs/pktvisor:arm64
 
@@ -831,5 +894,9 @@ jobs:
           --all \
           docker://ghcr.io/ns1labs/pktvisor:latest-develop \
           docker://docker.io/ns1labs/pktvisor:latest-develop
+          sudo skopeo copy \
+          --all \
+          docker://ghcr.io/ns1labs/pktvisor:${{ env.VERSION }} \
+          docker://docker.io/ns1labs/pktvisor:${{ env.VERSION }}
 
 
