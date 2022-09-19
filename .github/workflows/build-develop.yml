@@ -692,8 +692,26 @@ jobs:
       - name: Create Build Environment
         run: cmake -E make_directory ${{github.workspace}}/build
 
-      - name: Get Conan
-        uses: turtlebrowser/get-conan@v1.0
+      - name: Install setup tools
+        run: pip3 install wheel setuptools
+        shell: bash
+
+      - name: Install conan latest
+        run: pip3 install conan --upgrade
+        shell: bash
+
+      - name: Fix path on Linux
+        run: |
+          echo "/home/ubuntu/.local/bin" >> $GITHUB_PATH
+#          sudo ln -s ~/.local/bin/conan /usr/bin/conan
+        shell: bash
+
+      - name: Fill in output variable
+        id: output_version
+        shell: bash
+        run: |
+          conan --version
+          echo "::set-output name=version::$(conan --version)"
 
       - name: Configure CMake to generate VERSION
         shell: bash
