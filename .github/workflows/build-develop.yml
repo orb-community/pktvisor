@@ -689,6 +689,10 @@ jobs:
       - name: Debug branch name
         run: echo ${{ env.BRANCH_NAME }}
         
+      - name: add cmake
+        run: |
+          sudo apt-get update -y && sudo apt-get install cmake -y
+        
       - name: Create Build Environment
         run: cmake -E make_directory ${{github.workspace}}/build
 
