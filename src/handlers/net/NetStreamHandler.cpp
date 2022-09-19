@@ -4,6 +4,7 @@
 
 #include "NetStreamHandler.h"
 #include "GeoDB.h"
+#include "HandlerModulePlugin.h"
 #include "utils.h"
 #include <Corrade/Utility/Debug.h>
 #pragma GCC diagnostic push
@@ -164,54 +165,54 @@ static inline bool begins_with(std::string_view str, std::string_view prefix)
 bool NetStreamHandler::_filtering(pcpp::Packet &payload, PacketDirection dir, timespec stamp)
 {
     if (_f_enabled[Filters::GeoLocPrefix] || _f_enabled[Filters::GeoLocNotFound]) {
-        if (!geo::GeoIP().enabled() || dir == PacketDirection::unknown) {
+        if (!HandlerModulePlugin::city->enabled() || dir == PacketDirection::unknown) {
             goto will_filter;
         } else if (auto IPv4Layer = payload.getLayerOfType<pcpp::IPv4Layer>(); IPv4Layer) {
             struct sockaddr_in sa4;
             if (dir == PacketDirection::toHost && IPv4tosockaddr(IPv4Layer->getSrcIPv4Address(), &sa4) && std::none_of(_f_geoloc_prefix.begin(), _f_geoloc_prefix.end(), [sa4](const auto &prefix) {
-                    return begins_with(geo::GeoIP().getGeoLocString(&sa4), prefix);
+                    return begins_with(HandlerModulePlugin::city->getGeoLocString(&sa4), prefix);
                 })) {
                 goto will_filter;
             } else if (dir == PacketDirection::fromHost && IPv4tosockaddr(IPv4Layer->getDstIPv4Address(), &sa4) && std::none_of(_f_geoloc_prefix.begin(), _f_geoloc_prefix.end(), [sa4](const auto &prefix) {
-                           return begins_with(geo::GeoIP().getGeoLocString(&sa4), prefix);
+                           return begins_with(HandlerModulePlugin::city->getGeoLocString(&sa4), prefix);
                        })) {
                 goto will_filter;
             }
         } else if (auto IPv6layer = payload.getLayerOfType<pcpp::IPv6Layer>(); IPv6layer) {
             struct sockaddr_in6 sa6;
             if (dir == PacketDirection::toHost && IPv6tosockaddr(IPv6layer->getSrcIPv6Address(), &sa6) && std::none_of(_f_geoloc_prefix.begin(), _f_geoloc_prefix.end(), [sa6](const auto &prefix) {
-                    return begins_with(geo::GeoIP().getGeoLocString(&sa6), prefix);
+                    return begins_with(HandlerModulePlugin::city->getGeoLocString(&sa6), prefix);
                 })) {
                 goto will_filter;
             } else if (dir == PacketDirection::fromHost && IPv6tosockaddr(IPv6layer->getDstIPv6Address(), &sa6) && std::none_of(_f_geoloc_prefix.begin(), _f_geoloc_prefix.end(), [sa6](const auto &prefix) {
-                           return begins_with(geo::GeoIP().getGeoLocString(&sa6), prefix);
+                           return begins_with(HandlerModulePlugin::city->getGeoLocString(&sa6), prefix);
                        })) {
                 goto will_filter;
             }
         }
     }
     if (_f_enabled[Filters::AsnNumber] || _f_enabled[Filters::AsnNotFound]) {
-        if (!geo::GeoASN().enabled() || dir == PacketDirection::unknown) {
+        if (!HandlerModulePlugin::asn->enabled() || dir == PacketDirection::unknown) {
             goto will_filter;
         } else if (auto IPv4Layer = payload.getLayerOfType<pcpp::IPv4Layer>(); IPv4Layer) {
             struct sockaddr_in sa4;
             if (dir == PacketDirection::toHost && IPv4tosockaddr(IPv4Layer->getSrcIPv4Address(), &sa4) && std::none_of(_f_asn_number.begin(), _f_asn_number.end(), [sa4](const auto &prefix) {
-                    return begins_with(geo::GeoASN().getASNString(&sa4), prefix);
+                    return begins_with(HandlerModulePlugin::asn->getASNString(&sa4), prefix);
                 })) {
                 goto will_filter;
             } else if (dir == PacketDirection::fromHost && IPv4tosockaddr(IPv4Layer->getDstIPv4Address(), &sa4) && std::none_of(_f_asn_number.begin(), _f_asn_number.end(), [sa4](const auto &prefix) {
-                           return begins_with(geo::GeoASN().getASNString(&sa4), prefix);
+                           return begins_with(HandlerModulePlugin::asn->getASNString(&sa4), prefix);
                        })) {
                 goto will_filter;
             }
         } else if (auto IPv6layer = payload.getLayerOfType<pcpp::IPv6Layer>(); IPv6layer) {
             struct sockaddr_in6 sa6;
             if (dir == PacketDirection::toHost && IPv6tosockaddr(IPv6layer->getSrcIPv6Address(), &sa6) && std::none_of(_f_asn_number.begin(), _f_asn_number.end(), [sa6](const auto &prefix) {
-                    return begins_with(geo::GeoASN().getASNString(&sa6), prefix);
+                    return begins_with(HandlerModulePlugin::asn->getASNString(&sa6), prefix);
                 })) {
                 goto will_filter;
             } else if (dir == PacketDirection::fromHost && IPv6tosockaddr(IPv6layer->getDstIPv6Address(), &sa6) && std::none_of(_f_asn_number.begin(), _f_asn_number.end(), [sa6](const auto &prefix) {
-                           return begins_with(geo::GeoASN().getASNString(&sa6), prefix);
+                           return begins_with(HandlerModulePlugin::asn->getASNString(&sa6), prefix);
                        })) {
                 goto will_filter;
             }
@@ -640,14 +641,14 @@ void NetworkMetricsBucket::process_net_layer(NetworkPacket &packet)
 
 inline void NetworkMetricsBucket::_process_geo_metrics(const pcpp::IPv4Address &ipv4)
 {
-    if (geo::enabled() && group_enabled(group::NetMetrics::TopGeo)) {
+    if ((HandlerModulePlugin::asn->enabled() || HandlerModulePlugin::city->enabled()) && group_enabled(group::NetMetrics::TopGeo)) {
         struct sockaddr_in sa4;
         if (IPv4tosockaddr(ipv4, &sa4)) {
-            if (geo::GeoIP().enabled()) {
-                _topGeoLoc.update(geo::GeoIP().getGeoLocString(&sa4));
+            if (HandlerModulePlugin::city->enabled()) {
+                _topGeoLoc.update(HandlerModulePlugin::city->getGeoLocString(&sa4));
             }
-            if (geo::GeoASN().enabled()) {
-                _topASN.update(geo::GeoASN().getASNString(&sa4));
+            if (HandlerModulePlugin::asn->enabled()) {
+                _topASN.update(HandlerModulePlugin::asn->getASNString(&sa4));
             }
         }
     }
@@ -655,14 +656,14 @@ inline void NetworkMetricsBucket::_process_geo_metrics(const pcpp::IPv4Address &
 
 inline void NetworkMetricsBucket::_process_geo_metrics(const pcpp::IPv6Address &ipv6)
 {
-    if (geo::enabled() && group_enabled(group::NetMetrics::TopGeo)) {
+    if ((HandlerModulePlugin::asn->enabled() || HandlerModulePlugin::city->enabled()) && group_enabled(group::NetMetrics::TopGeo)) {
         struct sockaddr_in6 sa6;
         if (IPv6tosockaddr(ipv6, &sa6)) {
-            if (geo::GeoIP().enabled()) {
-                _topGeoLoc.update(geo::GeoIP().getGeoLocString(&sa6));
+            if (HandlerModulePlugin::city->enabled()) {
+                _topGeoLoc.update(HandlerModulePlugin::city->getGeoLocString(&sa6));
             }
-            if (geo::GeoASN().enabled()) {
-                _topASN.update(geo::GeoASN().getASNString(&sa6));
+            if (HandlerModulePlugin::asn->enabled()) {
+                _topASN.update(HandlerModulePlugin::asn->getASNString(&sa6));
             }
         }
     }

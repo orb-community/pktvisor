@@ -6,6 +6,7 @@
 
 #include "AbstractManager.h"
 #include "StreamHandler.h"
+#include <spdlog/spdlog.h>
 
 namespace visor {
 

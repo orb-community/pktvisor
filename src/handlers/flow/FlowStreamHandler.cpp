@@ -4,6 +4,7 @@
 
 #include "FlowStreamHandler.h"
 #include "GeoDB.h"
+#include "HandlerModulePlugin.h"
 #include "utils.h"
 #include <Corrade/Utility/Debug.h>
 #pragma GCC diagnostic push
@@ -297,32 +298,32 @@ bool FlowStreamHandler::_filtering(const FlowData &flow)
         && !_match_parser(flow.if_out_index, ParserType::Interface)) {
         return true;
     }
-    if (_f_enabled[Filters::GeoLocNotFound] && geo::GeoIP().enabled()) {
+    if (_f_enabled[Filters::GeoLocNotFound] && HandlerModulePlugin::city->enabled()) {
         if (!flow.is_ipv6) {
             struct sockaddr_in sa4;
-            if ((IPv4_to_sockaddr(flow.ipv4_in, &sa4) && geo::GeoIP().getGeoLocString(&sa4) != "Unknown")
-                && (IPv4_to_sockaddr(flow.ipv4_out, &sa4) && geo::GeoIP().getGeoLocString(&sa4) != "Unknown")) {
+            if ((IPv4_to_sockaddr(flow.ipv4_in, &sa4) && HandlerModulePlugin::city->getGeoLocString(&sa4) != "Unknown")
+                && (IPv4_to_sockaddr(flow.ipv4_out, &sa4) && HandlerModulePlugin::city->getGeoLocString(&sa4) != "Unknown")) {
                 return true;
             }
         } else {
             struct sockaddr_in6 sa6;
-            if ((IPv6_to_sockaddr(flow.ipv6_in, &sa6) && geo::GeoIP().getGeoLocString(&sa6) != "Unknown")
-                && (IPv6_to_sockaddr(flow.ipv6_out, &sa6) && geo::GeoIP().getGeoLocString(&sa6) != "Unknown")) {
+            if ((IPv6_to_sockaddr(flow.ipv6_in, &sa6) && HandlerModulePlugin::city->getGeoLocString(&sa6) != "Unknown")
+                && (IPv6_to_sockaddr(flow.ipv6_out, &sa6) && HandlerModulePlugin::city->getGeoLocString(&sa6) != "Unknown")) {
                 return true;
             }
         }
     }
-    if (_f_enabled[Filters::AsnNotFound] && geo::GeoASN().enabled()) {
+    if (_f_enabled[Filters::AsnNotFound] && HandlerModulePlugin::asn->enabled()) {
         if (!flow.is_ipv6) {
             struct sockaddr_in sa4;
-            if ((IPv4_to_sockaddr(flow.ipv4_in, &sa4) && geo::GeoASN().getASNString(&sa4) != "Unknown")
-                && (IPv4_to_sockaddr(flow.ipv4_out, &sa4) && geo::GeoASN().getASNString(&sa4) != "Unknown")) {
+            if ((IPv4_to_sockaddr(flow.ipv4_in, &sa4) && HandlerModulePlugin::asn->getASNString(&sa4) != "Unknown")
+                && (IPv4_to_sockaddr(flow.ipv4_out, &sa4) && HandlerModulePlugin::asn->getASNString(&sa4) != "Unknown")) {
                 return true;
             }
         } else {
             struct sockaddr_in6 sa6;
-            if ((IPv6_to_sockaddr(flow.ipv6_in, &sa6) && geo::GeoASN().getASNString(&sa6) != "Unknown")
-                && (IPv6_to_sockaddr(flow.ipv6_out, &sa6) && geo::GeoASN().getASNString(&sa6) != "Unknown")) {
+            if ((IPv6_to_sockaddr(flow.ipv6_in, &sa6) && HandlerModulePlugin::asn->getASNString(&sa6) != "Unknown")
+                && (IPv6_to_sockaddr(flow.ipv6_out, &sa6) && HandlerModulePlugin::asn->getASNString(&sa6) != "Unknown")) {
                 return true;
             }
         }
@@ -810,23 +811,23 @@ void FlowMetricsBucket::process_flow(bool deep, const FlowPacket &payload)
 
 inline void FlowMetricsBucket::_process_geo_metrics(FlowDevice *device, const pcpp::IPv4Address &ipv4, size_t payload_size, uint32_t packets)
 {
-    if (geo::enabled() && group_enabled(group::FlowMetrics::TopGeo)) {
+    if ((HandlerModulePlugin::asn->enabled() || HandlerModulePlugin::city->enabled()) && group_enabled(group::FlowMetrics::TopGeo)) {
         struct sockaddr_in sa4;
         if (IPv4_to_sockaddr(ipv4, &sa4)) {
-            if (geo::GeoIP().enabled()) {
+            if (HandlerModulePlugin::city->enabled()) {
                 if (group_enabled(group::FlowMetrics::TopByBytes)) {
-                    device->topByBytes.topGeoLoc.update(geo::GeoIP().getGeoLocString(&sa4), payload_size);
+                    device->topByBytes.topGeoLoc.update(HandlerModulePlugin::city->getGeoLocString(&sa4), payload_size);
                 }
                 if (group_enabled(group::FlowMetrics::TopByPackets)) {
-                    device->topByPackets.topGeoLoc.update(geo::GeoIP().getGeoLocString(&sa4), packets);
+                    device->topByPackets.topGeoLoc.update(HandlerModulePlugin::city->getGeoLocString(&sa4), packets);
                 }
             }
-            if (geo::GeoASN().enabled()) {
+            if (HandlerModulePlugin::asn->enabled()) {
                 if (group_enabled(group::FlowMetrics::TopByBytes)) {
-                    device->topByBytes.topASN.update(geo::GeoASN().getASNString(&sa4), payload_size);
+                    device->topByBytes.topASN.update(HandlerModulePlugin::asn->getASNString(&sa4), payload_size);
                 }
                 if (group_enabled(group::FlowMetrics::TopByPackets)) {
-                    device->topByPackets.topASN.update(geo::GeoASN().getASNString(&sa4), packets);
+                    device->topByPackets.topASN.update(HandlerModulePlugin::asn->getASNString(&sa4), packets);
                 }
             }
         }
@@ -835,23 +836,23 @@ inline void FlowMetricsBucket::_process_geo_metrics(FlowDevice *device, const pc
 
 inline void FlowMetricsBucket::_process_geo_metrics(FlowDevice *device, const pcpp::IPv6Address &ipv6, size_t payload_size, uint32_t packets)
 {
-    if (geo::enabled() && group_enabled(group::FlowMetrics::TopGeo)) {
+    if ((HandlerModulePlugin::asn->enabled() || HandlerModulePlugin::city->enabled()) && group_enabled(group::FlowMetrics::TopGeo)) {
         struct sockaddr_in6 sa6;
         if (IPv6_to_sockaddr(ipv6, &sa6)) {
-            if (geo::GeoIP().enabled()) {
+            if (HandlerModulePlugin::city->enabled()) {
                 if (group_enabled(group::FlowMetrics::TopByBytes)) {
-                    device->topByBytes.topGeoLoc.update(geo::GeoIP().getGeoLocString(&sa6), payload_size);
+                    device->topByBytes.topGeoLoc.update(HandlerModulePlugin::city->getGeoLocString(&sa6), payload_size);
                 }
                 if (group_enabled(group::FlowMetrics::TopByPackets)) {
-                    device->topByPackets.topGeoLoc.update(geo::GeoIP().getGeoLocString(&sa6), packets);
+                    device->topByPackets.topGeoLoc.update(HandlerModulePlugin::city->getGeoLocString(&sa6), packets);
                 }
             }
-            if (geo::GeoASN().enabled()) {
+            if (HandlerModulePlugin::asn->enabled()) {
                 if (group_enabled(group::FlowMetrics::TopByBytes)) {
-                    device->topByBytes.topASN.update(geo::GeoASN().getASNString(&sa6), payload_size);
+                    device->topByBytes.topASN.update(HandlerModulePlugin::asn->getASNString(&sa6), payload_size);
                 }
                 if (group_enabled(group::FlowMetrics::TopByPackets)) {
-                    device->topByPackets.topASN.update(geo::GeoASN().getASNString(&sa6), packets);
+                    device->topByPackets.topASN.update(HandlerModulePlugin::asn->getASNString(&sa6), packets);
                 }
             }
         }

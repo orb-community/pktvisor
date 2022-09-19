@@ -55,6 +55,5 @@ private:
 
 MaxmindDB &GeoIP();
 MaxmindDB &GeoASN();
-bool enabled();
 
 }

@@ -7,15 +7,15 @@ TEST_CASE("GeoIP", "[geoip]")
 {
     SECTION("Geo enablement")
     {
-        CHECK(!visor::geo::enabled());
+        CHECK(!visor::geo::GeoIP().enabled());
         CHECK_THROWS(visor::geo::GeoIP().enable("nonexistent.mmdb"));
-        CHECK(!visor::geo::enabled());
+        CHECK(!visor::geo::GeoIP().enabled());
         CHECK(visor::geo::GeoIP().getGeoLocString("2a02:dac0::") == "");
         CHECK(visor::geo::GeoASN().getASNString("2a02:dac0::") == "");
         CHECK_NOTHROW(visor::geo::GeoIP().enable("tests/fixtures/GeoIP2-City-Test.mmdb"));
-        CHECK(visor::geo::enabled());
+        CHECK(visor::geo::GeoIP().enabled());
         CHECK_NOTHROW(visor::geo::GeoASN().enable("tests/fixtures/GeoIP2-ISP-Test.mmdb"));
-        CHECK(visor::geo::enabled());
+        CHECK(visor::geo::GeoASN().enabled());
     }
 
     SECTION("basic Geo lookup")
@@ -76,9 +76,9 @@ TEST_CASE("GeoIP without cache", "[geoip]")
     SECTION("Geo enablement")
     {
         CHECK_NOTHROW(visor::geo::GeoIP().enable("tests/fixtures/GeoIP2-City-Test.mmdb", 0));
-        CHECK(visor::geo::enabled());
+        CHECK(visor::geo::GeoIP().enabled());
         CHECK_NOTHROW(visor::geo::GeoASN().enable("tests/fixtures/GeoIP2-ISP-Test.mmdb", 0));
-        CHECK(visor::geo::enabled());
+        CHECK(visor::geo::GeoASN().enabled());
     }
 
     SECTION("basic Geo lookup")

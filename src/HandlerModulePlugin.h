@@ -17,8 +17,10 @@ class InputEventProxy;
 
 class HandlerModulePlugin : public AbstractPlugin
 {
-
 public:
+    static geo::MaxmindDB *asn;
+    static geo::MaxmindDB *city;
+
     static std::string pluginInterface()
     {
         return "visor.module.handler/1.0";
@@ -32,6 +34,12 @@ public:
     explicit HandlerModulePlugin(Corrade::PluginManager::AbstractManager &manager, const std::string &plugin)
         : AbstractPlugin{manager, plugin}
     {
+    }
+
+    void on_init_plugin(geo::MaxmindDB *city_db, geo::MaxmindDB *asn_db) override
+    {
+        city = city_db;
+        asn = asn_db;
     }
 
     /**

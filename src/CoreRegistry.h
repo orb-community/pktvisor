@@ -9,6 +9,10 @@
 #include <map>
 #include <yaml-cpp/yaml.h>
 
+namespace spdlog {
+class logger;
+}
+
 namespace visor {
 
 class InputStreamManager;

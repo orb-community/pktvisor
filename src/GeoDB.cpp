@@ -21,11 +21,6 @@ MaxmindDB &GeoASN()
     return asn_db;
 }
 
-bool enabled()
-{
-    return (GeoIP().enabled() || GeoASN().enabled());
-}
-
 void MaxmindDB::enable(const std::string &database_filename, int cache_size)
 {
     auto status = MMDB_open(database_filename.c_str(), MMDB_MODE_MMAP, &_mmdb);
