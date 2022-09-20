@@ -75,6 +75,8 @@ jobs:
     # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
 
     runs-on: ubuntu-latest
+    outputs:
+      version_number: ${{ steps.build.outputs.version }}
     steps:
       - uses: actions/checkout@v2
 
@@ -103,6 +105,12 @@ jobs:
         # The CMake binaries on the Github Actions machines are (as of this writing) 3.12
         run: PKG_CONFIG_PATH=${{github.workspace}}/local/lib/pkgconfig cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE
 
+      - name: Get VERSION
+        id: build
+        run: |
+          echo "VERSION=`cat ${{github.workspace}}/build/VERSION`" >> $GITHUB_ENV
+          echo "::set-output name=version::$(cat ${{github.workspace}}/build/VERSION)"
+
       - name: Build
         working-directory: ${{github.workspace}}/build
         shell: bash
@@ -125,9 +133,6 @@ jobs:
   package-amd64:
     needs: [ unit-tests-linux ]
     runs-on: ubuntu-latest
-    outputs:
-      version_number: ${{ steps.build.outputs.version }}
-      branch_name: ${{ steps.branch.outputs.name }}
     # if this is a push into one of our main branches (rather than just a pull request), we will also package
     if: github.event_name != 'pull_request'
     steps:
@@ -150,38 +155,6 @@ jobs:
 
       - name: Debug artifacts
         run: ls -lha .
-
-      - name: Get branch name
-        id: branch
-        shell: bash
-        run: |
-          echo "BRANCH_NAME=$(echo ${GITHUB_REF#refs/heads/} | tr / -)" >> $GITHUB_ENV
-          echo "::set-output name=name::$(echo ${GITHUB_REF#refs/heads/} | tr / -)"          
-
-      - name: Debug branch name
-        run: echo ${{ env.BRANCH_NAME }}
-        
-      - name: Create Build Environment
-        run: cmake -E make_directory ${{github.workspace}}/build
-
-      - name: Get Conan
-        uses: turtlebrowser/get-conan@v1.0
-
-      - name: Configure CMake to generate VERSION
-        shell: bash
-        working-directory: ${{github.workspace}}/build
-        run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE
-
-      - name: Get VERSION
-        id: build
-        run: |
-          echo "VERSION=`cat ${{github.workspace}}/build/VERSION`" >> $GITHUB_ENV
-          echo "::set-output name=version::$(cat ${{github.workspace}}/build/VERSION)"
-
-      - name: Debug version
-        run: |
-          echo ${{ env.VERSION }}
-          echo ${{ steps.build.outputs.version }}
 
       - name: Generate ref tag (develop)
         run: |
@@ -233,7 +206,7 @@ jobs:
           file: ./docker/Dockerfile.crashhandler
           platforms: linux/amd64
           push: true
-          tags: ${{ env.IMAGE_NAME }}:${{ env.VERSION }} , ${{ env.IMAGE_NAME }}:${{ env.REF_TAG }} , ${{ env.IMAGE_NAME2 }}:amd64
+          tags: ${{ env.IMAGE_NAME }}:${{ needs.unit-tests-linux.outputs.version_number }} , ${{ env.IMAGE_NAME }}:${{ env.REF_TAG }} , ${{ env.IMAGE_NAME2 }}:amd64
 
   build-app-image-x64:
     needs: [ package-amd64 ]
@@ -661,7 +634,7 @@ jobs:
           retention-days: 1
 
   package-arm64:
-    needs: [ spinup-arm64-runner ]
+    needs: [ unit-tests-linux, spinup-arm64-runner ]
     runs-on: [self-hosted, linux, ARM64]
     if: github.event_name != 'pull_request'
     steps:
@@ -682,32 +655,9 @@ jobs:
         with:
           context: "."
           file: "./Dockerfile"
-
-      - name: Get branch name
-        shell: bash
-        run: echo "BRANCH_NAME=$(echo ${GITHUB_REF#refs/heads/} | tr / -)" >> $GITHUB_ENV
-
-      - name: Debug branch name
-        run: echo ${{ env.BRANCH_NAME }}
-        
-      - name: Create Build Environment
-        run: cmake -E make_directory ${{github.workspace}}/build
-
-      - name: Get Conan
-        uses: turtlebrowser/get-conan@v1.0
-
-      - name: Configure CMake to generate VERSION
-        shell: bash
-        working-directory: ${{github.workspace}}/build
-        run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE
-
-      - name: Get VERSION
-        id: build
-        run: |
-          echo "VERSION=`cat ${{github.workspace}}/build/VERSION`" >> $GITHUB_ENV
-
-      - name: Debug version
-        run: echo ${{ env.VERSION }}
+          
+      - name: Debug artifacts
+        run: ls -lha .
 
       - name: Generate ref tag (develop)
         if: ${{ env.BRANCH_NAME == 'develop' }}
@@ -715,9 +665,6 @@ jobs:
           echo "REF_TAG=latest-develop" >> $GITHUB_ENV
           echo "PRERELEASE=false" >> $GITHUB_ENV
           echo "DRAFT=true" >> $GITHUB_ENV
-
-      - name: Debug ref tag
-        run: echo ${{ env.REF_TAG }}
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v1
@@ -829,33 +776,10 @@ jobs:
           terraform destroy -auto-approve
           
   pushing-manifests:
-    needs: [ remove-github-runner-arm64 ]
+    needs: [ unit-tests-linux, remove-github-runner-arm64 ]
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
-    steps:
-      - name: Get branch name
-        shell: bash
-        run: echo "BRANCH_NAME=$(echo ${GITHUB_REF#refs/heads/} | tr / -)" >> $GITHUB_ENV
-
-      - name: Debug branch name
-        run: echo ${{ env.BRANCH_NAME }}
-        
-      - name: Create Build Environment
-        run: cmake -E make_directory ${{github.workspace}}/build
-
-      - name: Get Conan
-        uses: turtlebrowser/get-conan@v1.0
-
-      - name: Configure CMake to generate VERSION
-        shell: bash
-        working-directory: ${{github.workspace}}/build
-        run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE
-
-      - name: Get VERSION
-        id: build
-        run: |
-          echo "VERSION=`cat ${{github.workspace}}/build/VERSION`" >> $GITHUB_ENV
-    
+    steps:    
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v1
         with:
@@ -866,9 +790,6 @@ jobs:
       - name: Create docker manifest
         run: |
           docker manifest create ghcr.io/ns1labs/pktvisor:latest-develop \
-          ghcr.io/ns1labs/pktvisor:amd64 \
-          ghcr.io/ns1labs/pktvisor:arm64
-          docker manifest create ghcr.io/ns1labs/pktvisor:${{ env.VERSION }} \
           ghcr.io/ns1labs/pktvisor:amd64 \
           ghcr.io/ns1labs/pktvisor:arm64
 
@@ -897,7 +818,7 @@ jobs:
           docker://docker.io/ns1labs/pktvisor:latest-develop
           sudo skopeo copy \
           --all \
-          docker://ghcr.io/ns1labs/pktvisor:${{ env.VERSION }} \
-          docker://docker.io/ns1labs/pktvisor:${{ env.VERSION }}
+          docker://ghcr.io/ns1labs/pktvisor:latest-develop \
+          docker://docker.io/ns1labs/pktvisor:${{ needs.unit-tests-linux.outputs.version_number }}
 
 
