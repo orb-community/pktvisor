@@ -874,7 +874,7 @@ TEST_CASE("Policies", "[policies]")
         YAML::Node config_file = YAML::Load(policies_config_bad3);
 
         REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"]));
-        REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["policies"]), "invalid input filter: invalid value for key: bpf");
+        REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["policies"]), "missing or invalid handler configuration at key 'handlers'");
     }
 
     SECTION("Bad Config: exception on input start")
