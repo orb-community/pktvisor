@@ -792,9 +792,6 @@ jobs:
           docker manifest create ghcr.io/ns1labs/pktvisor:latest-develop \
           ghcr.io/ns1labs/pktvisor:amd64 \
           ghcr.io/ns1labs/pktvisor:arm64
-          docker manifest create ghcr.io/ns1labs/pktvisor:${{ needs.unit-tests-linux.outputs.version_number }} \
-          ghcr.io/ns1labs/pktvisor:amd64 \
-          ghcr.io/ns1labs/pktvisor:arm64
 
       - name: Push manifest to ghcr.io
         run: |
@@ -821,7 +818,7 @@ jobs:
           docker://docker.io/ns1labs/pktvisor:latest-develop
           sudo skopeo copy \
           --all \
-          docker://ghcr.io/ns1labs/pktvisor:${{ needs.unit-tests-linux.outputs.version_number }} \
+          docker://ghcr.io/ns1labs/pktvisor:latest-develop \
           docker://docker.io/ns1labs/pktvisor:${{ needs.unit-tests-linux.outputs.version_number }}
 
 
