@@ -34,6 +34,16 @@ enum FlowMetrics : visor::MetricGroupIntType {
 };
 }
 
+struct InterfaceEnrich {
+    std::string name;
+    std::string descr;
+};
+
+struct DeviceEnrich {
+    std::string name;
+    std::unordered_map<uint32_t, InterfaceEnrich> interfaces;
+};
+
 struct FlowData {
     bool is_ipv6;
     IP_PROTOCOL l4;
@@ -160,7 +170,7 @@ class FlowMetricsBucket final : public visor::AbstractMetricsBucket
 
 protected:
     mutable std::shared_mutex _mutex;
-
+    std::string _concat_if;
     struct counters {
         Counter filtered;
         Counter total;
@@ -173,8 +183,6 @@ protected:
     counters _counters;
     size_t _topn_count{10};
     uint64_t _topn_percentile_threshold{0};
-
-    using InterfacePair = std::pair<uint32_t, uint32_t>;
     //  <DeviceId, FlowDevice>
     std::map<std::string, std::unique_ptr<FlowDevice>> _devices_metrics;
 
@@ -203,6 +211,11 @@ public:
         _topn_percentile_threshold = percentile_threshold;
     }
 
+    inline void set_concatenate_interface(const std::string &concat)
+    {
+        _concat_if = concat;
+    }
+
     inline void process_filtered(uint64_t filtered)
     {
         std::unique_lock lock(_mutex);
@@ -213,10 +226,18 @@ public:
 
 class FlowMetricsManager final : public visor::AbstractMetricsManager<FlowMetricsBucket>
 {
+    std::string _concat_if;
+
 public:
     FlowMetricsManager(const Configurable *window_config)
         : visor::AbstractMetricsManager<FlowMetricsBucket>(window_config)
     {
+    }
+
+    void set_concatenate_interface(const std::string &concat)
+    {
+        _concat_if = concat;
+        live_bucket()->set_concatenate_interface(_concat_if);
     }
 
     inline void process_filtered(timespec stamp, uint64_t filtered)
@@ -226,6 +247,11 @@ public:
         live_bucket()->process_filtered(filtered);
     }
     void process_flow(const FlowPacket &payload);
+
+    void on_period_shift([[maybe_unused]] timespec stamp, [[maybe_unused]] const FlowMetricsBucket *maybe_expiring_bucket) override
+    {
+        live_bucket()->set_concatenate_interface(_concat_if);
+    }
 };
 
 class FlowStreamHandler final : public visor::StreamMetricsHandler<FlowMetricsManager>
@@ -289,6 +315,8 @@ class FlowStreamHandler final : public visor::StreamMetricsHandler<FlowMetricsMa
     bool _filtering(const FlowData &flow);
 
 public:
+    static thread_local std::unordered_map<std::string, DeviceEnrich> enrich_data;
+
     FlowStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config);
     ~FlowStreamHandler() override;
 
