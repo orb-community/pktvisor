@@ -61,8 +61,8 @@ public:
 
 class InputResourcesMetricsManager final : public visor::AbstractMetricsManager<InputResourcesMetricsBucket>
 {
-    uint16_t policy_total;
-    uint16_t handler_total;
+    int16_t policy_total;
+    int16_t handler_total;
 
 public:
     InputResourcesMetricsManager(const Configurable *window_config)

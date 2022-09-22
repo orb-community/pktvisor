@@ -9,7 +9,11 @@
 static inline void timespec_diff(struct timespec *a, struct timespec *b,
     struct timespec *result)
 {
-    result->tv_sec = a->tv_sec - b->tv_sec;
+    if (a->tv_sec > b->tv_sec) {
+        result->tv_sec = a->tv_sec - b->tv_sec;
+    } else {
+        result->tv_sec = b->tv_sec - a->tv_sec;
+    }
     result->tv_nsec = a->tv_nsec - b->tv_nsec;
     if (result->tv_nsec < 0) {
         --result->tv_sec;
@@ -42,7 +46,7 @@ size_t QueryResponsePairMgr::purge_old_transactions(timespec now)
     // TODO this is a simple linear search, can optimize with some better data structures
     std::vector<DnsXactID> timed_out;
     for (auto i : _dns_transactions) {
-        if (now.tv_sec - i.second.queryTS.tv_sec >= _ttl_secs) {
+        if (now.tv_sec >= _ttl_secs + i.second.queryTS.tv_sec) {
             timed_out.push_back(i.first);
         }
     }
