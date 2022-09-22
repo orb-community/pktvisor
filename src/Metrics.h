@@ -128,6 +128,11 @@ public:
         _value += other._value;
     }
 
+    void clear()
+    {
+        _value = 0;
+    }
+
     // Metric
     void to_json(json &j) const override;
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override;
