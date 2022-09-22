@@ -49,6 +49,41 @@ TEST_CASE("Parse sflow stream", "[sflow][flow]")
     CHECK(j["devices"]["192.168.0.13"]["top_src_ips_and_port_bytes"][0]["name"] == "10.4.1.2:57420");
 }
 
+TEST_CASE("Parse sflow with enrichment", "[sflow][flow]")
+{
+    FlowInputStream stream{"sflow-test"};
+    stream.config_set("flow_type", "sflow");
+    stream.config_set("pcap_file", "tests/fixtures/ecmp.pcap");
+
+    visor::Config c;
+    auto stream_proxy = stream.add_event_proxy(c);
+    c.config_set<uint64_t>("num_periods", 1);
+    FlowStreamHandler flow_handler{"flow-test", stream_proxy, &c};
+    flow_handler.config_set<visor::Configurable::StringList>("device_map", {"route1,192.168.0.11,eth0,37,provide Y", "route2,192.168.0.12,eth3,4"});
+    flow_handler.config_set<visor::Configurable::StringList>("only_interfaces", {"37", "4", "52"});
+    flow_handler.config_set<bool>("first_filter_if_as_label", true);
+
+    flow_handler.start();
+    stream.start();
+    stream.stop();
+    flow_handler.stop();
+
+    auto counters = flow_handler.metrics()->bucket(0)->counters();
+    auto event_data = flow_handler.metrics()->bucket(0)->event_data_locked();
+
+    // confirmed with wireshark
+    CHECK(event_data.num_events->value() == 9279);
+    CHECK(event_data.num_samples->value() == 9279);
+    CHECK(counters.filtered.value() == 8573);
+    CHECK(counters.total.value() == 44212);
+
+    nlohmann::json j;
+    flow_handler.metrics()->bucket(0)->to_json(j);
+    CHECK(j["devices"]["route1|eth0"]["top_in_interfaces_bytes"][0]["name"] == "eth0");
+    CHECK(j["devices"]["route2|37"]["top_in_interfaces_bytes"][0]["name"] == "eth3");
+    CHECK(j["devices"]["192.168.0.13|37"]["top_in_interfaces_bytes"][0]["name"] == "52");
+}
+
 TEST_CASE("Parse sflow stream without sampling", "[sflow][flow]")
 {
 

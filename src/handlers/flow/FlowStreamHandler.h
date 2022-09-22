@@ -34,6 +34,18 @@ enum FlowMetrics : visor::MetricGroupIntType {
 };
 }
 
+struct InterfaceEnrich {
+    std::string name;
+    std::string descr;
+};
+
+struct DeviceEnrich {
+    std::string name;
+    std::unordered_map<uint32_t, InterfaceEnrich> interfaces;
+};
+
+typedef std::unordered_map<std::string, DeviceEnrich> EnrichMap;
+
 struct FlowData {
     bool is_ipv6;
     IP_PROTOCOL l4;
@@ -83,8 +95,8 @@ struct FlowTopN {
         , topSrcIPandPort(FLOW_SCHEMA, "ip_port", {"top_src_ips_and_port_" + metric}, "Top source IP addresses and port by " + metric)
         , topDstIPandPort(FLOW_SCHEMA, "ip_port", {"top_dst_ips_and_port_" + metric}, "Top destination IP addresses and port by " + metric)
         , topConversations(FLOW_SCHEMA, "conversations", {"top_conversations_" + metric}, "Top source IP addresses and port by " + metric)
-        , topInIfIndex(FLOW_SCHEMA, "index", {"top_in_if_index_" + metric}, "Top input interface indexes by " + metric)
-        , topOutIfIndex(FLOW_SCHEMA, "index", {"top_out_if_index_" + metric}, "Top output interface indexes by " + metric)
+        , topInIfIndex(FLOW_SCHEMA, "interface", {"top_in_interfaces_" + metric}, "Top input interfaces by " + metric)
+        , topOutIfIndex(FLOW_SCHEMA, "interface", {"top_out_interfaces_" + metric}, "Top output interfaces by " + metric)
         , topGeoLoc(FLOW_SCHEMA, "geo_loc", {"top_geoLoc_" + metric}, "Top GeoIP locations by " + metric)
         , topASN(FLOW_SCHEMA, "asn", {"top_ASN_" + metric}, "Top ASNs by IP by " + metric)
     {
@@ -157,10 +169,10 @@ struct FlowDevice {
 
 class FlowMetricsBucket final : public visor::AbstractMetricsBucket
 {
-
 protected:
     mutable std::shared_mutex _mutex;
-
+    EnrichMap *_enrich_data{nullptr};
+    std::unordered_map<std::string, std::string> *_concat_if{nullptr};
     struct counters {
         Counter filtered;
         Counter total;
@@ -173,8 +185,6 @@ protected:
     counters _counters;
     size_t _topn_count{10};
     uint64_t _topn_percentile_threshold{0};
-
-    using InterfacePair = std::pair<uint32_t, uint32_t>;
     //  <DeviceId, FlowDevice>
     std::map<std::string, std::unique_ptr<FlowDevice>> _devices_metrics;
 
@@ -203,6 +213,12 @@ public:
         _topn_percentile_threshold = percentile_threshold;
     }
 
+    inline void set_enrich_data(std::unordered_map<std::string, std::string> *concat, EnrichMap *enrich_data)
+    {
+        _concat_if = concat;
+        _enrich_data = enrich_data;
+    }
+
     inline void process_filtered(uint64_t filtered)
     {
         std::unique_lock lock(_mutex);
@@ -213,10 +229,26 @@ public:
 
 class FlowMetricsManager final : public visor::AbstractMetricsManager<FlowMetricsBucket>
 {
+    EnrichMap _enrich_data;
+    std::unordered_map<std::string, std::string> _concat_if;
+
 public:
     FlowMetricsManager(const Configurable *window_config)
         : visor::AbstractMetricsManager<FlowMetricsBucket>(window_config)
     {
+    }
+
+    inline void set_enrich_data(std::unordered_map<std::string, std::string> concat, EnrichMap enrich_data)
+    {
+        _concat_if = concat;
+        _enrich_data = enrich_data;
+        if (!_concat_if.empty() && !_enrich_data.empty()) {
+            live_bucket()->set_enrich_data(&_concat_if, &_enrich_data);
+        } else if (!_concat_if.empty()) {
+            live_bucket()->set_enrich_data(&_concat_if, nullptr);
+        } else if (!_concat_if.empty()) {
+            live_bucket()->set_enrich_data(nullptr, &_enrich_data);
+        }
     }
 
     inline void process_filtered(timespec stamp, uint64_t filtered)
@@ -226,6 +258,17 @@ public:
         live_bucket()->process_filtered(filtered);
     }
     void process_flow(const FlowPacket &payload);
+
+    void on_period_shift([[maybe_unused]] timespec stamp, [[maybe_unused]] const FlowMetricsBucket *maybe_expiring_bucket) override
+    {
+        if (!_concat_if.empty() && !_enrich_data.empty()) {
+            live_bucket()->set_enrich_data(&_concat_if, &_enrich_data);
+        } else if (!_concat_if.empty()) {
+            live_bucket()->set_enrich_data(&_concat_if, nullptr);
+        } else if (!_concat_if.empty()) {
+            live_bucket()->set_enrich_data(nullptr, &_enrich_data);
+        }
+    }
 };
 
 class FlowStreamHandler final : public visor::StreamMetricsHandler<FlowMetricsManager>

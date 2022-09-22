@@ -188,7 +188,6 @@ type FlowPayload struct {
 		Ipv4                    int64       `mapstructure:"ipv4"`
 		Ipv6                    int64       `mapstructure:"ipv6"`
 		OtherL4                 int64       `mapstructure:"other_l4"`
-		PayloadSize             Quantiles   `mapstructure:"payload_size"`
 		TCP                     int64       `mapstructure:"tcp"`
 		UDP                     int64       `mapstructure:"udp"`
 		TopGeoLocBytes          []NameCount `mapstructure:"top_geoLoc_bytes"`
@@ -201,10 +200,10 @@ type FlowPayload struct {
 		TopDstIpsPackets        []NameCount `mapstructure:"top_dst_ips_packets"`
 		TopDstPortsBytes        []NameCount `mapstructure:"top_dst_ports_bytes"`
 		TopDstPortsPackets      []NameCount `mapstructure:"top_dst_ports_packets"`
-		TopInIfIndexBytes       []NameCount `mapstructure:"top_in_if_index_bytes"`
-		TopInIfIndexPackets     []NameCount `mapstructure:"top_in_if_index_packets"`
-		TopOutIfIndexBytes      []NameCount `mapstructure:"top_out_if_index_bytes"`
-		TopOutIfIndexPackets    []NameCount `mapstructure:"top_out_if_index_packets"`
+		TopInInterfacesBytes    []NameCount `mapstructure:"top_in_interfaces_bytes"`
+		TopInInterfacesPackets  []NameCount `mapstructure:"top_in_interfaces_packets"`
+		TopOutInterfacesBytes   []NameCount `mapstructure:"top_out_interfaces_bytes"`
+		TopOutInterfacesPackets []NameCount `mapstructure:"top_out_interfaces_packets"`
 		TopSrcIpsAndPortBytes   []NameCount `mapstructure:"top_src_ips_and_port_bytes"`
 		TopSrcIpsAndPortPackets []NameCount `mapstructure:"top_src_ips_and_port_packets"`
 		TopConversationsBytes   []NameCount `mapstructure:"top_conversations_bytes"`

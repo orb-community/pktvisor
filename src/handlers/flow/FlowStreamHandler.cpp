@@ -19,6 +19,24 @@
 
 namespace visor::handler::flow {
 
+template <typename Out>
+static void split(const std::string &s, char delim, Out result)
+{
+    std::stringstream ss;
+    ss.str(s);
+    std::string item;
+    while (std::getline(ss, item, delim)) {
+        *(result++) = item;
+    }
+}
+
+static std::vector<std::string> split(const std::string &s, char delim)
+{
+    std::vector<std::string> elems;
+    split(s, delim, std::back_inserter(elems));
+    return elems;
+}
+
 FlowStreamHandler::FlowStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config)
     : visor::StreamMetricsHandler<FlowMetricsManager>(name, window_config)
     , _sample_rate_scaling(true)
@@ -46,6 +64,54 @@ void FlowStreamHandler::start()
     _groups.set(group::FlowMetrics::TopByPackets);
 
     process_groups(_group_defs);
+
+    // Setup Configs
+    if (config_exists("recorded_stream")) {
+        _metrics->set_recorded_stream();
+    }
+
+    EnrichMap enrich_data;
+    if (config_exists("device_map")) {
+        for (const auto &device_info : config_get<StringList>("device_map")) {
+            std::vector<std::string> data = split(device_info, ',');
+            if (data.size() < 2) {
+                // should at least contain device name and ip
+                continue;
+            }
+            DeviceEnrich *device{nullptr};
+            if (auto it = enrich_data.find(data[1]); it != enrich_data.end()) {
+                device = &it->second;
+            } else {
+                enrich_data[data[1]] = DeviceEnrich{data[0], {}};
+                device = &enrich_data[data[1]];
+            }
+            if (data.size() < 4) {
+                // should have interface information
+                continue;
+            }
+            auto if_index = static_cast<uint32_t>(std::stol(data[3]));
+            if (auto it = device->interfaces.find(if_index); it == device->interfaces.end()) {
+                if (data.size() > 4) {
+                    device->interfaces[if_index] = InterfaceEnrich{data[2], data[4]};
+                } else {
+                    device->interfaces[if_index] = InterfaceEnrich{data[2], std::string()};
+                }
+            }
+        }
+    }
+
+    std::unordered_map<std::string, std::string> concat_if;
+    if (config_exists("first_filter_if_as_label") && config_get<bool>("first_filter_if_as_label") && config_exists("only_interfaces")) {
+        concat_if["default"] = config_get<StringList>("only_interfaces")[0];
+        auto interface = static_cast<uint32_t>(std::stoul(config_get<StringList>("only_interfaces")[0]));
+        for (const auto &data : enrich_data) {
+            auto it = data.second.interfaces.find(interface);
+            if (it != data.second.interfaces.end()) {
+                concat_if[data.first] = it->second.name;
+            }
+        }
+    }
+    _metrics->set_enrich_data(std::move(concat_if), std::move(enrich_data));
 
     // Setup Filters
     if (config_exists("only_ips")) {
@@ -78,10 +144,6 @@ void FlowStreamHandler::start()
 
     if (config_exists("sample_rate_scaling") && !config_get<bool>("sample_rate_scaling")) {
         _sample_rate_scaling = false;
-    }
-
-    if (config_exists("recorded_stream")) {
-        _metrics->set_recorded_stream();
     }
 
     if (_flow_proxy) {
@@ -471,7 +533,6 @@ void FlowMetricsBucket::specialized_merge(const AbstractMetricsBucket &o, Metric
 
     for (const auto &device : other._devices_metrics) {
         const auto &deviceId = device.first;
-        const auto &device_data = device.second;
 
         if (group_enabled(group::FlowMetrics::Counters)) {
             _devices_metrics[deviceId]->counters.UDP += device.second->counters.UDP;
@@ -542,7 +603,22 @@ void FlowMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap a
 
     for (const auto &device : _devices_metrics) {
         auto device_labels = add_labels;
-        device_labels["device"] = device.first;
+        auto deviceId = device.first;
+        DeviceEnrich *dev{nullptr};
+        if (_enrich_data) {
+            if (auto it = _enrich_data->find(deviceId); it != _enrich_data->end()) {
+                dev = &it->second;
+                deviceId = it->second.name;
+            }
+        }
+        device_labels["device"] = deviceId;
+        if (_concat_if) {
+            if (auto it = _concat_if->find(device.first); (it != _concat_if->end()) && !it->second.empty()) {
+                device_labels["device_interface"] = deviceId + "|" + it->second;
+            } else {
+                device_labels["device_interface"] = deviceId + "|" + _concat_if->at("default");
+            }
+        }
 
         if (group_enabled(group::FlowMetrics::Counters)) {
             device.second->counters.UDP.to_prometheus(out, device_labels);
@@ -574,8 +650,22 @@ void FlowMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap a
             if (group_enabled(group::FlowMetrics::Conversations)) {
                 device.second->topByBytes.topConversations.to_prometheus(out, device_labels);
             }
-            device.second->topByBytes.topInIfIndex.to_prometheus(out, device_labels, [](const uint32_t &val) { return std::to_string(val); });
-            device.second->topByBytes.topOutIfIndex.to_prometheus(out, device_labels, [](const uint32_t &val) { return std::to_string(val); });
+            device.second->topByBytes.topInIfIndex.to_prometheus(out, device_labels, [dev](const uint32_t &val) {
+                if (dev) {
+                    if (auto it = dev->interfaces.find(val); it != dev->interfaces.end()) {
+                        return it->second.name;
+                    }
+                }
+                return std::to_string(val);
+            });
+            device.second->topByBytes.topOutIfIndex.to_prometheus(out, device_labels, [dev](const uint32_t &val) {
+                if (dev) {
+                    if (auto it = dev->interfaces.find(val); it != dev->interfaces.end()) {
+                        return it->second.name;
+                    }
+                }
+                return std::to_string(val);
+            });
             if (group_enabled(group::FlowMetrics::TopGeo)) {
                 device.second->topByBytes.topGeoLoc.to_prometheus(out, device_labels);
                 device.second->topByBytes.topASN.to_prometheus(out, device_labels);
@@ -613,6 +703,21 @@ void FlowMetricsBucket::to_json(json &j) const
 
     for (const auto &device : _devices_metrics) {
         auto deviceId = device.first;
+        DeviceEnrich *dev{nullptr};
+        if (_enrich_data) {
+            auto it = _enrich_data->find(deviceId);
+            if (it != _enrich_data->end()) {
+                dev = &it->second;
+                deviceId = it->second.name;
+            }
+        }
+        if (_concat_if) {
+            if (auto it = _concat_if->find(device.first); (it != _concat_if->end()) && !it->second.empty()) {
+                deviceId += "|" + it->second;
+            } else {
+                deviceId += "|" + _concat_if->at("default");
+            }
+        }
 
         if (group_enabled(group::FlowMetrics::Counters)) {
             device.second->counters.UDP.to_json(j["devices"][deviceId]);
@@ -644,8 +749,22 @@ void FlowMetricsBucket::to_json(json &j) const
             if (group_enabled(group::FlowMetrics::Conversations)) {
                 device.second->topByBytes.topConversations.to_json(j["devices"][deviceId]);
             }
-            device.second->topByBytes.topInIfIndex.to_json(j["devices"][deviceId], [](const uint32_t &val) { return std::to_string(val); });
-            device.second->topByBytes.topOutIfIndex.to_json(j["devices"][deviceId], [](const uint32_t &val) { return std::to_string(val); });
+            device.second->topByBytes.topInIfIndex.to_json(j["devices"][deviceId], [dev](const uint32_t &val) {
+                if (dev) {
+                    if (auto it = dev->interfaces.find(val); it != dev->interfaces.end()) {
+                        return it->second.name;
+                    }
+                }
+                return std::to_string(val);
+            });
+            device.second->topByBytes.topOutIfIndex.to_json(j["devices"][deviceId], [dev](const uint32_t &val) {
+                if (dev) {
+                    if (auto it = dev->interfaces.find(val); it != dev->interfaces.end()) {
+                        return it->second.name;
+                    }
+                }
+                return std::to_string(val);
+            });
             if (group_enabled(group::FlowMetrics::TopGeo)) {
                 device.second->topByBytes.topGeoLoc.to_json(j["devices"][deviceId]);
                 device.second->topByBytes.topASN.to_json(j["devices"][deviceId]);
