@@ -614,9 +614,9 @@ void FlowMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap a
         device_labels["device"] = deviceId;
         if (_concat_if) {
             if (auto it = _concat_if->find(device.first); (it != _concat_if->end()) && !it->second.empty()) {
-                device_labels["interface"] = deviceId + "|" + it->second;
+                device_labels["device_interface"] = deviceId + "|" + it->second;
             } else {
-                device_labels["interface"] = deviceId + "|" + _concat_if->at("default");
+                device_labels["device_interface"] = deviceId + "|" + _concat_if->at("default");
             }
         }
 

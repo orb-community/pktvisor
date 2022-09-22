@@ -79,9 +79,9 @@ TEST_CASE("Parse sflow with enrichment", "[sflow][flow]")
 
     nlohmann::json j;
     flow_handler.metrics()->bucket(0)->to_json(j);
-    CHECK(j["devices"]["route1|eth0"]["top_in_if_index_bytes"][0]["name"] == "eth0");
-    CHECK(j["devices"]["route2|37"]["top_in_if_index_bytes"][0]["name"] == "eth3");
-    CHECK(j["devices"]["192.168.0.13|37"]["top_in_if_index_bytes"][0]["name"] == "52");
+    CHECK(j["devices"]["route1|eth0"]["top_in_interfaces_bytes"][0]["name"] == "eth0");
+    CHECK(j["devices"]["route2|37"]["top_in_interfaces_bytes"][0]["name"] == "eth3");
+    CHECK(j["devices"]["192.168.0.13|37"]["top_in_interfaces_bytes"][0]["name"] == "52");
 }
 
 TEST_CASE("Parse sflow stream without sampling", "[sflow][flow]")
