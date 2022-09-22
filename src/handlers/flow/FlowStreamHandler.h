@@ -254,7 +254,9 @@ public:
     inline void process_filtered(timespec stamp, uint64_t filtered)
     {
         // base event, no sample
-        new_event(stamp, false);
+        if (!new_event(stamp, false)) {
+            return;
+        }
         live_bucket()->process_filtered(filtered);
     }
     void process_flow(const FlowPacket &payload);

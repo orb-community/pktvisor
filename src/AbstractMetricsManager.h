@@ -72,7 +72,6 @@ protected:
     virtual void on_set_read_only(){};
 
 public:
-
     AbstractMetricsBucket()
         : _num_samples("base", {"deep_samples"}, "Total number of deep samples")
         , _num_events("base", {"total"}, "Total number of events")
@@ -244,7 +243,9 @@ private:
     uint64_t _topn_percentile_threshold{0};
 
 protected:
-    std::atomic_bool _deep_sampling_now; // atomic so we can reference without mutex
+    // atomic so we can reference without mutex
+    std::atomic_bool _no_metrics;
+    std::atomic_bool _deep_sampling_now;
 
     /**
      * indicates if the stream we are processing was pre recorded, not live
@@ -311,9 +312,12 @@ protected:
      *
      * @param stamp time stamp of the event
      */
-    void new_event(timespec stamp, bool sample = true)
+    bool new_event(timespec stamp, bool sample = true)
     {
         // CRITICAL EVENT PATH
+        if (_no_metrics) {
+            return false;
+        }
         if (sample && _deep_sample_rate != 100) {
             _deep_sampling_now.store((_rng() % 100U < _deep_sample_rate), std::memory_order_relaxed);
         }
@@ -326,6 +330,7 @@ protected:
         std::shared_lock rl(_bucket_mutex);
         // bucket base event
         _metric_buckets[0]->new_event(_deep_sampling_now);
+        return true;
     }
 
     inline bool group_enabled(MetricGroupIntType g) const
@@ -346,6 +351,7 @@ protected:
 public:
     AbstractMetricsManager(const Configurable *window_config)
         : _metric_buckets{}
+        , _no_metrics{false}
         , _deep_sampling_now{true}
         , _last_shift_tstamp{0, 0}
         , _next_shift_tstamp{0, 0}
@@ -358,6 +364,10 @@ public:
         }
         if (_deep_sample_rate < 1) {
             _deep_sample_rate = 1;
+        }
+
+        if (window_config->config_exists("no_metrics") && window_config->config_get<bool>("no_metrics")) {
+            _no_metrics = true;
         }
 
         if (window_config->config_exists("_internal_tap_name")) {
@@ -462,7 +472,7 @@ public:
         std::shared_lock rlb(_base_mutex);
         bool will_shift = _num_periods > 1 && stamp.tv_sec >= _next_shift_tstamp.tv_sec;
         rlb.unlock();
-        if (will_shift) {
+        if (will_shift && !_no_metrics) {
             _period_shift(stamp);
         }
     }
@@ -477,6 +487,10 @@ public:
 
     void window_single_json(json &j, const std::string &key, uint64_t period = 0) const
     {
+        if (_no_metrics) {
+            return;
+        }
+
         std::shared_lock rl(_base_mutex);
         std::shared_lock rbl(_bucket_mutex);
 
@@ -499,6 +513,10 @@ public:
 
     void window_single_prometheus(std::stringstream &out, uint64_t period = 0, Metric::LabelMap add_labels = {}) const
     {
+        if (_no_metrics) {
+            return;
+        }
+
         std::shared_lock rl(_base_mutex);
         std::shared_lock rbl(_bucket_mutex);
 
@@ -537,6 +555,10 @@ public:
 
     void window_merged_json(json &j, const std::string &key, uint64_t period) const
     {
+        if (_no_metrics) {
+            return;
+        }
+
         std::shared_lock rl(_base_mutex);
         std::shared_lock rbl(_bucket_mutex);
 
@@ -583,6 +605,10 @@ public:
 
     std::unique_ptr<AbstractMetricsBucket> simple_merge(AbstractMetricsBucket *bucket, uint64_t period)
     {
+        if (_no_metrics) {
+            period = 0;
+        }
+
         std::shared_lock rl(_base_mutex);
         std::shared_lock rbl(_bucket_mutex);
 
@@ -605,6 +631,10 @@ public:
 
     std::unique_ptr<AbstractMetricsBucket> multiple_merge(AbstractMetricsBucket *bucket, uint64_t period)
     {
+        if (_no_metrics) {
+            period = 2;
+        }
+
         std::shared_lock rl(_base_mutex);
         std::shared_lock rbl(_bucket_mutex);
 

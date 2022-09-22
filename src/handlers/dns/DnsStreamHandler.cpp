@@ -1053,7 +1053,9 @@ void DnsMetricsBucket::process_filtered()
 void DnsMetricsManager::process_dns_layer(DnsLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowkey, uint16_t port, size_t suffix_size, timespec stamp)
 {
     // base event
-    new_event(stamp);
+    if (!new_event(stamp)) {
+        return;
+    }
     // process in the "live" bucket. this will parse the resources if we are deep sampling
     live_bucket()->process_dns_layer(_deep_sampling_now, payload, l3, static_cast<Protocol>(l4), port, suffix_size);
 
@@ -1072,7 +1074,9 @@ void DnsMetricsManager::process_dns_layer(DnsLayer &payload, PacketDirection dir
 void DnsMetricsManager::process_filtered(timespec stamp)
 {
     // base event, no sample
-    new_event(stamp, false);
+    if (!new_event(stamp, false)) {
+        return;
+    }
     live_bucket()->process_filtered();
 }
 void DnsMetricsManager::process_dnstap(const dnstap::Dnstap &payload, bool filtered)
@@ -1107,7 +1111,9 @@ void DnsMetricsManager::process_dnstap(const dnstap::Dnstap &payload, bool filte
         return process_filtered(stamp);
     }
     // base event
-    new_event(stamp);
+    if (!new_event(stamp)) {
+        return;
+    }
     // process in the "live" bucket. this will parse the resources if we are deep sampling
     live_bucket()->process_dnstap(_deep_sampling_now, payload);
 }

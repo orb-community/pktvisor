@@ -980,7 +980,9 @@ inline void FlowMetricsBucket::_process_geo_metrics(FlowDevice *device, const pc
 
 void FlowMetricsManager::process_flow(const FlowPacket &payload)
 {
-    new_event(payload.stamp);
+    if (!new_event(payload.stamp)) {
+        return;
+    }
     // process in the "live" bucket
     live_bucket()->process_flow(_deep_sampling_now, payload);
 }

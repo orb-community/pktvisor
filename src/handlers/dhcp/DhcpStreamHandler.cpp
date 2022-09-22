@@ -203,7 +203,9 @@ void DhcpMetricsBucket::new_dhcp_transaction(bool deep, pcpp::DhcpLayer *payload
 void DhcpMetricsManager::process_dhcp_layer(pcpp::DhcpLayer *payload, [[maybe_unused]] PacketDirection dir, [[maybe_unused]] uint32_t flowkey, timespec stamp)
 {
     // base event
-    new_event(stamp);
+    if (!new_event(stamp)) {
+        return;
+    }
     // process in the "live" bucket. this will parse the resources if we are deep sampling
     live_bucket()->process_dhcp_layer(_deep_sampling_now, payload);
 
@@ -225,7 +227,9 @@ void DhcpMetricsManager::process_dhcp_layer(pcpp::DhcpLayer *payload, [[maybe_un
 void DhcpMetricsManager::process_filtered(timespec stamp)
 {
     // base event, no sample
-    new_event(stamp, false);
+    if (!new_event(stamp, false)) {
+        return;
+    }
     live_bucket()->process_filtered();
 }
 

@@ -134,7 +134,9 @@ void PcapMetricsBucket::process_pcap_stats(const pcpp::IPcapDevice::PcapStats &s
 // the general metrics manager entry point
 void PcapMetricsManager::process_pcap_tcp_reassembly_error(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, timespec stamp)
 {
-    new_event(stamp);
+    if (!new_event(stamp)) {
+        return;
+    }
     // process in the "live" bucket
     live_bucket()->process_pcap_tcp_reassembly_error(_deep_sampling_now, payload, dir, l3);
 }
@@ -144,7 +146,9 @@ void PcapMetricsManager::process_pcap_stats(const pcpp::IPcapDevice::PcapStats &
     // use now()
     std::timespec_get(&stamp, TIME_UTC);
     // base event
-    new_event(stamp);
+    if (!new_event(stamp)) {
+        return;
+    }
     // process in the "live" bucket
     live_bucket()->process_pcap_stats(stats);
 }

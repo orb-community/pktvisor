@@ -672,7 +672,9 @@ inline void NetworkMetricsBucket::_process_geo_metrics(const pcpp::IPv6Address &
 void NetworkMetricsManager::process_filtered(timespec stamp)
 {
     // base event, no sample
-    new_event(stamp, false);
+    if (!new_event(stamp, false)) {
+        return;
+    }
     live_bucket()->process_filtered();
 }
 
@@ -680,7 +682,9 @@ void NetworkMetricsManager::process_filtered(timespec stamp)
 void NetworkMetricsManager::process_packet(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp)
 {
     // base event
-    new_event(stamp);
+    if (!new_event(stamp)) {
+        return;
+    }
     // process in the "live" bucket
     live_bucket()->process_packet(_deep_sampling_now, payload, dir, l3, l4);
 }
@@ -713,7 +717,9 @@ void NetworkMetricsManager::process_dnstap(const dnstap::Dnstap &payload, size_t
         std::timespec_get(&stamp, TIME_UTC);
     }
     // base event
-    new_event(stamp);
+    if (!new_event(stamp)) {
+        return;
+    }
     // process in the "live" bucket. this will parse the resources if we are deep sampling
     live_bucket()->process_dnstap(_deep_sampling_now, payload, size);
 }

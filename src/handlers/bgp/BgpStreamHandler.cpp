@@ -254,7 +254,9 @@ void BgpMetricsBucket::process_bgp_layer([[maybe_unused]] bool deep, pcpp::BgpLa
 void BgpMetricsManager::process_bgp_layer(pcpp::BgpLayer *payload, [[maybe_unused]] PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, [[maybe_unused]] uint32_t flowkey, timespec stamp)
 {
     // base event
-    new_event(stamp);
+    if (!new_event(stamp)) {
+        return;
+    }
     // process in the "live" bucket. this will parse the resources if we are deep sampling
     live_bucket()->process_bgp_layer(_deep_sampling_now, payload, l3, l4);
 }
@@ -262,7 +264,9 @@ void BgpMetricsManager::process_bgp_layer(pcpp::BgpLayer *payload, [[maybe_unuse
 void BgpMetricsManager::process_filtered(timespec stamp)
 {
     // base event, no sample
-    new_event(stamp, false);
+    if (!new_event(stamp, false)) {
+        return;
+    }
     live_bucket()->process_filtered();
 }
 

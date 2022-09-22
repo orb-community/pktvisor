@@ -354,6 +354,9 @@ void Policy::json_metrics(json &j, uint64_t period, bool merge)
                 try {
                     spdlog::stopwatch sw;
                     hmod->window_json(j[name()][hmod->name()], period, merge);
+                    if (j[name()][hmod->name()] == nullptr) {
+                        j[name()].erase(hmod->name());
+                    }
                     spdlog::get("visor")->debug("{} window_json elapsed time: {}", hmod->name(), sw);
                 } catch (const PeriodException &e) {
                     spdlog::get("visor")->warn("{} handler for policy {} had a PeriodException, skipping: {}", hmod->name(), name(), e.what());

@@ -362,7 +362,7 @@ void PcapInputStream::_generate_mock_traffic()
 
 void PcapInputStream::process_raw_packet(pcpp::RawPacket *rawPacket)
 {
-    static thread_local bool name_thread = [this]() {
+    [[maybe_unused]] static thread_local bool name_thread = [this]() {
         thread::change_self_name(schema_key(), name());
         return true;
     }();

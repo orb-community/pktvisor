@@ -212,7 +212,9 @@ void InputResourcesMetricsManager::process_resources(double cpu_usage, uint64_t 
         std::timespec_get(&stamp, TIME_UTC);
     }
     // base event
-    new_event(stamp);
+    if (!new_event(stamp)) {
+        return;
+    }
     // process in the "live" bucket. this will parse the resources if we are deep sampling
     live_bucket()->process_resources(cpu_usage, memory_usage);
 }
@@ -228,7 +230,9 @@ void InputResourcesMetricsManager::process_policies(int16_t policy_count, int16_
     // use now()
     std::timespec_get(&stamp, TIME_UTC);
     // base event
-    new_event(stamp);
+    if (!new_event(stamp)) {
+        return;
+    }
     // process in the "live" bucket. this will parse the resources if we are deep sampling
     live_bucket()->process_policies(policy_count, handler_count);
 }
