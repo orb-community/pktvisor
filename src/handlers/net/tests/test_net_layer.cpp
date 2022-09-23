@@ -390,13 +390,13 @@ TEST_CASE("Net groups", "[pcap][net]")
     SECTION("disable invalid dns group")
     {
         net_handler.config_set<visor::Configurable::StringList>("disable", {"top_ips", "rates"});
-        REQUIRE_THROWS_WITH(net_handler.start(), "rates is an invalid/unsupported metric group. The valid groups are cardinality, counters, top_geo, top_ips");
+        REQUIRE_THROWS_WITH(net_handler.start(), "rates is an invalid/unsupported metric group. The valid groups are: all, cardinality, counters, top_geo, top_ips");
     }
 
     SECTION("enable invalid dns group")
     {
         net_handler.config_set<visor::Configurable::StringList>("enable", {"top_ips", "rates"});
-        REQUIRE_THROWS_WITH(net_handler.start(), "rates is an invalid/unsupported metric group. The valid groups are cardinality, counters, top_geo, top_ips");
+        REQUIRE_THROWS_WITH(net_handler.start(), "rates is an invalid/unsupported metric group. The valid groups are: all, cardinality, counters, top_geo, top_ips");
     }
 }
 
