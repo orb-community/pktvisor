@@ -110,7 +110,7 @@ visor:
           - upstream_dns:
               type: dns
               metric_groups:
-                # disable all metric groups - no metrics will be scrapped for this handler
+                # disable all metric groups - no metrics will be scraped for this handler
                 disable:
                   - all
               filter:
@@ -119,6 +119,10 @@ visor:
           # net handler will only receive .mydomain.com packages
           - chain_net:
               type: net
+              metric_groups:
+                # enable all metric groups - all the handler metrics will be scraped 
+                enable:
+                  - all
 ```
 
 ## REST API
