@@ -92,12 +92,20 @@ protected:
 
         if (config_exists("enable")) {
             for (const auto &group : config_get<StringList>("enable")) {
+                if (group == "all") {
+                    _groups.set();
+                    break;
+                }
                 _groups.set(_process_group(group_defs, group));
             }
         }
 
         if (config_exists("disable")) {
             for (const auto &group : config_get<StringList>("disable")) {
+                if (group == "all") {
+                    _groups.reset();
+                    break;
+                }
                 _groups.reset(_process_group(group_defs, group));
             }
         }

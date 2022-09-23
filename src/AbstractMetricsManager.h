@@ -62,7 +62,7 @@ private:
     bool _recorded_stream = false;
 
 protected:
-    const std::bitset<GROUP_SIZE> *_groups;
+    const std::bitset<GROUP_SIZE> *_groups{nullptr};
 
     // merge the metrics of the specialized metric bucket
     virtual void specialized_merge(const AbstractMetricsBucket &other, Metric::Aggregate agg_operator) = 0;
@@ -72,7 +72,6 @@ protected:
     virtual void on_set_read_only(){};
 
 public:
-
     AbstractMetricsBucket()
         : _num_samples("base", {"deep_samples"}, "Total number of deep samples")
         , _num_events("base", {"total"}, "Total number of events")
@@ -251,7 +250,7 @@ protected:
      */
     bool _recorded_stream = false;
 
-    const std::bitset<GROUP_SIZE> *_groups;
+    const std::bitset<GROUP_SIZE> *_groups{nullptr};
 
 private:
     /**
@@ -491,6 +490,10 @@ public:
             throw PeriodException(err.str());
         }
 
+        if (_groups && _groups->none()) {
+            return;
+        }
+
         j[key]["period"]["start_ts"] = _metric_buckets.at(period)->start_tstamp().tv_sec;
         j[key]["period"]["length"] = _metric_buckets.at(period)->period_length();
 
@@ -513,6 +516,10 @@ public:
             throw PeriodException(err.str());
         }
 
+        if (_groups && _groups->none()) {
+            return;
+        }
+
         if (!_tap_name.empty() && add_labels.find("tap") == add_labels.end()) {
             add_labels["tap"] = _tap_name;
         }
@@ -522,12 +529,18 @@ public:
 
     void window_external_prometheus(std::stringstream &out, AbstractMetricsBucket *bucket, Metric::LabelMap add_labels = {}) const
     {
+        if (_groups && _groups->none()) {
+            return;
+        }
         // static because caller guarantees only our own bucket type
         static_cast<MetricsBucketClass *>(bucket)->to_prometheus(out, add_labels);
     }
 
     void window_external_json(json &j, const std::string &key, AbstractMetricsBucket *bucket) const
     {
+        if (_groups && _groups->none()) {
+            return;
+        }
         // static because caller guarantees only our own bucket type
         auto custom = static_cast<MetricsBucketClass *>(bucket);
         j[key]["period"]["start_ts"] = custom->start_tstamp().tv_sec;
@@ -544,6 +557,10 @@ public:
             std::stringstream err;
             err << "invalid metrics period, specify [2, " << _num_periods << "]";
             throw PeriodException(err.str());
+        }
+
+        if (_groups && _groups->none()) {
+            return;
         }
 
         auto cached = _mergeResultCache.find(period);

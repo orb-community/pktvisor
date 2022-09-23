@@ -109,6 +109,10 @@ visor:
           # Chaning handlers example. It needs proper indentation as shown below
           - upstream_dns:
               type: dns
+              metric_groups:
+                # disable all metric groups - no metrics will be scrapped for this handler
+                disable:
+                  - all
               filter:
                 # must match the available configuration options for this version of this stream handler
                 qname_suffix: .mydomain.com

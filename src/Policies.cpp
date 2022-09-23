@@ -345,7 +345,11 @@ void Policy::json_metrics(json &j, uint64_t period, bool merge)
     if (_merge_like_handlers) {
         auto bucket_map = _get_merged_buckets(false, period, merge);
         for (auto &[bucket, hmod] : bucket_map) {
-            hmod->window_json(j[name()][hmod->schema_key() + "_merged"], bucket.get());
+            auto h_name = hmod->schema_key() + "_merged";
+            hmod->window_json(j[name()][h_name], bucket.get());
+            if (j[name()][h_name] == nullptr) {
+                j[name()].erase(h_name);
+            }
         }
     } else {
         for (auto &mod : modules()) {
@@ -354,6 +358,9 @@ void Policy::json_metrics(json &j, uint64_t period, bool merge)
                 try {
                     spdlog::stopwatch sw;
                     hmod->window_json(j[name()][hmod->name()], period, merge);
+                    if (j[name()][hmod->name()] == nullptr) {
+                        j[name()].erase(hmod->name());
+                    }
                     spdlog::get("visor")->debug("{} window_json elapsed time: {}", hmod->name(), sw);
                 } catch (const PeriodException &e) {
                     spdlog::get("visor")->warn("{} handler for policy {} had a PeriodException, skipping: {}", hmod->name(), name(), e.what());
