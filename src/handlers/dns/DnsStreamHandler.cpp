@@ -634,7 +634,14 @@ void DnsMetricsBucket::to_json(json &j) const
 
     if (group_enabled(group::DnsMetrics::TopEcs)) {
         group_enabled(group::DnsMetrics::Counters) ? _counters.queryECS.to_json(j) : void();
-        _dns_topGeoLocECS.to_json(j);
+        _dns_topGeoLocECS.to_json(j, [](json &j, const std::string &key, const std::string &val) {
+            if (auto pos = val.find('|'); pos != std::string::npos) {
+                j[key] = val.substr(0, pos);
+                j["latLong"] = val.substr(++pos);
+            } else {
+                j[key] = val;
+            }
+        });
         _dns_topASNECS.to_json(j);
         _dns_topQueryECS.to_json(j);
     }
@@ -1011,7 +1018,14 @@ void DnsMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap ad
     }
     if (group_enabled(group::DnsMetrics::TopEcs)) {
         group_enabled(group::DnsMetrics::Counters) ? _counters.queryECS.to_prometheus(out, add_labels) : void();
-        _dns_topGeoLocECS.to_prometheus(out, add_labels);
+        _dns_topGeoLocECS.to_prometheus(out, add_labels, [](Metric::LabelMap &l, const std::string &key, const std::string &val) {
+            if (auto pos = val.find('|'); pos != std::string::npos) {
+                l[key] = val.substr(0, pos);
+                l["latLong"] = val.substr(++pos);
+            } else {
+                l[key] = val;
+            }
+        });
         _dns_topASNECS.to_prometheus(out, add_labels);
         _dns_topQueryECS.to_prometheus(out, add_labels);
     }

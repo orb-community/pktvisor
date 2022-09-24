@@ -667,7 +667,14 @@ void FlowMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap a
                 return std::to_string(val);
             });
             if (group_enabled(group::FlowMetrics::TopGeo)) {
-                device.second->topByBytes.topGeoLoc.to_prometheus(out, device_labels);
+                device.second->topByBytes.topGeoLoc.to_prometheus(out, device_labels, [](Metric::LabelMap &l, const std::string &key, const std::string &val) {
+                    if (auto pos = val.find('|'); pos != std::string::npos) {
+                        l[key] = val.substr(0, pos);
+                        l["latLong"] = val.substr(++pos);
+                    } else {
+                        l[key] = val;
+                    }
+                });
                 device.second->topByBytes.topASN.to_prometheus(out, device_labels);
             }
         }
@@ -685,7 +692,14 @@ void FlowMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap a
             device.second->topByPackets.topInIfIndex.to_prometheus(out, device_labels, [](const uint32_t &val) { return std::to_string(val); });
             device.second->topByPackets.topOutIfIndex.to_prometheus(out, device_labels, [](const uint32_t &val) { return std::to_string(val); });
             if (group_enabled(group::FlowMetrics::TopGeo)) {
-                device.second->topByPackets.topGeoLoc.to_prometheus(out, device_labels);
+                device.second->topByPackets.topGeoLoc.to_prometheus(out, device_labels, [](Metric::LabelMap &l, const std::string &key, const std::string &val) {
+                    if (auto pos = val.find('|'); pos != std::string::npos) {
+                        l[key] = val.substr(0, pos);
+                        l["latLong"] = val.substr(++pos);
+                    } else {
+                        l[key] = val;
+                    }
+                });
                 device.second->topByPackets.topASN.to_prometheus(out, device_labels);
             }
         }
@@ -766,7 +780,14 @@ void FlowMetricsBucket::to_json(json &j) const
                 return std::to_string(val);
             });
             if (group_enabled(group::FlowMetrics::TopGeo)) {
-                device.second->topByBytes.topGeoLoc.to_json(j["devices"][deviceId]);
+                device.second->topByBytes.topGeoLoc.to_json(j["devices"][deviceId], [](json &j, const std::string &key, const std::string &val) {
+                    if (auto pos = val.find('|'); pos != std::string::npos) {
+                        j[key] = val.substr(0, pos);
+                        j["latLong"] = val.substr(++pos);
+                    } else {
+                        j[key] = val;
+                    }
+                });
                 device.second->topByBytes.topASN.to_json(j["devices"][deviceId]);
             }
         }
@@ -784,7 +805,14 @@ void FlowMetricsBucket::to_json(json &j) const
             device.second->topByPackets.topInIfIndex.to_json(j["devices"][deviceId], [](const uint32_t &val) { return std::to_string(val); });
             device.second->topByPackets.topOutIfIndex.to_json(j["devices"][deviceId], [](const uint32_t &val) { return std::to_string(val); });
             if (group_enabled(group::FlowMetrics::TopGeo)) {
-                device.second->topByBytes.topGeoLoc.to_json(j["devices"][deviceId]);
+                device.second->topByBytes.topGeoLoc.to_json(j["devices"][deviceId], [](json &j, const std::string &key, const std::string &val) {
+                    if (auto pos = val.find('|'); pos != std::string::npos) {
+                        j[key] = val.substr(0, pos);
+                        j["latLong"] = val.substr(++pos);
+                    } else {
+                        j[key] = val;
+                    }
+                });
                 device.second->topByBytes.topASN.to_json(j["devices"][deviceId]);
             }
         }
