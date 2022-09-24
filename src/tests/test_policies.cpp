@@ -66,8 +66,6 @@ visor:
 )";
 
 auto policies_config_hseq = R"(
-version: "1.0"
-
 visor:
   taps:
     anycast:
@@ -206,6 +204,8 @@ visor:
 )";
 
 auto policies_config_bad1 = R"(
+version: "2.0"
+
 visor:
   policies:
     missing:
@@ -853,10 +853,10 @@ TEST_CASE("Policies", "[policies]")
         REQUIRE_THROWS_WITH(registry.policy_manager()->load_from_str("invalid: schema"), "invalid schema");
     }
 
-    SECTION("Bad Config: missing version")
+    SECTION("Bad Config: unsupported version")
     {
         CoreRegistry registry;
-        REQUIRE_THROWS_WITH(registry.policy_manager()->load_from_str(policies_config_bad1), "missing or unsupported version");
+        REQUIRE_THROWS_WITH(registry.policy_manager()->load_from_str(policies_config_bad1), "unsupported version");
     }
 
     SECTION("Bad Config: invalid tap")
