@@ -142,6 +142,7 @@ void PcapInputStream::start()
             if (TARGET.empty()) {
                 throw PcapException("iface was set to 'auto' but no interface was found");
             }
+            config_set("iface", TARGET);
         }
         interfaceIP4 = TARGET;
         interfaceIP6 = TARGET;
