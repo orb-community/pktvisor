@@ -397,7 +397,7 @@ Policy::BucketMap Policy::_get_merged_buckets(bool prometheus, uint64_t period, 
         auto hmod = dynamic_cast<StreamHandler *>(mod);
         assert(hmod);
         if (bucket_map.empty()) {
-            bucket_map.emplace(hmod->merge(nullptr, prometheus, period, merged), hmod);
+            bucket_map.emplace(hmod->merge(nullptr, period, prometheus, merged), hmod);
             continue;
         }
         for (auto &[bucket, handler] : bucket_map) {
@@ -405,7 +405,7 @@ Policy::BucketMap Policy::_get_merged_buckets(bool prometheus, uint64_t period, 
             if (hmod->schema_key() != handler->schema_key() && !is_last) {
                 continue;
             }
-            auto new_bucket = hmod->merge(bucket.get(), prometheus, period, merged);
+            auto new_bucket = hmod->merge(bucket.get(), period, prometheus, merged);
             if (!new_bucket) {
                 break;
             } else if (is_last) {
