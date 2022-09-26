@@ -567,6 +567,7 @@ void DnsMetricsBucket::specialized_merge(const AbstractMetricsBucket &o, Metric:
         _dns_topSizedQnameResp.merge(other._dns_topSizedQnameResp);
         _dns_topSRVFAIL.merge(other._dns_topSRVFAIL);
         _dns_topNODATA.merge(other._dns_topNODATA);
+        _dns_topNOERROR.merge(other._dns_topNOERROR);
     }
 
     if (group_enabled(group::DnsMetrics::TopPorts)) {
@@ -647,6 +648,7 @@ void DnsMetricsBucket::to_json(json &j) const
         _dns_topSizedQnameResp.to_json(j);
         _dns_topSRVFAIL.to_json(j);
         _dns_topNODATA.to_json(j);
+        _dns_topNOERROR.to_json(j);
     }
     _dns_topRCode.to_json(j, [](const uint16_t &val) {
         if (RCodeNames.find(val) != RCodeNames.end()) {
@@ -835,6 +837,7 @@ void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, pcpp::Pro
                     _dns_topREFUSED.update(name);
                     break;
                 case NoError:
+                    _dns_topNOERROR.update(name);
                     if (!payload.getAnswerCount()) {
                         _dns_topNODATA.update(name);
                     }
@@ -1024,6 +1027,7 @@ void DnsMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap ad
         _dns_topSizedQnameResp.to_prometheus(out, add_labels);
         _dns_topSRVFAIL.to_prometheus(out, add_labels);
         _dns_topNODATA.to_prometheus(out, add_labels);
+        _dns_topNOERROR.to_prometheus(out, add_labels);
     }
     _dns_topRCode.to_prometheus(out, add_labels, [](const uint16_t &val) {
         if (RCodeNames.find(val) != RCodeNames.end()) {

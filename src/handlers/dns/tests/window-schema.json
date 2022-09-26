@@ -19,6 +19,7 @@
         "top_geoLoc_ecs": [],
         "top_query_ecs": [],
         "top_nodata": [],
+        "top_noerror": [],
         "top_nxdomain": [],
         "top_qname2": [
           {
@@ -218,6 +219,7 @@
           },
           "top_query_ecs": [],
           "top_nodata": [],
+          "top_noerror": [],
           "top_nxdomain": [],
           "top_qname2": [
             {
@@ -401,6 +403,7 @@
         "top_geoLoc_ecs",
         "top_query_ecs",
         "top_nodata",
+        "top_noerror",
         "top_nxdomain",
         "top_qname2",
         "top_qname3",
@@ -536,6 +539,20 @@
           "additionalItems": true,
           "items": {
             "$id": "#/properties/dns/properties/top_nodata/items"
+          }
+        },
+        "top_noerror": {
+          "$id": "#/properties/dns/properties/top_noerror",
+          "type": "array",
+          "title": "The top_noerror schema",
+          "description": "An explanation about the purpose of this instance.",
+          "default": [],
+          "examples": [
+            []
+          ],
+          "additionalItems": true,
+          "items": {
+            "$id": "#/properties/dns/properties/top_noerror/items"
           }
         },
         "top_nxdomain": {

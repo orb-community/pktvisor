@@ -73,6 +73,7 @@ protected:
     TopN<std::string> _dns_topSizedQnameResp;
     TopN<std::string> _dns_topSRVFAIL;
     TopN<std::string> _dns_topNODATA;
+    TopN<std::string> _dns_topNOERROR;
     TopN<uint16_t> _dns_topUDPPort;
     TopN<uint16_t> _dns_topQType;
     TopN<uint16_t> _dns_topRCode;
@@ -144,6 +145,7 @@ public:
         , _dns_topSizedQnameResp(DNS_SCHEMA, "qname", {"top_qname_by_resp_bytes"}, "Top QNAMES by response volume in bytes")
         , _dns_topSRVFAIL(DNS_SCHEMA, "qname", {"top_srvfail"}, "Top QNAMES with result code SRVFAIL")
         , _dns_topNODATA(DNS_SCHEMA, "qname", {"top_nodata"}, "Top QNAMES with result code NOERROR and no answer section")
+        , _dns_topNOERROR(DNS_SCHEMA, "qname", {"top_noerror"}, "Top QNAMES with result code NOERROR")
         , _dns_topUDPPort(DNS_SCHEMA, "port", {"top_udp_ports"}, "Top UDP source port on the query side of a transaction")
         , _dns_topQType(DNS_SCHEMA, "qtype", {"top_qtype"}, "Top query types")
         , _dns_topRCode(DNS_SCHEMA, "rcode", {"top_rcode"}, "Top result codes")
@@ -196,6 +198,7 @@ public:
         _dns_topSizedQnameResp.set_settings(topn_count, percentile_threshold);
         _dns_topSRVFAIL.set_settings(topn_count, percentile_threshold);
         _dns_topNODATA.set_settings(topn_count, percentile_threshold);
+        _dns_topNOERROR.set_settings(topn_count, percentile_threshold);
         _dns_topUDPPort.set_settings(topn_count, percentile_threshold);
         _dns_topQType.set_settings(topn_count, percentile_threshold);
         _dns_topRCode.set_settings(topn_count, percentile_threshold);
