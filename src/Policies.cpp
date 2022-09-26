@@ -25,8 +25,10 @@ std::vector<Policy *> PolicyManager::load_from_str(const std::string &str)
     if (!node.IsMap() || !node["visor"]) {
         throw PolicyException("invalid schema");
     }
-    if (!node["version"] || !node["version"].IsScalar() || node["version"].as<std::string>() != "1.0") {
-        throw PolicyException("missing or unsupported version");
+    if (!node["version"]) {
+        spdlog::get("visor")->info("missing version, using version \"1.0\"");
+    } else if (!node["version"].IsScalar() || node["version"].as<std::string>() != "1.0") {
+        throw PolicyException("unsupported version");
     }
     if (node["visor"]["policies"] && node["visor"]["policies"].IsMap()) {
         return load(node["visor"]["policies"], true);

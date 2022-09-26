@@ -23,8 +23,10 @@ std::vector<Tap *> TapManager::load_from_str(const std::string &str)
     if (!node.IsMap() || !node["visor"]) {
         throw TapException("invalid schema");
     }
-    if (!node["version"] || !node["version"].IsScalar() || node["version"].as<std::string>() != "1.0") {
-        throw TapException("missing or unsupported version");
+    if (!node["version"]) {
+        spdlog::get("visor")->info("missing version, using version \"1.0\"");
+    } else if (!node["version"].IsScalar() || node["version"].as<std::string>() != "1.0") {
+        throw PolicyException("unsupported version");
     }
     if (node["visor"]["taps"] && node["visor"]["taps"].IsMap()) {
         return load(node["visor"]["taps"], true, true);

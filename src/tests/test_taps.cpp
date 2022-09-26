@@ -33,8 +33,6 @@ visor:
 )";
 
 auto tap_config_bad = R"(
-version: "1.0"
-
 visor:
   config:
     verbose: true
@@ -152,7 +150,7 @@ TEST_CASE("Taps", "[taps]")
     {
         CoreRegistry registry;
         registry.start(nullptr);
-        REQUIRE_THROWS_WITH(registry.tap_manager()->load_from_str(tap_config_bad_version), "missing or unsupported version");
+        REQUIRE_THROWS_WITH(registry.tap_manager()->load_from_str(tap_config_bad_version), "unsupported version");
     }
 
     SECTION("Bad Config: no taps")
