@@ -319,7 +319,7 @@ void NetworkMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMa
         _topGeoLoc.to_prometheus(out, add_labels, [](Metric::LabelMap &l, const std::string &key, const std::string &val) {
             if (auto pos = val.find('|'); pos != std::string::npos) {
                 l[key] = val.substr(0, pos);
-                l["latLong"] = val.substr(++pos);
+                l["lat_long"] = val.substr(++pos);
             } else {
                 l[key] = val;
             }
@@ -380,7 +380,7 @@ void NetworkMetricsBucket::to_json(json &j) const
         _topGeoLoc.to_json(j, [](json &j, const std::string &key, const std::string &val) {
             if (auto pos = val.find('|'); pos != std::string::npos) {
                 j[key] = val.substr(0, pos);
-                j["latLong"] = val.substr(++pos);
+                j["lat_long"] = val.substr(++pos);
             } else {
                 j[key] = val;
             }

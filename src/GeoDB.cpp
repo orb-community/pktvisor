@@ -215,22 +215,19 @@ std::string MaxmindDB::_getGeoLocString(MMDB_lookup_result_s *lookup) const
     }
 
     {
-        MMDB_entry_data_s result;
-        MMDB_get_value(&lookup->entry, &result, "location", "latitude", NULL);
+        MMDB_entry_data_s result_lat;
+        MMDB_get_value(&lookup->entry, &result_lat, "location", "latitude", NULL);
 
-        if (result.has_data && result.type == MMDB_DATA_TYPE_DOUBLE) {
+        if (result_lat.has_data && result_lat.type == MMDB_DATA_TYPE_DOUBLE) {
             geoString.push_back('|');
-            geoString.append(std::to_string(result.double_value));
-        }
-    }
+            geoString.append(std::to_string(result_lat.double_value));
 
-    {
-        MMDB_entry_data_s result;
-        MMDB_get_value(&lookup->entry, &result, "location", "longitude", NULL);
-
-        if (result.has_data && result.type == MMDB_DATA_TYPE_DOUBLE) {
-            geoString.push_back('/');
-            geoString.append(std::to_string(result.double_value));
+            MMDB_entry_data_s result_long;
+            MMDB_get_value(&lookup->entry, &result_long, "location", "longitude", NULL);
+            if (result_long.has_data && result_long.type == MMDB_DATA_TYPE_DOUBLE) {
+                geoString.push_back('/');
+                geoString.append(std::to_string(result_long.double_value));
+            }
         }
     }
 

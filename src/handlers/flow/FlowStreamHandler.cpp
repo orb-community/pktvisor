@@ -670,7 +670,7 @@ void FlowMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap a
                 device.second->topByBytes.topGeoLoc.to_prometheus(out, device_labels, [](Metric::LabelMap &l, const std::string &key, const std::string &val) {
                     if (auto pos = val.find('|'); pos != std::string::npos) {
                         l[key] = val.substr(0, pos);
-                        l["latLong"] = val.substr(++pos);
+                        l["lat_long"] = val.substr(++pos);
                     } else {
                         l[key] = val;
                     }
@@ -695,7 +695,7 @@ void FlowMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap a
                 device.second->topByPackets.topGeoLoc.to_prometheus(out, device_labels, [](Metric::LabelMap &l, const std::string &key, const std::string &val) {
                     if (auto pos = val.find('|'); pos != std::string::npos) {
                         l[key] = val.substr(0, pos);
-                        l["latLong"] = val.substr(++pos);
+                        l["lat_long"] = val.substr(++pos);
                     } else {
                         l[key] = val;
                     }
@@ -783,7 +783,7 @@ void FlowMetricsBucket::to_json(json &j) const
                 device.second->topByBytes.topGeoLoc.to_json(j["devices"][deviceId], [](json &j, const std::string &key, const std::string &val) {
                     if (auto pos = val.find('|'); pos != std::string::npos) {
                         j[key] = val.substr(0, pos);
-                        j["latLong"] = val.substr(++pos);
+                        j["lat_long"] = val.substr(++pos);
                     } else {
                         j[key] = val;
                     }
@@ -808,7 +808,7 @@ void FlowMetricsBucket::to_json(json &j) const
                 device.second->topByBytes.topGeoLoc.to_json(j["devices"][deviceId], [](json &j, const std::string &key, const std::string &val) {
                     if (auto pos = val.find('|'); pos != std::string::npos) {
                         j[key] = val.substr(0, pos);
-                        j["latLong"] = val.substr(++pos);
+                        j["lat_long"] = val.substr(++pos);
                     } else {
                         j[key] = val;
                     }
