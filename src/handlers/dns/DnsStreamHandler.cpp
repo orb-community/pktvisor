@@ -564,10 +564,13 @@ void DnsMetricsBucket::specialized_merge(const AbstractMetricsBucket &o, Metric:
         _dns_topQname3.merge(other._dns_topQname3);
         _dns_topNX.merge(other._dns_topNX);
         _dns_topREFUSED.merge(other._dns_topREFUSED);
-        _dns_topSizedQnameResp.merge(other._dns_topSizedQnameResp);
+
         _dns_topSRVFAIL.merge(other._dns_topSRVFAIL);
         _dns_topNODATA.merge(other._dns_topNODATA);
-        _dns_topNOERROR.merge(other._dns_topNOERROR);
+        if (group_enabled(group::DnsMetrics::TopQnamesDetails)) {
+            _dns_topSizedQnameResp.merge(other._dns_topSizedQnameResp);
+            _dns_topNOERROR.merge(other._dns_topNOERROR);
+        }
     }
 
     if (group_enabled(group::DnsMetrics::TopPorts)) {
@@ -645,10 +648,12 @@ void DnsMetricsBucket::to_json(json &j) const
         _dns_topQname3.to_json(j);
         _dns_topNX.to_json(j);
         _dns_topREFUSED.to_json(j);
-        _dns_topSizedQnameResp.to_json(j);
         _dns_topSRVFAIL.to_json(j);
         _dns_topNODATA.to_json(j);
-        _dns_topNOERROR.to_json(j);
+        if (group_enabled(group::DnsMetrics::TopQnamesDetails)) {
+            _dns_topSizedQnameResp.to_json(j);
+            _dns_topNOERROR.to_json(j);
+        }
     }
     _dns_topRCode.to_json(j, [](const uint16_t &val) {
         if (RCodeNames.find(val) != RCodeNames.end()) {
@@ -837,13 +842,13 @@ void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, pcpp::Pro
                     _dns_topREFUSED.update(name);
                     break;
                 case NoError:
-                    _dns_topNOERROR.update(name);
+                    group_enabled(group::DnsMetrics::TopQnamesDetails) ? _dns_topNOERROR.update(name) : void();
                     if (!payload.getAnswerCount()) {
                         _dns_topNODATA.update(name);
                     }
                     break;
                 }
-                _dns_topSizedQnameResp.update(name, payload.getDataLen());
+                group_enabled(group::DnsMetrics::TopQnamesDetails) ? _dns_topSizedQnameResp.update(name, payload.getDataLen()) : void();
             }
 
             auto aggDomain = aggregateDomain(name, suffix_size);
@@ -1024,10 +1029,13 @@ void DnsMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap ad
         _dns_topQname3.to_prometheus(out, add_labels);
         _dns_topNX.to_prometheus(out, add_labels);
         _dns_topREFUSED.to_prometheus(out, add_labels);
-        _dns_topSizedQnameResp.to_prometheus(out, add_labels);
+
         _dns_topSRVFAIL.to_prometheus(out, add_labels);
         _dns_topNODATA.to_prometheus(out, add_labels);
-        _dns_topNOERROR.to_prometheus(out, add_labels);
+        if (group_enabled(group::DnsMetrics::TopQnamesDetails)) {
+            _dns_topSizedQnameResp.to_prometheus(out, add_labels);
+            _dns_topNOERROR.to_prometheus(out, add_labels);
+        }
     }
     _dns_topRCode.to_prometheus(out, add_labels, [](const uint16_t &val) {
         if (RCodeNames.find(val) != RCodeNames.end()) {

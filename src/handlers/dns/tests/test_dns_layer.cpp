@@ -199,6 +199,7 @@ TEST_CASE("Parse DNS random UDP/TCP tests", "[pcap][dns]")
     auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
     DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
+    dns_handler.config_set<visor::Configurable::StringList>("enable", visor::Configurable::StringList({"top_qnames_details"}));
 
     dns_handler.start();
     stream.start();
@@ -865,13 +866,13 @@ TEST_CASE("DNS groups", "[pcap][dns]")
     SECTION("disable invalid dns group")
     {
         dns_handler.config_set<visor::Configurable::StringList>("disable", {"top_qnames", "dns_top_wired"});
-        REQUIRE_THROWS_WITH(dns_handler.start(), "dns_top_wired is an invalid/unsupported metric group. The valid groups are: all, cardinality, counters, dns_transaction, top_ecs, top_ports, top_qnames");
+        REQUIRE_THROWS_WITH(dns_handler.start(), "dns_top_wired is an invalid/unsupported metric group. The valid groups are: all, cardinality, counters, dns_transaction, top_ecs, top_ports, top_qnames, top_qnames_details");
     }
 
     SECTION("enable invalid dns group")
     {
         dns_handler.config_set<visor::Configurable::StringList>("enable", {"top_qnames", "dns_top_wired"});
-        REQUIRE_THROWS_WITH(dns_handler.start(), "dns_top_wired is an invalid/unsupported metric group. The valid groups are: all, cardinality, counters, dns_transaction, top_ecs, top_ports, top_qnames");
+        REQUIRE_THROWS_WITH(dns_handler.start(), "dns_top_wired is an invalid/unsupported metric group. The valid groups are: all, cardinality, counters, dns_transaction, top_ecs, top_ports, top_qnames, top_qnames_details");
     }
 }
 
