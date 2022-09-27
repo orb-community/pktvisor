@@ -250,6 +250,10 @@ void IDnsResource::setDnsLayer(DnsLayer *dnsLayer, size_t offsetInLayer)
 
 std::basic_string_view<uint8_t> IDnsResource::getRawName() const
 {
+    if (m_NameLength == 0) {
+        // malformed name
+        return {};
+    }
     // scan starts at the domain name
     auto scan = std::basic_string_view<uint8_t>{m_DnsLayer->m_Data, m_DnsLayer->m_DataLen}
                     .substr(m_OffsetInLayer) // skip to the name offset
