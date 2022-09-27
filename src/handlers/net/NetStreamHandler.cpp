@@ -3,7 +3,6 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 #include "NetStreamHandler.h"
-#include "GeoDB.h"
 #include "HandlerModulePlugin.h"
 #include "utils.h"
 #include <Corrade/Utility/Debug.h>
@@ -170,22 +169,22 @@ bool NetStreamHandler::_filtering(pcpp::Packet &payload, PacketDirection dir, ti
         } else if (auto IPv4Layer = payload.getLayerOfType<pcpp::IPv4Layer>(); IPv4Layer) {
             struct sockaddr_in sa4;
             if (dir == PacketDirection::toHost && IPv4tosockaddr(IPv4Layer->getSrcIPv4Address(), &sa4) && std::none_of(_f_geoloc_prefix.begin(), _f_geoloc_prefix.end(), [sa4](const auto &prefix) {
-                    return begins_with(HandlerModulePlugin::city->getGeoLocString(&sa4), prefix);
+                    return begins_with(HandlerModulePlugin::city->getGeoLocString(&sa4).location, prefix);
                 })) {
                 goto will_filter;
             } else if (dir == PacketDirection::fromHost && IPv4tosockaddr(IPv4Layer->getDstIPv4Address(), &sa4) && std::none_of(_f_geoloc_prefix.begin(), _f_geoloc_prefix.end(), [sa4](const auto &prefix) {
-                           return begins_with(HandlerModulePlugin::city->getGeoLocString(&sa4), prefix);
+                           return begins_with(HandlerModulePlugin::city->getGeoLocString(&sa4).location, prefix);
                        })) {
                 goto will_filter;
             }
         } else if (auto IPv6layer = payload.getLayerOfType<pcpp::IPv6Layer>(); IPv6layer) {
             struct sockaddr_in6 sa6;
             if (dir == PacketDirection::toHost && IPv6tosockaddr(IPv6layer->getSrcIPv6Address(), &sa6) && std::none_of(_f_geoloc_prefix.begin(), _f_geoloc_prefix.end(), [sa6](const auto &prefix) {
-                    return begins_with(HandlerModulePlugin::city->getGeoLocString(&sa6), prefix);
+                    return begins_with(HandlerModulePlugin::city->getGeoLocString(&sa6).location, prefix);
                 })) {
                 goto will_filter;
             } else if (dir == PacketDirection::fromHost && IPv6tosockaddr(IPv6layer->getDstIPv6Address(), &sa6) && std::none_of(_f_geoloc_prefix.begin(), _f_geoloc_prefix.end(), [sa6](const auto &prefix) {
-                           return begins_with(HandlerModulePlugin::city->getGeoLocString(&sa6), prefix);
+                           return begins_with(HandlerModulePlugin::city->getGeoLocString(&sa6).location, prefix);
                        })) {
                 goto will_filter;
             }
@@ -316,12 +315,11 @@ void NetworkMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMa
     }
 
     if (group_enabled(group::NetMetrics::TopGeo)) {
-        _topGeoLoc.to_prometheus(out, add_labels, [](Metric::LabelMap &l, const std::string &key, const std::string &val) {
-            if (auto pos = val.find('|'); pos != std::string::npos) {
-                l[key] = val.substr(0, pos);
-                l["lat_long"] = val.substr(++pos);
-            } else {
-                l[key] = val;
+        _topGeoLoc.to_prometheus(out, add_labels, [](Metric::LabelMap &l, const std::string &key, const visor::geo::City &val) {
+            l[key] = val.location;
+            if (!val.latitude.empty() && !val.longitude.empty()) {
+                l["lat"] = val.latitude;
+                l["lon"] = val.longitude;
             }
         });
         _topASN.to_prometheus(out, add_labels);
@@ -377,12 +375,11 @@ void NetworkMetricsBucket::to_json(json &j) const
     }
 
     if (group_enabled(group::NetMetrics::TopGeo)) {
-        _topGeoLoc.to_json(j, [](json &j, const std::string &key, const std::string &val) {
-            if (auto pos = val.find('|'); pos != std::string::npos) {
-                j[key] = val.substr(0, pos);
-                j["lat_long"] = val.substr(++pos);
-            } else {
-                j[key] = val;
+        _topGeoLoc.to_json(j, [](json &j, const std::string &key, const visor::geo::City &val) {
+            j[key] = val.location;
+            if (!val.latitude.empty() && !val.longitude.empty()) {
+                j["lat"] = val.latitude;
+                j["lon"] = val.longitude;
             }
         });
         _topASN.to_json(j);

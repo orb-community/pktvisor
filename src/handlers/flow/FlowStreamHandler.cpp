@@ -3,7 +3,6 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 #include "FlowStreamHandler.h"
-#include "GeoDB.h"
 #include "HandlerModulePlugin.h"
 #include "utils.h"
 #include <Corrade/Utility/Debug.h>
@@ -363,14 +362,14 @@ bool FlowStreamHandler::_filtering(const FlowData &flow)
     if (_f_enabled[Filters::GeoLocNotFound] && HandlerModulePlugin::city->enabled()) {
         if (!flow.is_ipv6) {
             struct sockaddr_in sa4;
-            if ((IPv4_to_sockaddr(flow.ipv4_in, &sa4) && HandlerModulePlugin::city->getGeoLocString(&sa4) != "Unknown")
-                && (IPv4_to_sockaddr(flow.ipv4_out, &sa4) && HandlerModulePlugin::city->getGeoLocString(&sa4) != "Unknown")) {
+            if ((IPv4_to_sockaddr(flow.ipv4_in, &sa4) && HandlerModulePlugin::city->getGeoLocString(&sa4).location != "Unknown")
+                && (IPv4_to_sockaddr(flow.ipv4_out, &sa4) && HandlerModulePlugin::city->getGeoLocString(&sa4).location != "Unknown")) {
                 return true;
             }
         } else {
             struct sockaddr_in6 sa6;
-            if ((IPv6_to_sockaddr(flow.ipv6_in, &sa6) && HandlerModulePlugin::city->getGeoLocString(&sa6) != "Unknown")
-                && (IPv6_to_sockaddr(flow.ipv6_out, &sa6) && HandlerModulePlugin::city->getGeoLocString(&sa6) != "Unknown")) {
+            if ((IPv6_to_sockaddr(flow.ipv6_in, &sa6) && HandlerModulePlugin::city->getGeoLocString(&sa6).location != "Unknown")
+                && (IPv6_to_sockaddr(flow.ipv6_out, &sa6) && HandlerModulePlugin::city->getGeoLocString(&sa6).location != "Unknown")) {
                 return true;
             }
         }
@@ -667,12 +666,11 @@ void FlowMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap a
                 return std::to_string(val);
             });
             if (group_enabled(group::FlowMetrics::TopGeo)) {
-                device.second->topByBytes.topGeoLoc.to_prometheus(out, device_labels, [](Metric::LabelMap &l, const std::string &key, const std::string &val) {
-                    if (auto pos = val.find('|'); pos != std::string::npos) {
-                        l[key] = val.substr(0, pos);
-                        l["lat_long"] = val.substr(++pos);
-                    } else {
-                        l[key] = val;
+                device.second->topByBytes.topGeoLoc.to_prometheus(out, device_labels, [](Metric::LabelMap &l, const std::string &key, const visor::geo::City &val) {
+                    l[key] = val.location;
+                    if (!val.latitude.empty() && !val.longitude.empty()) {
+                        l["lat"] = val.latitude;
+                        l["lon"] = val.longitude;
                     }
                 });
                 device.second->topByBytes.topASN.to_prometheus(out, device_labels);
@@ -692,12 +690,11 @@ void FlowMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap a
             device.second->topByPackets.topInIfIndex.to_prometheus(out, device_labels, [](const uint32_t &val) { return std::to_string(val); });
             device.second->topByPackets.topOutIfIndex.to_prometheus(out, device_labels, [](const uint32_t &val) { return std::to_string(val); });
             if (group_enabled(group::FlowMetrics::TopGeo)) {
-                device.second->topByPackets.topGeoLoc.to_prometheus(out, device_labels, [](Metric::LabelMap &l, const std::string &key, const std::string &val) {
-                    if (auto pos = val.find('|'); pos != std::string::npos) {
-                        l[key] = val.substr(0, pos);
-                        l["lat_long"] = val.substr(++pos);
-                    } else {
-                        l[key] = val;
+                device.second->topByPackets.topGeoLoc.to_prometheus(out, device_labels, [](Metric::LabelMap &l, const std::string &key, const visor::geo::City &val) {
+                    l[key] = val.location;
+                    if (!val.latitude.empty() && !val.longitude.empty()) {
+                        l["lat"] = val.latitude;
+                        l["lon"] = val.longitude;
                     }
                 });
                 device.second->topByPackets.topASN.to_prometheus(out, device_labels);
@@ -780,12 +777,11 @@ void FlowMetricsBucket::to_json(json &j) const
                 return std::to_string(val);
             });
             if (group_enabled(group::FlowMetrics::TopGeo)) {
-                device.second->topByBytes.topGeoLoc.to_json(j["devices"][deviceId], [](json &j, const std::string &key, const std::string &val) {
-                    if (auto pos = val.find('|'); pos != std::string::npos) {
-                        j[key] = val.substr(0, pos);
-                        j["lat_long"] = val.substr(++pos);
-                    } else {
-                        j[key] = val;
+                device.second->topByBytes.topGeoLoc.to_json(j["devices"][deviceId], [](json &j, const std::string &key, const visor::geo::City &val) {
+                    j[key] = val.location;
+                    if (!val.latitude.empty() && !val.longitude.empty()) {
+                        j["lat"] = val.latitude;
+                        j["lon"] = val.longitude;
                     }
                 });
                 device.second->topByBytes.topASN.to_json(j["devices"][deviceId]);
@@ -805,12 +801,11 @@ void FlowMetricsBucket::to_json(json &j) const
             device.second->topByPackets.topInIfIndex.to_json(j["devices"][deviceId], [](const uint32_t &val) { return std::to_string(val); });
             device.second->topByPackets.topOutIfIndex.to_json(j["devices"][deviceId], [](const uint32_t &val) { return std::to_string(val); });
             if (group_enabled(group::FlowMetrics::TopGeo)) {
-                device.second->topByBytes.topGeoLoc.to_json(j["devices"][deviceId], [](json &j, const std::string &key, const std::string &val) {
-                    if (auto pos = val.find('|'); pos != std::string::npos) {
-                        j[key] = val.substr(0, pos);
-                        j["lat_long"] = val.substr(++pos);
-                    } else {
-                        j[key] = val;
+                device.second->topByBytes.topGeoLoc.to_json(j["devices"][deviceId], [](json &j, const std::string &key, const visor::geo::City &val) {
+                    j[key] = val.location;
+                    if (!val.latitude.empty() && !val.longitude.empty()) {
+                        j["lat"] = val.latitude;
+                        j["lon"] = val.longitude;
                     }
                 });
                 device.second->topByBytes.topASN.to_json(j["devices"][deviceId]);

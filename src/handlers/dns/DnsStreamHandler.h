@@ -5,6 +5,7 @@
 #pragma once
 
 #include "AbstractMetricsManager.h"
+#include "GeoDB.h"
 #include "MockInputStream.h"
 #include "PcapInputStream.h"
 #include "StreamHandler.h"
@@ -62,7 +63,7 @@ protected:
 
     Cardinality _dns_qnameCard;
 
-    TopN<std::string> _dns_topGeoLocECS;
+    TopN<visor::geo::City> _dns_topGeoLocECS;
     TopN<std::string> _dns_topASNECS;
     TopN<std::string> _dns_topQueryECS;
 

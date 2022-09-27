@@ -21,6 +21,12 @@ MaxmindDB &GeoASN()
     return asn_db;
 }
 
+std::ostream &operator<<(std::ostream &os, const visor::geo::City &c)
+{
+    os << c.location;
+    return os;
+}
+
 void MaxmindDB::enable(const std::string &database_filename, int cache_size)
 {
     auto status = MMDB_open(database_filename.c_str(), MMDB_MODE_MMAP, &_mmdb);
@@ -29,7 +35,7 @@ void MaxmindDB::enable(const std::string &database_filename, int cache_size)
         throw std::runtime_error(msg);
     }
     if (cache_size != 0) {
-        _lru_cache = std::make_unique<LRUList<std::string, std::string>>(cache_size);
+        _lru_cache = std::make_unique<LRUList<std::string, std::variant<std::string, City>>>(cache_size);
     }
     _enabled = true;
 }
@@ -41,28 +47,28 @@ MaxmindDB::~MaxmindDB()
     }
 }
 
-std::string MaxmindDB::getGeoLocString(const struct sockaddr *sa) const
+City MaxmindDB::getGeoLocString(const struct sockaddr *sa) const
 {
 
     if (!_enabled) {
-        return "";
+        return City();
     }
 
     int mmdb_error;
 
     MMDB_lookup_result_s lookup = MMDB_lookup_sockaddr(&_mmdb, sa, &mmdb_error);
     if (mmdb_error != MMDB_SUCCESS || !lookup.found_entry) {
-        return "Unknown";
+        return City{"Unknown", std::string(), std::string()};
     }
 
     return _getGeoLocString(&lookup);
 }
 
-std::string MaxmindDB::getGeoLocString(const struct sockaddr_in *sa4) const
+City MaxmindDB::getGeoLocString(const struct sockaddr_in *sa4) const
 {
 
     if (!_enabled) {
-        return "";
+        return City();
     }
 
     std::string ip_address;
@@ -70,7 +76,7 @@ std::string MaxmindDB::getGeoLocString(const struct sockaddr_in *sa4) const
         ip_address = fmt::format_int(sa4->sin_addr.s_addr).str();
         std::shared_lock lock(_cache_mutex);
         if (auto geoloc = _lru_cache->getValue(ip_address); geoloc.has_value()) {
-            return geoloc.value();
+            return std::get<City>(geoloc.value());
         }
     }
 
@@ -80,9 +86,9 @@ std::string MaxmindDB::getGeoLocString(const struct sockaddr_in *sa4) const
     if (mmdb_error != MMDB_SUCCESS || !lookup.found_entry) {
         if (_lru_cache) {
             std::unique_lock lock(_cache_mutex);
-            _lru_cache->put(ip_address, "Unknown");
+            _lru_cache->put(ip_address, City{"Unknown", std::string(), std::string()});
         }
-        return "Unknown";
+        return City{"Unknown", std::string(), std::string()};
     }
 
     if (_lru_cache) {
@@ -95,11 +101,11 @@ std::string MaxmindDB::getGeoLocString(const struct sockaddr_in *sa4) const
     return _getGeoLocString(&lookup);
 }
 
-std::string MaxmindDB::getGeoLocString(const struct sockaddr_in6 *sa6) const
+City MaxmindDB::getGeoLocString(const struct sockaddr_in6 *sa6) const
 {
 
     if (!_enabled) {
-        return "";
+        return City();
     }
 
     std::string ip_address;
@@ -107,7 +113,7 @@ std::string MaxmindDB::getGeoLocString(const struct sockaddr_in6 *sa6) const
         ip_address = fmt::format("{}", sa6->sin6_addr.s6_addr);
         std::shared_lock lock(_cache_mutex);
         if (auto geoloc = _lru_cache->getValue(ip_address); geoloc.has_value()) {
-            return geoloc.value();
+            return std::get<City>(geoloc.value());
         }
     }
 
@@ -117,9 +123,9 @@ std::string MaxmindDB::getGeoLocString(const struct sockaddr_in6 *sa6) const
     if (mmdb_error != MMDB_SUCCESS || !lookup.found_entry) {
         if (_lru_cache) {
             std::unique_lock lock(_cache_mutex);
-            _lru_cache->put(ip_address, "Unknown");
+            _lru_cache->put(ip_address, City{"Unknown", std::string(), std::string()});
         }
-        return "Unknown";
+        return City{"Unknown", std::string(), std::string()};
     }
 
     if (_lru_cache) {
@@ -132,17 +138,17 @@ std::string MaxmindDB::getGeoLocString(const struct sockaddr_in6 *sa6) const
     return _getGeoLocString(&lookup);
 }
 
-std::string MaxmindDB::getGeoLocString(const char *ip_address) const
+City MaxmindDB::getGeoLocString(const char *ip_address) const
 {
 
     if (!_enabled) {
-        return "";
+        return City();
     }
 
     if (_lru_cache) {
         std::shared_lock lock(_cache_mutex);
         if (auto geoloc = _lru_cache->getValue(ip_address); geoloc.has_value()) {
-            return geoloc.value();
+            return std::get<City>(geoloc.value());
         }
     }
 
@@ -152,9 +158,9 @@ std::string MaxmindDB::getGeoLocString(const char *ip_address) const
     if (0 != gai_error || MMDB_SUCCESS != mmdb_error || !lookup.found_entry) {
         if (_lru_cache) {
             std::unique_lock lock(_cache_mutex);
-            _lru_cache->put(ip_address, "Unknown");
+            _lru_cache->put(ip_address, City{"Unknown", std::string(), std::string()});
         }
-        return "Unknown";
+        return City{"Unknown", std::string(), std::string()};
     }
 
     if (_lru_cache) {
@@ -167,17 +173,17 @@ std::string MaxmindDB::getGeoLocString(const char *ip_address) const
     return _getGeoLocString(&lookup);
 }
 
-std::string MaxmindDB::_getGeoLocString(MMDB_lookup_result_s *lookup) const
+City MaxmindDB::_getGeoLocString(MMDB_lookup_result_s *lookup) const
 {
 
-    std::string geoString;
+    City obj;
 
     {
         MMDB_entry_data_s result;
         MMDB_get_value(&lookup->entry, &result, "continent", "code", NULL);
 
         if (result.has_data && result.type == MMDB_DATA_TYPE_UTF8_STRING) {
-            geoString.append(std::string(result.utf8_string, result.data_size));
+            obj.location.append(std::string(result.utf8_string, result.data_size));
         }
     }
 
@@ -189,8 +195,8 @@ std::string MaxmindDB::_getGeoLocString(MMDB_lookup_result_s *lookup) const
         }
 
         if (result.has_data && result.type == MMDB_DATA_TYPE_UTF8_STRING) {
-            geoString.push_back('/');
-            geoString.append(std::string(result.utf8_string, result.data_size));
+            obj.location.push_back('/');
+            obj.location.append(std::string(result.utf8_string, result.data_size));
         }
     }
 
@@ -199,8 +205,8 @@ std::string MaxmindDB::_getGeoLocString(MMDB_lookup_result_s *lookup) const
         MMDB_get_value(&lookup->entry, &result, "subdivisions", "0", "iso_code", NULL);
 
         if (result.has_data && result.type == MMDB_DATA_TYPE_UTF8_STRING) {
-            geoString.push_back('/');
-            geoString.append(std::string(result.utf8_string, result.data_size));
+            obj.location.push_back('/');
+            obj.location.append(std::string(result.utf8_string, result.data_size));
         }
     }
 
@@ -209,30 +215,29 @@ std::string MaxmindDB::_getGeoLocString(MMDB_lookup_result_s *lookup) const
         MMDB_get_value(&lookup->entry, &result, "city", "names", "en", NULL);
 
         if (result.has_data && result.type == MMDB_DATA_TYPE_UTF8_STRING) {
-            geoString.push_back('/');
-            geoString.append(std::string(result.utf8_string, result.data_size));
+            obj.location.push_back('/');
+            obj.location.append(std::string(result.utf8_string, result.data_size));
         }
     }
 
     {
-        MMDB_entry_data_s result_lat;
-        MMDB_get_value(&lookup->entry, &result_lat, "location", "latitude", NULL);
+        MMDB_entry_data_s result;
+        MMDB_get_value(&lookup->entry, &result, "location", "latitude", NULL);
 
-        if (result_lat.has_data && result_lat.type == MMDB_DATA_TYPE_DOUBLE) {
-            geoString.push_back('|');
-            geoString.append(std::to_string(result_lat.double_value));
-
-            MMDB_entry_data_s result_long;
-            MMDB_get_value(&lookup->entry, &result_long, "location", "longitude", NULL);
-            if (result_long.has_data && result_long.type == MMDB_DATA_TYPE_DOUBLE) {
-                geoString.push_back('/');
-                geoString.append(std::to_string(result_long.double_value));
-            }
+        if (result.has_data && result.type == MMDB_DATA_TYPE_DOUBLE) {
+            obj.latitude.append(std::to_string(result.double_value));
         }
     }
 
-    // expect implicit move
-    return geoString;
+    {
+        MMDB_entry_data_s result;
+        MMDB_get_value(&lookup->entry, &result, "location", "longitude", NULL);
+        if (result.has_data && result.type == MMDB_DATA_TYPE_DOUBLE) {
+            obj.longitude.append(std::to_string(result.double_value));
+        }
+    }
+
+    return obj;
 }
 
 std::string MaxmindDB::getASNString(const struct sockaddr *sa) const
@@ -263,7 +268,7 @@ std::string MaxmindDB::getASNString(const struct sockaddr_in *sa4) const
         ip_address = fmt::format_int(sa4->sin_addr.s_addr).str();
         std::shared_lock lock(_cache_mutex);
         if (auto asn = _lru_cache->getValue(ip_address); asn.has_value()) {
-            return asn.value();
+            return std::get<std::string>(asn.value());
         }
     }
 
@@ -300,7 +305,7 @@ std::string MaxmindDB::getASNString(const struct sockaddr_in6 *sa6) const
         ip_address = fmt::format("{}", sa6->sin6_addr.s6_addr);
         std::shared_lock lock(_cache_mutex);
         if (auto asn = _lru_cache->getValue(ip_address); asn.has_value()) {
-            return asn.value();
+            return std::get<std::string>(asn.value());
         }
     }
 
@@ -335,7 +340,7 @@ std::string MaxmindDB::getASNString(const char *ip_address) const
     if (_lru_cache) {
         std::shared_lock lock(_cache_mutex);
         if (auto asn = _lru_cache->getValue(ip_address); asn.has_value()) {
-            return asn.value();
+            return std::get<std::string>(asn.value());
         }
     }
 

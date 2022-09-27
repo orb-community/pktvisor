@@ -4,7 +4,6 @@
 
 #include "DnsStreamHandler.h"
 #include "DnstapInputStream.h"
-#include "GeoDB.h"
 #include "HandlerModulePlugin.h"
 #include "utils.h"
 #include <Corrade/Utility/Debug.h>
@@ -479,7 +478,7 @@ inline bool DnsStreamHandler::_filtering(DnsLayer &payload, [[maybe_unused]] Pac
             goto will_filter;
         }
         auto ecs = parse_additional_records_ecs(payload.getFirstAdditionalRecord());
-        if (!ecs || ecs->client_subnet.empty() || (HandlerModulePlugin::city->getGeoLocString(ecs->client_subnet.c_str()) != "Unknown")) {
+        if (!ecs || ecs->client_subnet.empty() || (HandlerModulePlugin::city->getGeoLocString(ecs->client_subnet.c_str()).location != "Unknown")) {
             goto will_filter;
         }
     }
@@ -634,12 +633,11 @@ void DnsMetricsBucket::to_json(json &j) const
 
     if (group_enabled(group::DnsMetrics::TopEcs)) {
         group_enabled(group::DnsMetrics::Counters) ? _counters.queryECS.to_json(j) : void();
-        _dns_topGeoLocECS.to_json(j, [](json &j, const std::string &key, const std::string &val) {
-            if (auto pos = val.find('|'); pos != std::string::npos) {
-                j[key] = val.substr(0, pos);
-                j["lat_long"] = val.substr(++pos);
-            } else {
-                j[key] = val;
+        _dns_topGeoLocECS.to_json(j, [](json &j, const std::string &key, const visor::geo::City &val) {
+            j[key] = val.location;
+            if (!val.latitude.empty() && !val.longitude.empty()) {
+                j["lat"] = val.latitude;
+                j["lon"] = val.longitude;
             }
         });
         _dns_topASNECS.to_json(j);
@@ -1018,12 +1016,11 @@ void DnsMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap ad
     }
     if (group_enabled(group::DnsMetrics::TopEcs)) {
         group_enabled(group::DnsMetrics::Counters) ? _counters.queryECS.to_prometheus(out, add_labels) : void();
-        _dns_topGeoLocECS.to_prometheus(out, add_labels, [](Metric::LabelMap &l, const std::string &key, const std::string &val) {
-            if (auto pos = val.find('|'); pos != std::string::npos) {
-                l[key] = val.substr(0, pos);
-                l["lat_long"] = val.substr(++pos);
-            } else {
-                l[key] = val;
+        _dns_topGeoLocECS.to_prometheus(out, add_labels, [](Metric::LabelMap &l, const std::string &key, const visor::geo::City &val) {
+            l[key] = val.location;
+            if (!val.latitude.empty() && !val.longitude.empty()) {
+                l["lat"] = val.latitude;
+                l["lon"] = val.longitude;
             }
         });
         _dns_topASNECS.to_prometheus(out, add_labels);
