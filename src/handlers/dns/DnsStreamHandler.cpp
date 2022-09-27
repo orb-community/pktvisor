@@ -478,7 +478,7 @@ inline bool DnsStreamHandler::_filtering(DnsLayer &payload, [[maybe_unused]] Pac
             goto will_filter;
         }
         auto ecs = parse_additional_records_ecs(payload.getFirstAdditionalRecord());
-        if (!ecs || ecs->client_subnet.empty() || (HandlerModulePlugin::city->getGeoLocString(ecs->client_subnet.c_str()).location != "Unknown")) {
+        if (!ecs || ecs->client_subnet.empty() || (HandlerModulePlugin::city->getGeoLoc(ecs->client_subnet.c_str()).location != "Unknown")) {
             goto will_filter;
         }
     }
@@ -871,7 +871,7 @@ void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, pcpp::Pro
                 }
                 _dns_topQueryECS.update(ecs->client_subnet);
                 if (HandlerModulePlugin::city->enabled()) {
-                    _dns_topGeoLocECS.update(HandlerModulePlugin::city->getGeoLocString(ecs->client_subnet.c_str()));
+                    _dns_topGeoLocECS.update(HandlerModulePlugin::city->getGeoLoc(ecs->client_subnet.c_str()));
                 }
                 if (HandlerModulePlugin::asn->enabled()) {
                     _dns_topASNECS.update(HandlerModulePlugin::asn->getASNString(ecs->client_subnet.c_str()));

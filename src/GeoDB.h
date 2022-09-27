@@ -24,7 +24,7 @@ struct City {
     std::string location;
     std::string latitude;
     std::string longitude;
-    NLOHMANN_DEFINE_TYPE_INTRUSIVE(City, location);
+    NLOHMANN_DEFINE_TYPE_INTRUSIVE(City, location, latitude, longitude);
 
     bool operator==(const City &other) const
     {
@@ -52,10 +52,10 @@ public:
     /*
      * These routines accept both IPv4 and IPv6
      */
-    City getGeoLocString(const char *ip_address) const;
-    City getGeoLocString(const struct sockaddr *sa) const;
-    City getGeoLocString(const struct sockaddr_in *sa4) const;
-    City getGeoLocString(const struct sockaddr_in6 *sa6) const;
+    City getGeoLoc(const char *ip_address) const;
+    City getGeoLoc(const struct sockaddr *sa) const;
+    City getGeoLoc(const struct sockaddr_in *sa4) const;
+    City getGeoLoc(const struct sockaddr_in6 *sa6) const;
 
     std::string getASNString(const char *ip_address) const;
     std::string getASNString(const struct sockaddr *sa) const;
@@ -68,7 +68,7 @@ private:
     std::unique_ptr<LRUList<std::string, std::variant<std::string, City>>> _lru_cache;
     mutable std::shared_mutex _cache_mutex;
 
-    City _getGeoLocString(MMDB_lookup_result_s *lookup) const;
+    City _getGeoLoc(MMDB_lookup_result_s *lookup) const;
     std::string _getASNString(MMDB_lookup_result_s *lookup) const;
 };
 

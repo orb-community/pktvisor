@@ -47,7 +47,7 @@ MaxmindDB::~MaxmindDB()
     }
 }
 
-City MaxmindDB::getGeoLocString(const struct sockaddr *sa) const
+City MaxmindDB::getGeoLoc(const struct sockaddr *sa) const
 {
 
     if (!_enabled) {
@@ -61,10 +61,10 @@ City MaxmindDB::getGeoLocString(const struct sockaddr *sa) const
         return City{"Unknown", std::string(), std::string()};
     }
 
-    return _getGeoLocString(&lookup);
+    return _getGeoLoc(&lookup);
 }
 
-City MaxmindDB::getGeoLocString(const struct sockaddr_in *sa4) const
+City MaxmindDB::getGeoLoc(const struct sockaddr_in *sa4) const
 {
 
     if (!_enabled) {
@@ -92,16 +92,16 @@ City MaxmindDB::getGeoLocString(const struct sockaddr_in *sa4) const
     }
 
     if (_lru_cache) {
-        auto geoloc = _getGeoLocString(&lookup);
+        auto geoloc = _getGeoLoc(&lookup);
         std::unique_lock lock(_cache_mutex);
         _lru_cache->put(ip_address, geoloc);
         return geoloc;
     }
 
-    return _getGeoLocString(&lookup);
+    return _getGeoLoc(&lookup);
 }
 
-City MaxmindDB::getGeoLocString(const struct sockaddr_in6 *sa6) const
+City MaxmindDB::getGeoLoc(const struct sockaddr_in6 *sa6) const
 {
 
     if (!_enabled) {
@@ -129,16 +129,16 @@ City MaxmindDB::getGeoLocString(const struct sockaddr_in6 *sa6) const
     }
 
     if (_lru_cache) {
-        auto geoloc = _getGeoLocString(&lookup);
+        auto geoloc = _getGeoLoc(&lookup);
         std::unique_lock lock(_cache_mutex);
         _lru_cache->put(ip_address, geoloc);
         return geoloc;
     }
 
-    return _getGeoLocString(&lookup);
+    return _getGeoLoc(&lookup);
 }
 
-City MaxmindDB::getGeoLocString(const char *ip_address) const
+City MaxmindDB::getGeoLoc(const char *ip_address) const
 {
 
     if (!_enabled) {
@@ -164,16 +164,16 @@ City MaxmindDB::getGeoLocString(const char *ip_address) const
     }
 
     if (_lru_cache) {
-        auto geoloc = _getGeoLocString(&lookup);
+        auto geoloc = _getGeoLoc(&lookup);
         std::unique_lock lock(_cache_mutex);
         _lru_cache->put(ip_address, geoloc);
         return geoloc;
     }
 
-    return _getGeoLocString(&lookup);
+    return _getGeoLoc(&lookup);
 }
 
-City MaxmindDB::_getGeoLocString(MMDB_lookup_result_s *lookup) const
+City MaxmindDB::_getGeoLoc(MMDB_lookup_result_s *lookup) const
 {
 
     City obj;
