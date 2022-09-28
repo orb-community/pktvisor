@@ -6,6 +6,7 @@
 
 #include "AbstractMetricsManager.h"
 #include "DhcpLayer.h"
+#include "DhcpV6Layer.h"
 #include "PcapInputStream.h"
 #include "RequestAckManager.h"
 #include "StreamHandler.h"
@@ -26,6 +27,7 @@ protected:
     mutable std::shared_mutex _mutex;
 
     TopN<std::string> _dhcp_topClients;
+    TopN<std::string> _dhcp_topServers;
 
     // total numPackets is tracked in base class num_events
     struct counters {
@@ -34,6 +36,10 @@ protected:
         Counter OFFER;
         Counter REQUEST;
         Counter ACK;
+        Counter SOLICIT;
+        Counter ADVERTISE;
+        Counter REQUESTV6;
+        Counter REPLY;
         Counter total;
         Counter filtered;
 
@@ -42,8 +48,12 @@ protected:
             , OFFER(DHCP_SCHEMA, {"wire_packets", "offer"}, "Total DHCP packets with message type OFFER")
             , REQUEST(DHCP_SCHEMA, {"wire_packets", "request"}, "Total DHCP packets with message type REQUEST")
             , ACK(DHCP_SCHEMA, {"wire_packets", "ack"}, "Total DHCP packets with message type ACK")
-            , total(DHCP_SCHEMA, {"wire_packets", "total"}, "Total DHCP wire packets matching the configured filter(s)")
-            , filtered(DHCP_SCHEMA, {"wire_packets", "filtered"}, "Total DHCP wire packets seen that did not match the configured filter(s) (if any)")
+            , SOLICIT(DHCP_SCHEMA, {"wire_packets", "solicit"}, "Total DHCPv6 packets with message type SOLICIT")
+            , ADVERTISE(DHCP_SCHEMA, {"wire_packets", "advertise"}, "Total DHCPv6 packets with message type ADVERTISE")
+            , REQUESTV6(DHCP_SCHEMA, {"wire_packets", "request_v6"}, "Total DHCPv6 packets with message type REQUEST")
+            , REPLY(DHCP_SCHEMA, {"wire_packets", "reply"}, "Total DHCPv6 packets with message type REPLY")
+            , total(DHCP_SCHEMA, {"wire_packets", "total"}, "Total DHCP/DHCPv6 wire packets matching the configured filter(s)")
+            , filtered(DHCP_SCHEMA, {"wire_packets", "filtered"}, "Total DHCP/DHCPv6 wire packets seen that did not match the configured filter(s) (if any)")
         {
         }
     };
@@ -53,6 +63,7 @@ protected:
 public:
     DhcpMetricsBucket()
         : _dhcp_topClients(DHCP_SCHEMA, "client", {"top_clients"}, "Top DHCP clients")
+        , _dhcp_topServers(DHCP_SCHEMA, "server", {"top_servers"}, "Top DHCP servers")
         , _rate_total(DHCP_SCHEMA, {"rates", "total"}, "Rate of all DHCP wire packets (combined ingress and egress) in packets per second")
     {
         set_event_rate_info(DHCP_SCHEMA, {"rates", "events"}, "Rate of all DHCP wire packets before filtering per second");
@@ -82,8 +93,9 @@ public:
     }
 
     void process_filtered();
-    void process_dhcp_layer(bool deep, pcpp::DhcpLayer *payload);
+    void process_dhcp_layer(bool deep, pcpp::DhcpLayer *dhcp, pcpp::Packet *payload);
     void new_dhcp_transaction(bool deep, pcpp::DhcpLayer *payload, DhcpTransaction &xact);
+    void process_dhcp_v6_layer(bool deep, pcpp::DhcpV6Layer *dhcp, pcpp::Packet *payload);
 };
 
 class DhcpMetricsManager final : public visor::AbstractMetricsManager<DhcpMetricsBucket>
@@ -103,7 +115,8 @@ public:
     }
 
     void process_filtered(timespec stamp);
-    void process_dhcp_layer(pcpp::DhcpLayer *payload, PacketDirection dir, uint32_t flowkey, timespec stamp);
+    void process_dhcp_layer(pcpp::DhcpLayer *dhcp, pcpp::Packet *payload, timespec stamp);
+    void process_dhcp_v6_layer(pcpp::DhcpV6Layer *dhcp, pcpp::Packet *payload, timespec stamp);
 };
 
 class DhcpStreamHandler final : public visor::StreamMetricsHandler<DhcpMetricsManager>
@@ -122,7 +135,8 @@ class DhcpStreamHandler final : public visor::StreamMetricsHandler<DhcpMetricsMa
     void set_start_tstamp(timespec stamp);
     void set_end_tstamp(timespec stamp);
 
-    bool _filtering(pcpp::DhcpLayer *payload, PacketDirection dir, timespec stamp);
+    bool _filtering(pcpp::DhcpLayer *payload, timespec stamp);
+    bool _filtering_v6(pcpp::DhcpV6Layer *payload, timespec stamp);
 
 public:
     DhcpStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config);
