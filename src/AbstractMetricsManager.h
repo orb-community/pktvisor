@@ -608,6 +608,11 @@ public:
             err << "invalid metrics period, specify [0, " << _num_periods - 1 << "]";
             throw PeriodException(err.str());
         }
+        if (period >= _metric_buckets.size()) {
+            std::stringstream err;
+            err << "requested metrics period has not yet accumulated, current range is [0, " << _metric_buckets.size() - 1 << "]";
+            throw PeriodException(err.str());
+        }
 
         if (auto merged = dynamic_cast<MetricsBucketClass *>(bucket); merged) {
             merged->merge(*_metric_buckets[period].get(), Metric::Aggregate::SUM);
