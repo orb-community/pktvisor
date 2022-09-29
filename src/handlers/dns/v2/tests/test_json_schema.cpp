@@ -41,7 +41,7 @@ TEST_CASE("DNS JSON Schema", "[dns][iface][json]")
         json dns_json;
         dns_handler.metrics()->window_merged_json(dns_json, dns_handler.schema_key(), 5);
 
-        std::ifstream sfile("handlers/dns/tests/window-schema.json");
+        std::ifstream sfile("handlers/dns/v2/tests/window-schema.json");
         CHECK(sfile.is_open());
         std::string schema;
 
