@@ -383,7 +383,7 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
         }
         try {
             uint64_t period(std::stol(req.matches[3]));
-            auto merge = req.matches[2] == "window";
+            auto merge = (req.matches[2] == "window");
             for (const auto &p_mname : plist) {
                 spdlog::stopwatch psw;
                 auto [policy, lock] = _registry->policy_manager()->module_get_locked(p_mname);
