@@ -264,7 +264,7 @@ void DhcpMetricsBucket::process_dhcp_v6_layer(bool deep, pcpp::DhcpV6Layer *dhcp
         return;
     }
 
-    if (type == pcpp::DHCPV6_ADVERTISE) {
+    if (type == pcpp::DHCPV6_REPLY || type == pcpp::DHCPV6_ADVERTISE) {
         // must have Server Id Layer
         if (auto option = dhcp->getOptionData(pcpp::DHCPV6_OPT_SERVERID); option.isNotNull()) {
             pcpp::EthLayer *ethLayer = payload->getLayerOfType<pcpp::EthLayer>();
