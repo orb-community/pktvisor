@@ -6,6 +6,7 @@
 
 #include "AbstractMetricsManager.h"
 #include "FlowInputStream.h"
+#include "GeoDB.h"
 #include "IpPort.h"
 #include "MockInputStream.h"
 #include "StreamHandler.h"
@@ -86,7 +87,7 @@ struct FlowTopN {
     TopN<std::string> topConversations;
     TopN<uint32_t> topInIfIndex;
     TopN<uint32_t> topOutIfIndex;
-    TopN<std::string> topGeoLoc;
+    TopN<visor::geo::City> topGeoLoc;
     TopN<std::string> topASN;
     FlowTopN(std::string metric)
         : topSrcIP(FLOW_SCHEMA, "ip", {"top_src_ips_" + metric}, "Top source IP addresses by " + metric)
