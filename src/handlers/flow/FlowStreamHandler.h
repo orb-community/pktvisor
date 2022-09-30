@@ -6,9 +6,9 @@
 
 #include "AbstractMetricsManager.h"
 #include "FlowInputStream.h"
+#include "IpPort.h"
 #include "MockInputStream.h"
 #include "StreamHandler.h"
-#include "IpPort.h"
 #include <Corrade/Utility/Debug.h>
 #include <IPv4Layer.h>
 #include <IPv6Layer.h>
