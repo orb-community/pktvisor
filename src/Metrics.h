@@ -348,6 +348,22 @@ public:
         name_json_assign(j, section);
     }
 
+    void to_json(json &j, std::function<void(json &, const std::string &, const T &)> formatter) const
+    {
+        auto section = json::array();
+        auto items = _fi.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
+        auto threshold = _get_threshold(items);
+        for (uint64_t i = 0; i < std::min(_top_count, items.size()); i++) {
+            if (items[i].get_estimate() >= threshold) {
+                formatter(section[i], "name", items[i].get_item());
+                section[i]["estimate"] = items[i].get_estimate();
+            } else {
+                break;
+            }
+        }
+        name_json_assign(j, section);
+    }
+
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels, std::function<std::string(const T &)> formatter) const
     {
         LabelMap l(add_labels);
@@ -358,6 +374,23 @@ public:
         for (uint64_t i = 0; i < std::min(_top_count, items.size()); i++) {
             if (items[i].get_estimate() >= threshold) {
                 l[_item_key] = formatter(items[i].get_item());
+                out << name_snake({}, l) << ' ' << items[i].get_estimate() << std::endl;
+            } else {
+                break;
+            }
+        }
+    }
+
+    void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels, std::function<void(LabelMap &, const std::string &, const T &)> formatter) const
+    {
+        LabelMap l(add_labels);
+        auto items = _fi.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
+        auto threshold = _get_threshold(items);
+        out << "# HELP " << base_name_snake() << ' ' << _desc << std::endl;
+        out << "# TYPE " << base_name_snake() << " gauge" << std::endl;
+        for (uint64_t i = 0; i < std::min(_top_count, items.size()); i++) {
+            if (items[i].get_estimate() >= threshold) {
+                formatter(l, _item_key, items[i].get_item());
                 out << name_snake({}, l) << ' ' << items[i].get_estimate() << std::endl;
             } else {
                 break;
