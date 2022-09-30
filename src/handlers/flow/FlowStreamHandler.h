@@ -8,6 +8,7 @@
 #include "FlowInputStream.h"
 #include "MockInputStream.h"
 #include "StreamHandler.h"
+#include "IpPort.h"
 #include <Corrade/Utility/Debug.h>
 #include <IPv4Layer.h>
 #include <IPv6Layer.h>
@@ -78,8 +79,8 @@ struct FlowPacket {
 struct FlowTopN {
     TopN<std::string> topSrcIP;
     TopN<std::string> topDstIP;
-    TopN<uint16_t> topSrcPort;
-    TopN<uint16_t> topDstPort;
+    TopN<visor::IpPort> topSrcPort;
+    TopN<visor::IpPort> topDstPort;
     TopN<std::string> topSrcIPandPort;
     TopN<std::string> topDstIPandPort;
     TopN<std::string> topConversations;
