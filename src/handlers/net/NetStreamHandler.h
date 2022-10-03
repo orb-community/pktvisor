@@ -6,6 +6,7 @@
 
 #include "AbstractMetricsManager.h"
 #include "DnstapInputStream.h"
+#include "GeoDB.h"
 #include "MockInputStream.h"
 #include "PcapInputStream.h"
 #include "StreamHandler.h"
@@ -61,7 +62,7 @@ protected:
     Cardinality _srcIPCard;
     Cardinality _dstIPCard;
 
-    TopN<std::string> _topGeoLoc;
+    TopN<visor::geo::City> _topGeoLoc;
     TopN<std::string> _topASN;
     TopN<uint32_t> _topIPv4;
     TopN<std::string> _topIPv6;

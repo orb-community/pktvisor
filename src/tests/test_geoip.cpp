@@ -10,7 +10,7 @@ TEST_CASE("GeoIP", "[geoip]")
         CHECK(!visor::geo::GeoIP().enabled());
         CHECK_THROWS(visor::geo::GeoIP().enable("nonexistent.mmdb"));
         CHECK(!visor::geo::GeoIP().enabled());
-        CHECK(visor::geo::GeoIP().getGeoLocString("2a02:dac0::") == "");
+        CHECK(visor::geo::GeoIP().getGeoLoc("2a02:dac0::").location == "");
         CHECK(visor::geo::GeoASN().getASNString("2a02:dac0::") == "");
         CHECK_NOTHROW(visor::geo::GeoIP().enable("tests/fixtures/GeoIP2-City-Test.mmdb"));
         CHECK(visor::geo::GeoIP().enabled());
@@ -21,9 +21,12 @@ TEST_CASE("GeoIP", "[geoip]")
     SECTION("basic Geo lookup")
     {
         CHECK(visor::geo::GeoIP().enabled());
-        CHECK(visor::geo::GeoIP().getGeoLocString("2a02:dac0::") == "EU/Russia");
-        CHECK(visor::geo::GeoIP().getGeoLocString("89.160.20.112") == "EU/Sweden/E/Linköping");
-        CHECK(visor::geo::GeoIP().getGeoLocString("216.160.83.56") == "NA/United States/WA/Milton");
+        auto loc = visor::geo::GeoIP().getGeoLoc("2a02:dac0::");
+        CHECK(loc.location == "EU/Russia");
+        CHECK(loc.latitude == "60.000000");
+        CHECK(loc.longitude == "100.000000");
+        CHECK(visor::geo::GeoIP().getGeoLoc("89.160.20.112").location == "EU/Sweden/E/Linköping");
+        CHECK(visor::geo::GeoIP().getGeoLoc("216.160.83.56").location == "NA/United States/WA/Milton");
     }
 
     SECTION("basic ASN lookup")
@@ -43,15 +46,15 @@ TEST_CASE("GeoIP", "[geoip]")
         struct sockaddr_in sa4;
         sa4.sin_family = AF_INET;
         inet_pton(AF_INET, "89.160.20.112", &sa4.sin_addr.s_addr);
-        CHECK(visor::geo::GeoIP().getGeoLocString(&sa4) == "EU/Sweden/E/Linköping");
-        CHECK(visor::geo::GeoIP().getGeoLocString(&sa4) == "EU/Sweden/E/Linköping");
-        CHECK(visor::geo::GeoIP().getGeoLocString((struct sockaddr *)&sa4) == "EU/Sweden/E/Linköping");
+        CHECK(visor::geo::GeoIP().getGeoLoc(&sa4).location == "EU/Sweden/E/Linköping");
+        CHECK(visor::geo::GeoIP().getGeoLoc(&sa4).location == "EU/Sweden/E/Linköping");
+        CHECK(visor::geo::GeoIP().getGeoLoc((struct sockaddr *)&sa4).location == "EU/Sweden/E/Linköping");
         struct sockaddr_in6 sa6;
         sa6.sin6_family = AF_INET6;
         inet_pton(AF_INET6, "2a02:dac0::", &sa6.sin6_addr);
-        CHECK(visor::geo::GeoIP().getGeoLocString(&sa6) == "EU/Russia");
-        CHECK(visor::geo::GeoIP().getGeoLocString(&sa6) == "EU/Russia");
-        CHECK(visor::geo::GeoIP().getGeoLocString((struct sockaddr *)&sa6) == "EU/Russia");
+        CHECK(visor::geo::GeoIP().getGeoLoc(&sa6).location == "EU/Russia");
+        CHECK(visor::geo::GeoIP().getGeoLoc(&sa6).location == "EU/Russia");
+        CHECK(visor::geo::GeoIP().getGeoLoc((struct sockaddr *)&sa6).location == "EU/Russia");
     }
 
     SECTION("basic ASN lookup, socket")
@@ -84,7 +87,7 @@ TEST_CASE("GeoIP without cache", "[geoip]")
     SECTION("basic Geo lookup")
     {
         CHECK(visor::geo::GeoIP().enabled());
-        CHECK(visor::geo::GeoIP().getGeoLocString("2a02:dac0::") == "EU/Russia");
+        CHECK(visor::geo::GeoIP().getGeoLoc("2a02:dac0::").location == "EU/Russia");
     }
 
     SECTION("basic ASN lookup")
@@ -104,11 +107,11 @@ TEST_CASE("GeoIP without cache", "[geoip]")
         struct sockaddr_in sa4;
         sa4.sin_family = AF_INET;
         inet_pton(AF_INET, "89.160.20.112", &sa4.sin_addr.s_addr);
-        CHECK(visor::geo::GeoIP().getGeoLocString(&sa4) == "EU/Sweden/E/Linköping");
+        CHECK(visor::geo::GeoIP().getGeoLoc(&sa4).location == "EU/Sweden/E/Linköping");
         struct sockaddr_in6 sa6;
         sa6.sin6_family = AF_INET6;
         inet_pton(AF_INET6, "2a02:dac0::", &sa6.sin6_addr);
-        CHECK(visor::geo::GeoIP().getGeoLocString(&sa6) == "EU/Russia");
+        CHECK(visor::geo::GeoIP().getGeoLoc(&sa6).location == "EU/Russia");
     }
 
     SECTION("basic ASN lookup, socket")
