@@ -107,7 +107,8 @@ if(CODE_COVERAGE)
     append_coverage_compiler_flags()
     setup_target_for_coverage_lcov(
             NAME coverage
-            EXECUTABLE ctest)
+            EXECUTABLE ctest
+            BASE_DIRECTORY "${PROJECT_SOURCE_DIR}/src")
 endif()
 
 endif()
