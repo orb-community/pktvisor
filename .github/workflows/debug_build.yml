@@ -2,7 +2,7 @@ name: Debug Builds
 
 on:
   push:
-    branches: [ develop, master, release/**, codecov ]
+    branches: [ develop, master, release/** ]
 
 env:
   CTEST_OUTPUT_ON_FAILURE: 1
