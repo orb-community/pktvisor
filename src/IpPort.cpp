@@ -1,14 +1,14 @@
 #include "IpPort.h"
 
-namespace visor {
+namespace visor::network {
 
-std::ostream &operator<<(std::ostream &os, const visor::IpPort &p)
+std::ostream &operator<<(std::ostream &os, const IpPort &p)
 {
     os << std::to_string(p.port);
     return os;
 }
 
-std::string IpPort::get_name() const
+std::string IpPort::get_service() const
 {
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
     return std::to_string(port);

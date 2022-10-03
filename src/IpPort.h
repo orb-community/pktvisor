@@ -12,7 +12,7 @@
 #include <ostream>
 #include <string>
 
-namespace visor {
+namespace visor::network {
 
 enum Protocol : uint16_t {
     TCP = 1,
@@ -24,7 +24,7 @@ struct IpPort {
     Protocol proto{0};
     NLOHMANN_DEFINE_TYPE_INTRUSIVE(IpPort, port);
 
-    std::string get_name() const;
+    std::string get_service() const;
 
     bool operator==(const IpPort &other) const
     {
@@ -38,8 +38,8 @@ struct IpPort {
 }
 
 template <>
-struct std::hash<visor::IpPort> {
-    std::size_t operator()(const visor::IpPort &p) const
+struct std::hash<visor::network::IpPort> {
+    std::size_t operator()(const visor::network::IpPort &p) const
     {
         return std::hash<uint32_t>{}((p.proto << 16) + p.port);
     }

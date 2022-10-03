@@ -80,8 +80,8 @@ struct FlowPacket {
 struct FlowTopN {
     TopN<std::string> topSrcIP;
     TopN<std::string> topDstIP;
-    TopN<visor::IpPort> topSrcPort;
-    TopN<visor::IpPort> topDstPort;
+    TopN<network::IpPort> topSrcPort;
+    TopN<network::IpPort> topDstPort;
     TopN<std::string> topSrcIPandPort;
     TopN<std::string> topDstIPandPort;
     TopN<std::string> topConversations;
