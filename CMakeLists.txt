@@ -95,7 +95,7 @@ if(CODE_COVERAGE)
     append_coverage_compiler_flags()
     setup_target_for_coverage_lcov(
             NAME coverage
-            BASE_DIRECTORY ${CMAKE_BINARY_DIR}/coverage)
+            EXECUTABLE ctest)
 endif()
 
 set(VISOR_STATIC_PLUGINS)
