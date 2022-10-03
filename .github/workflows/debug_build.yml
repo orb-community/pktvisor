@@ -2,7 +2,12 @@ name: Debug Builds
 
 on:
   push:
-    branches: [ develop, master, release/** ]
+    branches: [ develop, master, release/**, codecov ]
+
+env:
+  CTEST_OUTPUT_ON_FAILURE: 1
+  CONAN_NON_INTERACTIVE: 1
+  CONAN_REVISIONS_ENABLED: 1
 
 jobs:
   unit-tests-linux:
