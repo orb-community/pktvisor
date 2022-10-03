@@ -30,7 +30,7 @@ jobs:
       - name: linux package install
         run: |
           sudo apt-get update
-          sudo apt-get install --yes --no-install-recommends jq
+          sudo apt-get install --yes --no-install-recommends jq lcov
 
       - name: Configure CMake
         # Use a bash shell so we can use the same syntax for environment variable
