@@ -19,7 +19,7 @@
 
 #include "GeoDB.h"
 #include "handlers/dhcp/DhcpStreamHandler.h"
-#include "handlers/dns/DnsStreamHandler.h"
+#include "handlers/dns/v1/DnsStreamHandler.h"
 #include "handlers/net/NetStreamHandler.h"
 #include "inputs/dnstap/DnstapInputStream.h"
 #include "inputs/pcap/PcapInputStream.h"

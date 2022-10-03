@@ -183,7 +183,7 @@ public:
         handler.type = module["type"].as<std::string>();
         auto handler_plugin = _registry->handler_plugins().find(std::make_pair(handler.type, handler.version));
         if (handler_plugin == _registry->handler_plugins().end()) {
-            throw HandlerException(fmt::format("Policy '{}' requires stream handler type '{}' which is not available", policy_name, handler.type));
+            throw HandlerException(fmt::format("Policy '{}' requires stream handler type '{}' and version '{}' which is not available", policy_name, handler.type, handler.version));
         }
 
         if (module["filter"]) {
