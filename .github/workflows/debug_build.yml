@@ -2,7 +2,7 @@ name: Debug Builds
 
 on:
   push:
-    branches: [ develop, master, release/**, add-lcov ]
+    branches: [ develop, master, release/** ]
 
 jobs:
   unit-tests-linux:
