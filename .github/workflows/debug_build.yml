@@ -52,7 +52,7 @@ jobs:
         working-directory: ${{github.workspace}}/build
         shell: bash
         # Execute the build.  You can specify a specific target with "--target <NAME>"
-        run: cmake --build . --config Debug -DCODE_COVERAGE=ON -- -j 2
+        run: cmake --build . --config Debug -- -j 2 -DCODE_COVERAGE=ON
 
       - name: Test
         working-directory: ${{github.workspace}}/build
