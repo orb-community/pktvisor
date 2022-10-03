@@ -90,6 +90,13 @@ conan_basic_setup()
 
 find_package(Corrade REQUIRED PluginManager)
 include(sanitizer)
+if(CODE_COVERAGE)
+    include(CodeCoverage)
+    append_coverage_compiler_flags()
+    setup_target_for_coverage_lcov(
+            NAME coverage
+            EXECUTABLE ctest)
+endif()
 
 set(VISOR_STATIC_PLUGINS)
 
@@ -101,14 +108,5 @@ add_subdirectory(libs)
 add_subdirectory(src)
 add_subdirectory(cmd)
 add_subdirectory(integration_tests)
-
-if(CODE_COVERAGE)
-    include(CodeCoverage)
-    append_coverage_compiler_flags()
-    setup_target_for_coverage_lcov(
-            NAME coverage
-            EXECUTABLE ctest
-            BASE_DIRECTORY "${PROJECT_SOURCE_DIR}/src")
-endif()
 
 endif()
