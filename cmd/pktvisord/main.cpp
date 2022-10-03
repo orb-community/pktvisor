@@ -528,7 +528,13 @@ int main(int argc, char *argv[])
     // local config file
     if (options.config.has_value()) {
         // pass to CoreManagers
-        svr->registry()->configure_from_yaml(options.config.value());
+        try {
+            svr->registry()->configure_from_yaml(options.config.value());
+        } catch (const std::exception &e) {
+            logger->error(e.what());
+            logger->info("exit with failure");
+            exit(EXIT_FAILURE);
+        }
     }
 
     shutdown_handler = [&]([[maybe_unused]] int signal) {
