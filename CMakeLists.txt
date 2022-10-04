@@ -96,7 +96,7 @@ if(CODE_COVERAGE)
     setup_target_for_coverage_lcov(
             NAME coverage
             EXECUTABLE ctest
-            EXCLUDE "${PROJECT_SOURCE_DIR}/3rd/*" "${PROJECT_SOURCE_DIR}/cmd/*" "${PROJECT_SOURCE_DIR}/libs/*")
+            EXCLUDE "3rd/" "cmd/" "libs/")
 endif()
 
 set(VISOR_STATIC_PLUGINS)
