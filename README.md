@@ -1,7 +1,8 @@
 ![pktvisor](docs/images/pktvisor-header.png)
 
-![Build status](https://github.com/ns1labs/pktvisor/workflows/Build/badge.svg)
-![CodeQL](https://github.com/ns1labs/pktvisor/workflows/CodeQL/badge.svg)
+[![Build status](https://github.com/ns1labs/pktvisor/workflows/Build/badge.svg)](https://github.com/ns1labs/pktvisor/actions)
+[![CodeQL](https://github.com/ns1labs/pktvisor/workflows/CodeQL/badge.svg)](https://github.com/ns1labs/pktvisor/security/code-scanning)
+[![CodeCov](https://codecov.io/gh/ns1labs/pktvisor/branch/develop/graph/badge.svg)](https://app.codecov.io/gh/ns1labs/pktvisor/tree/develop)
 
 <p align="left">
   <strong>
