@@ -95,7 +95,8 @@ if(CODE_COVERAGE)
     append_coverage_compiler_flags()
     setup_target_for_coverage_lcov(
             NAME coverage
-            EXECUTABLE ctest)
+            EXECUTABLE ctest
+            EXCLUDE "3rd/*" "cmd/*" "libs/*")
 endif()
 
 set(VISOR_STATIC_PLUGINS)
