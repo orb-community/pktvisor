@@ -74,7 +74,7 @@ jobs:
       - name: Codecov
         uses: codecov/codecov-action@v3
         with:
-          flags: unittests
+          files: build/coverage.info
           name: pktvisor
           verbose: true
 
