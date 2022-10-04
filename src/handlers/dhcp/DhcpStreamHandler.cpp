@@ -3,6 +3,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 #include "DhcpStreamHandler.h"
+#include "EthLayer.h"
+#include "IPv6Layer.h"
 
 namespace visor::handler::dhcp {
 
@@ -18,7 +20,7 @@ DhcpStreamHandler::DhcpStreamHandler(const std::string &name, InputEventProxy *p
 }
 
 // callback from input module
-void DhcpStreamHandler::process_udp_packet_cb(pcpp::Packet &payload, PacketDirection dir, [[maybe_unused]] pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp)
+void DhcpStreamHandler::process_udp_packet_cb(pcpp::Packet &payload, [[maybe_unused]] PacketDirection dir, [[maybe_unused]] pcpp::ProtocolType l3, [[maybe_unused]] uint32_t flowkey, timespec stamp)
 {
     pcpp::UdpLayer *udpLayer = payload.getLayerOfType<pcpp::UdpLayer>();
     assert(udpLayer);
@@ -27,8 +29,13 @@ void DhcpStreamHandler::process_udp_packet_cb(pcpp::Packet &payload, PacketDirec
     auto src_port = ntohs(udpLayer->getUdpHeader()->portSrc);
     if (dst_port == 67 || src_port == 67 || dst_port == 68 || src_port == 68) {
         pcpp::DhcpLayer dhcpLayer(udpLayer->getLayerPayload(), udpLayer->getLayerPayloadSize(), udpLayer, &payload);
-        if (!_filtering(&dhcpLayer, dir, stamp)) {
-            _metrics->process_dhcp_layer(&dhcpLayer, dir, flowkey, stamp);
+        if (!_filtering(&dhcpLayer, stamp)) {
+            _metrics->process_dhcp_layer(&dhcpLayer, &payload, stamp);
+        }
+    } else if (dst_port == 546 || src_port == 546 || dst_port == 547 || src_port == 547) {
+        pcpp::DhcpV6Layer dhcpLayer(udpLayer->getLayerPayload(), udpLayer->getLayerPayloadSize(), udpLayer, &payload);
+        if (!_filtering_v6(&dhcpLayer, stamp)) {
+            _metrics->process_dhcp_v6_layer(&dhcpLayer, &payload, stamp);
         }
     }
 }
@@ -94,10 +101,15 @@ void DhcpMetricsBucket::specialized_merge(const AbstractMetricsBucket &o, Metric
     _counters.OFFER += other._counters.OFFER;
     _counters.REQUEST += other._counters.REQUEST;
     _counters.ACK += other._counters.ACK;
+    _counters.SOLICIT += other._counters.SOLICIT;
+    _counters.ADVERTISE += other._counters.ADVERTISE;
+    _counters.REQUESTV6 += other._counters.REQUESTV6;
+    _counters.REPLY += other._counters.REPLY;
     _counters.total += other._counters.total;
     _counters.filtered += other._counters.filtered;
 
     _dhcp_topClients.merge(other._dhcp_topClients);
+    _dhcp_topServers.merge(other._dhcp_topServers);
 }
 
 void DhcpMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap add_labels) const
@@ -119,10 +131,15 @@ void DhcpMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap a
     _counters.OFFER.to_prometheus(out, add_labels);
     _counters.REQUEST.to_prometheus(out, add_labels);
     _counters.ACK.to_prometheus(out, add_labels);
+    _counters.SOLICIT.to_prometheus(out, add_labels);
+    _counters.ADVERTISE.to_prometheus(out, add_labels);
+    _counters.REQUESTV6.to_prometheus(out, add_labels);
+    _counters.REPLY.to_prometheus(out, add_labels);
     _counters.total.to_prometheus(out, add_labels);
     _counters.filtered.to_prometheus(out, add_labels);
 
     _dhcp_topClients.to_prometheus(out, add_labels);
+    _dhcp_topServers.to_prometheus(out, add_labels);
 }
 
 void DhcpMetricsBucket::to_json(json &j) const
@@ -145,10 +162,15 @@ void DhcpMetricsBucket::to_json(json &j) const
     _counters.OFFER.to_json(j);
     _counters.REQUEST.to_json(j);
     _counters.ACK.to_json(j);
+    _counters.SOLICIT.to_json(j);
+    _counters.ADVERTISE.to_json(j);
+    _counters.REQUESTV6.to_json(j);
+    _counters.REPLY.to_json(j);
     _counters.total.to_json(j);
     _counters.filtered.to_json(j);
 
     _dhcp_topClients.to_json(j);
+    _dhcp_topServers.to_json(j);
 }
 
 void DhcpMetricsBucket::process_filtered()
@@ -157,20 +179,27 @@ void DhcpMetricsBucket::process_filtered()
     ++_counters.filtered;
 }
 
-bool DhcpStreamHandler::_filtering([[maybe_unused]] pcpp::DhcpLayer *payload, [[maybe_unused]] PacketDirection dir, [[maybe_unused]] timespec stamp)
+bool DhcpStreamHandler::_filtering([[maybe_unused]] pcpp::DhcpLayer *payload, [[maybe_unused]] timespec stamp)
 {
     // no filters yet
     return false;
 }
 
-void DhcpMetricsBucket::process_dhcp_layer([[maybe_unused]] bool deep, pcpp::DhcpLayer *payload)
+bool DhcpStreamHandler::_filtering_v6([[maybe_unused]] pcpp::DhcpV6Layer *payload, [[maybe_unused]] timespec stamp)
+{
+    // no filters yet
+    return false;
+}
+
+void DhcpMetricsBucket::process_dhcp_layer(bool deep, pcpp::DhcpLayer *dhcp, pcpp::Packet *payload)
 {
     std::unique_lock lock(_mutex);
 
     ++_counters.total;
     ++_rate_total;
 
-    switch (payload->getMessageType()) {
+    auto type = dhcp->getMessageType();
+    switch (type) {
     case pcpp::DHCP_DISCOVER:
         ++_counters.DISCOVER;
         break;
@@ -186,6 +215,17 @@ void DhcpMetricsBucket::process_dhcp_layer([[maybe_unused]] bool deep, pcpp::Dhc
     default:
         break;
     }
+
+    if (!deep) {
+        return;
+    }
+
+    if (type == pcpp::DHCP_OFFER) {
+        pcpp::EthLayer *ethLayer = payload->getLayerOfType<pcpp::EthLayer>();
+        if (auto option = dhcp->getOptionData(pcpp::DHCPOPT_DHCP_SERVER_IDENTIFIER); option.isNotNull() && ethLayer) {
+            _dhcp_topServers.update(ethLayer->getSourceMac().toString() + "/" + option.getValueAsIpAddr().toString());
+        }
+    }
 }
 void DhcpMetricsBucket::new_dhcp_transaction(bool deep, pcpp::DhcpLayer *payload, DhcpTransaction &xact)
 {
@@ -200,26 +240,72 @@ void DhcpMetricsBucket::new_dhcp_transaction(bool deep, pcpp::DhcpLayer *payload
     }
 }
 
-void DhcpMetricsManager::process_dhcp_layer(pcpp::DhcpLayer *payload, [[maybe_unused]] PacketDirection dir, [[maybe_unused]] uint32_t flowkey, timespec stamp)
+void DhcpMetricsBucket::process_dhcp_v6_layer(bool deep, pcpp::DhcpV6Layer *dhcp, pcpp::Packet *payload)
+{
+    auto type = dhcp->getMessageType();
+    switch (type) {
+    case pcpp::DHCPV6_SOLICIT:
+        ++_counters.SOLICIT;
+        break;
+    case pcpp::DHCPV6_ADVERTISE:
+        ++_counters.ADVERTISE;
+        break;
+    case pcpp::DHCPV6_REQUEST:
+        ++_counters.REQUESTV6;
+        break;
+    case pcpp::DHCPV6_REPLY:
+        ++_counters.REPLY;
+        break;
+    default:
+        break;
+    }
+
+    if (!deep) {
+        return;
+    }
+
+    if (type == pcpp::DHCPV6_REPLY || type == pcpp::DHCPV6_ADVERTISE) {
+        // must have Server Id Layer
+        if (auto option = dhcp->getOptionData(pcpp::DHCPV6_OPT_SERVERID); option.isNotNull()) {
+            pcpp::EthLayer *ethLayer = payload->getLayerOfType<pcpp::EthLayer>();
+            pcpp::IPv6Layer *ipv6Layer = payload->getLayerOfType<pcpp::IPv6Layer>();
+            if (ethLayer && ipv6Layer) {
+                if (auto ipv6 = ipv6Layer->getSrcIPv6Address(); ipv6.isValid()) {
+                    _dhcp_topServers.update(ethLayer->getSourceMac().toString() + "/" + ipv6.toString());
+                }
+            }
+        }
+    }
+}
+
+void DhcpMetricsManager::process_dhcp_layer(pcpp::DhcpLayer *dhcp, pcpp::Packet *payload, timespec stamp)
 {
     // base event
     new_event(stamp);
     // process in the "live" bucket. this will parse the resources if we are deep sampling
-    live_bucket()->process_dhcp_layer(_deep_sampling_now, payload);
+    live_bucket()->process_dhcp_layer(_deep_sampling_now, dhcp, payload);
 
-    if (auto type = payload->getMessageType(); type == pcpp::DHCP_REQUEST) {
+    if (auto type = dhcp->getMessageType(); type == pcpp::DHCP_REQUEST) {
         std::string hostname{"Unknown"};
-        if (auto option = payload->getOptionData(pcpp::DhcpOptionTypes::DHCPOPT_HOST_NAME); option.isNotNull()) {
+        if (auto option = dhcp->getOptionData(pcpp::DhcpOptionTypes::DHCPOPT_HOST_NAME); option.isNotNull()) {
             hostname = option.getValueAsString();
         }
-        auto mac_address = payload->getClientHardwareAddress().toString();
-        _request_ack_manager.start_transaction(payload->getDhcpHeader()->transactionID, stamp, hostname, mac_address);
+        auto mac_address = dhcp->getClientHardwareAddress().toString();
+        _request_ack_manager.start_transaction(dhcp->getDhcpHeader()->transactionID, stamp, hostname, mac_address);
     } else if (type == pcpp::DHCP_ACK) {
-        auto xact = _request_ack_manager.maybe_end_transaction(payload->getDhcpHeader()->transactionID);
+        auto xact = _request_ack_manager.maybe_end_transaction(dhcp->getDhcpHeader()->transactionID);
         if (xact.first) {
-            live_bucket()->new_dhcp_transaction(_deep_sampling_now, payload, xact.second);
+            live_bucket()->new_dhcp_transaction(_deep_sampling_now, dhcp, xact.second);
         }
     }
+}
+
+void DhcpMetricsManager::process_dhcp_v6_layer(pcpp::DhcpV6Layer *dhcp, pcpp::Packet *payload, timespec stamp)
+{
+    // base event
+    new_event(stamp);
+    // process in the "live" bucket. this will parse the resources if we are deep sampling
+    live_bucket()->process_dhcp_v6_layer(_deep_sampling_now, dhcp, payload);
 }
 
 void DhcpMetricsManager::process_filtered(timespec stamp)
