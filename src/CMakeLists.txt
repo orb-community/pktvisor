@@ -16,6 +16,7 @@ add_library(visor-core
         Metrics.cpp
         Policies.cpp
         ThreadName.cpp
+        IpPort.cpp
         Taps.cpp)
 add_library(Visor::Core ALIAS visor-core)
 

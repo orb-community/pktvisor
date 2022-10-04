@@ -642,8 +642,8 @@ void FlowMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap a
         if (group_enabled(group::FlowMetrics::TopByBytes)) {
             device.second->topByBytes.topSrcIP.to_prometheus(out, device_labels);
             device.second->topByBytes.topDstIP.to_prometheus(out, device_labels);
-            device.second->topByBytes.topSrcPort.to_prometheus(out, device_labels, [](const uint16_t &val) { return std::to_string(val); });
-            device.second->topByBytes.topDstPort.to_prometheus(out, device_labels, [](const uint16_t &val) { return std::to_string(val); });
+            device.second->topByBytes.topSrcPort.to_prometheus(out, device_labels, [](const network::IpPort &val) { return val.get_service(); });
+            device.second->topByBytes.topDstPort.to_prometheus(out, device_labels, [](const network::IpPort &val) { return val.get_service(); });
             device.second->topByBytes.topSrcIPandPort.to_prometheus(out, device_labels);
             device.second->topByBytes.topDstIPandPort.to_prometheus(out, device_labels);
             if (group_enabled(group::FlowMetrics::Conversations)) {
@@ -680,15 +680,29 @@ void FlowMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap a
         if (group_enabled(group::FlowMetrics::TopByPackets)) {
             device.second->topByPackets.topSrcIP.to_prometheus(out, device_labels);
             device.second->topByPackets.topDstIP.to_prometheus(out, device_labels);
-            device.second->topByPackets.topSrcPort.to_prometheus(out, device_labels, [](const uint16_t &val) { return std::to_string(val); });
-            device.second->topByPackets.topDstPort.to_prometheus(out, device_labels, [](const uint16_t &val) { return std::to_string(val); });
+            device.second->topByPackets.topSrcPort.to_prometheus(out, device_labels, [](const network::IpPort &val) { return val.get_service(); });
+            device.second->topByPackets.topDstPort.to_prometheus(out, device_labels, [](const network::IpPort &val) { return val.get_service(); });
             device.second->topByPackets.topSrcIPandPort.to_prometheus(out, device_labels);
             device.second->topByPackets.topDstIPandPort.to_prometheus(out, device_labels);
             if (group_enabled(group::FlowMetrics::Conversations)) {
                 device.second->topByPackets.topConversations.to_prometheus(out, device_labels);
             }
-            device.second->topByPackets.topInIfIndex.to_prometheus(out, device_labels, [](const uint32_t &val) { return std::to_string(val); });
-            device.second->topByPackets.topOutIfIndex.to_prometheus(out, device_labels, [](const uint32_t &val) { return std::to_string(val); });
+            device.second->topByPackets.topInIfIndex.to_prometheus(out, device_labels, [dev](const uint32_t &val) {
+                if (dev) {
+                    if (auto it = dev->interfaces.find(val); it != dev->interfaces.end()) {
+                        return it->second.name;
+                    }
+                }
+                return std::to_string(val);
+            });
+            device.second->topByPackets.topOutIfIndex.to_prometheus(out, device_labels, [dev](const uint32_t &val) {
+                if (dev) {
+                    if (auto it = dev->interfaces.find(val); it != dev->interfaces.end()) {
+                        return it->second.name;
+                    }
+                }
+                return std::to_string(val);
+            });
             if (group_enabled(group::FlowMetrics::TopGeo)) {
                 device.second->topByPackets.topGeoLoc.to_prometheus(out, device_labels, [](Metric::LabelMap &l, const std::string &key, const visor::geo::City &val) {
                     l[key] = val.location;
@@ -753,8 +767,8 @@ void FlowMetricsBucket::to_json(json &j) const
         if (group_enabled(group::FlowMetrics::TopByBytes)) {
             device.second->topByBytes.topSrcIP.to_json(j["devices"][deviceId]);
             device.second->topByBytes.topDstIP.to_json(j["devices"][deviceId]);
-            device.second->topByBytes.topSrcPort.to_json(j["devices"][deviceId], [](const uint16_t &val) { return std::to_string(val); });
-            device.second->topByBytes.topDstPort.to_json(j["devices"][deviceId], [](const uint16_t &val) { return std::to_string(val); });
+            device.second->topByBytes.topSrcPort.to_json(j["devices"][deviceId], [](const network::IpPort &val) { return val.get_service(); });
+            device.second->topByBytes.topDstPort.to_json(j["devices"][deviceId], [](const network::IpPort &val) { return val.get_service(); });
             device.second->topByBytes.topSrcIPandPort.to_json(j["devices"][deviceId]);
             device.second->topByBytes.topDstIPandPort.to_json(j["devices"][deviceId]);
             if (group_enabled(group::FlowMetrics::Conversations)) {
@@ -791,15 +805,29 @@ void FlowMetricsBucket::to_json(json &j) const
         if (group_enabled(group::FlowMetrics::TopByPackets)) {
             device.second->topByPackets.topSrcIP.to_json(j["devices"][deviceId]);
             device.second->topByPackets.topDstIP.to_json(j["devices"][deviceId]);
-            device.second->topByPackets.topSrcPort.to_json(j["devices"][deviceId], [](const uint16_t &val) { return std::to_string(val); });
-            device.second->topByPackets.topDstPort.to_json(j["devices"][deviceId], [](const uint16_t &val) { return std::to_string(val); });
+            device.second->topByPackets.topSrcPort.to_json(j["devices"][deviceId], [](const network::IpPort &val) { return val.get_service(); });
+            device.second->topByPackets.topDstPort.to_json(j["devices"][deviceId], [](const network::IpPort &val) { return val.get_service(); });
             device.second->topByPackets.topSrcIPandPort.to_json(j["devices"][deviceId]);
             device.second->topByPackets.topDstIPandPort.to_json(j["devices"][deviceId]);
             if (group_enabled(group::FlowMetrics::Conversations)) {
                 device.second->topByPackets.topConversations.to_json(j["devices"][deviceId]);
             }
-            device.second->topByPackets.topInIfIndex.to_json(j["devices"][deviceId], [](const uint32_t &val) { return std::to_string(val); });
-            device.second->topByPackets.topOutIfIndex.to_json(j["devices"][deviceId], [](const uint32_t &val) { return std::to_string(val); });
+            device.second->topByPackets.topInIfIndex.to_json(j["devices"][deviceId], [dev](const uint32_t &val) {
+                if (dev) {
+                    if (auto it = dev->interfaces.find(val); it != dev->interfaces.end()) {
+                        return it->second.name;
+                    }
+                }
+                return std::to_string(val);
+            });
+            device.second->topByPackets.topOutIfIndex.to_json(j["devices"][deviceId], [dev](const uint32_t &val) {
+                if (dev) {
+                    if (auto it = dev->interfaces.find(val); it != dev->interfaces.end()) {
+                        return it->second.name;
+                    }
+                }
+                return std::to_string(val);
+            });
             if (group_enabled(group::FlowMetrics::TopGeo)) {
                 device.second->topByBytes.topGeoLoc.to_json(j["devices"][deviceId], [](json &j, const std::string &key, const visor::geo::City &val) {
                     j[key] = val.location;
@@ -859,16 +887,21 @@ void FlowMetricsBucket::process_flow(bool deep, const FlowPacket &payload)
             continue;
         }
 
+        auto proto = network::Protocol::TCP;
+        if (flow.l4 == IP_PROTOCOL::UDP) {
+            proto = network::Protocol::UDP;
+        }
+
         if (group_enabled(group::FlowMetrics::TopByBytes)) {
-            (flow.src_port > 0) ? device_flow->topByBytes.topSrcPort.update(flow.src_port, flow.payload_size) : void();
-            (flow.dst_port > 0) ? device_flow->topByBytes.topDstPort.update(flow.dst_port, flow.payload_size) : void();
+            (flow.src_port > 0) ? device_flow->topByBytes.topSrcPort.update(network::IpPort{flow.src_port, proto}, flow.payload_size) : void();
+            (flow.dst_port > 0) ? device_flow->topByBytes.topDstPort.update(network::IpPort{flow.dst_port, proto}, flow.payload_size) : void();
             device_flow->topByBytes.topInIfIndex.update(flow.if_in_index, flow.payload_size);
             device_flow->topByBytes.topOutIfIndex.update(flow.if_out_index, flow.payload_size);
         }
 
         if (group_enabled(group::FlowMetrics::TopByPackets)) {
-            (flow.src_port > 0) ? device_flow->topByPackets.topSrcPort.update(flow.src_port, flow.packets) : void();
-            (flow.dst_port > 0) ? device_flow->topByPackets.topDstPort.update(flow.dst_port, flow.packets) : void();
+            (flow.src_port > 0) ? device_flow->topByPackets.topSrcPort.update(network::IpPort{flow.src_port, proto}, flow.packets) : void();
+            (flow.dst_port > 0) ? device_flow->topByPackets.topDstPort.update(network::IpPort{flow.dst_port, proto}, flow.packets) : void();
             device_flow->topByPackets.topInIfIndex.update(flow.if_in_index, flow.packets);
             device_flow->topByPackets.topOutIfIndex.update(flow.if_out_index, flow.packets);
         }

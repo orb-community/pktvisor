@@ -7,6 +7,7 @@
 #include "AbstractMetricsManager.h"
 #include "FlowInputStream.h"
 #include "GeoDB.h"
+#include "IpPort.h"
 #include "MockInputStream.h"
 #include "StreamHandler.h"
 #include <Corrade/Utility/Debug.h>
@@ -79,8 +80,8 @@ struct FlowPacket {
 struct FlowTopN {
     TopN<std::string> topSrcIP;
     TopN<std::string> topDstIP;
-    TopN<uint16_t> topSrcPort;
-    TopN<uint16_t> topDstPort;
+    TopN<network::IpPort> topSrcPort;
+    TopN<network::IpPort> topDstPort;
     TopN<std::string> topSrcIPandPort;
     TopN<std::string> topDstIPandPort;
     TopN<std::string> topConversations;
