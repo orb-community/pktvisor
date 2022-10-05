@@ -31,7 +31,7 @@ NetStreamHandler::NetStreamHandler(const std::string &name, InputEventProxy *pro
         _dnstap_proxy = dynamic_cast<DnstapInputEventProxy *>(proxy);
         _mock_proxy = dynamic_cast<MockInputEventProxy *>(proxy);
         if (!_pcap_proxy && !_dnstap_proxy && !_mock_proxy) {
-            throw StreamHandlerException(fmt::format("NetStreamHandler: unsupported input event proxy {}", proxy->name()));
+            //throw StreamHandlerException(fmt::format("NetStreamHandler: unsupported input event proxy {}", proxy->name()));
         }
     }
 }
