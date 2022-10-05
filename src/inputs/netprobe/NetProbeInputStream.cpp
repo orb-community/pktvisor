@@ -69,7 +69,7 @@ void NetProbeInputStream::start()
 
     // setup server socket
     _icmp = std::make_unique<network::ICMPSocket>();
-    pcpp::IPAddress ip("8.8.8.8");
+    pcpp::IPAddress ip("2800:3f0:4004:803::2004");
     _icmp->create(ip, _io_loop);
 
     _running = true;

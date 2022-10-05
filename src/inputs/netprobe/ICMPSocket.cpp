@@ -13,6 +13,11 @@ bool ICMPSocket::create(const pcpp::IPAddress &ip, std::shared_ptr<uvw::Loop> io
     if (_init || !ip.isValid()) {
         return false;
     }
+    
+    //TODO support ICMPv6
+    if (ip.isIPv6()) {
+        return false;
+    }
 
     int domain = AF_INET;
     if (ip.isIPv4()) {
@@ -42,7 +47,10 @@ bool ICMPSocket::create(const pcpp::IPAddress &ip, std::shared_ptr<uvw::Loop> io
         return false;
     }
 #else
-    _sock = socket(domain, SOCK_DGRAM, IPPROTO_ICMP);
+    _sock = socket(domain, SOCK_RAW, IPPROTO_ICMP);
+    if (_sock == SOCKET_ERROR) {
+        _sock = socket(domain, SOCK_DGRAM, IPPROTO_ICMP);
+    }
     int flag = 1;
     if ((flag = fcntl(_sock, F_GETFL, 0)) == SOCKET_ERROR) {
         return false;
@@ -72,6 +80,10 @@ bool ICMPSocket::create(const pcpp::IPAddress &ip, std::shared_ptr<uvw::Loop> io
             }
         });
     } else {
+        _poll->on<uvw::PollEvent>([](const uvw::PollEvent &event, auto &) {
+            if (event.flags & uvw::details::UVPollEvent::READABLE) {
+            }
+        });
     }
 
     _poll->init();
@@ -86,7 +98,7 @@ bool ICMPSocket::create(const pcpp::IPAddress &ip, std::shared_ptr<uvw::Loop> io
         icmp.computeCalculateFields();
         sendto(_sock, icmp.getData(), icmp.getDataLen(), 0, reinterpret_cast<struct sockaddr *>(&_sa), _sin_length);
     } else {
-        // sendto(_sock, data, length, 0, (struct sockaddr *)&sa, sizeof(sa));
+        //sendto(_sock, icmp.getData(), icmp.getDataLen(), 0, reinterpret_cast<struct sockaddr *>(&_sa6), _sin_length);
     }
 
     return true;
