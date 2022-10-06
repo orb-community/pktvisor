@@ -439,9 +439,9 @@ class DNS:
     xact: Xact
 
     def __init__(self, cardinality: DNSCardinality, period: Period, rates: DHCPRates, top_nodata: List[Any],
-                 top_nxdomain: List[Any], top_qname2: List[Top], top_qname3: List[Top],
-                 top_qname_by_resp_bytes: List[Top], top_qtype: List[Top], top_rcode: List[Top], top_refused: List[Any],
-                 top_srvfail: List[Any], top_udp_ports: List[Top], wire_packets: Dict[str, int], xact: Xact) -> None:
+                 top_nxdomain: List[Any], top_qname2: List[Top], top_qname3: List[Top], top_qtype: List[Top],
+                 top_rcode: List[Top], top_refused: List[Any], top_srvfail: List[Any], top_udp_ports: List[Top],
+                 wire_packets: Dict[str, int], xact: Xact) -> None:
         self.cardinality = cardinality
         self.period = period
         self.rates = rates
@@ -449,7 +449,6 @@ class DNS:
         self.top_nxdomain = top_nxdomain
         self.top_qname2 = top_qname2
         self.top_qname3 = top_qname3
-        self.top_qname_by_resp_bytes = top_qname_by_resp_bytes
         self.top_qtype = top_qtype
         self.top_rcode = top_rcode
         self.top_refused = top_refused
@@ -474,7 +473,6 @@ class DNS:
         top_nxdomain = from_list(lambda x: x, obj.get("top_nxdomain"))
         top_qname2 = from_list(Top.from_dict, obj.get("top_qname2"))
         top_qname3 = from_list(Top.from_dict, obj.get("top_qname3"))
-        top_qname_by_resp_bytes = from_list(Top.from_dict, obj.get("top_qname_by_resp_bytes"))
         top_qtype = from_list(Top.from_dict, obj.get("top_qtype"))
         top_rcode = from_list(Top.from_dict, obj.get("top_rcode"))
         top_refused = from_list(lambda x: x, obj.get("top_refused"))
@@ -483,7 +481,7 @@ class DNS:
         wire_packets = from_dict(from_int, obj.get("wire_packets"))
         xact = Xact.from_dict(obj.get("xact"))
         return DNS(cardinality, period, rates, top_nodata, top_nxdomain, top_qname2, top_qname3,
-                   top_qname_by_resp_bytes, top_qtype, top_rcode, top_refused, top_srvfail, top_udp_ports, wire_packets,
+                   top_qtype, top_rcode, top_refused, top_srvfail, top_udp_ports, wire_packets,
                    xact)
 
     def to_dict(self) -> dict:
