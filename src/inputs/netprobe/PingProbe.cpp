@@ -1,0 +1,199 @@
+#include "PingProbe.h"
+
+#include "NetProbeException.h"
+#include <IcmpLayer.h>
+#include <Packet.h>
+#include <iostream>
+#include <uvw/dns.h>
+#include <uvw/stream.h>
+
+namespace visor::input::netprobe {
+
+bool PingProbe::start(std::shared_ptr<uvw::Loop> io_loop)
+{
+    if (_init || (!_ip.isValid() && _dns.empty())) {
+        return false;
+    }
+
+    // TODO support ICMPv6
+    if (_ip.isIPv6()) {
+        return false;
+    }
+    io_loop = _io_loop;
+
+    _interval_timer = _io_loop->resource<uvw::TimerHandle>();
+    if (!_interval_timer) {
+        throw NetProbeException("PingProbe - unable to initialize interval TimerHandle");
+    }
+    _interval_timer->on<uvw::TimerEvent>([this](const auto &, auto &) {
+        uint16_t sequence = 1;
+
+
+        _timeout_timer = _io_loop->resource<uvw::TimerHandle>();
+        if (!_timeout_timer) {
+            throw NetProbeException("PingProbe - unable to initialize timeout TimerHandle");
+        }
+
+        _timeout_timer->on<uvw::TimerEvent>([this](const auto &, auto &) {
+            auto packet = pcpp::Packet();
+            _fail(packet, TestType::Ping, _name);
+        });
+
+        if(!_create_socket()) {
+            return;
+        }
+
+        _poll = _io_loop->resource<uvw::PollHandle>(static_cast<uvw::OSSocketHandle>(_sock));
+        if (!_poll) {
+            throw NetProbeException("PingProbe - unable to initialize PollHandle");
+        }
+        _poll->on<uvw::ErrorEvent>([](const auto &, auto &handler) {
+            handler.close();
+        });
+        // event.flags & uvw::details::UVPollEvent::READABLE
+        if (!_is_ipv6) {
+            _poll->on<uvw::PollEvent>([this, &sequence](const uvw::PollEvent &event, auto &) {
+                _recv_icmp_v4();
+                if (sequence < _packets_per_test) {
+                    sequence++;
+                    _timeout_timer->again();
+                    _send_icmp_v4(sequence);
+                } else {
+                    _timeout_timer->stop();
+                    _close_socket();
+                }
+            });
+        }
+
+        _internal_timer = _io_loop->resource<uvw::TimerHandle>();
+        _internal_timer->on<uvw::TimerEvent>([this](const auto &, auto &) {
+
+        });
+
+
+        _poll->init();
+        _poll->start(uvw::PollHandle::Event::READABLE);
+
+        _send_icmp_v4(sequence);
+        sequence++;
+        _timeout_timer->start(uvw::TimerHandle::Time{_timeout_msec}, uvw::TimerHandle::Time{0});
+    });
+
+    _interval_timer->start(uvw::TimerHandle::Time{0}, uvw::TimerHandle::Time{_interval_msec});
+
+    return true;
+}
+
+bool PingProbe::stop()
+{
+    _interval_timer->stop();
+    return true;
+}
+
+bool PingProbe::_set_ip()
+{
+    if (_ip_set) {
+        return true;
+    }
+    // don't need dns resolution
+    if (_dns.empty()) {
+        if (_ip.isIPv4()) {
+            memset(&_sa, 0, sizeof(struct sockaddr_in));
+            uint32_t ip_int(_ip.getIPv4().toInt());
+            memcpy(&_sa.sin_addr, &ip_int, sizeof(_sa.sin_addr));
+            _sa.sin_family = AF_INET;
+            _sin_length = sizeof(_sa);
+            _ip_set = true;
+            return true;
+        } else {
+            _is_ipv6 = true;
+            memset(&_sa6, 0, sizeof(struct sockaddr_in6));
+            auto ip_bytes = _ip.getIPv6().toBytes();
+            for (int i = 0; i < 16; ++i) {
+                _sa6.sin6_addr.s6_addr[i] = ip_bytes[i];
+            }
+            _sa6.sin6_family = AF_INET6;
+            _sin_length = sizeof(_sa6);
+            _ip_set = true;
+            return true;
+        }
+    }
+
+    auto request = _io_loop->resource<uvw::GetAddrInfoReq>();
+    auto response = request->nodeAddrInfoSync(_dns);
+    if (!response.first) {
+        return false;
+    }
+
+    return true;
+}
+
+bool PingProbe::_create_socket()
+{
+    if (!_set_ip()) {
+        return false;
+    }
+
+    int domain = AF_INET;
+    if (_is_ipv6) {
+        domain = AF_INET6;
+    }
+
+    _sock = socket(domain, SOCK_RAW, IPPROTO_ICMP);
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+    if (_sock == INVALID_SOCKET) {
+        return false;
+    }
+    unsigned long flag = 1;
+    if (ioctlsocket(_sock, FIONBIO, &flag) == SOCKET_ERROR) {
+        return false;
+    }
+#else
+    if (_sock == SOCKET_ERROR) {
+        _sock = socket(domain, SOCK_DGRAM, IPPROTO_ICMP);
+    }
+    int flag = 1;
+    if ((flag = fcntl(_sock, F_GETFL, 0)) == SOCKET_ERROR) {
+        return false;
+    }
+    if (fcntl(_sock, F_SETFL, flag | O_NONBLOCK) == SOCKET_ERROR) {
+        return false;
+    }
+#endif
+    return true;
+}
+
+void PingProbe::_send_icmp_v4(uint16_t sequence)
+{
+    auto icmp = pcpp::IcmpLayer();
+    timespec stamp;
+    std::timespec_get(&stamp, TIME_UTC);
+    std::unique_ptr<uint8_t[]> array(new uint8_t[icmp.getHeaderLen() + _packet_payload_size]);
+    icmp.setEchoRequestData(static_cast<uint16_t>(stamp.tv_nsec), sequence, static_cast<uint64_t>(stamp.tv_sec), array.get(), 48);
+    icmp.computeCalculateFields();
+    sendto(_sock, icmp.getData(), icmp.getDataLen(), 0, reinterpret_cast<struct sockaddr *>(&_sa), _sin_length);
+}
+
+void PingProbe::_recv_icmp_v4()
+{
+    size_t len = sizeof(pcpp::icmphdr) + _packet_payload_size * 2;
+    std::unique_ptr<uint8_t[]> array(new uint8_t[len]);
+    auto rc = recvfrom(_sock, array.get(), len, 0, reinterpret_cast<struct sockaddr *>(&_sa), &_sin_length);
+    if (rc != SOCKET_ERROR) {
+        pcpp::Packet packet(array.get(), rc);
+        _success(packet, TestType::Ping, _name);
+    }
+}
+
+void PingProbe::_close_socket()
+{
+    _poll->close();
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+    closesocket(_sock);
+    _sock = INVALID_SOCKET;
+#else
+    close(_sock);
+    _sock = SOCKET_ERROR;
+#endif
+}
+}

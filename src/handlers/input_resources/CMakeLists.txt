@@ -21,6 +21,7 @@ target_link_libraries(VisorHandlerInputResources
         Visor::Input::Dnstap
         Visor::Input::Mock
         Visor::Input::Flow
+        Visor::Input::NetProbe
         )
 
 set(VISOR_STATIC_PLUGINS ${VISOR_STATIC_PLUGINS} Visor::Handler::InputResources PARENT_SCOPE)

@@ -9,31 +9,45 @@
 #include <winsock2.h>
 typedef int SOCKETLEN;
 #else
+#include <unistd.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #define SOCKET_ERROR -1
 typedef socklen_t SOCKETLEN;
 typedef int SOCKET;
 #endif
+#include "NetProbe.h"
 #include <IpAddress.h>
 #include <memory>
 #include <uvw/poll.h>
+#include<uvw/timer.h>
 
-namespace visor::network {
-class ICMPSocket
+namespace visor::input::netprobe {
+class PingProbe final : public NetProbe
 {
     SOCKET _sock{0};
     bool _init{false};
+    bool _is_ipv6{false};
     std::shared_ptr<uvw::PollHandle> _poll;
+    std::shared_ptr<uvw::TimerHandle> _interval_timer;
+    std::shared_ptr<uvw::TimerHandle> _internal_timer;
+    std::shared_ptr<uvw::TimerHandle> _timeout_timer;
     struct sockaddr_in _sa;
     struct sockaddr_in6 _sa6;
     SOCKETLEN _sin_length{0};
+    bool _ip_set{false};
+
+    bool _set_ip();
+    void _send_icmp_v4(uint16_t sequence);
+    void _recv_icmp_v4();
+    bool _create_socket();
+    void _close_socket();
 
 public:
-    ICMPSocket(){};
-    ~ICMPSocket() = default;
+    PingProbe(){};
+    ~PingProbe() = default;
 
-    bool create(const pcpp::IPAddress &ip, std::shared_ptr<uvw::Loop> io_loop);
-    bool send(const pcpp::IPAddress &ip);
+    bool start(std::shared_ptr<uvw::Loop> io_loop) override;
+    bool stop() override;
 };
 }
