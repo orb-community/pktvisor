@@ -8,6 +8,7 @@
 #include "NetProbeInputStream.h"
 #include "StreamHandler.h"
 #include <Corrade/Utility/Debug.h>
+#include <IcmpLayer.h>
 #include <limits>
 #include <string>
 
@@ -79,7 +80,7 @@ public:
     }
 
     void process_filtered();
-    void process_netprobe(bool deep, pcpp::Packet *payload, std::string target);
+    void process_netprobe_icmp(bool deep, pcpp::IcmpLayer *layer, std::string target, timespec stamp);
     void process_fail_event(std::string target);
 };
 
@@ -92,7 +93,7 @@ public:
     }
 
     void process_filtered(timespec stamp);
-    void process_netprobe(pcpp::Packet *payload, std::string target, timespec stamp);
+    void process_netprobe_icmp(pcpp::IcmpLayer *layer, std::string target, timespec stamp);
     void process_fail_event(std::string target);
 };
 

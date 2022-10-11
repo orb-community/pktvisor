@@ -9,9 +9,9 @@
 #include <winsock2.h>
 typedef int SOCKETLEN;
 #else
-#include <unistd.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <unistd.h>
 #define SOCKET_ERROR -1
 typedef socklen_t SOCKETLEN;
 typedef int SOCKET;
@@ -20,9 +20,10 @@ typedef int SOCKET;
 #include <IpAddress.h>
 #include <memory>
 #include <uvw/poll.h>
-#include<uvw/timer.h>
+#include <uvw/timer.h>
 
 namespace visor::input::netprobe {
+
 class PingProbe final : public NetProbe
 {
     SOCKET _sock{0};

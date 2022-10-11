@@ -5,7 +5,6 @@
 #include <Packet.h>
 #include <iostream>
 #include <uvw/dns.h>
-#include <uvw/stream.h>
 
 namespace visor::input::netprobe {
 
@@ -20,12 +19,12 @@ bool PingProbe::start(std::shared_ptr<uvw::Loop> io_loop)
         return false;
     }
     // add validator
-    _payload_array = {0x70, 0x6b, 0x74, 0x76, 0x69, 0x73, 0x6f, 0x72};
-    if (_packet_payload_size < 16) {
-        _packet_payload_size = 16;
+    _payload_array = validator;
+    if (_packet_payload_size < min_payload) {
+        _packet_payload_size = min_payload;
     }
     _payload_array.resize(_packet_payload_size);
-    std::fill(_payload_array.begin() + 8, _payload_array.end(), 0);
+    std::fill(_payload_array.begin() + validator.size(), _payload_array.end(), 0);
 
     _io_loop = io_loop;
 
@@ -201,8 +200,8 @@ void PingProbe::_send_icmp_v4(uint16_t sequence)
     auto icmp = pcpp::IcmpLayer();
     timespec stamp;
     std::timespec_get(&stamp, TIME_UTC);
-    const uint64_t stamp64 = stamp.tv_sec * 1000000000ULL + stamp.tv_nsec;
-    memcpy(&_payload_array[8], &stamp64, sizeof(uint64_t));
+    //const uint64_t stamp64 = stamp.tv_sec;// * 1000000000ULL + stamp.tv_nsec;
+    //memcpy(&_payload_array[validator.size()], &stamp64, sizeof(uint64_t));
     icmp.setEchoRequestData(static_cast<uint16_t>(stamp.tv_nsec), sequence, static_cast<uint64_t>(stamp.tv_sec), _payload_array.data(), _payload_array.size());
     icmp.computeCalculateFields();
     sendto(_sock, icmp.getData(), icmp.getDataLen(), 0, reinterpret_cast<struct sockaddr *>(&_sa), _sin_length);

@@ -27,6 +27,9 @@ enum class TestType {
 typedef std::function<void(pcpp::Packet &, TestType, const std::string &)> RecvCallback;
 typedef std::function<void(ErrorType, TestType, const std::string &)> FailCallback;
 
+static const std::vector<uint8_t> validator = {0x70, 0x6b, 0x74, 0x76, 0x69, 0x73, 0x6f, 0x72}; // "pktvisor" in hex
+static const uint64_t min_payload = validator.size() + sizeof(uint64_t); // validator + uint64_t timestamp
+
 class NetProbe
 {
 protected:

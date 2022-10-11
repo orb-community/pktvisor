@@ -3,7 +3,6 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 #include "NetProbeStreamHandler.h"
-#include <IcmpLayer.h>
 
 namespace visor::handler::netprobe {
 
@@ -58,7 +57,7 @@ void NetProbeStreamHandler::probe_signal_recv(pcpp::Packet &payload, TestType ty
         auto icmp = payload.getLayerOfType<pcpp::IcmpLayer>();
         if (icmp != nullptr && icmp->getMessageType() == pcpp::ICMP_ECHO_REPLY) {
             auto stamp = payload.getRawPacket()->getPacketTimeStamp();
-            _metrics->process_netprobe(&payload, name, stamp);
+            _metrics->process_netprobe_icmp(icmp, name, stamp);
         }
     }
 }
@@ -81,6 +80,13 @@ void NetProbeMetricsBucket::specialized_merge(const AbstractMetricsBucket &o, Me
 
     _counters.total += other._counters.total;
     _counters.filtered += other._counters.filtered;
+
+    for (const auto &target : other._targets_metrics) {
+        const auto &targetId = target.first;
+
+        _targets_metrics[targetId]->fail += target.second->fail;
+        _targets_metrics[targetId]->time_ms.merge(target.second->time_ms, agg_operator);
+    }
 }
 
 void NetProbeMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap add_labels) const
@@ -100,6 +106,15 @@ void NetProbeMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelM
 
     _counters.total.to_prometheus(out, add_labels);
     _counters.filtered.to_prometheus(out, add_labels);
+
+    for (const auto &target : _targets_metrics) {
+        auto target_labels = add_labels;
+        auto targetId = target.first;
+        target_labels["target"] = targetId;
+
+        target.second->fail.to_prometheus(out, target_labels);
+        target.second->time_ms.to_prometheus(out, target_labels);
+    }
 }
 
 void NetProbeMetricsBucket::to_json(json &j) const
@@ -120,6 +135,13 @@ void NetProbeMetricsBucket::to_json(json &j) const
 
     _counters.total.to_json(j);
     _counters.filtered.to_json(j);
+
+    for (const auto &target : _targets_metrics) {
+        auto targetId = target.first;
+
+        target.second->fail.to_json(j["targets"][targetId]);
+        target.second->time_ms.to_json(j["targets"][targetId]);
+    }
 }
 
 void NetProbeMetricsBucket::process_filtered()
@@ -134,14 +156,34 @@ bool NetProbeStreamHandler::_filtering([[maybe_unused]] pcpp::Packet *payload)
     return false;
 }
 
-void NetProbeMetricsBucket::process_netprobe([[maybe_unused]] bool deep, pcpp::Packet *payload, std::string target)
+void NetProbeMetricsBucket::process_netprobe_icmp([[maybe_unused]] bool deep, pcpp::IcmpLayer *layer, std::string target, timespec stamp)
 {
     std::unique_lock lock(_mutex);
 
     ++_counters.total;
     ++_rate_total;
 
+    if (!_targets_metrics.count(target)) {
+        _targets_metrics[target] = std::make_unique<Target>();
+    }
+    bool fail{true};
+    if (auto reply = layer->getEchoReplyData(); reply != nullptr && reply->dataLength > validator.size()
+        && (std::memcmp(reply->data, validator.data(), validator.size()) == 0)) {
+        auto time_sec = static_cast<uint64_t>(stamp.tv_sec);
+        if (time_sec > reply->header->timestamp) {
+            uint64_t time_ms = (time_sec - reply->header->timestamp) * 1000;
+            time_ms += (stamp.tv_nsec / 1000000);
+            _targets_metrics[target]->time_ms.update(time_ms);
+            fail = false;
+        } else if (time_sec == reply->header->timestamp) {
+            _targets_metrics[target]->time_ms.update(stamp.tv_nsec / 1000000);
+            fail = false;
+        }
+    }
 
+    if (fail) {
+        ++_targets_metrics[target]->fail;
+    }
 }
 
 void NetProbeMetricsBucket::process_fail_event(std::string target)
@@ -153,12 +195,12 @@ void NetProbeMetricsBucket::process_fail_event(std::string target)
     ++_targets_metrics[target]->fail;
 }
 
-void NetProbeMetricsManager::process_netprobe(pcpp::Packet *payload, std::string target, timespec stamp)
+void NetProbeMetricsManager::process_netprobe_icmp(pcpp::IcmpLayer *layer, std::string target, timespec stamp)
 {
     // base event
     new_event(stamp);
     // process in the "live" bucket. this will parse the resources if we are deep sampling
-    live_bucket()->process_netprobe(_deep_sampling_now, payload, target);
+    live_bucket()->process_netprobe_icmp(_deep_sampling_now, layer, target, stamp);
 }
 
 void NetProbeMetricsManager::process_fail_event(std::string target)
