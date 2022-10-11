@@ -34,7 +34,7 @@ void NetProbeInputStream::start()
 
     // Configs
     if (!config_exists("test_type")) {
-        throw NetProbeException(fmt::format("Test type not specified. The valid test types are: {}", fmt::join(valid_tests, ", ")));
+        throw NetProbeException(fmt::format("'test_type' config not specified. The valid test types are: {}", fmt::join(valid_tests, ", ")));
     } else {
         auto it = _test_defs.find(config_get<std::string>("test_type"));
         if (it == _test_defs.end()) {
@@ -133,6 +133,16 @@ void NetProbeInputStream::_create_netprobe_loop()
             auto ping = std::make_unique<PingProbe>();
             ping->set_configs(_interval_msec, _timeout_msec, _packets_per_test, _packets_interval_msec, _packet_payload_size);
             ping->set_target(ip, std::string());
+            ping->set_callbacks([this](pcpp::Packet &payload, TestType type, const std::string &name) {
+                std::shared_lock lock(_input_mutex);
+                for (auto &proxy : _event_proxies) {
+                    static_cast<NetProbeInputEventProxy *>(proxy.get())->probe_recv_cb(payload, type, name);
+                } },
+                [this](ErrorType error, TestType type, const std::string &name) {
+                    std::shared_lock lock(_input_mutex);
+                    for (auto &proxy : _event_proxies) {
+                        static_cast<NetProbeInputEventProxy *>(proxy.get())->probe_fail_cb(error, type, name);
+                    } });
             ping->start(_io_loop);
             _probes.push_back(std::move(ping));
         }
@@ -148,10 +158,10 @@ void NetProbeInputStream::_create_netprobe_loop()
                 for (auto &proxy : _event_proxies) {
                     static_cast<NetProbeInputEventProxy *>(proxy.get())->probe_recv_cb(payload, type, name);
                 } },
-                [this](pcpp::Packet &payload, TestType type, const std::string &name) {
+                [this](ErrorType error, TestType type, const std::string &name) {
                     std::shared_lock lock(_input_mutex);
                     for (auto &proxy : _event_proxies) {
-                        static_cast<NetProbeInputEventProxy *>(proxy.get())->probe_fail_cb(payload, type, name);
+                        static_cast<NetProbeInputEventProxy *>(proxy.get())->probe_fail_cb(error, type, name);
                     } });
             ping->start(_io_loop);
             _probes.push_back(std::move(ping));

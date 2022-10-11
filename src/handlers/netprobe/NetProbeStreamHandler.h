@@ -17,6 +17,17 @@ using namespace visor::input::netprobe;
 
 static constexpr const char *NET_PROBE_SCHEMA{"netprobe"};
 
+struct Target {
+    Quantile<uint64_t> time_ms;
+    Counter fail;
+
+    Target()
+        : time_ms(NET_PROBE_SCHEMA, {"time_ms"}, "Net Probe quantile")
+        , fail(NET_PROBE_SCHEMA, {"fail"}, "Total Net Probe failt")
+    {
+    }
+};
+
 class NetProbeMetricsBucket final : public visor::AbstractMetricsBucket
 {
 
@@ -25,22 +36,17 @@ protected:
 
     // total numPackets is tracked in base class num_events
     struct counters {
-
-        Counter OPEN;
-        Counter UPDATE;
         Counter total;
         Counter filtered;
-
         counters()
-            : OPEN(NET_PROBE_SCHEMA, {"wire_packets", "open"}, "Total Net Probe packets with message type OPEN")
-            , UPDATE(NET_PROBE_SCHEMA, {"wire_packets", "offer"}, "Total Net Probe packets with message type KEEPALIVE")
-            , total(NET_PROBE_SCHEMA, {"wire_packets", "total"}, "Total Net Probe wire packets matching the configured filter(s)")
+            : total(NET_PROBE_SCHEMA, {"wire_packets", "total"}, "Total Net Probe wire packets matching the configured filter(s)")
             , filtered(NET_PROBE_SCHEMA, {"wire_packets", "filtered"}, "Total Net Probe wire packets seen that did not match the configured filter(s) (if any)")
         {
         }
     };
     counters _counters;
     Rate _rate_total;
+    std::map<std::string, std::unique_ptr<Target>> _targets_metrics;
 
 public:
     NetProbeMetricsBucket()
@@ -73,7 +79,8 @@ public:
     }
 
     void process_filtered();
-    void process_netprobe(bool deep, pcpp::Packet *payload);
+    void process_netprobe(bool deep, pcpp::Packet *payload, std::string target);
+    void process_fail_event(std::string target);
 };
 
 class NetProbeMetricsManager final : public visor::AbstractMetricsManager<NetProbeMetricsBucket>
@@ -85,7 +92,8 @@ public:
     }
 
     void process_filtered(timespec stamp);
-    void process_netprobe(pcpp::Packet *payload, timespec stamp);
+    void process_netprobe(pcpp::Packet *payload, std::string target, timespec stamp);
+    void process_fail_event(std::string target);
 };
 
 class NetProbeStreamHandler final : public visor::StreamMetricsHandler<NetProbeMetricsManager>
@@ -93,14 +101,12 @@ class NetProbeStreamHandler final : public visor::StreamMetricsHandler<NetProbeM
 
     NetProbeInputEventProxy *_netprobe_proxy;
 
-    typedef uint32_t flowKey;
-
     sigslot::connection _probe_recv_connection;
     sigslot::connection _probe_fail_connection;
     sigslot::connection _heartbeat_connection;
 
     void probe_signal_recv(pcpp::Packet &, TestType, const std::string &);
-    void probe_signal_fail(pcpp::Packet &, TestType, const std::string &);
+    void probe_signal_fail(ErrorType, TestType, const std::string &);
 
     bool _filtering(pcpp::Packet *payload);
 

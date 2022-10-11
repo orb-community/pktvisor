@@ -16,7 +16,7 @@ class NetProbeInputStream : public visor::InputStream
 {
     TestType _type{TestType::Ping};
     uint64_t _interval_msec{5000};
-    uint64_t _timeout_msec{1000};
+    uint64_t _timeout_msec{2000};
     uint64_t _packets_per_test{1};
     uint64_t _packets_interval_msec{25};
     uint64_t _packet_payload_size{48};
@@ -74,16 +74,16 @@ public:
         probe_recv_signal(p, t, n);
     }
 
-    void probe_fail_cb(pcpp::Packet &p, TestType t, const std::string &n)
+    void probe_fail_cb(ErrorType e, TestType t, const std::string &n)
     {
-        probe_fail_signal(p, t, n);
+        probe_fail_signal(e, t, n);
     }
 
     // handler functionality
     // IF THIS changes, see consumer_count()
     // note: these are mutable because consumer_count() calls slot_count() which is not const (unclear if it could/should be)
     mutable sigslot::signal<pcpp::Packet &, TestType, const std::string &> probe_recv_signal;
-    mutable sigslot::signal<pcpp::Packet &, TestType, const std::string &> probe_fail_signal;
+    mutable sigslot::signal<ErrorType, TestType, const std::string &> probe_fail_signal;
 };
 
 }

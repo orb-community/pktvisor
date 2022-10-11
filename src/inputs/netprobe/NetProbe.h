@@ -10,6 +10,13 @@
 
 namespace visor::input::netprobe {
 
+enum class ErrorType {
+    Timeout,
+    SocketError,
+    DnsNotFound,
+    InvalidIp
+};
+
 enum class TestType {
     Ping,
     HTTP,
@@ -17,7 +24,8 @@ enum class TestType {
     TCP
 };
 
-typedef std::function<void(pcpp::Packet &, TestType, const std::string &)> ProbeCallback;
+typedef std::function<void(pcpp::Packet &, TestType, const std::string &)> RecvCallback;
+typedef std::function<void(ErrorType, TestType, const std::string &)> FailCallback;
 
 class NetProbe
 {
@@ -31,8 +39,8 @@ protected:
     std::string _dns;
     pcpp::IPAddress _ip;
     std::shared_ptr<uvw::Loop> _io_loop;
-    ProbeCallback _success;
-    ProbeCallback _fail;
+    RecvCallback _success;
+    FailCallback _fail;
 
 public:
     NetProbe()
@@ -67,7 +75,7 @@ public:
         }
     }
 
-    void set_callbacks(ProbeCallback success, ProbeCallback fail)
+    void set_callbacks(RecvCallback success, FailCallback fail)
     {
         _success = success;
         _fail = fail;
