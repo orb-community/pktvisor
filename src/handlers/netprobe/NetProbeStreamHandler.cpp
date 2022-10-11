@@ -169,14 +169,10 @@ void NetProbeMetricsBucket::process_netprobe_icmp([[maybe_unused]] bool deep, pc
     bool fail{true};
     if (auto reply = layer->getEchoReplyData(); reply != nullptr && reply->dataLength > validator.size()
         && (std::memcmp(reply->data, validator.data(), validator.size()) == 0)) {
-        auto time_sec = static_cast<uint64_t>(stamp.tv_sec);
+        const uint64_t time_sec = stamp.tv_sec * 1000000000ULL + stamp.tv_nsec;
         if (time_sec > reply->header->timestamp) {
-            uint64_t time_ms = (time_sec - reply->header->timestamp) * 1000;
-            time_ms += (stamp.tv_nsec / 1000000);
+            uint64_t time_ms = (time_sec - reply->header->timestamp) / 1000000;
             _targets_metrics[target]->time_ms.update(time_ms);
-            fail = false;
-        } else if (time_sec == reply->header->timestamp) {
-            _targets_metrics[target]->time_ms.update(stamp.tv_nsec / 1000000);
             fail = false;
         }
     }

@@ -5,6 +5,7 @@
 #include <Packet.h>
 #include <iostream>
 #include <uvw/dns.h>
+#include <TimespecTimeval.h>
 
 namespace visor::input::netprobe {
 
@@ -200,9 +201,8 @@ void PingProbe::_send_icmp_v4(uint16_t sequence)
     auto icmp = pcpp::IcmpLayer();
     timespec stamp;
     std::timespec_get(&stamp, TIME_UTC);
-    //const uint64_t stamp64 = stamp.tv_sec;// * 1000000000ULL + stamp.tv_nsec;
-    //memcpy(&_payload_array[validator.size()], &stamp64, sizeof(uint64_t));
-    icmp.setEchoRequestData(static_cast<uint16_t>(stamp.tv_nsec), sequence, static_cast<uint64_t>(stamp.tv_sec), _payload_array.data(), _payload_array.size());
+    const uint64_t stamp64 = stamp.tv_sec * 1000000000ULL + stamp.tv_nsec;
+    icmp.setEchoRequestData(static_cast<uint16_t>(stamp.tv_nsec), sequence, stamp64, _payload_array.data(), _payload_array.size());
     icmp.computeCalculateFields();
     sendto(_sock, icmp.getData(), icmp.getDataLen(), 0, reinterpret_cast<struct sockaddr *>(&_sa), _sin_length);
 }
