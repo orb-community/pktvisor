@@ -85,6 +85,10 @@ void NetProbeMetricsBucket::specialized_merge(const AbstractMetricsBucket &o, Me
 
     for (const auto &target : other._targets_metrics) {
         const auto &targetId = target.first;
+        if (!_targets_metrics.count(targetId)) {
+            _targets_metrics[targetId] = std::make_unique<Target>();
+        }
+
         _targets_metrics[targetId]->attempts += target.second->attempts;
         _targets_metrics[targetId]->successes += target.second->successes;
         _targets_metrics[targetId]->time_us.merge(target.second->time_us, agg_operator);

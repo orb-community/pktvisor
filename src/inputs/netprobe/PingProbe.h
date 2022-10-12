@@ -19,6 +19,7 @@ typedef int SOCKET;
 #include "NetProbe.h"
 #include <IpAddress.h>
 #include <memory>
+#include <optional>
 #include <uvw/poll.h>
 #include <uvw/timer.h>
 
