@@ -3,9 +3,9 @@
 #include "NetProbeException.h"
 #include <IcmpLayer.h>
 #include <Packet.h>
+#include <TimespecTimeval.h>
 #include <iostream>
 #include <uvw/dns.h>
-#include <TimespecTimeval.h>
 
 namespace visor::input::netprobe {
 
@@ -21,8 +21,8 @@ bool PingProbe::start(std::shared_ptr<uvw::Loop> io_loop)
     }
     // add validator
     _payload_array = validator;
-    if (_packet_payload_size < min_payload) {
-        _packet_payload_size = min_payload;
+    if (_packet_payload_size < validator.size()) {
+        _packet_payload_size = validator.size();
     }
     _payload_array.resize(_packet_payload_size);
     std::fill(_payload_array.begin() + validator.size(), _payload_array.end(), 0);
@@ -74,7 +74,7 @@ bool PingProbe::start(std::shared_ptr<uvw::Loop> io_loop)
             _poll->on<uvw::PollEvent>([this](const uvw::PollEvent &, auto &) {
                 _recv_icmp_v4();
                 _timeout_timer->stop();
-                if (_sequence == _packets_per_test) {
+                if (_sequence >= _packets_per_test) {
                     // received last packet
                     _internal_timer->stop();
                     _close_socket();
@@ -204,7 +204,12 @@ void PingProbe::_send_icmp_v4(uint16_t sequence)
     const uint64_t stamp64 = stamp.tv_sec * 1000000000ULL + stamp.tv_nsec;
     icmp.setEchoRequestData(static_cast<uint16_t>(stamp.tv_nsec), sequence, stamp64, _payload_array.data(), _payload_array.size());
     icmp.computeCalculateFields();
-    sendto(_sock, icmp.getData(), icmp.getDataLen(), 0, reinterpret_cast<struct sockaddr *>(&_sa), _sin_length);
+    auto rc = sendto(_sock, icmp.getData(), icmp.getDataLen(), 0, reinterpret_cast<struct sockaddr *>(&_sa), _sin_length);
+    if (rc != SOCKET_ERROR) {
+        pcpp::Packet packet;
+        packet.addLayer(&icmp);
+        _send(packet, TestType::Ping, _name, stamp);
+    }
 }
 
 void PingProbe::_recv_icmp_v4()
@@ -213,11 +218,13 @@ void PingProbe::_recv_icmp_v4()
     auto array = std::make_unique<uint8_t[]>(len);
     auto rc = recvfrom(_sock, array.get(), len, 0, reinterpret_cast<struct sockaddr *>(&_sa), &_sin_length);
     if (rc != SOCKET_ERROR) {
+        timespec stamp;
+        std::timespec_get(&stamp, TIME_UTC);
         timeval time;
-        gettimeofday(&time, NULL);
+        TIMESPEC_TO_TIMEVAL(&time, &stamp);
         pcpp::RawPacket raw(array.get(), rc, time, false, pcpp::LINKTYPE_DLT_RAW1);
         pcpp::Packet packet(&raw, pcpp::ICMP);
-        _success(packet, TestType::Ping, _name);
+        _recv(packet, TestType::Ping, _name, stamp);
     }
 }
 

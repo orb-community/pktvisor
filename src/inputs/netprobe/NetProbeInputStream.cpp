@@ -86,6 +86,30 @@ void NetProbeInputStream::start()
     _running = true;
 }
 
+void NetProbeInputStream::_send_cb(pcpp::Packet &payload, TestType type, const std::string &name, timespec stamp)
+{
+    std::shared_lock lock(_input_mutex);
+    for (auto &proxy : _event_proxies) {
+        static_cast<NetProbeInputEventProxy *>(proxy.get())->probe_send_cb(payload, type, name, stamp);
+    }
+}
+
+void NetProbeInputStream::_recv_cb(pcpp::Packet &payload, TestType type, const std::string &name, timespec stamp)
+{
+    std::shared_lock lock(_input_mutex);
+    for (auto &proxy : _event_proxies) {
+        static_cast<NetProbeInputEventProxy *>(proxy.get())->probe_recv_cb(payload, type, name, stamp);
+    }
+}
+
+void NetProbeInputStream::_fail_cb(ErrorType error, TestType type, const std::string &name)
+{
+    std::shared_lock lock(_input_mutex);
+    for (auto &proxy : _event_proxies) {
+        static_cast<NetProbeInputEventProxy *>(proxy.get())->probe_fail_cb(error, type, name);
+    }
+}
+
 void NetProbeInputStream::_create_netprobe_loop()
 {
     // main io loop, run in its own thread
@@ -133,16 +157,9 @@ void NetProbeInputStream::_create_netprobe_loop()
             auto ping = std::make_unique<PingProbe>();
             ping->set_configs(_interval_msec, _timeout_msec, _packets_per_test, _packets_interval_msec, _packet_payload_size);
             ping->set_target(ip, std::string());
-            ping->set_callbacks([this](pcpp::Packet &payload, TestType type, const std::string &name) {
-                std::shared_lock lock(_input_mutex);
-                for (auto &proxy : _event_proxies) {
-                    static_cast<NetProbeInputEventProxy *>(proxy.get())->probe_recv_cb(payload, type, name);
-                } },
-                [this](ErrorType error, TestType type, const std::string &name) {
-                    std::shared_lock lock(_input_mutex);
-                    for (auto &proxy : _event_proxies) {
-                        static_cast<NetProbeInputEventProxy *>(proxy.get())->probe_fail_cb(error, type, name);
-                    } });
+            ping->set_callbacks([this](pcpp::Packet &payload, TestType type, const std::string &name, timespec stamp) { _send_cb(payload, type, name, stamp); },
+                [this](pcpp::Packet &payload, TestType type, const std::string &name, timespec stamp) { _recv_cb(payload, type, name, stamp); },
+                [this](ErrorType error, TestType type, const std::string &name) { _fail_cb(error, type, name); });
             ping->start(_io_loop);
             _probes.push_back(std::move(ping));
         }
@@ -153,16 +170,9 @@ void NetProbeInputStream::_create_netprobe_loop()
             auto ping = std::make_unique<PingProbe>();
             ping->set_configs(_interval_msec, _timeout_msec, _packets_per_test, _packets_interval_msec, _packet_payload_size);
             ping->set_target(pcpp::IPAddress(), dns);
-            ping->set_callbacks([this](pcpp::Packet &payload, TestType type, const std::string &name) {
-                std::shared_lock lock(_input_mutex);
-                for (auto &proxy : _event_proxies) {
-                    static_cast<NetProbeInputEventProxy *>(proxy.get())->probe_recv_cb(payload, type, name);
-                } },
-                [this](ErrorType error, TestType type, const std::string &name) {
-                    std::shared_lock lock(_input_mutex);
-                    for (auto &proxy : _event_proxies) {
-                        static_cast<NetProbeInputEventProxy *>(proxy.get())->probe_fail_cb(error, type, name);
-                    } });
+            ping->set_callbacks([this](pcpp::Packet &payload, TestType type, const std::string &name, timespec stamp) { _send_cb(payload, type, name, stamp); },
+                [this](pcpp::Packet &payload, TestType type, const std::string &name, timespec stamp) { _recv_cb(payload, type, name, stamp); },
+                [this](ErrorType error, TestType type, const std::string &name) { _fail_cb(error, type, name); });
             ping->start(_io_loop);
             _probes.push_back(std::move(ping));
         }

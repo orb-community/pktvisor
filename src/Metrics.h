@@ -194,6 +194,16 @@ public:
         return _quantile.get_quantile(p);
     }
 
+    auto get_min() const
+    {
+        return _quantile.get_min_value();
+    }
+
+    auto get_max() const
+    {
+        return _quantile.get_max_value();
+    }
+
     // Metric
     void to_json(json &j) const override
     {

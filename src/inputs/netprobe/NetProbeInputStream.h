@@ -38,6 +38,9 @@ class NetProbeInputStream : public visor::InputStream
         {"tcp", TestType::TCP}};
 
     void _create_netprobe_loop();
+    void _send_cb(pcpp::Packet &, TestType, const std::string &, timespec);
+    void _recv_cb(pcpp::Packet &, TestType, const std::string &, timespec);
+    void _fail_cb(ErrorType, TestType, const std::string &);
 
 public:
     NetProbeInputStream(const std::string &name);
@@ -69,9 +72,14 @@ public:
         return policy_signal.slot_count() + heartbeat_signal.slot_count() + probe_recv_signal.slot_count() + probe_fail_signal.slot_count();
     }
 
-    void probe_recv_cb(pcpp::Packet &p, TestType t, const std::string &n)
+    void probe_send_cb(pcpp::Packet &p, TestType t, const std::string &n, timespec s)
     {
-        probe_recv_signal(p, t, n);
+        probe_send_signal(p, t, n, s);
+    }
+
+    void probe_recv_cb(pcpp::Packet &p, TestType t, const std::string &n, timespec s)
+    {
+        probe_recv_signal(p, t, n, s);
     }
 
     void probe_fail_cb(ErrorType e, TestType t, const std::string &n)
@@ -82,7 +90,8 @@ public:
     // handler functionality
     // IF THIS changes, see consumer_count()
     // note: these are mutable because consumer_count() calls slot_count() which is not const (unclear if it could/should be)
-    mutable sigslot::signal<pcpp::Packet &, TestType, const std::string &> probe_recv_signal;
+    mutable sigslot::signal<pcpp::Packet &, TestType, const std::string &, timespec> probe_send_signal;
+    mutable sigslot::signal<pcpp::Packet &, TestType, const std::string &, timespec> probe_recv_signal;
     mutable sigslot::signal<ErrorType, TestType, const std::string &> probe_fail_signal;
 };
 

@@ -6,6 +6,7 @@
 
 #include "AbstractMetricsManager.h"
 #include "NetProbeInputStream.h"
+#include "RequestReplyManager.h"
 #include "StreamHandler.h"
 #include <Corrade/Utility/Debug.h>
 #include <IcmpLayer.h>
@@ -19,12 +20,18 @@ using namespace visor::input::netprobe;
 static constexpr const char *NET_PROBE_SCHEMA{"netprobe"};
 
 struct Target {
-    Quantile<uint64_t> time_ms;
-    Counter fail;
+    Quantile<uint64_t> time_us;
+    Counter attempts;
+    Counter successes;
+    Counter minimum;
+    Counter maximum;
 
     Target()
-        : time_ms(NET_PROBE_SCHEMA, {"time_ms"}, "Net Probe quantile")
-        , fail(NET_PROBE_SCHEMA, {"fail"}, "Total Net Probe failt")
+        : time_us(NET_PROBE_SCHEMA, {"response_quantiles_us"}, "Net Probe quantile in microseconds")
+        , attempts(NET_PROBE_SCHEMA, {"attempts"}, "Total Net Probe attempts")
+        , successes(NET_PROBE_SCHEMA, {"successes"}, "Total Net Probe successes")
+        , minimum(NET_PROBE_SCHEMA, {"response_min_us"}, "Minimum response time measured in the reporting interval")
+        , maximum(NET_PROBE_SCHEMA, {"response_max_us"}, "Maximum response time measured in the reporting interval")
     {
     }
 };
@@ -34,35 +41,11 @@ class NetProbeMetricsBucket final : public visor::AbstractMetricsBucket
 
 protected:
     mutable std::shared_mutex _mutex;
-
-    // total numPackets is tracked in base class num_events
-    struct counters {
-        Counter total;
-        Counter filtered;
-        counters()
-            : total(NET_PROBE_SCHEMA, {"wire_packets", "total"}, "Total Net Probe wire packets matching the configured filter(s)")
-            , filtered(NET_PROBE_SCHEMA, {"wire_packets", "filtered"}, "Total Net Probe wire packets seen that did not match the configured filter(s) (if any)")
-        {
-        }
-    };
-    counters _counters;
-    Rate _rate_total;
     std::map<std::string, std::unique_ptr<Target>> _targets_metrics;
 
 public:
     NetProbeMetricsBucket()
-        : _rate_total(NET_PROBE_SCHEMA, {"rates", "total"}, "Rate of all Net Probe wire packets (combined ingress and egress) in packets per second")
     {
-        set_event_rate_info(NET_PROBE_SCHEMA, {"rates", "events"}, "Rate of all Net Probe wire packets before filtering per second");
-        set_num_events_info(NET_PROBE_SCHEMA, {"wire_packets", "events"}, "Total Net Probe wire packets events");
-        set_num_sample_info(NET_PROBE_SCHEMA, {"wire_packets", "deep_samples"}, "Total Net Probe wire packets that were sampled for deep inspection");
-    }
-
-    // get a copy of the counters
-    counters counters() const
-    {
-        std::shared_lock lock(_mutex);
-        return _counters;
     }
 
     // visor::AbstractMetricsBucket
@@ -75,26 +58,31 @@ public:
 
     void on_set_read_only() override
     {
-        // stop rate collection
-        _rate_total.cancel();
     }
 
     void process_filtered();
-    void process_netprobe_icmp(bool deep, pcpp::IcmpLayer *layer, std::string target, timespec stamp);
-    void process_fail_event(std::string target);
+    void process_netprobe_icmp(bool deep, pcpp::IcmpLayer *layer, std::string target);
+    void new_icmp_transaction(bool deep, NetProbeTransaction xact);
 };
 
 class NetProbeMetricsManager final : public visor::AbstractMetricsManager<NetProbeMetricsBucket>
 {
+    RequestReplyManager _request_reply_manager;
+
 public:
     NetProbeMetricsManager(const Configurable *window_config)
         : visor::AbstractMetricsManager<NetProbeMetricsBucket>(window_config)
     {
     }
 
+    void on_period_shift(timespec stamp, [[maybe_unused]] const NetProbeMetricsBucket *maybe_expiring_bucket) override
+    {
+        // NetProbe transaction support
+        _request_reply_manager.purge_old_transactions(stamp);
+    }
+
     void process_filtered(timespec stamp);
     void process_netprobe_icmp(pcpp::IcmpLayer *layer, std::string target, timespec stamp);
-    void process_fail_event(std::string target);
 };
 
 class NetProbeStreamHandler final : public visor::StreamMetricsHandler<NetProbeMetricsManager>
@@ -102,11 +90,13 @@ class NetProbeStreamHandler final : public visor::StreamMetricsHandler<NetProbeM
 
     NetProbeInputEventProxy *_netprobe_proxy;
 
+    sigslot::connection _probe_send_connection;
     sigslot::connection _probe_recv_connection;
     sigslot::connection _probe_fail_connection;
     sigslot::connection _heartbeat_connection;
 
-    void probe_signal_recv(pcpp::Packet &, TestType, const std::string &);
+    void probe_signal_send(pcpp::Packet &, TestType, const std::string &, timespec);
+    void probe_signal_recv(pcpp::Packet &, TestType, const std::string &, timespec);
     void probe_signal_fail(ErrorType, TestType, const std::string &);
 
     bool _filtering(pcpp::Packet *payload);
