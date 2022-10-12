@@ -255,7 +255,7 @@ public:
         _enrich_data = enrich_data;
     }
 
-    inline void process_filtered(uint64_t filtered, std::string device)
+    inline void process_filtered(uint64_t filtered, const std::string &device)
     {
         std::unique_lock lock(_mutex);
         if (!_devices_metrics.count(device)) {
@@ -285,7 +285,7 @@ public:
         }
     }
 
-    inline void process_filtered(timespec stamp, uint64_t filtered, std::string device)
+    inline void process_filtered(timespec stamp, uint64_t filtered, const std::string &device)
     {
         // base event, no sample
         new_event(stamp, false);
