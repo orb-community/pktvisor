@@ -150,7 +150,7 @@ struct Counters {
         , OtherL4(FLOW_SCHEMA, {direction + "_other_l4_" + metric}, "Count of " + direction + " " + metric + " which are not UDP or TCP")
         , IPv4(FLOW_SCHEMA, {direction + "_ipv4_" + metric}, "Count of " + direction + " IPv4 by " + metric)
         , IPv6(FLOW_SCHEMA, {direction + "_ipv6_" + metric}, "Count of " + direction + " IPv6 by " + metric)
-        , total(FLOW_SCHEMA, {direction + "_" + metric}, "Count of total " + direction + " flows by " + metric)
+        , total(FLOW_SCHEMA, {direction + "_" + metric}, "Count of " + direction + " " + metric)
     {
     }
 };

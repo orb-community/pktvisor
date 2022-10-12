@@ -521,6 +521,10 @@ void FlowMetricsBucket::specialized_merge(const AbstractMetricsBucket &o, Metric
 
     for (const auto &device : other._devices_metrics) {
         const auto &deviceId = device.first;
+        if (!_devices_metrics.count(deviceId)) {
+            _devices_metrics[deviceId] = std::make_unique<FlowDevice>();
+            _devices_metrics[deviceId]->set_topn_settings(_topn_count, _topn_percentile_threshold);
+        }
 
         if (group_enabled(group::FlowMetrics::Counters)) {
             _devices_metrics[deviceId]->total += device.second->total;
@@ -539,6 +543,11 @@ void FlowMetricsBucket::specialized_merge(const AbstractMetricsBucket &o, Metric
 
         for (const auto &interface : device.second->interfaces) {
             const auto &interfaceId = interface.first;
+            if (!_devices_metrics[deviceId]->interfaces.count(interfaceId)) {
+                _devices_metrics[deviceId]->interfaces[interfaceId] = std::make_unique<FlowInterface>();
+                _devices_metrics[deviceId]->interfaces[interfaceId]->set_topn_settings(_topn_count, _topn_percentile_threshold);
+            }
+
             auto int_if = _devices_metrics[deviceId]->interfaces[interfaceId].get();
 
             if (group_enabled(group::FlowMetrics::Cardinality)) {
