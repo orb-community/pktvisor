@@ -37,7 +37,7 @@ public:
     typedef std::vector<std::string> StringList;
 
 private:
-    std::unordered_map<std::string, std::variant<std::string, uint64_t, bool, StringList>> _config;
+    std::unordered_map<std::string, std::variant<std::string, uint64_t, bool, StringList, std::shared_ptr<Configurable>>> _config;
     mutable std::shared_mutex _config_mutex;
 
 public:
@@ -120,7 +120,12 @@ public:
         std::shared_lock lock(_config_mutex);
         for (const auto &[key, value] : _config) {
             std::visit([&j, key = key](auto &&arg) {
-                j[key] = arg;
+                using T = std::decay_t<decltype(arg)>;
+                if constexpr (std::is_same_v<T, std::shared_ptr<Configurable>>) {
+                    arg->config_json(j[key]);
+                } else {
+                    j[key] = arg;
+                }
             },
                 value);
         }
@@ -133,8 +138,11 @@ public:
         for (YAML::const_iterator it = config_yaml.begin(); it != config_yaml.end(); ++it) {
             auto key = it->first.as<std::string>();
 
-            if (!it->second.IsScalar() && !it->second.IsSequence()) {
-                throw ConfigException(fmt::format("invalid value for key: {}", key));
+            if (it->second.IsMap()) {
+                auto config = std::make_shared<Configurable>();
+                config->config_set_yaml(it->second);
+                _config[key] = config;
+                continue;
             }
 
             if (it->second.IsSequence()) {
@@ -180,6 +188,8 @@ public:
                     }
                 } else if constexpr (std::is_same_v<T, std::string>) {
                     data += arg;
+                } else if constexpr (std::is_same_v<T, std::shared_ptr<Configurable>>) {
+                    data += arg->config_hash();
                 } else {
                     data += std::to_string(arg);
                 }
