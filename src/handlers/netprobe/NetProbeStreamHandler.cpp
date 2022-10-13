@@ -152,7 +152,7 @@ bool NetProbeStreamHandler::_filtering([[maybe_unused]] pcpp::Packet *payload)
     return false;
 }
 
-void NetProbeMetricsBucket::process_netprobe_icmp([[maybe_unused]] bool deep, [[maybe_unused]] pcpp::IcmpLayer *layer, std::string target)
+void NetProbeMetricsBucket::process_netprobe_icmp([[maybe_unused]] bool deep, [[maybe_unused]] pcpp::IcmpLayer *layer, const std::string &target)
 {
     if (!_targets_metrics.count(target)) {
         _targets_metrics[target] = std::make_unique<Target>();
@@ -172,19 +172,19 @@ void NetProbeMetricsBucket::new_icmp_transaction([[maybe_unused]] bool deep, Net
     _targets_metrics[xact.target]->time_us.update(time_nsec / 1000);
 }
 
-void NetProbeMetricsManager::process_netprobe_icmp(pcpp::IcmpLayer *layer, std::string target, timespec stamp)
+void NetProbeMetricsManager::process_netprobe_icmp(pcpp::IcmpLayer *layer, const std::string &target, timespec stamp)
 {
     // base event
     new_event(stamp);
 
     if (layer->getMessageType() == pcpp::ICMP_ECHO_REQUEST) {
         if (auto request = layer->getEchoRequestData(); request != nullptr) {
-            _request_reply_manager.start_transaction(request->header->id, request->header->sequence, stamp, target);
+            _request_reply_manager_list[target].start_transaction(request->header->id, request->header->sequence, stamp, target);
         }
         live_bucket()->process_netprobe_icmp(_deep_sampling_now, layer, target);
     } else if (layer->getMessageType() == pcpp::ICMP_ECHO_REPLY) {
         if (auto reply = layer->getEchoReplyData(); reply != nullptr) {
-            auto xact = _request_reply_manager.maybe_end_transaction(target, reply->header->id, reply->header->sequence, stamp);
+            auto xact = _request_reply_manager_list[target].maybe_end_transaction(reply->header->id, reply->header->sequence, stamp);
             if (xact.first) {
                 live_bucket()->new_icmp_transaction(_deep_sampling_now, xact.second);
             }

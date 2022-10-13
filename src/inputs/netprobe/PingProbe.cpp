@@ -34,7 +34,7 @@ bool PingProbe::start(std::shared_ptr<uvw::Loop> io_loop)
         throw NetProbeException("PingProbe - unable to initialize interval TimerHandle");
     }
     _interval_timer->on<uvw::TimerEvent>([this](const auto &, auto &) {
-        _sequence = 0;
+        _internal_sequence = 0;
 
         _timeout_timer = _io_loop->resource<uvw::TimerHandle>();
         if (!_timeout_timer) {
@@ -42,9 +42,12 @@ bool PingProbe::start(std::shared_ptr<uvw::Loop> io_loop)
         }
 
         _timeout_timer->on<uvw::TimerEvent>([this](const auto &, auto &) {
-            _sequence = _packets_per_test;
+            _internal_sequence = _packets_per_test;
             _fail(ErrorType::Timeout, TestType::Ping, _name);
             _close_socket();
+            if (_internal_timer) {
+                _internal_timer->stop();
+            }
             _interval_timer->again();
         });
 
@@ -62,11 +65,11 @@ bool PingProbe::start(std::shared_ptr<uvw::Loop> io_loop)
         });
         _internal_timer = _io_loop->resource<uvw::TimerHandle>();
         _internal_timer->on<uvw::TimerEvent>([this](const auto &, auto &) {
-            if (_sequence < _packets_per_test) {
-                _sequence++;
+            if (_internal_sequence < _packets_per_test) {
+                _internal_sequence++;
                 _timeout_timer->stop();
                 _timeout_timer->start(uvw::TimerHandle::Time{_timeout_msec}, uvw::TimerHandle::Time{0});
-                _send_icmp_v4(_sequence);
+                _send_icmp_v4(_internal_sequence);
             }
         });
 
@@ -74,7 +77,7 @@ bool PingProbe::start(std::shared_ptr<uvw::Loop> io_loop)
             _poll->on<uvw::PollEvent>([this](const uvw::PollEvent &, auto &) {
                 _recv_icmp_v4();
                 _timeout_timer->stop();
-                if (_sequence >= _packets_per_test) {
+                if (_internal_sequence >= _packets_per_test) {
                     // received last packet
                     _internal_timer->stop();
                     _close_socket();
@@ -85,14 +88,15 @@ bool PingProbe::start(std::shared_ptr<uvw::Loop> io_loop)
         _poll->init();
         _poll->start(uvw::PollHandle::Event::READABLE);
 
-        _send_icmp_v4(_sequence);
-        _sequence++;
+        (_sequence == USHRT_MAX) ? _sequence = 0 : _sequence++;
+        _send_icmp_v4(_internal_sequence);
+        _internal_sequence++;
         _timeout_timer->start(uvw::TimerHandle::Time{_timeout_msec}, uvw::TimerHandle::Time{0});
         _internal_timer->start(uvw::TimerHandle::Time{_packets_interval_msec}, uvw::TimerHandle::Time{_packets_interval_msec});
     });
 
     _interval_timer->start(uvw::TimerHandle::Time{0}, uvw::TimerHandle::Time{_interval_msec});
-
+    _init = true;
     return true;
 }
 
@@ -147,10 +151,11 @@ bool PingProbe::_set_ip()
         if (addr->ai_family == AF_INET && _sa.sin_family != AF_INET) {
             memcpy(&_sa, reinterpret_cast<sockaddr_in *>(addr->ai_addr), sizeof(struct sockaddr_in));
             _sin_length = sizeof(_sa);
-            break;
+            _sa.sin_family = AF_INET;
         } else if (addr->ai_family == AF_INET6 && _sa6.sin6_family != AF_INET6) {
             memcpy(&_sa6, reinterpret_cast<sockaddr_in6 *>(addr->ai_addr), sizeof(struct sockaddr_in6));
             _sin_length = sizeof(_sa6);
+            _sa6.sin6_family = AF_INET6;
         } else if (_sa.sin_family == AF_INET && _sa6.sin6_family == AF_INET6) {
             // ipv4 and ipv6 filled
             break;
@@ -202,7 +207,7 @@ void PingProbe::_send_icmp_v4(uint16_t sequence)
     timespec stamp;
     std::timespec_get(&stamp, TIME_UTC);
     const uint64_t stamp64 = stamp.tv_sec * 1000000000ULL + stamp.tv_nsec;
-    icmp.setEchoRequestData(static_cast<uint16_t>(stamp.tv_nsec), sequence, stamp64, _payload_array.data(), _payload_array.size());
+    icmp.setEchoRequestData(static_cast<uint16_t>(_id * _sequence), sequence, stamp64, _payload_array.data(), _payload_array.size());
     icmp.computeCalculateFields();
     auto rc = sendto(_sock, icmp.getData(), icmp.getDataLen(), 0, reinterpret_cast<struct sockaddr *>(&_sa), _sin_length);
     if (rc != SOCKET_ERROR) {

@@ -14,6 +14,7 @@ namespace visor::input::netprobe {
 
 class NetProbeInputStream : public visor::InputStream
 {
+    static uint16_t _id;
     TestType _type{TestType::Ping};
     uint64_t _interval_msec{5000};
     uint64_t _timeout_msec{2000};

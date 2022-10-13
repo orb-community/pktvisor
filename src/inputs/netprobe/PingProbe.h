@@ -30,7 +30,9 @@ class PingProbe final : public NetProbe
     SOCKET _sock{0};
     bool _init{false};
     bool _is_ipv6{false};
+    bool _ip_set{false};
     uint16_t _sequence{0};
+    uint16_t _internal_sequence{0};
     std::shared_ptr<uvw::PollHandle> _poll;
     std::shared_ptr<uvw::TimerHandle> _interval_timer;
     std::shared_ptr<uvw::TimerHandle> _internal_timer;
@@ -38,7 +40,6 @@ class PingProbe final : public NetProbe
     struct sockaddr_in _sa;
     struct sockaddr_in6 _sa6;
     SOCKETLEN _sin_length{0};
-    bool _ip_set{false};
     std::vector<uint8_t> _payload_array;
 
     bool _set_ip();
@@ -48,7 +49,8 @@ class PingProbe final : public NetProbe
     void _close_socket();
 
 public:
-    PingProbe(){};
+    PingProbe(uint16_t id)
+        : NetProbe(id){};
     ~PingProbe() = default;
 
     bool start(std::shared_ptr<uvw::Loop> io_loop) override;

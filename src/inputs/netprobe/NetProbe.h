@@ -32,6 +32,7 @@ static const std::vector<uint8_t> validator = {0x70, 0x6b, 0x74, 0x76, 0x69, 0x7
 class NetProbe
 {
 protected:
+    uint16_t _id;
     uint64_t _interval_msec{0};
     uint64_t _timeout_msec{0};
     uint64_t _packets_per_test{0};
@@ -46,7 +47,8 @@ protected:
     FailCallback _fail;
 
 public:
-    NetProbe()
+    NetProbe(uint16_t id)
+        : _id(id)
     {
     }
 

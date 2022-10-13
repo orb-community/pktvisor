@@ -18,7 +18,7 @@ struct NetProbeTransaction {
 
 class RequestReplyManager
 {
-    typedef robin_hood::unordered_map<std::string, NetProbeTransaction> NetProbeXactMap;
+    typedef robin_hood::unordered_map<uint32_t, NetProbeTransaction> NetProbeXactMap;
 
     unsigned int _ttl_secs;
     NetProbeXactMap _netprobe_transactions;
@@ -31,7 +31,7 @@ public:
 
     void start_transaction(uint16_t id, uint16_t sequence, timespec stamp, std::string target);
 
-    std::pair<bool, NetProbeTransaction> maybe_end_transaction(std::string target, uint16_t id, uint16_t sequence, timespec stamp);
+    std::pair<bool, NetProbeTransaction> maybe_end_transaction(uint16_t id, uint16_t sequence, timespec stamp);
 
     size_t purge_old_transactions(timespec now);
 

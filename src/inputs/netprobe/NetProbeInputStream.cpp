@@ -14,6 +14,8 @@
 
 namespace visor::input::netprobe {
 
+uint16_t NetProbeInputStream::_id = 1;
+
 NetProbeInputStream::NetProbeInputStream(const std::string &name)
     : visor::InputStream(name)
 {
@@ -153,29 +155,33 @@ void NetProbeInputStream::_create_netprobe_loop()
     });
 
     for (const auto &ip : _ip_list) {
+        std::unique_ptr<NetProbe> probe{nullptr};
         if (_type == TestType::Ping) {
-            auto ping = std::make_unique<PingProbe>();
-            ping->set_configs(_interval_msec, _timeout_msec, _packets_per_test, _packets_interval_msec, _packet_payload_size);
-            ping->set_target(ip, std::string());
-            ping->set_callbacks([this](pcpp::Packet &payload, TestType type, const std::string &name, timespec stamp) { _send_cb(payload, type, name, stamp); },
-                [this](pcpp::Packet &payload, TestType type, const std::string &name, timespec stamp) { _recv_cb(payload, type, name, stamp); },
-                [this](ErrorType error, TestType type, const std::string &name) { _fail_cb(error, type, name); });
-            ping->start(_io_loop);
-            _probes.push_back(std::move(ping));
+            probe = std::make_unique<PingProbe>(_id);
         }
+        ++_id;
+        probe->set_configs(_interval_msec, _timeout_msec, _packets_per_test, _packets_interval_msec, _packet_payload_size);
+        probe->set_target(ip, std::string());
+        probe->set_callbacks([this](pcpp::Packet &payload, TestType type, const std::string &name, timespec stamp) { _send_cb(payload, type, name, stamp); },
+            [this](pcpp::Packet &payload, TestType type, const std::string &name, timespec stamp) { _recv_cb(payload, type, name, stamp); },
+            [this](ErrorType error, TestType type, const std::string &name) { _fail_cb(error, type, name); });
+        probe->start(_io_loop);
+        _probes.push_back(std::move(probe));
     }
 
     for (const auto &dns : _dns_list) {
+        std::unique_ptr<NetProbe> probe{nullptr};
         if (_type == TestType::Ping) {
-            auto ping = std::make_unique<PingProbe>();
-            ping->set_configs(_interval_msec, _timeout_msec, _packets_per_test, _packets_interval_msec, _packet_payload_size);
-            ping->set_target(pcpp::IPAddress(), dns);
-            ping->set_callbacks([this](pcpp::Packet &payload, TestType type, const std::string &name, timespec stamp) { _send_cb(payload, type, name, stamp); },
-                [this](pcpp::Packet &payload, TestType type, const std::string &name, timespec stamp) { _recv_cb(payload, type, name, stamp); },
-                [this](ErrorType error, TestType type, const std::string &name) { _fail_cb(error, type, name); });
-            ping->start(_io_loop);
-            _probes.push_back(std::move(ping));
+            probe = std::make_unique<PingProbe>(_id);
         }
+        ++_id;
+        probe->set_configs(_interval_msec, _timeout_msec, _packets_per_test, _packets_interval_msec, _packet_payload_size);
+        probe->set_target(pcpp::IPAddress(), dns);
+        probe->set_callbacks([this](pcpp::Packet &payload, TestType type, const std::string &name, timespec stamp) { _send_cb(payload, type, name, stamp); },
+            [this](pcpp::Packet &payload, TestType type, const std::string &name, timespec stamp) { _recv_cb(payload, type, name, stamp); },
+            [this](ErrorType error, TestType type, const std::string &name) { _fail_cb(error, type, name); });
+        probe->start(_io_loop);
+        _probes.push_back(std::move(probe));
     }
 
     // spawn the loop

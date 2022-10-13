@@ -3,7 +3,6 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 #include "RequestReplyManager.h"
-#include <fmt/format.h>
 #include <sys/time.h>
 #include <vector>
 
@@ -26,12 +25,12 @@ static inline void timespec_diff(struct timespec *a, struct timespec *b,
 
 void RequestReplyManager::start_transaction(uint16_t id, uint16_t sequence, timespec stamp, std::string target)
 {
-    _netprobe_transactions[fmt::format("{}{}{}", target, id, sequence)] = {target, stamp, {0, 0}};
+    _netprobe_transactions[id + sequence] = {target, stamp, {0, 0}};
 }
 
-std::pair<bool, NetProbeTransaction> RequestReplyManager::maybe_end_transaction(std::string target, uint16_t id, uint16_t sequence, timespec stamp)
+std::pair<bool, NetProbeTransaction> RequestReplyManager::maybe_end_transaction(uint16_t id, uint16_t sequence, timespec stamp)
 {
-    auto xactId = fmt::format("{}{}{}", target, id, sequence);
+    uint32_t xactId = id + sequence;
     if (_netprobe_transactions.find(xactId) != _netprobe_transactions.end()) {
         auto result = _netprobe_transactions[xactId];
         timespec_diff(&stamp, &result.requestTS, &result.totalTS);
@@ -44,7 +43,7 @@ std::pair<bool, NetProbeTransaction> RequestReplyManager::maybe_end_transaction(
 
 size_t RequestReplyManager::purge_old_transactions(timespec now)
 {
-    std::vector<std::string> timed_out;
+    std::vector<uint32_t> timed_out;
     for (auto i : _netprobe_transactions) {
         if (now.tv_sec >= _ttl_secs + i.second.requestTS.tv_sec) {
             timed_out.push_back(i.first);

@@ -61,13 +61,13 @@ public:
     }
 
     void process_filtered();
-    void process_netprobe_icmp(bool deep, pcpp::IcmpLayer *layer, std::string target);
+    void process_netprobe_icmp(bool deep, pcpp::IcmpLayer *layer, const std::string &target);
     void new_icmp_transaction(bool deep, NetProbeTransaction xact);
 };
 
 class NetProbeMetricsManager final : public visor::AbstractMetricsManager<NetProbeMetricsBucket>
 {
-    RequestReplyManager _request_reply_manager;
+    std::map<std::string, RequestReplyManager> _request_reply_manager_list;
 
 public:
     NetProbeMetricsManager(const Configurable *window_config)
@@ -78,11 +78,13 @@ public:
     void on_period_shift(timespec stamp, [[maybe_unused]] const NetProbeMetricsBucket *maybe_expiring_bucket) override
     {
         // NetProbe transaction support
-        _request_reply_manager.purge_old_transactions(stamp);
+        for (auto &target : _request_reply_manager_list) {
+            target.second.purge_old_transactions(stamp);
+        }
     }
 
     void process_filtered(timespec stamp);
-    void process_netprobe_icmp(pcpp::IcmpLayer *layer, std::string target, timespec stamp);
+    void process_netprobe_icmp(pcpp::IcmpLayer *layer, const std::string &target, timespec stamp);
 };
 
 class NetProbeStreamHandler final : public visor::StreamMetricsHandler<NetProbeMetricsManager>
