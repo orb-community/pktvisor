@@ -73,6 +73,7 @@ void NetProbeStreamHandler::probe_signal_recv(pcpp::Packet &payload, TestType ty
 
 void NetProbeStreamHandler::probe_signal_fail([[maybe_unused]] ErrorType error, [[maybe_unused]] TestType type, [[maybe_unused]] const std::string &name)
 {
+    std::cerr << "fail\n";
 }
 
 void NetProbeMetricsBucket::specialized_merge(const AbstractMetricsBucket &o, Metric::Aggregate agg_operator)
@@ -104,18 +105,21 @@ void NetProbeMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelM
         auto targetId = target.first;
         target_labels["target"] = targetId;
 
-        target.second->attempts.to_prometheus(out, target_labels);
-        target.second->successes.to_prometheus(out, target_labels);
+        try {
+            target.second->minimum.clear();
+            target.second->minimum += target.second->time_us.get_min();
+            target.second->minimum.to_prometheus(out, target_labels);
 
-        target.second->minimum.clear();
-        target.second->minimum += target.second->time_us.get_min();
-        target.second->minimum.to_prometheus(out, target_labels);
+            target.second->maximum.clear();
+            target.second->maximum += target.second->time_us.get_max();
+            target.second->maximum.to_prometheus(out, target_labels);
 
-        target.second->maximum.clear();
-        target.second->maximum += target.second->time_us.get_max();
-        target.second->maximum.to_prometheus(out, target_labels);
+            target.second->time_us.to_prometheus(out, target_labels);
 
-        target.second->time_us.to_prometheus(out, target_labels);
+            target.second->attempts.to_prometheus(out, target_labels);
+            target.second->successes.to_prometheus(out, target_labels);
+        } catch (const std::exception &) {
+        }
     }
 }
 
@@ -127,18 +131,21 @@ void NetProbeMetricsBucket::to_json(json &j) const
     for (const auto &target : _targets_metrics) {
         auto targetId = target.first;
 
-        target.second->attempts.to_json(j["targets"][targetId]);
-        target.second->successes.to_json(j["targets"][targetId]);
+        try {
+            target.second->minimum.clear();
+            target.second->minimum += target.second->time_us.get_min();
+            target.second->minimum.to_json(j["targets"][targetId]);
 
-        target.second->minimum.clear();
-        target.second->minimum += target.second->time_us.get_min();
-        target.second->minimum.to_json(j["targets"][targetId]);
+            target.second->maximum.clear();
+            target.second->maximum += target.second->time_us.get_max();
+            target.second->maximum.to_json(j["targets"][targetId]);
 
-        target.second->maximum.clear();
-        target.second->maximum += target.second->time_us.get_max();
-        target.second->maximum.to_json(j["targets"][targetId]);
+            target.second->time_us.to_json(j["targets"][targetId]);
 
-        target.second->time_us.to_json(j["targets"][targetId]);
+            target.second->attempts.to_json(j["targets"][targetId]);
+            target.second->successes.to_json(j["targets"][targetId]);
+        } catch (const std::exception &) {
+        }
     }
 }
 

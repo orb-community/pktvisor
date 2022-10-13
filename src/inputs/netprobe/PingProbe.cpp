@@ -106,32 +106,31 @@ bool PingProbe::stop()
     return true;
 }
 
-bool PingProbe::_set_ip()
+sockaddr PingProbe::_get_addr()
 {
-    if (_ip_set) {
-        return true;
-    }
+
+    sockaddr s_addr;
+    sockaddr_in _sa;
+    sockaddr_in6 _sa6;
     // don't need dns resolution
     if (_dns.empty()) {
         if (_ip.isIPv4()) {
-            memset(&_sa, 0, sizeof(struct sockaddr_in));
             uint32_t ip_int(_ip.getIPv4().toInt());
             memcpy(&_sa.sin_addr, &ip_int, sizeof(_sa.sin_addr));
             _sa.sin_family = AF_INET;
             _sin_length = sizeof(_sa);
-            _ip_set = true;
-            return true;
+            memcpy(&s_addr, &_sa, sizeof(_sa));
+            return s_addr;
         } else {
             _is_ipv6 = true;
-            memset(&_sa6, 0, sizeof(struct sockaddr_in6));
             auto ip_bytes = _ip.getIPv6().toBytes();
             for (int i = 0; i < 16; ++i) {
                 _sa6.sin6_addr.s6_addr[i] = ip_bytes[i];
             }
             _sa6.sin6_family = AF_INET6;
             _sin_length = sizeof(_sa6);
-            _ip_set = true;
-            return true;
+            memcpy(&s_addr, &_sa6, sizeof(_sa6));
+            return s_addr;
         }
     }
 
@@ -139,39 +138,30 @@ bool PingProbe::_set_ip()
     auto request = _io_loop->resource<uvw::GetAddrInfoReq>();
     auto response = request->nodeAddrInfoSync(_dns);
     if (!response.first) {
-        return false;
+        return s_addr;
     }
-
-    // clear current IPs
-    memset(&_sa, 0, sizeof(struct sockaddr_in));
-    memset(&_sa6, 0, sizeof(struct sockaddr_in6));
 
     auto addr = response.second.get();
     while (addr->ai_next != nullptr) {
-        if (addr->ai_family == AF_INET && _sa.sin_family != AF_INET) {
+        if (addr->ai_family == AF_INET) {
             memcpy(&_sa, reinterpret_cast<sockaddr_in *>(addr->ai_addr), sizeof(struct sockaddr_in));
             _sin_length = sizeof(_sa);
             _sa.sin_family = AF_INET;
-        } else if (addr->ai_family == AF_INET6 && _sa6.sin6_family != AF_INET6) {
+            memcpy(&s_addr, &_sa, sizeof(_sa));
+            return s_addr;
+        } else if (addr->ai_family == AF_INET6) {
             memcpy(&_sa6, reinterpret_cast<sockaddr_in6 *>(addr->ai_addr), sizeof(struct sockaddr_in6));
             _sin_length = sizeof(_sa6);
             _sa6.sin6_family = AF_INET6;
-        } else if (_sa.sin_family == AF_INET && _sa6.sin6_family == AF_INET6) {
-            // ipv4 and ipv6 filled
-            break;
         }
         addr = addr->ai_next;
     }
 
-    return true;
+    return s_addr;
 }
 
 std::optional<ErrorType> PingProbe::_create_socket()
 {
-    if (!_set_ip()) {
-        return ErrorType::DnsNotFound;
-    }
-
     int domain = AF_INET;
     if (_is_ipv6) {
         domain = AF_INET6;
@@ -209,7 +199,8 @@ void PingProbe::_send_icmp_v4(uint16_t sequence)
     const uint64_t stamp64 = stamp.tv_sec * 1000000000ULL + stamp.tv_nsec;
     icmp.setEchoRequestData(static_cast<uint16_t>(_id * _sequence), sequence, stamp64, _payload_array.data(), _payload_array.size());
     icmp.computeCalculateFields();
-    auto rc = sendto(_sock, icmp.getData(), icmp.getDataLen(), 0, reinterpret_cast<struct sockaddr *>(&_sa), _sin_length);
+    auto addr = _get_addr();
+    auto rc = sendto(_sock, icmp.getData(), icmp.getDataLen(), 0, &addr, _sin_length);
     if (rc != SOCKET_ERROR) {
         pcpp::Packet packet;
         packet.addLayer(&icmp);
@@ -221,7 +212,8 @@ void PingProbe::_recv_icmp_v4()
 {
     size_t len = sizeof(pcpp::icmphdr) + _packet_payload_size * 2;
     auto array = std::make_unique<uint8_t[]>(len);
-    auto rc = recvfrom(_sock, array.get(), len, 0, reinterpret_cast<struct sockaddr *>(&_sa), &_sin_length);
+    auto addr = _get_addr();
+    auto rc = recvfrom(_sock, array.get(), len, 0, &addr, &_sin_length);
     if (rc != SOCKET_ERROR) {
         timespec stamp;
         std::timespec_get(&stamp, TIME_UTC);
