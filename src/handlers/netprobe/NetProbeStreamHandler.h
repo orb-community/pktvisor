@@ -67,7 +67,7 @@ public:
 
 class NetProbeMetricsManager final : public visor::AbstractMetricsManager<NetProbeMetricsBucket>
 {
-    std::map<std::string, std::unique_ptr<RequestReplyManager>> _request_reply_manager_list;
+    RequestReplyManager _request_reply_manager;
 
 public:
     NetProbeMetricsManager(const Configurable *window_config)
@@ -78,9 +78,7 @@ public:
     void on_period_shift(timespec stamp, [[maybe_unused]] const NetProbeMetricsBucket *maybe_expiring_bucket) override
     {
         // NetProbe transaction support
-        for (auto &target : _request_reply_manager_list) {
-            target.second->purge_old_transactions(stamp);
-        }
+        _request_reply_manager.purge_old_transactions(stamp);
     }
 
     void process_filtered(timespec stamp);

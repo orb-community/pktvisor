@@ -183,18 +183,14 @@ void NetProbeMetricsManager::process_netprobe_icmp(pcpp::IcmpLayer *layer, const
     // base event
     new_event(stamp);
 
-    if(!_request_reply_manager_list.count(target)) {
-        _request_reply_manager_list[target] = std::make_unique<RequestReplyManager>();
-    }
-
     if (layer->getMessageType() == pcpp::ICMP_ECHO_REQUEST) {
         if (auto request = layer->getEchoRequestData(); request != nullptr) {
-            _request_reply_manager_list[target]->start_transaction(request->header->id, request->header->sequence, stamp, target);
+            _request_reply_manager.start_transaction(request->header->id, request->header->sequence, stamp, target);
         }
         live_bucket()->process_netprobe_icmp(_deep_sampling_now, layer, target);
     } else if (layer->getMessageType() == pcpp::ICMP_ECHO_REPLY) {
         if (auto reply = layer->getEchoReplyData(); reply != nullptr) {
-            auto xact = _request_reply_manager_list[target]->maybe_end_transaction(reply->header->id, reply->header->sequence, stamp);
+            auto xact = _request_reply_manager.maybe_end_transaction(reply->header->id, reply->header->sequence, stamp);
             if (xact.first) {
                 live_bucket()->new_icmp_transaction(_deep_sampling_now, xact.second);
             }

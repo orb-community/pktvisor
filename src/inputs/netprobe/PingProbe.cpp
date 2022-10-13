@@ -214,8 +214,7 @@ void PingProbe::_recv_icmp_v4()
     auto array = std::make_unique<uint8_t[]>(len);
     auto addr = _get_addr();
     struct iovec v = {array.get(), len};
-    static unsigned char msg_control[40];
-    msghdr msg = {&addr, sizeof(addr), &v, 1, &msg_control, sizeof(msg_control), 0};
+    msghdr msg = {&addr, sizeof(addr), &v, 1, nullptr, 0, 0};
     auto rc = recvmsg(_sock, &msg, MSG_TRUNC);
     if (rc != SOCKET_ERROR) {
         timespec stamp;

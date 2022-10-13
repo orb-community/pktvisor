@@ -25,15 +25,19 @@ static inline void timespec_diff(struct timespec *a, struct timespec *b,
 
 void RequestReplyManager::start_transaction(uint16_t id, uint16_t sequence, timespec stamp, std::string target)
 {
+    std::unique_lock lock(_mutex);
     _netprobe_transactions[id + sequence] = {target, stamp, {0, 0}};
 }
 
 std::pair<bool, NetProbeTransaction> RequestReplyManager::maybe_end_transaction(uint16_t id, uint16_t sequence, timespec stamp)
 {
+    std::shared_lock lock(_mutex);
     uint32_t xactId = id + sequence;
     if (_netprobe_transactions.find(xactId) != _netprobe_transactions.end()) {
         auto result = _netprobe_transactions[xactId];
         timespec_diff(&stamp, &result.requestTS, &result.totalTS);
+        lock.unlock();
+        std::unique_lock lock_again(_mutex);
         _netprobe_transactions.erase(xactId);
         return std::pair<bool, NetProbeTransaction>(true, result);
     } else {
@@ -43,6 +47,7 @@ std::pair<bool, NetProbeTransaction> RequestReplyManager::maybe_end_transaction(
 
 size_t RequestReplyManager::purge_old_transactions(timespec now)
 {
+    std::unique_lock lock(_mutex);
     std::vector<uint32_t> timed_out;
     for (auto i : _netprobe_transactions) {
         if (now.tv_sec >= _ttl_secs + i.second.requestTS.tv_sec) {
