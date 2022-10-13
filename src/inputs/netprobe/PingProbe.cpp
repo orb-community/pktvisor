@@ -213,7 +213,10 @@ void PingProbe::_recv_icmp_v4()
     size_t len = sizeof(pcpp::icmphdr) + _packet_payload_size * 2;
     auto array = std::make_unique<uint8_t[]>(len);
     auto addr = _get_addr();
-    auto rc = recvfrom(_sock, array.get(), len, 0, &addr, &_sin_length);
+    struct iovec v = {array.get(), len};
+    static unsigned char msg_control[40];
+    msghdr msg = {&addr, sizeof(addr), &v, 1, &msg_control, sizeof(msg_control), 0};
+    auto rc = recvmsg(_sock, &msg, MSG_TRUNC);
     if (rc != SOCKET_ERROR) {
         timespec stamp;
         std::timespec_get(&stamp, TIME_UTC);
