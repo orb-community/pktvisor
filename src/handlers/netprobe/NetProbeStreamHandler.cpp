@@ -73,7 +73,6 @@ void NetProbeStreamHandler::probe_signal_recv(pcpp::Packet &payload, TestType ty
 
 void NetProbeStreamHandler::probe_signal_fail([[maybe_unused]] ErrorType error, [[maybe_unused]] TestType type, [[maybe_unused]] const std::string &name)
 {
-    std::cerr << "fail\n";
 }
 
 void NetProbeMetricsBucket::specialized_merge(const AbstractMetricsBucket &o, Metric::Aggregate agg_operator)
@@ -105,6 +104,9 @@ void NetProbeMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelM
         auto targetId = target.first;
         target_labels["target"] = targetId;
 
+        target.second->attempts.to_prometheus(out, target_labels);
+        target.second->successes.to_prometheus(out, target_labels);
+
         try {
             target.second->minimum.clear();
             target.second->minimum += target.second->time_us.get_min();
@@ -115,9 +117,6 @@ void NetProbeMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelM
             target.second->maximum.to_prometheus(out, target_labels);
 
             target.second->time_us.to_prometheus(out, target_labels);
-
-            target.second->attempts.to_prometheus(out, target_labels);
-            target.second->successes.to_prometheus(out, target_labels);
         } catch (const std::exception &) {
         }
     }
@@ -131,6 +130,9 @@ void NetProbeMetricsBucket::to_json(json &j) const
     for (const auto &target : _targets_metrics) {
         auto targetId = target.first;
 
+        target.second->attempts.to_json(j["targets"][targetId]);
+        target.second->successes.to_json(j["targets"][targetId]);
+
         try {
             target.second->minimum.clear();
             target.second->minimum += target.second->time_us.get_min();
@@ -141,9 +143,6 @@ void NetProbeMetricsBucket::to_json(json &j) const
             target.second->maximum.to_json(j["targets"][targetId]);
 
             target.second->time_us.to_json(j["targets"][targetId]);
-
-            target.second->attempts.to_json(j["targets"][targetId]);
-            target.second->successes.to_json(j["targets"][targetId]);
         } catch (const std::exception &) {
         }
     }
@@ -184,14 +183,18 @@ void NetProbeMetricsManager::process_netprobe_icmp(pcpp::IcmpLayer *layer, const
     // base event
     new_event(stamp);
 
+    if(!_request_reply_manager_list.count(target)) {
+        _request_reply_manager_list[target] = std::make_unique<RequestReplyManager>();
+    }
+
     if (layer->getMessageType() == pcpp::ICMP_ECHO_REQUEST) {
         if (auto request = layer->getEchoRequestData(); request != nullptr) {
-            _request_reply_manager_list[target].start_transaction(request->header->id, request->header->sequence, stamp, target);
+            _request_reply_manager_list[target]->start_transaction(request->header->id, request->header->sequence, stamp, target);
         }
         live_bucket()->process_netprobe_icmp(_deep_sampling_now, layer, target);
     } else if (layer->getMessageType() == pcpp::ICMP_ECHO_REPLY) {
         if (auto reply = layer->getEchoReplyData(); reply != nullptr) {
-            auto xact = _request_reply_manager_list[target].maybe_end_transaction(reply->header->id, reply->header->sequence, stamp);
+            auto xact = _request_reply_manager_list[target]->maybe_end_transaction(reply->header->id, reply->header->sequence, stamp);
             if (xact.first) {
                 live_bucket()->new_icmp_transaction(_deep_sampling_now, xact.second);
             }

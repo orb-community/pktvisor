@@ -67,7 +67,7 @@ public:
 
 class NetProbeMetricsManager final : public visor::AbstractMetricsManager<NetProbeMetricsBucket>
 {
-    std::map<std::string, RequestReplyManager> _request_reply_manager_list;
+    std::map<std::string, std::unique_ptr<RequestReplyManager>> _request_reply_manager_list;
 
 public:
     NetProbeMetricsManager(const Configurable *window_config)
@@ -79,7 +79,7 @@ public:
     {
         // NetProbe transaction support
         for (auto &target : _request_reply_manager_list) {
-            target.second.purge_old_transactions(stamp);
+            target.second->purge_old_transactions(stamp);
         }
     }
 
