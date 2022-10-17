@@ -6,6 +6,7 @@
 
 #include <chrono>
 #include <memory>
+#include <mutex>
 #include <robin_hood.h>
 #include <shared_mutex>
 
