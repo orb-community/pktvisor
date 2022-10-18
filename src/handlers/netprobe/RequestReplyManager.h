@@ -21,7 +21,6 @@ struct NetProbeTransaction {
 class RequestReplyManager
 {
     typedef robin_hood::unordered_map<uint32_t, NetProbeTransaction> NetProbeXactMap;
-    mutable std::shared_mutex _mutex;
     unsigned int _ttl_secs;
     NetProbeXactMap _netprobe_transactions;
 
