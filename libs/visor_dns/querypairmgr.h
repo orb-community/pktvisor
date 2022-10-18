@@ -23,6 +23,12 @@ struct hash_pair {
     }
 };
 
+enum class Result {
+    NotExist,
+    TimedOut,
+    Valid
+};
+
 struct DnsTransaction {
     timespec queryTS;
     timespec totalTS;
@@ -46,7 +52,7 @@ public:
 
     void start_transaction(uint32_t flowKey, uint16_t queryID, timespec stamp, size_t querySize);
 
-    std::pair<bool, DnsTransaction> maybe_end_transaction(uint32_t flowKey, uint16_t queryID, timespec stamp);
+    std::pair<Result, DnsTransaction> maybe_end_transaction(uint32_t flowKey, uint16_t queryID, timespec stamp);
 
     size_t purge_old_transactions(timespec now);
 
