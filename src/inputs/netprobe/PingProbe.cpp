@@ -3,11 +3,20 @@
 #include "NetProbeException.h"
 #include <IcmpLayer.h>
 #include <Packet.h>
-#include <iostream>
 #include <uvw/dns.h>
-#include <uvw/work.h>
 
 namespace visor::input::netprobe {
+
+SOCKET PingProbe::_recv_sock = SOCKET_ERROR;
+std::atomic<uint32_t> PingProbe::_sock_count = 0;
+std::mutex PingProbe::_mutex;
+std::vector<SendRecvCallback> PingProbe::_cb_list;
+
+void PingProbe::custom_set_callbacks(SendRecvCallback, SendRecvCallback recv, FailCallback)
+{
+    std::unique_lock lock(_mutex);
+    _cb_list.push_back(recv);
+}
 
 bool PingProbe::start(std::shared_ptr<uvw::Loop> io_loop)
 {
@@ -105,6 +114,8 @@ bool PingProbe::start(std::shared_ptr<uvw::Loop> io_loop)
 bool PingProbe::stop()
 {
     _interval_timer->stop();
+    std::unique_lock lock(_mutex);
+    _cb_list.erase(std::remove_if(_cb_list.begin(), _cb_list.end(), [](SendRecvCallback cb) { return cb; }), _cb_list.end());
     return true;
 }
 
@@ -188,6 +199,33 @@ std::optional<ErrorType> PingProbe::_create_socket()
         return ErrorType::SocketError;
     }
 #endif
+
+    if (!_sock_count) {
+        _recv_sock = socket(domain, SOCK_RAW, IPPROTO_ICMP);
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+        if (_recv_sock == INVALID_SOCKET) {
+            return ErrorType::SocketError;
+        }
+        unsigned long flag = 1;
+        if (ioctlsocket(_recv_sock, FIONBIO, &flag) == SOCKET_ERROR) {
+            return ErrorType::SocketError;
+        }
+#else
+        if (_recv_sock == SOCKET_ERROR) {
+            _recv_sock = socket(domain, SOCK_DGRAM, IPPROTO_ICMP);
+        }
+        int flag = 1;
+        if ((flag = fcntl(_recv_sock, F_GETFL, 0)) == SOCKET_ERROR) {
+            return ErrorType::SocketError;
+        }
+        if (fcntl(_recv_sock, F_SETFL, flag | O_NONBLOCK) == SOCKET_ERROR) {
+            return ErrorType::SocketError;
+        }
+#endif
+    }
+
+    ++_sock_count;
+
     return std::nullopt;
 }
 
@@ -212,12 +250,7 @@ void PingProbe::_recv_icmp_v4()
     size_t len = sizeof(pcpp::icmphdr) + _packet_payload_size * 2;
     auto array = std::make_unique<uint8_t[]>(len);
     sockaddr addr;
-    int rc{0};
-    if (!_is_ipv6) {
-        while (rc != SOCKET_ERROR && reinterpret_cast<sockaddr_in *>(&addr)->sin_addr.s_addr != _sa.sin_addr.s_addr) {
-            rc = recvfrom(_sock, array.get(), len, 0, &addr, &_sin_length);
-        }
-    }
+    auto rc = recvfrom(_recv_sock, array.get(), len, 0, &addr, &_sin_length);
     if (rc != SOCKET_ERROR) {
         timespec stamp;
         std::timespec_get(&stamp, TIME_UTC);
@@ -225,7 +258,12 @@ void PingProbe::_recv_icmp_v4()
         TIMESPEC_TO_TIMEVAL(&time, &stamp);
         pcpp::RawPacket raw(array.get(), rc, time, false, pcpp::LINKTYPE_DLT_RAW1);
         pcpp::Packet packet(&raw, pcpp::ICMP);
-        _recv(packet, TestType::Ping, _name, stamp);
+        std::unique_lock lock(_mutex);
+        for (const auto &callback : _cb_list) {
+            if (callback) {
+                callback(packet, TestType::Ping, _name, stamp);
+            }
+        }
     }
 }
 
@@ -239,5 +277,16 @@ void PingProbe::_close_socket()
     close(_sock);
     _sock = SOCKET_ERROR;
 #endif
+
+    --_sock_count;
+    if (!_sock_count) {
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+        closesocket(_recv_sock);
+        _recv_sock = INVALID_SOCKET;
+#else
+        close(_recv_sock);
+        _recv_sock = SOCKET_ERROR;
+#endif
+    }
 }
 }

@@ -18,7 +18,9 @@ typedef int SOCKET;
 #endif
 #include "NetProbe.h"
 #include <IpAddress.h>
+#include <atomic>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <uvw/poll.h>
 #include <uvw/timer.h>
@@ -27,6 +29,11 @@ namespace visor::input::netprobe {
 
 class PingProbe final : public NetProbe
 {
+    static SOCKET _recv_sock;
+    static std::atomic<uint32_t> _sock_count;
+    static std::mutex _mutex;
+    static std::vector<SendRecvCallback> _cb_list;
+
     SOCKET _sock{0};
     bool _init{false};
     bool _is_ipv6{false};
@@ -50,9 +57,11 @@ class PingProbe final : public NetProbe
 
 public:
     PingProbe(uint16_t id)
-        : NetProbe(id){};
-    ~PingProbe() = default;
+        : NetProbe(id){
 
+        };
+    ~PingProbe() = default;
+    void custom_set_callbacks(SendRecvCallback, SendRecvCallback recv, FailCallback) override;
     bool start(std::shared_ptr<uvw::Loop> io_loop) override;
     bool stop() override;
 };
