@@ -223,6 +223,10 @@ public:
             }
         }
     }
+    void process_icmp_packet_cb(pcpp::Packet &payload, timespec stamp)
+    {
+        icmp_signal(payload, stamp);
+    }
     void tcp_message_ready_cb(int8_t side, const pcpp::TcpStreamData &tcpData)
     {
         tcp_message_ready_signal(side, tcpData);
@@ -259,6 +263,7 @@ public:
     // note: these are mutable because consumer_count() calls slot_count() which is not const (unclear if it could/should be)
     mutable sigslot::signal<pcpp::Packet &, PacketDirection, pcpp::ProtocolType, pcpp::ProtocolType, timespec> packet_signal;
     mutable sigslot::signal<pcpp::Packet &, PacketDirection, pcpp::ProtocolType, uint32_t, timespec> udp_signal;
+    mutable sigslot::signal<pcpp::Packet &, timespec> icmp_signal;
     mutable sigslot::signal<timespec> start_tstamp_signal;
     mutable sigslot::signal<timespec> end_tstamp_signal;
     mutable sigslot::signal<int8_t, const pcpp::TcpStreamData &> tcp_message_ready_signal;

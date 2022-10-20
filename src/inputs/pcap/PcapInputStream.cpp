@@ -367,7 +367,7 @@ void PcapInputStream::process_raw_packet(pcpp::RawPacket *rawPacket)
         return true;
     }();
     pcpp::ProtocolType l3(pcpp::UnknownProtocol), l4(pcpp::UnknownProtocol);
-    pcpp::Packet packet(rawPacket, pcpp::TCP | pcpp::UDP);
+    pcpp::Packet packet(rawPacket, pcpp::TCP | pcpp::UDP | pcpp::ICMP);
     if (packet.isPacketOfType(pcpp::IPv4)) {
         l3 = pcpp::IPv4;
     } else if (packet.isPacketOfType(pcpp::IPv6)) {
@@ -377,6 +377,8 @@ void PcapInputStream::process_raw_packet(pcpp::RawPacket *rawPacket)
         l4 = pcpp::UDP;
     } else if (packet.isPacketOfType(pcpp::TCP)) {
         l4 = pcpp::TCP;
+    } else if (packet.isPacketOfType(pcpp::ICMP)) {
+        l4 = pcpp::ICMP;
     }
     // determine packet direction by matching source/dest ips
     // note the direction may be indeterminate!
@@ -446,6 +448,11 @@ void PcapInputStream::process_raw_packet(pcpp::RawPacket *rawPacket)
             }
             _tcp_reassembly.closeConnection(connection.first);
             _lru_list.eraseElement(connection.first);
+        }
+    } else if (l4 == pcpp::ICMP) {
+        std::shared_lock lock(_input_mutex);
+        for (auto &proxy : _event_proxies) {
+            static_cast<PcapInputEventProxy *>(proxy.get())->process_icmp_packet_cb(packet, timestamp);
         }
     } else {
         // unsupported layer3 protocol

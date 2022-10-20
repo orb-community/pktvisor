@@ -22,11 +22,16 @@ typedef int SOCKET;
 #include <optional>
 #include <uvw/poll.h>
 #include <uvw/timer.h>
+#include "PcapInputStream.h"
 
 namespace visor::input::netprobe {
 
 class PingProbe final : public NetProbe
 {
+    static std::unique_ptr<pcap::PcapInputStream> _pcap_recv;
+    static std::unique_ptr<pcap::PcapInputEventProxy> _pcap_proxy;
+    sigslot::connection _recv_connection;
+
     SOCKET _sock{0};
     bool _init{false};
     bool _is_ipv6{false};
@@ -44,7 +49,6 @@ class PingProbe final : public NetProbe
 
     void _get_addr();
     void _send_icmp_v4(uint16_t sequence);
-    void _recv_icmp_v4();
     std::optional<ErrorType> _create_socket();
     void _close_socket();
 

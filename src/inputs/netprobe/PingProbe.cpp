@@ -3,16 +3,33 @@
 #include "NetProbeException.h"
 #include <IcmpLayer.h>
 #include <Packet.h>
-#include <iostream>
 #include <uvw/dns.h>
-#include <uvw/work.h>
 
 namespace visor::input::netprobe {
+
+std::unique_ptr<pcap::PcapInputStream> PingProbe::_pcap_recv = nullptr;
+std::unique_ptr<pcap::PcapInputEventProxy> PingProbe::_pcap_proxy = nullptr;
 
 bool PingProbe::start(std::shared_ptr<uvw::Loop> io_loop)
 {
     if (_init || (!_ip.isValid() && _dns.empty())) {
         return false;
+    }
+
+    // execute once
+    [[maybe_unused]] static bool create_receiver = []() {
+        Configurable config;
+        config.config_set("bpf", "icmp[icmptype] != icmp-echo"); // Captures all icmp packets that are not echo requests.
+        config.config_set("iface", "auto");
+        _pcap_recv = std::make_unique<pcap::PcapInputStream>("ping_internal");
+        _pcap_recv->config_merge(config);
+        _pcap_proxy.reset(dynamic_cast<pcap::PcapInputEventProxy *>(_pcap_recv->add_event_proxy(config)));
+        _pcap_recv->start();
+        return true;
+    }();
+
+    if (_pcap_proxy) {
+        _recv_connection = _pcap_proxy->icmp_signal.connect([this](pcpp::Packet &packet, timespec stamp) { _recv(packet, TestType::Ping, _name, stamp); });
     }
 
     // TODO support ICMPv6
@@ -77,7 +94,6 @@ bool PingProbe::start(std::shared_ptr<uvw::Loop> io_loop)
 
         if (!_is_ipv6) {
             _poll->on<uvw::PollEvent>([this](const uvw::PollEvent &, auto &) {
-                _recv_icmp_v4();
                 _timeout_timer->stop();
                 if (_internal_sequence >= _packets_per_test) {
                     // received last packet
@@ -104,6 +120,9 @@ bool PingProbe::start(std::shared_ptr<uvw::Loop> io_loop)
 
 bool PingProbe::stop()
 {
+    if (_pcap_proxy) {
+        _recv_connection.disconnect();
+    }
     _interval_timer->stop();
     return true;
 }
@@ -204,28 +223,6 @@ void PingProbe::_send_icmp_v4(uint16_t sequence)
         pcpp::Packet packet;
         packet.addLayer(&icmp);
         _send(packet, TestType::Ping, _name, stamp);
-    }
-}
-
-void PingProbe::_recv_icmp_v4()
-{
-    size_t len = sizeof(pcpp::icmphdr) + _packet_payload_size * 2;
-    auto array = std::make_unique<uint8_t[]>(len);
-    sockaddr addr;
-    int rc{0};
-    if (!_is_ipv6) {
-        while (rc != SOCKET_ERROR && reinterpret_cast<sockaddr_in *>(&addr)->sin_addr.s_addr != _sa.sin_addr.s_addr) {
-            rc = recvfrom(_sock, array.get(), len, 0, &addr, &_sin_length);
-        }
-    }
-    if (rc != SOCKET_ERROR) {
-        timespec stamp;
-        std::timespec_get(&stamp, TIME_UTC);
-        timeval time;
-        TIMESPEC_TO_TIMEVAL(&time, &stamp);
-        pcpp::RawPacket raw(array.get(), rc, time, false, pcpp::LINKTYPE_DLT_RAW1);
-        pcpp::Packet packet(&raw, pcpp::ICMP);
-        _recv(packet, TestType::Ping, _name, stamp);
     }
 }
 
