@@ -85,10 +85,8 @@ public:
         _send = send;
         _recv = recv;
         _fail = fail;
-        custom_set_callbacks(send, recv, fail);
     }
 
-    virtual void custom_set_callbacks(SendRecvCallback send, SendRecvCallback recv, FailCallback fail) = 0;
     virtual bool start(std::shared_ptr<uvw::Loop> io_loop) = 0;
     virtual bool stop() = 0;
 };

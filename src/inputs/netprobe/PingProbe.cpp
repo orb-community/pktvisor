@@ -4,19 +4,13 @@
 #include <IcmpLayer.h>
 #include <Packet.h>
 #include <uvw/dns.h>
+#include <uvw/idle.h>
 
 namespace visor::input::netprobe {
 
 SOCKET PingProbe::_recv_sock = SOCKET_ERROR;
 std::atomic<uint32_t> PingProbe::_sock_count = 0;
-std::mutex PingProbe::_mutex;
-std::vector<SendRecvCallback> PingProbe::_cb_list;
-
-void PingProbe::custom_set_callbacks(SendRecvCallback, SendRecvCallback recv, FailCallback)
-{
-    std::unique_lock lock(_mutex);
-    _cb_list.push_back(recv);
-}
+sigslot::signal<pcpp::Packet &, timespec> PingProbe::recv_signal;
 
 bool PingProbe::start(std::shared_ptr<uvw::Loop> io_loop)
 {
@@ -37,6 +31,28 @@ bool PingProbe::start(std::shared_ptr<uvw::Loop> io_loop)
     std::fill(_payload_array.begin() + validator.size(), _payload_array.end(), 0);
 
     _io_loop = io_loop;
+
+    // execute once
+    [[maybe_unused]] static bool create_receiver = [this]() {
+        auto handle = _io_loop->resource<uvw::IdleHandle>();
+        handle->on<uvw::IdleEvent>([this](const auto &, auto &) {
+            size_t len = sizeof(pcpp::icmphdr) + _packet_payload_size * 2;
+            auto array = std::make_unique<uint8_t[]>(len);
+            auto rc = recv(_recv_sock, array.get(), len, 0);
+            if (rc != SOCKET_ERROR) {
+                timespec stamp;
+                std::timespec_get(&stamp, TIME_UTC);
+                timeval time;
+                TIMESPEC_TO_TIMEVAL(&time, &stamp);
+                pcpp::RawPacket raw(array.get(), rc, time, false, pcpp::LINKTYPE_DLT_RAW1);
+                pcpp::Packet packet(&raw, pcpp::ICMP);
+                recv_signal(packet, stamp);
+            }
+        });
+
+        handle->start();
+        return true;
+    }();
 
     _interval_timer = _io_loop->resource<uvw::TimerHandle>();
     if (!_interval_timer) {
@@ -86,7 +102,6 @@ bool PingProbe::start(std::shared_ptr<uvw::Loop> io_loop)
 
         if (!_is_ipv6) {
             _poll->on<uvw::PollEvent>([this](const uvw::PollEvent &, auto &) {
-                _recv_icmp_v4();
                 _timeout_timer->stop();
                 if (_internal_sequence >= _packets_per_test) {
                     // received last packet
@@ -98,6 +113,8 @@ bool PingProbe::start(std::shared_ptr<uvw::Loop> io_loop)
 
         _poll->init();
         _poll->start(uvw::PollHandle::Event::READABLE);
+
+        _recv_connection = recv_signal.connect([this](pcpp::Packet &packet, timespec stamp) { _recv(packet, TestType::Ping, _name, stamp); });
 
         (_sequence == USHRT_MAX) ? _sequence = 0 : _sequence++;
         _send_icmp_v4(_internal_sequence);
@@ -114,8 +131,7 @@ bool PingProbe::start(std::shared_ptr<uvw::Loop> io_loop)
 bool PingProbe::stop()
 {
     _interval_timer->stop();
-    std::unique_lock lock(_mutex);
-    _cb_list.erase(std::remove_if(_cb_list.begin(), _cb_list.end(), [](SendRecvCallback cb) { return cb; }), _cb_list.end());
+    _recv_connection.disconnect();
     return true;
 }
 
@@ -242,28 +258,6 @@ void PingProbe::_send_icmp_v4(uint16_t sequence)
         pcpp::Packet packet;
         packet.addLayer(&icmp);
         _send(packet, TestType::Ping, _name, stamp);
-    }
-}
-
-void PingProbe::_recv_icmp_v4()
-{
-    size_t len = sizeof(pcpp::icmphdr) + _packet_payload_size * 2;
-    auto array = std::make_unique<uint8_t[]>(len);
-    sockaddr addr;
-    auto rc = recvfrom(_recv_sock, array.get(), len, 0, &addr, &_sin_length);
-    if (rc != SOCKET_ERROR) {
-        timespec stamp;
-        std::timespec_get(&stamp, TIME_UTC);
-        timeval time;
-        TIMESPEC_TO_TIMEVAL(&time, &stamp);
-        pcpp::RawPacket raw(array.get(), rc, time, false, pcpp::LINKTYPE_DLT_RAW1);
-        pcpp::Packet packet(&raw, pcpp::ICMP);
-        std::unique_lock lock(_mutex);
-        for (const auto &callback : _cb_list) {
-            if (callback) {
-                callback(packet, TestType::Ping, _name, stamp);
-            }
-        }
     }
 }
 

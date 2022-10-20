@@ -24,6 +24,7 @@ typedef int SOCKET;
 #include <optional>
 #include <uvw/poll.h>
 #include <uvw/timer.h>
+#include <sigslot/signal.hpp>
 
 namespace visor::input::netprobe {
 
@@ -31,8 +32,7 @@ class PingProbe final : public NetProbe
 {
     static SOCKET _recv_sock;
     static std::atomic<uint32_t> _sock_count;
-    static std::mutex _mutex;
-    static std::vector<SendRecvCallback> _cb_list;
+    static sigslot::signal<pcpp::Packet &, timespec> recv_signal;
 
     SOCKET _sock{0};
     bool _init{false};
@@ -48,20 +48,18 @@ class PingProbe final : public NetProbe
     std::vector<uint8_t> _payload_array;
     sockaddr_in _sa;
     sockaddr_in6 _sa6;
+    sigslot::connection _recv_connection;
 
     void _get_addr();
     void _send_icmp_v4(uint16_t sequence);
-    void _recv_icmp_v4();
     std::optional<ErrorType> _create_socket();
     void _close_socket();
 
 public:
     PingProbe(uint16_t id)
         : NetProbe(id){
-
         };
     ~PingProbe() = default;
-    void custom_set_callbacks(SendRecvCallback, SendRecvCallback recv, FailCallback) override;
     bool start(std::shared_ptr<uvw::Loop> io_loop) override;
     bool stop() override;
 };
