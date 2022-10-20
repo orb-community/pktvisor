@@ -32,8 +32,6 @@ TEST_CASE("Parse sflow stream", "[sflow][flow]")
     nlohmann::json j;
     flow_handler.metrics()->bucket(0)->to_json(j);
 
-    std::cerr << j.dump();
-
     CHECK(j["devices"]["192.168.0.13"]["interfaces"]["52"]["cardinality"]["dst_ips_out"] == 4);
     CHECK(j["devices"]["192.168.0.13"]["interfaces"]["52"]["cardinality"]["src_ips_in"] == 4);
     CHECK(j["devices"]["192.168.0.13"]["interfaces"]["52"]["cardinality"]["dst_ports_out"] == 23);

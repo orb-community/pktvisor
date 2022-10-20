@@ -342,10 +342,11 @@ class FlowStreamHandler final : public visor::StreamMetricsHandler<FlowMetricsMa
     std::bitset<Filters::FiltersMAX> _f_enabled;
 
     static const inline StreamMetricsHandler::GroupDefType _group_defs = {
-        {"bytes", group::FlowMetrics::ByBytes},
-        {"packets", group::FlowMetrics::ByPackets},
+        {"by_bytes", group::FlowMetrics::ByBytes},
+        {"by_packets", group::FlowMetrics::ByPackets},
         {"cardinality", group::FlowMetrics::Cardinality},
         {"conversations", group::FlowMetrics::Conversations},
+        {"top_ips", group::FlowMetrics::TopIPs},
         {"counters", group::FlowMetrics::Counters},
         {"top_ports", group::FlowMetrics::TopPorts},
         {"top_ips_ports", group::FlowMetrics::TopIPPorts},
