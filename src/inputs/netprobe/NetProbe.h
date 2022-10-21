@@ -86,7 +86,6 @@ public:
         _recv = recv;
         _fail = fail;
     }
-
     virtual bool start(std::shared_ptr<uvw::Loop> io_loop) = 0;
     virtual bool stop() = 0;
 };

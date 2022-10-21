@@ -8,9 +8,103 @@
 
 namespace visor::input::netprobe {
 
-SOCKET PingProbe::_recv_sock = SOCKET_ERROR;
-std::atomic<uint32_t> PingProbe::_sock_count = 0;
-sigslot::signal<pcpp::Packet &, timespec> PingProbe::recv_signal;
+sigslot::signal<pcpp::Packet &, timespec> PingReceiver::recv_signal;
+
+PingReceiver::PingReceiver()
+{
+    _setup_receiver();
+}
+PingReceiver::~PingReceiver()
+{
+    _poll->close();
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+    closesocket(_sock);
+    _sock = INVALID_SOCKET;
+#else
+    close(_sock);
+    _sock = SOCKET_ERROR;
+#endif
+
+    if (_async_h && _io_thread) {
+        // we have to use AsyncHandle to stop the loop from the same thread the loop is running in
+        _async_h->send();
+        // waits for _io_loop->run() to return
+        if (_io_thread->joinable()) {
+            _io_thread->join();
+        }
+    }
+}
+
+void PingReceiver::_setup_receiver()
+{
+    _io_loop = uvw::Loop::create();
+    if (!_io_loop) {
+        throw NetProbeException("unable to create io loop");
+    }
+    // AsyncHandle lets us stop the loop from its own thread
+    _async_h = _io_loop->resource<uvw::AsyncHandle>();
+    if (!_async_h) {
+        throw NetProbeException("unable to initialize AsyncHandle");
+    }
+    _async_h->once<uvw::AsyncEvent>([this](const auto &, auto &handle) {
+        _io_loop->stop();
+        _io_loop->close();
+        handle.close();
+    });
+
+    _sock = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+    if (_sock == INVALID_SOCKET) {
+        throw NetProbeException("unable to create receiver socket");
+    }
+    unsigned long flag = 1;
+    if (ioctlsocket(_sock, FIONBIO, &flag) == SOCKET_ERROR) {
+        throw NetProbeException("unable to create receiver socket");
+    }
+#else
+    if (_sock == SOCKET_ERROR) {
+        _sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_ICMP);
+    }
+    int flag = 1;
+    if ((flag = fcntl(_sock, F_GETFL, 0)) == SOCKET_ERROR) {
+        throw NetProbeException("unable to create receiver socket");
+    }
+    if (fcntl(_sock, F_SETFL, flag | O_NONBLOCK) == SOCKET_ERROR) {
+        throw NetProbeException("unable to create receiver socket");
+    }
+#endif
+
+    _poll = _io_loop->resource<uvw::PollHandle>(static_cast<uvw::OSSocketHandle>(_sock));
+    if (!_poll) {
+        throw NetProbeException("PingProbe - unable to initialize PollHandle");
+    }
+    _poll->on<uvw::ErrorEvent>([](const auto &, auto &handler) {
+        handler.close();
+    });
+
+    _poll->on<uvw::PollEvent>([this](const uvw::PollEvent &, auto &) {
+        size_t len = sizeof(pcpp::icmphdr) + 256 * 2;
+        auto array = std::make_unique<uint8_t[]>(len);
+        auto rc = recv(_sock, array.get(), len, 0);
+        if (rc != SOCKET_ERROR) {
+            timespec stamp;
+            std::timespec_get(&stamp, TIME_UTC);
+            timeval time;
+            TIMESPEC_TO_TIMEVAL(&time, &stamp);
+            pcpp::RawPacket raw(array.get(), rc, time, false, pcpp::LINKTYPE_DLT_RAW1);
+            pcpp::Packet packet(&raw, pcpp::ICMP);
+            recv_signal(packet, stamp);
+        }
+    });
+
+    _poll->init();
+    _poll->start(uvw::PollHandle::Event::READABLE);
+
+    // spawn the loop
+    _io_thread = std::make_unique<std::thread>([this] {
+        _io_loop->run();
+    });
+}
 
 bool PingProbe::start(std::shared_ptr<uvw::Loop> io_loop)
 {
@@ -32,27 +126,8 @@ bool PingProbe::start(std::shared_ptr<uvw::Loop> io_loop)
 
     _io_loop = io_loop;
 
-    // execute once
-    [[maybe_unused]] static bool create_receiver = [this]() {
-        auto handle = _io_loop->resource<uvw::IdleHandle>();
-        handle->on<uvw::IdleEvent>([this](const auto &, auto &) {
-            size_t len = sizeof(pcpp::icmphdr) + _packet_payload_size * 2;
-            auto array = std::make_unique<uint8_t[]>(len);
-            auto rc = recv(_recv_sock, array.get(), len, 0);
-            if (rc != SOCKET_ERROR) {
-                timespec stamp;
-                std::timespec_get(&stamp, TIME_UTC);
-                timeval time;
-                TIMESPEC_TO_TIMEVAL(&time, &stamp);
-                pcpp::RawPacket raw(array.get(), rc, time, false, pcpp::LINKTYPE_DLT_RAW1);
-                pcpp::Packet packet(&raw, pcpp::ICMP);
-                recv_signal(packet, stamp);
-            }
-        });
-
-        handle->start();
-        return true;
-    }();
+    //execute once
+    static auto receiver = std::make_unique<PingReceiver>();
 
     _interval_timer = _io_loop->resource<uvw::TimerHandle>();
     if (!_interval_timer) {
@@ -83,13 +158,6 @@ bool PingProbe::start(std::shared_ptr<uvw::Loop> io_loop)
             return;
         }
 
-        _poll = _io_loop->resource<uvw::PollHandle>(static_cast<uvw::OSSocketHandle>(_sock));
-        if (!_poll) {
-            throw NetProbeException("PingProbe - unable to initialize PollHandle");
-        }
-        _poll->on<uvw::ErrorEvent>([](const auto &, auto &handler) {
-            handler.close();
-        });
         _internal_timer = _io_loop->resource<uvw::TimerHandle>();
         _internal_timer->on<uvw::TimerEvent>([this](const auto &, auto &) {
             if (_internal_sequence < _packets_per_test) {
@@ -100,21 +168,7 @@ bool PingProbe::start(std::shared_ptr<uvw::Loop> io_loop)
             }
         });
 
-        if (!_is_ipv6) {
-            _poll->on<uvw::PollEvent>([this](const uvw::PollEvent &, auto &) {
-                _timeout_timer->stop();
-                if (_internal_sequence >= _packets_per_test) {
-                    // received last packet
-                    _internal_timer->stop();
-                    _close_socket();
-                }
-            });
-        }
-
-        _poll->init();
-        _poll->start(uvw::PollHandle::Event::READABLE);
-
-        _recv_connection = recv_signal.connect([this](pcpp::Packet &packet, timespec stamp) { _recv(packet, TestType::Ping, _name, stamp); });
+        _recv_connection = PingReceiver::recv_signal.connect([this](pcpp::Packet &packet, timespec stamp) { _recv(packet, TestType::Ping, _name, stamp); });
 
         (_sequence == USHRT_MAX) ? _sequence = 0 : _sequence++;
         _send_icmp_v4(_internal_sequence);
@@ -189,6 +243,10 @@ void PingProbe::_get_addr()
 
 std::optional<ErrorType> PingProbe::_create_socket()
 {
+    if (_sock != SOCKET_ERROR) {
+        return std::nullopt;
+    }
+
     int domain = AF_INET;
     if (_is_ipv6) {
         domain = AF_INET6;
@@ -216,32 +274,6 @@ std::optional<ErrorType> PingProbe::_create_socket()
     }
 #endif
 
-    if (!_sock_count) {
-        _recv_sock = socket(domain, SOCK_RAW, IPPROTO_ICMP);
-#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
-        if (_recv_sock == INVALID_SOCKET) {
-            return ErrorType::SocketError;
-        }
-        unsigned long flag = 1;
-        if (ioctlsocket(_recv_sock, FIONBIO, &flag) == SOCKET_ERROR) {
-            return ErrorType::SocketError;
-        }
-#else
-        if (_recv_sock == SOCKET_ERROR) {
-            _recv_sock = socket(domain, SOCK_DGRAM, IPPROTO_ICMP);
-        }
-        int flag = 1;
-        if ((flag = fcntl(_recv_sock, F_GETFL, 0)) == SOCKET_ERROR) {
-            return ErrorType::SocketError;
-        }
-        if (fcntl(_recv_sock, F_SETFL, flag | O_NONBLOCK) == SOCKET_ERROR) {
-            return ErrorType::SocketError;
-        }
-#endif
-    }
-
-    ++_sock_count;
-
     return std::nullopt;
 }
 
@@ -263,7 +295,6 @@ void PingProbe::_send_icmp_v4(uint16_t sequence)
 
 void PingProbe::_close_socket()
 {
-    _poll->close();
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
     closesocket(_sock);
     _sock = INVALID_SOCKET;
@@ -271,16 +302,5 @@ void PingProbe::_close_socket()
     close(_sock);
     _sock = SOCKET_ERROR;
 #endif
-
-    --_sock_count;
-    if (!_sock_count) {
-#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
-        closesocket(_recv_sock);
-        _recv_sock = INVALID_SOCKET;
-#else
-        close(_recv_sock);
-        _recv_sock = SOCKET_ERROR;
-#endif
-    }
 }
 }

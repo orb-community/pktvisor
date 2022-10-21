@@ -22,25 +22,38 @@ typedef int SOCKET;
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <sigslot/signal.hpp>
+#include <uvw/async.h>
 #include <uvw/poll.h>
 #include <uvw/timer.h>
-#include <sigslot/signal.hpp>
 
 namespace visor::input::netprobe {
 
-class PingProbe final : public NetProbe
+class PingReceiver
 {
-    static SOCKET _recv_sock;
-    static std::atomic<uint32_t> _sock_count;
+    SOCKET _sock{SOCKET_ERROR};
+    std::shared_ptr<uvw::PollHandle> _poll;
+    std::unique_ptr<std::thread> _io_thread;
+    std::shared_ptr<uvw::Loop> _io_loop;
+    std::shared_ptr<uvw::AsyncHandle> _async_h;
+
+    void _setup_receiver();
+
+public:
     static sigslot::signal<pcpp::Packet &, timespec> recv_signal;
 
-    SOCKET _sock{0};
+    PingReceiver();
+    ~PingReceiver();
+};
+
+class PingProbe final : public NetProbe
+{
+    SOCKET _sock{SOCKET_ERROR};
     bool _init{false};
     bool _is_ipv6{false};
     bool _ip_set{false};
     uint16_t _sequence{0};
     uint16_t _internal_sequence{0};
-    std::shared_ptr<uvw::PollHandle> _poll;
     std::shared_ptr<uvw::TimerHandle> _interval_timer;
     std::shared_ptr<uvw::TimerHandle> _internal_timer;
     std::shared_ptr<uvw::TimerHandle> _timeout_timer;
@@ -57,8 +70,7 @@ class PingProbe final : public NetProbe
 
 public:
     PingProbe(uint16_t id)
-        : NetProbe(id){
-        };
+        : NetProbe(id){};
     ~PingProbe() = default;
     bool start(std::shared_ptr<uvw::Loop> io_loop) override;
     bool stop() override;
