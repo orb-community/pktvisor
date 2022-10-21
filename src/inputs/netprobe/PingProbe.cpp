@@ -74,6 +74,9 @@ void PingReceiver::_setup_receiver()
     }
 #endif
 
+    int opt = 1;
+    setsockopt(_sock, SOL_SOCKET, SO_TIMESTAMPNS, &opt, sizeof(opt));
+
     _poll = _io_loop->resource<uvw::PollHandle>(static_cast<uvw::OSSocketHandle>(_sock));
     if (!_poll) {
         throw NetProbeException("PingProbe - unable to initialize PollHandle");
@@ -85,15 +88,30 @@ void PingReceiver::_setup_receiver()
     _poll->on<uvw::PollEvent>([this](const uvw::PollEvent &, auto &) {
         size_t len = sizeof(pcpp::icmphdr) + 256 * 2;
         auto array = std::make_unique<uint8_t[]>(len);
-        auto rc = recv(_sock, array.get(), len, 0);
-        if (rc != SOCKET_ERROR) {
-            timespec stamp;
-            std::timespec_get(&stamp, TIME_UTC);
-            timeval time;
-            TIMESPEC_TO_TIMEVAL(&time, &stamp);
-            pcpp::RawPacket raw(array.get(), rc, time, false, pcpp::LINKTYPE_DLT_RAW1);
-            pcpp::Packet packet(&raw, pcpp::ICMP);
-            recv_signal(packet, stamp);
+        int rc{0};
+        sockaddr_in addr;
+        iovec msg_iov{array.get(), len};
+        char msg_control[1024];
+        msghdr recv_msghdr = {&addr, sizeof(sockaddr_in), &msg_iov, 1, &msg_control, sizeof(msg_control), 0};
+        while (rc != SOCKET_ERROR) {
+            rc = recvmsg(_sock, &recv_msghdr, MSG_TRUNC);
+            if (rc != SOCKET_ERROR) {
+                cmsghdr *cmsg{nullptr};
+                timespec stamp;
+                for (cmsg = CMSG_FIRSTHDR(&recv_msghdr);
+                     cmsg != NULL;
+                     cmsg = CMSG_NXTHDR(&recv_msghdr, cmsg)) {
+                    if (cmsg->cmsg_level == SOL_SOCKET && cmsg->cmsg_type == SCM_TIMESTAMPNS) {
+                        memcpy(&stamp, CMSG_DATA(cmsg), sizeof(stamp));
+                    }
+                }
+                //std::timespec_get(&stamp, TIME_UTC);
+                timeval time;
+                TIMESPEC_TO_TIMEVAL(&time, &stamp);
+                pcpp::RawPacket raw(array.get(), rc, time, false, pcpp::LINKTYPE_DLT_RAW1);
+                pcpp::Packet packet(&raw, pcpp::ICMP);
+                recv_signal(packet, stamp);
+            }
         }
     });
 
@@ -126,7 +144,7 @@ bool PingProbe::start(std::shared_ptr<uvw::Loop> io_loop)
 
     _io_loop = io_loop;
 
-    //execute once
+    // execute once
     static auto receiver = std::make_unique<PingReceiver>();
 
     _interval_timer = _io_loop->resource<uvw::TimerHandle>();
