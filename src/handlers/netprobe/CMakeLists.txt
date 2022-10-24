@@ -22,4 +22,4 @@ target_link_libraries(VisorHandlerNetProbe
 
 set(VISOR_STATIC_PLUGINS ${VISOR_STATIC_PLUGINS} Visor::Handler::NetProbe PARENT_SCOPE)
 
-#add_subdirectory(tests)
+add_subdirectory(tests)

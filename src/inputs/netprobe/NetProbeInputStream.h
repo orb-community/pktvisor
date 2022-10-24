@@ -21,8 +21,8 @@ class NetProbeInputStream : public visor::InputStream
     uint64_t _packets_per_test{1};
     uint64_t _packets_interval_msec{25};
     uint64_t _packet_payload_size{48};
-    std::vector<pcpp::IPAddress> _ip_list;
-    std::vector<std::string> _dns_list;
+    std::map<std::string, pcpp::IPAddress> _ip_list;
+    std::map<std::string, std::string> _dns_list;
     std::shared_ptr<spdlog::logger> _logger;
 
     std::unique_ptr<std::thread> _io_thread;

@@ -74,8 +74,8 @@ class PingProbe final : public NetProbe
     void _close_socket();
 
 public:
-    PingProbe(uint16_t id)
-        : NetProbe(id){};
+    PingProbe(uint16_t id, const std::string &name)
+        : NetProbe(id, name){};
     ~PingProbe() = default;
     bool start(std::shared_ptr<uvw::Loop> io_loop) override;
     bool stop() override;

@@ -48,8 +48,9 @@ protected:
     FailCallback _fail;
 
 public:
-    NetProbe(uint16_t id)
+    NetProbe(uint16_t id, const std::string &name)
         : _id(id)
+        , _name(name)
     {
     }
 
@@ -70,14 +71,8 @@ public:
     {
         if (dns.empty()) {
             _ip = ip;
-            if (_ip.isIPv4()) {
-                _name = _ip.getIPv4().toString();
-            } else {
-                _name = _ip.getIPv6().toString();
-            }
         } else {
             _dns = dns;
-            _name = dns;
         }
     }
 

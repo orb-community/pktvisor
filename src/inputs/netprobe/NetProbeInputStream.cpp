@@ -68,18 +68,24 @@ void NetProbeInputStream::start()
     if (!config_exists("targets")) {
         throw NetProbeException("no targets specified");
     } else {
-        auto targets_list = config_get<StringList>("targets");
-        for (const auto &target : targets_list) {
+        auto targets = config_get<std::shared_ptr<Configurable>>("targets");
+        auto keys = targets->get_all_keys();
+        for (const auto &key : keys) {
+            auto config = targets->config_get<std::shared_ptr<Configurable>>(key);
+            if (!config->config_exists("target")) {
+                throw NetProbeException(fmt::format("'{}' does not have key 'target' which is required", key));
+            }
+            auto target = config->config_get<std::string>("target");
             auto ip = pcpp::IPAddress(target);
             if (ip.isValid()) {
-                _ip_list.push_back(ip);
+                _ip_list[key] = ip;
                 continue;
             }
             auto dot = target.find(".");
             if (dot == std::string::npos && target != "localhost") {
                 throw NetProbeException(fmt::format("{} is an invalid/unsupported DNS", target));
             }
-            _dns_list.push_back(target);
+            _dns_list[key] = target;
         }
     }
 
@@ -157,11 +163,11 @@ void NetProbeInputStream::_create_netprobe_loop()
     for (const auto &ip : _ip_list) {
         std::unique_ptr<NetProbe> probe{nullptr};
         if (_type == TestType::Ping) {
-            probe = std::make_unique<PingProbe>(_id);
+            probe = std::make_unique<PingProbe>(_id, ip.first);
         }
         ++_id;
         probe->set_configs(_interval_msec, _timeout_msec, _packets_per_test, _packets_interval_msec, _packet_payload_size);
-        probe->set_target(ip, std::string());
+        probe->set_target(ip.second, std::string());
         probe->set_callbacks([this](pcpp::Packet &payload, TestType type, const std::string &name, timespec stamp) { _send_cb(payload, type, name, stamp); },
             [this](pcpp::Packet &payload, TestType type, const std::string &name, timespec stamp) { _recv_cb(payload, type, name, stamp); },
             [this](ErrorType error, TestType type, const std::string &name) { _fail_cb(error, type, name); });
@@ -172,11 +178,11 @@ void NetProbeInputStream::_create_netprobe_loop()
     for (const auto &dns : _dns_list) {
         std::unique_ptr<NetProbe> probe{nullptr};
         if (_type == TestType::Ping) {
-            probe = std::make_unique<PingProbe>(_id);
+            probe = std::make_unique<PingProbe>(_id, dns.first);
         }
         ++_id;
         probe->set_configs(_interval_msec, _timeout_msec, _packets_per_test, _packets_interval_msec, _packet_payload_size);
-        probe->set_target(pcpp::IPAddress(), dns);
+        probe->set_target(pcpp::IPAddress(), dns.second);
         probe->set_callbacks([this](pcpp::Packet &payload, TestType type, const std::string &name, timespec stamp) { _send_cb(payload, type, name, stamp); },
             [this](pcpp::Packet &payload, TestType type, const std::string &name, timespec stamp) { _recv_cb(payload, type, name, stamp); },
             [this](ErrorType error, TestType type, const std::string &name) { _fail_cb(error, type, name); });

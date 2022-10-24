@@ -28,16 +28,16 @@ target_link_libraries(VisorInputNetProbe
 set(VISOR_STATIC_PLUGINS ${VISOR_STATIC_PLUGINS} Visor::Input::NetProbe PARENT_SCOPE)
 
 ## TEST SUITE
-#add_executable(unit-tests-input-flow
-#        tests/main.cpp
-#        tests/test_flow.cpp
-#        )
-#
-#target_link_libraries(unit-tests-input-flow
-#        PRIVATE Visor::Input::Flow
-#        )
-#
-#add_test(NAME unit-tests-input-flow
-#        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/src
-#        COMMAND unit-tests-input-flow
-#        )
+add_executable(unit-tests-input-netprobe
+        tests/main.cpp
+        tests/test_netprobe.cpp
+        )
+
+target_link_libraries(unit-tests-input-netprobe
+        PRIVATE Visor::Input::NetProbe
+        )
+
+add_test(NAME unit-tests-input-netprobe
+        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/src
+        COMMAND unit-tests-input-netprobe
+        )
