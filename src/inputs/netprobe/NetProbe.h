@@ -24,7 +24,8 @@ enum class TestType {
     TCP
 };
 
-typedef std::function<void(pcpp::Packet &, TestType, const std::string &, timespec)> SendRecvCallback;
+typedef std::function<void(pcpp::Packet &, TestType, const std::string &, timespec)> SendCallback;
+typedef std::function<void(pcpp::Packet &, TestType, const std::string &, timespec)> RecvCallback;
 typedef std::function<void(ErrorType, TestType, const std::string &)> FailCallback;
 
 static const std::vector<uint8_t> validator = {0x70, 0x6b, 0x74, 0x76, 0x69, 0x73, 0x6f, 0x72}; // "pktvisor" in hex
@@ -42,8 +43,8 @@ protected:
     std::string _dns;
     pcpp::IPAddress _ip;
     std::shared_ptr<uvw::Loop> _io_loop;
-    SendRecvCallback _recv;
-    SendRecvCallback _send;
+    RecvCallback _recv;
+    SendCallback _send;
     FailCallback _fail;
 
 public:
@@ -80,7 +81,7 @@ public:
         }
     }
 
-    void set_callbacks(SendRecvCallback send, SendRecvCallback recv, FailCallback fail)
+    void set_callbacks(SendCallback send, RecvCallback recv, FailCallback fail)
     {
         _send = send;
         _recv = recv;

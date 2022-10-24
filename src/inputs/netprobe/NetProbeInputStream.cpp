@@ -76,7 +76,7 @@ void NetProbeInputStream::start()
                 continue;
             }
             auto dot = target.find(".");
-            if (dot == std::string::npos) {
+            if (dot == std::string::npos && target != "localhost") {
                 throw NetProbeException(fmt::format("{} is an invalid/unsupported DNS", target));
             }
             _dns_list.push_back(target);

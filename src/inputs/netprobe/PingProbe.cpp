@@ -1,7 +1,6 @@
 #include "PingProbe.h"
 
 #include "NetProbeException.h"
-#include <IcmpLayer.h>
 #include <Packet.h>
 #include <uvw/dns.h>
 #include <uvw/idle.h>
@@ -9,8 +8,12 @@
 namespace visor::input::netprobe {
 
 sigslot::signal<pcpp::Packet &, timespec> PingReceiver::recv_signal;
+thread_local std::atomic<uint32_t> PingProbe::_sock_count{0};
+thread_local SOCKET PingProbe::_sock{SOCKET_ERROR};
 
 PingReceiver::PingReceiver()
+    : _len(sizeof(pcpp::icmphdr) + 65507)
+    , _array(std::make_unique<uint8_t[]>(_len))
 {
     _setup_receiver();
 }
@@ -74,9 +77,6 @@ void PingReceiver::_setup_receiver()
     }
 #endif
 
-    int opt = 1;
-    setsockopt(_sock, SOL_SOCKET, SO_TIMESTAMPNS, &opt, sizeof(opt));
-
     _poll = _io_loop->resource<uvw::PollHandle>(static_cast<uvw::OSSocketHandle>(_sock));
     if (!_poll) {
         throw NetProbeException("PingProbe - unable to initialize PollHandle");
@@ -86,17 +86,15 @@ void PingReceiver::_setup_receiver()
     });
 
     _poll->on<uvw::PollEvent>([this](const uvw::PollEvent &, auto &) {
-        size_t len = sizeof(pcpp::icmphdr) + 1024;
-        auto array = std::make_unique<uint8_t[]>(len);
         int rc{0};
         while (rc != SOCKET_ERROR) {
-            rc = recv(_sock, array.get(), len, 0);
+            rc = recv(_sock, _array.get(), _len, 0);
             if (rc != SOCKET_ERROR) {
                 timespec stamp;
                 std::timespec_get(&stamp, TIME_UTC);
                 timeval time;
                 TIMESPEC_TO_TIMEVAL(&time, &stamp);
-                pcpp::RawPacket raw(array.get(), rc, time, false, pcpp::LINKTYPE_DLT_RAW1);
+                pcpp::RawPacket raw(_array.get(), rc, time, false, pcpp::LINKTYPE_DLT_RAW1);
                 pcpp::Packet packet(&raw, pcpp::ICMP);
                 recv_signal(packet, stamp);
             }
@@ -150,19 +148,18 @@ bool PingProbe::start(std::shared_ptr<uvw::Loop> io_loop)
         _timeout_timer->on<uvw::TimerEvent>([this](const auto &, auto &) {
             _internal_sequence = _packets_per_test;
             _fail(ErrorType::Timeout, TestType::Ping, _name);
-            _close_socket();
             if (_internal_timer) {
                 _internal_timer->stop();
             }
             _interval_timer->again();
         });
 
-        _get_addr();
-
         if (auto error = _create_socket(); error.has_value()) {
             _fail(error.value(), TestType::Ping, _name);
             return;
         }
+
+        _get_addr();
 
         _internal_timer = _io_loop->resource<uvw::TimerHandle>();
         _internal_timer->on<uvw::TimerEvent>([this](const auto &, auto &) {
@@ -183,6 +180,7 @@ bool PingProbe::start(std::shared_ptr<uvw::Loop> io_loop)
         _internal_timer->start(uvw::TimerHandle::Time{_packets_interval_msec}, uvw::TimerHandle::Time{_packets_interval_msec});
     });
 
+    ++_sock_count;
     _interval_timer->start(uvw::TimerHandle::Time{0}, uvw::TimerHandle::Time{_interval_msec});
     _init = true;
     return true;
@@ -192,6 +190,7 @@ bool PingProbe::stop()
 {
     _interval_timer->stop();
     _recv_connection.disconnect();
+    _close_socket();
     return true;
 }
 
@@ -301,6 +300,9 @@ void PingProbe::_send_icmp_v4(uint16_t sequence)
 
 void PingProbe::_close_socket()
 {
+    if (--_sock_count; _sock_count) {
+        return;
+    }
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
     closesocket(_sock);
     _sock = INVALID_SOCKET;

@@ -70,7 +70,7 @@ public:
 
     size_t consumer_count() const override
     {
-        return policy_signal.slot_count() + heartbeat_signal.slot_count() + probe_recv_signal.slot_count() + probe_fail_signal.slot_count();
+        return policy_signal.slot_count() + heartbeat_signal.slot_count() + probe_recv_signal.slot_count() + probe_send_signal.slot_count() + probe_fail_signal.slot_count();
     }
 
     void probe_send_cb(pcpp::Packet &p, TestType t, const std::string &n, timespec s)

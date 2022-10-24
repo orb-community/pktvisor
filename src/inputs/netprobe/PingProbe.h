@@ -17,6 +17,7 @@ typedef socklen_t SOCKETLEN;
 typedef int SOCKET;
 #endif
 #include "NetProbe.h"
+#include <IcmpLayer.h>
 #include <IpAddress.h>
 #include <atomic>
 #include <memory>
@@ -31,6 +32,8 @@ namespace visor::input::netprobe {
 
 class PingReceiver
 {
+    size_t _len;
+    std::unique_ptr<uint8_t[]> _array;
     SOCKET _sock{SOCKET_ERROR};
     std::shared_ptr<uvw::PollHandle> _poll;
     std::unique_ptr<std::thread> _io_thread;
@@ -48,7 +51,9 @@ public:
 
 class PingProbe final : public NetProbe
 {
-    SOCKET _sock{SOCKET_ERROR};
+    static thread_local std::atomic<uint32_t> _sock_count;
+    static thread_local SOCKET _sock;
+
     bool _init{false};
     bool _is_ipv6{false};
     bool _ip_set{false};
