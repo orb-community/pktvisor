@@ -188,7 +188,7 @@ macro(_conan_detect_compiler)
             conan_cmake_detect_unix_libcxx(_LIBCXX)
             set(_CONAN_SETTING_COMPILER_LIBCXX ${_LIBCXX})
         endif ()
-    elseif(${CMAKE_${LANGUAGE}_COMPILER_ID} STREQUALs MSVC
+    elseif(${CMAKE_${LANGUAGE}_COMPILER_ID} STREQUAL MSVC
             OR (${CMAKE_${LANGUAGE}_COMPILER_ID} STREQUAL Clang
             AND "${CMAKE_${LANGUAGE}_COMPILER_FRONTEND_VARIANT}" STREQUAL "MSVC"
             AND "${CMAKE_${LANGUAGE}_SIMULATE_ID}" STREQUAL "MSVC"))
