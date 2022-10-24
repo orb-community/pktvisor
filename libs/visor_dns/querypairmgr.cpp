@@ -28,16 +28,20 @@ void QueryResponsePairMgr::start_transaction(uint32_t flowKey, uint16_t queryID,
     _dns_transactions[DnsXactID(flowKey, queryID)] = {stamp, {0, 0}, querySize};
 }
 
-std::pair<bool, DnsTransaction> QueryResponsePairMgr::maybe_end_transaction(uint32_t flowKey, uint16_t queryID, timespec stamp)
+std::pair<Result, DnsTransaction> QueryResponsePairMgr::maybe_end_transaction(uint32_t flowKey, uint16_t queryID, timespec stamp)
 {
     auto key = DnsXactID(flowKey, queryID);
     if (_dns_transactions.find(key) != _dns_transactions.end()) {
         auto result = _dns_transactions[key];
         timespec_diff(&stamp, &result.queryTS, &result.totalTS);
         _dns_transactions.erase(key);
-        return std::pair<bool, DnsTransaction>(true, result);
+        if(result.totalTS.tv_sec >= _ttl_secs) {
+            return std::pair<Result, DnsTransaction>(Result::TimedOut, result);
+        } else {
+            return std::pair<Result, DnsTransaction>(Result::Valid, result);
+        }
     } else {
-        return std::pair<bool, DnsTransaction>(false, DnsTransaction{{0, 0}, {0, 0}, 0});
+        return std::pair<Result, DnsTransaction>(Result::NotExist, DnsTransaction{{0, 0}, {0, 0}, 0});
     }
 }
 
