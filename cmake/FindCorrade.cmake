@@ -16,6 +16,8 @@
 # components, which are:
 #
 #  Containers                   - Containers library
+#  Interconnect                 - Interconnect library
+#  Main                         - Main library
 #  PluginManager                - PluginManager library
 #  TestSuite                    - TestSuite library
 #  Utility                      - Utility library
@@ -62,8 +64,8 @@
 #
 # Features of found Corrade library are exposed in these variables:
 #
-#  CORRADE_MSVC2019_COMPATIBILITY - Defined if compiled with compatibility
-#   mode for MSVC 2019
+#  CORRADE_MSVC_COMPATIBILITY   - Defined if compiled with compatibility
+#   mode for MSVC 2019+ without the /permissive- flag set
 #  CORRADE_MSVC2017_COMPATIBILITY - Defined if compiled with compatibility
 #   mode for MSVC 2017
 #  CORRADE_MSVC2015_COMPATIBILITY - Defined if compiled with compatibility
@@ -78,6 +80,9 @@
 #  CORRADE_BUILD_MULTITHREADED  - Defined if compiled in a way that makes it
 #   possible to safely use certain Corrade features simultaneously in multiple
 #   threads
+#  CORRADE_BUILD_CPU_RUNTIME_DISPATCH - Defined if built with code paths
+#   optimized for multiple architectres with the best matching variant selected
+#   at runtime based on detected CPU features
 #  CORRADE_TARGET_UNIX          - Defined if compiled for some Unix flavor
 #   (Linux, BSD, macOS)
 #  CORRADE_TARGET_APPLE         - Defined if compiled for Apple platforms
@@ -98,6 +103,8 @@
 #  CORRADE_TARGET_MSVC          - Defined if compiling with MSVC or Clang with
 #   a MSVC frontend
 #  CORRADE_TARGET_MINGW         - Defined if compiling under MinGW
+#  CORRADE_CPU_USE_IFUNC        - Defined if GNU IFUNC is allowed to be used
+#   for runtime dispatch in the Cpu library
 #  CORRADE_PLUGINMANAGER_NO_DYNAMIC_PLUGIN_SUPPORT - Defined if PluginManager
 #   doesn't support dynamic plugin loading due to platform limitations
 #  CORRADE_TESTSUITE_TARGET_XCTEST - Defined if TestSuite is targeting Xcode
@@ -264,7 +271,7 @@
 #   This file is part of Corrade.
 #
 #   Copyright © 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
-#               2017, 2018, 2019, 2020, 2021
+#               2017, 2018, 2019, 2020, 2021, 2022
 #             Vladimír Vondruš <mosra@centrum.cz>
 #
 #   Permission is hereby granted, free of charge, to any person obtaining a
@@ -288,12 +295,12 @@
 
 # Root include dir
 find_path(CORRADE_INCLUDE_DIR
-    NAMES Corrade/Corrade.h)
+        NAMES Corrade/Corrade.h)
 mark_as_advanced(CORRADE_INCLUDE_DIR)
 
 # Configuration file
 find_file(_CORRADE_CONFIGURE_FILE configure.h
-    HINTS ${CORRADE_INCLUDE_DIR}/Corrade/)
+        HINTS ${CORRADE_INCLUDE_DIR}/Corrade/)
 mark_as_advanced(_CORRADE_CONFIGURE_FILE)
 
 # We need to open configure.h file from CORRADE_INCLUDE_DIR before we check for
@@ -302,7 +309,7 @@ mark_as_advanced(_CORRADE_CONFIGURE_FILE)
 if(NOT CORRADE_INCLUDE_DIR)
     include(FindPackageHandleStandardArgs)
     find_package_handle_standard_args(Corrade
-        REQUIRED_VARS CORRADE_INCLUDE_DIR _CORRADE_CONFIGURE_FILE)
+            REQUIRED_VARS CORRADE_INCLUDE_DIR _CORRADE_CONFIGURE_FILE)
 endif()
 
 # Read flags from configuration
@@ -310,28 +317,31 @@ file(READ ${_CORRADE_CONFIGURE_FILE} _corradeConfigure)
 string(REGEX REPLACE ";" "\\\\;" _corradeConfigure "${_corradeConfigure}")
 string(REGEX REPLACE "\n" ";" _corradeConfigure "${_corradeConfigure}")
 set(_corradeFlags
-    MSVC2015_COMPATIBILITY
-    MSVC2017_COMPATIBILITY
-    MSVC2019_COMPATIBILITY
-    BUILD_DEPRECATED
-    BUILD_STATIC
-    BUILD_STATIC_UNIQUE_GLOBALS
-    BUILD_MULTITHREADED
-    TARGET_UNIX
-    TARGET_APPLE
-    TARGET_IOS
-    TARGET_IOS_SIMULATOR
-    TARGET_WINDOWS
-    TARGET_WINDOWS_RT
-    TARGET_EMSCRIPTEN
-    TARGET_ANDROID
-    # TARGET_X86 etc and TARGET_LIBCXX are not exposed to CMake as the meaning
-    # is unclear on platforms with multi-arch binaries or when mixing different
-    # STL implementations. TARGET_GCC etc are figured out via UseCorrade.cmake,
-    # as the compiler can be different when compiling the lib & when using it.
-    PLUGINMANAGER_NO_DYNAMIC_PLUGIN_SUPPORT
-    TESTSUITE_TARGET_XCTEST
-    UTILITY_USE_ANSI_COLORS)
+        MSVC2015_COMPATIBILITY
+        MSVC2017_COMPATIBILITY
+        MSVC_COMPATIBILITY
+        BUILD_DEPRECATED
+        BUILD_STATIC
+        BUILD_STATIC_UNIQUE_GLOBALS
+        BUILD_MULTITHREADED
+        BUILD_CPU_RUNTIME_DISPATCH
+        TARGET_UNIX
+        TARGET_APPLE
+        TARGET_IOS
+        TARGET_IOS_SIMULATOR
+        TARGET_WINDOWS
+        TARGET_WINDOWS_RT
+        TARGET_EMSCRIPTEN
+        TARGET_ANDROID
+        # TARGET_X86 etc, TARGET_32BIT, TARGET_BIG_ENDIAN and TARGET_LIBCXX etc.
+        # are not exposed to CMake as the meaning is unclear on platforms with
+        # multi-arch binaries or when mixing different STL implementations.
+        # TARGET_GCC etc are figured out via UseCorrade.cmake, as the compiler can
+        # be different when compiling the lib & when using it.
+        CPU_USE_IFUNC
+        PLUGINMANAGER_NO_DYNAMIC_PLUGIN_SUPPORT
+        TESTSUITE_TARGET_XCTEST
+        UTILITY_USE_ANSI_COLORS)
 foreach(_corradeFlag ${_corradeFlags})
     list(FIND _corradeConfigure "#define CORRADE_${_corradeFlag}" _corrade_${_corradeFlag})
     if(NOT _corrade_${_corradeFlag} EQUAL -1)
@@ -341,8 +351,8 @@ endforeach()
 
 # CMake module dir
 find_path(_CORRADE_MODULE_DIR
-    NAMES UseCorrade.cmake CorradeLibSuffix.cmake
-    PATH_SUFFIXES share/cmake/Corrade lib/cmake)
+        NAMES UseCorrade.cmake CorradeLibSuffix.cmake
+        PATH_SUFFIXES share/cmake/Corrade lib/cmake)
 mark_as_advanced(_CORRADE_MODULE_DIR)
 
 set(CORRADE_USE_MODULE ${_CORRADE_MODULE_DIR}/UseCorrade.cmake)
@@ -351,7 +361,7 @@ set(CORRADE_LIB_SUFFIX_MODULE ${_CORRADE_MODULE_DIR}/CorradeLibSuffix.cmake)
 # Component distinction (listing them explicitly to avoid mistakes with finding
 # unknown components)
 set(_CORRADE_LIBRARY_COMPONENTS
-    Containers Interconnect Main PluginManager TestSuite Utility)
+        Containers Interconnect Main PluginManager TestSuite Utility)
 set(_CORRADE_HEADER_ONLY_COMPONENTS Containers)
 if(NOT CORRADE_TARGET_WINDOWS)
     # CorradeMain is a real library only on windows, a dummy target elsewhere
@@ -361,7 +371,7 @@ set(_CORRADE_EXECUTABLE_COMPONENTS rc)
 # Currently everything is enabled implicitly. Keep in sync with Corrade's root
 # CMakeLists.txt.
 set(_CORRADE_IMPLICITLY_ENABLED_COMPONENTS
-    Containers Interconnect Main PluginManager TestSuite Utility rc)
+        Containers Interconnect Main PluginManager TestSuite Utility rc)
 
 # Inter-component dependencies
 set(_CORRADE_Containers_DEPENDENCIES Utility)
@@ -414,20 +424,20 @@ foreach(_component ${Corrade_FIND_COMPONENTS})
             find_library(CORRADE_${_COMPONENT}_LIBRARY_DEBUG Corrade${_component}-d)
             find_library(CORRADE_${_COMPONENT}_LIBRARY_RELEASE Corrade${_component})
             mark_as_advanced(CORRADE_${_COMPONENT}_LIBRARY_DEBUG
-                CORRADE_${_COMPONENT}_LIBRARY_RELEASE)
+                    CORRADE_${_COMPONENT}_LIBRARY_RELEASE)
 
             if(CORRADE_${_COMPONENT}_LIBRARY_RELEASE)
                 set_property(TARGET Corrade::${_component} APPEND PROPERTY
-                    IMPORTED_CONFIGURATIONS RELEASE)
+                        IMPORTED_CONFIGURATIONS RELEASE)
                 set_property(TARGET Corrade::${_component} PROPERTY
-                    IMPORTED_LOCATION_RELEASE ${CORRADE_${_COMPONENT}_LIBRARY_RELEASE})
+                        IMPORTED_LOCATION_RELEASE ${CORRADE_${_COMPONENT}_LIBRARY_RELEASE})
             endif()
 
             if(CORRADE_${_COMPONENT}_LIBRARY_DEBUG)
                 set_property(TARGET Corrade::${_component} APPEND PROPERTY
-                    IMPORTED_CONFIGURATIONS DEBUG)
+                        IMPORTED_CONFIGURATIONS DEBUG)
                 set_property(TARGET Corrade::${_component} PROPERTY
-                    IMPORTED_LOCATION_DEBUG ${CORRADE_${_COMPONENT}_LIBRARY_DEBUG})
+                        IMPORTED_LOCATION_DEBUG ${CORRADE_${_COMPONENT}_LIBRARY_DEBUG})
             endif()
         endif()
 
@@ -452,7 +462,7 @@ foreach(_component ${Corrade_FIND_COMPONENTS})
 
             if(CORRADE_${_COMPONENT}_EXECUTABLE)
                 set_property(TARGET Corrade::${_component} PROPERTY
-                    IMPORTED_LOCATION ${CORRADE_${_COMPONENT}_EXECUTABLE})
+                        IMPORTED_LOCATION ${CORRADE_${_COMPONENT}_EXECUTABLE})
             endif()
         endif()
 
@@ -465,14 +475,14 @@ foreach(_component ${Corrade_FIND_COMPONENTS})
             if(CORRADE_TARGET_WINDOWS AND CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
                 if(CMAKE_VERSION VERSION_LESS 3.13)
                     set_property(TARGET Corrade::${_component} PROPERTY
-                        INTERFACE_LINK_LIBRARIES "-OPT:NOICF,REF")
+                            INTERFACE_LINK_LIBRARIES "-OPT:NOICF,REF")
                 else()
                     set_property(TARGET Corrade::${_component} PROPERTY
-                        INTERFACE_LINK_OPTIONS "/OPT:NOICF,REF")
+                            INTERFACE_LINK_OPTIONS "/OPT:NOICF,REF")
                 endif()
             endif()
 
-        # Main library
+            # Main library
         elseif(_component STREQUAL Main)
             set(_CORRADE_${_COMPONENT}_INCLUDE_PATH_SUFFIX Corrade)
             set(_CORRADE_${_COMPONENT}_INCLUDE_PATH_NAMES Corrade.h)
@@ -485,67 +495,67 @@ foreach(_component ${Corrade_FIND_COMPONENTS})
                     # I can use `-ENTRY` instead of `/ENTRY`.
                     # https://gitlab.kitware.com/cmake/cmake/issues/16543
                     set_property(TARGET Corrade::${_component} APPEND PROPERTY
-                        INTERFACE_LINK_LIBRARIES "-ENTRY:$<$<NOT:$<BOOL:$<TARGET_PROPERTY:WIN32_EXECUTABLE>>>:wmainCRTStartup>$<$<BOOL:$<TARGET_PROPERTY:WIN32_EXECUTABLE>>:wWinMainCRTStartup>")
+                            INTERFACE_LINK_LIBRARIES "-ENTRY:$<$<NOT:$<BOOL:$<TARGET_PROPERTY:WIN32_EXECUTABLE>>>:wmainCRTStartup>$<$<BOOL:$<TARGET_PROPERTY:WIN32_EXECUTABLE>>:wWinMainCRTStartup>")
                 else()
                     set_property(TARGET Corrade::${_component} APPEND PROPERTY
-                        INTERFACE_LINK_LIBRARIES "-municode")
+                            INTERFACE_LINK_LIBRARIES "-municode")
                 endif()
             endif()
 
-        # PluginManager library
+            # PluginManager library
         elseif(_component STREQUAL PluginManager)
             # -ldl is handled by Utility now
 
-        # TestSuite library has some additional files
+            # TestSuite library has some additional files
         elseif(_component STREQUAL TestSuite)
             # XCTest runner file
             if(CORRADE_TESTSUITE_TARGET_XCTEST)
                 find_file(CORRADE_TESTSUITE_XCTEST_RUNNER XCTestRunner.mm.in
-                    PATH_SUFFIXES share/corrade/TestSuite)
+                        PATH_SUFFIXES share/corrade/TestSuite)
                 set(CORRADE_TESTSUITE_XCTEST_RUNNER_NEEDED CORRADE_TESTSUITE_XCTEST_RUNNER)
 
-            # ADB runner file
+                # ADB runner file
             elseif(CORRADE_TARGET_ANDROID)
                 find_file(CORRADE_TESTSUITE_ADB_RUNNER AdbRunner.sh
-                    PATH_SUFFIXES share/corrade/TestSuite)
+                        PATH_SUFFIXES share/corrade/TestSuite)
                 set(CORRADE_TESTSUITE_ADB_RUNNER_NEEDED CORRADE_TESTSUITE_ADB_RUNNER)
 
-            # Emscripten runner file
+                # Emscripten runner file
             elseif(CORRADE_TARGET_EMSCRIPTEN)
                 find_file(CORRADE_TESTSUITE_EMSCRIPTEN_RUNNER EmscriptenRunner.html.in
-                    PATH_SUFFIXES share/corrade/TestSuite)
+                        PATH_SUFFIXES share/corrade/TestSuite)
                 set(CORRADE_TESTSUITE_EMSCRIPTEN_RUNNER_NEEDED CORRADE_TESTSUITE_EMSCRIPTEN_RUNNER)
             endif()
 
-        # Utility library (contains all setup that is used by others)
+            # Utility library (contains all setup that is used by others)
         elseif(_component STREQUAL Utility)
             # Top-level include directory
             set_property(TARGET Corrade::${_component} APPEND PROPERTY
-                INTERFACE_INCLUDE_DIRECTORIES ${CORRADE_INCLUDE_DIR})
+                    INTERFACE_INCLUDE_DIRECTORIES ${CORRADE_INCLUDE_DIR})
 
             # Require (at least) C++11 for users
             set_property(TARGET Corrade::${_component} PROPERTY
-                INTERFACE_CORRADE_CXX_STANDARD 11)
+                    INTERFACE_CORRADE_CXX_STANDARD 11)
             set_property(TARGET Corrade::${_component} APPEND PROPERTY
-                COMPATIBLE_INTERFACE_NUMBER_MAX CORRADE_CXX_STANDARD)
+                    COMPATIBLE_INTERFACE_NUMBER_MAX CORRADE_CXX_STANDARD)
 
-            # Directory::libraryLocation() needs this
+            # Path::libraryLocation() needs this
             if(CORRADE_TARGET_UNIX)
                 set_property(TARGET Corrade::${_component} APPEND PROPERTY
-                    INTERFACE_LINK_LIBRARIES ${CMAKE_DL_LIBS})
+                        INTERFACE_LINK_LIBRARIES ${CMAKE_DL_LIBS})
             endif()
             # AndroidLogStreamBuffer class needs to be linked to log library
             if(CORRADE_TARGET_ANDROID)
                 set_property(TARGET Corrade::${_component} APPEND PROPERTY
-                    INTERFACE_LINK_LIBRARIES "log")
+                        INTERFACE_LINK_LIBRARIES "log")
             endif()
         endif()
 
         # Find library includes
         if(_component IN_LIST _CORRADE_LIBRARY_COMPONENTS)
             find_path(_CORRADE_${_COMPONENT}_INCLUDE_DIR
-                NAMES ${_CORRADE_${_COMPONENT}_INCLUDE_PATH_NAMES}
-                HINTS ${CORRADE_INCLUDE_DIR}/${_CORRADE_${_COMPONENT}_INCLUDE_PATH_SUFFIX})
+                    NAMES ${_CORRADE_${_COMPONENT}_INCLUDE_PATH_NAMES}
+                    HINTS ${CORRADE_INCLUDE_DIR}/${_CORRADE_${_COMPONENT}_INCLUDE_PATH_SUFFIX})
             mark_as_advanced(_CORRADE_${_COMPONENT}_INCLUDE_DIR)
         endif()
 
@@ -554,7 +564,7 @@ foreach(_component ${Corrade_FIND_COMPONENTS})
             foreach(_dependency ${_CORRADE_${_component}_DEPENDENCIES})
                 if(_dependency IN_LIST _CORRADE_LIBRARY_COMPONENTS OR _dependency IN_LIST _CORRADE_HEADER_ONLY_COMPONENTS)
                     set_property(TARGET Corrade::${_component} APPEND PROPERTY
-                        INTERFACE_LINK_LIBRARIES Corrade::${_dependency})
+                            INTERFACE_LINK_LIBRARIES Corrade::${_dependency})
                 endif()
             endforeach()
         endif()
@@ -583,16 +593,16 @@ if(NOT CMAKE_VERSION VERSION_LESS 3.16)
         # and an old Find module, or something platform-specific.
         if(NOT _component IN_LIST _CORRADE_LIBRARY_COMPONENTS AND NOT _component IN_LIST _CORRADE_EXECUTABLE_COMPONENTS)
             list(APPEND _CORRADE_REASON_FAILURE_MESSAGE "${_component} is not a known component on this platform.")
-        # Otherwise, if it's not among implicitly built components, hint that
-        # the user may need to enable it.
-        # TODO: currently, the _FOUND variable doesn't reflect if dependencies
-        #   were found. When it will, this needs to be updated to avoid
-        #   misleading messages.
+            # Otherwise, if it's not among implicitly built components, hint that
+            # the user may need to enable it.
+            # TODO: currently, the _FOUND variable doesn't reflect if dependencies
+            #   were found. When it will, this needs to be updated to avoid
+            #   misleading messages.
         elseif(NOT _component IN_LIST _CORRADE_IMPLICITLY_ENABLED_COMPONENTS)
             string(TOUPPER ${_component} _COMPONENT)
-            list(APPEND _CORRADE_REASON_FAILURE_MESSAGE "${_component} is not built by default. Make sure you enabled WITH_${_COMPONENT} when building Corrade.")
-        # Otherwise we have no idea. Better be silent than to print something
-        # misleading.
+            list(APPEND _CORRADE_REASON_FAILURE_MESSAGE "${_component} is not built by default. Make sure you enabled CORRADE_WITH_${_COMPONENT} when building Corrade.")
+            # Otherwise we have no idea. Better be silent than to print something
+            # misleading.
         else()
         endif()
     endforeach()
@@ -603,14 +613,14 @@ endif()
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(Corrade REQUIRED_VARS
-    CORRADE_INCLUDE_DIR
-    _CORRADE_MODULE_DIR
-    _CORRADE_CONFIGURE_FILE
-    ${CORRADE_TESTSUITE_XCTEST_RUNNER_NEEDED}
-    ${CORRADE_TESTSUITE_ADB_RUNNER_NEEDED}
-    ${CORRADE_TESTSUITE_EMSCRIPTEN_RUNNER_NEEDED}
-    HANDLE_COMPONENTS
-    ${_CORRADE_REASON_FAILURE_MESSAGE})
+        CORRADE_INCLUDE_DIR
+        _CORRADE_MODULE_DIR
+        _CORRADE_CONFIGURE_FILE
+        ${CORRADE_TESTSUITE_XCTEST_RUNNER_NEEDED}
+        ${CORRADE_TESTSUITE_ADB_RUNNER_NEEDED}
+        ${CORRADE_TESTSUITE_EMSCRIPTEN_RUNNER_NEEDED}
+        HANDLE_COMPONENTS
+        ${_CORRADE_REASON_FAILURE_MESSAGE})
 
 # Finalize the finding process
 include(${CORRADE_USE_MODULE})
