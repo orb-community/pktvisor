@@ -30,6 +30,12 @@ typedef int SOCKET;
 
 namespace visor::input::netprobe {
 
+/**
+ * @class PingReceiver
+ * @brief PingReceiver class used for receiving ICMP Echo Responses.
+ *
+ *  This class is statically created, It means that it will be a single PingReceiver per Pktvisor process.
+ */
 class PingReceiver
 {
     size_t _len;
@@ -49,6 +55,13 @@ public:
     ~PingReceiver();
 };
 
+/**
+ * @class PingProbe
+ * @brief PingProbe class used for sending ICMP Echo Requests.
+ *
+ *  This class is created for each specified target. However, it reuses a shared socket per thread (per UV_LOOP).
+ *  I.e. each unique NetProbeInputStream with Ping Type will have a socket to send ICMP Echo Request.
+ */
 class PingProbe final : public NetProbe
 {
     static thread_local std::atomic<uint32_t> _sock_count;

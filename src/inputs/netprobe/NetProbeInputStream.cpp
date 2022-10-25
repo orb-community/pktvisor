@@ -164,6 +164,8 @@ void NetProbeInputStream::_create_netprobe_loop()
         std::unique_ptr<NetProbe> probe{nullptr};
         if (_type == TestType::Ping) {
             probe = std::make_unique<PingProbe>(_id, ip.first);
+        } else {
+            throw NetProbeException(fmt::format("Test type currently not supported"));
         }
         ++_id;
         probe->set_configs(_interval_msec, _timeout_msec, _packets_per_test, _packets_interval_msec, _packet_payload_size);
@@ -179,6 +181,8 @@ void NetProbeInputStream::_create_netprobe_loop()
         std::unique_ptr<NetProbe> probe{nullptr};
         if (_type == TestType::Ping) {
             probe = std::make_unique<PingProbe>(_id, dns.first);
+        } else {
+            throw NetProbeException(fmt::format("Test type currently not supported"));
         }
         ++_id;
         probe->set_configs(_interval_msec, _timeout_msec, _packets_per_test, _packets_interval_msec, _packet_payload_size);
