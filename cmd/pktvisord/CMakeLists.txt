@@ -12,5 +12,9 @@ target_link_libraries(pktvisord
 
 #copy conan crashpad built binary to binaries folder
 if(NOT CRASHPAD_NOT_SUPPORTED)
-configure_file("${CONAN_BIN_DIRS_CRASHPAD}/crashpad_handler" "${PROJECT_BINARY_DIR}/bin/crashpad_handler" COPYONLY)
+    if(WIN32)
+        configure_file("${CONAN_BIN_DIRS_CRASHPAD}/crashpad_handler.exe" "${PROJECT_BINARY_DIR}/bin/crashpad_handler.exe" COPYONLY)
+    else()
+        configure_file("${CONAN_BIN_DIRS_CRASHPAD}/crashpad_handler" "${PROJECT_BINARY_DIR}/bin/crashpad_handler" COPYONLY)
+    endif()
 endif()
