@@ -3,7 +3,6 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 #include "querypairmgr.h"
-#include <sys/time.h>
 #include <vector>
 
 static inline void timespec_diff(struct timespec *a, struct timespec *b,

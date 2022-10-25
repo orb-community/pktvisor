@@ -9,7 +9,11 @@
 
 #pragma once
 
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+#include <winsock2.h>
+#else
 #include <netinet/in.h>
+#endif
 #include <sflow.h>
 #include <sflow_v2v4.h>
 

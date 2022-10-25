@@ -7,11 +7,17 @@
 #include <PcapFileDevice.h>
 #include <ProtocolType.h>
 #include <UdpLayer.h>
-#include <arpa/inet.h>
 #include <catch2/catch.hpp>
 #include <frequent_items_sketch.hpp>
 #pragma GCC diagnostic pop
 #pragma GCC diagnostic ignored "-Wold-style-cast"
+
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+#include <winsock2.h>
+#else
+#include <netinet/in.h>
+#endif
+
 
 TEST_CASE("Top K Src Ports", "[pcap][ipv4][topk][dns][udp]")
 {

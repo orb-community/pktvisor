@@ -4,11 +4,16 @@
 
 #pragma once
 
-#include <IpAddress.h>
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+#include <Ws2tcpip.h>
+#include <winsock2.h>
+#else
 #include <netinet/in.h>
+#include <sys/socket.h>
+#endif
+#include <IpAddress.h>
 #include <stdexcept>
 #include <string>
-#include <sys/socket.h>
 #include <vector>
 
 namespace visor::input::pcap {

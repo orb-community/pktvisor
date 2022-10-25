@@ -153,7 +153,7 @@ void DnstapInputStream::_create_frame_stream_tcp_socket()
     if (!_timer) {
         throw DnstapException("unable to initialize TimerHandle");
     }
-    _timer->on<uvw::TimerEvent>([this](const auto &, auto &handle) {
+    _timer->on<uvw::TimerEvent>([this](const auto &, auto &) {
         timespec stamp;
         // use now()
         std::timespec_get(&stamp, TIME_UTC);
@@ -284,7 +284,7 @@ void DnstapInputStream::_create_frame_stream_unix_socket()
     if (!_timer) {
         throw DnstapException("unable to initialize TimerHandle");
     }
-    _timer->on<uvw::TimerEvent>([this](const auto &, auto &handle) {
+    _timer->on<uvw::TimerEvent>([this](const auto &, auto &) {
         timespec stamp;
         // use now()
         std::timespec_get(&stamp, TIME_UTC);
