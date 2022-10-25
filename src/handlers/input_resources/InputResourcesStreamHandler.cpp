@@ -19,7 +19,8 @@ InputResourcesStreamHandler::InputResourcesStreamHandler(const std::string &name
         _dnstap_proxy = dynamic_cast<DnstapInputEventProxy *>(proxy);
         _mock_proxy = dynamic_cast<MockInputEventProxy *>(proxy);
         _flow_proxy = dynamic_cast<FlowInputEventProxy *>(proxy);
-        if (!_pcap_proxy && !_mock_proxy && !_dnstap_proxy && !_flow_proxy) {
+        _netprobe_proxy = dynamic_cast<NetProbeInputEventProxy *>(proxy);
+        if (!_pcap_proxy && !_mock_proxy && !_dnstap_proxy && !_flow_proxy && !_netprobe_proxy) {
             throw StreamHandlerException(fmt::format("InputResourcesStreamHandler: unsupported input event proxy {}", proxy->name()));
         }
     }
@@ -48,6 +49,9 @@ void InputResourcesStreamHandler::start()
         _netflow_connection = _flow_proxy->netflow_signal.connect(&InputResourcesStreamHandler::process_netflow_cb, this);
         _policies_connection = _flow_proxy->policy_signal.connect(&InputResourcesStreamHandler::process_policies_cb, this);
         _heartbeat_connection = _flow_proxy->heartbeat_signal.connect(&InputResourcesStreamHandler::check_period_shift, this);
+    } else if (_netprobe_proxy) {
+        _policies_connection = _netprobe_proxy->policy_signal.connect(&InputResourcesStreamHandler::process_policies_cb, this);
+        _heartbeat_connection = _netprobe_proxy->heartbeat_signal.connect(&InputResourcesStreamHandler::check_period_shift, this);
     }
 
     _running = true;

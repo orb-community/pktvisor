@@ -8,6 +8,7 @@
 #include "DnstapInputStream.h"
 #include "FlowInputStream.h"
 #include "MockInputStream.h"
+#include "NetProbeInputStream.h"
 #include "PcapInputStream.h"
 #include "StreamHandler.h"
 #include "ThreadMonitor.h"
@@ -21,6 +22,7 @@ using namespace visor::input::pcap;
 using namespace visor::input::dnstap;
 using namespace visor::input::mock;
 using namespace visor::input::flow;
+using namespace visor::input::netprobe;
 
 constexpr double MEASURE_INTERVAL = 5; // in seconds
 
@@ -91,6 +93,7 @@ class InputResourcesStreamHandler final : public visor::StreamMetricsHandler<Inp
     DnstapInputEventProxy *_dnstap_proxy{nullptr};
     MockInputEventProxy *_mock_proxy{nullptr};
     FlowInputEventProxy *_flow_proxy{nullptr};
+    NetProbeInputEventProxy *_netprobe_proxy{nullptr};
 
     sigslot::connection _dnstap_connection;
     sigslot::connection _sflow_connection;

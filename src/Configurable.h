@@ -80,6 +80,16 @@ public:
         }
     }
 
+    StringList get_all_keys() const
+    {
+        std::unique_lock lock(_config_mutex);
+        StringList list;
+        for (const auto &[key, value] : _config) {
+            list.push_back(key);
+        }
+        return list;
+    }
+
     template <class T>
     auto config_get(const std::string &key) const
     {
