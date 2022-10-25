@@ -8,7 +8,7 @@
 namespace visor::input::netprobe {
 
 sigslot::signal<pcpp::Packet &, timespec> PingReceiver::recv_signal;
-thread_local std::atomic<uint32_t> PingProbe::_sock_count{0};
+thread_local std::atomic<uint32_t> PingProbe::sock_count{0};
 thread_local SOCKET PingProbe::_sock{SOCKET_ERROR};
 
 PingReceiver::PingReceiver()
@@ -180,7 +180,7 @@ bool PingProbe::start(std::shared_ptr<uvw::Loop> io_loop)
         _internal_timer->start(uvw::TimerHandle::Time{_packets_interval_msec}, uvw::TimerHandle::Time{_packets_interval_msec});
     });
 
-    ++_sock_count;
+    ++sock_count;
     _interval_timer->start(uvw::TimerHandle::Time{0}, uvw::TimerHandle::Time{_interval_msec});
     _init = true;
     return true;
@@ -300,7 +300,7 @@ void PingProbe::_send_icmp_v4(uint16_t sequence)
 
 void PingProbe::_close_socket()
 {
-    if (--_sock_count; _sock_count) {
+    if (--sock_count; sock_count) {
         return;
     }
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)

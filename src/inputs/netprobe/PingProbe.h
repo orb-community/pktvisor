@@ -64,7 +64,6 @@ public:
  */
 class PingProbe final : public NetProbe
 {
-    static thread_local std::atomic<uint32_t> _sock_count;
     static thread_local SOCKET _sock;
 
     bool _init{false};
@@ -87,6 +86,8 @@ class PingProbe final : public NetProbe
     void _close_socket();
 
 public:
+    static thread_local std::atomic<uint32_t> sock_count;
+
     PingProbe(uint16_t id, const std::string &name)
         : NetProbe(id, name){};
     ~PingProbe() = default;

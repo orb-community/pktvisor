@@ -227,6 +227,10 @@ void NetProbeInputStream::stop()
 void NetProbeInputStream::info_json(json &j) const
 {
     common_info_json(j);
+    j[schema_key()]["current_targets_total"] = _dns_list.size() + _ip_list.size();
+    if (PingProbe::sock_count) {
+        j[schema_key()]["ping_sockets"] = PingProbe::sock_count + 1;
+    }
 }
 
 std::unique_ptr<InputEventProxy> NetProbeInputStream::create_event_proxy(const Configurable &filter)
