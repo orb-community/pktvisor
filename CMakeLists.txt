@@ -54,7 +54,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 ")
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 #set(CMAKE_VERBOSE_MAKEFILE ON)
-add_compile_options(-Wall -pedantic -W -Wextra -Wno-unknown-pragmas)
+if(NOT MSVC)
+    add_compile_options(-Wall -pedantic -W -Wextra -Wno-unknown-pragmas)
+endif()
 
 # Conan setup
 

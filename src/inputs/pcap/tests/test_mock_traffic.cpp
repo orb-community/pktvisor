@@ -1,5 +1,4 @@
 #include "PcapInputStream.h"
-#include <arpa/inet.h>
 #include <catch2/catch.hpp>
 
 using namespace visor::input::pcap;

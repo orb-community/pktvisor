@@ -4,9 +4,7 @@
 
 #include "utils.h"
 #include <IpUtils.h>
-#include <arpa/inet.h>
 #include <cstring>
-#include <netinet/in.h>
 #include <sstream>
 
 namespace visor::input::pcap {
@@ -50,7 +48,9 @@ static void ipv6_netmask(struct in6_addr *netmask, int hostBits)
     } else if (hostBits > 128) {
         hostBits = 128;
     }
-#ifdef __linux__
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+    p_netmask = reinterpret_cast<uint32_t *>(netmask->s6_words[0]);
+#elif defined(__linux__)
     p_netmask = &netmask->s6_addr32[0];
 #else
     p_netmask = &netmask->__u6_addr.__u6_addr32[0];
