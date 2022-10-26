@@ -14,7 +14,6 @@
 #include <ProtocolType.h>
 #include <TcpLayer.h>
 #include <UdpLayer.h>
-#include <arpa/inet.h>
 #pragma GCC diagnostic pop
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 
@@ -224,8 +223,8 @@ TEST_CASE("Parse DNS random UDP/TCP tests", "[pcap][dns]")
     CHECK(counters.xacts_out.value() == 2921); // wireshark: 2894
     CHECK(counters.xacts_timed_out.value() == 0);
     CHECK(counters.NODATA.value() == 2254);
-    CHECK(counters.NO_ERROR.value() == 2921); // wireshark: 5838 (we only count reply result codes)
-    CHECK(counters.NO_ERROR.value() == 2921); // wireshark: 5838 (we only count reply result codes)
+    CHECK(counters.RNOERROR.value() == 2921); // wireshark: 5838 (we only count reply result codes)
+    CHECK(counters.RNOERROR.value() == 2921); // wireshark: 5838 (we only count reply result codes)
     CHECK(counters.NX.value() == 0);
     CHECK(counters.REFUSED.value() == 0);
     CHECK(counters.SRVFAIL.value() == 0);
@@ -239,7 +238,7 @@ TEST_CASE("Parse DNS random UDP/TCP tests", "[pcap][dns]")
     CHECK(j["top_qname2"][0]["estimate"] == event_data.num_events->value());
 
     CHECK(j["top_rcode"][0]["name"] == "NOERROR");
-    CHECK(j["top_rcode"][0]["estimate"] == counters.NO_ERROR.value());
+    CHECK(j["top_rcode"][0]["estimate"] == counters.RNOERROR.value());
 
     CHECK(j["top_udp_ports"][0]["name"] == "57975");
     CHECK(j["top_udp_ports"][0]["estimate"] == 302);
@@ -285,7 +284,7 @@ TEST_CASE("DNS Filters: exclude_noerror", "[pcap][dns]")
     dns_handler.stop();
 
     auto counters = dns_handler.metrics()->bucket(0)->counters();
-    REQUIRE(counters.NO_ERROR.value() == 0);
+    REQUIRE(counters.RNOERROR.value() == 0);
     REQUIRE(counters.SRVFAIL.value() == 0);
     REQUIRE(counters.REFUSED.value() == 1);
     REQUIRE(counters.NX.value() == 1);
@@ -318,7 +317,7 @@ TEST_CASE("DNS Filters: only_rcode nx", "[pcap][net]")
     dns_handler.stop();
 
     auto counters = dns_handler.metrics()->bucket(0)->counters();
-    REQUIRE(counters.NO_ERROR.value() == 0);
+    REQUIRE(counters.RNOERROR.value() == 0);
     REQUIRE(counters.SRVFAIL.value() == 0);
     REQUIRE(counters.REFUSED.value() == 0);
     REQUIRE(counters.NX.value() == 1);
@@ -350,7 +349,7 @@ TEST_CASE("DNS Filters: only_rcode refused", "[pcap][dns]")
     dns_handler.stop();
 
     auto counters = dns_handler.metrics()->bucket(0)->counters();
-    REQUIRE(counters.NO_ERROR.value() == 0);
+    REQUIRE(counters.RNOERROR.value() == 0);
     REQUIRE(counters.SRVFAIL.value() == 0);
     REQUIRE(counters.REFUSED.value() == 1);
     REQUIRE(counters.NX.value() == 0);
@@ -392,7 +391,7 @@ TEST_CASE("DNS Filters: only_qtypes AAAA and TXT", "[pcap][dns]")
     CHECK(counters.queries.value() == 1050);
     CHECK(counters.replies.value() == 1046);
     CHECK(counters.NODATA.value() == 737);
-    CHECK(counters.NO_ERROR.value() == 1046);
+    CHECK(counters.RNOERROR.value() == 1046);
 
     nlohmann::json j;
     dns_handler.metrics()->bucket(0)->to_json(j);
@@ -462,7 +461,7 @@ TEST_CASE("DNS Filters: only_qname_suffix", "[pcap][dns]")
     auto counters = dns_handler.metrics()->bucket(0)->counters();
 
     CHECK(counters.UDP.value() == 10);
-    CHECK(counters.NO_ERROR.value() == 4);
+    CHECK(counters.RNOERROR.value() == 4);
     CHECK(counters.SRVFAIL.value() == 0);
     CHECK(counters.REFUSED.value() == 0);
     CHECK(counters.NX.value() == 1);
@@ -500,7 +499,7 @@ TEST_CASE("DNS Filters: answer_count", "[pcap][dns]")
     auto counters = dns_handler.metrics()->bucket(0)->counters();
 
     CHECK(counters.UDP.value() == 16);
-    CHECK(counters.NO_ERROR.value() == 4);
+    CHECK(counters.RNOERROR.value() == 4);
     CHECK(counters.SRVFAIL.value() == 0);
     CHECK(counters.REFUSED.value() == 0);
     CHECK(counters.NX.value() == 0);
@@ -544,7 +543,7 @@ TEST_CASE("DNS Filters: only_dnssec_response", "[pcap][dns]")
     CHECK(counters.IPv6.value() == 0);
     CHECK(counters.queries.value() == 0);
     CHECK(counters.replies.value() == 6);
-    CHECK(counters.NO_ERROR.value() == 6);
+    CHECK(counters.RNOERROR.value() == 6);
 
     nlohmann::json j;
     dns_handler.metrics()->bucket(0)->to_json(j);
@@ -583,7 +582,7 @@ TEST_CASE("DNS Configs: public_suffix_list", "[pcap][dns]")
     auto counters = dns_handler.metrics()->bucket(0)->counters();
 
     CHECK(counters.UDP.value() == 24);
-    CHECK(counters.NO_ERROR.value() == 10);
+    CHECK(counters.RNOERROR.value() == 10);
     CHECK(counters.SRVFAIL.value() == 0);
     CHECK(counters.REFUSED.value() == 1);
     CHECK(counters.NX.value() == 1);

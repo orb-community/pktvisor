@@ -19,6 +19,7 @@ target_include_directories(VisorInputPcap
 target_link_libraries(VisorInputPcap
         PUBLIC
         ${CONAN_LIBS_PCAPPLUSPLUS}
+        ${CONAN_LIBS_PTHREADS4W}
         ${CONAN_LIBS_LIBPCAP}
         ${CONAN_LIBS_NPCAP}
         Visor::Core
@@ -27,6 +28,7 @@ target_link_libraries(VisorInputPcap
 set(VISOR_STATIC_PLUGINS ${VISOR_STATIC_PLUGINS} Visor::Input::Pcap PARENT_SCOPE)
 
 ## TEST SUITE
+if(NOT WIN32)
 add_executable(unit-tests-input-pcap
         tests/main.cpp
         tests/test_mock_traffic.cpp
@@ -42,3 +44,4 @@ add_test(NAME unit-tests-input-pcap
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/src
         COMMAND unit-tests-input-pcap
         )
+endif()

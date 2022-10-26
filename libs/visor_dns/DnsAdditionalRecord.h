@@ -31,10 +31,12 @@ enum FamilyAddressEnum {
     IPV6 = 2,
 };
 
-struct __attribute__((__packed__)) DnsAdditionalOptCommon {
+#pragma pack(push, 1)
+struct DnsAdditionalOptCommon {
     uint16_t option_code;
     uint16_t option_length;
 };
+#pragma pack(pop)
 
 struct DnsAdditionalEcs {
     DnsAdditionalOptCommon common;

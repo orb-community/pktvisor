@@ -16,7 +16,6 @@
 #include <IPv6Layer.h>
 #include <PacketUtils.h>
 #pragma GCC diagnostic pop
-#include <arpa/inet.h>
 #include <cpc_union.hpp>
 #include <fmt/format.h>
 
