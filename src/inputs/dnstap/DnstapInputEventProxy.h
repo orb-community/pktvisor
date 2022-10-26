@@ -4,16 +4,19 @@
 
 #pragma once
 
-#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
-#include <winsock2.h>
-#else
-#include <netinet/in.h>
-#endif
 #include "InputEventProxy.h"
 #include "dnstap.pb.h"
-
+#include <bitset>
+#include <utility>
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+#include <winsock2.h>
+typedef std::pair<std::string, uint8_t> Ipv4Subnet;
+typedef std::pair<std::string, uint8_t> Ipv6Subnet;
+#else
+#include <netinet/in.h>
 typedef std::pair<in_addr, uint8_t> Ipv4Subnet;
 typedef std::pair<in6_addr, uint8_t> Ipv6Subnet;
+#endif
 
 namespace visor::input::dnstap {
 

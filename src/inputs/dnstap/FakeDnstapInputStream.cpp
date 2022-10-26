@@ -35,4 +35,13 @@ std::unique_ptr<InputEventProxy> DnstapInputStream::create_event_proxy(const Con
     return std::make_unique<DnstapInputEventProxy>(_name, filter);
 }
 
+bool DnstapInputEventProxy::_match_subnet(const std::string &)
+{
+    return false;
+}
+
+void DnstapInputEventProxy::_parse_host_specs(const std::vector<std::string> &)
+{
+}
+
 }
