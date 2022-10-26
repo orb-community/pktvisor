@@ -13,8 +13,8 @@ namespace crashpad {
 
 static bool start_crashpad_handler(base::FilePath::StringType token, base::FilePath::StringType url, base::FilePath::StringType handler_path)
 {
-    std::map<std::string, std::string> annotations;
-    std::vector<std::string> arguments;
+    std::map<base::FilePath::StringType, base::FilePath::StringType> annotations;
+    std::vector<base::FilePath::StringType> arguments;
     CrashpadClient client;
     bool rc;
 

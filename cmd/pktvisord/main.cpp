@@ -293,21 +293,33 @@ void fill_cmd_options(std::map<std::string, docopt::value> args, CmdOptions &opt
     options.crashpad_info.disable = (config["cp_disable"] && config["cp_disable"].as<bool>()) || args["--cp-disable"].asBool();
 
     if (args["--cp-token"]) {
-        options.crashpad_info.token = args["--cp-token"].asString();
+        auto v = args["--cp-token"].asString();
+        base::FilePath::StringType cp(v.begin(), v.end());
+        options.crashpad_info.token = cp;
     } else if (config["cp_token"]) {
-        options.crashpad_info.token = config["cp_token"].as<std::string>();
+        auto v = config["cp_token"].as<std::string>();
+        base::FilePath::StringType cp(v.begin(), v.end());
+        options.crashpad_info.token = cp;
     }
 
     if (args["--cp-url"]) {
-        options.crashpad_info.url = args["--cp-url"].asString();
+        auto v = args["--cp-url"].asString();
+        base::FilePath::StringType cp(v.begin(), v.end());
+        options.crashpad_info.url = cp;
     } else if (config["cp_url"]) {
-        options.crashpad_info.url = config["cp_url"].as<std::string>();
+        auto v = config["cp_url"].as<std::string>();
+        base::FilePath::StringType cp(v.begin(), v.end());
+        options.crashpad_info.url = cp;
     }
 
     if (args["--cp-path"]) {
-        options.crashpad_info.path = args["--cp-path"].asString();
+        auto v = args["--cp-path"].asString();
+        base::FilePath::StringType cp(v.begin(), v.end());
+        options.crashpad_info.path = cp;
     } else if (config["cp_path"]) {
-        options.crashpad_info.path = config["cp_path"].as<std::string>();
+        auto v = config["cp_path"].as<std::string>();
+        base::FilePath::StringType cp(v.begin(), v.end());
+        options.crashpad_info.path = cp;
     }
 }
 

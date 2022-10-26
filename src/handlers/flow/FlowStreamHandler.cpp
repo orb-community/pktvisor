@@ -6,14 +6,6 @@
 #include "HandlerModulePlugin.h"
 #include "utils.h"
 #include <Corrade/Utility/Debug.h>
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wold-style-cast"
-#pragma GCC diagnostic ignored "-Wunused-parameter"
-#pragma clang diagnostic ignored "-Wc99-extensions"
-#pragma GCC diagnostic ignored "-Wpedantic"
-#pragma GCC diagnostic pop
-#include <arpa/inet.h>
-#include <cpc_union.hpp>
 #include <fmt/format.h>
 
 namespace visor::handler::flow {
