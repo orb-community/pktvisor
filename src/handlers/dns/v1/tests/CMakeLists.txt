@@ -1,11 +1,20 @@
 
 # Unit
-add_executable(unit-tests-handler-dns
-        main.cpp
-        test_dns_layer.cpp
-        test_dnstap.cpp
-        test_json_schema.cpp
-        )
+if(WIN32)
+    #dnstap not supported
+    add_executable(unit-tests-handler-dns
+            main.cpp
+            test_dns_layer.cpp
+            test_json_schema.cpp
+            )
+else()
+    add_executable(unit-tests-handler-dns
+            main.cpp
+            test_dns_layer.cpp
+            test_dnstap.cpp
+            test_json_schema.cpp
+            )
+endif()
 
 target_link_libraries(unit-tests-handler-dns
         PRIVATE

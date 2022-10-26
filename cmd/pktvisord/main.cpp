@@ -15,10 +15,11 @@
 #include "visor_config.h"
 #include <Corrade/Utility/ConfigurationGroup.h>
 #include <docopt/docopt.h>
-#include <resolv.h>
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
+#if __has_include(<unistd.h>)
 #include <spdlog/sinks/syslog_sink.h>
+#endif
 #include <spdlog/spdlog.h>
 #include <yaml-cpp/yaml.h>
 
@@ -135,9 +136,9 @@ struct CmdOptions {
 
     struct Crashpad {
         bool disable{false};
-        std::optional<std::string> token;
-        std::optional<std::string> url;
-        std::optional<std::string> path;
+        std::optional<base::FilePath::StringType> token;
+        std::optional<base::FilePath::StringType> url;
+        std::optional<base::FilePath::StringType> path;
     };
     Crashpad crashpad_info;
 
@@ -317,7 +318,8 @@ void initialize_geo(const std::string &city, const std::string &asn, unsigned in
     }
 }
 
-// adapted from LPI becomeDaemon()
+// adapted from LPI becomeDaemon() only for UNIX
+#if __has_include(<unistd.h>)
 int daemonize()
 {
 
@@ -362,6 +364,12 @@ int daemonize()
 
     return 0;
 }
+#else
+int daemonize()
+{
+    return 0
+}
+#endif
 
 auto default_tap_policy = R"(
 version: "1.0"
@@ -435,7 +443,9 @@ int main(int argc, char *argv[])
             exit(EXIT_FAILURE);
         }
     } else if (options.syslog) {
+#if __has_include(<unistd.h>)
         logger = spdlog::syslog_logger_mt("visor", "pktvisord", LOG_PID, LOG_DAEMON);
+#endif
     } else {
         logger = spdlog::stdout_color_mt("visor");
     }
@@ -472,7 +482,9 @@ int main(int argc, char *argv[])
 
     // if we are demonized, change to root directory now that (potentially) logs are open
     if (options.daemon) {
+#if __has_include(<unistd.h>)
         chdir("/");
+#endif
     }
 
     PrometheusConfig prom_config;

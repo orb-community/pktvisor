@@ -1,10 +1,18 @@
 
 ## TEST SUITE
-add_executable(unit-tests-handler-net
-        main.cpp
-        test_net_layer.cpp
-        test_json_schema.cpp
-        )
+if(WIN32)
+    #dnstap not supported
+    add_executable(unit-tests-handler-net
+            main.cpp
+            test_json_schema.cpp
+            )
+else()
+    add_executable(unit-tests-handler-net
+            main.cpp
+            test_net_layer.cpp
+            test_json_schema.cpp
+            )
+endif()
 
 target_link_libraries(unit-tests-handler-net
         PRIVATE
