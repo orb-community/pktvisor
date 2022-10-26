@@ -20,6 +20,9 @@
 #if __has_include(<unistd.h>)
 #include <spdlog/sinks/syslog_sink.h>
 #endif
+#if __has_include(<resolv.h>)
+#include <resolv.h>
+#endif
 #include <spdlog/spdlog.h>
 #include <yaml-cpp/yaml.h>
 
@@ -572,6 +575,7 @@ int main(int argc, char *argv[])
     /**
      * anonymous lightweight usage metrics, to help understand project usage
      */
+#if __has_include(<resolv.h>)
     std::shared_ptr<timer::interval_handle> timer_handle;
     auto usage_metrics = [&logger] {
         u_char buf[1024];
@@ -590,6 +594,7 @@ int main(int argc, char *argv[])
         // once per day
         timer_handle = timer_thread.set_interval(24h, usage_metrics);
     }
+#endif
 
     unsigned int periods = options.periods.value();
 
