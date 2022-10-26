@@ -24,7 +24,7 @@ static bool start_crashpad_handler(base::FilePath::StringType token, base::FileP
     annotations[L"database"] = L"pktvisor";
     std::string version(VISOR_VERSION_NUM);
     annotations[L"version"] = base::FilePath::StringType(version.begin(), version.end());
-    annotations["token"] = token;
+    annotations[L"token"] = token;
     base::FilePath::StringType db_path(L"crashpad");
     arguments.push_back(L"--no-rate-limit");
 #else
