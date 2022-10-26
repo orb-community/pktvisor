@@ -8,6 +8,13 @@
 #include <Corrade/PluginManager/AbstractManager.h>
 #include <Corrade/Utility/FormatStl.h>
 
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+//Dnstap currently not supported on windows
+#include "FakeDnstapInputStream.h"
+#else
+#include "DnstapInputStream.h"
+#endif
+
 CORRADE_PLUGIN_REGISTER(VisorInputDnstap, visor::input::dnstap::DnstapInputModulePlugin,
     "visor.module.input/1.0")
 

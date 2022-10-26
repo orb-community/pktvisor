@@ -1,6 +1,11 @@
 #include <catch2/catch.hpp>
 
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+//Dnstap currently not supported on windows
+#include "FakeDnstapInputStream.h"
+#else
 #include "DnstapInputStream.h"
+#endif
 #include "FlowInputStream.h"
 #include "InputResourcesStreamHandler.h"
 #include "PcapInputStream.h"

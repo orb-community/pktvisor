@@ -4,7 +4,6 @@
 
 #pragma once
 
-#include "DnstapInputStream.h"
 #include "InputModulePlugin.h"
 
 namespace visor::input::dnstap {

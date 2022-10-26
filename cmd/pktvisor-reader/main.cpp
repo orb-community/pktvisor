@@ -21,9 +21,14 @@
 #include "handlers/dhcp/DhcpStreamHandler.h"
 #include "handlers/dns/v1/DnsStreamHandler.h"
 #include "handlers/net/NetStreamHandler.h"
-#include "inputs/dnstap/DnstapInputStream.h"
 #include "inputs/pcap/PcapInputStream.h"
 #include "inputs/flow/FlowInputStream.h"
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+//Dnstap currently not supported on windows
+#include "inputs/dnstap/FakeDnstapInputStream.h"
+#else
+#include "inputs/dnstap/DnstapInputStream.h"
+#endif
 
 static const char USAGE[] =
     R"(pktvisor-reader
