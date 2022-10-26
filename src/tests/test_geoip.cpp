@@ -1,5 +1,9 @@
 #include "GeoDB.h"
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+#include <ws2tcpip.h>
+#else
 #include <arpa/inet.h>
+#endif
 #include <catch2/catch.hpp>
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 

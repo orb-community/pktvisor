@@ -3,7 +3,6 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 #include "RequestReplyManager.h"
-#include <sys/time.h>
 #include <vector>
 
 namespace visor::handler::netprobe {

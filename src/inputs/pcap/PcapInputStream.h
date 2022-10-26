@@ -5,6 +5,12 @@
 #pragma once
 
 #include "InputStream.h"
+
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+//Required for PcapPlusPlus on Windows
+#pragma comment(lib, "iphlpapi.lib")
+#endif
+
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 #include <IpAddress.h>
