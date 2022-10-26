@@ -39,8 +39,7 @@ namespace visor::input::netprobe {
  */
 class PingReceiver
 {
-    size_t _len;
-    std::unique_ptr<uint8_t[]> _array;
+    std::array<char, sizeof(pcpp::icmphdr) + 65507> _array;
     SOCKET _sock{INVALID_SOCKET};
     std::shared_ptr<uvw::PollHandle> _poll;
     std::unique_ptr<std::thread> _io_thread;

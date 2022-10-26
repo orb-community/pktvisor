@@ -2,6 +2,7 @@
 
 #include "NetProbeException.h"
 #include <Packet.h>
+#include <TimespecTimeval.h>
 #include <uvw/dns.h>
 #include <uvw/idle.h>
 
@@ -12,8 +13,6 @@ thread_local std::atomic<uint32_t> PingProbe::sock_count{0};
 thread_local SOCKET PingProbe::_sock{INVALID_SOCKET};
 
 PingReceiver::PingReceiver()
-    : _len(sizeof(pcpp::icmphdr) + 65507)
-    , _array(std::make_unique<uint8_t[]>(_len))
 {
     _setup_receiver();
 }
@@ -88,13 +87,13 @@ void PingReceiver::_setup_receiver()
     _poll->on<uvw::PollEvent>([this](const uvw::PollEvent &, auto &) {
         int rc{0};
         while (rc != SOCKET_ERROR) {
-            rc = recv(_sock, _array.get(), _len, 0);
+            rc = recv(_sock, _array.data(), _array.size(), 0);
             if (rc != SOCKET_ERROR) {
                 timespec stamp;
                 std::timespec_get(&stamp, TIME_UTC);
                 timeval time;
                 TIMESPEC_TO_TIMEVAL(&time, &stamp);
-                pcpp::RawPacket raw(_array.get(), rc, time, false, pcpp::LINKTYPE_DLT_RAW1);
+                pcpp::RawPacket raw(reinterpret_cast<uint8_t *>(_array.data()), rc, time, false, pcpp::LINKTYPE_DLT_RAW1);
                 pcpp::Packet packet(&raw, pcpp::ICMP);
                 recv_signal(packet, stamp);
             }
@@ -290,7 +289,7 @@ void PingProbe::_send_icmp_v4(uint16_t sequence)
     const uint64_t stamp64 = stamp.tv_sec * 1000000000ULL + stamp.tv_nsec;
     icmp.setEchoRequestData(static_cast<uint16_t>(_id * _sequence), sequence, stamp64, _payload_array.data(), _payload_array.size());
     icmp.computeCalculateFields();
-    int rc = sendto(_sock, icmp.getData(), icmp.getDataLen(), 0, reinterpret_cast<sockaddr *>(&_sa), _sin_length);
+    int rc = sendto(_sock, reinterpret_cast<char *>(icmp.getData()), icmp.getDataLen(), 0, reinterpret_cast<sockaddr *>(&_sa), _sin_length);
     if (rc != SOCKET_ERROR) {
         pcpp::Packet packet;
         packet.addLayer(&icmp);
