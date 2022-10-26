@@ -13,11 +13,10 @@
 #pragma clang diagnostic ignored "-Wc99-extensions"
 #pragma GCC diagnostic ignored "-Wpedantic"
 #include <IPv4Layer.h>
-#include <IPv6Layer.h>
+#include <TimespecTimeval.h>
 #pragma GCC diagnostic pop
 #include "DnsAdditionalRecord.h"
 #include "PublicSuffixList.h"
-#include <arpa/inet.h>
 #include <sstream>
 namespace visor::handler::dns {
 
