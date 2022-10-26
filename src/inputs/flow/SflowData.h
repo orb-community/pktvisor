@@ -10,6 +10,7 @@
 #pragma once
 
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+#include <in6addr.h>
 #include <winsock2.h>
 #else
 #include <netinet/in.h>
@@ -29,8 +30,8 @@ enum DIRECTION {
     UNKNOWN_DIR = 0,
     FULL_DUPLEX = 1,
     HALF_DUPLEX = 2,
-    IN = 3,
-    OUT = 4
+    IN_DIR = 3,
+    OUT_DIR = 4
 };
 
 enum IP_PROTOCOL {

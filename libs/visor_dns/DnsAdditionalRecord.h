@@ -4,6 +4,11 @@
 
 #pragma once
 
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+#include <ws2tcpip.h>
+#else
+#include <arpa/inet.h>
+#endif
 #include "DnsResource.h"
 #include "EndianPortable.h"
 #include <algorithm>

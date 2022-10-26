@@ -9,7 +9,7 @@ namespace visor::input::netprobe {
 
 sigslot::signal<pcpp::Packet &, timespec> PingReceiver::recv_signal;
 thread_local std::atomic<uint32_t> PingProbe::sock_count{0};
-thread_local SOCKET PingProbe::_sock{SOCKET_ERROR};
+thread_local SOCKET PingProbe::_sock{INVALID_SOCKET};
 
 PingReceiver::PingReceiver()
     : _len(sizeof(pcpp::icmphdr) + 65507)
@@ -25,7 +25,7 @@ PingReceiver::~PingReceiver()
     _sock = INVALID_SOCKET;
 #else
     close(_sock);
-    _sock = SOCKET_ERROR;
+    _sock = INVALID_SOCKET;
 #endif
 
     if (_async_h && _io_thread) {
@@ -248,7 +248,7 @@ void PingProbe::_get_addr()
 
 std::optional<ErrorType> PingProbe::_create_socket()
 {
-    if (_sock != SOCKET_ERROR) {
+    if (_sock != INVALID_SOCKET) {
         return std::nullopt;
     }
 
@@ -267,7 +267,7 @@ std::optional<ErrorType> PingProbe::_create_socket()
         return ErrorType::SocketError;
     }
 #else
-    if (_sock == SOCKET_ERROR) {
+    if (_sock == INVALID_SOCKET) {
         _sock = socket(domain, SOCK_DGRAM, IPPROTO_ICMP);
     }
     int flag = 1;
@@ -290,7 +290,7 @@ void PingProbe::_send_icmp_v4(uint16_t sequence)
     const uint64_t stamp64 = stamp.tv_sec * 1000000000ULL + stamp.tv_nsec;
     icmp.setEchoRequestData(static_cast<uint16_t>(_id * _sequence), sequence, stamp64, _payload_array.data(), _payload_array.size());
     icmp.computeCalculateFields();
-    auto rc = sendto(_sock, icmp.getData(), icmp.getDataLen(), 0, reinterpret_cast<sockaddr *>(&_sa), _sin_length);
+    int rc = sendto(_sock, icmp.getData(), icmp.getDataLen(), 0, reinterpret_cast<sockaddr *>(&_sa), _sin_length);
     if (rc != SOCKET_ERROR) {
         pcpp::Packet packet;
         packet.addLayer(&icmp);
@@ -308,7 +308,7 @@ void PingProbe::_close_socket()
     _sock = INVALID_SOCKET;
 #else
     close(_sock);
-    _sock = SOCKET_ERROR;
+    _sock = INVALID_SOCKET;
 #endif
 }
 }

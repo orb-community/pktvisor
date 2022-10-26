@@ -98,7 +98,7 @@ protected:
         Counter NX;
         Counter REFUSED;
         Counter SRVFAIL;
-        Counter NOERROR;
+        Counter NO_ERROR;
         Counter NODATA;
         Counter total;
         Counter filtered;
@@ -119,7 +119,7 @@ protected:
             , NX(DNS_SCHEMA, {"wire_packets", "nxdomain"}, "Total DNS wire packets flagged as reply with return code NXDOMAIN (ingress and egress)")
             , REFUSED(DNS_SCHEMA, {"wire_packets", "refused"}, "Total DNS wire packets flagged as reply with return code REFUSED (ingress and egress)")
             , SRVFAIL(DNS_SCHEMA, {"wire_packets", "srvfail"}, "Total DNS wire packets flagged as reply with return code SRVFAIL (ingress and egress)")
-            , NOERROR(DNS_SCHEMA, {"wire_packets", "noerror"}, "Total DNS wire packets flagged as reply with return code NOERROR (ingress and egress)")
+            , NO_ERROR(DNS_SCHEMA, {"wire_packets", "noerror"}, "Total DNS wire packets flagged as reply with return code NOERROR (ingress and egress)")
             , NODATA(DNS_SCHEMA, {"wire_packets", "nodata"}, "Total DNS wire packets flagged as reply with return code NOERROR and no answer section data (ingress and egress)")
             , total(DNS_SCHEMA, {"wire_packets", "total"}, "Total DNS wire packets matching the configured filter(s)")
             , filtered(DNS_SCHEMA, {"wire_packets", "filtered"}, "Total DNS wire packets seen that did not match the configured filter(s) (if any)")

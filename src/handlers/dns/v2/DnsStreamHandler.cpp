@@ -3,7 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 #include "DnsStreamHandler.h"
-#include "DnstapInputStream.h"
+#include "DnstapInputEventProxy.h"
 #include "HandlerModulePlugin.h"
 #include "utils.h"
 #include <Corrade/Utility/Debug.h>
@@ -530,7 +530,7 @@ void DnsMetricsBucket::specialized_merge(const AbstractMetricsBucket &o, Metric:
         _counters.NX += other._counters.NX;
         _counters.REFUSED += other._counters.REFUSED;
         _counters.SRVFAIL += other._counters.SRVFAIL;
-        _counters.NOERROR += other._counters.NOERROR;
+        _counters.NO_ERROR += other._counters.NO_ERROR;
         _counters.NODATA += other._counters.NODATA;
         _counters.total += other._counters.total;
         _counters.filtered += other._counters.filtered;
@@ -606,7 +606,7 @@ void DnsMetricsBucket::to_json(json &j) const
         _counters.NX.to_json(j);
         _counters.REFUSED.to_json(j);
         _counters.SRVFAIL.to_json(j);
-        _counters.NOERROR.to_json(j);
+        _counters.NO_ERROR.to_json(j);
         _counters.NODATA.to_json(j);
         _counters.total.to_json(j);
         _counters.filtered.to_json(j);
@@ -786,7 +786,7 @@ void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, pcpp::Pro
             ++_counters.replies;
             switch (payload.getDnsHeader()->responseCode) {
             case NoError:
-                ++_counters.NOERROR;
+                ++_counters.NO_ERROR;
                 if (!payload.getAnswerCount()) {
                     ++_counters.NODATA;
                 }
@@ -994,7 +994,7 @@ void DnsMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap ad
         _counters.NX.to_prometheus(out, add_labels);
         _counters.REFUSED.to_prometheus(out, add_labels);
         _counters.SRVFAIL.to_prometheus(out, add_labels);
-        _counters.NOERROR.to_prometheus(out, add_labels);
+        _counters.NO_ERROR.to_prometheus(out, add_labels);
         _counters.NODATA.to_prometheus(out, add_labels);
         _counters.total.to_prometheus(out, add_labels);
         _counters.filtered.to_prometheus(out, add_labels);

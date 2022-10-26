@@ -15,9 +15,9 @@
 #pragma GCC diagnostic pop
 #include "Configurable.h"
 #include "Metrics.h"
+#include <bitset>
 #include <shared_mutex>
 #include <sstream>
-#include <sys/time.h>
 #include <unordered_map>
 
 namespace visor {

@@ -1,4 +1,5 @@
 
+#include "DnstapInputEventProxy.h"
 #include "DnstapInputStream.h"
 #include <catch2/catch.hpp>
 

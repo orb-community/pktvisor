@@ -1,6 +1,7 @@
 #include <catch2/catch.hpp>
 
 #include "DnsStreamHandler.h"
+#include "DnstapInputStream.h"
 #include "GeoDB.h"
 #include "NetStreamHandler.h"
 #include "PcapInputStream.h"

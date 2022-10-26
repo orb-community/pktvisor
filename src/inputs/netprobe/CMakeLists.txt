@@ -23,6 +23,7 @@ target_link_libraries(VisorInputNetProbe
         ${CONAN_LIBS_UVW}
         ${CONAN_LIBS_PCAPPLUSPLUS}
         ${CONAN_LIBS_LIBPCAP}
+        ${CONAN_LIBS_NPCAP}
         )
 
 set(VISOR_STATIC_PLUGINS ${VISOR_STATIC_PLUGINS} Visor::Input::NetProbe PARENT_SCOPE)
