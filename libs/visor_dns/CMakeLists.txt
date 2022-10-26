@@ -18,6 +18,7 @@ target_link_libraries(VisorLibDns
         PUBLIC
         ${CONAN_LIBS_ROBIN-HOOD-HASHING}
         ${CONAN_LIBS_PCAPPLUSPLUS}
+        ${CONAN_LIBS_PTHREADS4W}
         ${CONAN_LIBS_LIBPCAP}
         ${CONAN_LIBS_NPCAP}
         ${CONAN_LIBS_SPDLOG}

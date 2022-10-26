@@ -22,6 +22,7 @@ target_link_libraries(VisorInputNetProbe
         ${CONAN_LIBS_LIBUV}
         ${CONAN_LIBS_UVW}
         ${CONAN_LIBS_PCAPPLUSPLUS}
+        ${CONAN_LIBS_PTHREADS4W}
         ${CONAN_LIBS_LIBPCAP}
         ${CONAN_LIBS_NPCAP}
         )

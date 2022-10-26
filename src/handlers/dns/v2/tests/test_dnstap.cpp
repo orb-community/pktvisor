@@ -37,7 +37,7 @@ TEST_CASE("Parse DNSTAP", "[dnstap][dns]")
     CHECK(counters.xacts_in.value() == 0);
     CHECK(counters.xacts_out.value() == 0);
     CHECK(counters.xacts_timed_out.value() == 0);
-    CHECK(counters.NO_ERROR.value() == 70);
+    CHECK(counters.RNOERROR.value() == 70);
     CHECK(counters.NX.value() == 0);
     CHECK(counters.REFUSED.value() == 0);
     CHECK(counters.SRVFAIL.value() == 4);
@@ -92,7 +92,7 @@ TEST_CASE("Parse filtered DNSTAP empty data", "[dnstap][dns][filter]")
     CHECK(counters.xacts_in.value() == 0);
     CHECK(counters.xacts_out.value() == 0);
     CHECK(counters.xacts_timed_out.value() == 0);
-    CHECK(counters.NO_ERROR.value() == 0);
+    CHECK(counters.RNOERROR.value() == 0);
     CHECK(counters.NX.value() == 0);
     CHECK(counters.REFUSED.value() == 0);
     CHECK(counters.SRVFAIL.value() == 0);
@@ -130,7 +130,7 @@ TEST_CASE("Parse filtered DNSTAP with data", "[dnstap][dns][filter]")
     CHECK(counters.xacts_in.value() == 0);
     CHECK(counters.xacts_out.value() == 0);
     CHECK(counters.xacts_timed_out.value() == 0);
-    CHECK(counters.NO_ERROR.value() == 70);
+    CHECK(counters.RNOERROR.value() == 70);
     CHECK(counters.NX.value() == 0);
     CHECK(counters.REFUSED.value() == 0);
     CHECK(counters.SRVFAIL.value() == 4);
