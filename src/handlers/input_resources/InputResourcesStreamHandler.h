@@ -5,7 +5,7 @@
 #pragma once
 
 #include "AbstractMetricsManager.h"
-#include "DnstapInputStream.h"
+#include "DnstapInputEventProxy.h"
 #include "FlowInputStream.h"
 #include "MockInputStream.h"
 #include "NetProbeInputStream.h"

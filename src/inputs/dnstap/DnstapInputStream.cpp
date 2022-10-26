@@ -4,6 +4,7 @@
 
 #include "DnstapInputStream.h"
 #include "DnstapException.h"
+#include "DnstapInputEventProxy.h"
 #include "FrameSession.h"
 #include "ThreadName.h"
 #include <filesystem>

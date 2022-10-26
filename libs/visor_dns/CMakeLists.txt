@@ -19,6 +19,7 @@ target_link_libraries(VisorLibDns
         ${CONAN_LIBS_ROBIN-HOOD-HASHING}
         ${CONAN_LIBS_PCAPPLUSPLUS}
         ${CONAN_LIBS_LIBPCAP}
+        ${CONAN_LIBS_NPCAP}
         ${CONAN_LIBS_SPDLOG}
         ${CONAN_LIBS_FMT}
         )

@@ -1,6 +1,8 @@
 .idea*
 cmake-build-*/
 .DS_Store*
+out/
+.vs/
 docs/html-documentation-generated*
 integration_tests/external
 golang/pkg/client/version.go

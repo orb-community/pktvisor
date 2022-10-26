@@ -13,6 +13,7 @@ typedef int SOCKETLEN;
 #include <sys/types.h>
 #include <unistd.h>
 #define SOCKET_ERROR -1
+#define INVALID_SOCKET -1
 typedef socklen_t SOCKETLEN;
 typedef int SOCKET;
 #endif
@@ -40,7 +41,7 @@ class PingReceiver
 {
     size_t _len;
     std::unique_ptr<uint8_t[]> _array;
-    SOCKET _sock{SOCKET_ERROR};
+    SOCKET _sock{INVALID_SOCKET};
     std::shared_ptr<uvw::PollHandle> _poll;
     std::unique_ptr<std::thread> _io_thread;
     std::shared_ptr<uvw::Loop> _io_loop;

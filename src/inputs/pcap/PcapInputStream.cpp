@@ -22,11 +22,8 @@
 #include <SystemUtils.h>
 #pragma GCC diagnostic pop
 #include <IpUtils.h>
-#include <arpa/inet.h>
 #include <assert.h>
 #include <cstdint>
-#include <cstring>
-#include <netinet/in.h>
 #include <sstream>
 
 using namespace std::chrono;

@@ -20,6 +20,7 @@ target_link_libraries(VisorInputPcap
         PUBLIC
         ${CONAN_LIBS_PCAPPLUSPLUS}
         ${CONAN_LIBS_LIBPCAP}
+        ${CONAN_LIBS_NPCAP}
         Visor::Core
         )
 
