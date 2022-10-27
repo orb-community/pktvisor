@@ -123,7 +123,7 @@ protected:
             {
                 std::stringstream ssts;
                 time_t b_time_t = _metrics->bucket(i)->start_tstamp().tv_sec;
-#if defined(MSVC)
+#if defined(_MSC_VER)
                 struct tm *bt;
                 bt = gmtime(&b_time_t);
                 ssts << std::put_time(bt, "%Y-%m-%d %X");
@@ -137,7 +137,7 @@ protected:
             if (_metrics->bucket(i)->read_only()) {
                 std::stringstream ssts;
                 time_t b_time_t = _metrics->bucket(i)->end_tstamp().tv_sec;
-#if defined(MSVC)
+#if defined(_MSC_VER)
                 struct tm *bt;
                 bt = gmtime(&b_time_t);
                 ssts << std::put_time(bt, "%Y-%m-%d %X");

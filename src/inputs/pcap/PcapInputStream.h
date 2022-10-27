@@ -6,7 +6,7 @@
 
 #include "InputStream.h"
 
-#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+#ifdef _WIN32
 //Required for PcapPlusPlus on Windows
 #pragma comment(lib, "iphlpapi.lib")
 #endif

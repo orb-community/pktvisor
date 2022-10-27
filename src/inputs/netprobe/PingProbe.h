@@ -4,7 +4,7 @@
 
 #pragma once
 
-#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+#ifdef _WIN32
 #include <Ws2tcpip.h>
 #include <winsock2.h>
 typedef int SOCKETLEN;

@@ -1,10 +1,15 @@
 add_executable(pktvisord main.cpp)
 
+if(NOT WIN32)
+    set(ADDITIONAL_LIBS resolv)
+endif()
+
+
 target_link_libraries(pktvisord
         PRIVATE
         ${CONAN_LIBS_CRASHPAD}
         timer
-        resolv
+        ${ADDITIONAL_LIBS}
         ${CONAN_LIBS_DOCOPT.CPP}
         Visor::Core
         ${VISOR_STATIC_PLUGINS}

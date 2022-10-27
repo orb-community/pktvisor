@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+#ifdef _WIN32
 #elif __APPLE__
 #include <net/if.h>
 #include <ifaddrs.h>
@@ -17,7 +17,7 @@ namespace visor::input::pcap {
 
 static inline std::string most_used_interface()
 {
-#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+#ifdef _WIN32
     return std::string();
 #elif __APPLE__
     struct ifaddrs *ifaddr;

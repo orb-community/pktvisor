@@ -23,7 +23,7 @@
 #include "handlers/net/NetStreamHandler.h"
 #include "inputs/pcap/PcapInputStream.h"
 #include "inputs/flow/FlowInputStream.h"
-#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+#ifdef _WIN32
 //Dnstap currently not supported on windows
 #include "inputs/dnstap/FakeDnstapInputStream.h"
 #else
@@ -252,7 +252,7 @@ int main(int argc, char *argv[])
         }
         std::cout << result.dump() << std::endl;
 
-        shutdown_handler(SIGUSR1);
+        shutdown_handler(SIGINT);
 
     } catch (const std::exception &e) {
         logger->error("Fatal error: {}", e.what());

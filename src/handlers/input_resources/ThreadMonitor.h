@@ -7,7 +7,7 @@
 #include <fstream>
 #include <vector>
 
-#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+#ifdef _WIN32
 #elif __APPLE__
 #elif __linux__
 #include <unistd.h>
@@ -17,7 +17,7 @@ namespace visor {
 
 class ThreadMonitor
 {
-#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+#ifdef _WIN32
 #elif __APPLE__
 #elif __linux__
     static constexpr size_t PROC_STAT_POS_UTIME = 13;
@@ -31,7 +31,7 @@ public:
 
     inline double cpu_percentage()
     {
-#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+#ifdef _WIN32
         return 0;
 #elif __APPLE__
         return 0;
@@ -78,7 +78,7 @@ public:
 
     inline uint64_t memory_usage()
     {
-#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+#ifdef _WIN32
         return 0;
 #elif __APPLE__
         return 0;

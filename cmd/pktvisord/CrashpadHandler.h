@@ -11,30 +11,25 @@
 
 namespace crashpad {
 
-static bool start_crashpad_handler(base::FilePath::StringType token, base::FilePath::StringType url, base::FilePath::StringType handler_path)
+static bool start_crashpad_handler(std::string token, std::string url, base::FilePath::StringType handler_path)
 {
-    std::map<base::FilePath::StringType, base::FilePath::StringType> annotations;
-    std::vector<base::FilePath::StringType> arguments;
+    std::map<std::string, std::string> annotations;
+    std::vector<std::string> arguments;
     CrashpadClient client;
     bool rc;
 
-#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
-    annotations[L"format"] = L"minidump";
-    annotations[L"product"] = L"pktvisor";
-    annotations[L"database"] = L"pktvisor";
-    std::string version(VISOR_VERSION_NUM);
-    annotations[L"version"] = base::FilePath::StringType(version.begin(), version.end());
-    annotations[L"token"] = token;
-    base::FilePath::StringType db_path(L"crashpad");
-    arguments.push_back(L"--no-rate-limit");
-#else
+
     annotations["format"] = "minidump";
     annotations["product"] = "pktvisor";
     annotations["database"] = "pktvisor";
     annotations["version"] = VISOR_VERSION_NUM;
     annotations["token"] = token;
-    base::FilePath::StringType db_path("crashpad");
     arguments.push_back("--no-rate-limit");
+
+#ifdef _WIN32
+    base::FilePath::StringType db_path(L"crashpad");
+#else
+    base::FilePath::StringType db_path("crashpad");
 #endif
 
     base::FilePath db(db_path);
@@ -63,7 +58,7 @@ typedef std::string StringType;
 }
 
 namespace crashpad {
-static bool start_crashpad_handler([[maybe_unused]] base::FilePath::StringType token, [[maybe_unused]] base::FilePath::StringType url, [[maybe_unused]] base::FilePath::StringType handler_path)
+static bool start_crashpad_handler([[maybe_unused]] std::string token, [[maybe_unused]] std::string url, [[maybe_unused]] base::FilePath::StringType handler_path)
 {
     return false;
 }
