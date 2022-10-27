@@ -16,6 +16,7 @@ spdlog/1.10.0
 uvw/2.10.0
 yaml-cpp/0.7.0
 robin-hood-hashing/3.11.5
+zlib/1.2.12
 crashpad/cci.20220219
 
 [build_requires]
@@ -24,3 +25,4 @@ protobuf/3.19.2
 
 [options]
 pcapplusplus:immediate_mode=True
+docopt.cpp:boost_regex=True
