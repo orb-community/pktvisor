@@ -5,9 +5,9 @@
 #pragma once
 
 #ifdef _WIN32
-#elifdef __APPLE__
+#elif __APPLE__
 #include <pthread.h>
-#elifdef __linux__
+#elif __linux__
 #include <pthread.h>
 #endif
 #include <string>
@@ -18,9 +18,9 @@ static inline void change_self_name(std::string schema, std::string unique_name)
 {
     auto name = schema.substr(0, 1) + "-" + unique_name;
 #ifdef _WIN32
-#elifdef __APPLE__
+#elif __APPLE__
     pthread_setname_np(name.substr(0, 15).c_str());
-#elifdef __linux__
+#elif __linux__
     pthread_setname_np(pthread_self(), name.substr(0, 15).c_str());
 #endif
 }

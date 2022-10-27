@@ -50,7 +50,7 @@ static void ipv6_netmask(struct in6_addr *netmask, int hostBits)
     }
 #ifdef _WIN32
     p_netmask = reinterpret_cast<uint32_t *>(netmask->s6_words[0]);
-#elifdef __linux__
+#elif __linux__
     p_netmask = &netmask->s6_addr32[0];
 #else
     p_netmask = &netmask->__u6_addr.__u6_addr32[0];

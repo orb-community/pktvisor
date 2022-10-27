@@ -3,10 +3,10 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 #ifdef _WIN32
-#elifdef __APPLE__
+#elif __APPLE__
 #include <net/if.h>
 #include <ifaddrs.h>
-#elifdef __linux__
+#elif __linux__
 #include <net/if.h>
 #include <linux/if_link.h>
 #include <ifaddrs.h>
@@ -19,7 +19,7 @@ static inline std::string most_used_interface()
 {
 #ifdef _WIN32
     return std::string();
-#elifdef __APPLE__
+#elif __APPLE__
     struct ifaddrs *ifaddr;
     if (getifaddrs(&ifaddr) == -1) {
         return std::string();
@@ -41,7 +41,7 @@ static inline std::string most_used_interface()
     }
     freeifaddrs(ifaddr);
     return interface;
-#elifdef __linux__
+#elif __linux__
     struct ifaddrs *ifaddr;
     if (getifaddrs(&ifaddr) == -1) {
         return std::string();

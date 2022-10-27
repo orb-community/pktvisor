@@ -8,8 +8,8 @@
 #include <vector>
 
 #ifdef _WIN32
-#elifdef __APPLE__
-#elifdef __linux__
+#elif __APPLE__
+#elif __linux__
 #include <unistd.h>
 #endif
 
@@ -18,8 +18,8 @@ namespace visor {
 class ThreadMonitor
 {
 #ifdef _WIN32
-#elifdef __APPLE__
-#elifdef __linux__
+#elif __APPLE__
+#elif __linux__
     static constexpr size_t PROC_STAT_POS_UTIME = 13;
     static constexpr size_t PROC_STAT_POS_STIME = 14;
     uint64_t _last_system_time = 0;
@@ -33,9 +33,9 @@ public:
     {
 #ifdef _WIN32
         return 0;
-#elifdef __APPLE__
+#elif __APPLE__
         return 0;
-#elifdef __linux__
+#elif __linux__
         uint64_t stat;
 
         std::ifstream system_stat("/proc/stat");
@@ -80,9 +80,9 @@ public:
     {
 #ifdef _WIN32
         return 0;
-#elifdef __APPLE__
+#elif __APPLE__
         return 0;
-#elifdef __linux__
+#elif __linux__
         uint64_t memory;
         std::string token;
         std::ifstream file("/proc/thread-self/status");
