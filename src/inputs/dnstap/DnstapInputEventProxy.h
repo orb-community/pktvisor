@@ -8,7 +8,7 @@
 #include "dnstap.pb.h"
 #include <bitset>
 #include <utility>
-#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+#ifdef _WIN32
 #include <winsock2.h>
 typedef std::pair<std::string, uint8_t> Ipv4Subnet;
 typedef std::pair<std::string, uint8_t> Ipv6Subnet;

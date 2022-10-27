@@ -19,13 +19,12 @@ PingReceiver::PingReceiver()
 PingReceiver::~PingReceiver()
 {
     _poll->close();
-#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+#ifdef _WIN32
     closesocket(_sock);
-    _sock = INVALID_SOCKET;
 #else
     close(_sock);
-    _sock = INVALID_SOCKET;
 #endif
+    _sock = INVALID_SOCKET;
 
     if (_async_h && _io_thread) {
         // we have to use AsyncHandle to stop the loop from the same thread the loop is running in
@@ -55,7 +54,7 @@ void PingReceiver::_setup_receiver()
     });
 
     _sock = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
-#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+#ifdef _WIN32
     if (_sock == INVALID_SOCKET) {
         throw NetProbeException("unable to create receiver socket");
     }
@@ -257,7 +256,7 @@ std::optional<ErrorType> PingProbe::_create_socket()
     }
 
     _sock = socket(domain, SOCK_RAW, IPPROTO_ICMP);
-#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+#ifdef _WIN32
     if (_sock == INVALID_SOCKET) {
         return ErrorType::SocketError;
     }
@@ -302,12 +301,11 @@ void PingProbe::_close_socket()
     if (--sock_count; sock_count) {
         return;
     }
-#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+#ifdef _WIN32
     closesocket(_sock);
-    _sock = INVALID_SOCKET;
 #else
     close(_sock);
-    _sock = INVALID_SOCKET;
 #endif
+    _sock = INVALID_SOCKET;
 }
 }

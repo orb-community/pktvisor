@@ -1,6 +1,6 @@
 
 # Unit
-if(WIN32)
+if(_WIN32)
     #dnstap not supported
     add_executable(unit-tests-handler-dns
             main.cpp

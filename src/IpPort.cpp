@@ -10,7 +10,7 @@ std::ostream &operator<<(std::ostream &os, const IpPort &p)
 
 std::string IpPort::get_service() const
 {
-#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+#ifdef _WIN32
     return std::to_string(port);
 #elif defined(__APPLE__) || defined(__linux__)
     struct servent *serv{nullptr};

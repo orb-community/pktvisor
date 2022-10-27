@@ -1,5 +1,5 @@
 #include "GeoDB.h"
-#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+#ifdef _WIN32
 #include <ws2tcpip.h>
 #else
 #include <arpa/inet.h>

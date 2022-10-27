@@ -12,7 +12,7 @@
 #pragma GCC diagnostic pop
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 
-#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+#ifdef _WIN32
 #include <winsock2.h>
 #else
 #include <netinet/in.h>
