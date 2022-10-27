@@ -374,7 +374,7 @@ int daemonize()
 #else
 int daemonize()
 {
-    return 0
+    return 0;
 }
 #endif
 
