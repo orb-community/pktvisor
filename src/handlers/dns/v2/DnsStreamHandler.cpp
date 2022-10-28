@@ -71,7 +71,6 @@ void DnsStreamHandler::start()
         default:
             throw ConfigException("DnsStreamHandler: only_rcode filter contained an invalid/unsupported rcode");
         }
-        _register_predicate_filter(Filters::OnlyRCode, "only_rcode", std::to_string(_f_rcode));
     }
     if (config_exists("only_dnssec_response") && config_get<bool>("only_dnssec_response")) {
         _f_enabled.set(Filters::OnlyDNSSECResponse);
@@ -148,9 +147,7 @@ void DnsStreamHandler::start()
     }
 
     if (_pcap_proxy) {
-        if (!_using_predicate_signals) {
-            _pkt_udp_connection = _pcap_proxy->udp_signal.connect(&DnsStreamHandler::process_udp_packet_cb, this);
-        }
+        _pkt_udp_connection = _pcap_proxy->udp_signal.connect(&DnsStreamHandler::process_udp_packet_cb, this);
         _start_tstamp_connection = _pcap_proxy->start_tstamp_signal.connect([this](timespec stamp) {
             set_start_tstamp(stamp);
             _event_proxy ? static_cast<PcapInputEventProxy *>(_event_proxy.get())->start_tstamp_signal(stamp) : void();
@@ -190,9 +187,6 @@ void DnsStreamHandler::stop()
         _tcp_start_connection.disconnect();
         _tcp_end_connection.disconnect();
         _tcp_message_connection.disconnect();
-        if (_using_predicate_signals) {
-            _pcap_proxy->unregister_udp_predicate_signal(name());
-        }
     } else if (_dnstap_proxy) {
         _dnstap_connection.disconnect();
     }
@@ -380,77 +374,77 @@ void DnsStreamHandler::info_json(json &j) const
 {
     common_info_json(j);
     j[schema_key()]["xact"]["open"] = _metrics->num_open_transactions();
-    j[schema_key()]["predicate"]["enabled"] = _using_predicate_signals;
 }
 
-inline void DnsStreamHandler::_register_predicate_filter(Filters filter, std::string f_key, std::string f_value)
-{
-    if (!_using_predicate_signals && filter == Filters::OnlyRCode) {
-        // all DnsStreamHandler race to install this predicate, which is only installed once and called once per udp event
-        // it's job is to return the predicate "jump key" to call matching signals
-        static thread_local auto udp_rcode_predicate = [&cache = _cached_dns_layer](pcpp::Packet &payload, PacketDirection, pcpp::ProtocolType, uint32_t flowkey, timespec stamp) -> std::string {
-            pcpp::UdpLayer *udpLayer = payload.getLayerOfType<pcpp::UdpLayer>();
-            assert(udpLayer);
-            if (flowkey != cache.flowKey || stamp.tv_sec != cache.timestamp.tv_sec || stamp.tv_nsec != cache.timestamp.tv_nsec) {
-                cache.flowKey = flowkey;
-                cache.timestamp = stamp;
-                cache.dnsLayer = std::make_unique<DnsLayer>(udpLayer, &payload);
-            }
-            auto dnsLayer = cache.dnsLayer.get();
-            // return the 'jump key' for pcap to make O(1) call to appropriate signals
-            return std::string(DNS_SCHEMA) + "only_rcode" + std::to_string(dnsLayer->getDnsHeader()->responseCode);
-        };
-
-        // if the jump key matches, this callback fires
-        auto rcode_signal = [this](pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp) {
-            process_udp_packet_cb(payload, dir, l3, flowkey, stamp);
-        };
-        if (_pcap_proxy) {
-            // even though predicate and callback are sent, pcap will only install the first one it sees from dns handler
-            // module name is sent to allow disconnect at shutdown time
-            _pcap_proxy->register_udp_predicate_signal(schema_key(), name(), f_key, f_value, udp_rcode_predicate, rcode_signal);
-            _using_predicate_signals = true;
-        }
-    }
-}
 inline bool DnsStreamHandler::_filtering(DnsLayer &payload, [[maybe_unused]] PacketDirection dir, [[maybe_unused]] pcpp::ProtocolType l3, [[maybe_unused]] pcpp::ProtocolType l4, [[maybe_unused]] uint16_t port, timespec stamp)
 {
-    if (_f_enabled[Filters::ExcludingRCode] && payload.getDnsHeader()->responseCode == _f_rcode) {
-        goto will_filter;
-    }
-    if (_f_enabled[Filters::AnswerCount] && payload.getAnswerCount() != _f_answer_count) {
-        goto will_filter;
-    }
-    if (_f_enabled[Filters::OnlyDNSSECResponse]) {
-        if ((payload.getDnsHeader()->queryOrResponse != QR::response) || !payload.getAnswerCount()) {
+    bool response = false;
+    if (payload.getDnsHeader()->queryOrResponse == QR::response) {
+        response = true;
+        if (_f_enabled[Filters::ExcludingRCode] && payload.getDnsHeader()->responseCode == _f_rcode) {
+            goto will_filter;
+        } else if (_f_enabled[Filters::OnlyRCode] && payload.getDnsHeader()->responseCode != _f_rcode) {
             goto will_filter;
         }
-        if (!payload.parseResources(false, true, true) || payload.getFirstAnswer() == nullptr) {
+        if (_f_enabled[Filters::AnswerCount] && payload.getAnswerCount() != _f_answer_count) {
             goto will_filter;
         }
-        bool has_ssig{false};
-        auto dns_answer = payload.getFirstAnswer();
-        for (size_t i = 0; i < payload.getAnswerCount(); ++i) {
-            if (!dns_answer) {
-                break;
+        if (_f_enabled[Filters::OnlyDNSSECResponse]) {
+            if (!payload.getAnswerCount()) {
+                goto will_filter;
             }
-            if (dns_answer->getDnsType() == DNS_TYPE_RRSIG) {
-                has_ssig = true;
-                break;
+            if (!payload.parseResources(false, true, true) || payload.getFirstAnswer() == nullptr) {
+                goto will_filter;
             }
-            dns_answer = payload.getNextAnswer(dns_answer);
+            bool has_ssig{false};
+            auto dns_answer = payload.getFirstAnswer();
+            for (size_t i = 0; i < payload.getAnswerCount(); ++i) {
+                if (!dns_answer) {
+                    break;
+                }
+                if (dns_answer->getDnsType() == DNS_TYPE_RRSIG) {
+                    has_ssig = true;
+                    break;
+                }
+                dns_answer = payload.getNextAnswer(dns_answer);
+            }
+            if (!has_ssig) {
+                goto will_filter;
+            }
         }
-        if (!has_ssig) {
-            goto will_filter;
+        if (_f_enabled[Filters::OnlyQtype]) {
+            if (!payload.parseResources(true) || payload.getFirstQuery() == nullptr) {
+                goto will_filter;
+            }
+            auto qtype = payload.getFirstQuery()->getDnsType();
+            if (!std::any_of(_f_qtypes.begin(), _f_qtypes.end(), [qtype](uint16_t f_qtype) { return qtype == f_qtype; })) {
+                goto will_filter;
+            }
         }
-    }
-    if (_f_enabled[Filters::OnlyQtype]) {
-        if (!payload.parseResources(true) || payload.getFirstQuery() == nullptr) {
-            goto will_filter;
+    } else {
+        if (_f_enabled[Filters::GeoLocNotFound]) {
+            if (!HandlerModulePlugin::city->enabled() || !payload.getAdditionalRecordCount()) {
+                goto will_filter;
+            }
+            if (!payload.parseResources(false, true, true) || payload.getFirstAdditionalRecord() == nullptr) {
+                goto will_filter;
+            }
+            auto ecs = parse_additional_records_ecs(payload.getFirstAdditionalRecord());
+            if (!ecs || ecs->client_subnet.empty() || (HandlerModulePlugin::city->getGeoLoc(ecs->client_subnet.c_str()).location != "Unknown")) {
+                goto will_filter;
+            }
         }
-        auto qtype = payload.getFirstQuery()->getDnsType();
-        if (!std::any_of(_f_qtypes.begin(), _f_qtypes.end(), [qtype](uint16_t f_qtype) { return qtype == f_qtype; })) {
-            goto will_filter;
+        if (_f_enabled[Filters::AsnNotFound]) {
+            if (!HandlerModulePlugin::asn->enabled() || !payload.getAdditionalRecordCount()) {
+                goto will_filter;
+            }
+            if (!payload.parseResources(false, true, true) || payload.getFirstAdditionalRecord() == nullptr) {
+                goto will_filter;
+            }
+            auto ecs = parse_additional_records_ecs(payload.getFirstAdditionalRecord());
+            if (!ecs || ecs->client_subnet.empty() || (HandlerModulePlugin::asn->getASNString(ecs->client_subnet.c_str()) != "Unknown")) {
+                goto will_filter;
+            }
         }
     }
     if (_f_enabled[Filters::OnlyQNameSuffix]) {
@@ -469,34 +463,10 @@ inline bool DnsStreamHandler::_filtering(DnsLayer &payload, [[maybe_unused]] Pac
             goto will_filter;
         }
     }
-    if (_f_enabled[Filters::GeoLocNotFound]) {
-        if (!HandlerModulePlugin::city->enabled() || (payload.getDnsHeader()->queryOrResponse != QR::query) || !payload.getAdditionalRecordCount()) {
-            goto will_filter;
-        }
-        if (!payload.parseResources(false, true, true) || payload.getFirstAdditionalRecord() == nullptr) {
-            goto will_filter;
-        }
-        auto ecs = parse_additional_records_ecs(payload.getFirstAdditionalRecord());
-        if (!ecs || ecs->client_subnet.empty() || (HandlerModulePlugin::city->getGeoLoc(ecs->client_subnet.c_str()).location != "Unknown")) {
-            goto will_filter;
-        }
-    }
-    if (_f_enabled[Filters::AsnNotFound]) {
-        if (!HandlerModulePlugin::asn->enabled() || (payload.getDnsHeader()->queryOrResponse != QR::query) || !payload.getAdditionalRecordCount()) {
-            goto will_filter;
-        }
-        if (!payload.parseResources(false, true, true) || payload.getFirstAdditionalRecord() == nullptr) {
-            goto will_filter;
-        }
-        auto ecs = parse_additional_records_ecs(payload.getFirstAdditionalRecord());
-        if (!ecs || ecs->client_subnet.empty() || (HandlerModulePlugin::asn->getASNString(ecs->client_subnet.c_str()) != "Unknown")) {
-            goto will_filter;
-        }
-    }
 
     return false;
 will_filter:
-    _metrics->process_filtered(stamp);
+    _metrics->process_filtered(stamp, response);
     return true;
 }
 inline bool DnsStreamHandler::_configs(DnsLayer &payload)
@@ -1063,7 +1033,7 @@ void DnsMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap ad
         }
     });
 }
-void DnsMetricsBucket::process_filtered()
+void DnsMetricsBucket::process_filtered(bool response)
 {
     std::unique_lock lock(_mutex);
     if (group_enabled(group::DnsMetrics::Counters)) {
@@ -1093,11 +1063,11 @@ void DnsMetricsManager::process_dns_layer(DnsLayer &payload, PacketDirection dir
         }
     }
 }
-void DnsMetricsManager::process_filtered(timespec stamp)
+void DnsMetricsManager::process_filtered(timespec stamp, bool response)
 {
     // base event, no sample
     new_event(stamp, false);
-    live_bucket()->process_filtered();
+    live_bucket()->process_filtered(response);
 }
 void DnsMetricsManager::process_dnstap(const dnstap::Dnstap &payload, bool filtered)
 {
@@ -1128,7 +1098,7 @@ void DnsMetricsManager::process_dnstap(const dnstap::Dnstap &payload, bool filte
     }
 
     if (filtered) {
-        return process_filtered(stamp);
+        return process_filtered(stamp, payload.message().has_response_message());
     }
     // base event
     new_event(stamp);

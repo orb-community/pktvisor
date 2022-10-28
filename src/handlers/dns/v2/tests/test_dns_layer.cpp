@@ -289,7 +289,7 @@ TEST_CASE("DNS Filters: exclude_noerror", "[pcap][dns]")
     REQUIRE(counters.REFUSED.value() == 1);
     REQUIRE(counters.NX.value() == 1);
     REQUIRE(counters.NODATA.value() == 0);
-    REQUIRE(counters.filtered.value() == 22);
+    REQUIRE(counters.filtered.value() == 10);
     nlohmann::json j;
     dns_handler.metrics()->bucket(0)->to_json(j);
     REQUIRE(j["wire_packets"]["filtered"] == 22);
@@ -324,7 +324,7 @@ TEST_CASE("DNS Filters: only_rcode nx", "[pcap][net]")
     REQUIRE(counters.NODATA.value() == 0);
     nlohmann::json j;
     dns_handler.metrics()->bucket(0)->to_json(j);
-    REQUIRE(j["wire_packets"]["filtered"] == 0);
+    REQUIRE(j["wire_packets"]["filtered"] == 11);
 }
 
 TEST_CASE("DNS Filters: only_rcode refused", "[pcap][dns]")
@@ -356,7 +356,7 @@ TEST_CASE("DNS Filters: only_rcode refused", "[pcap][dns]")
     REQUIRE(counters.NODATA.value() == 0);
     nlohmann::json j;
     dns_handler.metrics()->bucket(0)->to_json(j);
-    REQUIRE(j["wire_packets"]["filtered"] == 0);
+    REQUIRE(j["wire_packets"]["filtered"] == 11);
 }
 TEST_CASE("DNS Filters: only_qtypes AAAA and TXT", "[pcap][dns]")
 {
@@ -386,9 +386,9 @@ TEST_CASE("DNS Filters: only_qtypes AAAA and TXT", "[pcap][dns]")
     // and account for some minor differences in TCP based stats
     CHECK(event_data.num_events->value() == 5851); // wireshark: 5838
     CHECK(event_data.num_samples->value() == 5851);
-    CHECK(counters.IPv4.value() == 2096);
+    CHECK(counters.IPv4.value() == 3976);
     CHECK(counters.IPv6.value() == 0);
-    CHECK(counters.queries.value() == 1050);
+    CHECK(counters.queries.value() == 2930);
     CHECK(counters.replies.value() == 1046);
     CHECK(counters.NODATA.value() == 737);
     CHECK(counters.RNOERROR.value() == 1046);

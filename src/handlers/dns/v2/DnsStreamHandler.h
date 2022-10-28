@@ -219,7 +219,7 @@ public:
         _rate_total.cancel();
     }
 
-    void process_filtered();
+    void process_filtered(bool response);
     void process_dns_layer(bool deep, DnsLayer &payload, pcpp::ProtocolType l3, Protocol l4, uint16_t port, size_t suffix_size = 0);
     void process_dns_layer(pcpp::ProtocolType l3, Protocol l4, QR side);
     void process_dnstap(bool deep, const dnstap::Dnstap &payload);
@@ -262,7 +262,7 @@ public:
         return _qr_pair_manager.open_transaction_count();
     }
 
-    void process_filtered(timespec stamp);
+    void process_filtered(timespec stamp, bool response);
     void process_dns_layer(DnsLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowkey, uint16_t port, size_t suffix_size, timespec stamp);
     void process_dnstap(const dnstap::Dnstap &payload, bool filtered);
 };
@@ -355,7 +355,6 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
     std::vector<uint16_t> _f_qtypes;
     size_t _static_suffix_size{0};
     std::bitset<DNSTAP_TYPE_SIZE> _f_dnstap_types;
-    bool _using_predicate_signals{false};
 
     static const inline StreamMetricsHandler::GroupDefType _group_defs = {
         {"cardinality", group::DnsMetrics::Cardinality},
@@ -368,7 +367,6 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
 
     bool _filtering(DnsLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint16_t port, timespec stamp);
     bool _configs(DnsLayer &payload);
-    void _register_predicate_filter(Filters filter, std::string f_key, std::string f_value);
 
 public:
     DnsStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config);
