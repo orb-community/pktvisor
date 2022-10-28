@@ -79,7 +79,7 @@ if(PKTVISOR_CONAN_INIT)
 endif()
 
 if(WIN32)
-conan_cmake_configure(REQUIRES docopt.cpp/0.6.3 OPTIONS docopt.cpp:boost_regex=True)
+    set(CUSTOM_CMAKE_OPTIONS docopt.cpp:boost_regex=True)
 endif()
 
 conan_cmake_install(
@@ -89,6 +89,7 @@ conan_cmake_install(
         PROFILE_HOST ${PKTVISOR_CONAN_HOST_PROFILE}
         GENERATOR cmake
         SETTINGS ${CONAN_SETTINGS}
+        OPTIONS ${CUSTOM_CMAKE_OPTIONS}
         INSTALL_FOLDER ${CMAKE_BINARY_DIR})
 
 include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
