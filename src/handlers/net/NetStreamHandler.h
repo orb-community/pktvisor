@@ -5,7 +5,7 @@
 #pragma once
 
 #include "AbstractMetricsManager.h"
-#include "DnstapInputEventProxy.h"
+#include "DnstapInputStream.h"
 #include "GeoDB.h"
 #include "MockInputStream.h"
 #include "PcapInputStream.h"

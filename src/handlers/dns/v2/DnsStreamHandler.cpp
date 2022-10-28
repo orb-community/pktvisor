@@ -3,7 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 #include "DnsStreamHandler.h"
-#include "DnstapInputEventProxy.h"
+#include "DnstapInputStream.h"
 #include "HandlerModulePlugin.h"
 #include "utils.h"
 #include <Corrade/Utility/Debug.h>

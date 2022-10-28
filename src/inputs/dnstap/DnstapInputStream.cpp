@@ -4,7 +4,6 @@
 
 #include "DnstapInputStream.h"
 #include "DnstapException.h"
-#include "DnstapInputEventProxy.h"
 #include "ThreadName.h"
 #include <filesystem>
 #include <uvw/async.h>
@@ -418,6 +417,7 @@ std::unique_ptr<InputEventProxy> DnstapInputStream::create_event_proxy(const Con
 
 bool DnstapInputEventProxy::_match_subnet(const std::string &dnstap_ip)
 {
+#ifndef _WIN32
     if (dnstap_ip.size() == 16 && _IPv6_host_list.size() > 0) {
         in6_addr ipv6;
         std::memcpy(&ipv6, dnstap_ip.c_str(), sizeof(in6_addr));
@@ -453,12 +453,13 @@ bool DnstapInputEventProxy::_match_subnet(const std::string &dnstap_ip)
             }
         }
     }
-
+#endif
     return false;
 }
 
 void DnstapInputEventProxy::_parse_host_specs(const std::vector<std::string> &host_list)
 {
+#ifndef _WIN32
     for (const auto &host : host_list) {
         auto delimiter = host.find('/');
         if (delimiter == host.npos) {
@@ -493,6 +494,7 @@ void DnstapInputEventProxy::_parse_host_specs(const std::vector<std::string> &ho
             _IPv4_host_list.emplace_back(ipv4, cidr_number);
         }
     }
+#endif
 }
 
 }
