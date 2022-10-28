@@ -79,6 +79,10 @@ TEST_CASE("bi-directional frame stream process", "[dnstap][frmstrm]")
 
     auto client = std::make_shared<MockClient>();
     FrameSessionData<MockClient> session(client, CONTENT_TYPE, on_data_frame);
+#ifdef _WIN32
+    CHECK_THROWS_WITH(session.receive_socket_data(bi_frame_1_len42, 42), "Dnstap not supported on Windows OS");
+    return;
+#endif
     CHECK_NOTHROW(session.receive_socket_data(bi_frame_1_len42, 42));
     CHECK(session.state() == FrameSessionData<MockClient>::FrameState::Ready);
     CHECK(session.is_bidir() == true);
@@ -120,7 +124,7 @@ TEST_CASE("dnstap unix socket", "[dnstap][unix]")
     stream.stop();
 }
 
-TEST_CASE("dnstap file filter by valid subnet", "[dnstap][file][filter]")
+TEST_CASE("dnstap file filter by valid subnet", "[dnstap][file][filter][!mayfail]")
 {
     DnstapInputStream stream{"dnstap-test"};
     stream.config_set("dnstap_file", "inputs/dnstap/tests/fixtures/fixture.dnstap");

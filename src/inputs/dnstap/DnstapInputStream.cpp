@@ -5,7 +5,6 @@
 #include "DnstapInputStream.h"
 #include "DnstapException.h"
 #include "DnstapInputEventProxy.h"
-#include "FrameSession.h"
 #include "ThreadName.h"
 #include <filesystem>
 #include <uvw/async.h>
@@ -29,6 +28,7 @@ void DnstapInputStream::_read_frame_stream_file()
 {
     assert(config_exists("dnstap_file"));
 
+#ifndef _WIN32
     // Setup file reader options
     auto fileOptions = fstrm_file_options_init();
     fstrm_file_options_set_file_path(fileOptions, config_get<std::string>("dnstap_file").c_str());
@@ -82,6 +82,7 @@ void DnstapInputStream::_read_frame_stream_file()
     }
 
     fstrm_reader_destroy(&reader);
+#endif
 }
 
 void DnstapInputStream::start()

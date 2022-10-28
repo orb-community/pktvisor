@@ -4,7 +4,12 @@
 
 #pragma once
 
-#include "FrameSession.h"
+#ifdef _WIN32
+//Dnstap is currently not supported on Windows
+#include "WinFrameSession.h"
+#else
+#include "UnixFrameSession.h"
+#endif
 #include "InputStream.h"
 #include "dnstap.pb.h"
 #include <DnsLayer.h>

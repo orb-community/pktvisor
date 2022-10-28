@@ -1,11 +1,6 @@
 #include <catch2/catch.hpp>
 
-#ifdef _WIN32
-//Dnstap currently not supported on windows
-#include "FakeDnstapInputStream.h"
-#else
 #include "DnstapInputStream.h"
-#endif
 #include "FlowInputStream.h"
 #include "InputResourcesStreamHandler.h"
 #include "PcapInputStream.h"
@@ -26,7 +21,7 @@ TEST_CASE("Check resources for pcap input", "[pcap][resources]")
 
     resources_handler.start();
     stream.start();
-    //add and remove policy
+    // add and remove policy
     auto policy = std::make_unique<visor::Policy>("policy-test");
     stream.add_policy(policy.get());
     stream.remove_policy(policy.get());
@@ -55,7 +50,7 @@ TEST_CASE("Check resources for pcap input", "[pcap][resources]")
     CHECK(line == "# TYPE base_total gauge");
 }
 
-TEST_CASE("Check resources for dnstap input", "[dnstap][resources]")
+TEST_CASE("Check resources for dnstap input", "[dnstap][resources][!mayfail]")
 {
     DnstapInputStream stream{"dnstap-test"};
     stream.config_set("dnstap_file", "inputs/dnstap/tests/fixtures/fixture.dnstap");
