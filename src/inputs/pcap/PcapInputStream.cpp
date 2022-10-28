@@ -196,7 +196,11 @@ std::string PcapInputStream::_get_interface_list() const
     std::vector<std::string> ifNameListV;
     auto l = pcpp::PcapLiveDeviceList::getInstance().getPcapLiveDevicesList();
     for (const auto &ifd : l) {
+#ifdef _WIN32
+        ifNameListV.push_back(ifd->getName() + "(" + ifd->getDesc() + ")");
+#else
         ifNameListV.push_back(ifd->getName());
+#endif
     }
     std::string ifNameList = std::accumulate(std::begin(ifNameListV), std::end(ifNameListV), std::string(),
         [](std::string &ss, std::string &s) {
