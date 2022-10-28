@@ -78,6 +78,10 @@ if(PKTVISOR_CONAN_INIT)
             VERIFY_SSL True)
 endif()
 
+if(WIN32)
+conan_cmake_configure(REQUIRES docopt.cpp/0.6.3 OPTIONS docopt.cpp:boost_regex=True)
+endif()
+
 conan_cmake_install(
         PATH_OR_REFERENCE ${PROJECT_SOURCE_DIR}
         BUILD ${PKTVISOR_CONAN_BUILD}

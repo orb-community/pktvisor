@@ -25,4 +25,3 @@ protobuf/3.19.2
 
 [options]
 pcapplusplus:immediate_mode=True
-docopt.cpp:boost_regex=True
