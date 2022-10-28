@@ -110,6 +110,8 @@ add_subdirectory(3rd)
 add_subdirectory(libs)
 add_subdirectory(src)
 add_subdirectory(cmd)
+if(NOT WIN32)
 add_subdirectory(integration_tests)
+endif()
 
 endif()
