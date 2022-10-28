@@ -155,7 +155,7 @@ If you have a preferred installation method that you would like to see support
 for, [please create an issue](https://github.com/ns1/pktvisor/issues/new).
 
 ### Execute Pktvisord binary without root
-Pktvisord uses libpcap to capture PCAP from the desired interface. To do so, it needs system capture permissions.
+Pktvisord uses libpcap to capture PCAP from the desired interface. To do so, it needs system network capture permissions.
 You are able to authorize those specific requirements only once and then be able to run the binary without `sudo`.
 ```shell
 sudo setcap cap_net_raw,cap_net_admin=eip /<full_path>/pktvisord-x86_64
