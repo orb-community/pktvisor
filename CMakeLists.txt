@@ -78,6 +78,10 @@ if(PKTVISOR_CONAN_INIT)
             VERIFY_SSL True)
 endif()
 
+if(WIN32)
+    set(CUSTOM_CMAKE_OPTIONS docopt.cpp:boost_regex=True)
+endif()
+
 conan_cmake_install(
         PATH_OR_REFERENCE ${PROJECT_SOURCE_DIR}
         BUILD ${PKTVISOR_CONAN_BUILD}
@@ -85,6 +89,7 @@ conan_cmake_install(
         PROFILE_HOST ${PKTVISOR_CONAN_HOST_PROFILE}
         GENERATOR cmake
         SETTINGS ${CONAN_SETTINGS}
+        OPTIONS ${CUSTOM_CMAKE_OPTIONS}
         INSTALL_FOLDER ${CMAKE_BINARY_DIR})
 
 include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
@@ -110,6 +115,8 @@ add_subdirectory(3rd)
 add_subdirectory(libs)
 add_subdirectory(src)
 add_subdirectory(cmd)
+if(NOT WIN32)
 add_subdirectory(integration_tests)
+endif()
 
 endif()

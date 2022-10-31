@@ -4,8 +4,6 @@
 
 #include "DnstapInputStream.h"
 #include "DnstapException.h"
-#include "DnstapInputEventProxy.h"
-#include "FrameSession.h"
 #include "ThreadName.h"
 #include <filesystem>
 #include <uvw/async.h>
@@ -29,6 +27,7 @@ void DnstapInputStream::_read_frame_stream_file()
 {
     assert(config_exists("dnstap_file"));
 
+#ifndef _WIN32
     // Setup file reader options
     auto fileOptions = fstrm_file_options_init();
     fstrm_file_options_set_file_path(fileOptions, config_get<std::string>("dnstap_file").c_str());
@@ -82,6 +81,7 @@ void DnstapInputStream::_read_frame_stream_file()
     }
 
     fstrm_reader_destroy(&reader);
+#endif
 }
 
 void DnstapInputStream::start()
@@ -417,6 +417,7 @@ std::unique_ptr<InputEventProxy> DnstapInputStream::create_event_proxy(const Con
 
 bool DnstapInputEventProxy::_match_subnet(const std::string &dnstap_ip)
 {
+#ifndef _WIN32
     if (dnstap_ip.size() == 16 && _IPv6_host_list.size() > 0) {
         in6_addr ipv6;
         std::memcpy(&ipv6, dnstap_ip.c_str(), sizeof(in6_addr));
@@ -452,12 +453,13 @@ bool DnstapInputEventProxy::_match_subnet(const std::string &dnstap_ip)
             }
         }
     }
-
+#endif
     return false;
 }
 
 void DnstapInputEventProxy::_parse_host_specs(const std::vector<std::string> &host_list)
 {
+#ifndef _WIN32
     for (const auto &host : host_list) {
         auto delimiter = host.find('/');
         if (delimiter == host.npos) {
@@ -492,6 +494,7 @@ void DnstapInputEventProxy::_parse_host_specs(const std::vector<std::string> &ho
             _IPv4_host_list.emplace_back(ipv4, cidr_number);
         }
     }
+#endif
 }
 
 }

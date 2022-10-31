@@ -23,12 +23,7 @@
 #include "handlers/net/NetStreamHandler.h"
 #include "inputs/pcap/PcapInputStream.h"
 #include "inputs/flow/FlowInputStream.h"
-#ifdef _WIN32
-//Dnstap currently not supported on windows
-#include "inputs/dnstap/FakeDnstapInputStream.h"
-#else
 #include "inputs/dnstap/DnstapInputStream.h"
-#endif
 
 static const char USAGE[] =
     R"(pktvisor-reader
