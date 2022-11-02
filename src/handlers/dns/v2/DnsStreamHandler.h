@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "../../../../libs/visor_transaction/TransactionManager.h"
+#include "TransactionManager.h"
 #include "AbstractMetricsManager.h"
 #include "GeoDB.h"
 #include "MockInputStream.h"
