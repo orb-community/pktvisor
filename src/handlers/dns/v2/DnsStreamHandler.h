@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "TransactionManager.h"
 #include "AbstractMetricsManager.h"
 #include "GeoDB.h"
 #include "MockInputStream.h"
@@ -11,7 +12,6 @@
 #include "StreamHandler.h"
 #include "dns.h"
 #include "dnstap.pb.h"
-#include "querypairmgr.h"
 #include <Corrade/Utility/Debug.h>
 #include <bitset>
 #include <limits>
@@ -24,6 +24,7 @@ class DnstapInputEventProxy;
 namespace visor::handler::dns {
 
 using namespace visor::lib::dns;
+using namespace visor::lib::transaction;
 using namespace visor::input::pcap;
 using namespace visor::input::dnstap;
 using namespace visor::input::mock;
@@ -42,6 +43,10 @@ enum DnsMetrics : visor::MetricGroupIntType {
     TopPorts
 };
 }
+
+struct DnsTransaction : public Transaction {
+    size_t querySize;
+};
 
 enum Protocol : uint64_t {
     DNSTAP_UDP = dnstap::SocketProtocol::UDP,
@@ -224,7 +229,8 @@ public:
 
 class DnsMetricsManager final : public visor::AbstractMetricsManager<DnsMetricsBucket>
 {
-    QueryResponsePairMgr _qr_pair_manager;
+    using DnsXactID = std::pair<uint32_t, uint16_t>;
+    visor::lib::transaction::TransactionManager<DnsXactID, DnsTransaction> _qr_pair_manager;
     float _to90th{0.0};
     float _from90th{0.0};
 

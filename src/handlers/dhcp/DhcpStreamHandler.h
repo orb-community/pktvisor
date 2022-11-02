@@ -8,17 +8,23 @@
 #include "DhcpLayer.h"
 #include "DhcpV6Layer.h"
 #include "PcapInputStream.h"
-#include "RequestAckManager.h"
 #include "StreamHandler.h"
+#include "TransactionManager.h"
 #include <Corrade/Utility/Debug.h>
 #include <limits>
 #include <string>
 
 namespace visor::handler::dhcp {
 
+using namespace visor::lib::transaction;
 using namespace visor::input::pcap;
 
 static constexpr const char *DHCP_SCHEMA{"dhcp"};
+
+struct DhcpTransaction : public Transaction {
+    std::string hostname;
+    std::string mac_address;
+};
 
 class DhcpMetricsBucket final : public visor::AbstractMetricsBucket
 {
@@ -100,7 +106,7 @@ public:
 
 class DhcpMetricsManager final : public visor::AbstractMetricsManager<DhcpMetricsBucket>
 {
-    RequestAckManager _request_ack_manager;
+    TransactionManager<uint32_t, DhcpTransaction, std::hash<uint32_t>> _request_ack_manager;
 
 public:
     DhcpMetricsManager(const Configurable *window_config)

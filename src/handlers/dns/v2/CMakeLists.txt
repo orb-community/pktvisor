@@ -18,6 +18,7 @@ target_include_directories(VisorHandlerDnsV2
 target_link_libraries(VisorHandlerDnsV2
         PUBLIC
         Visor::Lib::Dns
+        Visor::Lib::Transaction
         Visor::Input::Pcap
         Visor::Input::Dnstap
         Visor::Input::Mock

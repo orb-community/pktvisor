@@ -6,8 +6,8 @@
 
 #include "AbstractMetricsManager.h"
 #include "NetProbeInputStream.h"
-#include "RequestReplyManager.h"
 #include "StreamHandler.h"
+#include "TransactionManager.h"
 #include <Corrade/Utility/Debug.h>
 #include <IcmpLayer.h>
 #include <limits>
@@ -15,9 +15,14 @@
 
 namespace visor::handler::netprobe {
 
+using namespace visor::lib::transaction;
 using namespace visor::input::netprobe;
 
 static constexpr const char *NET_PROBE_SCHEMA{"netprobe"};
+
+struct NetProbeTransaction : public Transaction {
+    std::string target;
+};
 
 struct Target {
     Quantile<uint64_t> time_us;
@@ -67,7 +72,7 @@ public:
 
 class NetProbeMetricsManager final : public visor::AbstractMetricsManager<NetProbeMetricsBucket>
 {
-    RequestReplyManager _request_reply_manager;
+    TransactionManager<uint32_t, NetProbeTransaction, std::hash<uint32_t>> _request_reply_manager;
 
 public:
     NetProbeMetricsManager(const Configurable *window_config)

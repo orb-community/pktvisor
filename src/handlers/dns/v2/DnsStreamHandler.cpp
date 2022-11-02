@@ -1082,14 +1082,14 @@ void DnsMetricsManager::process_dns_layer(DnsLayer &payload, PacketDirection dir
     if (group_enabled(group::DnsMetrics::DnsTransactions)) {
         // handle dns transactions (query/response pairs)
         if (payload.getDnsHeader()->queryOrResponse == QR::response) {
-            auto xact = _qr_pair_manager.maybe_end_transaction(flowkey, payload.getDnsHeader()->transactionID, stamp);
+            auto xact = _qr_pair_manager.maybe_end_transaction(DnsXactID(flowkey, payload.getDnsHeader()->transactionID), stamp);
             if (xact.first == Result::Valid) {
                 live_bucket()->new_dns_transaction(_deep_sampling_now, _to90th, _from90th, payload, dir, xact.second);
             } else if (xact.first == Result::TimedOut) {
                 live_bucket()->inc_xact_timed_out(1);
             }
         } else {
-            _qr_pair_manager.start_transaction(flowkey, payload.getDnsHeader()->transactionID, stamp, payload.getDataLen());
+            _qr_pair_manager.start_transaction(DnsXactID(flowkey, payload.getDnsHeader()->transactionID), {stamp,{0,0}, payload.getDataLen()});
         }
     }
 }

@@ -7,7 +7,7 @@ corrade_add_static_plugin(VisorHandlerNetProbe
         NetProbeHandler.conf
         NetProbeHandlerModulePlugin.cpp
         NetProbeStreamHandler.cpp
-        RequestReplyManager.cpp)
+        )
 add_library(Visor::Handler::NetProbe ALIAS VisorHandlerNetProbe)
 
 target_include_directories(VisorHandlerNetProbe
@@ -17,6 +17,7 @@ target_include_directories(VisorHandlerNetProbe
 
 target_link_libraries(VisorHandlerNetProbe
         PUBLIC
+        Visor::Lib::Transaction
         Visor::Input::NetProbe
         )
 
