@@ -7,7 +7,7 @@ corrade_add_static_plugin(VisorHandlerDhcp
         DhcpHandler.conf
         DhcpHandlerModulePlugin.cpp
         DhcpStreamHandler.cpp
-        RequestAckManager.cpp)
+        )
 add_library(Visor::Handler::Dhcp ALIAS VisorHandlerDhcp)
 
 target_include_directories(VisorHandlerDhcp
@@ -17,6 +17,7 @@ target_include_directories(VisorHandlerDhcp
 
 target_link_libraries(VisorHandlerDhcp
         PUBLIC
+        Visor::Lib::Transaction
         Visor::Input::Pcap
         )
 

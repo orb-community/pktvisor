@@ -37,6 +37,5 @@ TEST_CASE("Parse Net Probe tests", "[pcap][netprobe]")
     json j;
     netprobe_handler.metrics()->bucket(0)->to_json(j);
 
-    CHECK(event_data.num_events->value() >= 0);
     CHECK(j["targets"]["my_target"]["attempts"] >= 0);
 }

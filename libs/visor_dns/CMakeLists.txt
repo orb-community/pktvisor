@@ -5,7 +5,6 @@ add_library(VisorLibDns
         DnsLayer.cpp
         DnsResource.cpp
         DnsResourceData.cpp
-        querypairmgr.cpp
         )
 add_library(Visor::Lib::Dns ALIAS VisorLibDns)
 
@@ -16,7 +15,6 @@ target_include_directories(VisorLibDns
 
 target_link_libraries(VisorLibDns
         PUBLIC
-        ${CONAN_LIBS_ROBIN-HOOD-HASHING}
         ${CONAN_LIBS_PCAPPLUSPLUS}
         ${CONAN_LIBS_PTHREADS4W}
         ${CONAN_LIBS_LIBPCAP}
