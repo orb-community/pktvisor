@@ -4,12 +4,12 @@
 
 #pragma once
 
-#include "TransactionManager.h"
 #include "AbstractMetricsManager.h"
 #include "GeoDB.h"
 #include "MockInputStream.h"
 #include "PcapInputStream.h"
 #include "StreamHandler.h"
+#include "TransactionManager.h"
 #include "dns.h"
 #include "dnstap.pb.h"
 #include <Corrade/Utility/Debug.h>
@@ -42,16 +42,16 @@ enum DnsMetrics : visor::MetricGroupIntType {
     Quantiles,
     TopEcs,
     TopQtypes,
+    TopRcodes,
     TopSize,
     TopQnames,
-    TopQnamesDetails,
     TopPorts,
-    TimeoutDetails
 };
 }
 
 struct DnsTransaction : public Transaction {
     size_t querySize;
+    std::string ecs;
 };
 
 enum Protocol : uint64_t {
@@ -79,6 +79,7 @@ struct DnsDirection {
         Counter SRVFAIL;
         Counter RNOERROR;
         Counter NODATA;
+        Counter timeout;
         Counters(const std::string &dir)
             : xacts(DNS_SCHEMA, {dir, "xacts"}, "Total DNS " + dir + " transactions (query/reply pairs)")
             , UDP(DNS_SCHEMA, {dir, "udp_xacts"}, "Total DNS " + dir + " transactions (query/reply pairs) received over UDP")
@@ -93,8 +94,10 @@ struct DnsDirection {
             , SRVFAIL(DNS_SCHEMA, {dir, "srvfail_xacts"}, "Total DNS " + dir + " transactions (query/reply pairs) flagged as reply with return code SRVFAIL")
             , RNOERROR(DNS_SCHEMA, {dir, "noerror_xacts"}, "Total DNS " + dir + " transactions (query/reply pairs) flagged as reply with return code NOERROR")
             , NODATA(DNS_SCHEMA, {dir, "nodata_xacts"}, "Total DNS " + dir + " transactions (query/reply pairs) flagged as reply with return code NOERROR and no answer section data")
+            , timeout(DNS_SCHEMA, {dir, "timeout_queries"}, "Total number of DNS " + dir + " queries that timed out")
         {
         }
+
         void operator+=(const Counters &other)
         {
             xacts += other.xacts;
@@ -110,6 +113,7 @@ struct DnsDirection {
             SRVFAIL += other.SRVFAIL;
             RNOERROR += other.RNOERROR;
             NODATA += other.NODATA;
+            timeout += other.timeout;
         }
 
         void to_json(json &j) const
@@ -127,6 +131,7 @@ struct DnsDirection {
             SRVFAIL.to_json(j);
             RNOERROR.to_json(j);
             NODATA.to_json(j);
+            timeout.to_json(j);
         }
 
         void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels) const
@@ -144,6 +149,7 @@ struct DnsDirection {
             SRVFAIL.to_prometheus(out, add_labels);
             RNOERROR.to_prometheus(out, add_labels);
             NODATA.to_prometheus(out, add_labels);
+            timeout.to_prometheus(out, add_labels);
         }
     };
     Counters counters;
@@ -172,9 +178,9 @@ struct DnsDirection {
     DnsDirection(const std::string &dir)
         : counters(dir)
         , dnsTimeUs(DNS_SCHEMA, {dir, "xact_time_us"}, "Quantiles of " + dir + " transaction timing (query/reply pairs) in microseconds")
-        , dnsRatio(DNS_SCHEMA, {dir, "response_query_ratios"}, "Quantiles of " + dir + " ratio of packet sizes in a DNS transaction (reply/query)")
+        , dnsRatio(DNS_SCHEMA, {dir, "response_query_size_ratio"}, "Quantiles of " + dir + " ratio of packet sizes in a DNS transaction (reply/query)")
         , qnameCard(DNS_SCHEMA, {dir, "cardinality", "qname"}, "Cardinality of unique QNAMES, both ingress and egress")
-        , topGeoLocECS(DNS_SCHEMA, "geo_loc", {dir, "top_geoLoc_ecs_xacts"}, "Top GeoIP ECS locations")
+        , topGeoLocECS(DNS_SCHEMA, "geo_loc", {dir, "top_geo_loc_ecs_xacts"}, "Top GeoIP ECS locations")
         , topASNECS(DNS_SCHEMA, "asn", {dir, "top_asn_ecs_xacts"}, "Top " + dir + " ASNs by ECS")
         , topQueryECS(DNS_SCHEMA, "ecs", {dir, "top_query_ecs_xacts"}, "Top " + dir + " EDNS Client Subnet (ECS) observed in DNS queries")
         , topQname2(DNS_SCHEMA, "qname", {dir, "top_qname2_xacts"}, "Top " + dir + " QNAMES, aggregated at a depth of two labels")
@@ -216,52 +222,40 @@ class DnsMetricsBucket final : public visor::AbstractMetricsBucket
 {
 protected:
     mutable std::shared_mutex _mutex;
-    DnsDirection _in;
-    DnsDirection _out;
-    DnsDirection _undef;
+    std::map<PacketDirection, DnsDirection> _dns{{PacketDirection::toHost, DnsDirection("in")},
+        {PacketDirection::fromHost, DnsDirection("out")},
+        {PacketDirection::unknown, DnsDirection("undef")}};
     Counter _filtered;
 
 public:
     DnsMetricsBucket()
-        : _in("in")
-        , _out("out")
-        , _undef("undef")
-        , _filtered(DNS_SCHEMA, {"filtered_packets"}, "Total DNS wire packets seen that did not match the configured filter(s) (if any)")
+        : _filtered(DNS_SCHEMA, {"filtered_packets"}, "Total DNS wire packets seen that did not match the configured filter(s) (if any)")
     {
         set_num_events_info(DNS_SCHEMA, {"observed_packets"}, "Total DNS wire packets events");
         set_num_sample_info(DNS_SCHEMA, {"deep_sampled_packets"}, "Total DNS wire packets that were sampled for deep inspection");
     }
 
-    auto get_xact_data_locked() const
+    auto get_xact_data_locked(PacketDirection dir) const
     {
         std::shared_lock lock(_mutex);
         struct retVals {
-            const Quantile<uint64_t> &xact_to;
-            const Quantile<uint64_t> &xact_from;
+            const Quantile<uint64_t> &xact;
             std::shared_lock<std::shared_mutex> lock;
         };
-        return retVals{_dnsXactToTimeUs, _dnsXactFromTimeUs, std::move(lock)};
+        return retVals{_dns.at(dir).dnsTimeUs, std::move(lock)};
     }
 
-    void inc_xact_timed_out(uint64_t c)
+    void inc_xact_timed_out(uint64_t c, PacketDirection dir)
     {
         std::unique_lock lock(_mutex);
-        _counters.xacts_timed_out += c;
+        _dns.at(dir).counters.timeout += c;
     }
 
     // get a copy of the counters
     DnsDirection::Counters counters(PacketDirection dir) const
     {
         std::shared_lock lock(_mutex);
-        switch (dir) {
-        case PacketDirection::toHost:
-            return _in.counters;
-        case PacketDirection::fromHost:
-            return _out.counters;
-        case PacketDirection::unknown:
-            return _undef.counters;
-        }
-        throw StreamHandlerException("invalid direction");
+        return _dns.at(dir).counters;
     }
 
     // visor::AbstractMetricsBucket
@@ -270,9 +264,9 @@ public:
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override;
     void update_topn_metrics(size_t topn_count, uint64_t percentile_threshold) override
     {
-        _in.update_topn_metrics(topn_count, percentile_threshold);
-        _out.update_topn_metrics(topn_count, percentile_threshold);
-        _undef.update_topn_metrics(topn_count, percentile_threshold);
+        for (auto &dns : _dns) {
+            dns.second.update_topn_metrics(topn_count, percentile_threshold);
+        }
     }
 
     void on_set_read_only() override
@@ -280,19 +274,20 @@ public:
         // stop rate collection
     }
 
-    void process_filtered(bool response);
-    void process_dns_layer(bool deep, DnsLayer &payload, pcpp::ProtocolType l3, Protocol l4, uint16_t port, size_t suffix_size = 0);
-    void process_dnstap(bool deep, const dnstap::Dnstap &payload);
-
-    void new_dns_transaction(bool deep, float to90th, float from90th, DnsLayer &dns, PacketDirection dir, DnsTransaction xact);
+    void process_filtered();
+    void new_dns_transaction(bool deep, float per90th, DnsLayer &dns, PacketDirection dir, DnsTransaction xact, pcpp::ProtocolType l3, Protocol l4, uint16_t port, size_t suffix_size = 0);
 };
 
 class DnsMetricsManager final : public visor::AbstractMetricsManager<DnsMetricsBucket>
 {
     using DnsXactID = std::pair<uint32_t, uint16_t>;
-    visor::lib::transaction::TransactionManager<DnsXactID, DnsTransaction> _qr_pair_manager;
-    float _to90th{0.0};
-    float _from90th{0.0};
+    struct DirTransaction {
+        TransactionManager<DnsXactID, DnsTransaction> xact_map;
+        float per_90th{0.0};
+    };
+    std::map<PacketDirection, DirTransaction> _pair_manager = {{PacketDirection::toHost, DirTransaction()},
+        {PacketDirection::fromHost, DirTransaction()},
+        {PacketDirection::unknown, DirTransaction()}};
 
 public:
     DnsMetricsManager(const Configurable *window_config)
@@ -303,28 +298,28 @@ public:
     void on_period_shift(timespec stamp, [[maybe_unused]] const DnsMetricsBucket *maybe_expiring_bucket) override
     {
         // DNS transaction support
-        auto timed_out = _qr_pair_manager.purge_old_transactions(stamp);
-        if (timed_out) {
-            live_bucket()->inc_xact_timed_out(timed_out);
-        }
-        // collect to/from 90th percentile every period shift to judge slow xacts
-        auto [xact_to, xact_from, lock] = bucket(1)->get_xact_data_locked();
-        if (xact_from.get_n()) {
-            _from90th = xact_from.get_quantile(0.90);
-        }
-        if (xact_to.get_n()) {
-            _to90th = xact_to.get_quantile(0.90);
+        for (auto &manager : _pair_manager) {
+            if (auto timed_out = manager.second.xact_map.purge_old_transactions(stamp); timed_out) {
+                live_bucket()->inc_xact_timed_out(timed_out, manager.first);
+            }
+            if (auto [xact, lock] = bucket(1)->get_xact_data_locked(manager.first); xact.get_n()) {
+                manager.second.per_90th = xact.get_quantile(0.90);
+            }
         }
     }
 
     size_t num_open_transactions() const
     {
-        return _qr_pair_manager.open_transaction_count();
+        size_t count{0};
+        for (const auto &manager : _pair_manager) {
+            count += manager.second.xact_map.open_transaction_count();
+        }
+        return count;
     }
 
-    void process_filtered(timespec stamp, bool response);
+    void process_filtered(timespec stamp);
     void process_dns_layer(DnsLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowkey, uint16_t port, size_t suffix_size, timespec stamp);
-    void process_dnstap(const dnstap::Dnstap &payload, bool filtered);
+    void process_dnstap(const dnstap::Dnstap &payload, PacketDirection dir, bool filtered);
 };
 
 class DnsTcpSessionData final : public TcpSessionData
@@ -417,12 +412,19 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
     std::bitset<DNSTAP_TYPE_SIZE> _f_dnstap_types;
 
     static const inline StreamMetricsHandler::GroupDefType _group_defs = {
+        {"in", group::DnsMetrics::In},
+        {"out", group::DnsMetrics::Out},
+        {"undefined_direction", group::DnsMetrics::UndefinedDirection},
         {"cardinality", group::DnsMetrics::Cardinality},
         {"counters", group::DnsMetrics::Counters},
+        {"quantiles", group::DnsMetrics::Quantiles},
         {"top_ecs", group::DnsMetrics::TopEcs},
+        {"top_qtypes", group::DnsMetrics::TopQtypes},
+        {"top_rcodes", group::DnsMetrics::TopRcodes},
+        {"top_size", group::DnsMetrics::TopSize},
         {"top_qnames", group::DnsMetrics::TopQnames},
-        {"top_qnames_details", group::DnsMetrics::TopQnamesDetails},
         {"top_ports", group::DnsMetrics::TopPorts}};
+
 
     bool _filtering(DnsLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint16_t port, timespec stamp);
     bool _configs(DnsLayer &payload);
