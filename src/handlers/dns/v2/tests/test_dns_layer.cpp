@@ -511,9 +511,7 @@ TEST_CASE("DNS Filters: answer_count", "[pcap][dns]")
     dns_handler.metrics()->bucket(0)->to_json(j);
 
     CHECK(j["filtered_packets"] == 8);
-
-    CHECK(j["out"]["top_qname2_xacts"][0]["name"] == ".mwbsys.com");
-    CHECK(j["out"]["top_qname3_xacts"][0]["name"] == "play.google.com");
+    CHECK(j["out"]["top_qname2_xacts"][0]["estimate"] == 1);
 }
 
 TEST_CASE("DNS Filters: only_dnssec_response", "[pcap][dns]")
@@ -596,8 +594,7 @@ TEST_CASE("DNS Configs: public_suffix_list", "[pcap][dns]")
 
     CHECK(j["filtered_packets"] == 0);
 
-    CHECK(j["out"]["top_qname2_xacts"][0]["name"] == ".nsone.net");
-    CHECK(j["out"]["top_qname3_xacts"][0]["name"] == ".p01.nsone.net");
+    CHECK(j["out"]["top_qname2_xacts"][0]["estimate"] == 2);
 }
 
 TEST_CASE("Parse DNS with ECS data", "[pcap][dns][ecs]")
