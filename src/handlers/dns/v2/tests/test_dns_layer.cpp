@@ -17,7 +17,7 @@
 #pragma GCC diagnostic pop
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 
-using namespace visor::handler::dns;
+using namespace visor::handler::dns::v2;
 using namespace visor::input::pcap;
 using namespace nlohmann;
 

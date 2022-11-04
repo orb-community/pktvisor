@@ -21,7 +21,7 @@ namespace visor::input::dnstap {
 class DnstapInputEventProxy;
 }
 
-namespace visor::handler::dns {
+namespace visor::handler::dns::v2 {
 
 using namespace visor::lib::dns;
 using namespace visor::lib::transaction;

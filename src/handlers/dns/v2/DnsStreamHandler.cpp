@@ -18,7 +18,7 @@
 #include "DnsAdditionalRecord.h"
 #include "PublicSuffixList.h"
 #include <sstream>
-namespace visor::handler::dns {
+namespace visor::handler::dns::v2 {
 
 thread_local DnsStreamHandler::DnsCacheData DnsStreamHandler::_cached_dns_layer;
 

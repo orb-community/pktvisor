@@ -11,7 +11,7 @@
 #include "DnsStreamHandler.h"
 #include "PcapInputStream.h"
 
-using namespace visor::handler::dns;
+using namespace visor::handler::dns::v2;
 using namespace visor::input::pcap;
 using namespace nlohmann;
 using nlohmann::json_schema::json_validator;
