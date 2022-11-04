@@ -16,7 +16,6 @@
 #include <TimespecTimeval.h>
 #pragma GCC diagnostic pop
 #include "DnsAdditionalRecord.h"
-#include "PacketUtils.h"
 #include "PublicSuffixList.h"
 #include <sstream>
 namespace visor::handler::dns {

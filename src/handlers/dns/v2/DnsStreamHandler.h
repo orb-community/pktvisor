@@ -90,13 +90,13 @@ struct DnsDirection {
             , IPv4(DNS_SCHEMA, {"ipv4_xacts"}, "Total DNS transactions (query/reply pairs) received over IPv4")
             , IPv6(DNS_SCHEMA, {"ipv6_xacts"}, "Total DNS transactions (query/reply pairs) received over IPv6")
             , NX(DNS_SCHEMA, {"nxdomain_xacts"}, "Total DNS transactions (query/reply pairs) flagged as reply with return code NXDOMAIN")
-            , ECS(DNS_SCHEMA, {"ecs_xacts"}, "Total DNS transactions (query/reply pairs) flagged as reply with return code NXDOMAIN")
+            , ECS(DNS_SCHEMA, {"ecs_xacts"}, "Total DNS transactions (query/reply pairs) with the EDNS Client Subnet option set")
             , REFUSED(DNS_SCHEMA, {"refused_xacts"}, "Total DNS transactions (query/reply pairs) flagged as reply with return code REFUSED")
             , SRVFAIL(DNS_SCHEMA, {"srvfail_xacts"}, "Total DNS transactions (query/reply pairs) flagged as reply with return code SRVFAIL")
             , RNOERROR(DNS_SCHEMA, {"noerror_xacts"}, "Total DNS transactions (query/reply pairs) flagged as reply with return code NOERROR")
-            , NODATA(DNS_SCHEMA, {"nodata_xacts"}, "Total DNS transactions (query/reply pairs) flagged as reply with return code NOERROR and no answer section data")
+            , NODATA(DNS_SCHEMA, {"nodata_xacts"}, "Total DNS transactions (query/reply pairs) flagged as reply with return code NOERROR but with an empty answers section")
             , timeout(DNS_SCHEMA, {"timeout_queries"}, "Total number of DNS queries that timed out")
-            , orphan(DNS_SCHEMA, {"orphan_responses"}, "Total number of DNS responses that does not have query")
+            , orphan(DNS_SCHEMA, {"orphan_responses"}, "Total number of DNS responses that do not have a corresponding query")
         {
         }
 
@@ -194,7 +194,7 @@ struct DnsDirection {
         , topREFUSED(DNS_SCHEMA, "qname", {"top_refused_xacts"}, "Top QNAMES with result code REFUSED")
         , topSizedQnameResp(DNS_SCHEMA, "qname", {"top_response_bytes"}, "Top QNAMES by response volume in bytes")
         , topSRVFAIL(DNS_SCHEMA, "qname", {"top_srvfail_xacts"}, "Top QNAMES with result code SRVFAIL")
-        , topNODATA(DNS_SCHEMA, "qname", {"top_nodata_xacts"}, "Top QNAMES with result code NOERROR and no answer section")
+        , topNODATA(DNS_SCHEMA, "qname", {"top_nodata_xacts"}, "Top QNAMES with result code NOERROR and empty answer section")
         , topNOERROR(DNS_SCHEMA, "qname", {"top_noerror_xacts"}, "Top QNAMES with result code NOERROR")
         , topUDPPort(DNS_SCHEMA, "port", {"top_udp_ports_xacts"}, "Top UDP source port on the query side of a transaction")
         , topQType(DNS_SCHEMA, "qtype", {"top_qtype_xacts"}, "Top query types")
