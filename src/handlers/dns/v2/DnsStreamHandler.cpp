@@ -88,7 +88,7 @@ void DnsStreamHandler::start()
             } else if (dir == "unknown") {
                 _f_enabled.reset(Filters::DisableUndefDir);
             } else {
-                throw ConfigException(fmt::format("DnsStreamHandler: only_dnssec_response filter contained an invalid/unsupported direction: {}", dir));
+                throw ConfigException(fmt::format("DnsStreamHandler: only_xact_directions filter contained an invalid/unsupported direction: {}", dir));
             }
         }
     }
@@ -393,9 +393,19 @@ void DnsStreamHandler::info_json(json &j) const
     j[schema_key()]["xact"]["open"] = _metrics->num_open_transactions();
 }
 
-inline bool DnsStreamHandler::_filtering(DnsLayer &payload, [[maybe_unused]] PacketDirection dir, [[maybe_unused]] pcpp::ProtocolType l3, [[maybe_unused]] pcpp::ProtocolType l4, [[maybe_unused]] uint16_t port, timespec stamp)
+inline bool DnsStreamHandler::_filtering(DnsLayer &payload, PacketDirection dir, [[maybe_unused]] pcpp::ProtocolType l3, [[maybe_unused]] pcpp::ProtocolType l4, [[maybe_unused]] uint16_t port, timespec stamp)
 {
+    if (_f_enabled[Filters::DisableUndefDir] && dir == PacketDirection::unknown) {
+        goto will_filter;
+    }
+
     if (payload.getDnsHeader()->queryOrResponse == QR::response) {
+        if (_f_enabled[Filters::DisableIn] && dir == PacketDirection::fromHost) {
+            goto will_filter;
+        }
+        if (_f_enabled[Filters::DisableOut] && dir == PacketDirection::toHost) {
+            goto will_filter;
+        }
         if (_f_enabled[Filters::ExcludingRCode] && payload.getDnsHeader()->responseCode == _f_rcode) {
             goto will_filter;
         } else if (_f_enabled[Filters::OnlyRCode] && payload.getDnsHeader()->responseCode != _f_rcode) {
@@ -437,6 +447,12 @@ inline bool DnsStreamHandler::_filtering(DnsLayer &payload, [[maybe_unused]] Pac
             }
         }
     } else {
+        if (_f_enabled[Filters::DisableIn] && dir == PacketDirection::toHost) {
+            goto will_filter;
+        }
+        if (_f_enabled[Filters::DisableOut] && dir == PacketDirection::fromHost) {
+            goto will_filter;
+        }
         if (_f_enabled[Filters::GeoLocNotFound]) {
             if (!HandlerModulePlugin::city->enabled() || !payload.getAdditionalRecordCount()) {
                 goto will_filter;
