@@ -158,6 +158,7 @@ struct DnsDirection {
 
     Quantile<uint64_t> dnsTimeUs;
     Quantile<double> dnsRatio;
+    Rate dnsRate;
 
     Cardinality qnameCard;
 
@@ -181,6 +182,7 @@ struct DnsDirection {
         : counters()
         , dnsTimeUs(DNS_SCHEMA, {"xact_time_us"}, "Quantiles of transaction timing (query/reply pairs) in microseconds")
         , dnsRatio(DNS_SCHEMA, {"response_query_size_ratio"}, "Quantiles of ratio of packet sizes in a DNS transaction (reply/query)")
+        , dnsRate(DNS_SCHEMA, {"dns_xact_rates"}, "Rate of all DNS transaction (reply/query) per second")
         , qnameCard(DNS_SCHEMA, {"cardinality", "qname"}, "Cardinality of unique QNAMES, both ingress and egress")
         , topGeoLocECS(DNS_SCHEMA, "geo_loc", {"top_geo_loc_ecs_xacts"}, "Top GeoIP ECS locations")
         , topASNECS(DNS_SCHEMA, "asn", {"top_asn_ecs_xacts"}, "Top ASNs by ECS")
@@ -291,6 +293,9 @@ public:
     void on_set_read_only() override
     {
         // stop rate collection
+        for (auto &dns : _dns) {
+            dns.second.dnsRate.cancel();
+        }
     }
 
     void process_filtered();

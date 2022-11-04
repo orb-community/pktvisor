@@ -515,6 +515,9 @@ void DnsMetricsBucket::specialized_merge(const AbstractMetricsBucket &o, Metric:
     const auto &other = static_cast<const DnsMetricsBucket &>(o);
 
     // rates maintain their own thread safety
+    for (auto &dns : _dns) {
+        group_enabled(group::DnsMetrics::Quantiles) ? dns.second.dnsRate.merge(other._dns.at(dns.first).dnsRate, agg_operator) : void();
+    }
 
     std::shared_lock r_lock(other._mutex);
     std::unique_lock w_lock(_mutex);
@@ -561,6 +564,9 @@ void DnsMetricsBucket::to_json(json &j) const
 {
 
     bool live_rates = !read_only() && !recorded_stream();
+    for (auto &dns : _dns) {
+        group_enabled(group::DnsMetrics::Quantiles) ? dns.second.dnsRate.to_json(j[_dir_str.at(dns.first)]) : void();
+    }
 
     {
         auto [num_events, num_samples, event_rate, event_lock] = event_data_locked(); // thread safe
@@ -633,6 +639,12 @@ void DnsMetricsBucket::to_json(json &j) const
 
 void DnsMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap add_labels) const
 {
+    for (auto &dns : _dns) {
+        auto dir_labels = add_labels;
+        dir_labels["direction"] = _dir_str.at(dns.first);
+        group_enabled(group::DnsMetrics::Quantiles) ? dns.second.dnsRate.to_prometheus(out, dir_labels) : void();
+    }
+
     {
         auto [num_events, num_samples, event_rate, event_lock] = event_data_locked(); // thread safe
 
@@ -760,13 +772,15 @@ void DnsMetricsBucket::new_dns_transaction(bool deep, float per90th, DnsLayer &p
         }
     }
 
+    if (group_enabled(group::DnsMetrics::Quantiles)) {
+        ++data.dnsRate;
+        data.dnsTimeUs.update(xactTime);
+    }
+
     if (!deep) {
         return;
     }
 
-    if (group_enabled(group::DnsMetrics::Quantiles)) {
-        data.dnsTimeUs.update(xactTime);
-    }
     if (xact.querySize && group_enabled(group::DnsMetrics::TopSize)) {
         data.dnsRatio.update(static_cast<double>(payload.getDataLen()) / xact.querySize);
     }
