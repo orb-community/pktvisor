@@ -484,7 +484,7 @@ TEST_CASE("DNS Filters: answer_count", "[pcap][dns]")
     PcapInputStream stream{"pcap-test"};
     stream.config_set("pcap_file", "tests/fixtures/dns_udp_mixed_rcode.pcap");
     stream.config_set("bpf", "");
-    stream.config_set("host_spec", "192.168.0.0/24");
+    stream.config_set("host_spec", "192.168.0.0/26");
     stream.parse_host_spec();
 
     visor::Config c;
@@ -568,7 +568,7 @@ TEST_CASE("DNS Configs: public_suffix_list", "[pcap][dns]")
     PcapInputStream stream{"pcap-test"};
     stream.config_set("pcap_file", "tests/fixtures/dns_udp_mixed_rcode.pcap");
     stream.config_set("bpf", "");
-    stream.config_set("host_spec", "192.168.0.0/24");
+    stream.config_set("host_spec", "192.168.0.0/26");
     stream.parse_host_spec();
 
     visor::Config c;

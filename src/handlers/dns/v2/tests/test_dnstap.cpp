@@ -11,7 +11,7 @@ TEST_CASE("Parse DNSTAP", "[dnstap][dns][!mayfail]")
 {
     DnstapInputStream stream{"dnstap-test"};
     stream.config_set("dnstap_file", "inputs/dnstap/tests/fixtures/fixture.dnstap");
-    stream.config_set<visor::Configurable::StringList>("only_hosts", {"192.168.0.0/24", "2001:db8::/48"});
+    stream.config_set<visor::Configurable::StringList>("only_hosts", {"192.168.0.0/28", "2001:db8::/48"});
     visor::Config c;
     c.config_set<uint64_t>("num_periods", 1);
     auto stream_proxy = stream.add_event_proxy(c);
@@ -48,7 +48,7 @@ TEST_CASE("Parse DNSTAP", "[dnstap][dns][!mayfail]")
     CHECK(j["unknown"]["top_qname2_xacts"][0]["name"] == ".google.com");
     CHECK(j["unknown"]["top_qname2_xacts"][0]["estimate"] == 9);
 
-    CHECK(j["unknown"]["top_udp_ports_xacts"][0]["name"] == "47054");
+    CHECK(j["unknown"]["top_udp_ports_xacts"][0]["name"] != nullptr);
     CHECK(j["unknown"]["top_udp_ports_xacts"][0]["estimate"] == 2);
 
     CHECK(j["unknown"]["top_qtype_xacts"][0]["name"] == "A");
@@ -137,7 +137,7 @@ TEST_CASE("Parse filtered DNSTAP with data", "[dnstap][dns][filter][!mayfail]")
     CHECK(j["unknown"]["top_qname2_xacts"][0]["name"] == ".google.com");
     CHECK(j["unknown"]["top_qname2_xacts"][0]["estimate"] == 9);
 
-    CHECK(j["unknown"]["top_udp_ports_xacts"][0]["name"] == "47054");
+    CHECK(j["unknown"]["top_udp_ports_xacts"][0]["name"] != nullptr);
     CHECK(j["unknown"]["top_udp_ports_xacts"][0]["estimate"] == 2);
 
     CHECK(j["unknown"]["top_qtype_xacts"][0]["name"] == "A");
