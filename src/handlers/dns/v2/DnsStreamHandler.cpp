@@ -1178,6 +1178,7 @@ void DnsMetricsManager::process_dnstap(const dnstap::Dnstap &payload, PacketDire
             stamp.tv_sec = payload.message().response_time_sec();
             stamp.tv_nsec = payload.message().response_time_nsec();
         }
+        [[fallthrough]];
     case dnstap::Message_Type_FORWARDER_RESPONSE:
     case dnstap::Message_Type_STUB_RESPONSE:
     case dnstap::Message_Type_TOOL_RESPONSE:
@@ -1239,7 +1240,7 @@ void DnsMetricsManager::process_dnstap(const dnstap::Dnstap &payload, PacketDire
         uint8_t *buf = new uint8_t[query.size()];
         std::memcpy(buf, query.c_str(), query.size());
         DnsLayer dpayload(buf, query.size(), nullptr, nullptr);
-        _pair_manager[dir].xact_map.start_transaction(DnsXactID(dpayload.getDnsHeader()->transactionID, 2), {stamp, {0, 0}, payload.message().query_message().size()});
+        _pair_manager[dir].xact_map.start_transaction(DnsXactID(dpayload.getDnsHeader()->transactionID, 2), {stamp, {0, 0}, payload.message().query_message().size(), std::string()});
     }
 }
 }
