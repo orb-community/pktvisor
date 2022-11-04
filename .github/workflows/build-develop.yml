@@ -35,9 +35,8 @@ jobs:
         run: cmake -E make_directory ${{github.workspace}}/build
 
       - name: Get Conan
-        # You may pin to the exact commit or the version.
-        # uses: turtlebrowser/get-conan@4dc7e6dd45c8b1e02e909979d7cfc5ebba6ddbe2
-        uses: turtlebrowser/get-conan@v1.0
+        # You may pin to the exact commit or the version
+        uses: turtlebrowser/get-conan@main
 
       - name: Configure CMake
         # Use a bash shell so we can use the same syntax for environment variable
