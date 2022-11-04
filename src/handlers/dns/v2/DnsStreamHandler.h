@@ -34,9 +34,6 @@ static constexpr const char *DNS_SCHEMA{"dns"};
 // DNS Groups
 namespace group {
 enum DnsMetrics : visor::MetricGroupIntType {
-    In,
-    Out,
-    UndefinedDirection,
     Cardinality,
     Counters,
     Quantiles,
@@ -227,9 +224,13 @@ class DnsMetricsBucket final : public visor::AbstractMetricsBucket
 {
 protected:
     mutable std::shared_mutex _mutex;
-    std::map<PacketDirection, DnsDirection> _dns{{PacketDirection::toHost, DnsDirection()},
-        {PacketDirection::fromHost, DnsDirection()},
-        {PacketDirection::unknown, DnsDirection()}};
+    size_t _topn_count{10};
+    uint64_t _topn_percentile_threshold{0};
+    inline static const std::unordered_map<PacketDirection, std::string> _dir_str = {
+        {PacketDirection::toHost, "in"},
+        {PacketDirection::fromHost, "out"},
+        {PacketDirection::unknown, "unknown"}};
+    std::map<PacketDirection, DnsDirection> _dns;
     Counter _filtered;
 
 public:
@@ -250,16 +251,24 @@ public:
         return retVals{_dns.at(dir).dnsTimeUs, std::move(lock)};
     }
 
+    void dir_setup(PacketDirection dir)
+    {
+        std::unique_lock lock(_mutex);
+        if (!_dns.count(dir)) {
+            _dns[dir].update_topn_metrics(_topn_count, _topn_percentile_threshold);
+        }
+    }
+
     void inc_xact_timed_out(uint64_t c, PacketDirection dir)
     {
         std::unique_lock lock(_mutex);
-        _dns.at(dir).counters.timeout += c;
+        _dns[dir].counters.timeout += c;
     }
 
     void inc_xact_orphan(uint64_t c, PacketDirection dir)
     {
         std::unique_lock lock(_mutex);
-        _dns.at(dir).counters.orphan += c;
+        _dns[dir].counters.orphan += c;
     }
 
     // get a copy of the counters
@@ -275,9 +284,8 @@ public:
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override;
     void update_topn_metrics(size_t topn_count, uint64_t percentile_threshold) override
     {
-        for (auto &dns : _dns) {
-            dns.second.update_topn_metrics(topn_count, percentile_threshold);
-        }
+        _topn_count = topn_count;
+        _topn_percentile_threshold = percentile_threshold;
     }
 
     void on_set_read_only() override
@@ -407,6 +415,9 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
         DnstapMsgType,
         GeoLocNotFound,
         AsnNotFound,
+        DisableIn,
+        DisableOut,
+        DisableUndefDir,
         FiltersMAX
     };
     std::bitset<Filters::FiltersMAX> _f_enabled;
@@ -423,9 +434,6 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
     std::bitset<DNSTAP_TYPE_SIZE> _f_dnstap_types;
 
     static const inline StreamMetricsHandler::GroupDefType _group_defs = {
-        {"in", group::DnsMetrics::In},
-        {"out", group::DnsMetrics::Out},
-        {"undefined_direction", group::DnsMetrics::UndefinedDirection},
         {"cardinality", group::DnsMetrics::Cardinality},
         {"counters", group::DnsMetrics::Counters},
         {"quantiles", group::DnsMetrics::Quantiles},

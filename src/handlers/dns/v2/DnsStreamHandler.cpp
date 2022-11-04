@@ -42,9 +42,6 @@ void DnsStreamHandler::start()
     }
 
     // default enabled groups
-    _groups.set(group::DnsMetrics::In);
-    _groups.set(group::DnsMetrics::Out);
-    _groups.set(group::DnsMetrics::UndefinedDirection);
     _groups.set(group::DnsMetrics::Cardinality);
     _groups.set(group::DnsMetrics::Counters);
     _groups.set(group::DnsMetrics::Quantiles);
@@ -78,6 +75,22 @@ void DnsStreamHandler::start()
     }
     if (config_exists("only_dnssec_response") && config_get<bool>("only_dnssec_response")) {
         _f_enabled.set(Filters::OnlyDNSSECResponse);
+    }
+    if (config_exists("only_xact_directions")) {
+        _f_enabled.set(Filters::DisableIn);
+        _f_enabled.set(Filters::DisableOut);
+        _f_enabled.set(Filters::DisableUndefDir);
+        for (const auto &dir : config_get<StringList>("only_xact_directions")) {
+            if (dir == "in") {
+                _f_enabled.reset(Filters::DisableIn);
+            } else if (dir == "out") {
+                _f_enabled.reset(Filters::DisableOut);
+            } else if (dir == "unknown") {
+                _f_enabled.reset(Filters::DisableUndefDir);
+            } else {
+                throw ConfigException(fmt::format("DnsStreamHandler: only_dnssec_response filter contained an invalid/unsupported direction: {}", dir));
+            }
+        }
     }
     if (config_exists("answer_count")) {
         try {
@@ -490,113 +503,41 @@ void DnsMetricsBucket::specialized_merge(const AbstractMetricsBucket &o, Metric:
     std::shared_lock r_lock(other._mutex);
     std::unique_lock w_lock(_mutex);
 
-    if (group_enabled(group::DnsMetrics::Counters)) {
-        _filtered += other._filtered;
-        group_enabled(group::DnsMetrics::In) ? _dns.at(PacketDirection::toHost).counters += other._dns.at(PacketDirection::toHost).counters : void();
-        group_enabled(group::DnsMetrics::Out) ? _dns.at(PacketDirection::fromHost).counters += other._dns.at(PacketDirection::fromHost).counters : void();
-        group_enabled(group::DnsMetrics::UndefinedDirection) ? _dns.at(PacketDirection::unknown).counters += other._dns.at(PacketDirection::unknown).counters : void();
-    }
+    group_enabled(group::DnsMetrics::Counters) ? _filtered += other._filtered : void();
+    for (auto &dns : _dns) {
 
-    if (group_enabled(group::DnsMetrics::Cardinality)) {
-        group_enabled(group::DnsMetrics::In) ? _dns.at(PacketDirection::toHost).qnameCard.merge(other._dns.at(PacketDirection::toHost).qnameCard) : void();
-        group_enabled(group::DnsMetrics::Out) ? _dns.at(PacketDirection::fromHost).qnameCard.merge(other._dns.at(PacketDirection::fromHost).qnameCard) : void();
-        group_enabled(group::DnsMetrics::UndefinedDirection) ? _dns.at(PacketDirection::unknown).qnameCard.merge(other._dns.at(PacketDirection::unknown).qnameCard) : void();
-    }
+        group_enabled(group::DnsMetrics::Counters) ? dns.second.counters += other._dns.at(dns.first).counters : void();
+        group_enabled(group::DnsMetrics::Cardinality) ? dns.second.qnameCard.merge(other._dns.at(dns.first).qnameCard) : void();
+        group_enabled(group::DnsMetrics::Quantiles) ? dns.second.dnsTimeUs.merge(other._dns.at(dns.first).dnsTimeUs, agg_operator) : void();
 
-    if (group_enabled(group::DnsMetrics::Quantiles)) {
-        group_enabled(group::DnsMetrics::In) ? _dns.at(PacketDirection::toHost).dnsTimeUs.merge(other._dns.at(PacketDirection::toHost).dnsTimeUs, agg_operator) : void();
-        group_enabled(group::DnsMetrics::Out) ? _dns.at(PacketDirection::fromHost).dnsTimeUs.merge(other._dns.at(PacketDirection::fromHost).dnsTimeUs, agg_operator) : void();
-        group_enabled(group::DnsMetrics::UndefinedDirection) ? _dns.at(PacketDirection::unknown).dnsTimeUs.merge(other._dns.at(PacketDirection::unknown).dnsTimeUs, agg_operator) : void();
-    }
+        if (group_enabled(group::DnsMetrics::TopEcs)) {
+            dns.second.topGeoLocECS.merge(other._dns.at(dns.first).topGeoLocECS);
+            dns.second.topASNECS.merge(other._dns.at(dns.first).topASNECS);
+            dns.second.topQueryECS.merge(other._dns.at(dns.first).topQueryECS);
+        }
 
-    if (group_enabled(group::DnsMetrics::TopEcs)) {
-        if (group_enabled(group::DnsMetrics::In)) {
-            _dns.at(PacketDirection::toHost).topGeoLocECS.merge(other._dns.at(PacketDirection::toHost).topGeoLocECS);
-            _dns.at(PacketDirection::toHost).topASNECS.merge(other._dns.at(PacketDirection::toHost).topASNECS);
-            _dns.at(PacketDirection::toHost).topQueryECS.merge(other._dns.at(PacketDirection::toHost).topQueryECS);
+        if (group_enabled(group::DnsMetrics::TopRcodes)) {
+            dns.second.topNX.merge(other._dns.at(dns.first).topNX);
+            dns.second.topREFUSED.merge(other._dns.at(dns.first).topREFUSED);
+            dns.second.topSRVFAIL.merge(other._dns.at(dns.first).topSRVFAIL);
+            dns.second.topNODATA.merge(other._dns.at(dns.first).topNODATA);
+            dns.second.topNOERROR.merge(other._dns.at(dns.first).topNOERROR);
+            dns.second.topRCode.merge(other._dns.at(dns.first).topRCode);
         }
-        if (group_enabled(group::DnsMetrics::Out)) {
-            _dns.at(PacketDirection::fromHost).topGeoLocECS.merge(other._dns.at(PacketDirection::fromHost).topGeoLocECS);
-            _dns.at(PacketDirection::fromHost).topASNECS.merge(other._dns.at(PacketDirection::fromHost).topASNECS);
-            _dns.at(PacketDirection::fromHost).topQueryECS.merge(other._dns.at(PacketDirection::fromHost).topQueryECS);
-        }
-        if (group_enabled(group::DnsMetrics::UndefinedDirection)) {
-            _dns.at(PacketDirection::unknown).topGeoLocECS.merge(other._dns.at(PacketDirection::unknown).topGeoLocECS);
-            _dns.at(PacketDirection::unknown).topASNECS.merge(other._dns.at(PacketDirection::unknown).topASNECS);
-            _dns.at(PacketDirection::unknown).topQueryECS.merge(other._dns.at(PacketDirection::unknown).topQueryECS);
-        }
-    }
 
-    if (group_enabled(group::DnsMetrics::TopRcodes)) {
-        if (group_enabled(group::DnsMetrics::In)) {
-            _dns.at(PacketDirection::toHost).topNX.merge(other._dns.at(PacketDirection::toHost).topNX);
-            _dns.at(PacketDirection::toHost).topREFUSED.merge(other._dns.at(PacketDirection::toHost).topREFUSED);
-            _dns.at(PacketDirection::toHost).topSRVFAIL.merge(other._dns.at(PacketDirection::toHost).topSRVFAIL);
-            _dns.at(PacketDirection::toHost).topNODATA.merge(other._dns.at(PacketDirection::toHost).topNODATA);
-            _dns.at(PacketDirection::toHost).topNOERROR.merge(other._dns.at(PacketDirection::toHost).topNOERROR);
-            _dns.at(PacketDirection::toHost).topRCode.merge(other._dns.at(PacketDirection::toHost).topRCode);
+        if (group_enabled(group::DnsMetrics::TopQnames)) {
+            dns.second.topQname2.merge(other._dns.at(dns.first).topQname2);
+            dns.second.topQname3.merge(other._dns.at(dns.first).topQname3);
+            dns.second.topSlow.merge(other._dns.at(dns.first).topSlow);
         }
-        if (group_enabled(group::DnsMetrics::Out)) {
-            _dns.at(PacketDirection::fromHost).topNX.merge(other._dns.at(PacketDirection::fromHost).topNX);
-            _dns.at(PacketDirection::fromHost).topREFUSED.merge(other._dns.at(PacketDirection::fromHost).topREFUSED);
-            _dns.at(PacketDirection::fromHost).topSRVFAIL.merge(other._dns.at(PacketDirection::fromHost).topSRVFAIL);
-            _dns.at(PacketDirection::fromHost).topNODATA.merge(other._dns.at(PacketDirection::fromHost).topNODATA);
-            _dns.at(PacketDirection::fromHost).topNOERROR.merge(other._dns.at(PacketDirection::fromHost).topNOERROR);
-            _dns.at(PacketDirection::fromHost).topRCode.merge(other._dns.at(PacketDirection::fromHost).topRCode);
-        }
-        if (group_enabled(group::DnsMetrics::UndefinedDirection)) {
-            _dns.at(PacketDirection::unknown).topNX.merge(other._dns.at(PacketDirection::unknown).topNX);
-            _dns.at(PacketDirection::unknown).topREFUSED.merge(other._dns.at(PacketDirection::unknown).topREFUSED);
-            _dns.at(PacketDirection::unknown).topSRVFAIL.merge(other._dns.at(PacketDirection::unknown).topSRVFAIL);
-            _dns.at(PacketDirection::unknown).topNODATA.merge(other._dns.at(PacketDirection::unknown).topNODATA);
-            _dns.at(PacketDirection::unknown).topNOERROR.merge(other._dns.at(PacketDirection::unknown).topNOERROR);
-            _dns.at(PacketDirection::unknown).topRCode.merge(other._dns.at(PacketDirection::unknown).topRCode);
-        }
-    }
 
-    if (group_enabled(group::DnsMetrics::TopQnames)) {
-        if (group_enabled(group::DnsMetrics::In)) {
-            _dns.at(PacketDirection::toHost).topQname2.merge(other._dns.at(PacketDirection::toHost).topQname2);
-            _dns.at(PacketDirection::toHost).topQname3.merge(other._dns.at(PacketDirection::toHost).topQname3);
-            _dns.at(PacketDirection::toHost).topSlow.merge(other._dns.at(PacketDirection::toHost).topSlow);
+        if (group_enabled(group::DnsMetrics::TopSize)) {
+            dns.second.topSizedQnameResp.merge(other._dns.at(dns.first).topSizedQnameResp);
+            dns.second.dnsRatio.merge(other._dns.at(dns.first).dnsRatio, agg_operator);
         }
-        if (group_enabled(group::DnsMetrics::Out)) {
-            _dns.at(PacketDirection::fromHost).topQname2.merge(other._dns.at(PacketDirection::fromHost).topQname2);
-            _dns.at(PacketDirection::fromHost).topQname3.merge(other._dns.at(PacketDirection::fromHost).topQname3);
-            _dns.at(PacketDirection::fromHost).topSlow.merge(other._dns.at(PacketDirection::fromHost).topSlow);
-        }
-        if (group_enabled(group::DnsMetrics::UndefinedDirection)) {
-            _dns.at(PacketDirection::unknown).topQname2.merge(other._dns.at(PacketDirection::toHost).topQname2);
-            _dns.at(PacketDirection::unknown).topQname3.merge(other._dns.at(PacketDirection::toHost).topQname3);
-            _dns.at(PacketDirection::unknown).topSlow.merge(other._dns.at(PacketDirection::unknown).topSlow);
-        }
-    }
 
-    if (group_enabled(group::DnsMetrics::TopSize)) {
-        if (group_enabled(group::DnsMetrics::In)) {
-            _dns.at(PacketDirection::toHost).topSizedQnameResp.merge(other._dns.at(PacketDirection::toHost).topSizedQnameResp);
-            _dns.at(PacketDirection::toHost).dnsRatio.merge(other._dns.at(PacketDirection::toHost).dnsRatio, agg_operator);
-        }
-        if (group_enabled(group::DnsMetrics::Out)) {
-            _dns.at(PacketDirection::fromHost).topSizedQnameResp.merge(other._dns.at(PacketDirection::fromHost).topSizedQnameResp);
-            _dns.at(PacketDirection::fromHost).dnsRatio.merge(other._dns.at(PacketDirection::fromHost).dnsRatio, agg_operator);
-        }
-        if (group_enabled(group::DnsMetrics::UndefinedDirection)) {
-            _dns.at(PacketDirection::unknown).topSizedQnameResp.merge(other._dns.at(PacketDirection::unknown).topSizedQnameResp);
-            _dns.at(PacketDirection::unknown).dnsRatio.merge(other._dns.at(PacketDirection::unknown).dnsRatio, agg_operator);
-        }
-    }
-
-    if (group_enabled(group::DnsMetrics::TopPorts)) {
-        group_enabled(group::DnsMetrics::In) ? _dns.at(PacketDirection::toHost).topUDPPort.merge(other._dns.at(PacketDirection::toHost).topUDPPort) : void();
-        group_enabled(group::DnsMetrics::Out) ? _dns.at(PacketDirection::fromHost).topUDPPort.merge(other._dns.at(PacketDirection::fromHost).topUDPPort) : void();
-        group_enabled(group::DnsMetrics::UndefinedDirection) ? _dns.at(PacketDirection::unknown).topUDPPort.merge(other._dns.at(PacketDirection::unknown).topUDPPort) : void();
-    }
-
-    if (group_enabled(group::DnsMetrics::TopQtypes)) {
-        group_enabled(group::DnsMetrics::In) ? _dns.at(PacketDirection::toHost).topQType.merge(other._dns.at(PacketDirection::toHost).topQType) : void();
-        group_enabled(group::DnsMetrics::Out) ? _dns.at(PacketDirection::fromHost).topQType.merge(other._dns.at(PacketDirection::fromHost).topQType) : void();
-        group_enabled(group::DnsMetrics::UndefinedDirection) ? _dns.at(PacketDirection::unknown).topQType.merge(other._dns.at(PacketDirection::unknown).topQType) : void();
+        group_enabled(group::DnsMetrics::TopPorts) ? dns.second.topUDPPort.merge(other._dns.at(dns.first).topUDPPort) : void();
+        group_enabled(group::DnsMetrics::TopQtypes) ? dns.second.topQType.merge(other._dns.at(dns.first).topQType) : void();
     }
 }
 
@@ -615,74 +556,34 @@ void DnsMetricsBucket::to_json(json &j) const
 
     std::shared_lock r_lock(_mutex);
 
-    if (group_enabled(group::DnsMetrics::Counters)) {
-        _filtered.to_json(j);
-        group_enabled(group::DnsMetrics::In) ? _dns.at(PacketDirection::toHost).counters.to_json(j["in"]) : void();
-        group_enabled(group::DnsMetrics::Out) ? _dns.at(PacketDirection::fromHost).counters.to_json(j["out"]) : void();
-        group_enabled(group::DnsMetrics::UndefinedDirection) ? _dns.at(PacketDirection::unknown).counters.to_json(j["unknown"]) : void();
-    }
+    group_enabled(group::DnsMetrics::Counters) ? _filtered.to_json(j) : void();
 
-    if (group_enabled(group::DnsMetrics::Cardinality)) {
-        group_enabled(group::DnsMetrics::In) ? _dns.at(PacketDirection::toHost).qnameCard.to_json(j["in"]) : void();
-        group_enabled(group::DnsMetrics::Out) ? _dns.at(PacketDirection::fromHost).qnameCard.to_json(j["out"]) : void();
-        group_enabled(group::DnsMetrics::UndefinedDirection) ? _dns.at(PacketDirection::unknown).qnameCard.to_json(j["unknown"]) : void();
-    }
+    for (auto &dns : _dns) {
 
-    if (group_enabled(group::DnsMetrics::Quantiles)) {
-        group_enabled(group::DnsMetrics::In) ? _dns.at(PacketDirection::toHost).dnsTimeUs.to_json(j["in"]) : void();
-        group_enabled(group::DnsMetrics::Out) ? _dns.at(PacketDirection::fromHost).dnsTimeUs.to_json(j["out"]) : void();
-        group_enabled(group::DnsMetrics::UndefinedDirection) ? _dns.at(PacketDirection::unknown).dnsTimeUs.to_json(j["unknown"]) : void();
-    }
+        group_enabled(group::DnsMetrics::Counters) ? dns.second.counters.to_json(j[_dir_str.at(dns.first)]) : void();
+        group_enabled(group::DnsMetrics::Cardinality) ? dns.second.qnameCard.to_json(j[_dir_str.at(dns.first)]) : void();
+        group_enabled(group::DnsMetrics::Quantiles) ? dns.second.dnsTimeUs.to_json(j[_dir_str.at(dns.first)]) : void();
+        group_enabled(group::DnsMetrics::TopPorts) ? dns.second.topUDPPort.to_json(j[_dir_str.at(dns.first)], [](const uint16_t &val) { return std::to_string(val); }) : void();
 
-    if (group_enabled(group::DnsMetrics::TopPorts)) {
-        group_enabled(group::DnsMetrics::In) ? _dns.at(PacketDirection::toHost).topUDPPort.to_json(j["in"], [](const uint16_t &val) { return std::to_string(val); }) : void();
-        group_enabled(group::DnsMetrics::Out) ? _dns.at(PacketDirection::fromHost).topUDPPort.to_json(j["out"], [](const uint16_t &val) { return std::to_string(val); }) : void();
-        group_enabled(group::DnsMetrics::UndefinedDirection) ? _dns.at(PacketDirection::unknown).topUDPPort.to_json(j["unknown"], [](const uint16_t &val) { return std::to_string(val); }) : void();
-    }
-
-    if (group_enabled(group::DnsMetrics::TopEcs)) {
-        if (group_enabled(group::DnsMetrics::In)) {
-            _dns.at(PacketDirection::toHost).topGeoLocECS.to_json(j["in"], [](json &j, const std::string &key, const visor::geo::City &val) {
+        if (group_enabled(group::DnsMetrics::TopEcs)) {
+            dns.second.topGeoLocECS.to_json(j[_dir_str.at(dns.first)], [](json &j, const std::string &key, const visor::geo::City &val) {
                 j[key] = val.location;
                 if (!val.latitude.empty() && !val.longitude.empty()) {
                     j["lat"] = val.latitude;
                     j["lon"] = val.longitude;
                 }
             });
-            _dns.at(PacketDirection::toHost).topASNECS.to_json(j["in"]);
-            _dns.at(PacketDirection::toHost).topQueryECS.to_json(j["in"]);
+            dns.second.topASNECS.to_json(j[_dir_str.at(dns.first)]);
+            dns.second.topQueryECS.to_json(j[_dir_str.at(dns.first)]);
         }
-        if (group_enabled(group::DnsMetrics::Out)) {
-            _dns.at(PacketDirection::fromHost).topGeoLocECS.to_json(j["out"], [](json &j, const std::string &key, const visor::geo::City &val) {
-                j[key] = val.location;
-                if (!val.latitude.empty() && !val.longitude.empty()) {
-                    j["lat"] = val.latitude;
-                    j["lon"] = val.longitude;
-                }
-            });
-            _dns.at(PacketDirection::fromHost).topASNECS.to_json(j["out"]);
-            _dns.at(PacketDirection::fromHost).topQueryECS.to_json(j["out"]);
-        }
-        if (group_enabled(group::DnsMetrics::UndefinedDirection)) {
-            _dns.at(PacketDirection::unknown).topGeoLocECS.to_json(j["unknown"], [](json &j, const std::string &key, const visor::geo::City &val) {
-                j[key] = val.location;
-                if (!val.latitude.empty() && !val.longitude.empty()) {
-                    j["lat"] = val.latitude;
-                    j["lon"] = val.longitude;
-                }
-            });
-            _dns.at(PacketDirection::unknown).topASNECS.to_json(j["unknown"]);
-            _dns.at(PacketDirection::unknown).topQueryECS.to_json(j["unknown"]);
-        }
-    }
-    if (group_enabled(group::DnsMetrics::TopRcodes)) {
-        if (group_enabled(group::DnsMetrics::In)) {
-            _dns.at(PacketDirection::toHost).topNX.to_json(j["in"]);
-            _dns.at(PacketDirection::toHost).topREFUSED.to_json(j["in"]);
-            _dns.at(PacketDirection::toHost).topSRVFAIL.to_json(j["in"]);
-            _dns.at(PacketDirection::toHost).topNODATA.to_json(j["in"]);
-            _dns.at(PacketDirection::toHost).topNOERROR.to_json(j["in"]);
-            _dns.at(PacketDirection::toHost).topRCode.to_json(j["in"], [](const uint16_t &val) {
+
+        if (group_enabled(group::DnsMetrics::TopRcodes)) {
+            dns.second.topNX.to_json(j[_dir_str.at(dns.first)]);
+            dns.second.topREFUSED.to_json(j[_dir_str.at(dns.first)]);
+            dns.second.topSRVFAIL.to_json(j[_dir_str.at(dns.first)]);
+            dns.second.topNODATA.to_json(j[_dir_str.at(dns.first)]);
+            dns.second.topNOERROR.to_json(j[_dir_str.at(dns.first)]);
+            dns.second.topRCode.to_json(j[_dir_str.at(dns.first)], [](const uint16_t &val) {
                 if (RCodeNames.find(val) != RCodeNames.end()) {
                     return RCodeNames[val];
                 } else {
@@ -690,90 +591,20 @@ void DnsMetricsBucket::to_json(json &j) const
                 }
             });
         }
-        if (group_enabled(group::DnsMetrics::Out)) {
-            _dns.at(PacketDirection::fromHost).topNX.to_json(j["out"]);
-            _dns.at(PacketDirection::fromHost).topREFUSED.to_json(j["out"]);
-            _dns.at(PacketDirection::fromHost).topSRVFAIL.to_json(j["out"]);
-            _dns.at(PacketDirection::fromHost).topNODATA.to_json(j["out"]);
-            _dns.at(PacketDirection::fromHost).topNOERROR.to_json(j["out"]);
-            _dns.at(PacketDirection::fromHost).topRCode.to_json(j["out"], [](const uint16_t &val) {
-                if (RCodeNames.find(val) != RCodeNames.end()) {
-                    return RCodeNames[val];
-                } else {
-                    return std::to_string(val);
-                }
-            });
-        }
-        if (group_enabled(group::DnsMetrics::UndefinedDirection)) {
-            _dns.at(PacketDirection::unknown).topNX.to_json(j["unknown"]);
-            _dns.at(PacketDirection::unknown).topREFUSED.to_json(j["unknown"]);
-            _dns.at(PacketDirection::unknown).topSRVFAIL.to_json(j["unknown"]);
-            _dns.at(PacketDirection::unknown).topNODATA.to_json(j["unknown"]);
-            _dns.at(PacketDirection::unknown).topNOERROR.to_json(j["unknown"]);
-            _dns.at(PacketDirection::unknown).topRCode.to_json(j["unknown"], [](const uint16_t &val) {
-                if (RCodeNames.find(val) != RCodeNames.end()) {
-                    return RCodeNames[val];
-                } else {
-                    return std::to_string(val);
-                }
-            });
-        }
-    }
 
-    if (group_enabled(group::DnsMetrics::TopQnames)) {
-        if (group_enabled(group::DnsMetrics::In)) {
-            _dns.at(PacketDirection::toHost).topQname2.to_json(j["in"]);
-            _dns.at(PacketDirection::toHost).topQname3.to_json(j["in"]);
-            _dns.at(PacketDirection::toHost).topSlow.to_json(j["in"]);
+        if (group_enabled(group::DnsMetrics::TopQnames)) {
+            dns.second.topQname2.to_json(j[_dir_str.at(dns.first)]);
+            dns.second.topQname3.to_json(j[_dir_str.at(dns.first)]);
+            dns.second.topSlow.to_json(j[_dir_str.at(dns.first)]);
         }
-        if (group_enabled(group::DnsMetrics::Out)) {
-            _dns.at(PacketDirection::fromHost).topQname2.to_json(j["out"]);
-            _dns.at(PacketDirection::fromHost).topQname3.to_json(j["out"]);
-            _dns.at(PacketDirection::fromHost).topSlow.to_json(j["out"]);
-        }
-        if (group_enabled(group::DnsMetrics::UndefinedDirection)) {
-            _dns.at(PacketDirection::unknown).topQname2.to_json(j["unknown"]);
-            _dns.at(PacketDirection::unknown).topQname3.to_json(j["unknown"]);
-            _dns.at(PacketDirection::unknown).topSlow.to_json(j["unknown"]);
-        }
-    }
 
-    if (group_enabled(group::DnsMetrics::TopSize)) {
-        if (group_enabled(group::DnsMetrics::In)) {
-            _dns.at(PacketDirection::toHost).topSizedQnameResp.to_json(j["in"]);
-            _dns.at(PacketDirection::toHost).dnsRatio.to_json(j["in"]);
+        if (group_enabled(group::DnsMetrics::TopSize)) {
+            dns.second.topSizedQnameResp.to_json(j[_dir_str.at(dns.first)]);
+            dns.second.dnsRatio.to_json(j[_dir_str.at(dns.first)]);
         }
-        if (group_enabled(group::DnsMetrics::Out)) {
-            _dns.at(PacketDirection::fromHost).topSizedQnameResp.to_json(j["out"]);
-            _dns.at(PacketDirection::fromHost).dnsRatio.to_json(j["out"]);
-        }
-        if (group_enabled(group::DnsMetrics::UndefinedDirection)) {
-            _dns.at(PacketDirection::unknown).topSizedQnameResp.to_json(j["unknown"]);
-            _dns.at(PacketDirection::unknown).dnsRatio.to_json(j["unknown"]);
-        }
-    }
 
-    if (group_enabled(group::DnsMetrics::TopQtypes)) {
-        if (group_enabled(group::DnsMetrics::In)) {
-            _dns.at(PacketDirection::toHost).topQType.to_json(j["in"], [](const uint16_t &val) {
-                if (QTypeNames.find(val) != QTypeNames.end()) {
-                    return QTypeNames[val];
-                } else {
-                    return std::to_string(val);
-                }
-            });
-        }
-        if (group_enabled(group::DnsMetrics::Out)) {
-            _dns.at(PacketDirection::fromHost).topQType.to_json(j["out"], [](const uint16_t &val) {
-                if (QTypeNames.find(val) != QTypeNames.end()) {
-                    return QTypeNames[val];
-                } else {
-                    return std::to_string(val);
-                }
-            });
-        }
-        if (group_enabled(group::DnsMetrics::UndefinedDirection)) {
-            _dns.at(PacketDirection::unknown).topQType.to_json(j["unknown"], [](const uint16_t &val) {
+        if (group_enabled(group::DnsMetrics::TopQtypes)) {
+            dns.second.topQType.to_json(j[_dir_str.at(dns.first)], [](const uint16_t &val) {
                 if (QTypeNames.find(val) != QTypeNames.end()) {
                     return QTypeNames[val];
                 } else {
@@ -795,82 +626,37 @@ void DnsMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap ad
     }
 
     std::shared_lock r_lock(_mutex);
-    auto in_labels = add_labels;
-    in_labels["direction"] = "in";
-    auto out_labels = add_labels;
-    out_labels["direction"] = "out";
-    auto unk_labels = add_labels;
-    in_labels["direction"] = "unknown";
 
-    if (group_enabled(group::DnsMetrics::Counters)) {
-        _filtered.to_prometheus(out, add_labels);
-        group_enabled(group::DnsMetrics::In) ? _dns.at(PacketDirection::toHost).counters.to_prometheus(out, in_labels) : void();
-        group_enabled(group::DnsMetrics::Out) ? _dns.at(PacketDirection::fromHost).counters.to_prometheus(out, out_labels) : void();
-        group_enabled(group::DnsMetrics::UndefinedDirection) ? _dns.at(PacketDirection::unknown).counters.to_prometheus(out, unk_labels) : void();
-    }
+    group_enabled(group::DnsMetrics::Counters) ? _filtered.to_prometheus(out, add_labels) : void();
 
-    if (group_enabled(group::DnsMetrics::Cardinality)) {
-        group_enabled(group::DnsMetrics::In) ? _dns.at(PacketDirection::toHost).qnameCard.to_prometheus(out, in_labels) : void();
-        group_enabled(group::DnsMetrics::Out) ? _dns.at(PacketDirection::fromHost).qnameCard.to_prometheus(out, out_labels) : void();
-        group_enabled(group::DnsMetrics::UndefinedDirection) ? _dns.at(PacketDirection::unknown).qnameCard.to_prometheus(out, unk_labels) : void();
-    }
+    for (auto &dns : _dns) {
+        auto dir_labels = add_labels;
+        dir_labels["direction"] = _dir_str.at(dns.first);
 
-    if (group_enabled(group::DnsMetrics::Quantiles)) {
-        group_enabled(group::DnsMetrics::In) ? _dns.at(PacketDirection::toHost).dnsTimeUs.to_prometheus(out, in_labels) : void();
-        group_enabled(group::DnsMetrics::Out) ? _dns.at(PacketDirection::fromHost).dnsTimeUs.to_prometheus(out, out_labels) : void();
-        group_enabled(group::DnsMetrics::UndefinedDirection) ? _dns.at(PacketDirection::unknown).dnsTimeUs.to_prometheus(out, unk_labels) : void();
-    }
+        group_enabled(group::DnsMetrics::Counters) ? dns.second.counters.to_prometheus(out, dir_labels) : void();
+        group_enabled(group::DnsMetrics::Cardinality) ? dns.second.qnameCard.to_prometheus(out, dir_labels) : void();
+        group_enabled(group::DnsMetrics::Quantiles) ? dns.second.dnsTimeUs.to_prometheus(out, dir_labels) : void();
+        group_enabled(group::DnsMetrics::TopPorts) ? dns.second.topUDPPort.to_prometheus(out, dir_labels, [](const uint16_t &val) { return std::to_string(val); }) : void();
 
-    if (group_enabled(group::DnsMetrics::TopPorts)) {
-        group_enabled(group::DnsMetrics::In) ? _dns.at(PacketDirection::toHost).topUDPPort.to_prometheus(out, in_labels, [](const uint16_t &val) { return std::to_string(val); }) : void();
-        group_enabled(group::DnsMetrics::Out) ? _dns.at(PacketDirection::fromHost).topUDPPort.to_prometheus(out, out_labels, [](const uint16_t &val) { return std::to_string(val); }) : void();
-        group_enabled(group::DnsMetrics::UndefinedDirection) ? _dns.at(PacketDirection::unknown).topUDPPort.to_prometheus(out, unk_labels, [](const uint16_t &val) { return std::to_string(val); }) : void();
-    }
-
-    if (group_enabled(group::DnsMetrics::TopEcs)) {
-        if (group_enabled(group::DnsMetrics::In)) {
-            _dns.at(PacketDirection::toHost).topGeoLocECS.to_prometheus(out, in_labels, [](Metric::LabelMap &l, const std::string &key, const visor::geo::City &val) {
+        if (group_enabled(group::DnsMetrics::TopEcs)) {
+            dns.second.topGeoLocECS.to_prometheus(out, dir_labels, [](Metric::LabelMap &l, const std::string &key, const visor::geo::City &val) {
                 l[key] = val.location;
                 if (!val.latitude.empty() && !val.longitude.empty()) {
                     l["lat"] = val.latitude;
                     l["lon"] = val.longitude;
                 }
             });
-            _dns.at(PacketDirection::toHost).topASNECS.to_prometheus(out, in_labels);
-            _dns.at(PacketDirection::toHost).topQueryECS.to_prometheus(out, in_labels);
+            dns.second.topASNECS.to_prometheus(out, dir_labels);
+            dns.second.topQueryECS.to_prometheus(out, dir_labels);
         }
-        if (group_enabled(group::DnsMetrics::Out)) {
-            _dns.at(PacketDirection::fromHost).topGeoLocECS.to_prometheus(out, out_labels, [](Metric::LabelMap &l, const std::string &key, const visor::geo::City &val) {
-                l[key] = val.location;
-                if (!val.latitude.empty() && !val.longitude.empty()) {
-                    l["lat"] = val.latitude;
-                    l["lon"] = val.longitude;
-                }
-            });
-            _dns.at(PacketDirection::fromHost).topASNECS.to_prometheus(out, out_labels);
-            _dns.at(PacketDirection::fromHost).topQueryECS.to_prometheus(out, out_labels);
-        }
-        if (group_enabled(group::DnsMetrics::UndefinedDirection)) {
-            _dns.at(PacketDirection::unknown).topGeoLocECS.to_prometheus(out, unk_labels, [](Metric::LabelMap &l, const std::string &key, const visor::geo::City &val) {
-                l[key] = val.location;
-                if (!val.latitude.empty() && !val.longitude.empty()) {
-                    l["lat"] = val.latitude;
-                    l["lon"] = val.longitude;
-                }
-            });
-            _dns.at(PacketDirection::unknown).topASNECS.to_prometheus(out, unk_labels);
-            _dns.at(PacketDirection::unknown).topQueryECS.to_prometheus(out, unk_labels);
-        }
-    }
 
-    if (group_enabled(group::DnsMetrics::TopRcodes)) {
-        if (group_enabled(group::DnsMetrics::In)) {
-            _dns.at(PacketDirection::toHost).topNX.to_prometheus(out, in_labels);
-            _dns.at(PacketDirection::toHost).topREFUSED.to_prometheus(out, in_labels);
-            _dns.at(PacketDirection::toHost).topSRVFAIL.to_prometheus(out, in_labels);
-            _dns.at(PacketDirection::toHost).topNODATA.to_prometheus(out, in_labels);
-            _dns.at(PacketDirection::toHost).topNOERROR.to_prometheus(out, in_labels);
-            _dns.at(PacketDirection::toHost).topRCode.to_prometheus(out, in_labels, [](const uint16_t &val) {
+        if (group_enabled(group::DnsMetrics::TopRcodes)) {
+            dns.second.topNX.to_prometheus(out, dir_labels);
+            dns.second.topREFUSED.to_prometheus(out, dir_labels);
+            dns.second.topSRVFAIL.to_prometheus(out, dir_labels);
+            dns.second.topNODATA.to_prometheus(out, dir_labels);
+            dns.second.topNOERROR.to_prometheus(out, dir_labels);
+            dns.second.topRCode.to_prometheus(out, dir_labels, [](const uint16_t &val) {
                 if (RCodeNames.find(val) != RCodeNames.end()) {
                     return RCodeNames[val];
                 } else {
@@ -878,90 +664,20 @@ void DnsMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap ad
                 }
             });
         }
-        if (group_enabled(group::DnsMetrics::Out)) {
-            _dns.at(PacketDirection::fromHost).topNX.to_prometheus(out, out_labels);
-            _dns.at(PacketDirection::fromHost).topREFUSED.to_prometheus(out, out_labels);
-            _dns.at(PacketDirection::fromHost).topSRVFAIL.to_prometheus(out, out_labels);
-            _dns.at(PacketDirection::fromHost).topNODATA.to_prometheus(out, out_labels);
-            _dns.at(PacketDirection::fromHost).topNOERROR.to_prometheus(out, out_labels);
-            _dns.at(PacketDirection::fromHost).topRCode.to_prometheus(out, out_labels, [](const uint16_t &val) {
-                if (RCodeNames.find(val) != RCodeNames.end()) {
-                    return RCodeNames[val];
-                } else {
-                    return std::to_string(val);
-                }
-            });
-        }
-        if (group_enabled(group::DnsMetrics::UndefinedDirection)) {
-            _dns.at(PacketDirection::unknown).topNX.to_prometheus(out, unk_labels);
-            _dns.at(PacketDirection::unknown).topREFUSED.to_prometheus(out, unk_labels);
-            _dns.at(PacketDirection::unknown).topSRVFAIL.to_prometheus(out, unk_labels);
-            _dns.at(PacketDirection::unknown).topNODATA.to_prometheus(out, unk_labels);
-            _dns.at(PacketDirection::unknown).topNOERROR.to_prometheus(out, unk_labels);
-            _dns.at(PacketDirection::unknown).topRCode.to_prometheus(out, unk_labels, [](const uint16_t &val) {
-                if (RCodeNames.find(val) != RCodeNames.end()) {
-                    return RCodeNames[val];
-                } else {
-                    return std::to_string(val);
-                }
-            });
-        }
-    }
 
-    if (group_enabled(group::DnsMetrics::TopQnames)) {
-        if (group_enabled(group::DnsMetrics::In)) {
-            _dns.at(PacketDirection::toHost).topQname2.to_prometheus(out, in_labels);
-            _dns.at(PacketDirection::toHost).topQname3.to_prometheus(out, in_labels);
-            _dns.at(PacketDirection::toHost).topSlow.to_prometheus(out, in_labels);
+        if (group_enabled(group::DnsMetrics::TopQnames)) {
+            dns.second.topQname2.to_prometheus(out, dir_labels);
+            dns.second.topQname3.to_prometheus(out, dir_labels);
+            dns.second.topSlow.to_prometheus(out, dir_labels);
         }
-        if (group_enabled(group::DnsMetrics::Out)) {
-            _dns.at(PacketDirection::fromHost).topQname2.to_prometheus(out, out_labels);
-            _dns.at(PacketDirection::fromHost).topQname3.to_prometheus(out, out_labels);
-            _dns.at(PacketDirection::fromHost).topSlow.to_prometheus(out, out_labels);
-        }
-        if (group_enabled(group::DnsMetrics::UndefinedDirection)) {
-            _dns.at(PacketDirection::unknown).topQname2.to_prometheus(out, unk_labels);
-            _dns.at(PacketDirection::unknown).topQname3.to_prometheus(out, unk_labels);
-            _dns.at(PacketDirection::unknown).topSlow.to_prometheus(out, unk_labels);
-        }
-    }
 
-    if (group_enabled(group::DnsMetrics::TopSize)) {
-        if (group_enabled(group::DnsMetrics::In)) {
-            _dns.at(PacketDirection::toHost).topSizedQnameResp.to_prometheus(out, in_labels);
-            _dns.at(PacketDirection::toHost).dnsRatio.to_prometheus(out, in_labels);
+        if (group_enabled(group::DnsMetrics::TopSize)) {
+            dns.second.topSizedQnameResp.to_prometheus(out, dir_labels);
+            dns.second.dnsRatio.to_prometheus(out, dir_labels);
         }
-        if (group_enabled(group::DnsMetrics::Out)) {
-            _dns.at(PacketDirection::fromHost).topSizedQnameResp.to_prometheus(out, out_labels);
-            _dns.at(PacketDirection::fromHost).dnsRatio.to_prometheus(out, out_labels);
-        }
-        if (group_enabled(group::DnsMetrics::UndefinedDirection)) {
-            _dns.at(PacketDirection::unknown).topSizedQnameResp.to_prometheus(out, unk_labels);
-            _dns.at(PacketDirection::unknown).dnsRatio.to_prometheus(out, unk_labels);
-        }
-    }
 
-    if (group_enabled(group::DnsMetrics::TopQtypes)) {
-        if (group_enabled(group::DnsMetrics::In)) {
-            _dns.at(PacketDirection::toHost).topQType.to_prometheus(out, in_labels, [](const uint16_t &val) {
-                if (QTypeNames.find(val) != QTypeNames.end()) {
-                    return QTypeNames[val];
-                } else {
-                    return std::to_string(val);
-                }
-            });
-        }
-        if (group_enabled(group::DnsMetrics::Out)) {
-            _dns.at(PacketDirection::fromHost).topQType.to_prometheus(out, out_labels, [](const uint16_t &val) {
-                if (QTypeNames.find(val) != QTypeNames.end()) {
-                    return QTypeNames[val];
-                } else {
-                    return std::to_string(val);
-                }
-            });
-        }
-        if (group_enabled(group::DnsMetrics::UndefinedDirection)) {
-            _dns.at(PacketDirection::unknown).topQType.to_prometheus(out, unk_labels, [](const uint16_t &val) {
+        if (group_enabled(group::DnsMetrics::TopQtypes)) {
+            dns.second.topQType.to_prometheus(out, dir_labels, [](const uint16_t &val) {
                 if (QTypeNames.find(val) != QTypeNames.end()) {
                     return QTypeNames[val];
                 } else {
@@ -980,7 +696,7 @@ void DnsMetricsBucket::new_dns_transaction(bool deep, float per90th, DnsLayer &p
     // lock for write
     std::unique_lock lock(_mutex);
 
-    auto &data = _dns.at(dir);
+    auto &data = _dns[dir];
     if (group_enabled(group::DnsMetrics::Counters)) {
         ++data.counters.xacts;
 
@@ -1132,6 +848,7 @@ void DnsMetricsManager::process_dns_layer(DnsLayer &payload, PacketDirection dir
             dir = PacketDirection::toHost;
         }
         auto xact = _pair_manager[dir].xact_map.maybe_end_transaction(DnsXactID(flowkey, payload.getDnsHeader()->transactionID), stamp);
+        live_bucket()->dir_setup(dir);
         if (xact.first == Result::Valid) {
             live_bucket()->new_dns_transaction(_deep_sampling_now, _pair_manager[dir].per_90th, payload, dir, xact.second, l3, static_cast<Protocol>(l4), port, suffix_size);
         } else if (xact.first == Result::TimedOut) {
@@ -1227,6 +944,7 @@ void DnsMetricsManager::process_dnstap(const dnstap::Dnstap &payload, PacketDire
         std::memcpy(buf, query.c_str(), query.size());
         DnsLayer dpayload(buf, query.size(), nullptr, nullptr);
         auto xact = _pair_manager[dir].xact_map.maybe_end_transaction(DnsXactID(dpayload.getDnsHeader()->transactionID, 2), stamp);
+        live_bucket()->dir_setup(dir);
         if (xact.first == Result::Valid) {
             // process in the "live" bucket. this will parse the resources if we are deep sampling
             live_bucket()->new_dns_transaction(_deep_sampling_now, _pair_manager[dir].per_90th, dpayload, dir, xact.second, l3, static_cast<Protocol>(l4), port);
