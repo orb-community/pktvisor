@@ -43,6 +43,7 @@ enum DnsMetrics : visor::MetricGroupIntType {
     TopSize,
     TopQnames,
     TopPorts,
+    XactTimes,
 };
 }
 
@@ -447,7 +448,8 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
         {"top_rcodes", group::DnsMetrics::TopRcodes},
         {"top_size", group::DnsMetrics::TopSize},
         {"top_qnames", group::DnsMetrics::TopQnames},
-        {"top_ports", group::DnsMetrics::TopPorts}};
+        {"top_ports", group::DnsMetrics::TopPorts},
+        {"xact_times", group::DnsMetrics::XactTimes}};
 
     bool _filtering(DnsLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint16_t port, timespec stamp);
     bool _configs(DnsLayer &payload);

@@ -527,7 +527,6 @@ void DnsMetricsBucket::specialized_merge(const AbstractMetricsBucket &o, Metric:
 
         group_enabled(group::DnsMetrics::Counters) ? dns.second.counters += other._dns.at(dns.first).counters : void();
         group_enabled(group::DnsMetrics::Cardinality) ? dns.second.qnameCard.merge(other._dns.at(dns.first).qnameCard) : void();
-        group_enabled(group::DnsMetrics::Quantiles) ? dns.second.dnsTimeUs.merge(other._dns.at(dns.first).dnsTimeUs, agg_operator) : void();
 
         if (group_enabled(group::DnsMetrics::TopEcs)) {
             dns.second.topGeoLocECS.merge(other._dns.at(dns.first).topGeoLocECS);
@@ -547,7 +546,6 @@ void DnsMetricsBucket::specialized_merge(const AbstractMetricsBucket &o, Metric:
         if (group_enabled(group::DnsMetrics::TopQnames)) {
             dns.second.topQname2.merge(other._dns.at(dns.first).topQname2);
             dns.second.topQname3.merge(other._dns.at(dns.first).topQname3);
-            dns.second.topSlow.merge(other._dns.at(dns.first).topSlow);
         }
 
         if (group_enabled(group::DnsMetrics::TopSize)) {
@@ -557,6 +555,11 @@ void DnsMetricsBucket::specialized_merge(const AbstractMetricsBucket &o, Metric:
 
         group_enabled(group::DnsMetrics::TopPorts) ? dns.second.topUDPPort.merge(other._dns.at(dns.first).topUDPPort) : void();
         group_enabled(group::DnsMetrics::TopQtypes) ? dns.second.topQType.merge(other._dns.at(dns.first).topQType) : void();
+
+        if (group_enabled(group::DnsMetrics::XactTimes)) {
+            dns.second.dnsTimeUs.merge(other._dns.at(dns.first).dnsTimeUs, agg_operator);
+            dns.second.topSlow.merge(other._dns.at(dns.first).topSlow);
+        }
     }
 }
 
@@ -584,7 +587,6 @@ void DnsMetricsBucket::to_json(json &j) const
 
         group_enabled(group::DnsMetrics::Counters) ? dns.second.counters.to_json(j[_dir_str.at(dns.first)]) : void();
         group_enabled(group::DnsMetrics::Cardinality) ? dns.second.qnameCard.to_json(j[_dir_str.at(dns.first)]) : void();
-        group_enabled(group::DnsMetrics::Quantiles) ? dns.second.dnsTimeUs.to_json(j[_dir_str.at(dns.first)]) : void();
         group_enabled(group::DnsMetrics::TopPorts) ? dns.second.topUDPPort.to_json(j[_dir_str.at(dns.first)], [](const uint16_t &val) { return std::to_string(val); }) : void();
 
         if (group_enabled(group::DnsMetrics::TopEcs)) {
@@ -617,7 +619,6 @@ void DnsMetricsBucket::to_json(json &j) const
         if (group_enabled(group::DnsMetrics::TopQnames)) {
             dns.second.topQname2.to_json(j[_dir_str.at(dns.first)]);
             dns.second.topQname3.to_json(j[_dir_str.at(dns.first)]);
-            dns.second.topSlow.to_json(j[_dir_str.at(dns.first)]);
         }
 
         if (group_enabled(group::DnsMetrics::TopSize)) {
@@ -633,6 +634,11 @@ void DnsMetricsBucket::to_json(json &j) const
                     return std::to_string(val);
                 }
             });
+        }
+
+        if (group_enabled(group::DnsMetrics::XactTimes)) {
+            dns.second.dnsTimeUs.to_json(j[_dir_str.at(dns.first)]);
+            dns.second.topSlow.to_json(j[_dir_str.at(dns.first)]);
         }
     }
 }
@@ -663,7 +669,6 @@ void DnsMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap ad
 
         group_enabled(group::DnsMetrics::Counters) ? dns.second.counters.to_prometheus(out, dir_labels) : void();
         group_enabled(group::DnsMetrics::Cardinality) ? dns.second.qnameCard.to_prometheus(out, dir_labels) : void();
-        group_enabled(group::DnsMetrics::Quantiles) ? dns.second.dnsTimeUs.to_prometheus(out, dir_labels) : void();
         group_enabled(group::DnsMetrics::TopPorts) ? dns.second.topUDPPort.to_prometheus(out, dir_labels, [](const uint16_t &val) { return std::to_string(val); }) : void();
 
         if (group_enabled(group::DnsMetrics::TopEcs)) {
@@ -696,7 +701,6 @@ void DnsMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap ad
         if (group_enabled(group::DnsMetrics::TopQnames)) {
             dns.second.topQname2.to_prometheus(out, dir_labels);
             dns.second.topQname3.to_prometheus(out, dir_labels);
-            dns.second.topSlow.to_prometheus(out, dir_labels);
         }
 
         if (group_enabled(group::DnsMetrics::TopSize)) {
@@ -712,6 +716,11 @@ void DnsMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap ad
                     return std::to_string(val);
                 }
             });
+        }
+
+        if (group_enabled(group::DnsMetrics::XactTimes)) {
+            dns.second.dnsTimeUs.to_prometheus(out, dir_labels);
+            dns.second.topSlow.to_prometheus(out, dir_labels);
         }
     }
 }
@@ -774,7 +783,6 @@ void DnsMetricsBucket::new_dns_transaction(bool deep, float per90th, DnsLayer &p
 
     if (group_enabled(group::DnsMetrics::Quantiles)) {
         ++data.dnsRate;
-        data.dnsTimeUs.update(xactTime);
     }
 
     if (!deep) {
@@ -787,6 +795,8 @@ void DnsMetricsBucket::new_dns_transaction(bool deep, float per90th, DnsLayer &p
     if (port && group_enabled(group::DnsMetrics::TopPorts)) {
         data.topUDPPort.update(port);
     }
+
+    group_enabled(group::DnsMetrics::XactTimes) ? data.dnsTimeUs.update(xactTime) : void();
 
     auto success = payload.parseResources(true);
     if (!success) {
@@ -830,10 +840,11 @@ void DnsMetricsBucket::new_dns_transaction(bool deep, float per90th, DnsLayer &p
         }
         group_enabled(group::DnsMetrics::TopSize) ? data.topSizedQnameResp.update(name, payload.getDataLen()) : void();
 
+        if (per90th > 0 && xactTime >= per90th && group_enabled(group::DnsMetrics::XactTimes)) {
+            data.topSlow.update(name);
+        }
+
         if (group_enabled(group::DnsMetrics::TopQnames)) {
-            if (per90th > 0 && xactTime >= per90th) {
-                data.topSlow.update(name);
-            }
             auto aggDomain = aggregateDomain(name, suffix_size);
             data.topQname2.update(std::string(aggDomain.first));
             if (aggDomain.second.size()) {
