@@ -49,6 +49,7 @@ enum DnsMetrics : visor::MetricGroupIntType {
 
 struct DnsTransaction : public Transaction {
     size_t querySize;
+    bool CD;
     std::string ecs;
 };
 
@@ -77,6 +78,9 @@ struct DnsDirection {
         Counter SRVFAIL;
         Counter RNOERROR;
         Counter NODATA;
+        Counter authData;
+        Counter authAnswer;
+        Counter checkDisabled;
         Counter timeout;
         Counter orphan;
         Counters()
@@ -93,6 +97,9 @@ struct DnsDirection {
             , SRVFAIL(DNS_SCHEMA, {"srvfail_xacts"}, "Total DNS transactions (query/reply pairs) flagged as reply with return code SRVFAIL")
             , RNOERROR(DNS_SCHEMA, {"noerror_xacts"}, "Total DNS transactions (query/reply pairs) flagged as reply with return code NOERROR")
             , NODATA(DNS_SCHEMA, {"nodata_xacts"}, "Total DNS transactions (query/reply pairs) flagged as reply with return code NOERROR but with an empty answers section")
+            , authData(DNS_SCHEMA, {"authenticated_data_xacts"}, "Total DNS transactions (query/reply pairs) with the AD flag set in the response")
+            , authAnswer(DNS_SCHEMA, {"authoritative_answer_xacts"}, "Total DNS transactions (query/reply pairs) with the AA flag set in the response")
+            , checkDisabled(DNS_SCHEMA, {"checking_disabled_xacts"}, "Total DNS transactions (query/reply pairs) with the CD flag set in the query")
             , timeout(DNS_SCHEMA, {"timeout_queries"}, "Total number of DNS queries that timed out")
             , orphan(DNS_SCHEMA, {"orphan_responses"}, "Total number of DNS responses that do not have a corresponding query")
         {
@@ -113,6 +120,9 @@ struct DnsDirection {
             SRVFAIL += other.SRVFAIL;
             RNOERROR += other.RNOERROR;
             NODATA += other.NODATA;
+            authData += other.authData;
+            authAnswer += other.authAnswer;
+            checkDisabled += other.checkDisabled;
             timeout += other.timeout;
             orphan += other.orphan;
         }
@@ -132,6 +142,9 @@ struct DnsDirection {
             SRVFAIL.to_json(j);
             RNOERROR.to_json(j);
             NODATA.to_json(j);
+            authData.to_json(j);
+            authAnswer.to_json(j);
+            checkDisabled.to_json(j);
             timeout.to_json(j);
             orphan.to_json(j);
         }
@@ -151,6 +164,9 @@ struct DnsDirection {
             SRVFAIL.to_prometheus(out, add_labels);
             RNOERROR.to_prometheus(out, add_labels);
             NODATA.to_prometheus(out, add_labels);
+            authData.to_prometheus(out, add_labels);
+            authAnswer.to_prometheus(out, add_labels);
+            checkDisabled.to_prometheus(out, add_labels);
             timeout.to_prometheus(out, add_labels);
             orphan.to_prometheus(out, add_labels);
         }

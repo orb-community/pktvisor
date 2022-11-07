@@ -148,8 +148,8 @@ void DnsStreamHandler::start()
             _f_enabled.set(Filters::DnstapMsgType);
         } catch (const std::exception &e) {
             std::vector<std::string> valid_types;
-            for (const auto &type : _dnstap_map_types) {
-                valid_types.push_back(type.first);
+            for (const auto &dtype : _dnstap_map_types) {
+                valid_types.push_back(dtype.first);
             }
             throw ConfigException(fmt::format("DnsStreamHandler: dnstap_msg_type contained an invalid/unsupported type. Valid types: {}", fmt::join(valid_types, ", ")));
         }
@@ -762,6 +762,10 @@ void DnsMetricsBucket::new_dns_transaction(bool deep, float per90th, DnsLayer &p
             break;
         }
 
+        if (xact.CD) {
+            ++data.counters.checkDisabled;
+        }
+
         switch (payload.getDnsHeader()->responseCode) {
         case NoError:
             ++data.counters.RNOERROR;
@@ -778,6 +782,14 @@ void DnsMetricsBucket::new_dns_transaction(bool deep, float per90th, DnsLayer &p
         case Refused:
             ++data.counters.REFUSED;
             break;
+        }
+
+        if (payload.getDnsHeader()->authoritativeAnswer) {
+            ++data.counters.authAnswer;
+        }
+
+        if (payload.getDnsHeader()->authenticData) {
+            ++data.counters.authData;
         }
     }
 
@@ -909,7 +921,8 @@ void DnsMetricsManager::process_dns_layer(DnsLayer &payload, PacketDirection dir
                 subnet = ecs->client_subnet;
             }
         }
-        _pair_manager[dir].xact_map.start_transaction(DnsXactID(flowkey, payload.getDnsHeader()->transactionID), {stamp, {0, 0}, payload.getDataLen(), subnet});
+        _pair_manager[dir].xact_map.start_transaction(DnsXactID(flowkey, payload.getDnsHeader()->transactionID),
+            {{stamp, {0, 0}}, payload.getDataLen(), static_cast<bool>(payload.getDnsHeader()->checkingDisabled), subnet});
     }
 }
 
@@ -999,7 +1012,7 @@ void DnsMetricsManager::process_dnstap(const dnstap::Dnstap &payload, PacketDire
         uint8_t *buf = new uint8_t[query.size()];
         std::memcpy(buf, query.c_str(), query.size());
         DnsLayer dpayload(buf, query.size(), nullptr, nullptr);
-        _pair_manager[dir].xact_map.start_transaction(DnsXactID(dpayload.getDnsHeader()->transactionID, 2), {stamp, {0, 0}, payload.message().query_message().size(), std::string()});
+        _pair_manager[dir].xact_map.start_transaction(DnsXactID(dpayload.getDnsHeader()->transactionID, 2), {{stamp, {0, 0}}, payload.message().query_message().size(), false, std::string()});
     }
 }
 }

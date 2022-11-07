@@ -74,20 +74,10 @@ TEST_CASE("Parse filtered DNSTAP empty data", "[dnstap][dns][filter][!mayfail]")
     stream.stop();
     dns_handler.stop();
 
-    auto counters = dns_handler.metrics()->bucket(0)->counters(PacketDirection::unknown);
     auto event_data = dns_handler.metrics()->bucket(0)->event_data_locked();
 
     CHECK(event_data.num_events->value() == 153);
     CHECK(event_data.num_samples->value() == 153);
-    CHECK(counters.TCP.value() == 0);
-    CHECK(counters.UDP.value() == 0);
-    CHECK(counters.IPv4.value() == 0);
-    CHECK(counters.IPv6.value() == 0);
-    CHECK(counters.xacts.value() == 0);
-    CHECK(counters.RNOERROR.value() == 0);
-    CHECK(counters.NX.value() == 0);
-    CHECK(counters.REFUSED.value() == 0);
-    CHECK(counters.SRVFAIL.value() == 0);
 
     nlohmann::json j;
     dns_handler.metrics()->bucket(0)->to_json(j);

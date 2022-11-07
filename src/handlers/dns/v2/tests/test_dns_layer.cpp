@@ -543,6 +543,9 @@ TEST_CASE("DNS Filters: only_dnssec_response", "[pcap][dns]")
     CHECK(counters.IPv4.value() == 6);
     CHECK(counters.IPv6.value() == 0);
     CHECK(counters.xacts.value() == 6);
+    CHECK(counters.checkDisabled.value() == 0);
+    CHECK(counters.authData.value() == 6);
+    CHECK(counters.authAnswer.value() == 0);
     CHECK(counters.timeout.value() == 0);
     CHECK(counters.orphan.value() == 0);
     CHECK(counters.RNOERROR.value() == 6);
