@@ -17,7 +17,7 @@
 #pragma GCC diagnostic pop
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 
-using namespace visor::handler::dns;
+using namespace visor::handler::dns::v2;
 using namespace visor::input::pcap;
 using namespace nlohmann;
 
@@ -64,7 +64,7 @@ TEST_CASE("Parse DNS UDP IPv4 tests", "[pcap][ipv4][udp][dns]")
     dns_handler.stop();
     stream.stop();
 
-    auto counters = dns_handler.metrics()->bucket(0)->counters();
+    auto counters = dns_handler.metrics()->bucket(0)->counters(PacketDirection::unknown);
     auto event_data = dns_handler.metrics()->bucket(0)->event_data_locked();
 
     CHECK(dns_handler.metrics()->current_periods() == 1);
@@ -81,45 +81,45 @@ TEST_CASE("Parse DNS UDP IPv4 tests", "[pcap][ipv4][udp][dns]")
 
     CHECK(dns_handler.metrics()->current_periods() == 1);
     CHECK(event_data.num_events->value() == 140);
-    CHECK(counters.UDP.value() == 140);
-    CHECK(counters.IPv4.value() == 140);
+    CHECK(counters.UDP.value() == 70);
+    CHECK(counters.IPv4.value() == 70);
     CHECK(counters.IPv6.value() == 0);
-    CHECK(counters.queries.value() == 70);
-    CHECK(counters.replies.value() == 70);
-    CHECK(j["top_qname2"][0]["name"] == ".test.com");
-    CHECK(j["top_qname2"][0]["estimate"] == 140);
+    CHECK(counters.xacts.value() == 70);
+    CHECK(j["unknown"]["top_qname2_xacts"][0]["name"] == ".test.com");
+    CHECK(j["unknown"]["top_qname2_xacts"][0]["estimate"] == 70);
 }
 
-TEST_CASE("Parse DNS TCP IPv4 tests", "[pcap][ipv4][tcp][dns]")
+ TEST_CASE("Parse DNS TCP IPv4 tests", "[pcap][ipv4][tcp][dns]")
 {
-    PcapInputStream stream{"pcap-test"};
-    stream.config_set("pcap_file", "tests/fixtures/dns_ipv4_tcp.pcap");
-    stream.config_set("bpf", "");
+     PcapInputStream stream{"pcap-test"};
+     stream.config_set("pcap_file", "tests/fixtures/dns_ipv4_tcp.pcap");
+     stream.config_set("bpf", "");
 
-    visor::Config c;
-    auto stream_proxy = stream.add_event_proxy(c);
-    c.config_set<uint64_t>("num_periods", 1);
-    DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
+     visor::Config c;
+     auto stream_proxy = stream.add_event_proxy(c);
+     c.config_set<uint64_t>("num_periods", 1);
+     DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
 
-    dns_handler.start();
-    stream.start();
-    dns_handler.stop();
-    stream.stop();
+     dns_handler.start();
+     stream.start();
+     dns_handler.stop();
+     stream.stop();
 
-    auto counters = dns_handler.metrics()->bucket(0)->counters();
-    auto event_data = dns_handler.metrics()->bucket(0)->event_data_locked();
-    json j;
-    dns_handler.metrics()->bucket(0)->to_json(j);
+     auto counters = dns_handler.metrics()->bucket(0)->counters(PacketDirection::fromHost);
+     auto event_data = dns_handler.metrics()->bucket(0)->event_data_locked();
+     json j;
+     dns_handler.metrics()->bucket(0)->to_json(j);
 
-    CHECK(event_data.num_events->value() == 420);
-    CHECK(counters.TCP.value() == 420);
-    CHECK(counters.IPv4.value() == 420);
-    CHECK(counters.IPv6.value() == 0);
-    CHECK(counters.queries.value() == 210);
-    CHECK(counters.replies.value() == 210);
-    CHECK(j["top_qname2"][0]["name"] == ".test.com");
-    CHECK(j["top_qname2"][0]["estimate"] == 420);
-}
+     CHECK(event_data.num_events->value() == 420);
+     CHECK(counters.TCP.value() == 210);
+     CHECK(counters.IPv4.value() == 210);
+     CHECK(counters.IPv6.value() == 0);
+     CHECK(counters.xacts.value() == 210);
+     CHECK(counters.timeout.value() == 0);
+     CHECK(counters.orphan.value() == 0);
+     CHECK(j["out"]["top_qname2_xacts"][0]["name"] == ".test.com");
+     CHECK(j["out"]["top_qname2_xacts"][0]["estimate"] == 210);
+ }
 
 TEST_CASE("Parse DNS UDP IPv6 tests", "[pcap][ipv6][udp][dns]")
 {
@@ -138,52 +138,54 @@ TEST_CASE("Parse DNS UDP IPv6 tests", "[pcap][ipv6][udp][dns]")
     stream.stop();
     dns_handler.stop();
 
-    auto counters = dns_handler.metrics()->bucket(0)->counters();
+    auto counters = dns_handler.metrics()->bucket(0)->counters(PacketDirection::unknown);
     auto event_data = dns_handler.metrics()->bucket(0)->event_data_locked();
     json j;
     dns_handler.metrics()->bucket(0)->to_json(j);
 
     CHECK(event_data.num_events->value() == 140);
-    CHECK(counters.UDP.value() == 140);
+    CHECK(counters.UDP.value() == 70);
     CHECK(counters.IPv4.value() == 0);
-    CHECK(counters.IPv6.value() == 140);
-    CHECK(counters.queries.value() == 70);
-    CHECK(counters.replies.value() == 70);
-    CHECK(j["top_qname2"][0]["name"] == ".test.com");
-    CHECK(j["top_qname2"][0]["estimate"] == 140);
+    CHECK(counters.IPv6.value() == 70);
+    CHECK(counters.xacts.value() == 70);
+    CHECK(counters.timeout.value() == 0);
+    CHECK(counters.orphan.value() == 0);
+    CHECK(j["unknown"]["top_qname2_xacts"][0]["name"] == ".test.com");
+    CHECK(j["unknown"]["top_qname2_xacts"][0]["estimate"] == 70);
 }
 
-TEST_CASE("Parse DNS TCP IPv6 tests", "[pcap][ipv6][tcp][dns]")
+ TEST_CASE("Parse DNS TCP IPv6 tests", "[pcap][ipv6][tcp][dns]")
 {
 
-    PcapInputStream stream{"pcap-test"};
-    stream.config_set("pcap_file", "tests/fixtures/dns_ipv6_tcp.pcap");
-    stream.config_set("bpf", "");
+     PcapInputStream stream{"pcap-test"};
+     stream.config_set("pcap_file", "tests/fixtures/dns_ipv6_tcp.pcap");
+     stream.config_set("bpf", "");
 
-    visor::Config c;
-    auto stream_proxy = stream.add_event_proxy(c);
-    c.config_set<uint64_t>("num_periods", 1);
-    DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
+     visor::Config c;
+     auto stream_proxy = stream.add_event_proxy(c);
+     c.config_set<uint64_t>("num_periods", 1);
+     DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
 
-    dns_handler.start();
-    stream.start();
-    stream.stop();
-    dns_handler.stop();
+     dns_handler.start();
+     stream.start();
+     stream.stop();
+     dns_handler.stop();
 
-    auto counters = dns_handler.metrics()->bucket(0)->counters();
-    auto event_data = dns_handler.metrics()->bucket(0)->event_data_locked();
-    json j;
-    dns_handler.metrics()->bucket(0)->to_json(j);
+     auto counters = dns_handler.metrics()->bucket(0)->counters(PacketDirection::fromHost);
+     auto event_data = dns_handler.metrics()->bucket(0)->event_data_locked();
+     json j;
+     dns_handler.metrics()->bucket(0)->to_json(j);
 
-    CHECK(event_data.num_events->value() == 360);
-    CHECK(counters.TCP.value() == 360);
-    CHECK(counters.IPv4.value() == 0);
-    CHECK(counters.IPv6.value() == 360);
-    CHECK(counters.queries.value() == 180);
-    CHECK(counters.replies.value() == 180);
-    CHECK(j["top_qname2"][0]["name"] == ".test.com");
-    CHECK(j["top_qname2"][0]["estimate"] == 360);
-}
+     CHECK(event_data.num_events->value() == 360);
+     CHECK(counters.TCP.value() == 180);
+     CHECK(counters.IPv4.value() == 0);
+     CHECK(counters.IPv6.value() == 180);
+     CHECK(counters.xacts.value() == 180);
+     CHECK(counters.timeout.value() == 0);
+     CHECK(counters.orphan.value() == 0);
+     CHECK(j["out"]["top_qname2_xacts"][0]["name"] == ".test.com");
+     CHECK(j["out"]["top_qname2_xacts"][0]["estimate"] == 180);
+ }
 
 TEST_CASE("Parse DNS random UDP/TCP tests", "[pcap][dns]")
 {
@@ -198,33 +200,30 @@ TEST_CASE("Parse DNS random UDP/TCP tests", "[pcap][dns]")
     auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
     DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
-    dns_handler.config_set<visor::Configurable::StringList>("enable", visor::Configurable::StringList({"top_qnames_details"}));
+    dns_handler.config_set<visor::Configurable::StringList>("enable", {"top_size", "top_ports"});
 
     dns_handler.start();
     stream.start();
     stream.stop();
     dns_handler.stop();
 
-    auto counters = dns_handler.metrics()->bucket(0)->counters();
+    auto counters = dns_handler.metrics()->bucket(0)->counters(PacketDirection::fromHost);
     auto event_data = dns_handler.metrics()->bucket(0)->event_data_locked();
 
     // confirmed with wireshark. there are 14 TCP retransmissions which are counted differently in our state machine
     // and account for some minor differences in TCP based stats
     CHECK(event_data.num_events->value() == 5851); // wireshark: 5838
     CHECK(event_data.num_samples->value() == 5851);
-    CHECK(counters.TCP.value() == 2880); // wireshark: 2867
-    CHECK(counters.UDP.value() == 2971);
-    CHECK(counters.IPv4.value() == 5851); // wireshark: 5838
+    CHECK(counters.TCP.value() == 1440);
+    CHECK(counters.UDP.value() == 1481);
+    CHECK(counters.IPv4.value() == 2921);
     CHECK(counters.IPv6.value() == 0);
-    CHECK(counters.queries.value() == 2930);
-    CHECK(counters.replies.value() == 2921);     // wireshark: 2908
-    CHECK(counters.xacts_total.value() == 2921); // wireshark: 2894
-    CHECK(counters.xacts_in.value() == 0);
-    CHECK(counters.xacts_out.value() == 2921); // wireshark: 2894
-    CHECK(counters.xacts_timed_out.value() == 0);
+    CHECK(counters.xacts.value() == 2921);
+    CHECK(counters.timeout.value() == 0);
+    CHECK(counters.orphan.value() == 0);
     CHECK(counters.NODATA.value() == 2254);
-    CHECK(counters.RNOERROR.value() == 2921); // wireshark: 5838 (we only count reply result codes)
-    CHECK(counters.RNOERROR.value() == 2921); // wireshark: 5838 (we only count reply result codes)
+    CHECK(counters.RNOERROR.value() == 2921);
+    CHECK(counters.RNOERROR.value() == 2921);
     CHECK(counters.NX.value() == 0);
     CHECK(counters.REFUSED.value() == 0);
     CHECK(counters.SRVFAIL.value() == 0);
@@ -232,34 +231,34 @@ TEST_CASE("Parse DNS random UDP/TCP tests", "[pcap][dns]")
     nlohmann::json j;
     dns_handler.metrics()->bucket(0)->to_json(j);
 
-    CHECK(j["cardinality"]["qname"] == 2036); // flame was run with 1000 randoms x2 (udp+tcp)
+    CHECK(j["out"]["cardinality"]["qname"] == 2036); // flame was run with 1000 randoms x2 (udp+tcp)
 
-    CHECK(j["top_qname2"][0]["name"] == ".test.com");
-    CHECK(j["top_qname2"][0]["estimate"] == event_data.num_events->value());
+    CHECK(j["out"]["top_qname2_xacts"][0]["name"] == ".test.com");
+    CHECK(j["out"]["top_qname2_xacts"][0]["estimate"] == counters.xacts.value());
 
-    CHECK(j["top_rcode"][0]["name"] == "NOERROR");
-    CHECK(j["top_rcode"][0]["estimate"] == counters.RNOERROR.value());
+    CHECK(j["out"]["top_rcode_xacts"][0]["name"] == "NOERROR");
+    CHECK(j["out"]["top_rcode_xacts"][0]["estimate"] == counters.RNOERROR.value());
 
-    CHECK(j["top_udp_ports"][0]["name"] == "57975");
-    CHECK(j["top_udp_ports"][0]["estimate"] == 302);
+    CHECK(j["out"]["top_udp_ports_xacts"][0]["name"] == "57975");
+    CHECK(j["out"]["top_udp_ports_xacts"][0]["estimate"] == 151);
 
-    CHECK(j["top_qname_by_resp_bytes"][0]["name"] == "82gdxvz5vp.mmyv7ma0jn.rxst40swe.tcbgtnfa.test.com");
-    CHECK(j["top_qname_by_resp_bytes"][0]["estimate"] == 290);
+    CHECK(j["out"]["top_response_bytes"][0]["name"] == "82gdxvz5vp.mmyv7ma0jn.rxst40swe.tcbgtnfa.test.com");
+    CHECK(j["out"]["top_response_bytes"][0]["estimate"] == 290);
 
-    CHECK(j["top_qtype"][0]["name"] == "AAAA");
-    CHECK(j["top_qtype"][0]["estimate"] == 1476);
-    CHECK(j["top_qtype"][1]["name"] == "CNAME");
-    CHECK(j["top_qtype"][1]["estimate"] == 825);
-    CHECK(j["top_qtype"][2]["name"] == "SOA");
-    CHECK(j["top_qtype"][2]["estimate"] == 794);
-    CHECK(j["top_qtype"][3]["name"] == "MX");
-    CHECK(j["top_qtype"][3]["estimate"] == 757);
-    CHECK(j["top_qtype"][4]["name"] == "A");
-    CHECK(j["top_qtype"][4]["estimate"] == 717);
-    CHECK(j["top_qtype"][5]["name"] == "NS");
-    CHECK(j["top_qtype"][5]["estimate"] == 662);
-    CHECK(j["top_qtype"][6]["name"] == "TXT");
-    CHECK(j["top_qtype"][6]["estimate"] == 620);
+    CHECK(j["out"]["top_qtype_xacts"][0]["name"] == "AAAA");
+    CHECK(j["out"]["top_qtype_xacts"][0]["estimate"] == 737);
+    CHECK(j["out"]["top_qtype_xacts"][1]["name"] == "CNAME");
+    CHECK(j["out"]["top_qtype_xacts"][1]["estimate"] == 412);
+    CHECK(j["out"]["top_qtype_xacts"][2]["name"] == "SOA");
+    CHECK(j["out"]["top_qtype_xacts"][2]["estimate"] == 397);
+    CHECK(j["out"]["top_qtype_xacts"][3]["name"] == "MX");
+    CHECK(j["out"]["top_qtype_xacts"][3]["estimate"] == 377);
+    CHECK(j["out"]["top_qtype_xacts"][4]["name"] == "A");
+    CHECK(j["out"]["top_qtype_xacts"][4]["estimate"] == 358);
+    CHECK(j["out"]["top_qtype_xacts"][5]["name"] == "NS");
+    CHECK(j["out"]["top_qtype_xacts"][5]["estimate"] == 331);
+    CHECK(j["out"]["top_qtype_xacts"][6]["name"] == "TXT");
+    CHECK(j["out"]["top_qtype_xacts"][6]["estimate"] == 309);
 }
 
 TEST_CASE("DNS Filters: exclude_noerror", "[pcap][dns]")
@@ -283,16 +282,15 @@ TEST_CASE("DNS Filters: exclude_noerror", "[pcap][dns]")
     stream.stop();
     dns_handler.stop();
 
-    auto counters = dns_handler.metrics()->bucket(0)->counters();
+    auto counters = dns_handler.metrics()->bucket(0)->counters(PacketDirection::fromHost);
     REQUIRE(counters.RNOERROR.value() == 0);
     REQUIRE(counters.SRVFAIL.value() == 0);
     REQUIRE(counters.REFUSED.value() == 1);
     REQUIRE(counters.NX.value() == 1);
     REQUIRE(counters.NODATA.value() == 0);
-    REQUIRE(counters.filtered.value() == 22);
     nlohmann::json j;
     dns_handler.metrics()->bucket(0)->to_json(j);
-    REQUIRE(j["wire_packets"]["filtered"] == 22);
+    REQUIRE(j["filtered_packets"] == 17);
 }
 
 TEST_CASE("DNS Filters: only_rcode nx", "[pcap][net]")
@@ -316,7 +314,7 @@ TEST_CASE("DNS Filters: only_rcode nx", "[pcap][net]")
     stream.stop();
     dns_handler.stop();
 
-    auto counters = dns_handler.metrics()->bucket(0)->counters();
+    auto counters = dns_handler.metrics()->bucket(0)->counters(PacketDirection::fromHost);
     REQUIRE(counters.RNOERROR.value() == 0);
     REQUIRE(counters.SRVFAIL.value() == 0);
     REQUIRE(counters.REFUSED.value() == 0);
@@ -324,7 +322,7 @@ TEST_CASE("DNS Filters: only_rcode nx", "[pcap][net]")
     REQUIRE(counters.NODATA.value() == 0);
     nlohmann::json j;
     dns_handler.metrics()->bucket(0)->to_json(j);
-    REQUIRE(j["wire_packets"]["filtered"] == 0);
+    REQUIRE(j["filtered_packets"] == 19);
 }
 
 TEST_CASE("DNS Filters: only_rcode refused", "[pcap][dns]")
@@ -348,7 +346,7 @@ TEST_CASE("DNS Filters: only_rcode refused", "[pcap][dns]")
     stream.stop();
     dns_handler.stop();
 
-    auto counters = dns_handler.metrics()->bucket(0)->counters();
+    auto counters = dns_handler.metrics()->bucket(0)->counters(PacketDirection::fromHost);
     REQUIRE(counters.RNOERROR.value() == 0);
     REQUIRE(counters.SRVFAIL.value() == 0);
     REQUIRE(counters.REFUSED.value() == 1);
@@ -356,7 +354,7 @@ TEST_CASE("DNS Filters: only_rcode refused", "[pcap][dns]")
     REQUIRE(counters.NODATA.value() == 0);
     nlohmann::json j;
     dns_handler.metrics()->bucket(0)->to_json(j);
-    REQUIRE(j["wire_packets"]["filtered"] == 0);
+    REQUIRE(j["filtered_packets"] == 19);
 }
 TEST_CASE("DNS Filters: only_qtypes AAAA and TXT", "[pcap][dns]")
 {
@@ -379,28 +377,29 @@ TEST_CASE("DNS Filters: only_qtypes AAAA and TXT", "[pcap][dns]")
     stream.stop();
     dns_handler.stop();
 
-    auto counters = dns_handler.metrics()->bucket(0)->counters();
+    auto counters = dns_handler.metrics()->bucket(0)->counters(PacketDirection::fromHost);
     auto event_data = dns_handler.metrics()->bucket(0)->event_data_locked();
 
     // confirmed with wireshark. there are 14 TCP retransmissions which are counted differently in our state machine
     // and account for some minor differences in TCP based stats
     CHECK(event_data.num_events->value() == 5851); // wireshark: 5838
     CHECK(event_data.num_samples->value() == 5851);
-    CHECK(counters.IPv4.value() == 2096);
+    CHECK(counters.IPv4.value() == 1046);
     CHECK(counters.IPv6.value() == 0);
-    CHECK(counters.queries.value() == 1050);
-    CHECK(counters.replies.value() == 1046);
+    CHECK(counters.xacts.value() == 1046);
+    CHECK(counters.timeout.value() == 0);
+    CHECK(counters.orphan.value() == 0);
     CHECK(counters.NODATA.value() == 737);
     CHECK(counters.RNOERROR.value() == 1046);
 
     nlohmann::json j;
     dns_handler.metrics()->bucket(0)->to_json(j);
 
-    CHECK(j["top_qtype"][0]["name"] == "AAAA");
-    CHECK(j["top_qtype"][0]["estimate"] == 1476);
-    CHECK(j["top_qtype"][1]["name"] == "TXT");
-    CHECK(j["top_qtype"][1]["estimate"] == 620);
-    CHECK(j["top_qtype"][2] == nullptr);
+    CHECK(j["out"]["top_qtype_xacts"][0]["name"] == "AAAA");
+    CHECK(j["out"]["top_qtype_xacts"][0]["estimate"] == 737);
+    CHECK(j["out"]["top_qtype_xacts"][1]["name"] == "TXT");
+    CHECK(j["out"]["top_qtype_xacts"][1]["estimate"] == 309);
+    CHECK(j["out"]["top_qtype_xacts"][2] == nullptr);
 }
 
 TEST_CASE("DNS TopN custom size", "[pcap][dns]")
@@ -426,15 +425,15 @@ TEST_CASE("DNS TopN custom size", "[pcap][dns]")
     nlohmann::json j;
     dns_handler.metrics()->bucket(0)->to_json(j);
 
-    CHECK(j["cardinality"]["qname"] == 2036); // flame was run with 1000 randoms x2 (udp+tcp)
+    CHECK(j["out"]["cardinality"]["qname"] == 2036); // flame was run with 1000 randoms x2 (udp+tcp)
 
-    CHECK(j["top_qtype"][0]["name"] == "AAAA");
-    CHECK(j["top_qtype"][0]["estimate"] == 1476);
-    CHECK(j["top_qtype"][1]["name"] == "CNAME");
-    CHECK(j["top_qtype"][1]["estimate"] == 825);
-    CHECK(j["top_qtype"][2]["name"] == "SOA");
-    CHECK(j["top_qtype"][2]["estimate"] == 794);
-    CHECK(j["top_qtype"][3] == nullptr);
+    CHECK(j["out"]["top_qtype_xacts"][0]["name"] == "AAAA");
+    CHECK(j["out"]["top_qtype_xacts"][0]["estimate"] == 737);
+    CHECK(j["out"]["top_qtype_xacts"][1]["name"] == "CNAME");
+    CHECK(j["out"]["top_qtype_xacts"][1]["estimate"] == 412);
+    CHECK(j["out"]["top_qtype_xacts"][2]["name"] == "SOA");
+    CHECK(j["out"]["top_qtype_xacts"][2]["estimate"] == 397);
+    CHECK(j["out"]["top_qtype_xacts"][3] == nullptr);
 }
 
 TEST_CASE("DNS Filters: only_qname_suffix", "[pcap][dns]")
@@ -458,22 +457,25 @@ TEST_CASE("DNS Filters: only_qname_suffix", "[pcap][dns]")
     stream.stop();
     dns_handler.stop();
 
-    auto counters = dns_handler.metrics()->bucket(0)->counters();
+    auto counters = dns_handler.metrics()->bucket(0)->counters(PacketDirection::fromHost);
 
-    CHECK(counters.UDP.value() == 10);
-    CHECK(counters.RNOERROR.value() == 4);
+    CHECK(counters.UDP.value() == 4);
+    CHECK(counters.RNOERROR.value() == 3);
     CHECK(counters.SRVFAIL.value() == 0);
     CHECK(counters.REFUSED.value() == 0);
     CHECK(counters.NX.value() == 1);
-    CHECK(counters.NODATA.value() == 2);
-    CHECK(counters.total.value() == 10);
-    CHECK(counters.filtered.value() == 14);
+    CHECK(counters.NODATA.value() == 1);
+    CHECK(counters.xacts.value() == 4);
+    CHECK(counters.timeout.value() == 0);
+    CHECK(counters.orphan.value() == 1);
 
     nlohmann::json j;
     dns_handler.metrics()->bucket(0)->to_json(j);
 
-    CHECK(j["top_qname2"][0]["name"].get<std::string>().find("google.com") != std::string::npos);
-    CHECK(j["top_qname3"][0]["name"] == nullptr);
+    REQUIRE(j["filtered_packets"] == 14);
+
+    CHECK(j["out"]["top_qname2_xacts"][0]["name"].get<std::string>().find("google.com") != std::string::npos);
+    CHECK(j["out"]["top_qname3_xacts"][0]["name"] == nullptr);
 }
 
 TEST_CASE("DNS Filters: answer_count", "[pcap][dns]")
@@ -482,7 +484,7 @@ TEST_CASE("DNS Filters: answer_count", "[pcap][dns]")
     PcapInputStream stream{"pcap-test"};
     stream.config_set("pcap_file", "tests/fixtures/dns_udp_mixed_rcode.pcap");
     stream.config_set("bpf", "");
-    stream.config_set("host_spec", "192.168.0.0/24");
+    stream.config_set("host_spec", "192.168.0.0/26");
     stream.parse_host_spec();
 
     visor::Config c;
@@ -496,21 +498,20 @@ TEST_CASE("DNS Filters: answer_count", "[pcap][dns]")
     stream.stop();
     dns_handler.stop();
 
-    auto counters = dns_handler.metrics()->bucket(0)->counters();
+    auto counters = dns_handler.metrics()->bucket(0)->counters(PacketDirection::fromHost);
 
-    CHECK(counters.UDP.value() == 16);
-    CHECK(counters.RNOERROR.value() == 4);
+    CHECK(counters.UDP.value() == 2);
+    CHECK(counters.RNOERROR.value() == 2);
     CHECK(counters.SRVFAIL.value() == 0);
     CHECK(counters.REFUSED.value() == 0);
     CHECK(counters.NX.value() == 0);
-    CHECK(counters.NODATA.value() == 4);
-    CHECK(counters.filtered.value() == 6);
+    CHECK(counters.NODATA.value() == 2);
 
     nlohmann::json j;
     dns_handler.metrics()->bucket(0)->to_json(j);
 
-    CHECK(j["top_qname2"][0]["name"] == ".mwbsys.com");
-    CHECK(j["top_qname3"][0]["name"] == "sirius.mwbsys.com");
+    CHECK(j["filtered_packets"] == 16);
+    CHECK(j["out"]["top_qname2_xacts"][0]["estimate"] == 1);
 }
 
 TEST_CASE("DNS Filters: only_dnssec_response", "[pcap][dns]")
@@ -532,7 +533,7 @@ TEST_CASE("DNS Filters: only_dnssec_response", "[pcap][dns]")
     stream.stop();
     dns_handler.stop();
 
-    auto counters = dns_handler.metrics()->bucket(0)->counters();
+    auto counters = dns_handler.metrics()->bucket(0)->counters(PacketDirection::unknown);
     auto event_data = dns_handler.metrics()->bucket(0)->event_data_locked();
 
     CHECK(event_data.num_events->value() == 14);
@@ -541,21 +542,25 @@ TEST_CASE("DNS Filters: only_dnssec_response", "[pcap][dns]")
     CHECK(counters.UDP.value() == 6);
     CHECK(counters.IPv4.value() == 6);
     CHECK(counters.IPv6.value() == 0);
-    CHECK(counters.queries.value() == 0);
-    CHECK(counters.replies.value() == 6);
+    CHECK(counters.xacts.value() == 6);
+    CHECK(counters.checkDisabled.value() == 0);
+    CHECK(counters.authData.value() == 6);
+    CHECK(counters.authAnswer.value() == 0);
+    CHECK(counters.timeout.value() == 0);
+    CHECK(counters.orphan.value() == 0);
     CHECK(counters.RNOERROR.value() == 6);
 
     nlohmann::json j;
     dns_handler.metrics()->bucket(0)->to_json(j);
 
-    CHECK(j["cardinality"]["qname"] == 3);
+    CHECK(j["unknown"]["cardinality"]["qname"] == 3);
 
-    CHECK(j["top_qtype"][0]["name"] == "DNSKEY");
-    CHECK(j["top_qtype"][0]["estimate"] == 3);
-    CHECK(j["top_qtype"][1]["name"] == "DS");
-    CHECK(j["top_qtype"][1]["estimate"] == 2);
-    CHECK(j["top_qtype"][2]["name"] == "A");
-    CHECK(j["top_qtype"][2]["estimate"] == 1);
+    CHECK(j["unknown"]["top_qtype_xacts"][0]["name"] == "DNSKEY");
+    CHECK(j["unknown"]["top_qtype_xacts"][0]["estimate"] == 3);
+    CHECK(j["unknown"]["top_qtype_xacts"][1]["name"] == "DS");
+    CHECK(j["unknown"]["top_qtype_xacts"][1]["estimate"] == 2);
+    CHECK(j["unknown"]["top_qtype_xacts"][2]["name"] == "A");
+    CHECK(j["unknown"]["top_qtype_xacts"][2]["estimate"] == 1);
 }
 
 TEST_CASE("DNS Configs: public_suffix_list", "[pcap][dns]")
@@ -564,7 +569,7 @@ TEST_CASE("DNS Configs: public_suffix_list", "[pcap][dns]")
     PcapInputStream stream{"pcap-test"};
     stream.config_set("pcap_file", "tests/fixtures/dns_udp_mixed_rcode.pcap");
     stream.config_set("bpf", "");
-    stream.config_set("host_spec", "192.168.0.0/24");
+    stream.config_set("host_spec", "192.168.0.0/26");
     stream.parse_host_spec();
 
     visor::Config c;
@@ -579,20 +584,20 @@ TEST_CASE("DNS Configs: public_suffix_list", "[pcap][dns]")
     stream.stop();
     dns_handler.stop();
 
-    auto counters = dns_handler.metrics()->bucket(0)->counters();
+    auto counters = dns_handler.metrics()->bucket(0)->counters(PacketDirection::fromHost);
 
-    CHECK(counters.UDP.value() == 24);
-    CHECK(counters.RNOERROR.value() == 10);
+    CHECK(counters.UDP.value() == 9);
+    CHECK(counters.RNOERROR.value() == 7);
     CHECK(counters.SRVFAIL.value() == 0);
     CHECK(counters.REFUSED.value() == 1);
     CHECK(counters.NX.value() == 1);
-    CHECK(counters.filtered.value() == 0);
 
     nlohmann::json j;
     dns_handler.metrics()->bucket(0)->to_json(j);
 
-    CHECK(j["top_qname2"][0]["name"] == ".mwbsys.com");
-    CHECK(j["top_qname3"][0]["name"] == "sirius.mwbsys.com");
+    CHECK(j["filtered_packets"] == 0);
+
+    CHECK(j["out"]["top_qname2_xacts"][0]["estimate"] == 2);
 }
 
 TEST_CASE("Parse DNS with ECS data", "[pcap][dns][ecs]")
@@ -616,32 +621,34 @@ TEST_CASE("Parse DNS with ECS data", "[pcap][dns][ecs]")
     stream.stop();
     dns_handler.stop();
 
-    auto counters = dns_handler.metrics()->bucket(0)->counters();
+    auto counters = dns_handler.metrics()->bucket(0)->counters(PacketDirection::unknown);
     auto event_data = dns_handler.metrics()->bucket(0)->event_data_locked();
 
     CHECK(event_data.num_events->value() == 36);
     CHECK(event_data.num_samples->value() == 36);
-    CHECK(counters.TCP.value() == 4);
-    CHECK(counters.UDP.value() == 32);
-    CHECK(counters.IPv4.value() == 6);
-    CHECK(counters.IPv6.value() == 30);
-    CHECK(counters.queries.value() == 22);
-    CHECK(counters.replies.value() == 14);
-    CHECK(counters.filtered.value() == 0);
-    CHECK(counters.queryECS.value() == 5);
+    CHECK(counters.TCP.value() == 0);
+    CHECK(counters.UDP.value() == 12);
+    CHECK(counters.IPv4.value() == 0);
+    CHECK(counters.IPv6.value() == 12);
+    CHECK(counters.xacts.value() == 12);
+    CHECK(counters.timeout.value() == 0);
+    CHECK(counters.orphan.value() == 0);
+    CHECK(counters.ECS.value() == 2);
 
     nlohmann::json j;
     dns_handler.metrics()->bucket(0)->to_json(j);
 
-    CHECK(j["cardinality"]["qname"] == 9);
+    CHECK(j["filtered_packets"] == 0);
 
-    CHECK(j["top_query_ecs"][0]["name"] == "2001:470:1f0b:1600::"); // wireshark
-    CHECK(j["top_query_ecs"][0]["estimate"] == 5);
-    CHECK(j["top_query_ecs"][1] == nullptr);
-    CHECK(j["top_geoLoc_ecs"][0]["name"] == "Unknown");
-    CHECK(j["top_geoLoc_ecs"][0]["estimate"] == 5);
-    CHECK(j["top_asn_ecs"][0]["name"] == "Unknown");
-    CHECK(j["top_asn_ecs"][0]["estimate"] == 5);
+    CHECK(j["unknown"]["cardinality"]["qname"] == 7);
+
+    CHECK(j["unknown"]["top_query_ecs_xacts"][0]["name"] == "2001:470:1f0b:1600::"); // wireshark
+    CHECK(j["unknown"]["top_query_ecs_xacts"][0]["estimate"] == 2);
+    CHECK(j["unknown"]["top_query_ecs_xacts"][1] == nullptr);
+    CHECK(j["unknown"]["top_geo_loc_ecs_xacts"][0]["name"] == "Unknown");
+    CHECK(j["unknown"]["top_geo_loc_ecs_xacts"][0]["estimate"] == 2);
+    CHECK(j["unknown"]["top_asn_ecs_xacts"][0]["name"] == "Unknown");
+    CHECK(j["unknown"]["top_asn_ecs_xacts"][0]["estimate"] == 2);
 }
 
 TEST_CASE("DNS filter: GeoLoc not found", "[pcap][dns][ecs]")
@@ -666,30 +673,32 @@ TEST_CASE("DNS filter: GeoLoc not found", "[pcap][dns][ecs]")
     stream.stop();
     dns_handler.stop();
 
-    auto counters = dns_handler.metrics()->bucket(0)->counters();
+    auto counters = dns_handler.metrics()->bucket(0)->counters(PacketDirection::unknown);
     auto event_data = dns_handler.metrics()->bucket(0)->event_data_locked();
 
     CHECK(event_data.num_events->value() == 36);
     CHECK(event_data.num_samples->value() == 36);
     CHECK(counters.TCP.value() == 0);
-    CHECK(counters.UDP.value() == 5);
-    CHECK(counters.IPv4.value() == 1);
-    CHECK(counters.IPv6.value() == 4);
-    CHECK(counters.queries.value() == 5);
-    CHECK(counters.replies.value() == 0);
-    CHECK(counters.filtered.value() == 31);
-    CHECK(counters.queryECS.value() == 5);
+    CHECK(counters.UDP.value() == 2);
+    CHECK(counters.IPv4.value() == 0);
+    CHECK(counters.IPv6.value() == 2);
+    CHECK(counters.xacts.value() == 2);
+    CHECK(counters.timeout.value() == 0);
+    CHECK(counters.orphan.value() == 0);
+    CHECK(counters.ECS.value() == 2);
 
     nlohmann::json j;
     dns_handler.metrics()->bucket(0)->to_json(j);
 
-    CHECK(j["cardinality"]["qname"] == 2);
+    CHECK(j["filtered_packets"] == 29);
 
-    CHECK(j["top_query_ecs"][0]["name"] == "2001:470:1f0b:1600::"); // wireshark
-    CHECK(j["top_query_ecs"][0]["estimate"] == 5);
-    CHECK(j["top_query_ecs"][1] == nullptr);
-    CHECK(j["top_geoLoc_ecs"][0]["name"] == "Unknown");
-    CHECK(j["top_geoLoc_ecs"][0]["estimate"] == 5);
+    CHECK(j["unknown"]["cardinality"]["qname"] == 1);
+
+    CHECK(j["unknown"]["top_query_ecs_xacts"][0]["name"] == "2001:470:1f0b:1600::"); // wireshark
+    CHECK(j["unknown"]["top_query_ecs_xacts"][0]["estimate"] == 2);
+    CHECK(j["unknown"]["top_query_ecs_xacts"][1] == nullptr);
+    CHECK(j["unknown"]["top_geo_loc_ecs_xacts"][0]["name"] == "Unknown");
+    CHECK(j["unknown"]["top_geo_loc_ecs_xacts"][0]["estimate"] == 2);
 }
 
 TEST_CASE("DNS filter: ASN not found", "[pcap][dns][ecs]")
@@ -714,30 +723,32 @@ TEST_CASE("DNS filter: ASN not found", "[pcap][dns][ecs]")
     stream.stop();
     dns_handler.stop();
 
-    auto counters = dns_handler.metrics()->bucket(0)->counters();
+    auto counters = dns_handler.metrics()->bucket(0)->counters(PacketDirection::unknown);
     auto event_data = dns_handler.metrics()->bucket(0)->event_data_locked();
 
     CHECK(event_data.num_events->value() == 36);
     CHECK(event_data.num_samples->value() == 36);
     CHECK(counters.TCP.value() == 0);
-    CHECK(counters.UDP.value() == 5);
-    CHECK(counters.IPv4.value() == 1);
-    CHECK(counters.IPv6.value() == 4);
-    CHECK(counters.queries.value() == 5);
-    CHECK(counters.replies.value() == 0);
-    CHECK(counters.filtered.value() == 31);
-    CHECK(counters.queryECS.value() == 5);
+    CHECK(counters.UDP.value() == 2);
+    CHECK(counters.IPv4.value() == 0);
+    CHECK(counters.IPv6.value() == 2);
+    CHECK(counters.xacts.value() == 2);
+    CHECK(counters.timeout.value() == 0);
+    CHECK(counters.orphan.value() == 0);
+    CHECK(counters.ECS.value() == 2);
 
     nlohmann::json j;
     dns_handler.metrics()->bucket(0)->to_json(j);
 
-    CHECK(j["cardinality"]["qname"] == 2);
+    CHECK(j["filtered_packets"] == 29);
 
-    CHECK(j["top_query_ecs"][0]["name"] == "2001:470:1f0b:1600::"); // wireshark
-    CHECK(j["top_query_ecs"][0]["estimate"] == 5);
-    CHECK(j["top_query_ecs"][1] == nullptr);
-    CHECK(j["top_asn_ecs"][0]["name"] == "Unknown");
-    CHECK(j["top_asn_ecs"][0]["estimate"] == 5);
+    CHECK(j["unknown"]["cardinality"]["qname"] == 1);
+
+    CHECK(j["unknown"]["top_query_ecs_xacts"][0]["name"] == "2001:470:1f0b:1600::"); // wireshark
+    CHECK(j["unknown"]["top_query_ecs_xacts"][0]["estimate"] == 2);
+    CHECK(j["unknown"]["top_query_ecs_xacts"][1] == nullptr);
+    CHECK(j["unknown"]["top_asn_ecs_xacts"][0]["name"] == "Unknown");
+    CHECK(j["unknown"]["top_asn_ecs_xacts"][0]["estimate"] == 2);
 }
 
 TEST_CASE("DNS filter exceptions", "[pcap][dns][filter]")
@@ -800,13 +811,14 @@ TEST_CASE("DNS groups", "[pcap][dns]")
     SECTION("disable cardinality and counters")
     {
         dns_handler.config_set<visor::Configurable::StringList>("disable", {"cardinality", "counters"});
+        dns_handler.config_set<visor::Configurable::StringList>("enable", {"top_size"});
 
         dns_handler.start();
         stream.start();
         stream.stop();
         dns_handler.stop();
 
-        auto counters = dns_handler.metrics()->bucket(0)->counters();
+        auto counters = dns_handler.metrics()->bucket(0)->counters(PacketDirection::fromHost);
         auto event_data = dns_handler.metrics()->bucket(0)->event_data_locked();
 
         CHECK(event_data.num_events->value() == 5851);
@@ -815,100 +827,56 @@ TEST_CASE("DNS groups", "[pcap][dns]")
         CHECK(counters.UDP.value() == 0);
         CHECK(counters.IPv4.value() == 0);
         CHECK(counters.IPv6.value() == 0);
-        CHECK(counters.queries.value() == 0);
-        CHECK(counters.replies.value() == 0);
-        CHECK(counters.xacts_total.value() == 2921);
-        CHECK(counters.xacts_in.value() == 0);
-        CHECK(counters.xacts_out.value() == 2921);
-        CHECK(counters.xacts_timed_out.value() == 0);
+        CHECK(counters.xacts.value() == 0);
+        CHECK(counters.timeout.value() == 0);
+        CHECK(counters.orphan.value() == 0);
 
         nlohmann::json j;
         dns_handler.metrics()->bucket(0)->to_json(j);
 
-        CHECK(j["cardinality"]["qname"] == nullptr);
-        CHECK(j["top_qname2"][0]["name"] == ".test.com");
-        CHECK(j["xact"]["ratio"]["quantiles"]["p50"] != nullptr);
+        CHECK(j["out"]["cardinality"]["qname"] == nullptr);
+        CHECK(j["out"]["top_qname2_xacts"][0]["name"] == ".test.com");
+        CHECK(j["out"]["response_query_size_ratio"]["p50"] != nullptr);
     }
 
     SECTION("disable TopQname and Dns Transactions")
     {
-        dns_handler.config_set<visor::Configurable::StringList>("disable", {"top_qnames", "dns_transaction"});
+        dns_handler.config_set<visor::Configurable::StringList>("disable", {"top_qnames"});
 
         dns_handler.start();
         stream.start();
         stream.stop();
         dns_handler.stop();
 
-        auto counters = dns_handler.metrics()->bucket(0)->counters();
+        auto counters = dns_handler.metrics()->bucket(0)->counters(PacketDirection::fromHost);
         auto event_data = dns_handler.metrics()->bucket(0)->event_data_locked();
 
         CHECK(event_data.num_events->value() == 5851);
         CHECK(event_data.num_samples->value() == 5851);
-        CHECK(counters.TCP.value() == 2880);
-        CHECK(counters.UDP.value() == 2971);
-        CHECK(counters.IPv4.value() == 5851);
+        CHECK(counters.TCP.value() == 1440);
+        CHECK(counters.UDP.value() == 1481);
+        CHECK(counters.IPv4.value() == 2921);
         CHECK(counters.IPv6.value() == 0);
-        CHECK(counters.queries.value() == 2930);
-        CHECK(counters.replies.value() == 2921);
-        CHECK(counters.xacts_total.value() == 0);
-        CHECK(counters.xacts_in.value() == 0);
-        CHECK(counters.xacts_out.value() == 0);
-        CHECK(counters.xacts_timed_out.value() == 0);
+        CHECK(counters.xacts.value() == 2921);
+        CHECK(counters.timeout.value() == 0);
+        CHECK(counters.orphan.value() == 0);
 
         nlohmann::json j;
         dns_handler.metrics()->bucket(0)->to_json(j);
 
-        CHECK(j["cardinality"]["qname"] == 2036);
-        CHECK(j["top_qname2"][0]["name"] == nullptr);
+        CHECK(j["out"]["cardinality"]["qname"] == 2036);
+        CHECK(j["out"]["top_qname2_xacts"][0]["name"] == nullptr);
     }
 
     SECTION("disable invalid dns group")
     {
         dns_handler.config_set<visor::Configurable::StringList>("disable", {"top_qnames", "dns_top_wired"});
-        REQUIRE_THROWS_WITH(dns_handler.start(), "dns_top_wired is an invalid/unsupported metric group. The valid groups are: all, cardinality, counters, dns_transaction, top_ecs, top_ports, top_qnames, top_qnames_details");
+        REQUIRE_THROWS_WITH(dns_handler.start(), "dns_top_wired is an invalid/unsupported metric group. The valid groups are: all, cardinality, counters, quantiles, top_ecs, top_ports, top_qnames, top_qtypes, top_rcodes, top_size, xact_times");
     }
 
     SECTION("enable invalid dns group")
     {
         dns_handler.config_set<visor::Configurable::StringList>("enable", {"top_qnames", "dns_top_wired"});
-        REQUIRE_THROWS_WITH(dns_handler.start(), "dns_top_wired is an invalid/unsupported metric group. The valid groups are: all, cardinality, counters, dns_transaction, top_ecs, top_ports, top_qnames, top_qnames_details");
+        REQUIRE_THROWS_WITH(dns_handler.start(), "dns_top_wired is an invalid/unsupported metric group. The valid groups are: all, cardinality, counters, quantiles, top_ecs, top_ports, top_qnames, top_qtypes, top_rcodes, top_size, xact_times");
     }
-}
-
-TEST_CASE("DNS Filters: only_rcode with predicate", "[pcap][dns][filter]")
-{
-    PcapInputStream stream{"pcap-test"};
-    stream.config_set("pcap_file", "tests/fixtures/dns_udp_mixed_rcode.pcap");
-    stream.config_set("bpf", "");
-    stream.config_set("host_spec", "192.168.0.0/24");
-    stream.parse_host_spec();
-
-    visor::Config c;
-    auto stream_proxy = stream.add_event_proxy(c);
-    c.config_set<uint64_t>("num_periods", 1);
-    DnsStreamHandler dns_handler_1{"dns-test-1", stream_proxy, &c};
-    DnsStreamHandler dns_handler_2{"dns-test-2", stream_proxy, &c};
-
-    dns_handler_1.config_set<uint64_t>("only_rcode", 2);
-    dns_handler_2.config_set<uint64_t>("only_rcode", 3);
-
-    dns_handler_1.start();
-    dns_handler_2.start();
-    stream.start();
-    stream.stop();
-    dns_handler_1.stop();
-    dns_handler_2.stop();
-
-    auto event_data_1 = dns_handler_1.metrics()->bucket(0)->event_data_locked();
-
-    CHECK(event_data_1.num_events->value() == 0);
-    CHECK(event_data_1.num_samples->value() == 0);
-
-    auto event_data_2 = dns_handler_2.metrics()->bucket(0)->event_data_locked();
-
-    CHECK(event_data_2.num_events->value() == 1);
-    CHECK(event_data_2.num_samples->value() == 1);
-
-    nlohmann::json j;
-    dns_handler_2.metrics()->bucket(0)->to_json(j);
 }

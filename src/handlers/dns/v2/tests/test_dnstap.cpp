@@ -3,7 +3,7 @@
 #include "DnsStreamHandler.h"
 #include "DnstapInputStream.h"
 
-using namespace visor::handler::dns;
+using namespace visor::handler::dns::v2;
 using namespace visor::input::pcap;
 using namespace nlohmann;
 
@@ -11,53 +11,50 @@ TEST_CASE("Parse DNSTAP", "[dnstap][dns][!mayfail]")
 {
     DnstapInputStream stream{"dnstap-test"};
     stream.config_set("dnstap_file", "inputs/dnstap/tests/fixtures/fixture.dnstap");
-    stream.config_set<visor::Configurable::StringList>("only_hosts", {"192.168.0.0/24", "2001:db8::/48"});
+    stream.config_set<visor::Configurable::StringList>("only_hosts", {"192.168.0.0/28", "2001:db8::/48"});
     visor::Config c;
     c.config_set<uint64_t>("num_periods", 1);
     auto stream_proxy = stream.add_event_proxy(c);
     DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
+    dns_handler.config_set<visor::Configurable::StringList>("enable", {"top_size", "top_ports"});
 
     dns_handler.start();
     stream.start();
     stream.stop();
     dns_handler.stop();
 
-    auto counters = dns_handler.metrics()->bucket(0)->counters();
+    auto counters = dns_handler.metrics()->bucket(0)->counters(PacketDirection::unknown);
     auto event_data = dns_handler.metrics()->bucket(0)->event_data_locked();
 
     CHECK(event_data.num_events->value() == 153);
     CHECK(event_data.num_samples->value() == 153);
     CHECK(counters.TCP.value() == 0);
-    CHECK(counters.UDP.value() == 153);
-    CHECK(counters.IPv4.value() == 153);
+    CHECK(counters.UDP.value() == 72);
+    CHECK(counters.IPv4.value() == 72);
     CHECK(counters.IPv6.value() == 0);
-    CHECK(counters.queries.value() == 79);
-    CHECK(counters.replies.value() == 74);
-    CHECK(counters.xacts_total.value() == 0);
-    CHECK(counters.xacts_in.value() == 0);
-    CHECK(counters.xacts_out.value() == 0);
-    CHECK(counters.xacts_timed_out.value() == 0);
-    CHECK(counters.RNOERROR.value() == 70);
+    CHECK(counters.xacts.value() == 72);
+    CHECK(counters.timeout.value() == 0);
+    CHECK(counters.orphan.value() == 2);
+    CHECK(counters.RNOERROR.value() == 68);
     CHECK(counters.NX.value() == 0);
     CHECK(counters.REFUSED.value() == 0);
     CHECK(counters.SRVFAIL.value() == 4);
-    CHECK(counters.filtered.value() == 0);
 
     nlohmann::json j;
     dns_handler.metrics()->bucket(0)->to_json(j);
 
-    CHECK(j["cardinality"]["qname"] == 70);
+    CHECK(j["unknown"]["cardinality"]["qname"] == 65);
 
-    CHECK(j["top_qname2"][0]["name"] == ".google.com");
-    CHECK(j["top_qname2"][0]["estimate"] == 18);
+    CHECK(j["unknown"]["top_qname2_xacts"][0]["name"] == ".google.com");
+    CHECK(j["unknown"]["top_qname2_xacts"][0]["estimate"] == 9);
 
-    CHECK(j["top_udp_ports"][0]["name"] == "33000");
-    CHECK(j["top_udp_ports"][0]["estimate"] == 4);
+    CHECK(j["unknown"]["top_udp_ports_xacts"][0]["name"] != nullptr);
+    CHECK(j["unknown"]["top_udp_ports_xacts"][0]["estimate"] == 2);
 
-    CHECK(j["top_qtype"][0]["name"] == "A");
-    CHECK(j["top_qtype"][0]["estimate"] == 149);
-    CHECK(j["top_qtype"][1]["name"] == "HTTPS");
-    CHECK(j["top_qtype"][1]["estimate"] == 4);
+    CHECK(j["unknown"]["top_qtype_xacts"][0]["name"] == "A");
+    CHECK(j["unknown"]["top_qtype_xacts"][0]["estimate"] == 70);
+    CHECK(j["unknown"]["top_qtype_xacts"][1]["name"] == "HTTPS");
+    CHECK(j["unknown"]["top_qtype_xacts"][1]["estimate"] == 2);
 }
 
 TEST_CASE("Parse filtered DNSTAP empty data", "[dnstap][dns][filter][!mayfail]")
@@ -77,26 +74,14 @@ TEST_CASE("Parse filtered DNSTAP empty data", "[dnstap][dns][filter][!mayfail]")
     stream.stop();
     dns_handler.stop();
 
-    auto counters = dns_handler.metrics()->bucket(0)->counters();
     auto event_data = dns_handler.metrics()->bucket(0)->event_data_locked();
 
     CHECK(event_data.num_events->value() == 153);
     CHECK(event_data.num_samples->value() == 153);
-    CHECK(counters.TCP.value() == 0);
-    CHECK(counters.UDP.value() == 0);
-    CHECK(counters.IPv4.value() == 0);
-    CHECK(counters.IPv6.value() == 0);
-    CHECK(counters.queries.value() == 0);
-    CHECK(counters.replies.value() == 0);
-    CHECK(counters.xacts_total.value() == 0);
-    CHECK(counters.xacts_in.value() == 0);
-    CHECK(counters.xacts_out.value() == 0);
-    CHECK(counters.xacts_timed_out.value() == 0);
-    CHECK(counters.RNOERROR.value() == 0);
-    CHECK(counters.NX.value() == 0);
-    CHECK(counters.REFUSED.value() == 0);
-    CHECK(counters.SRVFAIL.value() == 0);
-    CHECK(counters.filtered.value() == 153);
+
+    nlohmann::json j;
+    dns_handler.metrics()->bucket(0)->to_json(j);
+    CHECK(j["filtered_packets"] == 153);
 }
 
 TEST_CASE("Parse filtered DNSTAP with data", "[dnstap][dns][filter][!mayfail]")
@@ -109,48 +94,46 @@ TEST_CASE("Parse filtered DNSTAP with data", "[dnstap][dns][filter][!mayfail]")
     c.config_set<uint64_t>("num_periods", 1);
     DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
     dns_handler.config_set<std::string>("dnstap_msg_type", "client");
+    dns_handler.config_set<visor::Configurable::StringList>("enable", {"top_size", "top_ports"});
 
     dns_handler.start();
     stream.start();
     stream.stop();
     dns_handler.stop();
 
-    auto counters = dns_handler.metrics()->bucket(0)->counters();
+    auto counters = dns_handler.metrics()->bucket(0)->counters(PacketDirection::unknown);
     auto event_data = dns_handler.metrics()->bucket(0)->event_data_locked();
 
     CHECK(event_data.num_events->value() == 153);
     CHECK(event_data.num_samples->value() == 153);
     CHECK(counters.TCP.value() == 0);
-    CHECK(counters.UDP.value() == 153);
-    CHECK(counters.IPv4.value() == 153);
+    CHECK(counters.UDP.value() == 72);
+    CHECK(counters.IPv4.value() == 72);
     CHECK(counters.IPv6.value() == 0);
-    CHECK(counters.queries.value() == 79);
-    CHECK(counters.replies.value() == 74);
-    CHECK(counters.xacts_total.value() == 0);
-    CHECK(counters.xacts_in.value() == 0);
-    CHECK(counters.xacts_out.value() == 0);
-    CHECK(counters.xacts_timed_out.value() == 0);
-    CHECK(counters.RNOERROR.value() == 70);
+    CHECK(counters.xacts.value() == 72);
+    CHECK(counters.timeout.value() == 0);
+    CHECK(counters.orphan.value() == 2);
+    CHECK(counters.RNOERROR.value() == 68);
     CHECK(counters.NX.value() == 0);
     CHECK(counters.REFUSED.value() == 0);
     CHECK(counters.SRVFAIL.value() == 4);
-    CHECK(counters.filtered.value() == 0);
 
     nlohmann::json j;
     dns_handler.metrics()->bucket(0)->to_json(j);
 
-    CHECK(j["cardinality"]["qname"] == 70);
+    CHECK(j["filtered_packets"] == 0);
+    CHECK(j["unknown"]["cardinality"]["qname"] == 65);
 
-    CHECK(j["top_qname2"][0]["name"] == ".google.com");
-    CHECK(j["top_qname2"][0]["estimate"] == 18);
+    CHECK(j["unknown"]["top_qname2_xacts"][0]["name"] == ".google.com");
+    CHECK(j["unknown"]["top_qname2_xacts"][0]["estimate"] == 9);
 
-    CHECK(j["top_udp_ports"][0]["name"] == "33000");
-    CHECK(j["top_udp_ports"][0]["estimate"] == 4);
+    CHECK(j["unknown"]["top_udp_ports_xacts"][0]["name"] != nullptr);
+    CHECK(j["unknown"]["top_udp_ports_xacts"][0]["estimate"] == 2);
 
-    CHECK(j["top_qtype"][0]["name"] == "A");
-    CHECK(j["top_qtype"][0]["estimate"] == 149);
-    CHECK(j["top_qtype"][1]["name"] == "HTTPS");
-    CHECK(j["top_qtype"][1]["estimate"] == 4);
+    CHECK(j["unknown"]["top_qtype_xacts"][0]["name"] == "A");
+    CHECK(j["unknown"]["top_qtype_xacts"][0]["estimate"] == 70);
+    CHECK(j["unknown"]["top_qtype_xacts"][1]["name"] == "HTTPS");
+    CHECK(j["unknown"]["top_qtype_xacts"][1]["estimate"] == 2);
 }
 
 TEST_CASE("Invalid DNSTAP filter", "[dnstap][dns][filter]")

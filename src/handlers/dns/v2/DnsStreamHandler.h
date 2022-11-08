@@ -4,12 +4,12 @@
 
 #pragma once
 
-#include "TransactionManager.h"
 #include "AbstractMetricsManager.h"
 #include "GeoDB.h"
 #include "MockInputStream.h"
 #include "PcapInputStream.h"
 #include "StreamHandler.h"
+#include "TransactionManager.h"
 #include "dns.h"
 #include "dnstap.pb.h"
 #include <Corrade/Utility/Debug.h>
@@ -21,7 +21,7 @@ namespace visor::input::dnstap {
 class DnstapInputEventProxy;
 }
 
-namespace visor::handler::dns {
+namespace visor::handler::dns::v2 {
 
 using namespace visor::lib::dns;
 using namespace visor::lib::transaction;
@@ -36,16 +36,22 @@ namespace group {
 enum DnsMetrics : visor::MetricGroupIntType {
     Cardinality,
     Counters,
-    DnsTransactions,
+    Quantiles,
     TopEcs,
+    TopQtypes,
+    TopRcodes,
+    TopSize,
     TopQnames,
-    TopQnamesDetails,
-    TopPorts
+    TopPorts,
+    XactTimes,
 };
 }
 
 struct DnsTransaction : public Transaction {
+    bool filtered;
     size_t querySize;
+    bool CD;
+    std::string ecs;
 };
 
 enum Protocol : uint64_t {
@@ -58,42 +64,9 @@ enum Protocol : uint64_t {
     PCPP_UNKOWN = pcpp::UnknownProtocol
 };
 
-class DnsMetricsBucket final : public visor::AbstractMetricsBucket
-{
-protected:
-    mutable std::shared_mutex _mutex;
-
-    Quantile<uint64_t> _dnsXactFromTimeUs;
-    Quantile<uint64_t> _dnsXactToTimeUs;
-    Quantile<double> _dnsXactRatio;
-
-    Cardinality _dns_qnameCard;
-
-    TopN<visor::geo::City> _dns_topGeoLocECS;
-    TopN<std::string> _dns_topASNECS;
-    TopN<std::string> _dns_topQueryECS;
-
-    TopN<std::string> _dns_topQname2;
-    TopN<std::string> _dns_topQname3;
-    TopN<std::string> _dns_topNX;
-    TopN<std::string> _dns_topREFUSED;
-    TopN<std::string> _dns_topSizedQnameResp;
-    TopN<std::string> _dns_topSRVFAIL;
-    TopN<std::string> _dns_topNODATA;
-    TopN<std::string> _dns_topNOERROR;
-    TopN<uint16_t> _dns_topUDPPort;
-    TopN<uint16_t> _dns_topQType;
-    TopN<uint16_t> _dns_topRCode;
-    TopN<std::string> _dns_slowXactIn;
-    TopN<std::string> _dns_slowXactOut;
-
-    struct counters {
-        Counter xacts_total;
-        Counter xacts_in;
-        Counter xacts_out;
-        Counter xacts_timed_out;
-        Counter queries;
-        Counter replies;
+struct DnsDirection {
+    struct Counters {
+        Counter xacts;
         Counter UDP;
         Counter TCP;
         Counter DOT;
@@ -101,92 +74,228 @@ protected:
         Counter IPv4;
         Counter IPv6;
         Counter NX;
+        Counter ECS;
         Counter REFUSED;
         Counter SRVFAIL;
         Counter RNOERROR;
         Counter NODATA;
-        Counter total;
-        Counter filtered;
-        Counter queryECS;
-        counters()
-            : xacts_total(DNS_SCHEMA, {"xact", "counts", "total"}, "Total DNS transactions (query/reply pairs)")
-            , xacts_in(DNS_SCHEMA, {"xact", "in", "total"}, "Total ingress DNS transactions (host is server)")
-            , xacts_out(DNS_SCHEMA, {"xact", "out", "total"}, "Total egress DNS transactions (host is client)")
-            , xacts_timed_out(DNS_SCHEMA, {"xact", "counts", "timed_out"}, "Total number of DNS transactions that timed out")
-            , queries(DNS_SCHEMA, {"wire_packets", "queries"}, "Total DNS wire packets flagged as query (ingress and egress)")
-            , replies(DNS_SCHEMA, {"wire_packets", "replies"}, "Total DNS wire packets flagged as reply (ingress and egress)")
-            , UDP(DNS_SCHEMA, {"wire_packets", "udp"}, "Total DNS wire packets received over UDP (ingress and egress)")
-            , TCP(DNS_SCHEMA, {"wire_packets", "tcp"}, "Total DNS wire packets received over TCP (ingress and egress)")
-            , DOT(DNS_SCHEMA, {"wire_packets", "dot"}, "Total DNS wire packets received over DNS over TLS")
-            , DOH(DNS_SCHEMA, {"wire_packets", "doh"}, "Total DNS wire packets received over DNS over HTTPS")
-            , IPv4(DNS_SCHEMA, {"wire_packets", "ipv4"}, "Total DNS wire packets received over IPv4 (ingress and egress)")
-            , IPv6(DNS_SCHEMA, {"wire_packets", "ipv6"}, "Total DNS wire packets received over IPv6 (ingress and egress)")
-            , NX(DNS_SCHEMA, {"wire_packets", "nxdomain"}, "Total DNS wire packets flagged as reply with return code NXDOMAIN (ingress and egress)")
-            , REFUSED(DNS_SCHEMA, {"wire_packets", "refused"}, "Total DNS wire packets flagged as reply with return code REFUSED (ingress and egress)")
-            , SRVFAIL(DNS_SCHEMA, {"wire_packets", "srvfail"}, "Total DNS wire packets flagged as reply with return code SRVFAIL (ingress and egress)")
-            , RNOERROR(DNS_SCHEMA, {"wire_packets", "noerror"}, "Total DNS wire packets flagged as reply with return code NOERROR (ingress and egress)")
-            , NODATA(DNS_SCHEMA, {"wire_packets", "nodata"}, "Total DNS wire packets flagged as reply with return code NOERROR and no answer section data (ingress and egress)")
-            , total(DNS_SCHEMA, {"wire_packets", "total"}, "Total DNS wire packets matching the configured filter(s)")
-            , filtered(DNS_SCHEMA, {"wire_packets", "filtered"}, "Total DNS wire packets seen that did not match the configured filter(s) (if any)")
-            , queryECS(DNS_SCHEMA, {"wire_packets", "query_ecs"}, "Total queries that have EDNS Client Subnet (ECS) field set")
+        Counter authData;
+        Counter authAnswer;
+        Counter checkDisabled;
+        Counter timeout;
+        Counter orphan;
+        Counters()
+            : xacts(DNS_SCHEMA, {"xacts"}, "Total DNS transactions (query/reply pairs)")
+            , UDP(DNS_SCHEMA, {"udp_xacts"}, "Total DNS transactions (query/reply pairs) received over UDP")
+            , TCP(DNS_SCHEMA, {"tcp_xacts"}, "Total DNS transactions (query/reply pairs) received over TCP")
+            , DOT(DNS_SCHEMA, {"dot_xacts"}, "Total DNS transactions (query/reply pairs) received over DNS over TLS")
+            , DOH(DNS_SCHEMA, {"doh_xacts"}, "Total DNS transactions (query/reply pairs) received over DNS over HTTPS")
+            , IPv4(DNS_SCHEMA, {"ipv4_xacts"}, "Total DNS transactions (query/reply pairs) received over IPv4")
+            , IPv6(DNS_SCHEMA, {"ipv6_xacts"}, "Total DNS transactions (query/reply pairs) received over IPv6")
+            , NX(DNS_SCHEMA, {"nxdomain_xacts"}, "Total DNS transactions (query/reply pairs) flagged as reply with return code NXDOMAIN")
+            , ECS(DNS_SCHEMA, {"ecs_xacts"}, "Total DNS transactions (query/reply pairs) with the EDNS Client Subnet option set")
+            , REFUSED(DNS_SCHEMA, {"refused_xacts"}, "Total DNS transactions (query/reply pairs) flagged as reply with return code REFUSED")
+            , SRVFAIL(DNS_SCHEMA, {"srvfail_xacts"}, "Total DNS transactions (query/reply pairs) flagged as reply with return code SRVFAIL")
+            , RNOERROR(DNS_SCHEMA, {"noerror_xacts"}, "Total DNS transactions (query/reply pairs) flagged as reply with return code NOERROR")
+            , NODATA(DNS_SCHEMA, {"nodata_xacts"}, "Total DNS transactions (query/reply pairs) flagged as reply with return code NOERROR but with an empty answers section")
+            , authData(DNS_SCHEMA, {"authenticated_data_xacts"}, "Total DNS transactions (query/reply pairs) with the AD flag set in the response")
+            , authAnswer(DNS_SCHEMA, {"authoritative_answer_xacts"}, "Total DNS transactions (query/reply pairs) with the AA flag set in the response")
+            , checkDisabled(DNS_SCHEMA, {"checking_disabled_xacts"}, "Total DNS transactions (query/reply pairs) with the CD flag set in the query")
+            , timeout(DNS_SCHEMA, {"timeout_queries"}, "Total number of DNS queries that timed out")
+            , orphan(DNS_SCHEMA, {"orphan_responses"}, "Total number of DNS responses that do not have a corresponding query")
         {
         }
-    };
-    counters _counters;
 
-    Rate _rate_total;
+        void operator+=(const Counters &other)
+        {
+            xacts += other.xacts;
+            UDP += other.UDP;
+            TCP += other.TCP;
+            DOH += other.DOH;
+            DOT += other.DOT;
+            IPv4 += other.IPv4;
+            IPv6 += other.IPv6;
+            NX += other.NX;
+            ECS += other.ECS;
+            REFUSED += other.REFUSED;
+            SRVFAIL += other.SRVFAIL;
+            RNOERROR += other.RNOERROR;
+            NODATA += other.NODATA;
+            authData += other.authData;
+            authAnswer += other.authAnswer;
+            checkDisabled += other.checkDisabled;
+            timeout += other.timeout;
+            orphan += other.orphan;
+        }
+
+        void to_json(json &j) const
+        {
+            xacts.to_json(j);
+            UDP.to_json(j);
+            TCP.to_json(j);
+            DOH.to_json(j);
+            DOT.to_json(j);
+            IPv4.to_json(j);
+            IPv6.to_json(j);
+            NX.to_json(j);
+            ECS.to_json(j);
+            REFUSED.to_json(j);
+            SRVFAIL.to_json(j);
+            RNOERROR.to_json(j);
+            NODATA.to_json(j);
+            authData.to_json(j);
+            authAnswer.to_json(j);
+            checkDisabled.to_json(j);
+            timeout.to_json(j);
+            orphan.to_json(j);
+        }
+
+        void to_prometheus(std::stringstream &out, const Metric::LabelMap &add_labels) const
+        {
+            xacts.to_prometheus(out, add_labels);
+            UDP.to_prometheus(out, add_labels);
+            TCP.to_prometheus(out, add_labels);
+            DOH.to_prometheus(out, add_labels);
+            DOT.to_prometheus(out, add_labels);
+            IPv4.to_prometheus(out, add_labels);
+            IPv6.to_prometheus(out, add_labels);
+            NX.to_prometheus(out, add_labels);
+            ECS.to_prometheus(out, add_labels);
+            REFUSED.to_prometheus(out, add_labels);
+            SRVFAIL.to_prometheus(out, add_labels);
+            RNOERROR.to_prometheus(out, add_labels);
+            NODATA.to_prometheus(out, add_labels);
+            authData.to_prometheus(out, add_labels);
+            authAnswer.to_prometheus(out, add_labels);
+            checkDisabled.to_prometheus(out, add_labels);
+            timeout.to_prometheus(out, add_labels);
+            orphan.to_prometheus(out, add_labels);
+        }
+    };
+    Counters counters;
+
+    Quantile<uint64_t> dnsTimeUs;
+    Quantile<double> dnsRatio;
+    Rate dnsRate;
+
+    Cardinality qnameCard;
+
+    TopN<visor::geo::City> topGeoLocECS;
+    TopN<std::string> topASNECS;
+    TopN<std::string> topQueryECS;
+    TopN<std::string> topQname2;
+    TopN<std::string> topQname3;
+    TopN<std::string> topNX;
+    TopN<std::string> topREFUSED;
+    TopN<std::string> topSizedQnameResp;
+    TopN<std::string> topSRVFAIL;
+    TopN<std::string> topNODATA;
+    TopN<std::string> topNOERROR;
+    TopN<uint16_t> topUDPPort;
+    TopN<uint16_t> topQType;
+    TopN<uint16_t> topRCode;
+    TopN<std::string> topSlow;
+
+    DnsDirection()
+        : counters()
+        , dnsTimeUs(DNS_SCHEMA, {"xact_time_us"}, "Quantiles of transaction timing (query/reply pairs) in microseconds")
+        , dnsRatio(DNS_SCHEMA, {"response_query_size_ratio"}, "Quantiles of ratio of packet sizes in a DNS transaction (reply/query)")
+        , dnsRate(DNS_SCHEMA, {"dns_xact_rates"}, "Rate of all DNS transaction (reply/query) per second")
+        , qnameCard(DNS_SCHEMA, {"cardinality", "qname"}, "Cardinality of unique QNAMES, both ingress and egress")
+        , topGeoLocECS(DNS_SCHEMA, "geo_loc", {"top_geo_loc_ecs_xacts"}, "Top GeoIP ECS locations")
+        , topASNECS(DNS_SCHEMA, "asn", {"top_asn_ecs_xacts"}, "Top ASNs by ECS")
+        , topQueryECS(DNS_SCHEMA, "ecs", {"top_query_ecs_xacts"}, "Top EDNS Client Subnet (ECS) observed in DNS queries")
+        , topQname2(DNS_SCHEMA, "qname", {"top_qname2_xacts"}, "Top QNAMES, aggregated at a depth of two labels")
+        , topQname3(DNS_SCHEMA, "qname", {"top_qname3_xacts"}, "Top QNAMES, aggregated at a depth of three labels")
+        , topNX(DNS_SCHEMA, "qname", {"top_nxdomain_xacts"}, "Top QNAMES with result code NXDOMAIN")
+        , topREFUSED(DNS_SCHEMA, "qname", {"top_refused_xacts"}, "Top QNAMES with result code REFUSED")
+        , topSizedQnameResp(DNS_SCHEMA, "qname", {"top_response_bytes"}, "Top QNAMES by response volume in bytes")
+        , topSRVFAIL(DNS_SCHEMA, "qname", {"top_srvfail_xacts"}, "Top QNAMES with result code SRVFAIL")
+        , topNODATA(DNS_SCHEMA, "qname", {"top_nodata_xacts"}, "Top QNAMES with result code NOERROR and empty answer section")
+        , topNOERROR(DNS_SCHEMA, "qname", {"top_noerror_xacts"}, "Top QNAMES with result code NOERROR")
+        , topUDPPort(DNS_SCHEMA, "port", {"top_udp_ports_xacts"}, "Top UDP source port on the query side of a transaction")
+        , topQType(DNS_SCHEMA, "qtype", {"top_qtype_xacts"}, "Top query types")
+        , topRCode(DNS_SCHEMA, "rcode", {"top_rcode_xacts"}, "Top result codes")
+        , topSlow(DNS_SCHEMA, "qname", {"top_slow_xacts"}, "Top QNAMES in transactions where host is the server and transaction speed is slower than p90")
+    {
+    }
+
+    void update_topn_metrics(size_t topn_count, uint64_t percentile_threshold)
+    {
+        topGeoLocECS.set_settings(topn_count, percentile_threshold);
+        topASNECS.set_settings(topn_count, percentile_threshold);
+        topQueryECS.set_settings(topn_count, percentile_threshold);
+        topQname2.set_settings(topn_count, percentile_threshold);
+        topQname3.set_settings(topn_count, percentile_threshold);
+        topNX.set_settings(topn_count, percentile_threshold);
+        topREFUSED.set_settings(topn_count, percentile_threshold);
+        topSizedQnameResp.set_settings(topn_count, percentile_threshold);
+        topSRVFAIL.set_settings(topn_count, percentile_threshold);
+        topNODATA.set_settings(topn_count, percentile_threshold);
+        topNOERROR.set_settings(topn_count, percentile_threshold);
+        topUDPPort.set_settings(topn_count, percentile_threshold);
+        topQType.set_settings(topn_count, percentile_threshold);
+        topRCode.set_settings(topn_count, percentile_threshold);
+        topSlow.set_settings(topn_count, percentile_threshold);
+    }
+};
+
+class DnsMetricsBucket final : public visor::AbstractMetricsBucket
+{
+protected:
+    mutable std::shared_mutex _mutex;
+    size_t _topn_count{10};
+    uint64_t _topn_percentile_threshold{0};
+    inline static const std::unordered_map<PacketDirection, std::string> _dir_str = {
+        {PacketDirection::toHost, "in"},
+        {PacketDirection::fromHost, "out"},
+        {PacketDirection::unknown, "unknown"}};
+    std::map<PacketDirection, DnsDirection> _dns;
+    Counter _filtered;
 
 public:
     DnsMetricsBucket()
-        : _dnsXactFromTimeUs(DNS_SCHEMA, {"xact", "out", "quantiles_us"}, "Quantiles of transaction timing (query/reply pairs) when host is client, in microseconds")
-        , _dnsXactToTimeUs(DNS_SCHEMA, {"xact", "in", "quantiles_us"}, "Quantiles of transaction timing (query/reply pairs) when host is server, in microseconds")
-        , _dnsXactRatio(DNS_SCHEMA, {"xact", "ratio", "quantiles"}, "Quantiles of ratio of packet sizes in a DNS transaction (reply/query)")
-        , _dns_qnameCard(DNS_SCHEMA, {"cardinality", "qname"}, "Cardinality of unique QNAMES, both ingress and egress")
-        , _dns_topGeoLocECS(DNS_SCHEMA, "geo_loc", {"top_geoLoc_ecs"}, "Top GeoIP ECS locations")
-        , _dns_topASNECS(DNS_SCHEMA, "asn", {"top_asn_ecs"}, "Top ASNs by ECS")
-        , _dns_topQueryECS(DNS_SCHEMA, "ecs", {"top_query_ecs"}, "Top EDNS Client Subnet (ECS) observed in DNS queries")
-        , _dns_topQname2(DNS_SCHEMA, "qname", {"top_qname2"}, "Top QNAMES, aggregated at a depth of two labels")
-        , _dns_topQname3(DNS_SCHEMA, "qname", {"top_qname3"}, "Top QNAMES, aggregated at a depth of three labels")
-        , _dns_topNX(DNS_SCHEMA, "qname", {"top_nxdomain"}, "Top QNAMES with result code NXDOMAIN")
-        , _dns_topREFUSED(DNS_SCHEMA, "qname", {"top_refused"}, "Top QNAMES with result code REFUSED")
-        , _dns_topSizedQnameResp(DNS_SCHEMA, "qname", {"top_qname_by_resp_bytes"}, "Top QNAMES by response volume in bytes")
-        , _dns_topSRVFAIL(DNS_SCHEMA, "qname", {"top_srvfail"}, "Top QNAMES with result code SRVFAIL")
-        , _dns_topNODATA(DNS_SCHEMA, "qname", {"top_nodata"}, "Top QNAMES with result code NOERROR and no answer section")
-        , _dns_topNOERROR(DNS_SCHEMA, "qname", {"top_noerror"}, "Top QNAMES with result code NOERROR")
-        , _dns_topUDPPort(DNS_SCHEMA, "port", {"top_udp_ports"}, "Top UDP source port on the query side of a transaction")
-        , _dns_topQType(DNS_SCHEMA, "qtype", {"top_qtype"}, "Top query types")
-        , _dns_topRCode(DNS_SCHEMA, "rcode", {"top_rcode"}, "Top result codes")
-        , _dns_slowXactIn(DNS_SCHEMA, "qname", {"xact", "in", "top_slow"}, "Top QNAMES in transactions where host is the server and transaction speed is slower than p90")
-        , _dns_slowXactOut(DNS_SCHEMA, "qname", {"xact", "out", "top_slow"}, "Top QNAMES in transactions where host is the client and transaction speed is slower than p90")
-        , _rate_total(DNS_SCHEMA, {"rates", "total"}, "Rate of all DNS wire packets (combined ingress and egress) in packets per second")
+        : _filtered(DNS_SCHEMA, {"filtered_packets"}, "Total DNS wire packets seen that did not match the configured filter(s) (if any)")
     {
-        set_event_rate_info(DNS_SCHEMA, {"rates", "events"}, "Rate of all DNS wire packets before filtering per second");
-        set_num_events_info(DNS_SCHEMA, {"wire_packets", "events"}, "Total DNS wire packets events");
-        set_num_sample_info(DNS_SCHEMA, {"wire_packets", "deep_samples"}, "Total DNS wire packets that were sampled for deep inspection");
+        set_num_events_info(DNS_SCHEMA, {"observed_packets"}, "Total DNS wire packets events");
+        set_num_sample_info(DNS_SCHEMA, {"deep_sampled_packets"}, "Total DNS wire packets that were sampled for deep inspection");
     }
 
-    auto get_xact_data_locked() const
+    auto get_xact_data_locked(PacketDirection dir) const
     {
         std::shared_lock lock(_mutex);
         struct retVals {
-            const Quantile<uint64_t> &xact_to;
-            const Quantile<uint64_t> &xact_from;
+            const Quantile<uint64_t> &xact;
             std::shared_lock<std::shared_mutex> lock;
         };
-        return retVals{_dnsXactToTimeUs, _dnsXactFromTimeUs, std::move(lock)};
+        return retVals{_dns.at(dir).dnsTimeUs, std::move(lock)};
     }
 
-    void inc_xact_timed_out(uint64_t c)
+    void dir_setup(PacketDirection dir)
     {
         std::unique_lock lock(_mutex);
-        _counters.xacts_timed_out += c;
+        if (!_dns.count(dir)) {
+            _dns[dir].update_topn_metrics(_topn_count, _topn_percentile_threshold);
+        }
+    }
+
+    void inc_xact_timed_out(uint64_t c, PacketDirection dir)
+    {
+        std::unique_lock lock(_mutex);
+        _dns[dir].counters.timeout += c;
+    }
+
+    void inc_xact_orphan(uint64_t c, PacketDirection dir)
+    {
+        std::unique_lock lock(_mutex);
+        _dns[dir].counters.orphan += c;
     }
 
     // get a copy of the counters
-    counters counters() const
+    DnsDirection::Counters counters(PacketDirection dir) const
     {
         std::shared_lock lock(_mutex);
-        return _counters;
+        return _dns.at(dir).counters;
     }
 
     // visor::AbstractMetricsBucket
@@ -195,44 +304,32 @@ public:
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override;
     void update_topn_metrics(size_t topn_count, uint64_t percentile_threshold) override
     {
-        _dns_topGeoLocECS.set_settings(topn_count, percentile_threshold);
-        _dns_topASNECS.set_settings(topn_count, percentile_threshold);
-        _dns_topQueryECS.set_settings(topn_count, percentile_threshold);
-        _dns_topQname2.set_settings(topn_count, percentile_threshold);
-        _dns_topQname3.set_settings(topn_count, percentile_threshold);
-        _dns_topNX.set_settings(topn_count, percentile_threshold);
-        _dns_topREFUSED.set_settings(topn_count, percentile_threshold);
-        _dns_topSizedQnameResp.set_settings(topn_count, percentile_threshold);
-        _dns_topSRVFAIL.set_settings(topn_count, percentile_threshold);
-        _dns_topNODATA.set_settings(topn_count, percentile_threshold);
-        _dns_topNOERROR.set_settings(topn_count, percentile_threshold);
-        _dns_topUDPPort.set_settings(topn_count, percentile_threshold);
-        _dns_topQType.set_settings(topn_count, percentile_threshold);
-        _dns_topRCode.set_settings(topn_count, percentile_threshold);
-        _dns_slowXactIn.set_settings(topn_count, percentile_threshold);
-        _dns_slowXactOut.set_settings(topn_count, percentile_threshold);
+        _topn_count = topn_count;
+        _topn_percentile_threshold = percentile_threshold;
     }
 
     void on_set_read_only() override
     {
         // stop rate collection
-        _rate_total.cancel();
+        for (auto &dns : _dns) {
+            dns.second.dnsRate.cancel();
+        }
     }
 
     void process_filtered();
-    void process_dns_layer(bool deep, DnsLayer &payload, pcpp::ProtocolType l3, Protocol l4, uint16_t port, size_t suffix_size = 0);
-    void process_dns_layer(pcpp::ProtocolType l3, Protocol l4, QR side);
-    void process_dnstap(bool deep, const dnstap::Dnstap &payload);
-
-    void new_dns_transaction(bool deep, float to90th, float from90th, DnsLayer &dns, PacketDirection dir, DnsTransaction xact);
+    void new_dns_transaction(bool deep, float per90th, DnsLayer &dns, PacketDirection dir, DnsTransaction xact, pcpp::ProtocolType l3, Protocol l4, uint16_t port, size_t suffix_size = 0);
 };
 
 class DnsMetricsManager final : public visor::AbstractMetricsManager<DnsMetricsBucket>
 {
     using DnsXactID = std::pair<uint32_t, uint16_t>;
-    visor::lib::transaction::TransactionManager<DnsXactID, DnsTransaction> _qr_pair_manager;
-    float _to90th{0.0};
-    float _from90th{0.0};
+    struct DirTransaction {
+        TransactionManager<DnsXactID, DnsTransaction> xact_map;
+        float per_90th{0.0};
+    };
+    std::map<PacketDirection, DirTransaction> _pair_manager = {{PacketDirection::toHost, DirTransaction()},
+        {PacketDirection::fromHost, DirTransaction()},
+        {PacketDirection::unknown, DirTransaction()}};
 
 public:
     DnsMetricsManager(const Configurable *window_config)
@@ -243,28 +340,33 @@ public:
     void on_period_shift(timespec stamp, [[maybe_unused]] const DnsMetricsBucket *maybe_expiring_bucket) override
     {
         // DNS transaction support
-        auto timed_out = _qr_pair_manager.purge_old_transactions(stamp);
-        if (timed_out) {
-            live_bucket()->inc_xact_timed_out(timed_out);
-        }
-        // collect to/from 90th percentile every period shift to judge slow xacts
-        auto [xact_to, xact_from, lock] = bucket(1)->get_xact_data_locked();
-        if (xact_from.get_n()) {
-            _from90th = xact_from.get_quantile(0.90);
-        }
-        if (xact_to.get_n()) {
-            _to90th = xact_to.get_quantile(0.90);
+        for (auto &manager : _pair_manager) {
+            if (auto timed_out = manager.second.xact_map.purge_old_transactions(stamp); timed_out) {
+                live_bucket()->inc_xact_timed_out(timed_out, manager.first);
+            }
+            if (auto [xact, lock] = bucket(1)->get_xact_data_locked(manager.first); xact.get_n()) {
+                manager.second.per_90th = xact.get_quantile(0.90);
+            }
         }
     }
 
     size_t num_open_transactions() const
     {
-        return _qr_pair_manager.open_transaction_count();
+        size_t count{0};
+        for (const auto &manager : _pair_manager) {
+            count += manager.second.xact_map.open_transaction_count();
+        }
+        return count;
     }
 
-    void process_filtered(timespec stamp);
+    void process_filtered(timespec stamp)
+    {
+        new_event(stamp, false);
+        live_bucket()->process_filtered();
+    }
+    void process_filtered(timespec stamp, DnsLayer &payload, PacketDirection dir, uint32_t flowkey);
     void process_dns_layer(DnsLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowkey, uint16_t port, size_t suffix_size, timespec stamp);
-    void process_dnstap(const dnstap::Dnstap &payload, bool filtered);
+    void process_dnstap(const dnstap::Dnstap &payload, PacketDirection dir, bool filtered);
 };
 
 class DnsTcpSessionData final : public TcpSessionData
@@ -341,6 +443,9 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
         DnstapMsgType,
         GeoLocNotFound,
         AsnNotFound,
+        DisableIn,
+        DisableOut,
+        DisableUndefDir,
         FiltersMAX
     };
     std::bitset<Filters::FiltersMAX> _f_enabled;
@@ -355,20 +460,21 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
     std::vector<uint16_t> _f_qtypes;
     size_t _static_suffix_size{0};
     std::bitset<DNSTAP_TYPE_SIZE> _f_dnstap_types;
-    bool _using_predicate_signals{false};
 
     static const inline StreamMetricsHandler::GroupDefType _group_defs = {
         {"cardinality", group::DnsMetrics::Cardinality},
         {"counters", group::DnsMetrics::Counters},
-        {"dns_transaction", group::DnsMetrics::DnsTransactions},
+        {"quantiles", group::DnsMetrics::Quantiles},
         {"top_ecs", group::DnsMetrics::TopEcs},
+        {"top_qtypes", group::DnsMetrics::TopQtypes},
+        {"top_rcodes", group::DnsMetrics::TopRcodes},
+        {"top_size", group::DnsMetrics::TopSize},
         {"top_qnames", group::DnsMetrics::TopQnames},
-        {"top_qnames_details", group::DnsMetrics::TopQnamesDetails},
-        {"top_ports", group::DnsMetrics::TopPorts}};
+        {"top_ports", group::DnsMetrics::TopPorts},
+        {"xact_times", group::DnsMetrics::XactTimes}};
 
-    bool _filtering(DnsLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint16_t port, timespec stamp);
+    bool _filtering(DnsLayer &payload, PacketDirection dir, uint32_t flowkey, timespec stamp);
     bool _configs(DnsLayer &payload);
-    void _register_predicate_filter(Filters filter, std::string f_key, std::string f_value);
 
 public:
     DnsStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config);

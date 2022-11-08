@@ -16,7 +16,7 @@ spdlog/1.10.0
 uvw/2.10.0
 yaml-cpp/0.7.0
 robin-hood-hashing/3.11.5
-zlib/1.2.12
+zlib/1.2.11
 crashpad/cci.20220219
 
 [build_requires]
