@@ -139,6 +139,117 @@ public:
 };
 
 /**
+ * A Histogram metric class which knows how to render its output into buckets
+ *
+ * NOTE: intentionally _not_ thread safe; it should be protected by a mutex
+ */
+template <typename T>
+class Histogram final : public Metric
+{
+    datasketches::kll_sketch<T> _sketch;
+    std::vector<T> _quantiles_sum;
+
+public:
+    Histogram(std::string schema_key, std::initializer_list<std::string> names, std::string desc)
+        : Metric(schema_key, names, std::move(desc))
+    {
+    }
+
+    void update(const T &value)
+    {
+        _sketch.update(value);
+    }
+
+    void update(T &&value)
+    {
+        _sketch.update(value);
+    }
+
+    void merge(const Histogram &other, Aggregate agg_operator)
+    {
+        if (agg_operator == Aggregate::SUM && !_sketch.is_empty()) {
+            if (other._sketch.is_empty()) {
+                return;
+            }
+            // TODO sum aggregator
+            _sketch.merge(other._quantile);
+        } else {
+            _sketch.merge(other._quantile);
+        }
+    }
+
+    auto get_n() const
+    {
+        return _sketch.get_n();
+    }
+
+    auto get_min() const
+    {
+        return _sketch.get_min_value();
+    }
+
+    auto get_max() const
+    {
+        return _sketch.get_max_value();
+    }
+
+    // Metric
+    void to_json(json &j) const override
+    {
+        if (_sketch.is_empty()) {
+            return;
+        }
+        std::size_t split_point_size = 1 + static_cast<std::size_t>(std::log2(_sketch.get_n())); // Sturge’s Rule
+        auto step = _sketch.get_max_value() / split_point_size;
+        auto split_point = step;
+        std::unique_ptr<T[]> bins = std::make_unique<T[]>(split_point_size);
+        for (std::size_t i = 0; i < split_point_size; ++i) {
+            bins[i] = split_point;
+            split_point += step;
+            if (split_point > _sketch.get_max_value()) {
+                split_point = _sketch.get_max_value();
+            }
+        }
+        auto histogram = _sketch.get_PMF(bins.get(), split_point_size);
+        for (std::size_t i = 0; i < split_point_size; ++i) {
+            name_json_assign(j, {"buckets", std::to_string(bins[i])}, histogram[i] * _sketch.get_n());
+        }
+        name_json_assign(j, {"buckets", "+Inf"}, histogram[split_point_size] * _sketch.get_n());
+    }
+
+    void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override
+    {
+        if (_sketch.is_empty()) {
+            return;
+        }
+        std::size_t split_point_size = 1 + static_cast<std::size_t>(std::log2(_sketch.get_n())); // Sturge’s Rule
+        auto step = _sketch.get_max_value() / split_point_size;
+        auto split_point = step;
+        std::unique_ptr<T[]> bins = std::make_unique<T[]>(split_point_size);
+        for (std::size_t i = 0; i < split_point_size; ++i) {
+            bins[i] = split_point;
+            split_point += step;
+            if (split_point > _sketch.get_max_value()) {
+                split_point = _sketch.get_max_value();
+            }
+        }
+        auto histogram = _sketch.get_PMF(bins.get(), split_point_size);
+
+        out << "# HELP " << base_name_snake() << ' ' << _desc << std::endl;
+        out << "# TYPE " << base_name_snake() << " summary" << std::endl;
+        for (std::size_t i = 0; i < split_point_size; ++i) {
+            LabelMap le(add_labels);
+            le["le"] = std::to_string(bins[i]);
+            out << name_snake({"bucket"}, le) << ' ' << histogram[i] * _sketch.get_n() << std::endl;
+        }
+        LabelMap le(add_labels);
+        le["le"] = "+Inf";
+        out << name_snake({"bucket"}, le) << ' ' << histogram[split_point_size] * _sketch.get_n() << std::endl;
+        out << name_snake({"count"}, add_labels) << ' ' << _sketch.get_n() << std::endl;
+    }
+};
+
+/**
  * A Quantile metric class which knows how to render its output into p50, p90, p95, p99
  *
  * NOTE: intentionally _not_ thread safe; it should be protected by a mutex

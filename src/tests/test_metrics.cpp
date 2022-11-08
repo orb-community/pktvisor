@@ -214,6 +214,65 @@ TEST_CASE("Quantile metrics", "[metrics][quantile]")
     }
 }
 
+TEST_CASE("Histogram metrics", "[metrics][histogram]")
+{
+    Metric::add_static_label("instance", "test instance");
+
+    json j;
+    std::stringstream output;
+    std::string line;
+    Histogram<int_fast32_t> h("root", {"test", "metric"}, "A histogram test metric");
+
+    SECTION("Histogram to json")
+    {
+        h.name_json_assign(j, 58);
+        CHECK(j["test"]["metric"] == 58);
+        int_fast32_t value = 12;
+        h.update(value);
+        h.update(value);
+        h.update(value);
+        value = 8;
+        h.update(value);
+        h.to_json(j["top"]);
+
+        CHECK(j["top"]["test"]["metric"]["buckets"]["+Inf"] == 3.0);
+        CHECK(j["top"]["test"]["metric"]["buckets"]["12"] == 1.0);
+        CHECK(j["top"]["test"]["metric"]["buckets"]["4"] == 0.0);
+        CHECK(j["top"]["test"]["metric"]["buckets"]["8"] == 0.0);
+    }
+
+    SECTION("Histogram get n")
+    {
+        h.update(12);
+        auto other = h.get_n();
+        CHECK(other == 1);
+    }
+
+    SECTION("Histogram prometheus")
+    {
+        h.update(12);
+        h.update(12);
+        h.update(1);
+        h.update(8);
+        h.update(12);
+        h.to_prometheus(output, {{"policy", "default"}});
+        std::getline(output, line);
+        CHECK(line == "# HELP root_test_metric A histogram test metric");
+        std::getline(output, line);
+        CHECK(line == "# TYPE root_test_metric summary");
+        std::getline(output, line);
+        CHECK(line == R"(root_test_metric_bucket{instance="test instance",le="4",policy="default"} 1)");
+        std::getline(output, line);
+        CHECK(line == R"(root_test_metric_bucket{instance="test instance",le="8",policy="default"} 0)");
+        std::getline(output, line);
+        CHECK(line == R"(root_test_metric_bucket{instance="test instance",le="12",policy="default"} 1)");
+        std::getline(output, line);
+        CHECK(line == R"(root_test_metric_bucket{instance="test instance",le="+Inf",policy="default"} 3)");
+        std::getline(output, line);
+        CHECK(line == R"(root_test_metric_count{instance="test instance",policy="default"} 5)");
+    }
+}
+
 TEST_CASE("TopN metrics", "[metrics][topn]")
 {
     Metric::add_static_label("instance", "test instance");
