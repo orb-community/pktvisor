@@ -146,6 +146,8 @@ public:
 template <typename T>
 class Histogram final : public Metric
 {
+    static_assert(std::is_integral<T>::value || std::is_floating_point<T>::value);
+    T _pace;
     datasketches::kll_sketch<T> _sketch;
     std::vector<T> _quantiles_sum;
 
@@ -153,6 +155,11 @@ public:
     Histogram(std::string schema_key, std::initializer_list<std::string> names, std::string desc)
         : Metric(schema_key, names, std::move(desc))
     {
+        if constexpr (std::is_integral<T>::value) {
+            _pace = 1;
+        } else {
+            _pace = 0.0000001;
+        }
     }
 
     void update(const T &value)
@@ -204,7 +211,7 @@ public:
         auto split_point = step;
         std::unique_ptr<T[]> bins = std::make_unique<T[]>(split_point_size);
         for (std::size_t i = 0; i < split_point_size; ++i) {
-            bins[i] = split_point;
+            bins[i] = split_point + _pace;
             split_point += step;
             if (split_point > _sketch.get_max_value()) {
                 split_point = _sketch.get_max_value();
@@ -212,7 +219,7 @@ public:
         }
         auto histogram = _sketch.get_CDF(bins.get(), split_point_size);
         for (std::size_t i = 0; i < split_point_size; ++i) {
-            name_json_assign(j, {"buckets", std::to_string(bins[i])}, histogram[i] * _sketch.get_n());
+            name_json_assign(j, {"buckets", std::to_string(bins[i] - _pace)}, histogram[i] * _sketch.get_n());
         }
         name_json_assign(j, {"buckets", "+Inf"}, histogram[split_point_size] * _sketch.get_n());
     }
@@ -227,7 +234,7 @@ public:
         auto split_point = step;
         std::unique_ptr<T[]> bins = std::make_unique<T[]>(split_point_size);
         for (std::size_t i = 0; i < split_point_size; ++i) {
-            bins[i] = split_point;
+            bins[i] = split_point + _pace;
             split_point += step;
             if (split_point > _sketch.get_max_value()) {
                 split_point = _sketch.get_max_value();
@@ -239,7 +246,7 @@ public:
         out << "# TYPE " << base_name_snake() << " summary" << std::endl;
         for (std::size_t i = 0; i < split_point_size; ++i) {
             LabelMap le(add_labels);
-            le["le"] = std::to_string(bins[i]);
+            le["le"] = std::to_string(bins[i] - _pace);
             out << name_snake({"bucket"}, le) << ' ' << histogram[i] * _sketch.get_n() << std::endl;
         }
         LabelMap le(add_labels);
