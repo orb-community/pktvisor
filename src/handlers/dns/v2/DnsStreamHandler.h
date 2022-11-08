@@ -48,6 +48,7 @@ enum DnsMetrics : visor::MetricGroupIntType {
 }
 
 struct DnsTransaction : public Transaction {
+    bool filtered;
     size_t querySize;
     bool CD;
     std::string ecs;
@@ -358,7 +359,12 @@ public:
         return count;
     }
 
-    void process_filtered(timespec stamp);
+    void process_filtered(timespec stamp)
+    {
+        new_event(stamp, false);
+        live_bucket()->process_filtered();
+    }
+    void process_filtered(timespec stamp, DnsLayer &payload, PacketDirection dir, uint32_t flowkey);
     void process_dns_layer(DnsLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowkey, uint16_t port, size_t suffix_size, timespec stamp);
     void process_dnstap(const dnstap::Dnstap &payload, PacketDirection dir, bool filtered);
 };
@@ -467,7 +473,7 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
         {"top_ports", group::DnsMetrics::TopPorts},
         {"xact_times", group::DnsMetrics::XactTimes}};
 
-    bool _filtering(DnsLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint16_t port, timespec stamp);
+    bool _filtering(DnsLayer &payload, PacketDirection dir, uint32_t flowkey, timespec stamp);
     bool _configs(DnsLayer &payload);
 
 public:

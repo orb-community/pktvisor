@@ -245,7 +245,7 @@ void DnsStreamHandler::process_udp_packet_cb(pcpp::Packet &payload, PacketDirect
             _cached_dns_layer.dnsLayer = std::make_unique<DnsLayer>(udpLayer, &payload);
         }
         auto dnsLayer = _cached_dns_layer.dnsLayer.get();
-        if (!_filtering(*dnsLayer, dir, l3, pcpp::UDP, metric_port, stamp) && _configs(*dnsLayer)) {
+        if (!_filtering(*dnsLayer, dir, flowkey, stamp) && _configs(*dnsLayer)) {
             _metrics->process_dns_layer(*dnsLayer, dir, l3, pcpp::UDP, flowkey, metric_port, _static_suffix_size, stamp);
             _static_suffix_size = 0;
             // signal for chained stream handlers, if we have any
@@ -333,7 +333,7 @@ void DnsStreamHandler::tcp_message_ready_cb(int8_t side, const pcpp::TcpStreamDa
         // instead using the packet meta data we pass in
         pcpp::Packet dummy_packet;
         DnsLayer dnsLayer(data.get(), size, nullptr, &dummy_packet);
-        if (!_filtering(dnsLayer, dir, l3Type, pcpp::UDP, port, stamp) && _configs(dnsLayer)) {
+        if (!_filtering(dnsLayer, dir, flowKey, stamp) && _configs(dnsLayer)) {
             _metrics->process_dns_layer(dnsLayer, dir, l3Type, pcpp::TCP, flowKey, port, _static_suffix_size, stamp);
             _static_suffix_size = 0;
         }
@@ -393,7 +393,7 @@ void DnsStreamHandler::info_json(json &j) const
     j[schema_key()]["xact"]["open"] = _metrics->num_open_transactions();
 }
 
-inline bool DnsStreamHandler::_filtering(DnsLayer &payload, PacketDirection dir, [[maybe_unused]] pcpp::ProtocolType l3, [[maybe_unused]] pcpp::ProtocolType l4, [[maybe_unused]] uint16_t port, timespec stamp)
+inline bool DnsStreamHandler::_filtering(DnsLayer &payload, PacketDirection dir, uint32_t flowkey, timespec stamp)
 {
     if (_f_enabled[Filters::DisableUndefDir] && dir == PacketDirection::unknown) {
         goto will_filter;
@@ -478,6 +478,7 @@ inline bool DnsStreamHandler::_filtering(DnsLayer &payload, PacketDirection dir,
             }
         }
     }
+
     if (_f_enabled[Filters::OnlyQNameSuffix]) {
         if (!payload.parseResources(true) || payload.getFirstQuery() == nullptr) {
             goto will_filter;
@@ -497,7 +498,7 @@ inline bool DnsStreamHandler::_filtering(DnsLayer &payload, PacketDirection dir,
 
     return false;
 will_filter:
-    _metrics->process_filtered(stamp);
+    _metrics->process_filtered(stamp, payload, dir, flowkey);
     return true;
 }
 inline bool DnsStreamHandler::_configs(DnsLayer &payload)
@@ -902,8 +903,11 @@ void DnsMetricsManager::process_dns_layer(DnsLayer &payload, PacketDirection dir
         }
         auto xact = _pair_manager[dir].xact_map.maybe_end_transaction(DnsXactID(flowkey, payload.getDnsHeader()->transactionID), stamp);
         live_bucket()->dir_setup(dir);
-        if (xact.first == Result::Valid) {
+        if (xact.first == Result::Valid && !xact.second.filtered) {
             live_bucket()->new_dns_transaction(_deep_sampling_now, _pair_manager[dir].per_90th, payload, dir, xact.second, l3, static_cast<Protocol>(l4), port, suffix_size);
+        } else if (xact.second.filtered) {
+            // query was filtered out
+            live_bucket()->process_filtered();
         } else if (xact.first == Result::TimedOut) {
             live_bucket()->inc_xact_timed_out(1, dir);
         } else {
@@ -922,14 +926,30 @@ void DnsMetricsManager::process_dns_layer(DnsLayer &payload, PacketDirection dir
             }
         }
         _pair_manager[dir].xact_map.start_transaction(DnsXactID(flowkey, payload.getDnsHeader()->transactionID),
-            {{stamp, {0, 0}}, payload.getDataLen(), static_cast<bool>(payload.getDnsHeader()->checkingDisabled), subnet});
+            {{stamp, {0, 0}}, false, payload.getDataLen(), static_cast<bool>(payload.getDnsHeader()->checkingDisabled), subnet});
     }
 }
 
-void DnsMetricsManager::process_filtered(timespec stamp)
+void DnsMetricsManager::process_filtered(timespec stamp, DnsLayer &payload, PacketDirection dir, uint32_t flowkey)
 {
     // base event, no sample
     new_event(stamp, false);
+
+    if (payload.getDnsHeader()->queryOrResponse == QR::response) {
+        // For response to match, need to switch direction
+        if (dir == PacketDirection::toHost) {
+            dir = PacketDirection::fromHost;
+        } else if (dir == PacketDirection::fromHost) {
+            dir = PacketDirection::toHost;
+        }
+        auto xact = _pair_manager[dir].xact_map.maybe_end_transaction(DnsXactID(flowkey, payload.getDnsHeader()->transactionID), stamp);
+        live_bucket()->dir_setup(dir);
+        if (xact.first == Result::Valid && !xact.second.filtered) {
+            live_bucket()->process_filtered();
+        }
+    } else {
+        _pair_manager[dir].xact_map.start_transaction(DnsXactID(flowkey, payload.getDnsHeader()->transactionID), {{stamp, {0, 0}}, true, 0, false, std::string()});
+    }
     live_bucket()->process_filtered();
 }
 
@@ -1012,7 +1032,7 @@ void DnsMetricsManager::process_dnstap(const dnstap::Dnstap &payload, PacketDire
         uint8_t *buf = new uint8_t[query.size()];
         std::memcpy(buf, query.c_str(), query.size());
         DnsLayer dpayload(buf, query.size(), nullptr, nullptr);
-        _pair_manager[dir].xact_map.start_transaction(DnsXactID(dpayload.getDnsHeader()->transactionID, 2), {{stamp, {0, 0}}, payload.message().query_message().size(), false, std::string()});
+        _pair_manager[dir].xact_map.start_transaction(DnsXactID(dpayload.getDnsHeader()->transactionID, 2), {{stamp, {0, 0}}, false, payload.message().query_message().size(), false, std::string()});
     }
 }
 }

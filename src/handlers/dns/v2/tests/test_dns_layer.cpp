@@ -290,7 +290,7 @@ TEST_CASE("DNS Filters: exclude_noerror", "[pcap][dns]")
     REQUIRE(counters.NODATA.value() == 0);
     nlohmann::json j;
     dns_handler.metrics()->bucket(0)->to_json(j);
-    REQUIRE(j["filtered_packets"] == 10);
+    REQUIRE(j["filtered_packets"] == 17);
 }
 
 TEST_CASE("DNS Filters: only_rcode nx", "[pcap][net]")
@@ -322,7 +322,7 @@ TEST_CASE("DNS Filters: only_rcode nx", "[pcap][net]")
     REQUIRE(counters.NODATA.value() == 0);
     nlohmann::json j;
     dns_handler.metrics()->bucket(0)->to_json(j);
-    REQUIRE(j["filtered_packets"] == 11);
+    REQUIRE(j["filtered_packets"] == 19);
 }
 
 TEST_CASE("DNS Filters: only_rcode refused", "[pcap][dns]")
@@ -354,7 +354,7 @@ TEST_CASE("DNS Filters: only_rcode refused", "[pcap][dns]")
     REQUIRE(counters.NODATA.value() == 0);
     nlohmann::json j;
     dns_handler.metrics()->bucket(0)->to_json(j);
-    REQUIRE(j["filtered_packets"] == 11);
+    REQUIRE(j["filtered_packets"] == 19);
 }
 TEST_CASE("DNS Filters: only_qtypes AAAA and TXT", "[pcap][dns]")
 {
@@ -510,7 +510,7 @@ TEST_CASE("DNS Filters: answer_count", "[pcap][dns]")
     nlohmann::json j;
     dns_handler.metrics()->bucket(0)->to_json(j);
 
-    CHECK(j["filtered_packets"] == 8);
+    CHECK(j["filtered_packets"] == 16);
     CHECK(j["out"]["top_qname2_xacts"][0]["estimate"] == 1);
 }
 
@@ -684,13 +684,13 @@ TEST_CASE("DNS filter: GeoLoc not found", "[pcap][dns][ecs]")
     CHECK(counters.IPv6.value() == 2);
     CHECK(counters.xacts.value() == 2);
     CHECK(counters.timeout.value() == 0);
-    CHECK(counters.orphan.value() == 10);
+    CHECK(counters.orphan.value() == 0);
     CHECK(counters.ECS.value() == 2);
 
     nlohmann::json j;
     dns_handler.metrics()->bucket(0)->to_json(j);
 
-    CHECK(j["filtered_packets"] == 17);
+    CHECK(j["filtered_packets"] == 29);
 
     CHECK(j["unknown"]["cardinality"]["qname"] == 1);
 
@@ -734,13 +734,13 @@ TEST_CASE("DNS filter: ASN not found", "[pcap][dns][ecs]")
     CHECK(counters.IPv6.value() == 2);
     CHECK(counters.xacts.value() == 2);
     CHECK(counters.timeout.value() == 0);
-    CHECK(counters.orphan.value() == 10);
+    CHECK(counters.orphan.value() == 0);
     CHECK(counters.ECS.value() == 2);
 
     nlohmann::json j;
     dns_handler.metrics()->bucket(0)->to_json(j);
 
-    CHECK(j["filtered_packets"] == 17);
+    CHECK(j["filtered_packets"] == 29);
 
     CHECK(j["unknown"]["cardinality"]["qname"] == 1);
 
