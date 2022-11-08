@@ -235,7 +235,7 @@ TEST_CASE("Histogram metrics", "[metrics][histogram]")
         h.update(value);
         h.to_json(j["top"]);
 
-        CHECK(j["top"]["test"]["metric"]["buckets"]["+Inf"] == 3.0);
+        CHECK(j["top"]["test"]["metric"]["buckets"]["+Inf"] == 4.0);
         CHECK(j["top"]["test"]["metric"]["buckets"]["12"] == 1.0);
         CHECK(j["top"]["test"]["metric"]["buckets"]["4"] == 0.0);
         CHECK(j["top"]["test"]["metric"]["buckets"]["8"] == 0.0);
@@ -263,11 +263,11 @@ TEST_CASE("Histogram metrics", "[metrics][histogram]")
         std::getline(output, line);
         CHECK(line == R"(root_test_metric_bucket{instance="test instance",le="4",policy="default"} 1)");
         std::getline(output, line);
-        CHECK(line == R"(root_test_metric_bucket{instance="test instance",le="8",policy="default"} 0)");
+        CHECK(line == R"(root_test_metric_bucket{instance="test instance",le="8",policy="default"} 1)");
         std::getline(output, line);
-        CHECK(line == R"(root_test_metric_bucket{instance="test instance",le="12",policy="default"} 1)");
+        CHECK(line == R"(root_test_metric_bucket{instance="test instance",le="12",policy="default"} 2)");
         std::getline(output, line);
-        CHECK(line == R"(root_test_metric_bucket{instance="test instance",le="+Inf",policy="default"} 3)");
+        CHECK(line == R"(root_test_metric_bucket{instance="test instance",le="+Inf",policy="default"} 5)");
         std::getline(output, line);
         CHECK(line == R"(root_test_metric_count{instance="test instance",policy="default"} 5)");
     }

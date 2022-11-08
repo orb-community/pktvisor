@@ -210,7 +210,7 @@ public:
                 split_point = _sketch.get_max_value();
             }
         }
-        auto histogram = _sketch.get_PMF(bins.get(), split_point_size);
+        auto histogram = _sketch.get_CDF(bins.get(), split_point_size);
         for (std::size_t i = 0; i < split_point_size; ++i) {
             name_json_assign(j, {"buckets", std::to_string(bins[i])}, histogram[i] * _sketch.get_n());
         }
@@ -233,7 +233,7 @@ public:
                 split_point = _sketch.get_max_value();
             }
         }
-        auto histogram = _sketch.get_PMF(bins.get(), split_point_size);
+        auto histogram = _sketch.get_CDF(bins.get(), split_point_size);
 
         out << "# HELP " << base_name_snake() << ' ' << _desc << std::endl;
         out << "# TYPE " << base_name_snake() << " summary" << std::endl;
