@@ -149,7 +149,6 @@ class Histogram final : public Metric
     static_assert(std::is_integral<T>::value || std::is_floating_point<T>::value);
     T _pace;
     datasketches::kll_sketch<T> _sketch;
-    std::vector<T> _quantiles_sum;
 
 public:
     Histogram(std::string schema_key, std::initializer_list<std::string> names, std::string desc)
@@ -172,17 +171,9 @@ public:
         _sketch.update(value);
     }
 
-    void merge(const Histogram &other, Aggregate agg_operator)
+    void merge(const Histogram &other)
     {
-        if (agg_operator == Aggregate::SUM && !_sketch.is_empty()) {
-            if (other._sketch.is_empty()) {
-                return;
-            }
-            // TODO sum aggregator
-            _sketch.merge(other._quantile);
-        } else {
-            _sketch.merge(other._quantile);
-        }
+        _sketch.merge(other._sketch);
     }
 
     auto get_n() const
