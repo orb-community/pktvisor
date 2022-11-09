@@ -279,6 +279,15 @@ public:
         }
     }
 
+    bool has_dir(PacketDirection dir) const
+    {
+        std::shared_lock lock(_mutex);
+        if (!_dns.count(dir)) {
+            return false;
+        }
+        return true;
+    }
+
     void inc_xact_timed_out(uint64_t c, PacketDirection dir)
     {
         std::unique_lock lock(_mutex);
@@ -341,11 +350,13 @@ public:
     {
         // DNS transaction support
         for (auto &manager : _pair_manager) {
-            if (auto timed_out = manager.second.xact_map.purge_old_transactions(stamp); timed_out) {
+            if (auto timed_out = manager.second.xact_map.purge_old_transactions(stamp); timed_out && live_bucket()->has_dir(manager.first)) {
                 live_bucket()->inc_xact_timed_out(timed_out, manager.first);
             }
-            if (auto [xact, lock] = bucket(1)->get_xact_data_locked(manager.first); xact.get_n()) {
-                manager.second.per_90th = xact.get_quantile(0.90);
+            if (bucket(1)->has_dir(manager.first)) {
+                if (auto [xact, lock] = bucket(1)->get_xact_data_locked(manager.first); xact.get_n()) {
+                    manager.second.per_90th = xact.get_quantile(0.90);
+                }
             }
         }
     }
