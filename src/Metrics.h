@@ -234,7 +234,7 @@ public:
         auto histogram = _sketch.get_CDF(bins.get(), split_point_size);
 
         out << "# HELP " << base_name_snake() << ' ' << _desc << std::endl;
-        out << "# TYPE " << base_name_snake() << " summary" << std::endl;
+        out << "# TYPE " << base_name_snake() << " histogram" << std::endl;
         for (std::size_t i = 0; i < split_point_size; ++i) {
             LabelMap le(add_labels);
             le["le"] = std::to_string(bins[i] - _pace);

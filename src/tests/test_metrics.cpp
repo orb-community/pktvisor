@@ -259,7 +259,7 @@ TEST_CASE("Histogram int metrics", "[metrics][histogram]")
         std::getline(output, line);
         CHECK(line == "# HELP root_test_metric A histogram test metric");
         std::getline(output, line);
-        CHECK(line == "# TYPE root_test_metric summary");
+        CHECK(line == "# TYPE root_test_metric histogram");
         std::getline(output, line);
         CHECK(line == R"(root_test_metric_bucket{instance="test instance",le="4",policy="default"} 1)");
         std::getline(output, line);
@@ -315,7 +315,7 @@ TEST_CASE("Histogram double metrics", "[metrics][histogram]")
         std::getline(output, line);
         CHECK(line == "# HELP root_test_metric A histogram test metric");
         std::getline(output, line);
-        CHECK(line == "# TYPE root_test_metric summary");
+        CHECK(line == "# TYPE root_test_metric histogram");
         std::getline(output, line);
         CHECK(line == R"(root_test_metric_bucket{instance="test instance",le="4.000033",policy="default"} 1)");
         std::getline(output, line);
