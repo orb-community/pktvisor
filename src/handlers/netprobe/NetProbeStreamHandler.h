@@ -20,19 +20,29 @@ using namespace visor::input::netprobe;
 
 static constexpr const char *NET_PROBE_SCHEMA{"netprobe"};
 
+namespace group {
+enum NetProbeMetrics : visor::MetricGroupIntType {
+    Counters,
+    Quantiles,
+    Histograms
+};
+}
+
 struct NetProbeTransaction : public Transaction {
     std::string target;
 };
 
 struct Target {
-    Quantile<uint64_t> time_us;
+    Quantile<uint64_t> q_time_us;
+    Histogram<uint64_t> h_time_us;
     Counter attempts;
     Counter successes;
     Counter minimum;
     Counter maximum;
 
     Target()
-        : time_us(NET_PROBE_SCHEMA, {"response_quantiles_us"}, "Net Probe quantile in microseconds")
+        : q_time_us(NET_PROBE_SCHEMA, {"response_quantiles_us"}, "Net Probe quantile in microseconds")
+        , h_time_us(NET_PROBE_SCHEMA, {"response_histogram_us"}, "Net Probe histogram in microseconds")
         , attempts(NET_PROBE_SCHEMA, {"attempts"}, "Total Net Probe attempts")
         , successes(NET_PROBE_SCHEMA, {"successes"}, "Total Net Probe successes")
         , minimum(NET_PROBE_SCHEMA, {"response_min_us"}, "Minimum response time measured in the reporting interval")
@@ -99,6 +109,11 @@ class NetProbeStreamHandler final : public visor::StreamMetricsHandler<NetProbeM
     sigslot::connection _probe_recv_connection;
     sigslot::connection _probe_fail_connection;
     sigslot::connection _heartbeat_connection;
+
+    static const inline NetProbeStreamHandler::GroupDefType _group_defs = {
+        {"counters", group::NetProbeMetrics::Counters},
+        {"quantiles", group::NetProbeMetrics::Quantiles},
+        {"histograms", group::NetProbeMetrics::Histograms}};
 
     void probe_signal_send(pcpp::Packet &, TestType, const std::string &, timespec);
     void probe_signal_recv(pcpp::Packet &, TestType, const std::string &, timespec);

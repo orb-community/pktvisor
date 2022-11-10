@@ -23,6 +23,11 @@ void NetProbeStreamHandler::start()
         return;
     }
 
+    // default enabled groups
+    _groups.set(group::NetProbeMetrics::Counters);
+    _groups.set(group::NetProbeMetrics::Histograms);
+    process_groups(_group_defs);
+
     if (config_exists("recorded_stream")) {
         _metrics->set_recorded_stream();
     }
@@ -89,9 +94,16 @@ void NetProbeMetricsBucket::specialized_merge(const AbstractMetricsBucket &o, Me
             _targets_metrics[targetId] = std::make_unique<Target>();
         }
 
-        _targets_metrics[targetId]->attempts += target.second->attempts;
-        _targets_metrics[targetId]->successes += target.second->successes;
-        _targets_metrics[targetId]->time_us.merge(target.second->time_us, agg_operator);
+        if (group_enabled(group::NetProbeMetrics::Counters)) {
+            _targets_metrics[targetId]->attempts += target.second->attempts;
+            _targets_metrics[targetId]->successes += target.second->successes;
+        }
+        if (group_enabled(group::NetProbeMetrics::Histograms)) {
+            _targets_metrics[targetId]->h_time_us.merge(target.second->h_time_us);
+        }
+        if (group_enabled(group::NetProbeMetrics::Quantiles)) {
+            _targets_metrics[targetId]->q_time_us.merge(target.second->q_time_us, agg_operator);
+        }
     }
 }
 
@@ -104,20 +116,46 @@ void NetProbeMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelM
         auto targetId = target.first;
         target_labels["target"] = targetId;
 
-        target.second->attempts.to_prometheus(out, target_labels);
-        target.second->successes.to_prometheus(out, target_labels);
+        if (group_enabled(group::NetProbeMetrics::Counters)) {
+            target.second->attempts.to_prometheus(out, target_labels);
+            target.second->successes.to_prometheus(out, target_labels);
+        }
 
-        try {
-            target.second->minimum.clear();
-            target.second->minimum += target.second->time_us.get_min();
-            target.second->minimum.to_prometheus(out, target_labels);
+        bool h_max_min{true};
+        if (group_enabled(group::NetProbeMetrics::Histograms)) {
+            try {
+                target.second->minimum.clear();
+                target.second->maximum.clear();
 
-            target.second->maximum.clear();
-            target.second->maximum += target.second->time_us.get_max();
-            target.second->maximum.to_prometheus(out, target_labels);
+                if (group_enabled(group::NetProbeMetrics::Counters)) {
+                    target.second->minimum += target.second->h_time_us.get_min();
+                    target.second->minimum.to_prometheus(out, target_labels);
+                    target.second->maximum += target.second->h_time_us.get_max();
+                    target.second->maximum.to_prometheus(out, target_labels);
+                }
 
-            target.second->time_us.to_prometheus(out, target_labels);
-        } catch (const std::exception &) {
+                target.second->h_time_us.to_prometheus(out, target_labels);
+            } catch (const std::exception &) {
+                h_max_min = false;
+            }
+        } else {
+            h_max_min = false;
+        }
+
+        if (group_enabled(group::NetProbeMetrics::Quantiles)) {
+            try {
+                if (!h_max_min && group_enabled(group::NetProbeMetrics::Counters)) {
+                    target.second->minimum.clear();
+                    target.second->maximum.clear();
+
+                    target.second->minimum += target.second->q_time_us.get_min();
+                    target.second->minimum.to_prometheus(out, target_labels);
+                    target.second->maximum += target.second->q_time_us.get_max();
+                    target.second->maximum.to_prometheus(out, target_labels);
+                }
+                target.second->q_time_us.to_prometheus(out, target_labels);
+            } catch (const std::exception &) {
+            }
         }
     }
 }
@@ -130,20 +168,46 @@ void NetProbeMetricsBucket::to_json(json &j) const
     for (const auto &target : _targets_metrics) {
         auto targetId = target.first;
 
-        target.second->attempts.to_json(j["targets"][targetId]);
-        target.second->successes.to_json(j["targets"][targetId]);
+        if (group_enabled(group::NetProbeMetrics::Counters)) {
+            target.second->attempts.to_json(j["targets"][targetId]);
+            target.second->successes.to_json(j["targets"][targetId]);
+        }
 
-        try {
-            target.second->minimum.clear();
-            target.second->minimum += target.second->time_us.get_min();
-            target.second->minimum.to_json(j["targets"][targetId]);
+        bool h_max_min{true};
+        if (group_enabled(group::NetProbeMetrics::Histograms)) {
+            try {
+                target.second->minimum.clear();
+                target.second->maximum.clear();
 
-            target.second->maximum.clear();
-            target.second->maximum += target.second->time_us.get_max();
-            target.second->maximum.to_json(j["targets"][targetId]);
+                if (group_enabled(group::NetProbeMetrics::Counters)) {
+                    target.second->minimum += target.second->h_time_us.get_min();
+                    target.second->minimum.to_json(j["targets"][targetId]);
+                    target.second->maximum += target.second->h_time_us.get_max();
+                    target.second->maximum.to_json(j["targets"][targetId]);
+                }
 
-            target.second->time_us.to_json(j["targets"][targetId]);
-        } catch (const std::exception &) {
+                target.second->h_time_us.to_json(j["targets"][targetId]);
+            } catch (const std::exception &) {
+                h_max_min = false;
+            }
+        } else {
+            h_max_min = false;
+        }
+
+        if (group_enabled(group::NetProbeMetrics::Quantiles)) {
+            try {
+                if (!h_max_min && group_enabled(group::NetProbeMetrics::Counters)) {
+                    target.second->minimum.clear();
+                    target.second->maximum.clear();
+
+                    target.second->minimum += target.second->q_time_us.get_min();
+                    target.second->minimum.to_json(j["targets"][targetId]);
+                    target.second->maximum += target.second->q_time_us.get_max();
+                    target.second->maximum.to_json(j["targets"][targetId]);
+                }
+                target.second->q_time_us.to_json(j["targets"][targetId]);
+            } catch (const std::exception &) {
+            }
         }
     }
 }
@@ -163,7 +227,9 @@ void NetProbeMetricsBucket::process_netprobe_icmp([[maybe_unused]] bool deep, [[
     if (!_targets_metrics.count(target)) {
         _targets_metrics[target] = std::make_unique<Target>();
     }
-    ++_targets_metrics[target]->attempts;
+    if (group_enabled(group::NetProbeMetrics::Counters)) {
+        ++_targets_metrics[target]->attempts;
+    }
 }
 
 void NetProbeMetricsBucket::new_icmp_transaction([[maybe_unused]] bool deep, NetProbeTransaction xact)
@@ -173,9 +239,12 @@ void NetProbeMetricsBucket::new_icmp_transaction([[maybe_unused]] bool deep, Net
     if (!_targets_metrics.count(xact.target)) {
         _targets_metrics[xact.target] = std::make_unique<Target>();
     }
-    ++_targets_metrics[xact.target]->successes;
+    if (group_enabled(group::NetProbeMetrics::Counters)) {
+        ++_targets_metrics[xact.target]->successes;
+    }
     const uint64_t time_nsec = xact.totalTS.tv_sec * 1000000000ULL + xact.totalTS.tv_nsec;
-    _targets_metrics[xact.target]->time_us.update(time_nsec / 1000);
+    group_enabled(group::NetProbeMetrics::Histograms) ? _targets_metrics[xact.target]->h_time_us.update(time_nsec / 1000) : void();
+    group_enabled(group::NetProbeMetrics::Quantiles) ? _targets_metrics[xact.target]->q_time_us.update(time_nsec / 1000) : void();
 }
 
 void NetProbeMetricsManager::process_netprobe_icmp(pcpp::IcmpLayer *layer, const std::string &target, timespec stamp)
