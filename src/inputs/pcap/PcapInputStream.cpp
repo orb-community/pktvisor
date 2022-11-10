@@ -243,7 +243,7 @@ void PcapInputStream::tcp_message_ready(int8_t side, const pcpp::TcpStreamData &
 {
     std::shared_lock lock(_input_mutex);
     for (auto &proxy : _event_proxies) {
-        dynamic_cast<PcapInputEventProxy *>(proxy.get())->tcp_message_ready_cb(side, tcpData);
+        dynamic_cast<PcapInputEventProxy *>(proxy.get())->tcp_message_ready_cb(side, tcpData, _packet_dir_cache);
     }
     _lru_list.put(tcpData.getConnectionData().flowKey, tcpData.getConnectionData().endTime);
 }
@@ -252,7 +252,7 @@ void PcapInputStream::tcp_connection_start(const pcpp::ConnectionData &connectio
 {
     std::shared_lock lock(_input_mutex);
     for (auto &proxy : _event_proxies) {
-        dynamic_cast<PcapInputEventProxy *>(proxy.get())->tcp_connection_start_cb(connectionData);
+        dynamic_cast<PcapInputEventProxy *>(proxy.get())->tcp_connection_start_cb(connectionData, _packet_dir_cache);
     }
     _lru_list.put(connectionData.flowKey, connectionData.startTime);
 }
@@ -380,27 +380,28 @@ void PcapInputStream::process_raw_packet(pcpp::RawPacket *rawPacket)
         l4 = pcpp::TCP;
     }
     // determine packet direction by matching source/dest ips
+    // and cache it to be used on TCP Reassemble
     // note the direction may be indeterminate!
-    PacketDirection dir = PacketDirection::unknown;
+    _packet_dir_cache = PacketDirection::unknown;
     auto IP4layer = packet.getLayerOfType<pcpp::IPv4Layer>();
     auto IP6layer = packet.getLayerOfType<pcpp::IPv6Layer>();
     if (IP4layer) {
         for (auto &i : _hostIPv4) {
             if (IP4layer->getDstIPv4Address().matchSubnet(i.address, i.mask)) {
-                dir = PacketDirection::toHost;
+                _packet_dir_cache = PacketDirection::toHost;
                 break;
             } else if (IP4layer->getSrcIPv4Address().matchSubnet(i.address, i.mask)) {
-                dir = PacketDirection::fromHost;
+                _packet_dir_cache = PacketDirection::fromHost;
                 break;
             }
         }
     } else if (IP6layer) {
         for (auto &i : _hostIPv6) {
             if (IP6layer->getDstIPv6Address().matchSubnet(i.address, i.mask)) {
-                dir = PacketDirection::toHost;
+                _packet_dir_cache = PacketDirection::toHost;
                 break;
             } else if (IP6layer->getSrcIPv6Address().matchSubnet(i.address, i.mask)) {
-                dir = PacketDirection::fromHost;
+                _packet_dir_cache = PacketDirection::fromHost;
                 break;
             }
         }
@@ -410,12 +411,12 @@ void PcapInputStream::process_raw_packet(pcpp::RawPacket *rawPacket)
     // interface to handlers
     std::shared_lock lock(_input_mutex);
     for (auto &proxy : _event_proxies) {
-        static_cast<PcapInputEventProxy *>(proxy.get())->process_packet_cb(packet, dir, l3, l4, timestamp);
+        static_cast<PcapInputEventProxy *>(proxy.get())->process_packet_cb(packet, _packet_dir_cache, l3, l4, timestamp);
     }
 
     if (l4 == pcpp::UDP) {
         for (auto &proxy : _event_proxies) {
-            static_cast<PcapInputEventProxy *>(proxy.get())->process_udp_packet_cb(packet, dir, l3, pcpp::hash5Tuple(&packet), timestamp);
+            static_cast<PcapInputEventProxy *>(proxy.get())->process_udp_packet_cb(packet, _packet_dir_cache, l3, pcpp::hash5Tuple(&packet), timestamp);
         }
     } else if (l4 == pcpp::TCP) {
         lock.unlock();
@@ -426,7 +427,7 @@ void PcapInputStream::process_raw_packet(pcpp::RawPacket *rawPacket)
         case pcpp::TcpReassembly::NonTcpPacket:
         case pcpp::TcpReassembly::NonIpPacket:
             for (auto &proxy : _event_proxies) {
-                static_cast<PcapInputEventProxy *>(proxy.get())->process_pcap_tcp_reassembly_error(packet, dir, l3, timestamp);
+                static_cast<PcapInputEventProxy *>(proxy.get())->process_pcap_tcp_reassembly_error(packet, _packet_dir_cache, l3, timestamp);
             }
         case pcpp::TcpReassembly::TcpMessageHandled:
         case pcpp::TcpReassembly::OutOfOrderTcpMessageBuffered:

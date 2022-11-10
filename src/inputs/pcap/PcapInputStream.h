@@ -95,6 +95,7 @@ private:
     LRUList<uint32_t, timeval> _lru_list;
     IPv4subnetList _hostIPv4;
     IPv6subnetList _hostIPv6;
+    PacketDirection _packet_dir_cache{PacketDirection::unknown};
 
     PcapSource _cur_pcap_source{PcapSource::unknown};
 
@@ -229,13 +230,13 @@ public:
             }
         }
     }
-    void tcp_message_ready_cb(int8_t side, const pcpp::TcpStreamData &tcpData)
+    void tcp_message_ready_cb(int8_t side, const pcpp::TcpStreamData &tcpData, PacketDirection dir)
     {
-        tcp_message_ready_signal(side, tcpData);
+        tcp_message_ready_signal(side, tcpData, dir);
     }
-    void tcp_connection_start_cb(const pcpp::ConnectionData &connectionData)
+    void tcp_connection_start_cb(const pcpp::ConnectionData &connectionData, PacketDirection dir)
     {
-        tcp_connection_start_signal(connectionData);
+        tcp_connection_start_signal(connectionData, dir);
     }
     void tcp_connection_end_cb(const pcpp::ConnectionData &connectionData, pcpp::TcpReassembly::ConnectionEndReason reason)
     {
@@ -267,8 +268,8 @@ public:
     mutable sigslot::signal<pcpp::Packet &, PacketDirection, pcpp::ProtocolType, uint32_t, timespec> udp_signal;
     mutable sigslot::signal<timespec> start_tstamp_signal;
     mutable sigslot::signal<timespec> end_tstamp_signal;
-    mutable sigslot::signal<int8_t, const pcpp::TcpStreamData &> tcp_message_ready_signal;
-    mutable sigslot::signal<const pcpp::ConnectionData &> tcp_connection_start_signal;
+    mutable sigslot::signal<int8_t, const pcpp::TcpStreamData &, PacketDirection> tcp_message_ready_signal;
+    mutable sigslot::signal<const pcpp::ConnectionData &, PacketDirection> tcp_connection_start_signal;
     mutable sigslot::signal<const pcpp::ConnectionData &, pcpp::TcpReassembly::ConnectionEndReason> tcp_connection_end_signal;
     mutable sigslot::signal<pcpp::Packet &, PacketDirection, pcpp::ProtocolType, timespec> tcp_reassembly_error_signal;
     mutable sigslot::signal<const pcpp::IPcapDevice::PcapStats &> pcap_stats_signal;
