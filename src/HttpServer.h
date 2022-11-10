@@ -5,10 +5,14 @@
 #pragma once
 
 #define CPPHTTPLIB_OPENSSL_SUPPORT
+#ifdef __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wold-style-cast"
+#endif
 #include <httplib.h>
+#ifdef __GNUC__
 #pragma GCC diagnostic pop
+#endif
 #include <spdlog/spdlog.h>
 
 namespace visor {

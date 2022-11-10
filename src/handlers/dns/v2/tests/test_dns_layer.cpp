@@ -3,19 +3,23 @@
 #include "DnsStreamHandler.h"
 #include "GeoDB.h"
 #include "PcapInputStream.h"
+#ifdef __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #pragma clang diagnostic ignored "-Wc99-extensions"
 #pragma clang diagnostic ignored "-Wrange-loop-analysis"
+#endif
 #include <DnsLayer.h>
 #include <Packet.h>
 #include <PcapFileDevice.h>
 #include <ProtocolType.h>
 #include <TcpLayer.h>
 #include <UdpLayer.h>
+#ifdef __GNUC__
 #pragma GCC diagnostic pop
 #pragma GCC diagnostic ignored "-Wold-style-cast"
+#endif
 
 using namespace visor::handler::dns::v2;
 using namespace visor::input::pcap;

@@ -1,16 +1,19 @@
 #ifndef PV_PACKETPP_DNS_LAYER
 #define PV_PACKETPP_DNS_LAYER
 
+#ifdef __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #pragma clang diagnostic ignored "-Wc99-extensions"
+#endif
 #include "DnsLayerEnums.h"
 #include "DnsResource.h"
 #include "DnsResourceData.h"
 #include <UdpLayer.h>
+#ifdef __GNUC__
 #pragma GCC diagnostic pop
-
+#endif
 // forked code
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 

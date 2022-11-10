@@ -4,15 +4,19 @@
 
 #include "benchmark/benchmark.h"
 #include "dns.h"
+#ifdef __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #pragma clang diagnostic ignored "-Wc99-extensions"
 #pragma GCC diagnostic ignored "-Wpedantic"
+#endif
 #include "IPv4Layer.h"
 #include "PacketUtils.h"
 #include "PcapFileDevice.h"
+#ifdef __GNUC__
 #pragma GCC diagnostic pop
+#endif
 
 using namespace visor::lib::dns;
 

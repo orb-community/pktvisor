@@ -16,12 +16,15 @@
 #include <unordered_map>
 #include <variant>
 #include <vector>
+#ifdef __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 #pragma GCC diagnostic ignored "-Wunused-parameter"
+#endif
 #include <yaml-cpp/yaml.h>
+#ifdef __GNUC__
 #pragma GCC diagnostic pop
-
+#endif
 namespace visor {
 
 using json = nlohmann::json;

@@ -3,11 +3,14 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 #pragma once
-
+#ifdef __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpedantic"
+#endif
 #include <maxminddb.h>
+#ifdef __GNUC__
 #pragma GCC diagnostic pop
+#endif
 #include <memory>
 #include <mutex>
 #include <nlohmann/json.hpp>

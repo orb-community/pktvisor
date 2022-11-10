@@ -3,16 +3,19 @@
 #include "DnsResourceData.h"
 #include "EndianPortable.h"
 #include <GeneralUtils.h>
-#pragma GCC diagnostic push
-#pragma clang diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"
-#include <Logger.h>
-#pragma GCC diagnostic pop
 #include <sstream>
 #include <string.h>
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma clang diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"
+#endif
+#include <Logger.h>
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#endif
 
 // forked code
-#pragma GCC diagnostic ignored "-Wunused-parameter"
-
 namespace visor::lib::dns {
 
 size_t IDnsResourceData::decodeName(const char *encodedName, char *result, IDnsResource *dnsResource) const

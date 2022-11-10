@@ -6,15 +6,19 @@
 #include <nlohmann/json.hpp>
 #include <sstream>
 #include <timer.hpp>
+#ifdef __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 #pragma GCC diagnostic ignored "-Wunused-function"
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #pragma clang diagnostic ignored "-Wrange-loop-analysis"
+#endif
 #include <cpc_sketch.hpp>
 #include <frequent_items_sketch.hpp>
 #include <kll_sketch.hpp>
+#ifdef __GNUC__
 #pragma GCC diagnostic pop
+#endif
 #include <chrono>
 #include <regex>
 #include <shared_mutex>
