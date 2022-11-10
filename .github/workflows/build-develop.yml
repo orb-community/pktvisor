@@ -9,7 +9,7 @@ on:
   push:
     branches:
       - develop
-      - fix-images
+      - fix-qa-version
 
 env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
@@ -106,6 +106,7 @@ jobs:
       - name: Get VERSION
         id: build
         run: |
+          cat cat ${{github.workspace}}/build/VERSION
           echo "VERSION=`cat ${{github.workspace}}/build/VERSION`" >> $GITHUB_ENV
           echo "::set-output name=version::$(cat ${{github.workspace}}/build/VERSION)"
 
