@@ -295,7 +295,7 @@ void DnsTcpSessionData::receive_tcp_data(const uint8_t *data, size_t len)
     }
 }
 
-void DnsStreamHandler::tcp_message_ready_cb(int8_t side, const pcpp::TcpStreamData &tcpData)
+void DnsStreamHandler::tcp_message_ready_cb(int8_t side, const pcpp::TcpStreamData &tcpData, PacketDirection dir)
 {
     auto flowKey = tcpData.getConnectionData().flowKey;
 
@@ -326,7 +326,6 @@ void DnsStreamHandler::tcp_message_ready_cb(int8_t side, const pcpp::TcpStreamDa
     timespec stamp{0, 0};
     // for tcp, endTime is updated by pcpp to represent the time stamp from the latest packet in the stream
     TIMEVAL_TO_TIMESPEC(&tcpData.getConnectionData().endTime, &stamp);
-    auto dir = (side == 0) ? PacketDirection::fromHost : PacketDirection::toHost;
 
     auto got_dns_message = [this, port, dir, l3Type, flowKey, stamp](std::unique_ptr<uint8_t[]> data, size_t size) {
         // this dummy packet prevents DnsLayer from owning and trying to free the data. it is otherwise unused by the DNS layer,
@@ -347,7 +346,7 @@ void DnsStreamHandler::tcp_message_ready_cb(int8_t side, const pcpp::TcpStreamDa
     iter->second.sessionData[side]->receive_tcp_data(tcpData.getData(), tcpData.getDataLength());
 }
 
-void DnsStreamHandler::tcp_connection_start_cb(const pcpp::ConnectionData &connectionData)
+void DnsStreamHandler::tcp_connection_start_cb(const pcpp::ConnectionData &connectionData, [[maybe_unused]] PacketDirection dir)
 {
     // look for the connection
     auto iter = _tcp_connections.find(connectionData.flowKey);

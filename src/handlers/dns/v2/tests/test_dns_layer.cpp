@@ -89,37 +89,37 @@ TEST_CASE("Parse DNS UDP IPv4 tests", "[pcap][ipv4][udp][dns]")
     CHECK(j["unknown"]["top_qname2_xacts"][0]["estimate"] == 70);
 }
 
- TEST_CASE("Parse DNS TCP IPv4 tests", "[pcap][ipv4][tcp][dns]")
+TEST_CASE("Parse DNS TCP IPv4 tests", "[pcap][ipv4][tcp][dns]")
 {
-     PcapInputStream stream{"pcap-test"};
-     stream.config_set("pcap_file", "tests/fixtures/dns_ipv4_tcp.pcap");
-     stream.config_set("bpf", "");
+    PcapInputStream stream{"pcap-test"};
+    stream.config_set("pcap_file", "tests/fixtures/dns_ipv4_tcp.pcap");
+    stream.config_set("bpf", "");
 
-     visor::Config c;
-     auto stream_proxy = stream.add_event_proxy(c);
-     c.config_set<uint64_t>("num_periods", 1);
-     DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
+    visor::Config c;
+    auto stream_proxy = stream.add_event_proxy(c);
+    c.config_set<uint64_t>("num_periods", 1);
+    DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
 
-     dns_handler.start();
-     stream.start();
-     dns_handler.stop();
-     stream.stop();
+    dns_handler.start();
+    stream.start();
+    dns_handler.stop();
+    stream.stop();
 
-     auto counters = dns_handler.metrics()->bucket(0)->counters(PacketDirection::fromHost);
-     auto event_data = dns_handler.metrics()->bucket(0)->event_data_locked();
-     json j;
-     dns_handler.metrics()->bucket(0)->to_json(j);
+    auto counters = dns_handler.metrics()->bucket(0)->counters(PacketDirection::unknown);
+    auto event_data = dns_handler.metrics()->bucket(0)->event_data_locked();
+    json j;
+    dns_handler.metrics()->bucket(0)->to_json(j);
 
-     CHECK(event_data.num_events->value() == 420);
-     CHECK(counters.TCP.value() == 210);
-     CHECK(counters.IPv4.value() == 210);
-     CHECK(counters.IPv6.value() == 0);
-     CHECK(counters.xacts.value() == 210);
-     CHECK(counters.timeout.value() == 0);
-     CHECK(counters.orphan.value() == 0);
-     CHECK(j["out"]["top_qname2_xacts"][0]["name"] == ".test.com");
-     CHECK(j["out"]["top_qname2_xacts"][0]["estimate"] == 210);
- }
+    CHECK(event_data.num_events->value() == 420);
+    CHECK(counters.TCP.value() == 210);
+    CHECK(counters.IPv4.value() == 210);
+    CHECK(counters.IPv6.value() == 0);
+    CHECK(counters.xacts.value() == 210);
+    CHECK(counters.timeout.value() == 0);
+    CHECK(counters.orphan.value() == 0);
+    CHECK(j["unknown"]["top_qname2_xacts"][0]["name"] == ".test.com");
+    CHECK(j["unknown"]["top_qname2_xacts"][0]["estimate"] == 210);
+}
 
 TEST_CASE("Parse DNS UDP IPv6 tests", "[pcap][ipv6][udp][dns]")
 {
@@ -154,38 +154,38 @@ TEST_CASE("Parse DNS UDP IPv6 tests", "[pcap][ipv6][udp][dns]")
     CHECK(j["unknown"]["top_qname2_xacts"][0]["estimate"] == 70);
 }
 
- TEST_CASE("Parse DNS TCP IPv6 tests", "[pcap][ipv6][tcp][dns]")
+TEST_CASE("Parse DNS TCP IPv6 tests", "[pcap][ipv6][tcp][dns]")
 {
 
-     PcapInputStream stream{"pcap-test"};
-     stream.config_set("pcap_file", "tests/fixtures/dns_ipv6_tcp.pcap");
-     stream.config_set("bpf", "");
+    PcapInputStream stream{"pcap-test"};
+    stream.config_set("pcap_file", "tests/fixtures/dns_ipv6_tcp.pcap");
+    stream.config_set("bpf", "");
 
-     visor::Config c;
-     auto stream_proxy = stream.add_event_proxy(c);
-     c.config_set<uint64_t>("num_periods", 1);
-     DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
+    visor::Config c;
+    auto stream_proxy = stream.add_event_proxy(c);
+    c.config_set<uint64_t>("num_periods", 1);
+    DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
 
-     dns_handler.start();
-     stream.start();
-     stream.stop();
-     dns_handler.stop();
+    dns_handler.start();
+    stream.start();
+    stream.stop();
+    dns_handler.stop();
 
-     auto counters = dns_handler.metrics()->bucket(0)->counters(PacketDirection::fromHost);
-     auto event_data = dns_handler.metrics()->bucket(0)->event_data_locked();
-     json j;
-     dns_handler.metrics()->bucket(0)->to_json(j);
+    auto counters = dns_handler.metrics()->bucket(0)->counters(PacketDirection::unknown);
+    auto event_data = dns_handler.metrics()->bucket(0)->event_data_locked();
+    json j;
+    dns_handler.metrics()->bucket(0)->to_json(j);
 
-     CHECK(event_data.num_events->value() == 360);
-     CHECK(counters.TCP.value() == 180);
-     CHECK(counters.IPv4.value() == 0);
-     CHECK(counters.IPv6.value() == 180);
-     CHECK(counters.xacts.value() == 180);
-     CHECK(counters.timeout.value() == 0);
-     CHECK(counters.orphan.value() == 0);
-     CHECK(j["out"]["top_qname2_xacts"][0]["name"] == ".test.com");
-     CHECK(j["out"]["top_qname2_xacts"][0]["estimate"] == 180);
- }
+    CHECK(event_data.num_events->value() == 360);
+    CHECK(counters.TCP.value() == 180);
+    CHECK(counters.IPv4.value() == 0);
+    CHECK(counters.IPv6.value() == 180);
+    CHECK(counters.xacts.value() == 180);
+    CHECK(counters.timeout.value() == 0);
+    CHECK(counters.orphan.value() == 0);
+    CHECK(j["unknown"]["top_qname2_xacts"][0]["name"] == ".test.com");
+    CHECK(j["unknown"]["top_qname2_xacts"][0]["estimate"] == 180);
+}
 
 TEST_CASE("Parse DNS random UDP/TCP tests", "[pcap][dns]")
 {
@@ -626,11 +626,11 @@ TEST_CASE("Parse DNS with ECS data", "[pcap][dns][ecs]")
 
     CHECK(event_data.num_events->value() == 36);
     CHECK(event_data.num_samples->value() == 36);
-    CHECK(counters.TCP.value() == 0);
+    CHECK(counters.TCP.value() == 2);
     CHECK(counters.UDP.value() == 12);
-    CHECK(counters.IPv4.value() == 0);
-    CHECK(counters.IPv6.value() == 12);
-    CHECK(counters.xacts.value() == 12);
+    CHECK(counters.IPv4.value() == 1);
+    CHECK(counters.IPv6.value() == 13);
+    CHECK(counters.xacts.value() == 14);
     CHECK(counters.timeout.value() == 0);
     CHECK(counters.orphan.value() == 0);
     CHECK(counters.ECS.value() == 2);
@@ -640,7 +640,7 @@ TEST_CASE("Parse DNS with ECS data", "[pcap][dns][ecs]")
 
     CHECK(j["filtered_packets"] == 0);
 
-    CHECK(j["unknown"]["cardinality"]["qname"] == 7);
+    CHECK(j["unknown"]["cardinality"]["qname"] == 8);
 
     CHECK(j["unknown"]["top_query_ecs_xacts"][0]["name"] == "2001:470:1f0b:1600::"); // wireshark
     CHECK(j["unknown"]["top_query_ecs_xacts"][0]["estimate"] == 2);
