@@ -95,7 +95,7 @@ private:
     LRUList<uint32_t, timeval> _lru_list;
     IPv4subnetList _hostIPv4;
     IPv6subnetList _hostIPv6;
-    PacketDirection _packet_dir{PacketDirection::unknown};
+    PacketDirection _packet_dir_cache{PacketDirection::unknown};
 
     PcapSource _cur_pcap_source{PcapSource::unknown};
 
