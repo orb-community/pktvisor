@@ -17,13 +17,13 @@ typedef std::pair<in_addr, uint8_t> Ipv4Subnet;
 typedef std::pair<in6_addr, uint8_t> Ipv6Subnet;
 #endif
 #include "InputStream.h"
+#include "dnstap.pb.h"
 #ifdef __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
 #endif
-#include "dnstap.pb.h"
 #include <DnsLayer.h>
 #ifdef __GNUC__
 #pragma GCC diagnostic pop
