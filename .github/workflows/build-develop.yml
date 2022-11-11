@@ -9,7 +9,6 @@ on:
   push:
     branches:
       - develop
-      - fix-images
 
 env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
@@ -74,7 +73,7 @@ jobs:
 
     runs-on: ubuntu-latest
     outputs:
-      version_number: ${{ steps.build.outputs.version }}
+      version_number: ${{ env.VERSION }}
     steps:
       - uses: actions/checkout@v2
 
