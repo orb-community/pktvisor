@@ -9,7 +9,6 @@ on:
   push:
     branches:
       - develop
-      - fix-qa-version
 
 env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
