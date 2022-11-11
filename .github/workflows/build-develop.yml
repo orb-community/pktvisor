@@ -151,9 +151,6 @@ jobs:
 
       - name: Configure build for amd64
         uses: ilammy/msvc-dev-cmd@v1
-        with:
-          arch: amd64
-          vsversion: 2019
 
       - name: Configure CMake
         # Use a bash shell so we can use the same syntax for environment variable
