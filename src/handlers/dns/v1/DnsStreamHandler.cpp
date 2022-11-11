@@ -1092,7 +1092,7 @@ void DnsMetricsManager::process_dns_layer(DnsLayer &payload, PacketDirection dir
                 live_bucket()->inc_xact_timed_out(1);
             }
         } else {
-            _qr_pair_manager.start_transaction(DnsXactID(flowkey, payload.getDnsHeader()->transactionID), {stamp, {0, 0}, payload.getDataLen()});
+            _qr_pair_manager.start_transaction(DnsXactID(flowkey, payload.getDnsHeader()->transactionID), {{stamp, {0, 0}}, payload.getDataLen()});
         }
     }
 }
