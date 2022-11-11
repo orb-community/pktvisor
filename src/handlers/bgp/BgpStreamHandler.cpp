@@ -88,12 +88,11 @@ void BgpStreamHandler::tcp_message_ready_cb(int8_t side, const pcpp::TcpStreamDa
     }
 
     pcpp::ProtocolType l3Type{iter->second.l3Type};
-    auto port{iter->second.port};
     timespec stamp{0, 0};
     // for tcp, endTime is updated by pcpp to represent the time stamp from the latest packet in the stream
     TIMEVAL_TO_TIMESPEC(&tcpData.getConnectionData().endTime, &stamp);
 
-    auto got_bgp_message = [this, port, dir, l3Type, flowKey, stamp](std::unique_ptr<uint8_t[]> data, size_t size) {
+    auto got_bgp_message = [this, dir, l3Type, flowKey, stamp](std::unique_ptr<uint8_t[]> data, size_t size) {
         // this dummy packet prevents BgpLayer from owning and trying to free the data. it is otherwise unused by the BGP layer,
         // instead using the packet meta data we pass in
         pcpp::Packet dummy_packet;

@@ -289,7 +289,7 @@ void DhcpMetricsManager::process_dhcp_layer(pcpp::DhcpLayer *dhcp, pcpp::Packet 
             hostname = option.getValueAsString();
         }
         auto mac_address = dhcp->getClientHardwareAddress().toString();
-        _request_ack_manager.start_transaction(dhcp->getDhcpHeader()->transactionID, {stamp, {0, 0}, hostname, mac_address});
+        _request_ack_manager.start_transaction(dhcp->getDhcpHeader()->transactionID, {{stamp, {0, 0}}, hostname, mac_address});
     } else if (type == pcpp::DHCP_ACK) {
         auto xact = _request_ack_manager.maybe_end_transaction(dhcp->getDhcpHeader()->transactionID, stamp);
         if (xact.first == Result::Valid) {

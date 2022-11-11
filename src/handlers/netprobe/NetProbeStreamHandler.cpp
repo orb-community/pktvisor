@@ -185,7 +185,7 @@ void NetProbeMetricsManager::process_netprobe_icmp(pcpp::IcmpLayer *layer, const
 
     if (layer->getMessageType() == pcpp::ICMP_ECHO_REQUEST) {
         if (auto request = layer->getEchoRequestData(); request != nullptr) {
-            _request_reply_manager.start_transaction((static_cast<uint32_t>(request->header->id) << 16) | request->header->sequence, {stamp, {0, 0}, target});
+            _request_reply_manager.start_transaction((static_cast<uint32_t>(request->header->id) << 16) | request->header->sequence, {{stamp, {0, 0}}, target});
         }
         live_bucket()->process_netprobe_icmp(_deep_sampling_now, layer, target);
     } else if (layer->getMessageType() == pcpp::ICMP_ECHO_REPLY) {
