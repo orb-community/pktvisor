@@ -18,7 +18,16 @@ typedef std::pair<in6_addr, uint8_t> Ipv6Subnet;
 #endif
 #include "InputStream.h"
 #include "dnstap.pb.h"
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wold-style-cast"
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
+#endif
 #include <DnsLayer.h>
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
 #include <bitset>
 #include <spdlog/spdlog.h>
 #include <unordered_map>

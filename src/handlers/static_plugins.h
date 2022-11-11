@@ -1,3 +1,4 @@
+#pragma once
 
 int import_handler_plugins()
 {

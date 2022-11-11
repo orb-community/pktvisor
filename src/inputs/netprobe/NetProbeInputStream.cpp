@@ -6,11 +6,21 @@
 #include "NetProbeException.h"
 #include "PingProbe.h"
 #include "ThreadName.h"
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
+#pragma GCC diagnostic ignored "-Wold-style-cast"
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
+#endif
 #include <IPv4Layer.h>
 #include <IPv6Layer.h>
 #include <Packet.h>
 #include <PcapFileDevice.h>
 #include <UdpLayer.h>
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
 
 namespace visor::input::netprobe {
 

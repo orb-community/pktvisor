@@ -11,15 +11,20 @@
 #pragma comment(lib, "iphlpapi.lib")
 #endif
 
+#ifdef __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wold-style-cast"
+#pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
+#endif
 #include <IpAddress.h>
 #include <PcapLiveDeviceList.h>
 #include <TcpReassembly.h>
 #include <UdpLayer.h>
 #include <algorithm>
 #include <spdlog/spdlog.h>
+#ifdef __GNUC__
 #pragma GCC diagnostic pop
+#endif
 #include "VisorLRUList.h"
 #include "utils.h"
 #include <functional>

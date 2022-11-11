@@ -7,7 +7,16 @@
 #include "AbstractMetricsManager.h"
 #include "PcapInputStream.h"
 #include "StreamHandler.h"
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
+#pragma GCC diagnostic ignored "-Wold-style-cast"
+#pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
+#endif
 #include <BgpLayer.h>
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
 #include <Corrade/Utility/Debug.h>
 #include <limits>
 #include <string>

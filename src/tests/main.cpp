@@ -1,6 +1,14 @@
 #define CATCH_CONFIG_RUNNER
 #include <Corrade/PluginManager/AbstractManager.h>
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmissing-declarations"
+#endif
 #include "inputs/static_plugins.h"
+#include "handlers/static_plugins.h"
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
 #include <catch2/catch.hpp>
 #include <cstdlib>
 

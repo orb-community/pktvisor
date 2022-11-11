@@ -5,7 +5,9 @@
 #include <arpa/inet.h>
 #endif
 #include <catch2/catch.hpp>
+#ifdef __GNUC__
 #pragma GCC diagnostic ignored "-Wold-style-cast"
+#endif
 
 TEST_CASE("GeoIP", "[geoip]")
 {

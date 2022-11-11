@@ -7,12 +7,15 @@
 #include "HandlerModulePlugin.h"
 #include "InputModulePlugin.h"
 #include <map>
+#ifdef __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 #pragma GCC diagnostic ignored "-Wunused-parameter"
+#endif
 #include <yaml-cpp/yaml.h>
+#ifdef __GNUC__
 #pragma GCC diagnostic pop
-
+#endif
 namespace spdlog {
 class logger;
 }

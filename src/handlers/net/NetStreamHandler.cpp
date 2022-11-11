@@ -6,16 +6,21 @@
 #include "HandlerModulePlugin.h"
 #include "utils.h"
 #include <Corrade/Utility/Debug.h>
+#ifdef __GNUC__
 #pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 #pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
 #pragma clang diagnostic ignored "-Wc99-extensions"
-#pragma GCC diagnostic ignored "-Wpedantic"
+#endif
 #include "TcpLayer.h"
 #include <IPv4Layer.h>
 #include <IPv6Layer.h>
 #include <PacketUtils.h>
+#ifdef __GNUC__
 #pragma GCC diagnostic pop
+#endif
 #include <cpc_union.hpp>
 #include <fmt/format.h>
 

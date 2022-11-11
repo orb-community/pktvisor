@@ -5,8 +5,20 @@
 #pragma once
 
 #include "AbstractMetricsManager.h"
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
+#pragma GCC diagnostic ignored "-Wold-style-cast"
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
+#endif
 #include "DhcpLayer.h"
 #include "DhcpV6Layer.h"
+#include "EthLayer.h"
+#include "IPv6Layer.h"
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
 #include "PcapInputStream.h"
 #include "StreamHandler.h"
 #include "TransactionManager.h"

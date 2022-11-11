@@ -9,7 +9,16 @@
 #include "StreamHandler.h"
 #include "TransactionManager.h"
 #include <Corrade/Utility/Debug.h>
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
+#pragma GCC diagnostic ignored "-Wold-style-cast"
+#pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
+#endif
 #include <IcmpLayer.h>
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
 #include <limits>
 #include <string>
 

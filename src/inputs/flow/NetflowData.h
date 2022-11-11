@@ -13,30 +13,30 @@ namespace visor::input::flow {
 
 struct NFSample {
     /* the raw pdu */
-    uint8_t *raw_sample;
-    uint32_t raw_sample_len;
+    uint8_t *raw_sample{nullptr};
+    uint32_t raw_sample_len{0};
 
     /* common header */
-    uint16_t version;
-    uint16_t nflows;
+    uint16_t version{0};
+    uint16_t nflows{0};
 
     /* most common header */
-    uint32_t uptime_ms;
-    uint32_t time_sec = 0;
-    uint32_t time_nanosec = 0;
-    uint32_t flow_sequence;
-    uint32_t source_id;
+    uint32_t uptime_ms{0};
+    uint32_t time_sec{0};
+    uint32_t time_nanosec{0};
+    uint32_t flow_sequence{0};
+    uint32_t source_id{0};
 
     struct Flows {
         bool is_ipv6 = false;
-        uint32_t src_ip, dst_ip, nexthop_ip;
-        uint16_t if_index_in, if_index_out;
-        uint32_t flow_packets, flow_octets;
-        uint32_t flow_start, flow_finish;
-        uint16_t src_port, dst_port;
-        uint8_t protocol, tos, tcp_flags;
-        uint16_t src_as, dst_as;
-        uint8_t src_mask, dst_mask;
+        uint32_t src_ip{0}, dst_ip{0}, nexthop_ip{0};
+        uint16_t if_index_in{0}, if_index_out{0};
+        uint32_t flow_packets{0}, flow_octets{0};
+        uint32_t flow_start{0}, flow_finish{0};
+        uint16_t src_port{0}, dst_port{0};
+        uint8_t protocol{0}, tos{0}, tcp_flags{0};
+        uint16_t src_as{0}, dst_as{0};
+        uint8_t src_mask{0}, dst_mask{0};
     };
     std::vector<Flows> flows;
 };

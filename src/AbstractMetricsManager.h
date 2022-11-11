@@ -9,10 +9,14 @@
 #include <deque>
 #include <exception>
 #include <nlohmann/json.hpp>
+#ifdef __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
+#endif
 #include <jsf.h>
+#ifdef __GNUC__
 #pragma GCC diagnostic pop
+#endif
 #include "Configurable.h"
 #include "Metrics.h"
 #include <bitset>

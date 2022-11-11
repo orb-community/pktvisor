@@ -5,10 +5,27 @@
 #pragma once
 
 #include "InputStream.h"
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma GCC diagnostic ignored "-Wunused-variable"
+#pragma GCC diagnostic ignored "-Wunused-function"
+#pragma GCC diagnostic ignored "-Wsign-compare"
+#pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
+#endif
 #include "NetflowData.h"
 #include "SflowData.h"
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
 #include <spdlog/spdlog.h>
-#include <uvw.hpp>
+
+namespace uvw {
+class Loop;
+class AsyncHandle;
+class UDPHandle;
+class TimerHandle;
+}
 
 namespace visor::input::flow {
 

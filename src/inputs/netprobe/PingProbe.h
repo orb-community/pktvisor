@@ -18,8 +18,19 @@ typedef socklen_t SOCKETLEN;
 typedef int SOCKET;
 #endif
 #include "NetProbe.h"
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
+#pragma GCC diagnostic ignored "-Wold-style-cast"
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
+#pragma clang diagnostic ignored "-Wc99-extensions"
+#endif
 #include <IcmpLayer.h>
 #include <IpAddress.h>
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
 #include <atomic>
 #include <memory>
 #include <mutex>

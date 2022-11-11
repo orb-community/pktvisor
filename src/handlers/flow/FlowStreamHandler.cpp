@@ -4,9 +4,13 @@
 
 #include "FlowStreamHandler.h"
 #include "HandlerModulePlugin.h"
-#include "utils.h"
 #include <Corrade/Utility/Debug.h>
 #include <fmt/format.h>
+#ifdef _WIN32
+#include <ws2tcpip.h>
+#else
+#include <arpa/inet.h>
+#endif
 
 namespace visor::handler::flow {
 
@@ -503,7 +507,7 @@ inline bool FlowStreamHandler::_match_subnet(uint32_t ipv4_val, const uint8_t *i
     return false;
 }
 
-void FlowMetricsBucket::specialized_merge(const AbstractMetricsBucket &o, Metric::Aggregate agg_operator)
+void FlowMetricsBucket::specialized_merge(const AbstractMetricsBucket &o, [[maybe_unused]] Metric::Aggregate agg_operator)
 {
     // static because caller guarantees only our own bucket type
     const auto &other = static_cast<const FlowMetricsBucket &>(o);

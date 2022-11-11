@@ -6,15 +6,19 @@
 #include <nlohmann/json.hpp>
 #include <sstream>
 #include <timer.hpp>
+#ifdef __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 #pragma GCC diagnostic ignored "-Wunused-function"
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #pragma clang diagnostic ignored "-Wrange-loop-analysis"
+#endif
 #include <cpc_sketch.hpp>
 #include <frequent_items_sketch.hpp>
 #include <kll_sketch.hpp>
+#ifdef __GNUC__
 #pragma GCC diagnostic pop
+#endif
 #include <chrono>
 #include <regex>
 #include <shared_mutex>
@@ -198,8 +202,8 @@ public:
             return;
         }
         std::size_t split_point_size = 1 + static_cast<std::size_t>(std::log2(_sketch.get_n())); // Sturge’s Rule
-        auto step = _sketch.get_max_value() / split_point_size;
-        auto split_point = step;
+        T step = _sketch.get_max_value() / split_point_size;
+        T split_point = step;
         std::unique_ptr<T[]> bins = std::make_unique<T[]>(split_point_size);
         for (std::size_t i = 0; i < split_point_size; ++i) {
             bins[i] = split_point + _pace;
@@ -221,8 +225,8 @@ public:
             return;
         }
         std::size_t split_point_size = 1 + static_cast<std::size_t>(std::log2(_sketch.get_n())); // Sturge’s Rule
-        auto step = _sketch.get_max_value() / split_point_size;
-        auto split_point = step;
+        T step = _sketch.get_max_value() / split_point_size;
+        T split_point = step;
         std::unique_ptr<T[]> bins = std::make_unique<T[]>(split_point_size);
         for (std::size_t i = 0; i < split_point_size; ++i) {
             bins[i] = split_point + _pace;

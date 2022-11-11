@@ -18,7 +18,7 @@ namespace visor::handler::net {
 using namespace visor::input::pcap;
 using json = nlohmann::json;
 
-void NetHandlerModulePlugin::setup_routes(HttpServer *svr)
+void NetHandlerModulePlugin::setup_routes(HttpServer *)
 {
 }
 std::unique_ptr<StreamHandler> NetHandlerModulePlugin::instantiate(const std::string &name, InputEventProxy *proxy, const Configurable *config, const Configurable *filter)

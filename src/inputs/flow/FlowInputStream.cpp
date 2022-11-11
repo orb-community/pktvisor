@@ -5,11 +5,26 @@
 #include "FlowInputStream.h"
 #include "FlowException.h"
 #include "ThreadName.h"
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
+#pragma GCC diagnostic ignored "-Wold-style-cast"
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
+#endif
 #include <IPv4Layer.h>
 #include <IPv6Layer.h>
 #include <Packet.h>
 #include <PcapFileDevice.h>
 #include <UdpLayer.h>
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
+
+#include <uvw/async.h>
+#include <uvw/loop.h>
+#include <uvw/timer.h>
+#include <uvw/udp.h>
 
 namespace visor::input::flow {
 
@@ -71,7 +86,6 @@ void FlowInputStream::_read_from_pcap_file()
             if (sflow_pkt.isPacketOfType(pcpp::UDP)) {
                 pcpp::UdpLayer *udpLayer = sflow_pkt.getLayerOfType<pcpp::UdpLayer>();
                 SFSample sample;
-                std::memset(&sample, 0, sizeof(sample));
                 sample.rawSample = udpLayer->getLayerPayload();
                 sample.rawSampleLen = udpLayer->getLayerPayloadSize();
                 try {
@@ -89,7 +103,6 @@ void FlowInputStream::_read_from_pcap_file()
             if (netflow_pkt.isPacketOfType(pcpp::UDP)) {
                 pcpp::UdpLayer *udpLayer = netflow_pkt.getLayerOfType<pcpp::UdpLayer>();
                 NFSample sample;
-                std::memset(&sample, 0, sizeof(sample));
                 sample.raw_sample = udpLayer->getLayerPayload();
                 sample.raw_sample_len = udpLayer->getLayerPayloadSize();
                 if (process_netflow_packet(&sample)) {
@@ -175,7 +188,6 @@ void FlowInputStream::_create_frame_stream_udp_socket()
     if (_flow_type == Type::SFLOW) {
         _udp_server_h->on<uvw::UDPDataEvent>([this](const uvw::UDPDataEvent &event, uvw::UDPHandle &) {
             SFSample sample;
-            std::memset(&sample, 0, sizeof(sample));
             sample.rawSample = reinterpret_cast<uint8_t *>(event.data.get());
             sample.rawSampleLen = event.length;
             sample.sourceIP.type = SFLADDRESSTYPE_IP_V4;
@@ -195,7 +207,6 @@ void FlowInputStream::_create_frame_stream_udp_socket()
     } else if (_flow_type == Type::NETFLOW) {
         _udp_server_h->on<uvw::UDPDataEvent>([this](const uvw::UDPDataEvent &event, uvw::UDPHandle &) {
             NFSample sample;
-            std::memset(&sample, 0, sizeof(sample));
             sample.raw_sample = reinterpret_cast<uint8_t *>(event.data.get());
             sample.raw_sample_len = event.length;
             if (process_netflow_packet(&sample)) {

@@ -3,10 +3,14 @@
 #include "DnsResource.h"
 #include "EndianPortable.h"
 #include "fmt/format.h"
+#ifdef __GNUC__
 #pragma GCC diagnostic push
 #pragma clang diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"
+#endif
 #include <Logger.h>
+#ifdef __GNUC__
 #pragma GCC diagnostic pop
+#endif
 #include <sstream>
 #include <string.h>
 

@@ -1,6 +1,9 @@
 #include "FlowInputStream.h"
 #include <catch2/catch.hpp>
 
+#include <uvw/loop.h>
+#include <uvw/udp.h>
+
 using namespace visor::input::flow;
 
 TEST_CASE("sflow pcap file", "[flow][sflow][file]")

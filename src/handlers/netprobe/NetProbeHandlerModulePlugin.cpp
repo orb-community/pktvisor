@@ -17,7 +17,7 @@ namespace visor::handler::netprobe {
 
 using json = nlohmann::json;
 
-void NetProbeHandlerModulePlugin::setup_routes(HttpServer *svr)
+void NetProbeHandlerModulePlugin::setup_routes(HttpServer *)
 {
 }
 std::unique_ptr<StreamHandler> NetProbeHandlerModulePlugin::instantiate(const std::string &name, InputEventProxy *proxy, const Configurable *config, const Configurable *filter)

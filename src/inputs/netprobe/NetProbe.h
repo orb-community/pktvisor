@@ -4,8 +4,16 @@
 
 #pragma once
 
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wold-style-cast"
+#pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
+#endif
 #include <IpAddress.h>
 #include <Packet.h>
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
 #include <uvw/loop.h>
 
 namespace visor::input::netprobe {

@@ -57,7 +57,7 @@ public:
      * @return 0 if the list didn't reach its max size, 1 otherwise. In case the list already reached its max size
      * and deletedValue is not NULL the value of deleted element is copied into the place the deletedValue points to.
      */
-    int put(const T &element, const V &value, std::pair<T, V> *deletedValue = NULL)
+    int put(const T &element, const V &value, std::pair<T, V> *deletedValue = nullptr)
     {
         m_CacheItemsList.push_front(std::make_pair(element, value));
 

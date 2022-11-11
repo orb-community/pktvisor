@@ -7,11 +7,14 @@
 #include "ThreadName.h"
 #include <pcap.h>
 #include <timer.hpp>
+#ifdef __GNUC__
 #pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 #pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
 #pragma clang diagnostic ignored "-Wc99-extensions"
-#pragma GCC diagnostic ignored "-Wpedantic"
+#endif
 #include <DnsLayer.h> // used only for mock generator
 #include <EthLayer.h>
 #include <IPv4Layer.h>
@@ -20,7 +23,9 @@
 #include <PacketUtils.h>
 #include <PcapFileDevice.h>
 #include <SystemUtils.h>
+#ifdef __GNUC__
 #pragma GCC diagnostic pop
+#endif
 #include <IpUtils.h>
 #include <assert.h>
 #include <cstdint>

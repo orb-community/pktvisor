@@ -8,7 +8,12 @@
 #include "NetProbe.h"
 #include <Packet.h>
 #include <spdlog/spdlog.h>
-#include <uvw.hpp>
+
+namespace uvw {
+class Loop;
+class AsyncHandle;
+class TimerHandle;
+}
 
 namespace visor::input::netprobe {
 
