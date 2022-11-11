@@ -17,7 +17,7 @@ namespace visor::handler::flow {
 
 using json = nlohmann::json;
 
-void FlowHandlerModulePlugin::setup_routes(HttpServer *svr)
+void FlowHandlerModulePlugin::setup_routes(HttpServer *)
 {
 }
 std::unique_ptr<StreamHandler> FlowHandlerModulePlugin::instantiate(const std::string &name, InputEventProxy *proxy, const Configurable *config, const Configurable *filter)

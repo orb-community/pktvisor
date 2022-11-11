@@ -83,7 +83,7 @@ void PingReceiver::_setup_receiver()
         handler.close();
     });
 
-    _poll->on<uvw::PollEvent>([this](const uvw::PollEvent &, auto &) {
+    _poll->on<uvw::PollEvent>([this](const uvw::PollEvent &, uvw::PollHandle &) {
         int rc{0};
         while (rc != SOCKET_ERROR) {
             rc = recv(_sock, _array.data(), _array.size(), 0);

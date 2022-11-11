@@ -9,10 +9,10 @@
 #include <timer.hpp>
 #ifdef __GNUC__
 #pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #pragma clang diagnostic ignored "-Wc99-extensions"
-#pragma GCC diagnostic ignored
 #endif
 #include <DnsLayer.h> // used only for mock generator
 #include <EthLayer.h>

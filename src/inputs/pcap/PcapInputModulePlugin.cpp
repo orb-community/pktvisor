@@ -13,7 +13,7 @@ CORRADE_PLUGIN_REGISTER(VisorInputPcap, visor::input::pcap::PcapInputModulePlugi
 
 namespace visor::input::pcap {
 
-void PcapInputModulePlugin::setup_routes(HttpServer *svr)
+void PcapInputModulePlugin::setup_routes([[maybe_unused]] HttpServer *svr)
 {
     // GET
     // svr->Get("/api/v1/inputs/pcap/(\\w+)", std::bind(&PcapInputModulePlugin::_read, this, std::placeholders::_1, std::placeholders::_2));

@@ -13,7 +13,14 @@
 #include "handlers/static_plugins.h"
 #include "inputs/static_plugins.h"
 #include "visor_config.h"
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wattributes"
+#endif
 #include <Corrade/Utility/ConfigurationGroup.h>
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
 #include <docopt/docopt.h>
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>

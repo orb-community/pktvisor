@@ -10,9 +10,8 @@
 #include "IpPort.h"
 #include "MockInputStream.h"
 #include "StreamHandler.h"
+#include "utils.h"
 #include <Corrade/Utility/Debug.h>
-#include <IPv4Layer.h>
-#include <IPv6Layer.h>
 #include <string>
 
 namespace visor::handler::flow {

@@ -18,9 +18,10 @@ namespace visor::handler::dhcp {
 using namespace visor::input::pcap;
 using json = nlohmann::json;
 
-void DhcpHandlerModulePlugin::setup_routes(HttpServer *svr)
+void DhcpHandlerModulePlugin::setup_routes(HttpServer *)
 {
 }
+
 std::unique_ptr<StreamHandler> DhcpHandlerModulePlugin::instantiate(const std::string &name, InputEventProxy *proxy, const Configurable *config, const Configurable *filter)
 {
     // TODO using config as both window config and module config

@@ -98,111 +98,111 @@ struct myicmphdr {
 
 struct SFSample {
     /* the raw pdu */
-    uint8_t *rawSample;
-    uint32_t rawSampleLen;
-    uint8_t *endp;
-    time_t pcapTimestamp;
-    time_t readTimestamp;
+    uint8_t *rawSample{nullptr};
+    uint32_t rawSampleLen{0};
+    uint8_t *endp{nullptr};
+    time_t pcapTimestamp{0};
+    time_t readTimestamp{0};
 
     /* decode cursor */
-    uint32_t *datap;
+    uint32_t *datap{nullptr};
 
     /* datagram fields */
     SFLAddress sourceIP;
     SFLAddress agent_addr;
-    uint32_t agentSubId;
-    uint32_t datagramVersion;
-    uint32_t sysUpTime;
-    uint32_t sequenceNo;
+    uint32_t agentSubId{0};
+    uint32_t datagramVersion{0};
+    uint32_t sysUpTime{0};
+    uint32_t sequenceNo{0};
 
     /* per-element fields */
     struct Element {
-        uint32_t sampleType;
-        uint32_t elementType;
-        uint32_t ds_class;
-        uint32_t ds_index;
+        uint32_t sampleType{0};
+        uint32_t elementType{0};
+        uint32_t ds_class{0};
+        uint32_t ds_index{0};
 
         /* generic interface counter sample */
         SFLIf_counters ifCounters;
 
         /* data-source stream info */
-        uint32_t samplesGenerated;
-        uint32_t meanSkipCount;
-        uint32_t samplePool;
-        uint32_t dropEvents;
+        uint32_t samplesGenerated{0};
+        uint32_t meanSkipCount{0};
+        uint32_t samplePool{0};
+        uint32_t dropEvents{0};
 
         /* the sampled header */
-        uint32_t sampledPacketSize;
-        uint32_t packet_data_tag;
-        uint32_t headerProtocol;
-        uint8_t *header;
-        uint32_t headerLen;
-        uint32_t stripped;
+        uint32_t sampledPacketSize{0};
+        uint32_t packet_data_tag{0};
+        uint32_t headerProtocol{0};
+        uint8_t *header{nullptr};
+        uint32_t headerLen{0};
+        uint32_t stripped{0};
 
         /* header decode */
-        int gotIPV4;
-        int gotIPV4Struct;
-        int offsetToIPV4;
-        int gotIPV6;
-        int gotIPV6Struct;
-        int offsetToIPV6;
-        int offsetToPayload;
+        int gotIPV4{0};
+        int gotIPV4Struct{0};
+        int offsetToIPV4{0};
+        int gotIPV6{0};
+        int gotIPV6Struct{0};
+        int offsetToIPV6{0};
+        int offsetToPayload{0};
         SFLAddress ipsrc;
         SFLAddress ipdst;
-        uint32_t dcd_ipProtocol;
-        uint32_t dcd_ipTos;
-        uint32_t dcd_ipTTL;
-        uint32_t dcd_sport;
-        uint32_t dcd_dport;
-        uint32_t dcd_tcpFlags;
-        uint32_t ip_fragmentOffset;
-        uint32_t udp_pduLen;
+        uint32_t dcd_ipProtocol{0};
+        uint32_t dcd_ipTos{0};
+        uint32_t dcd_ipTTL{0};
+        uint32_t dcd_sport{0};
+        uint32_t dcd_dport{0};
+        uint32_t dcd_tcpFlags{0};
+        uint32_t ip_fragmentOffset{0};
+        uint32_t udp_pduLen{0};
 
         /* ports */
-        uint32_t inputPortFormat;
-        uint32_t outputPortFormat;
-        uint32_t inputPort;
-        uint32_t outputPort;
+        uint32_t inputPortFormat{0};
+        uint32_t outputPortFormat{0};
+        uint32_t inputPort{0};
+        uint32_t outputPort{0};
 
         /* ethernet */
-        uint32_t eth_type;
-        uint32_t eth_len;
+        uint32_t eth_type{0};
+        uint32_t eth_len{0};
         uint8_t eth_src[8];
         uint8_t eth_dst[8];
 
         /* vlan */
-        uint32_t in_vlan;
-        uint32_t in_priority;
-        uint32_t internalPriority;
-        uint32_t out_vlan;
-        uint32_t out_priority;
-        int vlanFilterReject;
+        uint32_t in_vlan{0};
+        uint32_t in_priority{0};
+        uint32_t internalPriority{0};
+        uint32_t out_vlan{0};
+        uint32_t out_priority{0};
+        int vlanFilterReject{0};
 
         /* extended data fields */
-        uint32_t num_extended;
-        uint32_t extended_data_tag;
+        uint32_t num_extended{0};
+        uint32_t extended_data_tag{0};
 
         /* IP forwarding info */
         SFLAddress nextHop;
-        uint32_t srcMask;
-        uint32_t dstMask;
+        uint32_t srcMask{0};
+        uint32_t dstMask{0};
 
         /* BGP info */
         SFLAddress bgp_nextHop;
-        uint32_t my_as;
-        uint32_t src_as;
-        uint32_t src_peer_as;
-        uint32_t dst_as_path_len;
-        uint32_t *dst_as_path;
+        uint32_t my_as{0};
+        uint32_t src_as{0};
+        uint32_t src_peer_as{0};
+        uint32_t dst_as_path_len{0};
+        uint32_t *dst_as_path{nullptr};
         /* note: version 4 dst as path segments just get printed, not stored here, however
          * the dst_peer and dst_as are filled in, since those are used for netflow encoding
          */
-        uint32_t dst_peer_as;
-        uint32_t dst_as;
+        uint32_t dst_peer_as{0};
+        uint32_t dst_as{0};
 
         /* counter blocks */
-        uint32_t statsSamplingInterval;
-        uint32_t counterBlockVersion;
+        uint32_t statsSamplingInterval{0};
+        uint32_t counterBlockVersion{0};
     } s;
 
     std::vector<Element> elements;
@@ -211,7 +211,7 @@ struct SFSample {
 inline static uint32_t getData32_nobswap(SFSample *sample)
 {
     uint32_t ans = *(sample->datap)++;
-    if ((uint8_t *)sample->datap > sample->endp) {
+    if (reinterpret_cast<uint8_t *>(sample->datap) > sample->endp) {
         throw std::out_of_range("reading out of datagram range");
     }
     return ans;
@@ -234,7 +234,7 @@ inline static void skipBytes(SFSample *sample, uint32_t skip)
 {
     int quads = (skip + 3) / 4;
     sample->datap += quads;
-    if (skip > sample->rawSampleLen || (uint8_t *)sample->datap > sample->endp) {
+    if (skip > sample->rawSampleLen || reinterpret_cast<uint8_t *>(sample->datap) > sample->endp) {
         throw std::out_of_range("skipping bytes out of datagram range");
     }
 }
@@ -256,7 +256,7 @@ static uint32_t getAddress(SFSample *sample, SFLAddress *address)
 
 static void lengthCheck(SFSample *sample, const char *description, uint8_t *start, int len)
 {
-    uint32_t actualLen = (uint8_t *)sample->datap - start;
+    uint32_t actualLen = reinterpret_cast<uint8_t *>(sample->datap) - start;
     uint32_t adjustedLen = ((len + 3) >> 2) << 2;
     if (actualLen != adjustedLen) {
         throw std::length_error(fmt::format("{} length error (expected {}, found {})", description, len, actualLen));
@@ -570,6 +570,9 @@ static void decodeIPV6(SFSample *sample)
         payloadLen = (ptr[0] << 8) + ptr[1];
         ptr += 2;
 
+        if (label && payloadLen) {
+            //validation
+        }
         /* next header */
         nextHeader = *ptr++;
 
@@ -902,7 +905,7 @@ static void readFlowSample(SFSample *sample, bool expanded)
     uint8_t *sampleStart;
 
     sampleLength = getData32(sample);
-    sampleStart = (uint8_t *)sample->datap;
+    sampleStart = reinterpret_cast<uint8_t *>(sample->datap);
     sample->s.samplesGenerated = getData32(sample);
     if (expanded) {
         sample->s.ds_class = getData32(sample);
@@ -1047,7 +1050,7 @@ static void read_sflow_datagram(SFSample *sample)
             throw std::out_of_range(fmt::format("unexpected end of datagram after sample {} of {}", samp, samplesInPacket));
         }
         // clear all per-sample fields
-        std::memset(&sample->s, 0, sizeof(sample->s));
+        sample->s = SFSample::Element();
         /* just read the tag, then call the approriate decode fn */
         sample->s.elementType = 0;
         sample->s.sampleType = getData32(sample);

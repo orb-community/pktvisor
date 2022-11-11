@@ -18,7 +18,7 @@ namespace visor::handler::bgp {
 using namespace visor::input::pcap;
 using json = nlohmann::json;
 
-void BgpHandlerModulePlugin::setup_routes(HttpServer *svr)
+void BgpHandlerModulePlugin::setup_routes(HttpServer *)
 {
 }
 std::unique_ptr<StreamHandler> BgpHandlerModulePlugin::instantiate(const std::string &name, InputEventProxy *proxy, const Configurable *config, const Configurable *filter)

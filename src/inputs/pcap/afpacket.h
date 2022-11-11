@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <pcap/pcap.h>
 #ifdef __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wold-style-cast"

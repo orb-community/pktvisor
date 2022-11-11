@@ -44,7 +44,14 @@
 #include "libmy/my_alloc.h"
 #include "libmy/my_memory_barrier.h"
 #include "libmy/my_queue.h"
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
+#endif
 #include "libmy/my_time.h"
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
 #include "libmy/read_bytes.h"
 #include "libmy/vector.h"
 

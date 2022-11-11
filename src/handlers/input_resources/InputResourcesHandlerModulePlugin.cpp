@@ -17,11 +17,11 @@ namespace visor::handler::resources {
 
 using json = nlohmann::json;
 
-void InputResourcesHandlerModulePlugin::setup_routes(HttpServer *svr)
+void InputResourcesHandlerModulePlugin::setup_routes(HttpServer *)
 {
 }
 
-std::unique_ptr<StreamHandler> InputResourcesHandlerModulePlugin::instantiate(const std::string &name, InputEventProxy *proxy, const Configurable *config, const Configurable *filter)
+std::unique_ptr<StreamHandler> InputResourcesHandlerModulePlugin::instantiate(const std::string &name, InputEventProxy *proxy, const Configurable *config, [[maybe_unused]] const Configurable *filter)
 {
     // TODO using config as both window config and module config
     auto handler_module = std::make_unique<InputResourcesStreamHandler>(name, proxy, config);

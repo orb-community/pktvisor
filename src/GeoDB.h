@@ -6,8 +6,10 @@
 #ifdef __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpedantic"
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #endif
 #include <maxminddb.h>
+#include <fmt/format.h>
 #ifdef __GNUC__
 #pragma GCC diagnostic pop
 #endif

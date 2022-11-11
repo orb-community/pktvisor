@@ -4,8 +4,17 @@
 
 #pragma once
 
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
+#pragma GCC diagnostic ignored "-Wold-style-cast"
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#endif
 #include <IPv4Layer.h>
 #include <IPv6Layer.h>
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
 
 namespace visor::handler::flow {
 

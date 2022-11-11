@@ -11,7 +11,14 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #endif
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wold-style-cast"
+#endif
 #include <IpAddress.h>
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
 #include <stdexcept>
 #include <string>
 #include <vector>

@@ -12,7 +12,6 @@
 #include <cstring>
 #include <net/ethernet.h>
 #include <net/if.h>
-#include <pcap/pcap.h>
 #include <poll.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
@@ -76,16 +75,16 @@ void AFPacket::walk_block(struct block_desc *pbd)
     uint64_t bytes = 0;
     struct tpacket3_hdr *ppd;
 
-    ppd = (struct tpacket3_hdr *)((uint8_t *)pbd + pbd->h1.offset_to_first_pkt);
+    ppd = reinterpret_cast<struct tpacket3_hdr *>(reinterpret_cast<uint8_t *>(pbd) + pbd->h1.offset_to_first_pkt);
     for (i = 0; i < num_pkts; ++i) {
         bytes += ppd->tp_snaplen;
 
-        auto data_pointer = (uint8_t *)ppd + ppd->tp_mac;
+        auto data_pointer = reinterpret_cast<uint8_t *>(ppd) + ppd->tp_mac;
         pcpp::RawPacket packet(data_pointer, ppd->tp_snaplen, timespec{pbd->h1.ts_last_pkt.ts_sec, pbd->h1.ts_last_pkt.ts_nsec},
             false, pcpp::LINKTYPE_ETHERNET);
         cb(&packet, nullptr, inputStream);
 
-        ppd = (struct tpacket3_hdr *)((uint8_t *)ppd + ppd->tp_next_offset);
+        ppd = reinterpret_cast<struct tpacket3_hdr *>(reinterpret_cast<uint8_t *>(ppd) + ppd->tp_next_offset);
     }
 }
 
