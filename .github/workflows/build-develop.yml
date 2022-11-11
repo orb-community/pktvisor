@@ -74,7 +74,7 @@ jobs:
 
     runs-on: ubuntu-latest
     outputs:
-      version_number: ${{ steps.build.outputs.version }}
+      version_number: ${{ env.VERSION }}
     steps:
       - uses: actions/checkout@v2
 
