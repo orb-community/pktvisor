@@ -105,7 +105,6 @@ jobs:
       - name: Get VERSION
         id: build
         run: |
-          cat ${{github.workspace}}/build/VERSION
           echo "VERSION=`cat ${{github.workspace}}/build/VERSION`" >> $GITHUB_ENV
           echo "::set-output name=version::$(cat ${{github.workspace}}/build/VERSION)"
 
