@@ -142,7 +142,7 @@ jobs:
       - name: Create Build Environment
         # Some projects don't allow in-source building, so create a separate build directory
         # We'll use this as our working directory for all subsequent commands
-        run: cmake -E make_directory ${{github.workspace}}/build
+        run: cmake -E make_directory ${{github.workspace}}\build
 
       - name: Get Conan
         # You may pin to the exact commit or the version.
@@ -153,21 +153,21 @@ jobs:
         # Use a bash shell so we can use the same syntax for environment variable
         # access regardless of the host operating system
         shell: bash
-        working-directory: ${{github.workspace}}/build
+        working-directory: ${{github.workspace}}\build
         # Note the current convention is to use the -S and -B options here to specify source
         # and build directories, but this is only available with CMake 3.13 and higher.
         # The CMake binaries on the Github Actions machines are (as of this writing) 3.12
-        run: PKG_CONFIG_PATH=${{github.workspace}}/local/lib/pkgconfig cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE
+        run: PKG_CONFIG_PATH=${{github.workspace}}\local\lib\pkgconfig cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE
 
       - name: Get VERSION
         shell: bash
         id: build
         run: | 
           echo "VERSION=`cat ${{github.workspace}}\build\VERSION`" >> $GITHUB_ENV
-          echo "::set-output name=version::$(cat ${{github.workspace}}/build/VERSION)"
+          echo "::set-output name=version::$(cat ${{github.workspace}}\build\VERSION)"
 
       - name: Build
-        working-directory: ${{github.workspace}}/build
+        working-directory: ${{github.workspace}}\build
         shell: bash
         # Execute the build.  You can specify a specific target with "--target <NAME>"
         run: cmake --build . --config $BUILD_TYPE -- -m
@@ -182,11 +182,11 @@ jobs:
 
       - name: Login to ns1labs conan
         shell: bash
-        run: CONAN_USER_HOME=${{github.workspace}}/build/conan_home conan user -p ${{ secrets.CONAN_LABS_PASSWORD }} -r ns1labs ${{ secrets.CONAN_LABS_USERNAME }}
+        run: CONAN_USER_HOME=${{github.workspace}}\build\conan_home conan user -p ${{ secrets.CONAN_LABS_PASSWORD }} -r ns1labs ${{ secrets.CONAN_LABS_USERNAME }}
 
       - name: Cache conan packages
         shell: bash
-        run: CONAN_USER_HOME=${{github.workspace}}/build/conan_home conan upload "*" --all -r ns1labs -c
+        run: CONAN_USER_HOME=${{github.workspace}}\build\conan_home conan upload "*" --all -r ns1labs -c
 
   package-amd64:
     needs: [ unit-tests-linux ]
