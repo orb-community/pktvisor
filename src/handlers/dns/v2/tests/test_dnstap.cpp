@@ -23,7 +23,7 @@ TEST_CASE("Parse DNSTAP", "[dnstap][dns][!mayfail]")
     stream.stop();
     dns_handler.stop();
 
-    auto counters = dns_handler.metrics()->bucket(0)->counters(PacketDirection::unknown);
+    auto counters = dns_handler.metrics()->bucket(0)->counters(TransactionDirection::in);
     auto event_data = dns_handler.metrics()->bucket(0)->event_data_locked();
 
     CHECK(event_data.num_events->value() == 153);
@@ -43,18 +43,18 @@ TEST_CASE("Parse DNSTAP", "[dnstap][dns][!mayfail]")
     nlohmann::json j;
     dns_handler.metrics()->bucket(0)->to_json(j);
 
-    CHECK(j["unknown"]["cardinality"]["qname"] == 65);
+    CHECK(j["in"]["cardinality"]["qname"] == 65);
 
-    CHECK(j["unknown"]["top_qname2_xacts"][0]["name"] == ".google.com");
-    CHECK(j["unknown"]["top_qname2_xacts"][0]["estimate"] == 9);
+    CHECK(j["in"]["top_qname2_xacts"][0]["name"] == ".google.com");
+    CHECK(j["in"]["top_qname2_xacts"][0]["estimate"] == 9);
 
-    CHECK(j["unknown"]["top_udp_ports_xacts"][0]["name"] != nullptr);
-    CHECK(j["unknown"]["top_udp_ports_xacts"][0]["estimate"] == 2);
+    CHECK(j["in"]["top_udp_ports_xacts"][0]["name"] != nullptr);
+    CHECK(j["in"]["top_udp_ports_xacts"][0]["estimate"] == 2);
 
-    CHECK(j["unknown"]["top_qtype_xacts"][0]["name"] == "A");
-    CHECK(j["unknown"]["top_qtype_xacts"][0]["estimate"] == 70);
-    CHECK(j["unknown"]["top_qtype_xacts"][1]["name"] == "HTTPS");
-    CHECK(j["unknown"]["top_qtype_xacts"][1]["estimate"] == 2);
+    CHECK(j["in"]["top_qtype_xacts"][0]["name"] == "A");
+    CHECK(j["in"]["top_qtype_xacts"][0]["estimate"] == 70);
+    CHECK(j["in"]["top_qtype_xacts"][1]["name"] == "HTTPS");
+    CHECK(j["in"]["top_qtype_xacts"][1]["estimate"] == 2);
 }
 
 TEST_CASE("Parse filtered DNSTAP empty data", "[dnstap][dns][filter][!mayfail]")
@@ -101,7 +101,7 @@ TEST_CASE("Parse filtered DNSTAP with data", "[dnstap][dns][filter][!mayfail]")
     stream.stop();
     dns_handler.stop();
 
-    auto counters = dns_handler.metrics()->bucket(0)->counters(PacketDirection::unknown);
+    auto counters = dns_handler.metrics()->bucket(0)->counters(TransactionDirection::in);
     auto event_data = dns_handler.metrics()->bucket(0)->event_data_locked();
 
     CHECK(event_data.num_events->value() == 153);
@@ -122,18 +122,18 @@ TEST_CASE("Parse filtered DNSTAP with data", "[dnstap][dns][filter][!mayfail]")
     dns_handler.metrics()->bucket(0)->to_json(j);
 
     CHECK(j["filtered_packets"] == 0);
-    CHECK(j["unknown"]["cardinality"]["qname"] == 65);
+    CHECK(j["in"]["cardinality"]["qname"] == 65);
 
-    CHECK(j["unknown"]["top_qname2_xacts"][0]["name"] == ".google.com");
-    CHECK(j["unknown"]["top_qname2_xacts"][0]["estimate"] == 9);
+    CHECK(j["in"]["top_qname2_xacts"][0]["name"] == ".google.com");
+    CHECK(j["in"]["top_qname2_xacts"][0]["estimate"] == 9);
 
-    CHECK(j["unknown"]["top_udp_ports_xacts"][0]["name"] != nullptr);
-    CHECK(j["unknown"]["top_udp_ports_xacts"][0]["estimate"] == 2);
+    CHECK(j["in"]["top_udp_ports_xacts"][0]["name"] != nullptr);
+    CHECK(j["in"]["top_udp_ports_xacts"][0]["estimate"] == 2);
 
-    CHECK(j["unknown"]["top_qtype_xacts"][0]["name"] == "A");
-    CHECK(j["unknown"]["top_qtype_xacts"][0]["estimate"] == 70);
-    CHECK(j["unknown"]["top_qtype_xacts"][1]["name"] == "HTTPS");
-    CHECK(j["unknown"]["top_qtype_xacts"][1]["estimate"] == 2);
+    CHECK(j["in"]["top_qtype_xacts"][0]["name"] == "A");
+    CHECK(j["in"]["top_qtype_xacts"][0]["estimate"] == 70);
+    CHECK(j["in"]["top_qtype_xacts"][1]["name"] == "HTTPS");
+    CHECK(j["in"]["top_qtype_xacts"][1]["estimate"] == 2);
 }
 
 TEST_CASE("Invalid DNSTAP filter", "[dnstap][dns][filter]")

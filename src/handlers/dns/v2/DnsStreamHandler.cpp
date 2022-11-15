@@ -221,9 +221,9 @@ void DnsStreamHandler::stop()
 void DnsStreamHandler::process_dnstap_cb(const dnstap::Dnstap &d, [[maybe_unused]] size_t size)
 {
     if (_f_enabled[Filters::DnstapMsgType] && !_f_dnstap_types[d.message().type()]) {
-        _metrics->process_dnstap(d, PacketDirection::unknown, true);
+        _metrics->process_dnstap(d, true);
     } else {
-        _metrics->process_dnstap(d, PacketDirection::unknown, false);
+        _metrics->process_dnstap(d, false);
     }
 }
 
@@ -730,7 +730,7 @@ void DnsMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap ad
     }
 }
 
-void DnsMetricsBucket::new_dns_transaction(bool deep, float per90th, DnsLayer &payload, PacketDirection dir, DnsTransaction xact, pcpp::ProtocolType l3, Protocol l4, uint16_t port, size_t suffix_size)
+void DnsMetricsBucket::new_dns_transaction(bool deep, float per90th, DnsLayer &payload, TransactionDirection dir, DnsTransaction xact, pcpp::ProtocolType l3, Protocol l4, uint16_t port, size_t suffix_size)
 {
 
     uint64_t xactTime = ((xact.totalTS.tv_sec * 1'000'000'000L) + xact.totalTS.tv_nsec) / 1'000; // nanoseconds to microseconds
@@ -898,26 +898,32 @@ void DnsMetricsManager::process_dns_layer(DnsLayer &payload, PacketDirection dir
     // base event
     new_event(stamp);
 
+    auto xact_dir = TransactionDirection::unknown;
     if (payload.getDnsHeader()->queryOrResponse == QR::response) {
         // For response to match, need to switch direction
         if (dir == PacketDirection::toHost) {
-            dir = PacketDirection::fromHost;
+            xact_dir = TransactionDirection::out;
         } else if (dir == PacketDirection::fromHost) {
-            dir = PacketDirection::toHost;
+            xact_dir = TransactionDirection::in;
         }
-        auto xact = _pair_manager[dir].xact_map.maybe_end_transaction(DnsXactID(flowkey, payload.getDnsHeader()->transactionID), stamp);
-        live_bucket()->dir_setup(dir);
+        auto xact = _pair_manager[xact_dir].xact_map.maybe_end_transaction(DnsXactID(flowkey, payload.getDnsHeader()->transactionID), stamp);
+        live_bucket()->dir_setup(xact_dir);
         if (xact.first == Result::Valid && !xact.second.filtered) {
-            live_bucket()->new_dns_transaction(_deep_sampling_now, _pair_manager[dir].per_90th, payload, dir, xact.second, l3, static_cast<Protocol>(l4), port, suffix_size);
+            live_bucket()->new_dns_transaction(_deep_sampling_now, _pair_manager[xact_dir].per_90th, payload, xact_dir, xact.second, l3, static_cast<Protocol>(l4), port, suffix_size);
         } else if (xact.second.filtered) {
             // query was filtered out
             live_bucket()->process_filtered();
         } else if (xact.first == Result::TimedOut) {
-            live_bucket()->inc_xact_timed_out(1, dir);
+            live_bucket()->inc_xact_timed_out(1, xact_dir);
         } else {
-            live_bucket()->inc_xact_orphan(1, dir);
+            live_bucket()->inc_xact_orphan(1, xact_dir);
         }
     } else {
+        if (dir == PacketDirection::toHost) {
+            xact_dir = TransactionDirection::in;
+        } else if (dir == PacketDirection::fromHost) {
+            xact_dir = TransactionDirection::out;
+        }
         std::string subnet;
         if (group_enabled(group::DnsMetrics::TopEcs) && payload.getAdditionalRecordCount()) {
             auto additional = payload.getFirstAdditionalRecord();
@@ -929,7 +935,7 @@ void DnsMetricsManager::process_dns_layer(DnsLayer &payload, PacketDirection dir
                 subnet = ecs->client_subnet;
             }
         }
-        _pair_manager[dir].xact_map.start_transaction(DnsXactID(flowkey, payload.getDnsHeader()->transactionID),
+        _pair_manager[xact_dir].xact_map.start_transaction(DnsXactID(flowkey, payload.getDnsHeader()->transactionID),
             {{stamp, {0, 0}}, false, payload.getDataLen(), static_cast<bool>(payload.getDnsHeader()->checkingDisabled), subnet});
     }
 }
@@ -939,30 +945,58 @@ void DnsMetricsManager::process_filtered(timespec stamp, DnsLayer &payload, Pack
     // base event, no sample
     new_event(stamp, false);
 
+    auto xact_dir = TransactionDirection::unknown;
     if (payload.getDnsHeader()->queryOrResponse == QR::response) {
         // For response to match, need to switch direction
         if (dir == PacketDirection::toHost) {
-            dir = PacketDirection::fromHost;
+            xact_dir = TransactionDirection::out;
         } else if (dir == PacketDirection::fromHost) {
-            dir = PacketDirection::toHost;
+            xact_dir = TransactionDirection::in;
         }
-        auto xact = _pair_manager[dir].xact_map.maybe_end_transaction(DnsXactID(flowkey, payload.getDnsHeader()->transactionID), stamp);
-        live_bucket()->dir_setup(dir);
+        auto xact = _pair_manager[xact_dir].xact_map.maybe_end_transaction(DnsXactID(flowkey, payload.getDnsHeader()->transactionID), stamp);
+        live_bucket()->dir_setup(xact_dir);
         if (xact.first == Result::Valid && !xact.second.filtered) {
             live_bucket()->process_filtered();
         }
     } else {
-        _pair_manager[dir].xact_map.start_transaction(DnsXactID(flowkey, payload.getDnsHeader()->transactionID), {{stamp, {0, 0}}, true, 0, false, std::string()});
+        if (dir == PacketDirection::toHost) {
+            xact_dir = TransactionDirection::in;
+        } else if (dir == PacketDirection::fromHost) {
+            xact_dir = TransactionDirection::out;
+        }
+        _pair_manager[xact_dir].xact_map.start_transaction(DnsXactID(flowkey, payload.getDnsHeader()->transactionID), {{stamp, {0, 0}}, true, 0, false, std::string()});
     }
     live_bucket()->process_filtered();
 }
 
-void DnsMetricsManager::process_dnstap(const dnstap::Dnstap &payload, PacketDirection dir, bool filtered)
+void DnsMetricsManager::process_dnstap(const dnstap::Dnstap &payload, bool filtered)
 {
     // dnstap message type
     auto mtype = payload.message().type();
     // set proper timestamp. use dnstap version if available, otherwise "now"
     timespec stamp;
+
+    auto xact_dir = TransactionDirection::unknown;
+    switch (mtype) {
+    case dnstap::Message_Type_CLIENT_QUERY:
+    case dnstap::Message_Type_CLIENT_RESPONSE:
+    case dnstap::Message_Type_AUTH_QUERY:
+    case dnstap::Message_Type_AUTH_RESPONSE:
+    case dnstap::Message_Type_UPDATE_QUERY:
+    case dnstap::Message_Type_UPDATE_RESPONSE:
+        xact_dir = TransactionDirection::in;
+        break;
+    case dnstap::Message_Type_STUB_QUERY:
+    case dnstap::Message_Type_STUB_RESPONSE:
+    case dnstap::Message_Type_RESOLVER_QUERY:
+    case dnstap::Message_Type_RESOLVER_RESPONSE:
+    case dnstap::Message_Type_FORWARDER_QUERY:
+    case dnstap::Message_Type_FORWARDER_RESPONSE:
+    case dnstap::Message_Type_TOOL_QUERY:
+    case dnstap::Message_Type_TOOL_RESPONSE:
+        xact_dir = TransactionDirection::out;
+        break;
+    }
 
     QR side{QR::query};
     switch (mtype) {
@@ -1021,22 +1055,22 @@ void DnsMetricsManager::process_dnstap(const dnstap::Dnstap &payload, PacketDire
         uint8_t *buf = new uint8_t[query.size()];
         std::memcpy(buf, query.c_str(), query.size());
         DnsLayer dpayload(buf, query.size(), nullptr, nullptr);
-        auto xact = _pair_manager[dir].xact_map.maybe_end_transaction(DnsXactID(dpayload.getDnsHeader()->transactionID, 2), stamp);
-        live_bucket()->dir_setup(dir);
+        auto xact = _pair_manager[xact_dir].xact_map.maybe_end_transaction(DnsXactID(dpayload.getDnsHeader()->transactionID, 2), stamp);
+        live_bucket()->dir_setup(xact_dir);
         if (xact.first == Result::Valid) {
             // process in the "live" bucket. this will parse the resources if we are deep sampling
-            live_bucket()->new_dns_transaction(_deep_sampling_now, _pair_manager[dir].per_90th, dpayload, dir, xact.second, l3, static_cast<Protocol>(l4), port);
+            live_bucket()->new_dns_transaction(_deep_sampling_now, _pair_manager[xact_dir].per_90th, dpayload, xact_dir, xact.second, l3, static_cast<Protocol>(l4), port);
         } else if (xact.first == Result::TimedOut) {
-            live_bucket()->inc_xact_timed_out(1, dir);
+            live_bucket()->inc_xact_timed_out(1, xact_dir);
         } else {
-            live_bucket()->inc_xact_orphan(1, dir);
+            live_bucket()->inc_xact_orphan(1, xact_dir);
         }
     } else if (payload.message().has_query_message()) {
         auto query = payload.message().query_message();
         uint8_t *buf = new uint8_t[query.size()];
         std::memcpy(buf, query.c_str(), query.size());
         DnsLayer dpayload(buf, query.size(), nullptr, nullptr);
-        _pair_manager[dir].xact_map.start_transaction(DnsXactID(dpayload.getDnsHeader()->transactionID, 2), {{stamp, {0, 0}}, false, payload.message().query_message().size(), false, std::string()});
+        _pair_manager[xact_dir].xact_map.start_transaction(DnsXactID(dpayload.getDnsHeader()->transactionID, 2), {{stamp, {0, 0}}, false, payload.message().query_message().size(), false, std::string()});
     }
 }
 }

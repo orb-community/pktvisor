@@ -70,7 +70,7 @@ TEST_CASE("Parse DNS UDP IPv4 tests", "[pcap][ipv4][udp][dns]")
     dns_handler.stop();
     stream.stop();
 
-    auto counters = dns_handler.metrics()->bucket(0)->counters(PacketDirection::unknown);
+    auto counters = dns_handler.metrics()->bucket(0)->counters(TransactionDirection::unknown);
     auto event_data = dns_handler.metrics()->bucket(0)->event_data_locked();
 
     CHECK(dns_handler.metrics()->current_periods() == 1);
@@ -111,7 +111,7 @@ TEST_CASE("Parse DNS TCP IPv4 tests", "[pcap][ipv4][tcp][dns]")
     dns_handler.stop();
     stream.stop();
 
-    auto counters = dns_handler.metrics()->bucket(0)->counters(PacketDirection::unknown);
+    auto counters = dns_handler.metrics()->bucket(0)->counters(TransactionDirection::unknown);
     auto event_data = dns_handler.metrics()->bucket(0)->event_data_locked();
     json j;
     dns_handler.metrics()->bucket(0)->to_json(j);
@@ -144,7 +144,7 @@ TEST_CASE("Parse DNS UDP IPv6 tests", "[pcap][ipv6][udp][dns]")
     stream.stop();
     dns_handler.stop();
 
-    auto counters = dns_handler.metrics()->bucket(0)->counters(PacketDirection::unknown);
+    auto counters = dns_handler.metrics()->bucket(0)->counters(TransactionDirection::unknown);
     auto event_data = dns_handler.metrics()->bucket(0)->event_data_locked();
     json j;
     dns_handler.metrics()->bucket(0)->to_json(j);
@@ -177,7 +177,7 @@ TEST_CASE("Parse DNS TCP IPv6 tests", "[pcap][ipv6][tcp][dns]")
     stream.stop();
     dns_handler.stop();
 
-    auto counters = dns_handler.metrics()->bucket(0)->counters(PacketDirection::unknown);
+    auto counters = dns_handler.metrics()->bucket(0)->counters(TransactionDirection::unknown);
     auto event_data = dns_handler.metrics()->bucket(0)->event_data_locked();
     json j;
     dns_handler.metrics()->bucket(0)->to_json(j);
@@ -213,7 +213,7 @@ TEST_CASE("Parse DNS random UDP/TCP tests", "[pcap][dns]")
     stream.stop();
     dns_handler.stop();
 
-    auto counters = dns_handler.metrics()->bucket(0)->counters(PacketDirection::fromHost);
+    auto counters = dns_handler.metrics()->bucket(0)->counters(TransactionDirection::out);
     auto event_data = dns_handler.metrics()->bucket(0)->event_data_locked();
 
     // confirmed with wireshark. there are 14 TCP retransmissions which are counted differently in our state machine
@@ -288,7 +288,7 @@ TEST_CASE("DNS Filters: exclude_noerror", "[pcap][dns]")
     stream.stop();
     dns_handler.stop();
 
-    auto counters = dns_handler.metrics()->bucket(0)->counters(PacketDirection::fromHost);
+    auto counters = dns_handler.metrics()->bucket(0)->counters(TransactionDirection::out);
     REQUIRE(counters.RNOERROR.value() == 0);
     REQUIRE(counters.SRVFAIL.value() == 0);
     REQUIRE(counters.REFUSED.value() == 1);
@@ -320,7 +320,7 @@ TEST_CASE("DNS Filters: only_rcode nx", "[pcap][net]")
     stream.stop();
     dns_handler.stop();
 
-    auto counters = dns_handler.metrics()->bucket(0)->counters(PacketDirection::fromHost);
+    auto counters = dns_handler.metrics()->bucket(0)->counters(TransactionDirection::out);
     REQUIRE(counters.RNOERROR.value() == 0);
     REQUIRE(counters.SRVFAIL.value() == 0);
     REQUIRE(counters.REFUSED.value() == 0);
@@ -352,7 +352,7 @@ TEST_CASE("DNS Filters: only_rcode refused", "[pcap][dns]")
     stream.stop();
     dns_handler.stop();
 
-    auto counters = dns_handler.metrics()->bucket(0)->counters(PacketDirection::fromHost);
+    auto counters = dns_handler.metrics()->bucket(0)->counters(TransactionDirection::out);
     REQUIRE(counters.RNOERROR.value() == 0);
     REQUIRE(counters.SRVFAIL.value() == 0);
     REQUIRE(counters.REFUSED.value() == 1);
@@ -383,7 +383,7 @@ TEST_CASE("DNS Filters: only_qtypes AAAA and TXT", "[pcap][dns]")
     stream.stop();
     dns_handler.stop();
 
-    auto counters = dns_handler.metrics()->bucket(0)->counters(PacketDirection::fromHost);
+    auto counters = dns_handler.metrics()->bucket(0)->counters(TransactionDirection::out);
     auto event_data = dns_handler.metrics()->bucket(0)->event_data_locked();
 
     // confirmed with wireshark. there are 14 TCP retransmissions which are counted differently in our state machine
@@ -463,7 +463,7 @@ TEST_CASE("DNS Filters: only_qname_suffix", "[pcap][dns]")
     stream.stop();
     dns_handler.stop();
 
-    auto counters = dns_handler.metrics()->bucket(0)->counters(PacketDirection::fromHost);
+    auto counters = dns_handler.metrics()->bucket(0)->counters(TransactionDirection::out);
 
     CHECK(counters.UDP.value() == 4);
     CHECK(counters.RNOERROR.value() == 3);
@@ -504,7 +504,7 @@ TEST_CASE("DNS Filters: answer_count", "[pcap][dns]")
     stream.stop();
     dns_handler.stop();
 
-    auto counters = dns_handler.metrics()->bucket(0)->counters(PacketDirection::fromHost);
+    auto counters = dns_handler.metrics()->bucket(0)->counters(TransactionDirection::out);
 
     CHECK(counters.UDP.value() == 2);
     CHECK(counters.RNOERROR.value() == 2);
@@ -539,7 +539,7 @@ TEST_CASE("DNS Filters: only_dnssec_response", "[pcap][dns]")
     stream.stop();
     dns_handler.stop();
 
-    auto counters = dns_handler.metrics()->bucket(0)->counters(PacketDirection::unknown);
+    auto counters = dns_handler.metrics()->bucket(0)->counters(TransactionDirection::unknown);
     auto event_data = dns_handler.metrics()->bucket(0)->event_data_locked();
 
     CHECK(event_data.num_events->value() == 14);
@@ -590,7 +590,7 @@ TEST_CASE("DNS Configs: public_suffix_list", "[pcap][dns]")
     stream.stop();
     dns_handler.stop();
 
-    auto counters = dns_handler.metrics()->bucket(0)->counters(PacketDirection::fromHost);
+    auto counters = dns_handler.metrics()->bucket(0)->counters(TransactionDirection::out);
 
     CHECK(counters.UDP.value() == 9);
     CHECK(counters.RNOERROR.value() == 7);
@@ -627,7 +627,7 @@ TEST_CASE("Parse DNS with ECS data", "[pcap][dns][ecs]")
     stream.stop();
     dns_handler.stop();
 
-    auto counters = dns_handler.metrics()->bucket(0)->counters(PacketDirection::unknown);
+    auto counters = dns_handler.metrics()->bucket(0)->counters(TransactionDirection::unknown);
     auto event_data = dns_handler.metrics()->bucket(0)->event_data_locked();
 
     CHECK(event_data.num_events->value() == 36);
@@ -679,7 +679,7 @@ TEST_CASE("DNS filter: GeoLoc not found", "[pcap][dns][ecs]")
     stream.stop();
     dns_handler.stop();
 
-    auto counters = dns_handler.metrics()->bucket(0)->counters(PacketDirection::unknown);
+    auto counters = dns_handler.metrics()->bucket(0)->counters(TransactionDirection::unknown);
     auto event_data = dns_handler.metrics()->bucket(0)->event_data_locked();
 
     CHECK(event_data.num_events->value() == 36);
@@ -729,7 +729,7 @@ TEST_CASE("DNS filter: ASN not found", "[pcap][dns][ecs]")
     stream.stop();
     dns_handler.stop();
 
-    auto counters = dns_handler.metrics()->bucket(0)->counters(PacketDirection::unknown);
+    auto counters = dns_handler.metrics()->bucket(0)->counters(TransactionDirection::unknown);
     auto event_data = dns_handler.metrics()->bucket(0)->event_data_locked();
 
     CHECK(event_data.num_events->value() == 36);
@@ -824,7 +824,7 @@ TEST_CASE("DNS groups", "[pcap][dns]")
         stream.stop();
         dns_handler.stop();
 
-        auto counters = dns_handler.metrics()->bucket(0)->counters(PacketDirection::fromHost);
+        auto counters = dns_handler.metrics()->bucket(0)->counters(TransactionDirection::out);
         auto event_data = dns_handler.metrics()->bucket(0)->event_data_locked();
 
         CHECK(event_data.num_events->value() == 5851);
@@ -854,7 +854,7 @@ TEST_CASE("DNS groups", "[pcap][dns]")
         stream.stop();
         dns_handler.stop();
 
-        auto counters = dns_handler.metrics()->bucket(0)->counters(PacketDirection::fromHost);
+        auto counters = dns_handler.metrics()->bucket(0)->counters(TransactionDirection::out);
         auto event_data = dns_handler.metrics()->bucket(0)->event_data_locked();
 
         CHECK(event_data.num_events->value() == 5851);
