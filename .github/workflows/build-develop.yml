@@ -132,6 +132,8 @@ jobs:
     runs-on: ubuntu-latest
     # if this is a push into one of our main branches (rather than just a pull request), we will also package
     if: github.event_name != 'pull_request'
+    outputs:
+      version_number: ${{ env.VERSION }}
     steps:
       - uses: actions/checkout@v2
 
@@ -152,6 +154,12 @@ jobs:
 
       - name: Debug artifacts
         run: ls -lha .
+        
+      - name: Get VERSION
+        id: build
+        run: |
+          echo "VERSION=${{needs.unit-tests-linux.outputs.version_number}}" >> $GITHUB_ENV
+          echo "::set-output name=version::$(echo env.VERSION)"
 
       - name: Generate ref tag (develop)
         run: |
