@@ -23,7 +23,7 @@ TEST_CASE("Parse DNSTAP", "[dnstap][dns][!mayfail]")
     stream.stop();
     dns_handler.stop();
 
-    auto counters = dns_handler.metrics()->bucket(0)->counters(PacketDirection::toHost);
+    auto counters = dns_handler.metrics()->bucket(0)->counters(TransactionDirection::in);
     auto event_data = dns_handler.metrics()->bucket(0)->event_data_locked();
 
     CHECK(event_data.num_events->value() == 153);
@@ -101,7 +101,7 @@ TEST_CASE("Parse filtered DNSTAP with data", "[dnstap][dns][filter][!mayfail]")
     stream.stop();
     dns_handler.stop();
 
-    auto counters = dns_handler.metrics()->bucket(0)->counters(PacketDirection::toHost);
+    auto counters = dns_handler.metrics()->bucket(0)->counters(TransactionDirection::in);
     auto event_data = dns_handler.metrics()->bucket(0)->event_data_locked();
 
     CHECK(event_data.num_events->value() == 153);

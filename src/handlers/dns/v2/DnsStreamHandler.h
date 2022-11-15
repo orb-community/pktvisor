@@ -23,6 +23,11 @@ class DnstapInputEventProxy;
 
 namespace visor::handler::dns::v2 {
 
+enum TransactionDirection {
+    in,
+    out,
+    unknown
+};
 using namespace visor::lib::dns;
 using namespace visor::lib::transaction;
 using namespace visor::input::pcap;
@@ -246,11 +251,11 @@ protected:
     mutable std::shared_mutex _mutex;
     size_t _topn_count{10};
     uint64_t _topn_percentile_threshold{0};
-    inline static const std::unordered_map<PacketDirection, std::string> _dir_str = {
-        {PacketDirection::toHost, "in"},
-        {PacketDirection::fromHost, "out"},
-        {PacketDirection::unknown, "unknown"}};
-    std::map<PacketDirection, DnsDirection> _dns;
+    inline static const std::unordered_map<TransactionDirection, std::string> _dir_str = {
+        {TransactionDirection::in, "in"},
+        {TransactionDirection::out, "out"},
+        {TransactionDirection::unknown, "unknown"}};
+    std::map<TransactionDirection, DnsDirection> _dns;
     Counter _filtered;
 
 public:
@@ -261,7 +266,7 @@ public:
         set_num_sample_info(DNS_SCHEMA, {"deep_sampled_packets"}, "Total DNS wire packets that were sampled for deep inspection");
     }
 
-    auto get_xact_data_locked(PacketDirection dir) const
+    auto get_xact_data_locked(TransactionDirection dir) const
     {
         std::shared_lock lock(_mutex);
         struct retVals {
@@ -271,7 +276,7 @@ public:
         return retVals{_dns.at(dir).dnsTimeUs, std::move(lock)};
     }
 
-    void dir_setup(PacketDirection dir)
+    void dir_setup(TransactionDirection dir)
     {
         std::unique_lock lock(_mutex);
         if (!_dns.count(dir)) {
@@ -279,7 +284,7 @@ public:
         }
     }
 
-    bool has_dir(PacketDirection dir) const
+    bool has_dir(TransactionDirection dir) const
     {
         std::shared_lock lock(_mutex);
         if (!_dns.count(dir)) {
@@ -288,20 +293,20 @@ public:
         return true;
     }
 
-    void inc_xact_timed_out(uint64_t c, PacketDirection dir)
+    void inc_xact_timed_out(uint64_t c, TransactionDirection dir)
     {
         std::unique_lock lock(_mutex);
         _dns[dir].counters.timeout += c;
     }
 
-    void inc_xact_orphan(uint64_t c, PacketDirection dir)
+    void inc_xact_orphan(uint64_t c, TransactionDirection dir)
     {
         std::unique_lock lock(_mutex);
         _dns[dir].counters.orphan += c;
     }
 
     // get a copy of the counters
-    DnsDirection::Counters counters(PacketDirection dir) const
+    DnsDirection::Counters counters(TransactionDirection dir) const
     {
         std::shared_lock lock(_mutex);
         return _dns.at(dir).counters;
@@ -326,7 +331,7 @@ public:
     }
 
     void process_filtered();
-    void new_dns_transaction(bool deep, float per90th, DnsLayer &dns, PacketDirection dir, DnsTransaction xact, pcpp::ProtocolType l3, Protocol l4, uint16_t port, size_t suffix_size = 0);
+    void new_dns_transaction(bool deep, float per90th, DnsLayer &dns, TransactionDirection dir, DnsTransaction xact, pcpp::ProtocolType l3, Protocol l4, uint16_t port, size_t suffix_size = 0);
 };
 
 class DnsMetricsManager final : public visor::AbstractMetricsManager<DnsMetricsBucket>
@@ -336,9 +341,9 @@ class DnsMetricsManager final : public visor::AbstractMetricsManager<DnsMetricsB
         TransactionManager<DnsXactID, DnsTransaction> xact_map;
         float per_90th{0.0};
     };
-    std::map<PacketDirection, DirTransaction> _pair_manager = {{PacketDirection::toHost, DirTransaction()},
-        {PacketDirection::fromHost, DirTransaction()},
-        {PacketDirection::unknown, DirTransaction()}};
+    std::map<TransactionDirection, DirTransaction> _pair_manager = {{TransactionDirection::in, DirTransaction()},
+        {TransactionDirection::out, DirTransaction()},
+        {TransactionDirection::unknown, DirTransaction()}};
 
 public:
     DnsMetricsManager(const Configurable *window_config)
