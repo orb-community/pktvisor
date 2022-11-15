@@ -377,7 +377,7 @@ public:
     }
     void process_filtered(timespec stamp, DnsLayer &payload, PacketDirection dir, uint32_t flowkey);
     void process_dns_layer(DnsLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowkey, uint16_t port, size_t suffix_size, timespec stamp);
-    void process_dnstap(const dnstap::Dnstap &payload, PacketDirection dir, bool filtered);
+    void process_dnstap(const dnstap::Dnstap &payload, bool filtered);
 };
 
 class DnsTcpSessionData final : public TcpSessionData

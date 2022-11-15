@@ -221,9 +221,9 @@ void DnsStreamHandler::stop()
 void DnsStreamHandler::process_dnstap_cb(const dnstap::Dnstap &d, [[maybe_unused]] size_t size)
 {
     if (_f_enabled[Filters::DnstapMsgType] && !_f_dnstap_types[d.message().type()]) {
-        _metrics->process_dnstap(d, PacketDirection::unknown, true);
+        _metrics->process_dnstap(d, true);
     } else {
-        _metrics->process_dnstap(d, PacketDirection::unknown, false);
+        _metrics->process_dnstap(d, false);
     }
 }
 
@@ -957,12 +957,34 @@ void DnsMetricsManager::process_filtered(timespec stamp, DnsLayer &payload, Pack
     live_bucket()->process_filtered();
 }
 
-void DnsMetricsManager::process_dnstap(const dnstap::Dnstap &payload, PacketDirection dir, bool filtered)
+void DnsMetricsManager::process_dnstap(const dnstap::Dnstap &payload, bool filtered)
 {
     // dnstap message type
     auto mtype = payload.message().type();
     // set proper timestamp. use dnstap version if available, otherwise "now"
     timespec stamp;
+
+    auto dir = PacketDirection::unknown;
+    switch (mtype) {
+    case dnstap::Message_Type_CLIENT_QUERY:
+    case dnstap::Message_Type_CLIENT_RESPONSE:
+    case dnstap::Message_Type_AUTH_QUERY:
+    case dnstap::Message_Type_AUTH_RESPONSE:
+    case dnstap::Message_Type_UPDATE_QUERY:
+    case dnstap::Message_Type_UPDATE_RESPONSE:
+        dir = PacketDirection::toHost; // in packet
+        break;
+    case dnstap::Message_Type_STUB_QUERY:
+    case dnstap::Message_Type_STUB_RESPONSE:
+    case dnstap::Message_Type_RESOLVER_QUERY:
+    case dnstap::Message_Type_RESOLVER_RESPONSE:
+    case dnstap::Message_Type_FORWARDER_QUERY:
+    case dnstap::Message_Type_FORWARDER_RESPONSE:
+    case dnstap::Message_Type_TOOL_QUERY:
+    case dnstap::Message_Type_TOOL_RESPONSE:
+        dir = PacketDirection::fromHost; // out packet
+        break;
+    }
 
     QR side{QR::query};
     switch (mtype) {
