@@ -182,11 +182,11 @@ jobs:
 
       - name: Login to ns1labs conan
         shell: bash
-        run: CONAN_USER_HOME=${{github.workspace}}\build\conan_home conan user -p ${{ secrets.CONAN_LABS_PASSWORD }} -r ns1labs ${{ secrets.CONAN_LABS_USERNAME }}
+        run: CONAN_USER_HOME=${{github.workspace}//\\//}/build/conan_home conan user -p ${{ secrets.CONAN_LABS_PASSWORD }} -r ns1labs ${{ secrets.CONAN_LABS_USERNAME }}
 
       - name: Cache conan packages
         shell: bash
-        run: CONAN_USER_HOME=${{github.workspace}}\build\conan_home conan upload "*" --all -r ns1labs -c
+        run: CONAN_USER_HOME=${{github.workspace}//\\//}/build/conan_home conan upload "*" --all -r ns1labs -c
 
   package-amd64:
     needs: [ unit-tests-linux ]
