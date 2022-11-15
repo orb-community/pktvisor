@@ -468,22 +468,22 @@ void NetworkMetricsBucket::process_dnstap(bool deep, const dnstap::Dnstap &paylo
 
     PacketDirection dir{PacketDirection::unknown};
     switch (payload.message().type()) {
-    case dnstap::Message_Type_FORWARDER_RESPONSE:
+    case dnstap::Message_Type_CLIENT_QUERY:
     case dnstap::Message_Type_STUB_RESPONSE:
-    case dnstap::Message_Type_TOOL_RESPONSE:
-    case dnstap::Message_Type_UPDATE_RESPONSE:
-    case dnstap::Message_Type_CLIENT_RESPONSE:
-    case dnstap::Message_Type_AUTH_RESPONSE:
     case dnstap::Message_Type_RESOLVER_RESPONSE:
+    case dnstap::Message_Type_AUTH_QUERY:
+    case dnstap::Message_Type_FORWARDER_RESPONSE:
+    case dnstap::Message_Type_UPDATE_QUERY:
+    case dnstap::Message_Type_TOOL_RESPONSE:
         dir = PacketDirection::toHost;
         break;
-    case dnstap::Message_Type_FORWARDER_QUERY:
     case dnstap::Message_Type_STUB_QUERY:
-    case dnstap::Message_Type_TOOL_QUERY:
-    case dnstap::Message_Type_UPDATE_QUERY:
-    case dnstap::Message_Type_CLIENT_QUERY:
-    case dnstap::Message_Type_AUTH_QUERY:
+    case dnstap::Message_Type_CLIENT_RESPONSE:
     case dnstap::Message_Type_RESOLVER_QUERY:
+    case dnstap::Message_Type_AUTH_RESPONSE:
+    case dnstap::Message_Type_FORWARDER_QUERY:
+    case dnstap::Message_Type_UPDATE_RESPONSE:
+    case dnstap::Message_Type_TOOL_QUERY:
         dir = PacketDirection::fromHost;
         break;
     }
