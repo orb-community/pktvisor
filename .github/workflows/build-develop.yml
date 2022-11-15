@@ -159,11 +159,12 @@ jobs:
         # The CMake binaries on the Github Actions machines are (as of this writing) 3.12
         run: PKG_CONFIG_PATH=${{github.workspace}}/local/lib/pkgconfig cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE
 
-      #- name: Get VERSION
-      #  id: build
-      #  run: | 
-      #    echo "VERSION=`cat ${{github.workspace}}\build\VERSION`" >> $GITHUB_ENV
-      #    echo "::set-output name=version::$(cat ${{github.workspace}}/build/VERSION)"
+      - name: Get VERSION
+        shell: bash
+        id: build
+        run: | 
+          echo "VERSION=`cat ${{github.workspace}}\build\VERSION`" >> $GITHUB_ENV
+          echo "::set-output name=version::$(cat ${{github.workspace}}/build/VERSION)"
 
       - name: Build
         working-directory: ${{github.workspace}}/build
@@ -180,9 +181,11 @@ jobs:
       #  run: ctest -C $BUILD_TYPE
 
       - name: Login to ns1labs conan
+        shell: bash
         run: CONAN_USER_HOME=${{github.workspace}}/build/conan_home conan user -p ${{ secrets.CONAN_LABS_PASSWORD }} -r ns1labs ${{ secrets.CONAN_LABS_USERNAME }}
 
       - name: Cache conan packages
+        shell: bash
         run: CONAN_USER_HOME=${{github.workspace}}/build/conan_home conan upload "*" --all -r ns1labs -c
 
   package-amd64:
