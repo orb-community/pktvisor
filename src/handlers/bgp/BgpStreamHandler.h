@@ -134,6 +134,9 @@ class BgpStreamHandler final : public visor::StreamMetricsHandler<BgpMetricsMana
 
     sigslot::connection _heartbeat_connection;
 
+    static const inline StreamMetricsHandler::ConfigsDefType _config_defs = {
+        "recorded_stream"};
+
     void tcp_message_ready_cb(int8_t side, const pcpp::TcpStreamData &tcpData, PacketDirection dir);
     void tcp_connection_start_cb(const pcpp::ConnectionData &connectionData, PacketDirection dir);
     void tcp_connection_end_cb(const pcpp::ConnectionData &connectionData, pcpp::TcpReassembly::ConnectionEndReason reason);
