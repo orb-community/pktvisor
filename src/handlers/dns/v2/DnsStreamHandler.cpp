@@ -46,6 +46,8 @@ void DnsStreamHandler::start()
         return;
     }
 
+    validate_configs(_config_defs);
+
     // default enabled groups
     _groups.set(group::DnsMetrics::Cardinality);
     _groups.set(group::DnsMetrics::Counters);

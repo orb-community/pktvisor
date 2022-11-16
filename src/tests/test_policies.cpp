@@ -85,7 +85,7 @@ visor:
           - default_dns:
             type: dns
             config:
-              in_key: in_value
+              exclude_noerror: true
           - default_net:
             type: net
 )";

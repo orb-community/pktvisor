@@ -340,6 +340,18 @@ class FlowStreamHandler final : public visor::StreamMetricsHandler<FlowMetricsMa
     };
     std::bitset<Filters::FiltersMAX> _f_enabled;
 
+    static const inline StreamMetricsHandler::ConfigsDefType _config_defs = {
+        "device_map",
+        "enrichment",
+        "only_ips",
+        "only_devices",
+        "only_ports",
+        "only_interfaces",
+        "geoloc_notfound",
+        "asn_notfound",
+        "sample_rate_scaling",
+        "recorded_stream"};
+
     static const inline StreamMetricsHandler::GroupDefType _group_defs = {
         {"by_bytes", group::FlowMetrics::ByBytes},
         {"by_packets", group::FlowMetrics::ByPackets},

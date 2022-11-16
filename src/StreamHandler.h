@@ -68,8 +68,16 @@ class StreamMetricsHandler : public StreamHandler
 {
 public:
     typedef std::map<std::string, MetricGroupIntType> GroupDefType;
+    typedef std::vector<std::string> ConfigsDefType;
 
 private:
+    static const inline ConfigsDefType _window_config_defs = {
+        "deep_sample_rate",
+        "_internal_tap_name",
+        "num_periods",
+        "topn_count",
+        "topn_percentile_threshold"};
+
     MetricGroupIntType _process_group(const GroupDefType &group_defs, const std::string &group)
     {
         auto it = group_defs.find(group);
@@ -109,6 +117,23 @@ protected:
         }
 
         _metrics->configure_groups(&_groups);
+    }
+
+    void validate_configs(const ConfigsDefType &config_defs)
+    {
+        auto all_configs = get_all_keys();
+        for (const auto &config : all_configs) {
+            if (std::any_of(_window_config_defs.begin(), _window_config_defs.end(), [config](const auto &def) { return config == def; })) {
+                continue;
+            } else if (std::any_of(config_defs.begin(), config_defs.end(), [config](const auto &def) { return config == def; })) {
+                continue;
+            } else if (config == "enable") {
+                continue;
+            } else if (config == "disable") {
+                continue;
+            }
+            throw StreamHandlerException(fmt::format("{} is an invalid/unsupported config or filter. The valid configs/filters are: {}", config, fmt::join(config_defs, ", ")));
+        }
     }
 
     void common_info_json(json &j) const
