@@ -73,7 +73,6 @@ public:
 private:
     static const inline ConfigsDefType _window_config_defs = {
         "deep_sample_rate",
-        "_internal_tap_name",
         "num_periods",
         "topn_count",
         "topn_percentile_threshold"};
@@ -131,8 +130,10 @@ protected:
                 continue;
             } else if (config == "disable") {
                 continue;
+            } else if (config == "_internal_tap_name") {
+                continue;
             }
-            throw StreamHandlerException(fmt::format("{} is an invalid/unsupported config or filter. The valid configs/filters are: {}", config, fmt::join(config_defs, ", ")));
+            throw StreamHandlerException(fmt::format("{} is an invalid/unsupported config or filter. The valid configs/filters are: {}, {}", config, fmt::join(config_defs, ", "), fmt::join(_window_config_defs, ", ")));
         }
     }
 

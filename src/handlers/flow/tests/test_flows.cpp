@@ -331,5 +331,5 @@ TEST_CASE("Flow invalid config", "[flow][filter][config]")
     c.config_set<uint64_t>("num_periods", 1);
     FlowStreamHandler flow_handler{"flow-test", stream_proxy, &c};
     flow_handler.config_set<bool>("invalid_config", true);
-    REQUIRE_THROWS_WITH(flow_handler.start(), "invalid_config is an invalid/unsupported config or filter. The valid configs/filters are: device_map, enrichment, only_ips, only_devices, only_ports, only_interfaces, geoloc_notfound, asn_notfound, sample_rate_scaling, recorded_stream");
+    REQUIRE_THROWS_WITH(flow_handler.start(), "invalid_config is an invalid/unsupported config or filter. The valid configs/filters are: device_map, enrichment, only_ips, only_devices, only_ports, only_interfaces, geoloc_notfound, asn_notfound, sample_rate_scaling, recorded_stream, deep_sample_rate, num_periods, topn_count, topn_percentile_threshold");
 }

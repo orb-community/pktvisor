@@ -518,5 +518,5 @@ TEST_CASE("Net invalid config", "[net][filter][config]")
     c.config_set<uint64_t>("num_periods", 1);
     NetStreamHandler net_handler{"net-test", stream_proxy, &c};
     net_handler.config_set<bool>("invalid_config", true);
-    REQUIRE_THROWS_WITH(net_handler.start(), "invalid_config is an invalid/unsupported config or filter. The valid configs/filters are: geoloc_notfound, asn_notfound, only_geoloc_prefix, only_asn_number, recorded_stream");
+    REQUIRE_THROWS_WITH(net_handler.start(), "invalid_config is an invalid/unsupported config or filter. The valid configs/filters are: geoloc_notfound, asn_notfound, only_geoloc_prefix, only_asn_number, recorded_stream, deep_sample_rate, num_periods, topn_count, topn_percentile_threshold");
 }
