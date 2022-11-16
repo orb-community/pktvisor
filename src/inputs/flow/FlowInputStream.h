@@ -47,6 +47,12 @@ class FlowInputStream : public visor::InputStream
 
     std::shared_ptr<uvw::UDPHandle> _udp_server_h;
 
+    static const inline ConfigsDefType _config_defs = {
+        "flow_type",
+        "bind",
+        "port",
+        "pcap_file"};
+
     void _read_from_pcap_file();
     void _create_frame_stream_udp_socket();
 

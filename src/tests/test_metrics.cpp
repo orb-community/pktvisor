@@ -290,7 +290,6 @@ TEST_CASE("Histogram double metrics", "[metrics][histogram]")
         h.update(8.000);
         h.to_json(j["top"]);
 
-        std::cerr << j.dump() << '\n';
         CHECK(j["top"]["test"]["metric"]["buckets"]["+Inf"] == 4.0);
         CHECK(j["top"]["test"]["metric"]["buckets"]["12.000000"] == 4.0);
         CHECK(j["top"]["test"]["metric"]["buckets"]["4.000000"] == 0.0);

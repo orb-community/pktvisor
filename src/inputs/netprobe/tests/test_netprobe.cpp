@@ -35,3 +35,11 @@ TEST_CASE("Test Configs fail", "[netprobe]")
 
     CHECK_THROWS_WITH(stream.start(), "no targets specified");
 }
+
+TEST_CASE("Netprobe invalid config", "[netprobe][config]")
+{
+    NetProbeInputStream stream{"net-probe-test"};
+    stream.config_set("invalid_config", true);
+
+    CHECK_THROWS_WITH(stream.start(), "invalid_config is an invalid/unsupported config or filter. The valid configs/filters are: test_type, interval_msec, timeout_msec, packets_per_test, packets_interval_msec, packet_payload_size, targets");
+}

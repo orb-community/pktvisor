@@ -291,8 +291,8 @@ TEST_CASE("Parse net dnstap stream", "[dnstap][net][!mayfail]")
     CHECK(counters.UDP.value() == 153);
     CHECK(counters.IPv4.value() == 153);
     CHECK(counters.IPv6.value() == 0);
-    CHECK(counters.total_in.value() == 74);
-    CHECK(counters.total_out.value() == 79);
+    CHECK(counters.total_in.value() == 79);
+    CHECK(counters.total_out.value() == 74);
 
     nlohmann::json j;
     net_handler.metrics()->bucket(0)->to_json(j);
@@ -506,4 +506,17 @@ TEST_CASE("Net geolocation filtering", "[pcap][net][geo]")
         net_handler.config_set<visor::Configurable::StringList>("only_asn_number", {"16509/Amazon"});
         REQUIRE_THROWS_WITH(net_handler.start(), "NetStreamHandler: only_asn_number filter contained an invalid/unsupported value: 16509/Amazon");
     }
+}
+
+TEST_CASE("Net invalid config", "[net][filter][config]")
+{
+    PcapInputStream stream{"pcap-test"};
+    stream.config_set("pcap_file", "tests/fixtures/dns_udp_mixed_rcode.pcap");
+
+    visor::Config c;
+    auto stream_proxy = stream.add_event_proxy(c);
+    c.config_set<uint64_t>("num_periods", 1);
+    NetStreamHandler net_handler{"net-test", stream_proxy, &c};
+    net_handler.config_set<bool>("invalid_config", true);
+    REQUIRE_THROWS_WITH(net_handler.start(), "invalid_config is an invalid/unsupported config or filter. The valid configs/filters are: geoloc_notfound, asn_notfound, only_geoloc_prefix, only_asn_number, recorded_stream, deep_sample_rate, num_periods, topn_count, topn_percentile_threshold");
 }

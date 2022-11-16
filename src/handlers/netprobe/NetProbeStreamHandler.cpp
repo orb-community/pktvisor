@@ -23,6 +23,8 @@ void NetProbeStreamHandler::start()
         return;
     }
 
+    validate_configs(_config_defs);
+
     // default enabled groups
     _groups.set(group::NetProbeMetrics::Counters);
     _groups.set(group::NetProbeMetrics::Histograms);

@@ -52,6 +52,8 @@ void FlowStreamHandler::start()
         return;
     }
 
+    validate_configs(_config_defs);
+
     // default enabled groups
     _groups.set(group::FlowMetrics::Counters);
     _groups.set(group::FlowMetrics::Cardinality);

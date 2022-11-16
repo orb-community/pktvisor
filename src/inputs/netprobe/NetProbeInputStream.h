@@ -43,6 +43,15 @@ class NetProbeInputStream : public visor::InputStream
         {"udp", TestType::UDP},
         {"tcp", TestType::TCP}};
 
+    static const inline ConfigsDefType _config_defs = {
+        "test_type",
+        "interval_msec",
+        "timeout_msec",
+        "packets_per_test",
+        "packets_interval_msec",
+        "packet_payload_size",
+        "targets"};
+
     void _create_netprobe_loop();
     void _send_cb(pcpp::Packet &, TestType, const std::string &, timespec);
     void _recv_cb(pcpp::Packet &, TestType, const std::string &, timespec);

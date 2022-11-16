@@ -119,6 +119,9 @@ class NetProbeStreamHandler final : public visor::StreamMetricsHandler<NetProbeM
     sigslot::connection _probe_fail_connection;
     sigslot::connection _heartbeat_connection;
 
+    static const inline StreamMetricsHandler::ConfigsDefType _config_defs = {
+        "recorded_stream"};
+
     static const inline NetProbeStreamHandler::GroupDefType _group_defs = {
         {"counters", group::NetProbeMetrics::Counters},
         {"quantiles", group::NetProbeMetrics::Quantiles},

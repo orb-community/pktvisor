@@ -24,6 +24,8 @@ void BgpStreamHandler::start()
         return;
     }
 
+    validate_configs(_config_defs);
+
     if (config_exists("recorded_stream")) {
         _metrics->set_recorded_stream();
     }

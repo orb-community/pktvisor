@@ -477,6 +477,19 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
     size_t _static_suffix_size{0};
     std::bitset<DNSTAP_TYPE_SIZE> _f_dnstap_types;
 
+    static const inline StreamMetricsHandler::ConfigsDefType _config_defs = {
+        "exclude_noerror",
+        "only_rcode",
+        "only_dnssec_response",
+        "answer_count",
+        "only_qtype",
+        "only_qname_suffix",
+        "geoloc_notfound",
+        "asn_notfound",
+        "dnstap_msg_type",
+        "public_suffix_list",
+        "recorded_stream"};
+
     static const inline StreamMetricsHandler::GroupDefType _group_defs = {
         {"cardinality", group::DnsMetrics::Cardinality},
         {"counters", group::DnsMetrics::Counters},

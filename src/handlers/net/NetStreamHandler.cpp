@@ -46,6 +46,8 @@ void NetStreamHandler::start()
         return;
     }
 
+    validate_configs(_config_defs);
+
     // default enabled groups
     _groups.set(group::NetMetrics::Counters);
     _groups.set(group::NetMetrics::Cardinality);

@@ -880,6 +880,19 @@ TEST_CASE("DNS groups", "[pcap][dns]")
     }
 }
 
+TEST_CASE("DNS invalid config", "[dns][filter][config]")
+{
+    PcapInputStream stream{"pcap-test"};
+    stream.config_set("pcap_file", "tests/fixtures/dns_udp_tcp_random.pcap");
+
+    visor::Config c;
+    auto stream_proxy = stream.add_event_proxy(c);
+    c.config_set<uint64_t>("num_periods", 1);
+    DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
+    dns_handler.config_set<bool>("invalid_config", true);
+    REQUIRE_THROWS_WITH(dns_handler.start(), "invalid_config is an invalid/unsupported config or filter. The valid configs/filters are: exclude_noerror, only_rcode, only_dnssec_response, answer_count, only_qtype, only_qname_suffix, geoloc_notfound, asn_notfound, dnstap_msg_type, public_suffix_list, recorded_stream, deep_sample_rate, num_periods, topn_count, topn_percentile_threshold");
+}
+
 TEST_CASE("DNS Filters: only_rcode with predicate", "[pcap][dns][filter]")
 {
     PcapInputStream stream{"pcap-test"};

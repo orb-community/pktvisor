@@ -92,6 +92,9 @@ class PcapStreamHandler final : public visor::StreamMetricsHandler<PcapMetricsMa
 
     sigslot::connection _heartbeat_connection;
 
+    static const inline StreamMetricsHandler::ConfigsDefType _config_defs = {
+        "recorded_stream"};
+
     void process_pcap_tcp_reassembly_error(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, timespec stamp);
     void process_pcap_stats(const pcpp::IPcapDevice::PcapStats &stats);
 
