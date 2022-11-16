@@ -39,6 +39,8 @@ void NetProbeInputStream::start()
         return;
     }
 
+    validate_configs(_config_defs);
+
     std::vector<std::string> valid_tests;
     for (const auto &defs : _test_defs) {
         valid_tests.push_back(defs.first);

@@ -91,6 +91,8 @@ void PcapInputStream::start()
         return;
     }
 
+    validate_configs(_config_defs);
+
     if (config_exists("pcap_file")) {
         // read from pcap file. this is a special case from a command line utility
         if (!config_exists("bpf")) {

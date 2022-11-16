@@ -63,6 +63,12 @@ class DnstapInputStream : public visor::InputStream
     std::shared_ptr<uvw::TCPHandle> _tcp_server_h;
     std::unordered_map<uv_os_fd_t, std::unique_ptr<FrameSessionData<uvw::TCPHandle>>> _tcp_sessions;
 
+    static const inline ConfigsDefType _config_defs = {
+        "tcp",
+        "socket",
+        "dnstap_file",
+        "only_hosts"};
+
     void _read_frame_stream_file();
     void _create_frame_stream_unix_socket();
     void _create_frame_stream_tcp_socket();

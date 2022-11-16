@@ -91,6 +91,8 @@ void DnstapInputStream::start()
         return;
     }
 
+    validate_configs(_config_defs);
+
     if (config_exists("dnstap_file")) {
         // read from dnstap file. this is a special case from a command line utility
         _running = true;

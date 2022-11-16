@@ -7,7 +7,7 @@
 #include "InputStream.h"
 
 #ifdef _WIN32
-//Required for PcapPlusPlus on Windows
+// Required for PcapPlusPlus on Windows
 #pragma comment(lib, "iphlpapi.lib")
 #endif
 
@@ -119,6 +119,14 @@ private:
 #endif
 
     pcpp::TcpReassembly _tcp_reassembly;
+
+    static const inline ConfigsDefType _config_defs = {
+        "iface",
+        "bpf",
+        "debug",
+        "host_spec",
+        "pcap_file",
+        "pcap_source"};
 
 protected:
     void _open_pcap(const std::string &fileName, const std::string &bpfFilter);

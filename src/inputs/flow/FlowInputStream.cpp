@@ -44,6 +44,8 @@ void FlowInputStream::start()
         return;
     }
 
+    validate_configs(_config_defs);
+
     if (config_exists("flow_type")) {
         auto flow_type = config_get<std::string>("flow_type");
         if (flow_type == "sflow") {
