@@ -576,8 +576,7 @@ TEST_CASE("DNS Configs: public_suffix_list", "[pcap][dns]")
     auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
     DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
-
-    // notice, case insensitive
+    
     dns_handler.config_set<bool>("public_suffix_list", true);
     dns_handler.start();
     stream.start();
@@ -614,7 +613,6 @@ TEST_CASE("DNS Configs: only_queries", "[pcap][dns]")
     c.config_set<uint64_t>("num_periods", 1);
     DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
 
-    // notice, case insensitive
     dns_handler.config_set<bool>("only_queries", true);
     dns_handler.start();
     stream.start();
@@ -651,7 +649,6 @@ TEST_CASE("DNS Configs: only_responses", "[pcap][dns]")
     c.config_set<uint64_t>("num_periods", 1);
     DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
 
-    // notice, case insensitive
     dns_handler.config_set<bool>("only_responses", true);
     dns_handler.start();
     stream.start();
