@@ -30,6 +30,11 @@ TEST_CASE("Parse DNSTAP", "[dnstap][dns][!mayfail]")
     CHECK(event_data.num_samples->value() == 153);
     CHECK(counters.TCP.value() == 0);
     CHECK(counters.UDP.value() == 72);
+    CHECK(counters.DOT.value() == 0);
+    CHECK(counters.DOH.value() == 0);
+    CHECK(counters.cryptUDP.value() == 0);
+    CHECK(counters.cryptTCP.value() == 0);
+    CHECK(counters.DOQ.value() == 0);
     CHECK(counters.IPv4.value() == 72);
     CHECK(counters.IPv6.value() == 0);
     CHECK(counters.xacts.value() == 72);

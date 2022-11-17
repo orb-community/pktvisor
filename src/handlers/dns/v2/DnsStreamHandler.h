@@ -64,6 +64,9 @@ enum Protocol : uint64_t {
     DNSTAP_TCP = dnstap::SocketProtocol::TCP,
     DNSTAP_DOT = dnstap::SocketProtocol::DOT,
     DNSTAP_DOH = dnstap::SocketProtocol::DOH,
+    DNSTAP_CRYPT_UDP = dnstap::SocketProtocol::DNSCryptUDP,
+    DNSTAP_CRYPT_TCP = dnstap::SocketProtocol::DNSCryptTCP,
+    DNSTAP_DOQ = dnstap::SocketProtocol::DOQ,
     PCPP_TCP = pcpp::TCP,
     PCPP_UDP = pcpp::UDP,
     PCPP_UNKOWN = pcpp::UnknownProtocol
@@ -76,6 +79,9 @@ struct DnsDirection {
         Counter TCP;
         Counter DOT;
         Counter DOH;
+        Counter cryptUDP;
+        Counter cryptTCP;
+        Counter DOQ;
         Counter IPv4;
         Counter IPv6;
         Counter NX;
@@ -95,6 +101,9 @@ struct DnsDirection {
             , TCP(DNS_SCHEMA, {"tcp_xacts"}, "Total DNS transactions (query/reply pairs) received over TCP")
             , DOT(DNS_SCHEMA, {"dot_xacts"}, "Total DNS transactions (query/reply pairs) received over DNS over TLS")
             , DOH(DNS_SCHEMA, {"doh_xacts"}, "Total DNS transactions (query/reply pairs) received over DNS over HTTPS")
+            , cryptUDP(DNS_SCHEMA, {"dnscrypt_udp_xacts"}, "Total DNS transactions (query/reply pairs) received over DNSCrypt over UDP")
+            , cryptTCP(DNS_SCHEMA, {"dnscrypt_tcp_xacts"}, "Total DNS transactions (query/reply pairs) received over DNSCrypt over TCP")
+            , DOQ(DNS_SCHEMA, {"doq_xacts"}, "Total DNS transactions (query/reply pairs) received over DNS over QUIC")
             , IPv4(DNS_SCHEMA, {"ipv4_xacts"}, "Total DNS transactions (query/reply pairs) received over IPv4")
             , IPv6(DNS_SCHEMA, {"ipv6_xacts"}, "Total DNS transactions (query/reply pairs) received over IPv6")
             , NX(DNS_SCHEMA, {"nxdomain_xacts"}, "Total DNS transactions (query/reply pairs) flagged as reply with return code NXDOMAIN")
@@ -116,8 +125,11 @@ struct DnsDirection {
             xacts += other.xacts;
             UDP += other.UDP;
             TCP += other.TCP;
-            DOH += other.DOH;
             DOT += other.DOT;
+            DOH += other.DOH;
+            cryptUDP += other.cryptUDP;
+            cryptTCP += other.cryptTCP;
+            DOQ += other.DOQ;
             IPv4 += other.IPv4;
             IPv6 += other.IPv6;
             NX += other.NX;
@@ -138,8 +150,11 @@ struct DnsDirection {
             xacts.to_json(j);
             UDP.to_json(j);
             TCP.to_json(j);
-            DOH.to_json(j);
             DOT.to_json(j);
+            DOH.to_json(j);
+            cryptUDP.to_json(j);
+            cryptTCP.to_json(j);
+            DOQ.to_json(j);
             IPv4.to_json(j);
             IPv6.to_json(j);
             NX.to_json(j);
@@ -160,8 +175,11 @@ struct DnsDirection {
             xacts.to_prometheus(out, add_labels);
             UDP.to_prometheus(out, add_labels);
             TCP.to_prometheus(out, add_labels);
-            DOH.to_prometheus(out, add_labels);
             DOT.to_prometheus(out, add_labels);
+            DOH.to_prometheus(out, add_labels);
+            cryptUDP.to_prometheus(out, add_labels);
+            cryptTCP.to_prometheus(out, add_labels);
+            DOQ.to_prometheus(out, add_labels);
             IPv4.to_prometheus(out, add_labels);
             IPv6.to_prometheus(out, add_labels);
             NX.to_prometheus(out, add_labels);
