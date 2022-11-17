@@ -80,6 +80,12 @@ void DnsStreamHandler::start()
         }
         _register_predicate_filter(Filters::OnlyRCode, "only_rcode", std::to_string(_f_rcode));
     }
+    if (config_exists("only_queries") && config_get<bool>("only_queries")) {
+        _f_enabled.set(Filters::OnlyQueries);
+    }
+    if (config_exists("only_responses") && config_get<bool>("only_responses")) {
+        _f_enabled.set(Filters::OnlyResponses);
+    }
     if (config_exists("only_dnssec_response") && config_get<bool>("only_dnssec_response")) {
         _f_enabled.set(Filters::OnlyDNSSECResponse);
     }
@@ -404,6 +410,9 @@ inline void DnsStreamHandler::_register_predicate_filter(Filters filter, std::st
             }
             auto dnsLayer = cache.dnsLayer.get();
             // return the 'jump key' for pcap to make O(1) call to appropriate signals
+            if (dnsLayer->getDnsHeader()->queryOrResponse != QR::response) {
+                return std::string(DNS_SCHEMA) + "only_rcode255"; // invalid rcode
+            }
             return std::string(DNS_SCHEMA) + "only_rcode" + std::to_string(dnsLayer->getDnsHeader()->responseCode);
         };
 
@@ -425,6 +434,12 @@ inline bool DnsStreamHandler::_filtering(DnsLayer &payload, [[maybe_unused]] Pac
         goto will_filter;
     }
     if (_f_enabled[Filters::AnswerCount] && payload.getAnswerCount() != _f_answer_count) {
+        goto will_filter;
+    }
+    if (_f_enabled[Filters::OnlyQueries] && payload.getDnsHeader()->queryOrResponse != QR::query) {
+        goto will_filter;
+    }
+    if (_f_enabled[Filters::OnlyResponses] && payload.getDnsHeader()->queryOrResponse != QR::response) {
         goto will_filter;
     }
     if (_f_enabled[Filters::OnlyDNSSECResponse]) {
