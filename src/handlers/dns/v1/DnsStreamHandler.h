@@ -334,6 +334,8 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
     enum Filters {
         ExcludingRCode,
         OnlyRCode,
+        OnlyQueries,
+        OnlyResponses,
         OnlyQtype,
         AnswerCount,
         OnlyQNameSuffix,
@@ -360,6 +362,8 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
     static const inline StreamMetricsHandler::ConfigsDefType _config_defs = {
         "exclude_noerror",
         "only_rcode",
+        "only_queries",
+        "only_responses",
         "only_dnssec_response",
         "answer_count",
         "only_qtype",
