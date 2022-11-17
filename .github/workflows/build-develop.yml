@@ -164,6 +164,8 @@ jobs:
         id: build
         run: | 
           AUX=${{github.workspace}}
+          echo $AUX
+          echo ${AUX//\\//}
           echo "VERSION=`cat ${AUX//\\//}/build/VERSION`" >> $GITHUB_ENV
           echo "::set-output name=version::$(cat ${AUX}/build/VERSION)"
 
