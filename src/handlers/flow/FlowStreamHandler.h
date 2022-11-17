@@ -39,6 +39,13 @@ enum FlowMetrics : visor::MetricGroupIntType {
 };
 }
 
+enum FlowDirectionType {
+    InBytes,
+    OutBytes,
+    InPackets,
+    OutPackets
+};
+
 struct InterfaceEnrich {
     std::string name;
     std::string descr;
@@ -62,8 +69,8 @@ struct FlowData {
     pcpp::IPv6Address ipv6_out;
     uint16_t src_port;
     uint16_t dst_port;
-    uint32_t if_in_index;
-    uint32_t if_out_index;
+    std::optional<uint32_t> if_in_index;
+    std::optional<uint32_t> if_out_index;
 };
 
 struct FlowPacket {
@@ -81,58 +88,51 @@ struct FlowPacket {
 };
 
 struct FlowTopN {
-    TopN<std::string> topInSrcIP;
-    TopN<std::string> topInDstIP;
-    TopN<std::string> topOutSrcIP;
-    TopN<std::string> topOutDstIP;
-    TopN<network::IpPort> topInSrcPort;
-    TopN<network::IpPort> topInDstPort;
-    TopN<network::IpPort> topOutSrcPort;
-    TopN<network::IpPort> topOutDstPort;
-    TopN<std::string> topInSrcIPandPort;
-    TopN<std::string> topInDstIPandPort;
-    TopN<std::string> topOutSrcIPandPort;
-    TopN<std::string> topOutDstIPandPort;
     TopN<std::string> topConversations;
-
     TopN<visor::geo::City> topGeoLoc;
     TopN<std::string> topASN;
+
     FlowTopN(std::string metric)
-        : topInSrcIP(FLOW_SCHEMA, "ip", {"top_in_src_ips_" + metric}, "Top in source IP addresses by " + metric)
-        , topInDstIP(FLOW_SCHEMA, "ip", {"top_in_dst_ips_" + metric}, "Top in destination IP addresses by " + metric)
-        , topOutSrcIP(FLOW_SCHEMA, "ip", {"top_out_src_ips_" + metric}, "Top out source IP addresses by " + metric)
-        , topOutDstIP(FLOW_SCHEMA, "ip", {"top_out_dst_ips_" + metric}, "Top out destination IP addresses by " + metric)
-        , topInSrcPort(FLOW_SCHEMA, "port", {"top_in_src_ports_" + metric}, "Top in source ports by " + metric)
-        , topInDstPort(FLOW_SCHEMA, "port", {"top_in_dst_ports_" + metric}, "Top in destination ports by " + metric)
-        , topOutSrcPort(FLOW_SCHEMA, "port", {"top_out_src_ports_" + metric}, "Top out source ports by " + metric)
-        , topOutDstPort(FLOW_SCHEMA, "port", {"top_out_dst_ports_" + metric}, "Top out destination ports by " + metric)
-        , topInSrcIPandPort(FLOW_SCHEMA, "ip_port", {"top_in_src_ips_and_port_" + metric}, "Top in source IP addresses and port by " + metric)
-        , topInDstIPandPort(FLOW_SCHEMA, "ip_port", {"top_in_dst_ips_and_port_" + metric}, "Top in destination IP addresses and port by " + metric)
-        , topOutSrcIPandPort(FLOW_SCHEMA, "ip_port", {"top_out_src_ips_and_port_" + metric}, "Top out source IP addresses and port by " + metric)
-        , topOutDstIPandPort(FLOW_SCHEMA, "ip_port", {"top_out_dst_ips_and_port_" + metric}, "Top out destination IP addresses and port by " + metric)
-        , topConversations(FLOW_SCHEMA, "conversations", {"top_conversations_" + metric}, "Top source IP addresses and port by " + metric)
-        , topGeoLoc(FLOW_SCHEMA, "geo_loc", {"top_geoLoc_" + metric}, "Top GeoIP locations by " + metric)
+        : topConversations(FLOW_SCHEMA, "conversations", {"top_conversations_" + metric}, "Top source IP addresses and port by " + metric)
+        , topGeoLoc(FLOW_SCHEMA, "geo_loc", {"top_geo_loc_" + metric}, "Top GeoIP locations by " + metric)
         , topASN(FLOW_SCHEMA, "asn", {"top_ASN_" + metric}, "Top ASNs by IP by " + metric)
     {
     }
 
     void set_settings(size_t topn_count, uint64_t percentile_threshold)
     {
-        topInSrcIP.set_settings(topn_count, percentile_threshold);
-        topInDstIP.set_settings(topn_count, percentile_threshold);
-        topOutSrcIP.set_settings(topn_count, percentile_threshold);
-        topOutDstIP.set_settings(topn_count, percentile_threshold);
-        topInSrcPort.set_settings(topn_count, percentile_threshold);
-        topInDstPort.set_settings(topn_count, percentile_threshold);
-        topOutSrcPort.set_settings(topn_count, percentile_threshold);
-        topOutDstPort.set_settings(topn_count, percentile_threshold);
-        topInSrcIPandPort.set_settings(topn_count, percentile_threshold);
-        topInDstIPandPort.set_settings(topn_count, percentile_threshold);
-        topOutSrcIPandPort.set_settings(topn_count, percentile_threshold);
-        topOutDstIPandPort.set_settings(topn_count, percentile_threshold);
         topConversations.set_settings(topn_count, percentile_threshold);
         topGeoLoc.set_settings(topn_count, percentile_threshold);
         topASN.set_settings(topn_count, percentile_threshold);
+    }
+};
+
+struct FlowDirectionTopN {
+    TopN<std::string> topSrcIP;
+    TopN<std::string> topDstIP;
+    TopN<network::IpPort> topSrcPort;
+    TopN<network::IpPort> topDstPort;
+    TopN<std::string> topSrcIPandPort;
+    TopN<std::string> topDstIPandPort;
+
+    FlowDirectionTopN(std::string direction, std::string metric)
+        : topSrcIP(FLOW_SCHEMA, "ip", {"top_" + direction + "_src_ips_" + metric}, "Top " + direction + " source IP addresses by " + metric)
+        , topDstIP(FLOW_SCHEMA, "ip", {"top_" + direction + "_dst_ips_" + metric}, "Top " + direction + " destination IP addresses by " + metric)
+        , topSrcPort(FLOW_SCHEMA, "port", {"top_" + direction + "_src_ports_" + metric}, "Top " + direction + " source ports by " + metric)
+        , topDstPort(FLOW_SCHEMA, "port", {"top_" + direction + "_dst_ports_" + metric}, "Top " + direction + " destination ports by " + metric)
+        , topSrcIPandPort(FLOW_SCHEMA, "ip_port", {"top_" + direction + "_src_ips_and_port_" + metric}, "Top " + direction + " source IP addresses and port by " + metric)
+        , topDstIPandPort(FLOW_SCHEMA, "ip_port", {"top_" + direction + "_dst_ips_and_port_" + metric}, "Top " + direction + " destination IP addresses and port by " + metric)
+    {
+    }
+
+    void set_settings(size_t topn_count, uint64_t percentile_threshold)
+    {
+        topSrcIP.set_settings(topn_count, percentile_threshold);
+        topDstIP.set_settings(topn_count, percentile_threshold);
+        topSrcPort.set_settings(topn_count, percentile_threshold);
+        topDstPort.set_settings(topn_count, percentile_threshold);
+        topSrcIPandPort.set_settings(topn_count, percentile_threshold);
+        topDstIPandPort.set_settings(topn_count, percentile_threshold);
     }
 };
 
@@ -161,12 +161,17 @@ struct FlowInterface {
     Cardinality dstIPCard;
     Cardinality srcPortCard;
     Cardinality dstPortCard;
-    FlowTopN topByBytes;
-    FlowTopN topByPackets;
-    Counters countersInByBytes;
-    Counters countersOutByBytes;
-    Counters countersInByPackets;
-    Counters countersOutByPackets;
+    std::pair<FlowTopN, FlowTopN> topN{FlowTopN("bytes"), FlowTopN("packets")};
+    std::unordered_map<FlowDirectionType, FlowDirectionTopN> directionTopN{
+        {InBytes, FlowDirectionTopN("in", "bytes")},
+        {OutBytes, FlowDirectionTopN("out", "bytes")},
+        {InPackets, FlowDirectionTopN("in", "packets")},
+        {OutPackets, FlowDirectionTopN("out", "packets")}};
+    std::unordered_map<FlowDirectionType, Counters> counters{
+        {InBytes, Counters("in", "bytes")},
+        {OutBytes, Counters("out", "bytes")},
+        {InPackets, Counters("in", "packets")},
+        {OutPackets, Counters("out", "packets")}};
 
     FlowInterface()
         : conversationsCard(FLOW_SCHEMA, {"cardinality", "conversations"}, "Conversations cardinality")
@@ -174,19 +179,16 @@ struct FlowInterface {
         , dstIPCard(FLOW_SCHEMA, {"cardinality", "dst_ips_out"}, "Destination IP cardinality")
         , srcPortCard(FLOW_SCHEMA, {"cardinality", "src_ports_in"}, "Source ports cardinality")
         , dstPortCard(FLOW_SCHEMA, {"cardinality", "dst_ports_out"}, "Destination ports cardinality")
-        , topByBytes("bytes")
-        , topByPackets("packets")
-        , countersInByBytes("in", "bytes")
-        , countersOutByBytes("out", "bytes")
-        , countersInByPackets("in", "packets")
-        , countersOutByPackets("out", "packets")
     {
     }
 
     void set_topn_settings(size_t topn_count, uint64_t percentile_threshold)
     {
-        topByBytes.set_settings(topn_count, percentile_threshold);
-        topByPackets.set_settings(topn_count, percentile_threshold);
+        for (auto &top : directionTopN) {
+            top.second.set_settings(topn_count, percentile_threshold);
+        }
+        topN.first.set_settings(topn_count, percentile_threshold);
+        topN.second.set_settings(topn_count, percentile_threshold);
     }
 };
 
@@ -231,8 +233,8 @@ protected:
     //  <DeviceId, FlowDevice>
     std::map<std::string, std::unique_ptr<FlowDevice>> _devices_metrics;
 
-    void _process_geo_metrics(FlowInterface *interface, const pcpp::IPv4Address &ipv4, size_t payload_size, uint32_t packets);
-    void _process_geo_metrics(FlowInterface *interface, const pcpp::IPv6Address &ipv6, size_t payload_size, uint32_t packets);
+    void _process_geo_metrics(FlowInterface *interface, FlowDirectionType type, const pcpp::IPv4Address &ipv4, uint64_t aggregator);
+    void _process_geo_metrics(FlowInterface *interface, FlowDirectionType type, const pcpp::IPv6Address &ipv6, uint64_t aggregator);
 
 public:
     FlowMetricsBucket()
@@ -264,6 +266,7 @@ public:
         _devices_metrics[device]->filtered += filtered;
     }
     void process_flow(bool deep, const FlowPacket &payload);
+    void process_interface(bool deep, FlowInterface *iface, const FlowData &flow, FlowDirectionType type);
 };
 
 class FlowMetricsManager final : public visor::AbstractMetricsManager<FlowMetricsBucket>
@@ -374,7 +377,7 @@ class FlowStreamHandler final : public visor::StreamMetricsHandler<FlowMetricsMa
     void _parse_host_specs(const std::vector<std::string> &host_list);
     void _parse_devices_ips(const std::vector<std::string> &device_list);
     bool _match_subnet(uint32_t ipv4 = 0, const uint8_t *ipv6 = nullptr);
-    bool _filtering(const FlowData &flow);
+    bool _filtering(FlowData &flow);
 
 public:
     FlowStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config);

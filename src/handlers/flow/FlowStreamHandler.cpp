@@ -334,7 +334,7 @@ void FlowStreamHandler::process_netflow_cb(const std::string &senderIP, const NF
     _metrics->process_flow(packet);
 }
 
-bool FlowStreamHandler::_filtering(const FlowData &flow)
+bool FlowStreamHandler::_filtering(FlowData &flow)
 {
     if (_f_enabled[Filters::OnlyIps]) {
         if (flow.is_ipv6 && !_match_subnet(0, flow.ipv6_in.toBytes()) && !_match_subnet(0, flow.ipv6_out.toBytes())) {
@@ -347,10 +347,22 @@ bool FlowStreamHandler::_filtering(const FlowData &flow)
         && !_match_parser(flow.dst_port, ParserType::Port)) {
         return true;
     }
-    if (_f_enabled[Filters::OnlyInterfaces] && !_match_parser(flow.if_in_index, ParserType::Interface)
-        && !_match_parser(flow.if_out_index, ParserType::Interface)) {
-        return true;
+    if (_f_enabled[Filters::OnlyInterfaces]) {
+        static constexpr uint8_t DEF_NO_MATCH = 2;
+        uint8_t no_match{0};
+        if (!_match_parser(flow.if_in_index.value(), ParserType::Interface)) {
+            flow.if_in_index.reset();
+            ++no_match;
+        }
+        if (!_match_parser(flow.if_out_index.value(), ParserType::Interface)) {
+            flow.if_out_index.reset();
+            ++no_match;
+        }
+        if (no_match == DEF_NO_MATCH) {
+            return true;
+        }
     }
+
     if (_f_enabled[Filters::GeoLocNotFound] && HandlerModulePlugin::city->enabled()) {
         if (!flow.is_ipv6) {
             struct sockaddr_in sa4;
@@ -558,93 +570,61 @@ void FlowMetricsBucket::specialized_merge(const AbstractMetricsBucket &o, [[mayb
                 int_if->dstPortCard.merge(interface.second->dstPortCard);
             }
 
-            if (group_enabled(group::FlowMetrics::ByBytes)) {
-
-                if (group_enabled(group::FlowMetrics::Counters)) {
-                    int_if->countersInByBytes.UDP += interface.second->countersInByBytes.UDP;
-                    int_if->countersInByBytes.TCP += interface.second->countersInByBytes.TCP;
-                    int_if->countersInByBytes.OtherL4 += interface.second->countersInByBytes.OtherL4;
-                    int_if->countersInByBytes.IPv4 += interface.second->countersInByBytes.IPv4;
-                    int_if->countersInByBytes.IPv6 += interface.second->countersInByBytes.IPv6;
-                    int_if->countersInByBytes.total += interface.second->countersInByBytes.total;
-
-                    int_if->countersOutByBytes.UDP += interface.second->countersOutByBytes.UDP;
-                    int_if->countersOutByBytes.TCP += interface.second->countersOutByBytes.TCP;
-                    int_if->countersOutByBytes.OtherL4 += interface.second->countersOutByBytes.OtherL4;
-                    int_if->countersOutByBytes.IPv4 += interface.second->countersOutByBytes.IPv4;
-                    int_if->countersOutByBytes.IPv6 += interface.second->countersOutByBytes.IPv6;
-                    int_if->countersOutByBytes.total += interface.second->countersOutByBytes.total;
+            for (auto &count_dir : int_if->counters) {
+                if ((count_dir.first == InBytes || count_dir.first == OutBytes) && !group_enabled(group::FlowMetrics::ByBytes)) {
+                    continue;
                 }
+                if ((count_dir.first == InPackets || count_dir.first == OutPackets) && !group_enabled(group::FlowMetrics::ByPackets)) {
+                    continue;
+                }
+                if (group_enabled(group::FlowMetrics::Counters)) {
+                    count_dir.second.UDP += interface.second->counters.at(count_dir.first).UDP;
+                    count_dir.second.TCP += interface.second->counters.at(count_dir.first).TCP;
+                    count_dir.second.OtherL4 += interface.second->counters.at(count_dir.first).OtherL4;
+                    count_dir.second.IPv4 += interface.second->counters.at(count_dir.first).IPv4;
+                    count_dir.second.IPv6 += interface.second->counters.at(count_dir.first).IPv6;
+                    count_dir.second.total += interface.second->counters.at(count_dir.first).total;
+                }
+            }
 
+            for (auto &top_dir : int_if->directionTopN) {
+                if ((top_dir.first == InBytes || top_dir.first == OutBytes) && !group_enabled(group::FlowMetrics::ByBytes)) {
+                    continue;
+                }
+                if ((top_dir.first == InPackets || top_dir.first == OutPackets) && !group_enabled(group::FlowMetrics::ByPackets)) {
+                    continue;
+                }
                 if (group_enabled(group::FlowMetrics::TopIPs)) {
-                    int_if->topByBytes.topInSrcIP.merge(interface.second->topByBytes.topInSrcIP);
-                    int_if->topByBytes.topInDstIP.merge(interface.second->topByBytes.topInDstIP);
-                    int_if->topByBytes.topOutSrcIP.merge(interface.second->topByBytes.topOutSrcIP);
-                    int_if->topByBytes.topOutDstIP.merge(interface.second->topByBytes.topOutDstIP);
+                    top_dir.second.topSrcIP.merge(interface.second->directionTopN.at(top_dir.first).topSrcIP);
+                    top_dir.second.topDstIP.merge(interface.second->directionTopN.at(top_dir.first).topDstIP);
                 }
                 if (group_enabled(group::FlowMetrics::TopPorts)) {
-                    int_if->topByBytes.topInSrcPort.merge(interface.second->topByBytes.topInSrcPort);
-                    int_if->topByBytes.topInDstPort.merge(interface.second->topByBytes.topInDstPort);
-                    int_if->topByBytes.topOutSrcPort.merge(interface.second->topByBytes.topOutSrcPort);
-                    int_if->topByBytes.topOutDstPort.merge(interface.second->topByBytes.topOutDstPort);
+                    top_dir.second.topSrcPort.merge(interface.second->directionTopN.at(top_dir.first).topSrcPort);
+                    top_dir.second.topDstPort.merge(interface.second->directionTopN.at(top_dir.first).topDstPort);
                 }
                 if (group_enabled(group::FlowMetrics::TopIPPorts)) {
-                    int_if->topByBytes.topInSrcIPandPort.merge(interface.second->topByBytes.topInSrcIPandPort);
-                    int_if->topByBytes.topInDstIPandPort.merge(interface.second->topByBytes.topInDstIPandPort);
-                    int_if->topByBytes.topOutSrcIPandPort.merge(interface.second->topByBytes.topOutSrcIPandPort);
-                    int_if->topByBytes.topOutDstIPandPort.merge(interface.second->topByBytes.topOutDstIPandPort);
+                    top_dir.second.topSrcIPandPort.merge(interface.second->directionTopN.at(top_dir.first).topSrcIPandPort);
+                    top_dir.second.topDstIPandPort.merge(interface.second->directionTopN.at(top_dir.first).topDstIPandPort);
                 }
+            }
+
+            if (group_enabled(group::FlowMetrics::ByBytes)) {
                 if (group_enabled(group::FlowMetrics::TopGeo)) {
-                    int_if->topByBytes.topGeoLoc.merge(interface.second->topByBytes.topGeoLoc);
-                    int_if->topByBytes.topASN.merge(interface.second->topByBytes.topASN);
+                    int_if->topN.first.topGeoLoc.merge(interface.second->topN.first.topGeoLoc);
+                    int_if->topN.first.topASN.merge(interface.second->topN.first.topASN);
                 }
                 if (group_enabled(group::FlowMetrics::Conversations)) {
-                    int_if->topByBytes.topConversations.merge(interface.second->topByBytes.topConversations);
+                    int_if->topN.first.topConversations.merge(interface.second->topN.first.topConversations);
                 }
             }
 
             if (group_enabled(group::FlowMetrics::ByPackets)) {
-
-                if (group_enabled(group::FlowMetrics::Counters)) {
-                    int_if->countersInByPackets.UDP += interface.second->countersInByPackets.UDP;
-                    int_if->countersInByPackets.TCP += interface.second->countersInByPackets.TCP;
-                    int_if->countersInByPackets.OtherL4 += interface.second->countersInByPackets.OtherL4;
-                    int_if->countersInByPackets.IPv4 += interface.second->countersInByPackets.IPv4;
-                    int_if->countersInByPackets.IPv6 += interface.second->countersInByPackets.IPv6;
-                    int_if->countersInByPackets.total += interface.second->countersInByPackets.total;
-
-                    int_if->countersOutByPackets.UDP += interface.second->countersOutByPackets.UDP;
-                    int_if->countersOutByPackets.TCP += interface.second->countersOutByPackets.TCP;
-                    int_if->countersOutByPackets.OtherL4 += interface.second->countersOutByPackets.OtherL4;
-                    int_if->countersOutByPackets.IPv4 += interface.second->countersOutByPackets.IPv4;
-                    int_if->countersOutByPackets.IPv6 += interface.second->countersOutByPackets.IPv6;
-                    int_if->countersOutByPackets.total += interface.second->countersOutByPackets.total;
-                }
-
-                if (group_enabled(group::FlowMetrics::TopIPs)) {
-                    int_if->topByPackets.topInSrcIP.merge(interface.second->topByPackets.topInSrcIP);
-                    int_if->topByPackets.topInDstIP.merge(interface.second->topByPackets.topInDstIP);
-                    int_if->topByPackets.topOutSrcIP.merge(interface.second->topByPackets.topOutSrcIP);
-                    int_if->topByPackets.topOutDstIP.merge(interface.second->topByPackets.topOutDstIP);
-                }
-                if (group_enabled(group::FlowMetrics::TopPorts)) {
-                    int_if->topByPackets.topInSrcPort.merge(interface.second->topByPackets.topInSrcPort);
-                    int_if->topByPackets.topInDstPort.merge(interface.second->topByPackets.topInDstPort);
-                    int_if->topByPackets.topOutSrcPort.merge(interface.second->topByPackets.topOutSrcPort);
-                    int_if->topByPackets.topOutDstPort.merge(interface.second->topByPackets.topOutDstPort);
-                }
-                if (group_enabled(group::FlowMetrics::TopIPPorts)) {
-                    int_if->topByPackets.topInSrcIPandPort.merge(interface.second->topByPackets.topInSrcIPandPort);
-                    int_if->topByPackets.topInDstIPandPort.merge(interface.second->topByPackets.topInDstIPandPort);
-                    int_if->topByPackets.topOutSrcIPandPort.merge(interface.second->topByPackets.topOutSrcIPandPort);
-                    int_if->topByPackets.topOutDstIPandPort.merge(interface.second->topByPackets.topOutDstIPandPort);
-                }
                 if (group_enabled(group::FlowMetrics::TopGeo)) {
-                    int_if->topByPackets.topGeoLoc.merge(interface.second->topByPackets.topGeoLoc);
-                    int_if->topByPackets.topASN.merge(interface.second->topByPackets.topASN);
+                    int_if->topN.second.topGeoLoc.merge(interface.second->topN.second.topGeoLoc);
+                    int_if->topN.second.topASN.merge(interface.second->topN.second.topASN);
                 }
                 if (group_enabled(group::FlowMetrics::Conversations)) {
-                    int_if->topByPackets.topConversations.merge(interface.second->topByPackets.topConversations);
+                    int_if->topN.second.topConversations.merge(interface.second->topN.second.topConversations);
                 }
             }
         }
@@ -730,105 +710,73 @@ void FlowMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap a
                 interface.second->dstPortCard.to_prometheus(out, interface_labels);
             }
 
-            if (group_enabled(group::FlowMetrics::ByBytes)) {
-
-                if (group_enabled(group::FlowMetrics::Counters)) {
-                    interface.second->countersInByBytes.UDP.to_prometheus(out, interface_labels);
-                    interface.second->countersInByBytes.TCP.to_prometheus(out, interface_labels);
-                    interface.second->countersInByBytes.OtherL4.to_prometheus(out, interface_labels);
-                    interface.second->countersInByBytes.IPv4.to_prometheus(out, interface_labels);
-                    interface.second->countersInByBytes.IPv6.to_prometheus(out, interface_labels);
-                    interface.second->countersInByBytes.total.to_prometheus(out, interface_labels);
-
-                    interface.second->countersOutByBytes.UDP.to_prometheus(out, interface_labels);
-                    interface.second->countersOutByBytes.TCP.to_prometheus(out, interface_labels);
-                    interface.second->countersOutByBytes.OtherL4.to_prometheus(out, interface_labels);
-                    interface.second->countersOutByBytes.IPv4.to_prometheus(out, interface_labels);
-                    interface.second->countersOutByBytes.IPv6.to_prometheus(out, interface_labels);
-                    interface.second->countersOutByBytes.total.to_prometheus(out, interface_labels);
+            for (auto &count_dir : interface.second->counters) {
+                if ((count_dir.first == InBytes || count_dir.first == OutBytes) && !group_enabled(group::FlowMetrics::ByBytes)) {
+                    continue;
                 }
+                if ((count_dir.first == InPackets || count_dir.first == OutPackets) && !group_enabled(group::FlowMetrics::ByPackets)) {
+                    continue;
+                }
+                if (group_enabled(group::FlowMetrics::Counters)) {
+                    count_dir.second.UDP.to_prometheus(out, interface_labels);
+                    count_dir.second.TCP.to_prometheus(out, interface_labels);
+                    count_dir.second.OtherL4.to_prometheus(out, interface_labels);
+                    count_dir.second.IPv4.to_prometheus(out, interface_labels);
+                    count_dir.second.IPv6.to_prometheus(out, interface_labels);
+                    count_dir.second.total.to_prometheus(out, interface_labels);
+                }
+            }
 
+            for (auto &top_dir : interface.second->directionTopN) {
+                if ((top_dir.first == InBytes || top_dir.first == OutBytes) && !group_enabled(group::FlowMetrics::ByBytes)) {
+                    continue;
+                }
+                if ((top_dir.first == InPackets || top_dir.first == OutPackets) && !group_enabled(group::FlowMetrics::ByPackets)) {
+                    continue;
+                }
                 if (group_enabled(group::FlowMetrics::TopIPs)) {
-                    interface.second->topByBytes.topInSrcIP.to_prometheus(out, interface_labels);
-                    interface.second->topByBytes.topInDstIP.to_prometheus(out, interface_labels);
-                    interface.second->topByBytes.topOutSrcIP.to_prometheus(out, interface_labels);
-                    interface.second->topByBytes.topOutDstIP.to_prometheus(out, interface_labels);
+                    top_dir.second.topSrcIP.to_prometheus(out, interface_labels);
+                    top_dir.second.topDstIP.to_prometheus(out, interface_labels);
                 }
                 if (group_enabled(group::FlowMetrics::TopPorts)) {
-                    interface.second->topByBytes.topInSrcPort.to_prometheus(out, interface_labels, [](const network::IpPort &val) { return val.get_service(); });
-                    interface.second->topByBytes.topInDstPort.to_prometheus(out, interface_labels, [](const network::IpPort &val) { return val.get_service(); });
-                    interface.second->topByBytes.topOutSrcPort.to_prometheus(out, interface_labels, [](const network::IpPort &val) { return val.get_service(); });
-                    interface.second->topByBytes.topOutDstPort.to_prometheus(out, interface_labels, [](const network::IpPort &val) { return val.get_service(); });
+                    top_dir.second.topSrcPort.to_prometheus(out, interface_labels, [](const network::IpPort &val) { return val.get_service(); });
+                    top_dir.second.topDstPort.to_prometheus(out, interface_labels, [](const network::IpPort &val) { return val.get_service(); });
                 }
                 if (group_enabled(group::FlowMetrics::TopIPPorts)) {
-                    interface.second->topByBytes.topInSrcIPandPort.to_prometheus(out, interface_labels);
-                    interface.second->topByBytes.topInDstIPandPort.to_prometheus(out, interface_labels);
-                    interface.second->topByBytes.topOutSrcIPandPort.to_prometheus(out, interface_labels);
-                    interface.second->topByBytes.topOutDstIPandPort.to_prometheus(out, interface_labels);
+                    top_dir.second.topSrcIPandPort.to_prometheus(out, interface_labels);
+                    top_dir.second.topDstIPandPort.to_prometheus(out, interface_labels);
                 }
+            }
+
+            if (group_enabled(group::FlowMetrics::ByBytes)) {
                 if (group_enabled(group::FlowMetrics::TopGeo)) {
-                    interface.second->topByBytes.topGeoLoc.to_prometheus(out, interface_labels, [](Metric::LabelMap &l, const std::string &key, const visor::geo::City &val) {
+                    interface.second->topN.first.topGeoLoc.to_prometheus(out, interface_labels, [](Metric::LabelMap &l, const std::string &key, const visor::geo::City &val) {
                         l[key] = val.location;
                         if (!val.latitude.empty() && !val.longitude.empty()) {
                             l["lat"] = val.latitude;
                             l["lon"] = val.longitude;
                         }
                     });
-                    interface.second->topByBytes.topASN.to_prometheus(out, interface_labels);
+                    interface.second->topN.first.topASN.to_prometheus(out, interface_labels);
                 }
                 if (group_enabled(group::FlowMetrics::Conversations)) {
-                    interface.second->topByBytes.topConversations.to_prometheus(out, interface_labels);
+                    interface.second->topN.first.topConversations.to_prometheus(out, interface_labels);
                 }
             }
 
             if (group_enabled(group::FlowMetrics::ByPackets)) {
-
-                if (group_enabled(group::FlowMetrics::Counters)) {
-                    interface.second->countersInByPackets.UDP.to_prometheus(out, interface_labels);
-                    interface.second->countersInByPackets.TCP.to_prometheus(out, interface_labels);
-                    interface.second->countersInByPackets.OtherL4.to_prometheus(out, interface_labels);
-                    interface.second->countersInByPackets.IPv4.to_prometheus(out, interface_labels);
-                    interface.second->countersInByPackets.IPv6.to_prometheus(out, interface_labels);
-                    interface.second->countersInByPackets.total.to_prometheus(out, interface_labels);
-
-                    interface.second->countersOutByPackets.UDP.to_prometheus(out, interface_labels);
-                    interface.second->countersOutByPackets.TCP.to_prometheus(out, interface_labels);
-                    interface.second->countersOutByPackets.OtherL4.to_prometheus(out, interface_labels);
-                    interface.second->countersOutByPackets.IPv4.to_prometheus(out, interface_labels);
-                    interface.second->countersOutByPackets.IPv6.to_prometheus(out, interface_labels);
-                    interface.second->countersOutByPackets.total.to_prometheus(out, interface_labels);
-                }
-
-                if (group_enabled(group::FlowMetrics::TopIPs)) {
-                    interface.second->topByPackets.topInSrcIP.to_prometheus(out, interface_labels);
-                    interface.second->topByPackets.topInDstIP.to_prometheus(out, interface_labels);
-                    interface.second->topByPackets.topOutSrcIP.to_prometheus(out, interface_labels);
-                    interface.second->topByPackets.topOutDstIP.to_prometheus(out, interface_labels);
-                }
-                if (group_enabled(group::FlowMetrics::TopPorts)) {
-                    interface.second->topByPackets.topInSrcPort.to_prometheus(out, interface_labels, [](const network::IpPort &val) { return val.get_service(); });
-                    interface.second->topByPackets.topInDstPort.to_prometheus(out, interface_labels, [](const network::IpPort &val) { return val.get_service(); });
-                    interface.second->topByPackets.topOutSrcPort.to_prometheus(out, interface_labels, [](const network::IpPort &val) { return val.get_service(); });
-                    interface.second->topByPackets.topOutDstPort.to_prometheus(out, interface_labels, [](const network::IpPort &val) { return val.get_service(); });
-                }
-                if (group_enabled(group::FlowMetrics::TopIPPorts)) {
-                    interface.second->topByPackets.topInSrcIPandPort.to_prometheus(out, interface_labels);
-                    interface.second->topByPackets.topInDstIPandPort.to_prometheus(out, interface_labels);
-                    interface.second->topByPackets.topOutSrcIPandPort.to_prometheus(out, interface_labels);
-                    interface.second->topByPackets.topOutDstIPandPort.to_prometheus(out, interface_labels);
-                }
                 if (group_enabled(group::FlowMetrics::TopGeo)) {
-                    interface.second->topByPackets.topGeoLoc.to_prometheus(out, interface_labels, [](Metric::LabelMap &l, const std::string &key, const visor::geo::City &val) {
+                    interface.second->topN.second.topGeoLoc.to_prometheus(out, interface_labels, [](Metric::LabelMap &l, const std::string &key, const visor::geo::City &val) {
                         l[key] = val.location;
                         if (!val.latitude.empty() && !val.longitude.empty()) {
                             l["lat"] = val.latitude;
                             l["lon"] = val.longitude;
                         }
                     });
-                    interface.second->topByPackets.topASN.to_prometheus(out, interface_labels);
+                    interface.second->topN.second.topASN.to_prometheus(out, interface_labels);
                 }
                 if (group_enabled(group::FlowMetrics::Conversations)) {
-                    interface.second->topByPackets.topConversations.to_prometheus(out, interface_labels);
+                    interface.second->topN.second.topConversations.to_prometheus(out, interface_labels);
                 }
             }
         }
@@ -911,105 +859,73 @@ void FlowMetricsBucket::to_json(json &j) const
                 interface.second->dstPortCard.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
             }
 
-            if (group_enabled(group::FlowMetrics::ByBytes)) {
-
-                if (group_enabled(group::FlowMetrics::Counters)) {
-                    interface.second->countersInByBytes.UDP.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
-                    interface.second->countersInByBytes.TCP.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
-                    interface.second->countersInByBytes.OtherL4.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
-                    interface.second->countersInByBytes.IPv4.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
-                    interface.second->countersInByBytes.IPv6.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
-                    interface.second->countersInByBytes.total.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
-
-                    interface.second->countersOutByBytes.UDP.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
-                    interface.second->countersOutByBytes.TCP.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
-                    interface.second->countersOutByBytes.OtherL4.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
-                    interface.second->countersOutByBytes.IPv4.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
-                    interface.second->countersOutByBytes.IPv6.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
-                    interface.second->countersOutByBytes.total.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
+            for (auto &count_dir : interface.second->counters) {
+                if ((count_dir.first == InBytes || count_dir.first == OutBytes) && !group_enabled(group::FlowMetrics::ByBytes)) {
+                    continue;
                 }
+                if ((count_dir.first == InPackets || count_dir.first == OutPackets) && !group_enabled(group::FlowMetrics::ByPackets)) {
+                    continue;
+                }
+                if (group_enabled(group::FlowMetrics::Counters)) {
+                    count_dir.second.UDP.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
+                    count_dir.second.TCP.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
+                    count_dir.second.OtherL4.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
+                    count_dir.second.IPv4.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
+                    count_dir.second.IPv6.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
+                    count_dir.second.total.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
+                }
+            }
 
+            for (auto &top_dir : interface.second->directionTopN) {
+                if ((top_dir.first == InBytes || top_dir.first == OutBytes) && !group_enabled(group::FlowMetrics::ByBytes)) {
+                    continue;
+                }
+                if ((top_dir.first == InPackets || top_dir.first == OutPackets) && !group_enabled(group::FlowMetrics::ByPackets)) {
+                    continue;
+                }
                 if (group_enabled(group::FlowMetrics::TopIPs)) {
-                    interface.second->topByBytes.topInSrcIP.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
-                    interface.second->topByBytes.topInDstIP.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
-                    interface.second->topByBytes.topOutSrcIP.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
-                    interface.second->topByBytes.topOutSrcIP.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
+                    top_dir.second.topSrcIP.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
+                    top_dir.second.topDstIP.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
                 }
                 if (group_enabled(group::FlowMetrics::TopPorts)) {
-                    interface.second->topByBytes.topInSrcPort.to_json(j["devices"][deviceId]["interfaces"][interfaceId], [](const network::IpPort &val) { return val.get_service(); });
-                    interface.second->topByBytes.topInDstPort.to_json(j["devices"][deviceId]["interfaces"][interfaceId], [](const network::IpPort &val) { return val.get_service(); });
-                    interface.second->topByBytes.topOutSrcPort.to_json(j["devices"][deviceId]["interfaces"][interfaceId], [](const network::IpPort &val) { return val.get_service(); });
-                    interface.second->topByBytes.topOutDstPort.to_json(j["devices"][deviceId]["interfaces"][interfaceId], [](const network::IpPort &val) { return val.get_service(); });
+                    top_dir.second.topSrcPort.to_json(j["devices"][deviceId]["interfaces"][interfaceId], [](const network::IpPort &val) { return val.get_service(); });
+                    top_dir.second.topDstPort.to_json(j["devices"][deviceId]["interfaces"][interfaceId], [](const network::IpPort &val) { return val.get_service(); });
                 }
                 if (group_enabled(group::FlowMetrics::TopIPPorts)) {
-                    interface.second->topByBytes.topInSrcIPandPort.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
-                    interface.second->topByBytes.topInDstIPandPort.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
-                    interface.second->topByBytes.topOutSrcIPandPort.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
-                    interface.second->topByBytes.topOutDstIPandPort.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
+                    top_dir.second.topSrcIPandPort.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
+                    top_dir.second.topDstIPandPort.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
                 }
+            }
+
+            if (group_enabled(group::FlowMetrics::ByBytes)) {
                 if (group_enabled(group::FlowMetrics::TopGeo)) {
-                    interface.second->topByBytes.topGeoLoc.to_json(j["devices"][deviceId]["interfaces"][interfaceId], [](json &j, const std::string &key, const visor::geo::City &val) {
+                    interface.second->topN.first.topGeoLoc.to_json(j["devices"][deviceId]["interfaces"][interfaceId], [](json &j, const std::string &key, const visor::geo::City &val) {
                         j[key] = val.location;
                         if (!val.latitude.empty() && !val.longitude.empty()) {
                             j["lat"] = val.latitude;
                             j["lon"] = val.longitude;
                         }
                     });
-                    interface.second->topByBytes.topASN.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
+                    interface.second->topN.first.topASN.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
                 }
                 if (group_enabled(group::FlowMetrics::Conversations)) {
-                    interface.second->topByBytes.topConversations.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
+                    interface.second->topN.first.topConversations.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
                 }
             }
 
             if (group_enabled(group::FlowMetrics::ByPackets)) {
-
-                if (group_enabled(group::FlowMetrics::Counters)) {
-                    interface.second->countersInByPackets.UDP.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
-                    interface.second->countersInByPackets.TCP.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
-                    interface.second->countersInByPackets.OtherL4.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
-                    interface.second->countersInByPackets.IPv4.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
-                    interface.second->countersInByPackets.IPv6.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
-                    interface.second->countersInByPackets.total.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
-
-                    interface.second->countersOutByPackets.UDP.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
-                    interface.second->countersOutByPackets.TCP.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
-                    interface.second->countersOutByPackets.OtherL4.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
-                    interface.second->countersOutByPackets.IPv4.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
-                    interface.second->countersOutByPackets.IPv6.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
-                    interface.second->countersOutByPackets.total.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
-                }
-
-                if (group_enabled(group::FlowMetrics::TopIPs)) {
-                    interface.second->topByPackets.topInSrcIP.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
-                    interface.second->topByPackets.topInDstIP.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
-                    interface.second->topByPackets.topOutSrcIP.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
-                    interface.second->topByPackets.topOutDstIP.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
-                }
-                if (group_enabled(group::FlowMetrics::TopPorts)) {
-                    interface.second->topByPackets.topInSrcPort.to_json(j["devices"][deviceId]["interfaces"][interfaceId], [](const network::IpPort &val) { return val.get_service(); });
-                    interface.second->topByPackets.topInDstPort.to_json(j["devices"][deviceId]["interfaces"][interfaceId], [](const network::IpPort &val) { return val.get_service(); });
-                    interface.second->topByPackets.topOutSrcPort.to_json(j["devices"][deviceId]["interfaces"][interfaceId], [](const network::IpPort &val) { return val.get_service(); });
-                    interface.second->topByPackets.topOutDstPort.to_json(j["devices"][deviceId]["interfaces"][interfaceId], [](const network::IpPort &val) { return val.get_service(); });
-                }
-                if (group_enabled(group::FlowMetrics::TopIPPorts)) {
-                    interface.second->topByPackets.topInSrcIPandPort.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
-                    interface.second->topByPackets.topInDstIPandPort.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
-                    interface.second->topByPackets.topOutSrcIPandPort.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
-                    interface.second->topByPackets.topOutDstIPandPort.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
-                }
                 if (group_enabled(group::FlowMetrics::TopGeo)) {
-                    interface.second->topByPackets.topGeoLoc.to_json(j["devices"][deviceId]["interfaces"][interfaceId], [](json &j, const std::string &key, const visor::geo::City &val) {
+                    interface.second->topN.second.topGeoLoc.to_json(j["devices"][deviceId]["interfaces"][interfaceId], [](json &j, const std::string &key, const visor::geo::City &val) {
                         j[key] = val.location;
                         if (!val.latitude.empty() && !val.longitude.empty()) {
                             j["lat"] = val.latitude;
                             j["lon"] = val.longitude;
                         }
                     });
-                    interface.second->topByPackets.topASN.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
+                    interface.second->topN.second.topASN.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
                 }
                 if (group_enabled(group::FlowMetrics::Conversations)) {
-                    interface.second->topByPackets.topConversations.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
+                    interface.second->topN.second.topConversations.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
                 }
             }
         }
@@ -1035,315 +951,222 @@ void FlowMetricsBucket::process_flow(bool deep, const FlowPacket &payload)
         if (group_enabled(group::FlowMetrics::Counters)) {
             ++device_flow->total;
         }
-
-        if (!device_flow->interfaces.count(flow.if_in_index)) {
-            device_flow->interfaces[flow.if_in_index] = std::make_unique<FlowInterface>();
-            device_flow->interfaces[flow.if_in_index]->set_topn_settings(_topn_count, _topn_percentile_threshold);
-        }
-        if (!device_flow->interfaces.count(flow.if_out_index)) {
-            device_flow->interfaces[flow.if_out_index] = std::make_unique<FlowInterface>();
-            device_flow->interfaces[flow.if_out_index]->set_topn_settings(_topn_count, _topn_percentile_threshold);
-        }
-
-        auto if_in = device_flow->interfaces[flow.if_in_index].get();
-        auto if_out = device_flow->interfaces[flow.if_out_index].get();
-
-        if (group_enabled(group::FlowMetrics::Counters) && group_enabled(group::FlowMetrics::ByBytes)) {
-            if_in->countersInByBytes.total += flow.payload_size;
-            if_out->countersOutByBytes.total += flow.payload_size;
-
-            if (flow.is_ipv6) {
-                if_in->countersInByBytes.IPv6 += flow.payload_size;
-                if_out->countersOutByBytes.IPv6 += flow.payload_size;
-            } else {
-                if_in->countersInByBytes.IPv4 += flow.payload_size;
-                if_out->countersOutByBytes.IPv4 += flow.payload_size;
+        if (flow.if_in_index.has_value()) {
+            if (!device_flow->interfaces.count(flow.if_in_index.value())) {
+                device_flow->interfaces[flow.if_in_index.value()] = std::make_unique<FlowInterface>();
+                device_flow->interfaces[flow.if_in_index.value()]->set_topn_settings(_topn_count, _topn_percentile_threshold);
             }
 
-            switch (flow.l4) {
-            case IP_PROTOCOL::UDP:
-                if_in->countersInByBytes.UDP += flow.payload_size;
-                if_out->countersOutByBytes.UDP += flow.payload_size;
-                break;
-            case IP_PROTOCOL::TCP:
-                if_in->countersInByBytes.TCP += flow.payload_size;
-                if_out->countersOutByBytes.TCP += flow.payload_size;
-                break;
-            default:
-                if_in->countersInByBytes.OtherL4 += flow.payload_size;
-                if_out->countersOutByBytes.OtherL4 += flow.payload_size;
-                break;
-            }
-        }
-
-        if (group_enabled(group::FlowMetrics::Counters) && group_enabled(group::FlowMetrics::ByPackets)) {
-            if_in->countersInByPackets.total += flow.packets;
-            if_out->countersOutByPackets.total += flow.packets;
-
-            if (flow.is_ipv6) {
-                if_in->countersInByPackets.IPv6 += flow.packets;
-                if_out->countersOutByPackets.IPv6 += flow.packets;
-            } else {
-                if_in->countersInByPackets.IPv4 += flow.packets;
-                if_out->countersOutByPackets.IPv4 += flow.packets;
-            }
-
-            switch (flow.l4) {
-            case IP_PROTOCOL::UDP:
-                if_in->countersInByPackets.UDP += flow.packets;
-                if_out->countersOutByPackets.UDP += flow.packets;
-                break;
-            case IP_PROTOCOL::TCP:
-                if_in->countersInByPackets.TCP += flow.packets;
-                if_out->countersOutByPackets.TCP += flow.packets;
-                break;
-            default:
-                if_in->countersInByPackets.OtherL4 += flow.packets;
-                if_out->countersOutByPackets.OtherL4 += flow.packets;
-                break;
-            }
-        }
-
-        if (!deep) {
-            continue;
-        }
-
-        auto proto = network::Protocol::TCP;
-        if (flow.l4 == IP_PROTOCOL::UDP) {
-            proto = network::Protocol::UDP;
-        }
-
-        if (group_enabled(group::FlowMetrics::ByBytes)) {
-            if (group_enabled(group::FlowMetrics::TopPorts)) {
-                if (flow.src_port > 0) {
-                    if_in->topByBytes.topInSrcPort.update(network::IpPort{flow.src_port, proto}, flow.payload_size);
-                    if_out->topByBytes.topOutSrcPort.update(network::IpPort{flow.src_port, proto}, flow.payload_size);
-                }
-                if (flow.dst_port > 0) {
-                    if_in->topByBytes.topInDstPort.update(network::IpPort{flow.dst_port, proto}, flow.payload_size);
-                    if_out->topByBytes.topOutDstPort.update(network::IpPort{flow.dst_port, proto}, flow.payload_size);
-                }
-            }
-            device_flow->topInIfIndexBytes.update(flow.if_in_index, flow.payload_size);
-            device_flow->topOutIfIndexBytes.update(flow.if_out_index, flow.payload_size);
-        }
-
-        if (group_enabled(group::FlowMetrics::ByPackets)) {
-            if (group_enabled(group::FlowMetrics::TopPorts)) {
-                if (flow.src_port > 0) {
-                    if_in->topByPackets.topInSrcPort.update(network::IpPort{flow.src_port, proto}, flow.packets);
-                    if_out->topByPackets.topOutSrcPort.update(network::IpPort{flow.src_port, proto}, flow.packets);
-                }
-                if (flow.dst_port > 0) {
-                    if_in->topByPackets.topInDstPort.update(network::IpPort{flow.dst_port, proto}, flow.packets);
-                    if_out->topByPackets.topOutDstPort.update(network::IpPort{flow.dst_port, proto}, flow.packets);
-                }
-            }
-            device_flow->topInIfIndexPackets.update(flow.if_in_index, flow.packets);
-            device_flow->topOutIfIndexPackets.update(flow.if_out_index, flow.packets);
-        }
-
-        if (group_enabled(group::FlowMetrics::Cardinality)) {
-            if (flow.src_port > 0) {
-                if_in->srcPortCard.update(flow.src_port);
-                if_out->srcPortCard.update(flow.src_port);
-            }
-            if (flow.dst_port > 0) {
-                if_in->dstPortCard.update(flow.dst_port);
-                if_out->dstPortCard.update(flow.dst_port);
-            }
-        }
-
-        std::string application_src;
-        std::string application_dst;
-
-        if (!flow.is_ipv6 && flow.ipv4_in.isValid()) {
-            if (group_enabled(group::FlowMetrics::Cardinality)) {
-                if_in->srcIPCard.update(flow.ipv4_in.toInt());
-                if_out->srcIPCard.update(flow.ipv4_in.toInt());
-            }
-            auto ip = flow.ipv4_in.toString();
-            application_src = ip + ":" + std::to_string(flow.src_port);
             if (group_enabled(group::FlowMetrics::ByBytes)) {
-                if (group_enabled(group::FlowMetrics::TopIPs)) {
-                    if_in->topByBytes.topInSrcIP.update(ip, flow.payload_size);
-                    if_out->topByBytes.topOutSrcIP.update(ip, flow.payload_size);
-                }
-                if ((flow.src_port > 0) && group_enabled(group::FlowMetrics::TopIPPorts)) {
-                    if_in->topByBytes.topInSrcIPandPort.update(application_src, flow.payload_size);
-                    if_out->topByBytes.topOutSrcIPandPort.update(application_src, flow.payload_size);
+                process_interface(deep, device_flow->interfaces[flow.if_in_index.value()].get(), flow, InBytes);
+                if (deep && group_enabled(group::FlowMetrics::TopInterfaces)) {
+                    device_flow->topInIfIndexBytes.update(flow.if_in_index.value(), flow.payload_size);
                 }
             }
             if (group_enabled(group::FlowMetrics::ByPackets)) {
-                if (group_enabled(group::FlowMetrics::TopIPs)) {
-                    if_in->topByPackets.topInSrcIP.update(ip, flow.packets);
-                    if_out->topByPackets.topOutSrcIP.update(ip, flow.packets);
-                }
-                if ((flow.src_port > 0) && group_enabled(group::FlowMetrics::TopIPPorts)) {
-                    if_in->topByPackets.topInSrcIPandPort.update(application_src, flow.packets);
-                    if_out->topByPackets.topOutSrcIPandPort.update(application_src, flow.packets);
+                process_interface(deep, device_flow->interfaces[flow.if_in_index.value()].get(), flow, InPackets);
+                if (deep && group_enabled(group::FlowMetrics::TopInterfaces)) {
+                    device_flow->topInIfIndexPackets.update(flow.if_in_index.value(), flow.packets);
                 }
             }
-            _process_geo_metrics(if_in, flow.ipv4_in, flow.payload_size, flow.packets);
-            _process_geo_metrics(if_out, flow.ipv4_in, flow.payload_size, flow.packets);
-        } else if (flow.is_ipv6 && flow.ipv6_in.isValid()) {
-            if (group_enabled(group::FlowMetrics::Cardinality)) {
-                if_in->srcIPCard.update(reinterpret_cast<const void *>(flow.ipv6_in.toBytes()), 16);
-                if_out->srcIPCard.update(reinterpret_cast<const void *>(flow.ipv6_in.toBytes()), 16);
-            }
-            auto ip = flow.ipv6_in.toString();
-            application_src = ip + ":" + std::to_string(flow.src_port);
-            if (group_enabled(group::FlowMetrics::ByBytes)) {
-                if (group_enabled(group::FlowMetrics::TopIPs)) {
-                    if_in->topByBytes.topInSrcIP.update(ip, flow.payload_size);
-                    if_out->topByBytes.topOutSrcIP.update(ip, flow.payload_size);
-                }
-                if ((flow.src_port > 0) && group_enabled(group::FlowMetrics::TopIPPorts)) {
-                    if_in->topByBytes.topInSrcIPandPort.update(application_src, flow.payload_size);
-                    if_out->topByBytes.topOutSrcIPandPort.update(application_src, flow.payload_size);
-                }
-            }
-            if (group_enabled(group::FlowMetrics::ByPackets)) {
-                if (group_enabled(group::FlowMetrics::TopIPs)) {
-                    if_in->topByPackets.topInSrcIP.update(ip, flow.packets);
-                    if_out->topByPackets.topOutSrcIP.update(ip, flow.packets);
-                }
-                if ((flow.src_port > 0) && group_enabled(group::FlowMetrics::TopIPPorts)) {
-                    if_in->topByPackets.topInSrcIPandPort.update(application_src, flow.packets);
-                    if_out->topByPackets.topOutSrcIPandPort.update(application_src, flow.packets);
-                }
-            }
-            _process_geo_metrics(if_in, flow.ipv6_in, flow.payload_size, flow.packets);
-            _process_geo_metrics(if_out, flow.ipv6_in, flow.payload_size, flow.packets);
         }
 
-        if (!flow.is_ipv6 && flow.ipv4_out.isValid()) {
-            if (group_enabled(group::FlowMetrics::Cardinality)) {
-                if_in->dstIPCard.update(flow.ipv4_out.toInt());
-                if_out->dstIPCard.update(flow.ipv4_out.toInt());
+        if (flow.if_out_index.has_value()) {
+            if (!device_flow->interfaces.count(flow.if_out_index.value())) {
+                device_flow->interfaces[flow.if_out_index.value()] = std::make_unique<FlowInterface>();
+                device_flow->interfaces[flow.if_out_index.value()]->set_topn_settings(_topn_count, _topn_percentile_threshold);
             }
-            auto ip = flow.ipv4_out.toString();
-            application_dst = ip + ":" + std::to_string(flow.dst_port);
             if (group_enabled(group::FlowMetrics::ByBytes)) {
-                if (group_enabled(group::FlowMetrics::TopIPs)) {
-                    if_in->topByBytes.topInDstIP.update(ip, flow.payload_size);
-                    if_out->topByBytes.topOutDstIP.update(ip, flow.payload_size);
-                }
-                if ((flow.dst_port > 0) && group_enabled(group::FlowMetrics::TopIPPorts)) {
-                    if_in->topByBytes.topInDstIPandPort.update(application_dst, flow.payload_size);
-                    if_out->topByBytes.topOutDstIPandPort.update(application_dst, flow.payload_size);
+                process_interface(deep, device_flow->interfaces[flow.if_out_index.value()].get(), flow, OutBytes);
+                if (deep && group_enabled(group::FlowMetrics::TopInterfaces)) {
+                    device_flow->topOutIfIndexBytes.update(flow.if_out_index.value(), flow.payload_size);
                 }
             }
             if (group_enabled(group::FlowMetrics::ByPackets)) {
-                if (group_enabled(group::FlowMetrics::TopIPs)) {
-                    if_in->topByPackets.topInDstIP.update(ip, flow.packets);
-                    if_out->topByPackets.topOutDstIP.update(ip, flow.packets);
+                process_interface(deep, device_flow->interfaces[flow.if_out_index.value()].get(), flow, OutPackets);
+                if (deep && group_enabled(group::FlowMetrics::TopInterfaces)) {
+                    device_flow->topInIfIndexBytes.update(flow.if_out_index.value(), flow.packets);
                 }
-                if ((flow.dst_port > 0) && group_enabled(group::FlowMetrics::TopIPPorts)) {
-                    if_in->topByPackets.topInDstIPandPort.update(application_dst, flow.packets);
-                    if_out->topByPackets.topOutDstIPandPort.update(application_dst, flow.packets);
-                }
-            }
-            _process_geo_metrics(if_in, flow.ipv4_out, flow.payload_size, flow.packets);
-            _process_geo_metrics(if_out, flow.ipv4_out, flow.payload_size, flow.packets);
-        } else if (flow.is_ipv6 && flow.ipv6_out.isValid()) {
-            if (group_enabled(group::FlowMetrics::Cardinality)) {
-                if_in->dstIPCard.update(reinterpret_cast<const void *>(flow.ipv6_out.toBytes()), 16);
-                if_out->dstIPCard.update(reinterpret_cast<const void *>(flow.ipv6_out.toBytes()), 16);
-            }
-            auto ip = flow.ipv6_in.toString();
-            application_dst = ip + ":" + std::to_string(flow.dst_port);
-            if (group_enabled(group::FlowMetrics::ByBytes)) {
-                if (group_enabled(group::FlowMetrics::TopIPs)) {
-                    if_in->topByBytes.topInDstIP.update(ip, flow.payload_size);
-                    if_out->topByBytes.topOutDstIP.update(ip, flow.payload_size);
-                }
-                if ((flow.dst_port > 0) && group_enabled(group::FlowMetrics::TopIPPorts)) {
-                    if_in->topByBytes.topInDstIPandPort.update(application_dst, flow.payload_size);
-                    if_out->topByBytes.topOutDstIPandPort.update(application_dst, flow.payload_size);
-                }
-            }
-            if (group_enabled(group::FlowMetrics::ByPackets)) {
-                if (group_enabled(group::FlowMetrics::TopIPs)) {
-                    if_in->topByPackets.topInDstIP.update(ip, flow.packets);
-                    if_out->topByPackets.topOutDstIP.update(ip, flow.packets);
-                }
-                if ((flow.dst_port > 0) && group_enabled(group::FlowMetrics::TopIPPorts)) {
-                    if_in->topByPackets.topInDstIPandPort.update(application_dst, flow.packets);
-                    if_out->topByPackets.topOutDstIPandPort.update(application_dst, flow.packets);
-                }
-            }
-            _process_geo_metrics(if_in, flow.ipv6_out, flow.payload_size, flow.packets);
-            _process_geo_metrics(if_out, flow.ipv6_out, flow.payload_size, flow.packets);
-        }
-
-        if (group_enabled(group::FlowMetrics::Conversations) && flow.src_port > 0 && flow.dst_port > 0 && !application_src.empty() && !application_dst.empty()) {
-            std::string conversation;
-            if (application_src > application_dst) {
-                conversation = application_dst + "/" + application_src;
-            } else {
-                conversation = application_src + "/" + application_dst;
-            }
-            if (group_enabled(group::FlowMetrics::Cardinality)) {
-                if_in->conversationsCard.update(conversation);
-                if_out->conversationsCard.update(conversation);
-            }
-            if (group_enabled(group::FlowMetrics::ByBytes)) {
-                if_in->topByBytes.topConversations.update(conversation, flow.payload_size);
-                if_out->topByBytes.topConversations.update(conversation, flow.payload_size);
-            }
-            if (group_enabled(group::FlowMetrics::ByPackets)) {
-                if_in->topByPackets.topConversations.update(conversation, flow.packets);
-                if_out->topByPackets.topConversations.update(conversation, flow.packets);
             }
         }
     }
 }
 
-inline void FlowMetricsBucket::_process_geo_metrics(FlowInterface *interface, const pcpp::IPv4Address &ipv4, size_t payload_size, uint32_t packets)
+void FlowMetricsBucket::process_interface(bool deep, FlowInterface *iface, const FlowData &flow, FlowDirectionType type)
+{
+    uint64_t aggregator{0};
+    switch (type) {
+    case InBytes:
+        aggregator = flow.payload_size;
+        break;
+    case OutBytes:
+        aggregator = flow.payload_size;
+        break;
+    case InPackets:
+        aggregator = flow.packets;
+        break;
+    case OutPackets:
+        aggregator = flow.packets;
+        break;
+    }
+
+    if (group_enabled(group::FlowMetrics::Counters)) {
+        iface->counters.at(type).total += aggregator;
+
+        if (flow.is_ipv6) {
+            iface->counters.at(type).IPv6 += aggregator;
+        } else {
+            iface->counters.at(type).IPv4 += aggregator;
+        }
+
+        switch (flow.l4) {
+        case IP_PROTOCOL::UDP:
+            iface->counters.at(type).UDP += aggregator;
+            break;
+        case IP_PROTOCOL::TCP:
+            iface->counters.at(type).TCP += aggregator;
+            break;
+        default:
+            iface->counters.at(type).OtherL4 += aggregator;
+            break;
+        }
+    }
+
+    if (!deep) {
+        return;
+    }
+
+    auto proto = network::Protocol::TCP;
+    if (flow.l4 == IP_PROTOCOL::UDP) {
+        proto = network::Protocol::UDP;
+    }
+
+    if (group_enabled(group::FlowMetrics::TopPorts)) {
+        if (flow.src_port > 0) {
+            iface->directionTopN.at(type).topSrcPort.update(network::IpPort{flow.src_port, proto}, aggregator);
+        }
+        if (flow.dst_port > 0) {
+            iface->directionTopN.at(type).topDstPort.update(network::IpPort{flow.dst_port, proto}, aggregator);
+        }
+    }
+
+    if (group_enabled(group::FlowMetrics::Cardinality)) {
+        if (flow.src_port > 0) {
+            iface->srcPortCard.update(flow.src_port);
+        }
+        if (flow.dst_port > 0) {
+            iface->dstPortCard.update(flow.dst_port);
+        }
+    }
+
+    std::string application_src;
+    std::string application_dst;
+
+    if (!flow.is_ipv6 && flow.ipv4_in.isValid()) {
+        group_enabled(group::FlowMetrics::Cardinality) ? iface->srcIPCard.update(flow.ipv4_in.toInt()) : void();
+        auto ip = flow.ipv4_in.toString();
+        application_src = ip + ":" + std::to_string(flow.src_port);
+        if (group_enabled(group::FlowMetrics::TopIPs)) {
+            iface->directionTopN.at(type).topSrcIP.update(ip, aggregator);
+        }
+        if ((flow.src_port > 0) && group_enabled(group::FlowMetrics::TopIPPorts)) {
+            iface->directionTopN.at(type).topSrcIPandPort.update(application_src, aggregator);
+        }
+        _process_geo_metrics(iface, type, flow.ipv4_in, aggregator);
+    } else if (flow.is_ipv6 && flow.ipv6_in.isValid()) {
+        group_enabled(group::FlowMetrics::Cardinality) ? iface->srcIPCard.update(reinterpret_cast<const void *>(flow.ipv6_in.toBytes()), 16) : void();
+        auto ip = flow.ipv6_in.toString();
+        application_src = ip + ":" + std::to_string(flow.src_port);
+        if (group_enabled(group::FlowMetrics::TopIPs)) {
+            iface->directionTopN.at(type).topSrcIP.update(ip, aggregator);
+        }
+        if ((flow.src_port > 0) && group_enabled(group::FlowMetrics::TopIPPorts)) {
+            iface->directionTopN.at(type).topSrcIPandPort.update(application_src, aggregator);
+        }
+        _process_geo_metrics(iface, type, flow.ipv6_in, aggregator);
+    }
+    if (!flow.is_ipv6 && flow.ipv4_out.isValid()) {
+        group_enabled(group::FlowMetrics::Cardinality) ? iface->dstIPCard.update(flow.ipv4_out.toInt()) : void();
+        auto ip = flow.ipv4_out.toString();
+        application_dst = ip + ":" + std::to_string(flow.dst_port);
+        if (group_enabled(group::FlowMetrics::TopIPs)) {
+            iface->directionTopN.at(type).topDstIP.update(ip, aggregator);
+        }
+        if ((flow.dst_port > 0) && group_enabled(group::FlowMetrics::TopIPPorts)) {
+            iface->directionTopN.at(type).topDstIPandPort.update(application_dst, aggregator);
+        }
+        _process_geo_metrics(iface, type, flow.ipv4_out, aggregator);
+    } else if (flow.is_ipv6 && flow.ipv6_out.isValid()) {
+        group_enabled(group::FlowMetrics::Cardinality) ? iface->dstIPCard.update(reinterpret_cast<const void *>(flow.ipv6_out.toBytes()), 16) : void();
+        auto ip = flow.ipv6_in.toString();
+        application_dst = ip + ":" + std::to_string(flow.dst_port);
+        if (group_enabled(group::FlowMetrics::TopIPs)) {
+            iface->directionTopN.at(type).topDstIP.update(ip, aggregator);
+        }
+        if ((flow.dst_port > 0) && group_enabled(group::FlowMetrics::TopIPPorts)) {
+            iface->directionTopN.at(type).topDstIPandPort.update(application_dst, aggregator);
+        }
+        _process_geo_metrics(iface, type, flow.ipv6_out, aggregator);
+    }
+
+    if (group_enabled(group::FlowMetrics::Conversations) && flow.src_port > 0 && flow.dst_port > 0 && !application_src.empty() && !application_dst.empty()) {
+        std::string conversation;
+        if (application_src > application_dst) {
+            conversation = application_dst + "/" + application_src;
+        } else {
+            conversation = application_src + "/" + application_dst;
+        }
+        if (group_enabled(group::FlowMetrics::Cardinality)) {
+            iface->conversationsCard.update(conversation);
+        }
+        if (type == InBytes || type == OutBytes) {
+            iface->topN.first.topConversations.update(conversation, aggregator);
+        } else {
+            iface->topN.second.topConversations.update(conversation, aggregator);
+        }
+    }
+}
+
+inline void FlowMetricsBucket::_process_geo_metrics(FlowInterface *interface, FlowDirectionType type, const pcpp::IPv4Address &ipv4, uint64_t aggregator)
 {
     if ((HandlerModulePlugin::asn->enabled() || HandlerModulePlugin::city->enabled()) && group_enabled(group::FlowMetrics::TopGeo)) {
         struct sockaddr_in sa4;
         if (IPv4_to_sockaddr(ipv4, &sa4)) {
             if (HandlerModulePlugin::city->enabled()) {
-                if (group_enabled(group::FlowMetrics::ByBytes)) {
-                    interface->topByBytes.topGeoLoc.update(HandlerModulePlugin::city->getGeoLoc(&sa4), payload_size);
-                }
-                if (group_enabled(group::FlowMetrics::ByPackets)) {
-                    interface->topByPackets.topGeoLoc.update(HandlerModulePlugin::city->getGeoLoc(&sa4), packets);
+                if (type == InBytes || type == OutBytes) {
+                    interface->topN.first.topGeoLoc.update(HandlerModulePlugin::city->getGeoLoc(&sa4), aggregator);
+                } else {
+                    interface->topN.second.topGeoLoc.update(HandlerModulePlugin::city->getGeoLoc(&sa4), aggregator);
                 }
             }
             if (HandlerModulePlugin::asn->enabled()) {
-                if (group_enabled(group::FlowMetrics::ByBytes)) {
-                    interface->topByBytes.topASN.update(HandlerModulePlugin::asn->getASNString(&sa4), payload_size);
-                }
-                if (group_enabled(group::FlowMetrics::ByPackets)) {
-                    interface->topByPackets.topASN.update(HandlerModulePlugin::asn->getASNString(&sa4), packets);
+                if (type == InBytes || type == OutBytes) {
+                    interface->topN.first.topASN.update(HandlerModulePlugin::asn->getASNString(&sa4), aggregator);
+                } else {
+                    interface->topN.second.topASN.update(HandlerModulePlugin::asn->getASNString(&sa4), aggregator);
                 }
             }
         }
     }
 }
 
-inline void FlowMetricsBucket::_process_geo_metrics(FlowInterface *interface, const pcpp::IPv6Address &ipv6, size_t payload_size, uint32_t packets)
+inline void FlowMetricsBucket::_process_geo_metrics(FlowInterface *interface, FlowDirectionType type, const pcpp::IPv6Address &ipv6, uint64_t aggregator)
 {
     if ((HandlerModulePlugin::asn->enabled() || HandlerModulePlugin::city->enabled()) && group_enabled(group::FlowMetrics::TopGeo)) {
         struct sockaddr_in6 sa6;
         if (IPv6_to_sockaddr(ipv6, &sa6)) {
             if (HandlerModulePlugin::city->enabled()) {
-                if (group_enabled(group::FlowMetrics::ByBytes)) {
-                    interface->topByBytes.topGeoLoc.update(HandlerModulePlugin::city->getGeoLoc(&sa6), payload_size);
-                }
-                if (group_enabled(group::FlowMetrics::ByPackets)) {
-                    interface->topByPackets.topGeoLoc.update(HandlerModulePlugin::city->getGeoLoc(&sa6), packets);
+                if (type == InBytes || type == OutBytes) {
+                    interface->topN.first.topGeoLoc.update(HandlerModulePlugin::city->getGeoLoc(&sa6), aggregator);
+                } else {
+                    interface->topN.second.topGeoLoc.update(HandlerModulePlugin::city->getGeoLoc(&sa6), aggregator);
                 }
             }
             if (HandlerModulePlugin::asn->enabled()) {
-                if (group_enabled(group::FlowMetrics::ByBytes)) {
-                    interface->topByBytes.topASN.update(HandlerModulePlugin::asn->getASNString(&sa6), payload_size);
-                }
-                if (group_enabled(group::FlowMetrics::ByPackets)) {
-                    interface->topByPackets.topASN.update(HandlerModulePlugin::asn->getASNString(&sa6), packets);
+                if (type == InBytes || type == OutBytes) {
+                    interface->topN.first.topASN.update(HandlerModulePlugin::asn->getASNString(&sa6), aggregator);
+                } else {
+                    interface->topN.second.topASN.update(HandlerModulePlugin::asn->getASNString(&sa6), aggregator);
                 }
             }
         }
