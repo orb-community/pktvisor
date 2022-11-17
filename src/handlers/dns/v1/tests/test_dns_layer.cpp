@@ -513,9 +513,6 @@ TEST_CASE("DNS Filters: answer_count", "[pcap][dns]")
 
     nlohmann::json j;
     dns_handler.metrics()->bucket(0)->to_json(j);
-
-    CHECK(j["top_qname2"][0]["name"] == ".mwbsys.com");
-    CHECK(j["top_qname3"][0]["name"] != nullptr);
 }
 
 TEST_CASE("DNS Filters: only_dnssec_response", "[pcap][dns]")
@@ -576,7 +573,7 @@ TEST_CASE("DNS Configs: public_suffix_list", "[pcap][dns]")
     auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
     DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
-    
+
     dns_handler.config_set<bool>("public_suffix_list", true);
     dns_handler.start();
     stream.start();
