@@ -39,7 +39,7 @@ enum FlowMetrics : visor::MetricGroupIntType {
 };
 }
 
-enum FlowDirType {
+enum FlowDirectionType {
     InBytes,
     OutBytes,
     InPackets,
@@ -107,7 +107,7 @@ struct FlowTopN {
     }
 };
 
-struct FlowTopNDir {
+struct FlowDirectionTopN {
     TopN<std::string> topSrcIP;
     TopN<std::string> topDstIP;
     TopN<network::IpPort> topSrcPort;
@@ -115,7 +115,7 @@ struct FlowTopNDir {
     TopN<std::string> topSrcIPandPort;
     TopN<std::string> topDstIPandPort;
 
-    FlowTopNDir(std::string direction, std::string metric)
+    FlowDirectionTopN(std::string direction, std::string metric)
         : topSrcIP(FLOW_SCHEMA, "ip", {"top_" + direction + "_src_ips_" + metric}, "Top " + direction + " source IP addresses by " + metric)
         , topDstIP(FLOW_SCHEMA, "ip", {"top_" + direction + "_dst_ips_" + metric}, "Top " + direction + " destination IP addresses by " + metric)
         , topSrcPort(FLOW_SCHEMA, "port", {"top_" + direction + "_src_ports_" + metric}, "Top " + direction + " source ports by " + metric)
@@ -161,13 +161,13 @@ struct FlowInterface {
     Cardinality dstIPCard;
     Cardinality srcPortCard;
     Cardinality dstPortCard;
-    std::pair<FlowTopN, FlowTopN> topNoDir{FlowTopN("bytes"), FlowTopN("packets")};
-    std::unordered_map<FlowDirType, FlowTopNDir> topN{
-        {InBytes, FlowTopNDir("in", "bytes")},
-        {OutBytes, FlowTopNDir("out", "bytes")},
-        {InPackets, FlowTopNDir("in", "packets")},
-        {OutPackets, FlowTopNDir("out", "packets")}};
-    std::unordered_map<FlowDirType, Counters> counters{
+    std::pair<FlowTopN, FlowTopN> topN{FlowTopN("bytes"), FlowTopN("packets")};
+    std::unordered_map<FlowDirectionType, FlowDirectionTopN> directionTopN{
+        {InBytes, FlowDirectionTopN("in", "bytes")},
+        {OutBytes, FlowDirectionTopN("out", "bytes")},
+        {InPackets, FlowDirectionTopN("in", "packets")},
+        {OutPackets, FlowDirectionTopN("out", "packets")}};
+    std::unordered_map<FlowDirectionType, Counters> counters{
         {InBytes, Counters("in", "bytes")},
         {OutBytes, Counters("out", "bytes")},
         {InPackets, Counters("in", "packets")},
@@ -184,11 +184,11 @@ struct FlowInterface {
 
     void set_topn_settings(size_t topn_count, uint64_t percentile_threshold)
     {
-        for (auto &top : topN) {
+        for (auto &top : directionTopN) {
             top.second.set_settings(topn_count, percentile_threshold);
         }
-        topNoDir.first.set_settings(topn_count, percentile_threshold);
-        topNoDir.second.set_settings(topn_count, percentile_threshold);
+        topN.first.set_settings(topn_count, percentile_threshold);
+        topN.second.set_settings(topn_count, percentile_threshold);
     }
 };
 
@@ -233,8 +233,8 @@ protected:
     //  <DeviceId, FlowDevice>
     std::map<std::string, std::unique_ptr<FlowDevice>> _devices_metrics;
 
-    void _process_geo_metrics(FlowInterface *interface, FlowDirType type, const pcpp::IPv4Address &ipv4, uint64_t aggregator);
-    void _process_geo_metrics(FlowInterface *interface, FlowDirType type, const pcpp::IPv6Address &ipv6, uint64_t aggregator);
+    void _process_geo_metrics(FlowInterface *interface, FlowDirectionType type, const pcpp::IPv4Address &ipv4, uint64_t aggregator);
+    void _process_geo_metrics(FlowInterface *interface, FlowDirectionType type, const pcpp::IPv6Address &ipv6, uint64_t aggregator);
 
 public:
     FlowMetricsBucket()
@@ -266,7 +266,7 @@ public:
         _devices_metrics[device]->filtered += filtered;
     }
     void process_flow(bool deep, const FlowPacket &payload);
-    void process_interface(bool deep, FlowInterface *iface, const FlowData &flow, FlowDirType type);
+    void process_interface(bool deep, FlowInterface *iface, const FlowData &flow, FlowDirectionType type);
 };
 
 class FlowMetricsManager final : public visor::AbstractMetricsManager<FlowMetricsBucket>
