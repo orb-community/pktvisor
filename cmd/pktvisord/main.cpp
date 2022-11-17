@@ -88,6 +88,7 @@ static const char USAGE[] =
       --cp-disable                Disable crashpad collector
       --cp-token TOKEN            Crashpad token for remote crash reporting
       --cp-url URL                Crashpad server url
+      --cp-custom USERDEF         Crashpad optional user defined field
       --cp-path PATH              Crashpad handler binary
     Modules:
       --module-list               List all modules which have been loaded (builtin and dynamic).
@@ -148,6 +149,7 @@ struct CmdOptions {
         bool disable{false};
         std::optional<std::string> token;
         std::optional<std::string> url;
+        std::optional<std::string> user_defined;
         std::optional<base::FilePath::StringType> path;
     };
     Crashpad crashpad_info;
@@ -311,6 +313,14 @@ void fill_cmd_options(std::map<std::string, docopt::value> args, CmdOptions &opt
         options.crashpad_info.url = config["cp_url"].as<std::string>();
     }
 
+    if (args["--cp-custom"]) {
+        options.crashpad_info.user_defined = args["--cp-custom"].asString();
+    } else if (config["cp_custom"]) {
+        options.crashpad_info.user_defined = config["cp_custom"].as<std::string>();
+    } else {
+        options.crashpad_info.user_defined = std::string();
+    }
+
     if (args["--cp-path"]) {
         auto v = args["--cp-path"].asString();
         base::FilePath::StringType cp(v.begin(), v.end());
@@ -471,7 +481,7 @@ int main(int argc, char *argv[])
     if (!options.crashpad_info.disable) {
         if (options.crashpad_info.token.has_value() || options.crashpad_info.url.has_value() || options.crashpad_info.path.has_value()) {
             if (options.crashpad_info.token.has_value() && options.crashpad_info.url.has_value() && options.crashpad_info.path.has_value()) {
-                if (!crashpad::start_crashpad_handler(options.crashpad_info.token.value(), options.crashpad_info.url.value(), options.crashpad_info.path.value())) {
+                if (!crashpad::start_crashpad_handler(options.crashpad_info.token.value(), options.crashpad_info.url.value(), options.crashpad_info.user_defined.value(), options.crashpad_info.path.value())) {
                     logger->error("failed to setup crashpad");
                 }
             } else {

@@ -18,18 +18,18 @@
 
 namespace crashpad {
 
-static bool start_crashpad_handler(std::string token, std::string url, base::FilePath::StringType handler_path)
+static bool start_crashpad_handler(std::string token, std::string url, std::string user_defined, base::FilePath::StringType handler_path)
 {
     std::map<std::string, std::string> annotations;
     std::vector<std::string> arguments;
     CrashpadClient client;
     bool rc;
 
-
     annotations["format"] = "minidump";
     annotations["product"] = "pktvisor";
     annotations["database"] = "pktvisor";
     annotations["version"] = VISOR_VERSION_NUM;
+    annotations["user_defined"] = user_defined;
     annotations["token"] = token;
     arguments.push_back("--no-rate-limit");
 
@@ -65,7 +65,7 @@ typedef std::string StringType;
 }
 
 namespace crashpad {
-static bool start_crashpad_handler([[maybe_unused]] std::string token, [[maybe_unused]] std::string url, [[maybe_unused]] base::FilePath::StringType handler_path)
+static bool start_crashpad_handler(std::string, std::string, std::string, base::FilePath::StringType)
 {
     return false;
 }
