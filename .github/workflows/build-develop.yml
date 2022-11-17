@@ -163,8 +163,9 @@ jobs:
         shell: bash
         id: build
         run: | 
-          echo "VERSION=`cat ${{github.workspace}}\build\VERSION`" >> $GITHUB_ENV
-          echo "::set-output name=version::$(cat ${{github.workspace}}\build\VERSION)"
+          AUX=${{github.workspace}}
+          echo "VERSION=`cat ${AUX//\\//}/build/VERSION`" >> $GITHUB_ENV
+          echo "::set-output name=version::$(cat ${AUX}/build/VERSION)"
 
       - name: Build
         working-directory: ${{github.workspace}}\build
@@ -182,11 +183,15 @@ jobs:
 
       - name: Login to ns1labs conan
         shell: bash
-        run: CONAN_USER_HOME=${{github.workspace//\\//}}/build/conan_home conan user -p ${{ secrets.CONAN_LABS_PASSWORD }} -r ns1labs ${{ secrets.CONAN_LABS_USERNAME }}
+        run: |
+          AUX=${{github.workspace}}
+          CONAN_USER_HOME=${AUX//\\//}/build/conan_home conan user -p ${{ secrets.CONAN_LABS_PASSWORD }} -r ns1labs ${{ secrets.CONAN_LABS_USERNAME }}
 
       - name: Cache conan packages
         shell: bash
-        run: CONAN_USER_HOME=${{github.workspace//\\//}}/build/conan_home conan upload "*" --all -r ns1labs -c
+        run: |
+          AUX=${{github.workspace}}
+          CONAN_USER_HOME=${AUX//\\//}/build/conan_home conan upload "*" --all -r ns1labs -c
 
   package-amd64:
     needs: [ unit-tests-linux ]
