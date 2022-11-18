@@ -100,7 +100,7 @@ void FlowStreamHandler::start()
         }
     }
 
-    if (!config_exists("enrichment") || !config_get<bool>("enrichment")) {
+    if (!config_exists("enrichment") || config_get<bool>("enrichment")) {
         _metrics->set_enrich_data(std::move(enrich_data));
     }
 
