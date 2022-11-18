@@ -765,6 +765,15 @@ void DnsMetricsBucket::new_dns_transaction(bool deep, float per90th, DnsLayer &p
         case DNSTAP_DOH:
             ++data.counters.DOH;
             break;
+        case DNSTAP_CRYPT_UDP:
+            ++data.counters.cryptUDP;
+            break;
+        case DNSTAP_CRYPT_TCP:
+            ++data.counters.cryptTCP;
+            break;
+        case DNSTAP_DOQ:
+            ++data.counters.DOQ;
+            break;
         case PCPP_UNKOWN:
             break;
         }
