@@ -89,7 +89,7 @@ void CoreRegistry::start(HttpServer *svr)
                 }
                 auto version = meta->data().value("version");
                 for (const auto &alias : meta->provides()) {
-                    HandlerPluginPtr mod = _handler_registry.instantiate(alias);
+                    HandlerPluginPtr mod = _handler_registry.instantiate(s);
                     _logger->info("Load stream handler plugin: {} version {} interface {}", alias, version, mod->pluginInterface());
                     mod->init_plugin(this, svr, &geo::GeoIP(), &geo::GeoASN());
                     auto result = _handler_plugins.insert({std::make_pair(alias, version), std::move(mod)});
