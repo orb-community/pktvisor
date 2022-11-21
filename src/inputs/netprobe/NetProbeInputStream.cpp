@@ -65,16 +65,30 @@ void NetProbeInputStream::start()
         _timeout_msec = config_get<uint64_t>("timeout_msec");
     }
 
+    if (_timeout_msec > _interval_msec) {
+        throw NetProbeException(fmt::format("timeout_msec [{}] cannot be greater than interval_msec [{}]", _timeout_msec, _interval_msec));
+    }
+
     if (config_exists("packets_per_test")) {
         _packets_per_test = config_get<uint64_t>("packets_per_test");
+        if (!_packets_per_test) {
+            throw NetProbeException("packets_per_test needs to be greater than 0");
+        }
     }
 
     if (config_exists("packets_interval_msec")) {
         _packets_interval_msec = config_get<uint64_t>("packets_interval_msec");
     }
 
+    if (_packets_per_test * _packets_interval_msec > _interval_msec) {
+        throw NetProbeException(fmt::format("packets_per_test [{}] times packets_interval_msec [{}] cannot be greater than packets_interval_msec [{}]", _packets_per_test, _packets_interval_msec, _interval_msec));
+    }
+
     if (config_exists("packet_payload_size")) {
         _packet_payload_size = config_get<uint64_t>("packet_payload_size");
+        if (_packet_payload_size > MAX_PAYLOAD_SIZE) {
+            throw NetProbeException(fmt::format("packet_payload_size was set to {} but max supported size is {}", _packet_payload_size, MAX_PAYLOAD_SIZE));
+        }
     }
 
     if (!config_exists("targets")) {

@@ -19,6 +19,7 @@ namespace visor::input::netprobe {
 
 class NetProbeInputStream : public visor::InputStream
 {
+    static const inline uint64_t MAX_PAYLOAD_SIZE = 65500;
     static uint16_t _id;
     TestType _type{TestType::Ping};
     uint64_t _interval_msec{5000};
