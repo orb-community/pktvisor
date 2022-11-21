@@ -91,16 +91,16 @@ class PingProbe final : public NetProbe
     sockaddr_in6 _sa6;
     sigslot::connection _recv_connection;
 
-    void _get_addr();
     void _send_icmp_v4(uint16_t sequence);
+    std::optional<ErrorType> _get_addr();
     std::optional<ErrorType> _create_socket();
     void _close_socket();
 
 public:
     static thread_local std::atomic<uint32_t> sock_count;
 
-    PingProbe(uint16_t id, const std::string &name)
-        : NetProbe(id, name){};
+    PingProbe(uint16_t id, const std::string &name, const pcpp::IPAddress &ip, const std::string &dns)
+        : NetProbe(id, name, ip, dns){};
     ~PingProbe() = default;
     bool start(std::shared_ptr<uvw::Loop> io_loop) override;
     bool stop() override;

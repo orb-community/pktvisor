@@ -14,6 +14,7 @@
 #ifdef __GNUC__
 #pragma GCC diagnostic pop
 #endif
+#include <uvw/dns.h>
 #include <uvw/loop.h>
 
 namespace visor::input::netprobe {
@@ -21,7 +22,7 @@ namespace visor::input::netprobe {
 enum class ErrorType {
     Timeout,
     SocketError,
-    DnsNotFound,
+    DnsLookupFailure,
     InvalidIp
 };
 
@@ -42,23 +43,52 @@ class NetProbe
 {
 protected:
     uint16_t _id;
-    uint64_t _interval_msec{0};
-    uint64_t _timeout_msec{0};
-    uint64_t _packets_per_test{0};
-    uint64_t _packets_interval_msec{0};
-    uint64_t _packet_payload_size{0};
+    struct Configs {
+        uint64_t interval_msec;
+        uint64_t timeout_msec;
+        uint64_t packets_per_test;
+        uint64_t packets_interval_msec;
+        uint64_t packet_payload_size;
+    };
+    Configs _config{0, 0, 0, 0, 0};
     std::string _name;
-    std::string _dns;
     pcpp::IPAddress _ip;
+    std::string _dns;
     std::shared_ptr<uvw::Loop> _io_loop;
     RecvCallback _recv;
     SendCallback _send;
     FailCallback _fail;
 
+    std::string _resolve_dns(bool first_match = true, bool ipv4 = false)
+    {
+        auto request = _io_loop->resource<uvw::GetAddrInfoReq>();
+        auto response = request->nodeAddrInfoSync(_dns);
+        if (!response.first) {
+            return std::string();
+        }
+
+        auto addr = response.second.get();
+        while (addr->ai_next != nullptr) {
+            if (addr->ai_family == AF_INET && (first_match || ipv4)) {
+                char buffer[INET_ADDRSTRLEN];
+                inet_ntop(AF_INET, &reinterpret_cast<struct sockaddr_in *>(addr->ai_addr)->sin_addr, buffer, INET_ADDRSTRLEN);
+                return buffer;
+            } else if (addr->ai_family == AF_INET6 && (first_match || !ipv4)) {
+                char buffer[INET6_ADDRSTRLEN];
+                inet_ntop(AF_INET, &reinterpret_cast<struct sockaddr_in6 *>(addr->ai_addr)->sin6_addr, buffer, INET6_ADDRSTRLEN);
+                return buffer;
+            }
+            addr = addr->ai_next;
+        }
+        return std::string();
+    }
+
 public:
-    NetProbe(uint16_t id, const std::string &name)
+    NetProbe(uint16_t id, const std::string &name, const pcpp::IPAddress &ip, const std::string &dns)
         : _id(id)
         , _name(name)
+        , _ip(ip)
+        , _dns(dns)
     {
     }
 
@@ -68,20 +98,7 @@ public:
 
     void set_configs(uint64_t interval_msec, uint64_t timeout_msec, uint64_t packets_per_test, uint64_t packets_interval_msec, uint64_t packet_payload_size)
     {
-        _interval_msec = interval_msec;
-        _timeout_msec = timeout_msec;
-        _packets_per_test = packets_per_test;
-        _packets_interval_msec = packets_interval_msec;
-        _packet_payload_size = packet_payload_size;
-    }
-
-    void set_target(const pcpp::IPAddress &ip, const std::string &dns)
-    {
-        if (dns.empty()) {
-            _ip = ip;
-        } else {
-            _dns = dns;
-        }
+        _config = {interval_msec, timeout_msec, packets_per_test, packets_interval_msec, packet_payload_size};
     }
 
     void set_callbacks(SendCallback send, RecvCallback recv, FailCallback fail)
@@ -90,6 +107,7 @@ public:
         _recv = recv;
         _fail = fail;
     }
+
     virtual bool start(std::shared_ptr<uvw::Loop> io_loop) = 0;
     virtual bool stop() = 0;
 };

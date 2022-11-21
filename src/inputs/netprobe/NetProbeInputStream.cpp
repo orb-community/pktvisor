@@ -5,6 +5,7 @@
 #include "NetProbeInputStream.h"
 #include "NetProbeException.h"
 #include "PingProbe.h"
+#include "TcpProbe.h"
 #include "ThreadName.h"
 #ifdef __GNUC__
 #pragma GCC diagnostic push
@@ -101,17 +102,23 @@ void NetProbeInputStream::start()
             if (!config->config_exists("target")) {
                 throw NetProbeException(fmt::format("'{}' does not have key 'target' which is required", key));
             }
+            uint32_t port{0};
+            if (!config->config_exists("port") && _type == TestType::TCP) {
+                throw NetProbeException(fmt::format("'{}' does not have key 'target' which is required", key));
+            } else if (config->config_exists("port")) {
+                port = static_cast<uint32_t>(config->config_get<uint64_t>("target"));
+            }
             auto target = config->config_get<std::string>("target");
             auto ip = pcpp::IPAddress(target);
             if (ip.isValid()) {
-                _ip_list[key] = ip;
+                _ip_list[key] = {ip, port};
                 continue;
             }
             auto dot = target.find(".");
             if (dot == std::string::npos && target != "localhost") {
                 throw NetProbeException(fmt::format("{} is an invalid/unsupported DNS", target));
             }
-            _dns_list[key] = target;
+            _dns_list[key] = {target, port};
         }
     }
 
@@ -189,13 +196,14 @@ void NetProbeInputStream::_create_netprobe_loop()
     for (const auto &ip : _ip_list) {
         std::unique_ptr<NetProbe> probe{nullptr};
         if (_type == TestType::Ping) {
-            probe = std::make_unique<PingProbe>(_id, ip.first);
+            probe = std::make_unique<PingProbe>(_id, ip.first, ip.second.first, std::string());
+        } else if (_type == TestType::TCP) {
+            probe = std::make_unique<TcpProbe>(_id, ip.first, ip.second.first, std::string(), ip.second.second);
         } else {
             throw NetProbeException(fmt::format("Test type currently not supported"));
         }
         ++_id;
         probe->set_configs(_interval_msec, _timeout_msec, _packets_per_test, _packets_interval_msec, _packet_payload_size);
-        probe->set_target(ip.second, std::string());
         probe->set_callbacks([this](pcpp::Packet &payload, TestType type, const std::string &name, timespec stamp) { _send_cb(payload, type, name, stamp); },
             [this](pcpp::Packet &payload, TestType type, const std::string &name, timespec stamp) { _recv_cb(payload, type, name, stamp); },
             [this](ErrorType error, TestType type, const std::string &name) { _fail_cb(error, type, name); });
@@ -206,13 +214,14 @@ void NetProbeInputStream::_create_netprobe_loop()
     for (const auto &dns : _dns_list) {
         std::unique_ptr<NetProbe> probe{nullptr};
         if (_type == TestType::Ping) {
-            probe = std::make_unique<PingProbe>(_id, dns.first);
+            probe = std::make_unique<PingProbe>(_id, dns.first, pcpp::IPAddress(), dns.second.first);
+        } else if (_type == TestType::TCP) {
+            probe = std::make_unique<TcpProbe>(_id, dns.first, dns.second.first, std::string(), dns.second.second);
         } else {
             throw NetProbeException(fmt::format("Test type currently not supported"));
         }
         ++_id;
         probe->set_configs(_interval_msec, _timeout_msec, _packets_per_test, _packets_interval_msec, _packet_payload_size);
-        probe->set_target(pcpp::IPAddress(), dns.second);
         probe->set_callbacks([this](pcpp::Packet &payload, TestType type, const std::string &name, timespec stamp) { _send_cb(payload, type, name, stamp); },
             [this](pcpp::Packet &payload, TestType type, const std::string &name, timespec stamp) { _recv_cb(payload, type, name, stamp); },
             [this](ErrorType error, TestType type, const std::string &name) { _fail_cb(error, type, name); });

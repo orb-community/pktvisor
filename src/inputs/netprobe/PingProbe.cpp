@@ -3,7 +3,6 @@
 #include "NetProbeException.h"
 #include <Packet.h>
 #include <TimespecTimeval.h>
-#include <uvw/dns.h>
 #include <uvw/idle.h>
 
 namespace visor::input::netprobe {
@@ -120,10 +119,10 @@ bool PingProbe::start(std::shared_ptr<uvw::Loop> io_loop)
     }
     // add validator
     _payload_array = validator;
-    if (_packet_payload_size < validator.size()) {
-        _packet_payload_size = validator.size();
+    if (_config.packet_payload_size < validator.size()) {
+        _config.packet_payload_size = validator.size();
     }
-    _payload_array.resize(_packet_payload_size);
+    _payload_array.resize(_config.packet_payload_size);
     std::fill(_payload_array.begin() + validator.size(), _payload_array.end(), 0);
 
     _io_loop = io_loop;
@@ -144,7 +143,7 @@ bool PingProbe::start(std::shared_ptr<uvw::Loop> io_loop)
         }
 
         _timeout_timer->on<uvw::TimerEvent>([this](const auto &, auto &) {
-            _internal_sequence = _packets_per_test;
+            _internal_sequence = _config.packets_per_test;
             _fail(ErrorType::Timeout, TestType::Ping, _name);
             if (_internal_timer) {
                 _internal_timer->stop();
@@ -157,14 +156,17 @@ bool PingProbe::start(std::shared_ptr<uvw::Loop> io_loop)
             return;
         }
 
-        _get_addr();
+        if (auto error = _get_addr(); error.has_value()) {
+            _fail(error.value(), TestType::Ping, _name);
+            return;
+        }
 
         _internal_timer = _io_loop->resource<uvw::TimerHandle>();
         _internal_timer->on<uvw::TimerEvent>([this](const auto &, auto &) {
-            if (_internal_sequence < _packets_per_test) {
+            if (_internal_sequence < _config.packets_per_test) {
                 _internal_sequence++;
                 _timeout_timer->stop();
-                _timeout_timer->start(uvw::TimerHandle::Time{_timeout_msec}, uvw::TimerHandle::Time{0});
+                _timeout_timer->start(uvw::TimerHandle::Time{_config.timeout_msec}, uvw::TimerHandle::Time{0});
                 _send_icmp_v4(_internal_sequence);
             }
         });
@@ -174,28 +176,30 @@ bool PingProbe::start(std::shared_ptr<uvw::Loop> io_loop)
         (_sequence == USHRT_MAX) ? _sequence = 0 : _sequence++;
         _send_icmp_v4(_internal_sequence);
         _internal_sequence++;
-        _timeout_timer->start(uvw::TimerHandle::Time{_timeout_msec}, uvw::TimerHandle::Time{0});
-        _internal_timer->start(uvw::TimerHandle::Time{_packets_interval_msec}, uvw::TimerHandle::Time{_packets_interval_msec});
+        _timeout_timer->start(uvw::TimerHandle::Time{_config.timeout_msec}, uvw::TimerHandle::Time{0});
+        _internal_timer->start(uvw::TimerHandle::Time{_config.packets_interval_msec}, uvw::TimerHandle::Time{_config.packets_interval_msec});
     });
 
     ++sock_count;
-    _interval_timer->start(uvw::TimerHandle::Time{0}, uvw::TimerHandle::Time{_interval_msec});
+    _interval_timer->start(uvw::TimerHandle::Time{0}, uvw::TimerHandle::Time{_config.interval_msec});
     _init = true;
     return true;
 }
 
 bool PingProbe::stop()
 {
-    _interval_timer->stop();
+    if (_interval_timer) {
+        _interval_timer->stop();
+    }
     _recv_connection.disconnect();
     _close_socket();
     return true;
 }
 
-void PingProbe::_get_addr()
+std::optional<ErrorType> PingProbe::_get_addr()
 {
     if (_ip_set) {
-        return;
+        return std::nullopt;
     }
 
     // don't need dns resolution
@@ -206,7 +210,7 @@ void PingProbe::_get_addr()
             _sa.sin_family = AF_INET;
             _sin_length = sizeof(_sa);
             _ip_set = true;
-            return;
+            return std::nullopt;
         } else {
             _is_ipv6 = true;
             auto ip_bytes = _ip.getIPv6().toBytes();
@@ -216,6 +220,7 @@ void PingProbe::_get_addr()
             _sa6.sin6_family = AF_INET6;
             _sin_length = sizeof(_sa6);
             _ip_set = true;
+            return std::nullopt;
         }
     }
 
@@ -223,7 +228,7 @@ void PingProbe::_get_addr()
     auto request = _io_loop->resource<uvw::GetAddrInfoReq>();
     auto response = request->nodeAddrInfoSync(_dns);
     if (!response.first) {
-        return;
+        return ErrorType::DnsLookupFailure;
     }
 
     auto addr = response.second.get();
@@ -232,7 +237,7 @@ void PingProbe::_get_addr()
             memcpy(&_sa, reinterpret_cast<sockaddr_in *>(addr->ai_addr), sizeof(struct sockaddr_in));
             _sin_length = sizeof(_sa);
             _sa.sin_family = AF_INET;
-            return;
+            return std::nullopt;
         } else if (addr->ai_family == AF_INET6) {
             memcpy(&_sa6, reinterpret_cast<sockaddr_in6 *>(addr->ai_addr), sizeof(struct sockaddr_in6));
             _sin_length = sizeof(_sa6);
@@ -240,8 +245,7 @@ void PingProbe::_get_addr()
         }
         addr = addr->ai_next;
     }
-
-    return;
+    return ErrorType::InvalidIp;
 }
 
 std::optional<ErrorType> PingProbe::_create_socket()

@@ -8,6 +8,7 @@ corrade_add_static_plugin(VisorInputNetProbe
         NetProbeInputModulePlugin.cpp
         NetProbeInputStream.cpp
         PingProbe.cpp
+        TcpProbe.cpp
         )
 add_library(Visor::Input::NetProbe ALIAS VisorInputNetProbe)
 
