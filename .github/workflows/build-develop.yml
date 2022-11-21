@@ -163,7 +163,7 @@ jobs:
         shell: pwsh
         id: build
         run: | 
-          echo "VERSION=`cat "${{github.workspace}}\build\VERSION"`" >> $GITHUB_ENV
+          echo "VERSION=`cat ${{github.workspace}}\build\VERSION`" >> $GITHUB_ENV
 
       - name: Build
         working-directory: ${{github.workspace}}\build
