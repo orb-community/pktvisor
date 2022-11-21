@@ -464,6 +464,7 @@ void NetworkMetricsBucket::process_dnstap(bool deep, const dnstap::Dnstap &paylo
         case dnstap::DOH:
         case dnstap::DNSCryptUDP:
         case dnstap::DNSCryptTCP:
+        case dnstap::DOQ:
             break;
         }
     }
