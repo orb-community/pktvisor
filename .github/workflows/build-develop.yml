@@ -164,7 +164,6 @@ jobs:
         id: build
         run: | 
           echo "VERSION=`cat "${{github.workspace}}\build\VERSION"`" >> $GITHUB_ENV
-          #echo "::set-output name=version::$(cat "${{github.workspace}}\build\VERSION")"
 
       - name: Build
         working-directory: ${{github.workspace}}\build
