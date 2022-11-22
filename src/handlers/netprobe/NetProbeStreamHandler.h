@@ -15,8 +15,8 @@
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 #pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
 #endif
+#include "TcpLayerInternal.h"
 #include <IcmpLayer.h>
-#include <TcpLayer.h>
 #ifdef __GNUC__
 #pragma GCC diagnostic pop
 #endif
