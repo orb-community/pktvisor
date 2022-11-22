@@ -10,6 +10,10 @@ std::ostream &operator<<(std::ostream &os, const IpPort &p)
 
 std::string IpPort::get_service() const
 {
+    // dynamic range
+    if (port >= BEGIN_DYNAMIC_PORT && port <= END_DYNAMIC_PORT) {
+        return std::string("dynamic-client");
+    }
 #ifdef _WIN32
     return std::to_string(port);
 #elif defined(__APPLE__) || defined(__linux__)

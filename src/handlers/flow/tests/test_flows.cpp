@@ -46,6 +46,7 @@ TEST_CASE("Parse sflow stream", "[sflow][flow]")
 #else
     CHECK(j["devices"]["192.168.0.13"]["interfaces"]["52"]["top_in_dst_ports_bytes"][0]["name"] == "5001");
 #endif
+    CHECK(j["devices"]["192.168.0.13"]["interfaces"]["52"]["top_in_src_ports_bytes"][0]["name"] == "dynamic-client");
     CHECK(j["devices"]["192.168.0.13"]["interfaces"]["52"]["top_in_src_ips_and_port_bytes"][0]["estimate"] == 26838240000);
     CHECK(j["devices"]["192.168.0.13"]["interfaces"]["52"]["top_in_src_ips_and_port_bytes"][0]["name"] == "10.4.1.2:57420");
 }
