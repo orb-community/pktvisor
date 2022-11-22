@@ -78,8 +78,9 @@ void NetProbeStreamHandler::probe_signal_recv(pcpp::Packet &payload, TestType ty
     }
 }
 
-void NetProbeStreamHandler::probe_signal_fail([[maybe_unused]] ErrorType error, [[maybe_unused]] TestType type, [[maybe_unused]] const std::string &name)
+void NetProbeStreamHandler::probe_signal_fail(ErrorType error, [[maybe_unused]] TestType type, const std::string &name)
 {
+    _metrics->process_failure(error, name);
 }
 
 void NetProbeMetricsBucket::specialized_merge(const AbstractMetricsBucket &o, Metric::Aggregate agg_operator)
@@ -99,6 +100,7 @@ void NetProbeMetricsBucket::specialized_merge(const AbstractMetricsBucket &o, Me
         if (group_enabled(group::NetProbeMetrics::Counters)) {
             _targets_metrics[targetId]->attempts += target.second->attempts;
             _targets_metrics[targetId]->successes += target.second->successes;
+            _targets_metrics[targetId]->dns_failures += target.second->dns_failures;
         }
         if (group_enabled(group::NetProbeMetrics::Histograms)) {
             _targets_metrics[targetId]->h_time_us.merge(target.second->h_time_us);
@@ -121,6 +123,7 @@ void NetProbeMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelM
         if (group_enabled(group::NetProbeMetrics::Counters)) {
             target.second->attempts.to_prometheus(out, target_labels);
             target.second->successes.to_prometheus(out, target_labels);
+            target.second->dns_failures.to_prometheus(out, target_labels);
         }
 
         bool h_max_min{true};
@@ -173,6 +176,7 @@ void NetProbeMetricsBucket::to_json(json &j) const
         if (group_enabled(group::NetProbeMetrics::Counters)) {
             target.second->attempts.to_json(j["targets"][targetId]);
             target.second->successes.to_json(j["targets"][targetId]);
+            target.second->dns_failures.to_json(j["targets"][targetId]);
         }
 
         bool h_max_min{true};
@@ -218,13 +222,32 @@ void NetProbeMetricsBucket::process_filtered()
 {
 }
 
+void NetProbeMetricsBucket::process_failure(ErrorType error, const std::string &target)
+{
+    if (!_targets_metrics.count(target)) {
+        _targets_metrics[target] = std::make_unique<Target>();
+    }
+    if (group_enabled(group::NetProbeMetrics::Counters)) {
+        switch (error) {
+        case ErrorType::DnsLookupFailure:
+            ++_targets_metrics[target]->dns_failures;
+            break;
+        case ErrorType::Timeout:
+        case ErrorType::SocketError:
+        case ErrorType::InvalidIp:
+        default:
+            break;
+        }
+    }
+}
+
 bool NetProbeStreamHandler::_filtering([[maybe_unused]] pcpp::Packet *payload)
 {
     // no filters yet
     return false;
 }
 
-void NetProbeMetricsBucket::process_netprobe_icmp([[maybe_unused]] bool deep, [[maybe_unused]] pcpp::IcmpLayer *layer, const std::string &target)
+void NetProbeMetricsBucket::process_netprobe_attempts([[maybe_unused]] bool deep, const std::string &target)
 {
     if (!_targets_metrics.count(target)) {
         _targets_metrics[target] = std::make_unique<Target>();
@@ -234,7 +257,7 @@ void NetProbeMetricsBucket::process_netprobe_icmp([[maybe_unused]] bool deep, [[
     }
 }
 
-void NetProbeMetricsBucket::new_icmp_transaction([[maybe_unused]] bool deep, NetProbeTransaction xact)
+void NetProbeMetricsBucket::new_icmp_transaction(bool deep, NetProbeTransaction xact)
 {
     std::unique_lock lock(_mutex);
 
@@ -244,9 +267,25 @@ void NetProbeMetricsBucket::new_icmp_transaction([[maybe_unused]] bool deep, Net
     if (group_enabled(group::NetProbeMetrics::Counters)) {
         ++_targets_metrics[xact.target]->successes;
     }
+
+    if (!deep) {
+        return;
+    }
+
     const uint64_t time_nsec = xact.totalTS.tv_sec * 1000000000ULL + xact.totalTS.tv_nsec;
     group_enabled(group::NetProbeMetrics::Histograms) ? _targets_metrics[xact.target]->h_time_us.update(time_nsec / 1000) : void();
     group_enabled(group::NetProbeMetrics::Quantiles) ? _targets_metrics[xact.target]->q_time_us.update(time_nsec / 1000) : void();
+}
+
+void NetProbeMetricsManager::process_failure(ErrorType error, const std::string &target)
+{
+    timespec stamp;
+    // use now()
+    std::timespec_get(&stamp, TIME_UTC);
+    // base event
+    new_event(stamp);
+
+    live_bucket()->process_failure(error, target);
 }
 
 void NetProbeMetricsManager::process_netprobe_icmp(pcpp::IcmpLayer *layer, const std::string &target, timespec stamp)
@@ -258,7 +297,7 @@ void NetProbeMetricsManager::process_netprobe_icmp(pcpp::IcmpLayer *layer, const
         if (auto request = layer->getEchoRequestData(); request != nullptr) {
             _request_reply_manager.start_transaction((static_cast<uint32_t>(request->header->id) << 16) | request->header->sequence, {{stamp, {0, 0}}, target});
         }
-        live_bucket()->process_netprobe_icmp(_deep_sampling_now, layer, target);
+        live_bucket()->process_netprobe_attempts(_deep_sampling_now, target);
     } else if (layer->getMessageType() == pcpp::ICMP_ECHO_REPLY) {
         if (auto reply = layer->getEchoReplyData(); reply != nullptr) {
             auto xact = _request_reply_manager.maybe_end_transaction((static_cast<uint32_t>(reply->header->id) << 16) | reply->header->sequence, stamp);
