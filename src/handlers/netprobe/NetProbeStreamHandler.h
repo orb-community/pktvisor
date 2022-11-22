@@ -16,6 +16,7 @@
 #pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
 #endif
 #include <IcmpLayer.h>
+#include <TcpLayer.h>
 #ifdef __GNUC__
 #pragma GCC diagnostic pop
 #endif
@@ -88,8 +89,8 @@ public:
 
     void process_filtered();
     void process_failure(ErrorType error, const std::string &target);
-    void process_netprobe_attempts(bool deep, const std::string &target);
-    void new_icmp_transaction(bool deep, NetProbeTransaction xact);
+    void process_attempts(bool deep, const std::string &target);
+    void new_transaction(bool deep, NetProbeTransaction xact);
 };
 
 class NetProbeMetricsManager final : public visor::AbstractMetricsManager<NetProbeMetricsBucket>
@@ -111,6 +112,7 @@ public:
     void process_filtered(timespec stamp);
     void process_failure(ErrorType error, const std::string &target);
     void process_netprobe_icmp(pcpp::IcmpLayer *layer, const std::string &target, timespec stamp);
+    void process_netprobe_tcp(uint32_t port, bool send, const std::string &target, timespec stamp);
 };
 
 class NetProbeStreamHandler final : public visor::StreamMetricsHandler<NetProbeMetricsManager>

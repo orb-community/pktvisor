@@ -1,6 +1,16 @@
 #include "TcpProbe.h"
 
 #include "NetProbeException.h"
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
+#pragma GCC diagnostic ignored "-Wold-style-cast"
+#pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
+#endif
+#include "TcpLayer.h"
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
 
 namespace visor::input::netprobe {
 bool TcpProbe::start(std::shared_ptr<uvw::Loop> io_loop)
@@ -11,6 +21,7 @@ bool TcpProbe::start(std::shared_ptr<uvw::Loop> io_loop)
 
     if (_dns.empty()) {
         _ip_str = _ip.toString();
+        _is_ipv4 = _ip.isIPv4();
     }
 
     _io_loop = io_loop;
@@ -35,7 +46,9 @@ bool TcpProbe::start(std::shared_ptr<uvw::Loop> io_loop)
         });
 
         if (!_dns.empty()) {
-            _ip_str = _resolve_dns();
+            auto [ip, ipv4] = _resolve_dns();
+            _ip_str = ip;
+            _is_ipv4 = ipv4;
             if (_ip_str.empty()) {
                 _fail(ErrorType::DnsLookupFailure, TestType::Ping, _name);
                 return;
@@ -62,27 +75,37 @@ bool TcpProbe::start(std::shared_ptr<uvw::Loop> io_loop)
 
 void TcpProbe::_perform_tcp_process()
 {
+    uint16_t port = 0;
     _client = _io_loop->resource<uvw::TCPHandle>();
-    _client->on<uvw::ErrorEvent>([](const auto &, auto &) {
-        // send error to Handler
+    _client->on<uvw::ErrorEvent>([this](const auto &, auto &) {
+        _fail(ErrorType::ConnectionFailure, TestType::Ping, _name);
     });
-    _client->once<uvw::CloseEvent>([this](const uvw::CloseEvent &, uvw::TCPHandle &) {
+    _client->once<uvw::CloseEvent>([this, &port](const uvw::CloseEvent &, uvw::TCPHandle &) {
         timespec stamp;
         std::timespec_get(&stamp, TIME_UTC);
         pcpp::Packet packet;
+        auto layer = pcpp::TcpLayer(static_cast<uint16_t>(_port), port);
+        packet.addLayer(&layer);
         _recv(packet, TestType::TCP, _name, stamp);
     });
     _client->once<uvw::ShutdownEvent>([](const uvw::ShutdownEvent &, uvw::TCPHandle &handle) {
         handle.close();
     });
-    _client->once<uvw::ConnectEvent>([this](const uvw::ConnectEvent &, uvw::TCPHandle &handle) {
+    _client->once<uvw::ConnectEvent>([this, &port](const uvw::ConnectEvent &, uvw::TCPHandle &handle) {
         timespec stamp;
         std::timespec_get(&stamp, TIME_UTC);
+        port = static_cast<uint16_t>(handle.sock().port);
         pcpp::Packet packet;
+        auto layer = pcpp::TcpLayer(port, static_cast<uint16_t>(_port));
+        packet.addLayer(&layer);
         _send(packet, TestType::TCP, _name, stamp);
         handle.shutdown();
     });
-    _client->connect(_ip_str, _port);
+    if (_is_ipv4) {
+        _client->connect<uvw::TCPHandle::IPv4>(_ip_str, _port);
+    } else {
+        _client->connect<uvw::TCPHandle::IPv6>(_ip_str, _port);
+    }
 }
 
 bool TcpProbe::stop()

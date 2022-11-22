@@ -23,7 +23,8 @@ enum class ErrorType {
     Timeout,
     SocketError,
     DnsLookupFailure,
-    InvalidIp
+    InvalidIp,
+    ConnectionFailure
 };
 
 enum class TestType {
@@ -59,12 +60,12 @@ protected:
     SendCallback _send;
     FailCallback _fail;
 
-    std::string _resolve_dns(bool first_match = true, bool ipv4 = false)
+    std::pair<std::string, bool> _resolve_dns(bool first_match = true, bool ipv4 = false)
     {
         auto request = _io_loop->resource<uvw::GetAddrInfoReq>();
         auto response = request->nodeAddrInfoSync(_dns);
         if (!response.first) {
-            return std::string();
+            return {std::string(), false};
         }
 
         auto addr = response.second.get();
@@ -72,15 +73,15 @@ protected:
             if (addr->ai_family == AF_INET && (first_match || ipv4)) {
                 char buffer[INET_ADDRSTRLEN];
                 inet_ntop(AF_INET, &reinterpret_cast<struct sockaddr_in *>(addr->ai_addr)->sin_addr, buffer, INET_ADDRSTRLEN);
-                return buffer;
+                return {buffer, true};
             } else if (addr->ai_family == AF_INET6 && (first_match || !ipv4)) {
                 char buffer[INET6_ADDRSTRLEN];
-                inet_ntop(AF_INET, &reinterpret_cast<struct sockaddr_in6 *>(addr->ai_addr)->sin6_addr, buffer, INET6_ADDRSTRLEN);
-                return buffer;
+                inet_ntop(AF_INET6, &reinterpret_cast<struct sockaddr_in6 *>(addr->ai_addr)->sin6_addr, buffer, INET6_ADDRSTRLEN);
+                return {buffer, false};
             }
             addr = addr->ai_next;
         }
-        return std::string();
+        return {std::string(), false};
     }
 
 public:

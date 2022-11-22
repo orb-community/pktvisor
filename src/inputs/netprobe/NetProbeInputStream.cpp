@@ -106,7 +106,7 @@ void NetProbeInputStream::start()
             if (!config->config_exists("port") && _type == TestType::TCP) {
                 throw NetProbeException(fmt::format("'{}' does not have key 'target' which is required", key));
             } else if (config->config_exists("port")) {
-                port = static_cast<uint32_t>(config->config_get<uint64_t>("target"));
+                port = static_cast<uint32_t>(config->config_get<uint64_t>("port"));
             }
             auto target = config->config_get<std::string>("target");
             auto ip = pcpp::IPAddress(target);
@@ -216,7 +216,7 @@ void NetProbeInputStream::_create_netprobe_loop()
         if (_type == TestType::Ping) {
             probe = std::make_unique<PingProbe>(_id, dns.first, pcpp::IPAddress(), dns.second.first);
         } else if (_type == TestType::TCP) {
-            probe = std::make_unique<TcpProbe>(_id, dns.first, dns.second.first, std::string(), dns.second.second);
+            probe = std::make_unique<TcpProbe>(_id, dns.first, pcpp::IPAddress(), dns.second.first, dns.second.second);
         } else {
             throw NetProbeException(fmt::format("Test type currently not supported"));
         }

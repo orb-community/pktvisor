@@ -22,6 +22,7 @@ class TcpProbe final : public NetProbe
 {
     uint32_t _port;
     bool _init{false};
+    bool _is_ipv4{false};
     std::string _ip_str;
     std::shared_ptr<uvw::TimerHandle> _interval_timer;
     std::shared_ptr<uvw::TimerHandle> _internal_timer;
