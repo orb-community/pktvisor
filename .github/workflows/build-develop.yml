@@ -162,14 +162,15 @@ jobs:
       - name: Get VERSION
         shell: pwsh
         id: build
-        run: | 
-          echo "VERSION=`cat ${{github.workspace}}\build\VERSION`" >> $GITHUB_ENV
+        run: |
+          $text = Get-Content ${{github.workspace}}\build\VERSION -Raw 
+          echo "VERSION=$text" >> $env:GITHUB_ENV
 
-      - name: Build
-        working-directory: ${{github.workspace}}\build
-        shell: bash
-        # Execute the build.  You can specify a specific target with "--target <NAME>"
-        run: cmake --build . --config $BUILD_TYPE -- -m
+      #- name: Build
+      #  working-directory: ${{github.workspace}}\build
+      #  shell: bash
+      #  # Execute the build.  You can specify a specific target with "--target <NAME>"
+      #  run: cmake --build . --config $BUILD_TYPE -- -m
       
       # TODO: Fix unit tests for windows platform
       #- name: Test
