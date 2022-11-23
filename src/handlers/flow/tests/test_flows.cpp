@@ -62,7 +62,11 @@ TEST_CASE("Parse sflow with enrichment", "[sflow][flow]")
     c.config_set<uint64_t>("num_periods", 1);
     FlowStreamHandler flow_handler{"flow-test", stream_proxy, &c};
     flow_handler.config_set<visor::Configurable::StringList>("device_map", {"route1,192.168.0.11,eth0,37,provide Y", "route2,192.168.0.12,eth3,4"});
-    flow_handler.config_set<visor::Configurable::StringList>("only_interfaces", {"37", "4", "52"});
+    auto devices = std::make_shared<visor::Configurable>();
+    devices->config_set<visor::Configurable::StringList>("192.168.0.11", {"37", "4", "52"});
+    devices->config_set<visor::Configurable::StringList>("192.168.0.12", {"37", "4", "52"});
+    devices->config_set<visor::Configurable::StringList>("192.168.0.13", {"37", "4", "52"});
+    flow_handler.config_set<std::shared_ptr<visor::Configurable>>("only_device_interfaces", devices);
     flow_handler.config_set<visor::Configurable::StringList>("enable", visor::Configurable::StringList({"top_interfaces"}));
 
     flow_handler.start();
@@ -174,7 +178,9 @@ TEST_CASE("Parse sflow stream with device filter", "[sflow][flow]")
     auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
     FlowStreamHandler flow_handler{"flow-test", stream_proxy, &c};
-    flow_handler.config_set<visor::Configurable::StringList>("only_devices", {"192.168.0.11"});
+    auto devices = std::make_shared<visor::Configurable>();
+    devices->config_set<visor::Configurable::StringList>("192.168.0.11", {"*"});
+    flow_handler.config_set<std::shared_ptr<visor::Configurable>>("only_device_interfaces", devices);
 
     flow_handler.start();
     stream.start();
@@ -258,7 +264,9 @@ TEST_CASE("Parse sflow stream with interfaces filter", "[sflow][flow]")
     auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
     FlowStreamHandler flow_handler{"flow-test", stream_proxy, &c};
-    flow_handler.config_set<visor::Configurable::StringList>("only_interfaces", {"4", "35-37"});
+    auto devices = std::make_shared<visor::Configurable>();
+    devices->config_set<visor::Configurable::StringList>("192.168.0.11", {"37", "4", "35-37"});
+    flow_handler.config_set<std::shared_ptr<visor::Configurable>>("only_device_interfaces", devices);
 
     flow_handler.start();
     stream.start();
@@ -332,5 +340,5 @@ TEST_CASE("Flow invalid config", "[flow][filter][config]")
     c.config_set<uint64_t>("num_periods", 1);
     FlowStreamHandler flow_handler{"flow-test", stream_proxy, &c};
     flow_handler.config_set<bool>("invalid_config", true);
-    REQUIRE_THROWS_WITH(flow_handler.start(), "invalid_config is an invalid/unsupported config or filter. The valid configs/filters are: device_map, enrichment, only_ips, only_devices, only_ports, only_interfaces, geoloc_notfound, asn_notfound, sample_rate_scaling, recorded_stream, deep_sample_rate, num_periods, topn_count, topn_percentile_threshold");
+    REQUIRE_THROWS_WITH(flow_handler.start(), "invalid_config is an invalid/unsupported config or filter. The valid configs/filters are: device_map, enrichment, only_device_interfaces, only_ips, only_ports, geoloc_notfound, asn_notfound, sample_rate_scaling, recorded_stream, deep_sample_rate, num_periods, topn_count, topn_percentile_threshold");
 }

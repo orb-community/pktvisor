@@ -110,19 +110,23 @@ void FlowStreamHandler::start()
         _f_enabled.set(Filters::OnlyIps);
     }
 
-    if (config_exists("only_devices")) {
-        _parse_devices_ips(config_get<StringList>("only_devices"));
-        _f_enabled.set(Filters::OnlyDevices);
+    if (config_exists("only_device_interfaces")) {
+        auto devices = config_get<std::shared_ptr<Configurable>>("only_device_interfaces");
+        for (const auto &device : devices->get_all_keys()) {
+            if (auto ipv4 = pcpp::IPv4Address(device); ipv4.isValid()) {
+                _device_interfaces_list[device] = _parse_interfaces(devices->config_get<StringList>(device));
+            } else if (auto ipv6 = pcpp::IPv6Address(device); ipv6.isValid()) {
+                _device_interfaces_list[device] = _parse_interfaces(devices->config_get<StringList>(device));
+            } else {
+                throw StreamHandlerException(fmt::format("invalid device IP: {}", device));
+            }
+        }
+        _f_enabled.set(Filters::OnlyDeviceInterfaces);
     }
 
     if (config_exists("only_ports")) {
-        _parse_ports_or_interfaces(config_get<StringList>("only_ports"), ParserType::Port);
+        _parse_ports(config_get<StringList>("only_ports"));
         _f_enabled.set(Filters::OnlyPorts);
-    }
-
-    if (config_exists("only_interfaces")) {
-        _parse_ports_or_interfaces(config_get<StringList>("only_interfaces"), ParserType::Interface);
-        _f_enabled.set(Filters::OnlyInterfaces);
     }
 
     if (config_exists("geoloc_notfound") && config_get<bool>("geoloc_notfound")) {
@@ -191,16 +195,16 @@ void FlowStreamHandler::process_sflow_cb(const SFSample &payload, [[maybe_unused
 
     FlowPacket packet(agentId, stamp);
 
-    if (_f_enabled[Filters::OnlyDevices]) {
-        if (auto ipv4 = pcpp::IPv4Address(packet.device_id); ipv4.isValid() && std::none_of(_IPv4_devices_list.begin(), _IPv4_devices_list.end(), [ipv4](const auto &item) {
-                return ipv4 == item;
+    if (_f_enabled[Filters::OnlyDeviceInterfaces]) {
+        if (auto ipv4 = pcpp::IPv4Address(packet.device_id); ipv4.isValid() && std::none_of(_device_interfaces_list.begin(), _device_interfaces_list.end(), [packet](const auto &item) {
+                return packet.device_id == item.first;
             })) {
-            _metrics->process_filtered(stamp, payload.elements.size(), ipv4.toString());
+            _metrics->process_filtered(stamp, payload.elements.size(), packet.device_id);
             return;
-        } else if (auto ipv6 = pcpp::IPv6Address(packet.device_id); ipv6.isValid() && std::none_of(_IPv6_devices_list.begin(), _IPv6_devices_list.end(), [ipv6](const auto &item) {
-                       return ipv6 == item;
+        } else if (auto ipv6 = pcpp::IPv6Address(packet.device_id); ipv6.isValid() && std::none_of(_device_interfaces_list.begin(), _device_interfaces_list.end(), [packet](const auto &item) {
+                       return packet.device_id == item.first;
                    })) {
-            _metrics->process_filtered(stamp, payload.elements.size(), ipv6.toString());
+            _metrics->process_filtered(stamp, payload.elements.size(), packet.device_id);
             return;
         }
     }
@@ -257,7 +261,7 @@ void FlowStreamHandler::process_sflow_cb(const SFSample &payload, [[maybe_unused
             flow.ipv6_out = pcpp::IPv6Address(sample.ipdst.address.ip_v6.addr);
         }
 
-        if (!_filtering(flow)) {
+        if (!_filtering(flow, packet.device_id)) {
             packet.flow_data.push_back(flow);
         } else {
             ++packet.filtered;
@@ -278,16 +282,16 @@ void FlowStreamHandler::process_netflow_cb(const std::string &senderIP, const NF
     }
     FlowPacket packet(senderIP, stamp);
 
-    if (_f_enabled[Filters::OnlyDevices]) {
-        if (auto ipv4 = pcpp::IPv4Address(packet.device_id); ipv4.isValid() && std::none_of(_IPv4_devices_list.begin(), _IPv4_devices_list.end(), [ipv4](const auto &item) {
-                return ipv4 == item;
+    if (_f_enabled[Filters::OnlyDeviceInterfaces]) {
+        if (auto ipv4 = pcpp::IPv4Address(packet.device_id); ipv4.isValid() && std::none_of(_device_interfaces_list.begin(), _device_interfaces_list.end(), [packet](const auto &item) {
+                return packet.device_id == item.first;
             })) {
-            _metrics->process_filtered(stamp, payload.flows.size(), ipv4.toString());
+            _metrics->process_filtered(stamp, payload.flows.size(), packet.device_id);
             return;
-        } else if (auto ipv6 = pcpp::IPv6Address(packet.device_id); ipv6.isValid() && std::none_of(_IPv6_devices_list.begin(), _IPv6_devices_list.end(), [ipv6](const auto &item) {
-                       return ipv6 == item;
+        } else if (auto ipv6 = pcpp::IPv6Address(packet.device_id); ipv6.isValid() && std::none_of(_device_interfaces_list.begin(), _device_interfaces_list.end(), [packet](const auto &item) {
+                       return packet.device_id == item.first;
                    })) {
-            _metrics->process_filtered(stamp, payload.flows.size(), ipv6.toString());
+            _metrics->process_filtered(stamp, payload.flows.size(), packet.device_id);
             return;
         }
     }
@@ -324,7 +328,7 @@ void FlowStreamHandler::process_netflow_cb(const std::string &senderIP, const NF
             flow.ipv4_out = pcpp::IPv4Address(sample.dst_ip);
         }
 
-        if (!_filtering(flow)) {
+        if (!_filtering(flow, packet.device_id)) {
             packet.flow_data.push_back(flow);
         } else {
             ++packet.filtered;
@@ -334,7 +338,7 @@ void FlowStreamHandler::process_netflow_cb(const std::string &senderIP, const NF
     _metrics->process_flow(packet);
 }
 
-bool FlowStreamHandler::_filtering(FlowData &flow)
+bool FlowStreamHandler::_filtering(FlowData &flow, const std::string &device_id)
 {
     if (_f_enabled[Filters::OnlyIps]) {
         if (flow.is_ipv6 && !_match_subnet(0, flow.ipv6_in.toBytes()) && !_match_subnet(0, flow.ipv6_out.toBytes())) {
@@ -343,18 +347,24 @@ bool FlowStreamHandler::_filtering(FlowData &flow)
             return true;
         }
     }
-    if (_f_enabled[Filters::OnlyPorts] && !_match_parser(flow.src_port, ParserType::Port)
-        && !_match_parser(flow.dst_port, ParserType::Port)) {
+
+    if (_f_enabled[Filters::OnlyPorts] && std::none_of(_parsed_port_list.begin(), _parsed_port_list.end(), [flow](auto pair) {
+            return (flow.src_port >= pair.first && flow.src_port <= pair.second) || (flow.dst_port >= pair.first && flow.dst_port <= pair.second);
+        })) {
         return true;
     }
-    if (_f_enabled[Filters::OnlyInterfaces]) {
+    if (_f_enabled[Filters::OnlyDeviceInterfaces]) {
         static constexpr uint8_t DEF_NO_MATCH = 2;
         uint8_t no_match{0};
-        if (!_match_parser(flow.if_in_index.value(), ParserType::Interface)) {
+        if (std::none_of(_device_interfaces_list[device_id].begin(), _device_interfaces_list[device_id].end(), [flow](auto pair) {
+                return (flow.if_in_index >= pair.first && flow.if_in_index <= pair.second);
+            })) {
             flow.if_in_index.reset();
             ++no_match;
         }
-        if (!_match_parser(flow.if_out_index.value(), ParserType::Interface)) {
+        if (std::none_of(_device_interfaces_list[device_id].begin(), _device_interfaces_list[device_id].end(), [flow](auto pair) {
+                return (flow.if_out_index >= pair.first && flow.if_out_index <= pair.second);
+            })) {
             flow.if_out_index.reset();
             ++no_match;
         }
@@ -396,50 +406,63 @@ bool FlowStreamHandler::_filtering(FlowData &flow)
     return false;
 }
 
-void FlowStreamHandler::_parse_ports_or_interfaces(const std::vector<std::string> &port_interface_list, ParserType type)
+void FlowStreamHandler::_parse_ports(const std::vector<std::string> &port_list)
 {
-    for (const auto &port_or_interface : port_interface_list) {
+    for (const auto &port : port_list) {
         try {
-            auto delimiter = port_or_interface.find('-');
-            if (delimiter != port_or_interface.npos) {
-                auto first_value = std::stoul(port_or_interface.substr(0, delimiter));
-                auto last_value = std::stoul(port_or_interface.substr(delimiter + 1));
+            auto delimiter = port.find('-');
+            if (delimiter != port.npos) {
+                auto first_value = std::stoul(port.substr(0, delimiter));
+                auto last_value = std::stoul(port.substr(delimiter + 1));
                 if (first_value > last_value) {
-                    _parsed_list[type].push_back(std::make_pair(last_value, first_value));
+                    _parsed_port_list.push_back(std::make_pair(last_value, first_value));
                 } else {
-                    _parsed_list[type].push_back(std::make_pair(first_value, last_value));
+                    _parsed_port_list.push_back(std::make_pair(first_value, last_value));
                 }
             } else {
-                if (!std::all_of(port_or_interface.begin(), port_or_interface.end(), ::isdigit)) {
+                if (!std::all_of(port.begin(), port.end(), ::isdigit)) {
                     throw StreamHandlerException("is not a digit");
                 };
-                auto value = std::stoul(port_or_interface);
-                _parsed_list[type].push_back(std::make_pair(value, value));
+                auto value = std::stoul(port);
+                _parsed_port_list.push_back(std::make_pair(value, value));
             }
         } catch ([[maybe_unused]] const std::exception &e) {
-            throw StreamHandlerException(fmt::format("FlowHandler: invalid '{}' filter value: {}", _parser_types_string.at(type), port_or_interface));
+            throw StreamHandlerException(fmt::format("FlowHandler: invalid 'only_ports' filter value: {}", port));
         }
     }
 }
 
-inline bool FlowStreamHandler::_match_parser(uint32_t value, ParserType type)
+std::vector<std::pair<uint32_t, uint32_t>> FlowStreamHandler::_parse_interfaces(const std::vector<std::string> &interface_list)
 {
-    return std::any_of(_parsed_list[type].begin(), _parsed_list[type].end(), [value](auto pair) {
-        return (value >= pair.first && value <= pair.second);
-    });
-}
-
-void FlowStreamHandler::_parse_devices_ips(const std::vector<std::string> &device_list)
-{
-    for (const auto &device : device_list) {
-        if (auto ipv4 = pcpp::IPv4Address(device); ipv4.isValid()) {
-            _IPv4_devices_list.push_back(ipv4);
-        } else if (auto ipv6 = pcpp::IPv6Address(device); ipv6.isValid()) {
-            _IPv6_devices_list.push_back(ipv6);
-        } else {
-            throw StreamHandlerException(fmt::format("invalid device IP: {}", device));
+    std::vector<std::pair<uint32_t, uint32_t>> result;
+    for (const auto &interface : interface_list) {
+        try {
+            if (interface == "*") {
+                // accepts all interfaces
+                result = {{std::numeric_limits<uint32_t>::min(), std::numeric_limits<uint32_t>::max()}};
+                return result;
+            }
+            auto delimiter = interface.find('-');
+            if (delimiter != interface.npos) {
+                auto first_value = std::stoul(interface.substr(0, delimiter));
+                auto last_value = std::stoul(interface.substr(delimiter + 1));
+                if (first_value > last_value) {
+                    result.push_back(std::make_pair(last_value, first_value));
+                } else {
+                    result.push_back(std::make_pair(first_value, last_value));
+                }
+            } else {
+                if (!std::all_of(interface.begin(), interface.end(), ::isdigit)) {
+                    throw StreamHandlerException("is not a digit");
+                };
+                auto value = std::stoul(interface);
+                result.push_back(std::make_pair(value, value));
+            }
+        } catch ([[maybe_unused]] const std::exception &e) {
+            throw StreamHandlerException(fmt::format("FlowHandler: invalid 'only_device_interfaces' filter interface value: {}", interface));
         }
     }
+    return result;
 }
 
 void FlowStreamHandler::_parse_host_specs(const std::vector<std::string> &host_list)

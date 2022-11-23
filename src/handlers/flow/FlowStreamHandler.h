@@ -317,26 +317,15 @@ class FlowStreamHandler final : public visor::StreamMetricsHandler<FlowMetricsMa
     std::vector<Ipv4Subnet> _IPv4_ips_list;
     std::vector<Ipv6Subnet> _IPv6_ips_list;
 
-    std::vector<pcpp::IPv4Address> _IPv4_devices_list;
-    std::vector<pcpp::IPv6Address> _IPv6_devices_list;
-
-    enum class ParserType {
-        Port,
-        Interface,
-    };
-    std::map<ParserType, std::vector<std::pair<uint32_t, uint32_t>>> _parsed_list;
-    static const inline std::map<ParserType, std::string> _parser_types_string = {
-        {ParserType::Port, "only_ports"},
-        {ParserType::Interface, "only_interfaces"},
-    };
+    std::map<std::string, std::vector<std::pair<uint32_t, uint32_t>>> _device_interfaces_list;
+    std::vector<std::pair<uint32_t, uint32_t>> _parsed_port_list;
 
     bool _sample_rate_scaling;
 
     enum Filters {
         OnlyIps,
-        OnlyDevices,
+        OnlyDeviceInterfaces,
         OnlyPorts,
-        OnlyInterfaces,
         GeoLocNotFound,
         AsnNotFound,
         FiltersMAX
@@ -346,10 +335,9 @@ class FlowStreamHandler final : public visor::StreamMetricsHandler<FlowMetricsMa
     static const inline StreamMetricsHandler::ConfigsDefType _config_defs = {
         "device_map",
         "enrichment",
+        "only_device_interfaces",
         "only_ips",
-        "only_devices",
         "only_ports",
-        "only_interfaces",
         "geoloc_notfound",
         "asn_notfound",
         "sample_rate_scaling",
@@ -372,12 +360,11 @@ class FlowStreamHandler final : public visor::StreamMetricsHandler<FlowMetricsMa
     void set_start_tstamp(timespec stamp);
     void set_end_tstamp(timespec stamp);
 
-    void _parse_ports_or_interfaces(const std::vector<std::string> &port_interface_list, ParserType type);
-    bool _match_parser(uint32_t value, ParserType type);
+    void _parse_ports(const std::vector<std::string> &port_list);
+    std::vector<std::pair<uint32_t, uint32_t>> _parse_interfaces(const std::vector<std::string> &interface_list);
     void _parse_host_specs(const std::vector<std::string> &host_list);
-    void _parse_devices_ips(const std::vector<std::string> &device_list);
     bool _match_subnet(uint32_t ipv4 = 0, const uint8_t *ipv6 = nullptr);
-    bool _filtering(FlowData &flow);
+    bool _filtering(FlowData &flow, const std::string &device_id);
 
 public:
     FlowStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config);
