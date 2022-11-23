@@ -31,13 +31,14 @@ bool TcpProbe::start(std::shared_ptr<uvw::Loop> io_loop)
     }
 
     _interval_timer->on<uvw::TimerEvent>([this](const auto &, auto &) {
-        auto packets = _config.packets_per_test;
+        _internal_sequence = 0;
         _timeout_timer = _io_loop->resource<uvw::TimerHandle>();
         if (!_timeout_timer) {
             throw NetProbeException("Netprobe - unable to initialize timeout TimerHandle");
         }
 
         _timeout_timer->on<uvw::TimerEvent>([this](const auto &, auto &) {
+            _internal_sequence = _config.packets_per_test;
             _fail(ErrorType::Timeout, TestType::Ping, _name);
             if (_internal_timer) {
                 _internal_timer->stop();
@@ -56,8 +57,9 @@ bool TcpProbe::start(std::shared_ptr<uvw::Loop> io_loop)
         }
 
         _internal_timer = _io_loop->resource<uvw::TimerHandle>();
-        _internal_timer->on<uvw::TimerEvent>([this, &packets](const auto &, auto &) {
-            if (--packets) {
+        _internal_timer->on<uvw::TimerEvent>([this](const auto &, auto &) {
+            if (_internal_sequence < _config.packets_per_test) {
+                _internal_sequence++;
                 _timeout_timer->stop();
                 _timeout_timer->start(uvw::TimerHandle::Time{_config.timeout_msec}, uvw::TimerHandle::Time{0});
                 _perform_tcp_process();
@@ -65,6 +67,7 @@ bool TcpProbe::start(std::shared_ptr<uvw::Loop> io_loop)
         });
         _timeout_timer->start(uvw::TimerHandle::Time{_config.timeout_msec}, uvw::TimerHandle::Time{0});
         _perform_tcp_process();
+        _internal_sequence++;
         _internal_timer->start(uvw::TimerHandle::Time{_config.packets_interval_msec}, uvw::TimerHandle::Time{_config.packets_interval_msec});
     });
 
@@ -75,28 +78,27 @@ bool TcpProbe::start(std::shared_ptr<uvw::Loop> io_loop)
 
 void TcpProbe::_perform_tcp_process()
 {
-    uint16_t port = 0;
     _client = _io_loop->resource<uvw::TCPHandle>();
     _client->on<uvw::ErrorEvent>([this](const auto &, auto &) {
         _fail(ErrorType::ConnectionFailure, TestType::Ping, _name);
     });
-    _client->once<uvw::CloseEvent>([this, &port](const uvw::CloseEvent &, uvw::TCPHandle &) {
+    _client->once<uvw::CloseEvent>([this](const uvw::CloseEvent &, uvw::TCPHandle &) {
         timespec stamp;
         std::timespec_get(&stamp, TIME_UTC);
         pcpp::Packet packet;
-        auto layer = pcpp::TcpLayer(static_cast<uint16_t>(_port), port);
+        auto layer = pcpp::TcpLayer(static_cast<uint16_t>(_port), _client_port);
         packet.addLayer(&layer);
         _recv(packet, TestType::TCP, _name, stamp);
     });
     _client->once<uvw::ShutdownEvent>([](const uvw::ShutdownEvent &, uvw::TCPHandle &handle) {
         handle.close();
     });
-    _client->once<uvw::ConnectEvent>([this, &port](const uvw::ConnectEvent &, uvw::TCPHandle &handle) {
+    _client->once<uvw::ConnectEvent>([this](const uvw::ConnectEvent &, uvw::TCPHandle &handle) {
         timespec stamp;
         std::timespec_get(&stamp, TIME_UTC);
-        port = static_cast<uint16_t>(handle.sock().port);
+        _client_port = static_cast<uint16_t>(handle.sock().port);
         pcpp::Packet packet;
-        auto layer = pcpp::TcpLayer(port, static_cast<uint16_t>(_port));
+        auto layer = pcpp::TcpLayer(_client_port, static_cast<uint16_t>(_port));
         packet.addLayer(&layer);
         _send(packet, TestType::TCP, _name, stamp);
         handle.shutdown();

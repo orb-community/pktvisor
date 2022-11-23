@@ -21,8 +21,10 @@ namespace visor::input::netprobe {
 class TcpProbe final : public NetProbe
 {
     uint32_t _port;
+    uint16_t _client_port;
     bool _init{false};
     bool _is_ipv4{false};
+    uint16_t _internal_sequence{0};
     std::string _ip_str;
     std::shared_ptr<uvw::TimerHandle> _interval_timer;
     std::shared_ptr<uvw::TimerHandle> _internal_timer;
@@ -35,7 +37,8 @@ class TcpProbe final : public NetProbe
 public:
     TcpProbe(uint16_t id, const std::string &name, const pcpp::IPAddress &ip, const std::string &dns, uint32_t port)
         : NetProbe(id, name, ip, dns)
-        , _port(port){};
+        , _port(port)
+        , _client_port(0){};
     ~TcpProbe() = default;
     bool start(std::shared_ptr<uvw::Loop> io_loop) override;
     bool stop() override;
