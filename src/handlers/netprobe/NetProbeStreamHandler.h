@@ -15,6 +15,7 @@
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 #pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
 #endif
+#include "TcpLayerInternal.h"
 #include <IcmpLayer.h>
 #ifdef __GNUC__
 #pragma GCC diagnostic pop
@@ -48,6 +49,7 @@ struct Target {
     Counter successes;
     Counter minimum;
     Counter maximum;
+    Counter dns_failures;
 
     Target()
         : q_time_us(NET_PROBE_SCHEMA, {"response_quantiles_us"}, "Net Probe quantile in microseconds")
@@ -56,6 +58,7 @@ struct Target {
         , successes(NET_PROBE_SCHEMA, {"successes"}, "Total Net Probe successes")
         , minimum(NET_PROBE_SCHEMA, {"response_min_us"}, "Minimum response time measured in the reporting interval")
         , maximum(NET_PROBE_SCHEMA, {"response_max_us"}, "Maximum response time measured in the reporting interval")
+        , dns_failures(NET_PROBE_SCHEMA, {"dns_lookup_failures"}, "Total Net Probe failures when performed DNS lookup")
     {
     }
 };
@@ -85,8 +88,9 @@ public:
     }
 
     void process_filtered();
-    void process_netprobe_icmp(bool deep, pcpp::IcmpLayer *layer, const std::string &target);
-    void new_icmp_transaction(bool deep, NetProbeTransaction xact);
+    void process_failure(ErrorType error, const std::string &target);
+    void process_attempts(bool deep, const std::string &target);
+    void new_transaction(bool deep, NetProbeTransaction xact);
 };
 
 class NetProbeMetricsManager final : public visor::AbstractMetricsManager<NetProbeMetricsBucket>
@@ -106,7 +110,9 @@ public:
     }
 
     void process_filtered(timespec stamp);
+    void process_failure(ErrorType error, const std::string &target);
     void process_netprobe_icmp(pcpp::IcmpLayer *layer, const std::string &target, timespec stamp);
+    void process_netprobe_tcp(uint32_t port, bool send, const std::string &target, timespec stamp);
 };
 
 class NetProbeStreamHandler final : public visor::StreamMetricsHandler<NetProbeMetricsManager>

@@ -19,6 +19,7 @@ namespace visor::input::netprobe {
 
 class NetProbeInputStream : public visor::InputStream
 {
+    static const inline uint64_t MAX_PAYLOAD_SIZE = 65500;
     static uint16_t _id;
     TestType _type{TestType::Ping};
     uint64_t _interval_msec{5000};
@@ -26,8 +27,8 @@ class NetProbeInputStream : public visor::InputStream
     uint64_t _packets_per_test{1};
     uint64_t _packets_interval_msec{25};
     uint64_t _packet_payload_size{48};
-    std::map<std::string, pcpp::IPAddress> _ip_list;
-    std::map<std::string, std::string> _dns_list;
+    std::map<std::string, std::pair<pcpp::IPAddress, uint32_t>> _ip_list;
+    std::map<std::string, std::pair<std::string, uint32_t>> _dns_list;
     std::shared_ptr<spdlog::logger> _logger;
 
     std::unique_ptr<std::thread> _io_thread;
