@@ -183,13 +183,13 @@ jobs:
       - name: Login to ns1labs conan
         shell: pwsh
         run: |
-          $env:CONAN_USER_HOME=${{github.workspace}}\build\conan_home
+          $env:CONAN_USER_HOME = "${{github.workspace}}\build\conan_home"
           conan user -p ${{ secrets.CONAN_LABS_PASSWORD }} -r ns1labs ${{ secrets.CONAN_LABS_USERNAME }}
 
       - name: Cache conan packages
         shell: pwsh
         run: |
-          $env:CONAN_USER_HOME=${{github.workspace}}\build\conan_home
+          $env:CONAN_USER_HOME = "${{github.workspace}}\build\conan_home"
           conan upload "*" --all -r ns1labs -c
 
   package-amd64:
