@@ -61,7 +61,30 @@ TEST_CASE("Parse sflow with enrichment", "[sflow][flow]")
     auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
     FlowStreamHandler flow_handler{"flow-test", stream_proxy, &c};
-    flow_handler.config_set<visor::Configurable::StringList>("device_map", {"route1,192.168.0.11,eth0,37,provide Y", "route2,192.168.0.12,eth3,4"});
+    auto device_map = std::make_shared<visor::Configurable>();
+
+    auto device = std::make_shared<visor::Configurable>();
+    device->config_set("name", "route1");
+    device->config_set("description", "cisco");
+    auto interface = std::make_shared<visor::Configurable>();
+    interface->config_set("name", "eth0");
+    interface->config_set("description", "provide Y");
+    auto interfaces_map = std::make_shared<visor::Configurable>();
+    interfaces_map->config_set<std::shared_ptr<visor::Configurable>>("37", interface);
+    device->config_set<std::shared_ptr<visor::Configurable>>("interfaces", interfaces_map);
+    device_map->config_set<std::shared_ptr<visor::Configurable>>("192.168.0.11", device);
+
+    device = std::make_shared<visor::Configurable>();
+    device->config_set("name", "route2");
+    interface = std::make_shared<visor::Configurable>();
+    interface->config_set("name", "eth3");
+    interfaces_map = std::make_shared<visor::Configurable>();
+    interfaces_map->config_set<std::shared_ptr<visor::Configurable>>("4", interface);
+    device->config_set<std::shared_ptr<visor::Configurable>>("interfaces", interfaces_map);
+    device_map->config_set<std::shared_ptr<visor::Configurable>>("192.168.0.12", device);
+    
+    flow_handler.config_set<std::shared_ptr<visor::Configurable>>("device_map", device_map);
+
     auto devices = std::make_shared<visor::Configurable>();
     devices->config_set<visor::Configurable::StringList>("192.168.0.11", {"37", "4", "52"});
     devices->config_set<visor::Configurable::StringList>("192.168.0.12", {"37", "4", "52"});

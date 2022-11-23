@@ -25,13 +25,6 @@ static void split(const std::string &s, char delim, Out result)
     }
 }
 
-static std::vector<std::string> split(const std::string &s, char delim)
-{
-    std::vector<std::string> elems;
-    split(s, delim, std::back_inserter(elems));
-    return elems;
-}
-
 FlowStreamHandler::FlowStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config)
     : visor::StreamMetricsHandler<FlowMetricsManager>(name, window_config)
     , _sample_rate_scaling(true)
@@ -72,31 +65,37 @@ void FlowStreamHandler::start()
 
     EnrichMap enrich_data;
     if (config_exists("device_map")) {
-        for (const auto &device_info : config_get<StringList>("device_map")) {
-            std::vector<std::string> data = split(device_info, ',');
-            if (data.size() < 2) {
-                // should at least contain device name and ip
-                continue;
+        auto devices = config_get<std::shared_ptr<Configurable>>("device_map");
+        for (const auto &device : devices->get_all_keys()) {
+            if (!pcpp::IPv4Address(device).isValid() && !pcpp::IPv6Address(device).isValid()) {
+                throw StreamHandlerException(fmt::format("FlowHandler: 'device_map' config has an invalid device IP: {}", device));
             }
-            DeviceEnrich *device{nullptr};
-            if (auto it = enrich_data.find(data[1]); it != enrich_data.end()) {
-                device = &it->second;
-            } else {
-                enrich_data[data[1]] = DeviceEnrich{data[0], {}};
-                device = &enrich_data[data[1]];
+            DeviceEnrich enrich_device;
+            auto device_map = devices->config_get<std::shared_ptr<Configurable>>(device);
+            if (!device_map->config_exists("name")) {
+                throw StreamHandlerException(fmt::format("FlowHandler: 'device_map' config with device IP {} does not have 'name' key", device));
             }
-            if (data.size() < 4) {
-                // should have interface information
-                continue;
+            enrich_device.name = device_map->config_get<std::string>("name");
+            if (device_map->config_exists("description")) {
+                enrich_device.descr = device_map->config_get<std::string>("description");
             }
-            auto if_index = static_cast<uint32_t>(std::stol(data[3]));
-            if (auto it = device->interfaces.find(if_index); it == device->interfaces.end()) {
-                if (data.size() > 4) {
-                    device->interfaces[if_index] = InterfaceEnrich{data[2], data[4]};
+            if (!device_map->config_exists("interfaces")) {
+                throw StreamHandlerException(fmt::format("FlowHandler: 'device_map' config with device IP {} does not have 'interfaces' key", device));
+            }
+            auto interfaces = device_map->config_get<std::shared_ptr<Configurable>>("interfaces");
+            for (auto const &interface : interfaces->get_all_keys()) {
+                auto if_index = static_cast<uint32_t>(std::stol(interface));
+                auto interface_map = interfaces->config_get<std::shared_ptr<Configurable>>(interface);
+                if (!interface_map->config_exists("name")) {
+                    throw StreamHandlerException(fmt::format("FlowHandler: 'device_map' config with device IP {} does not have 'name' key", device));
+                }
+                if (interface_map->config_exists("description")) {
+                    enrich_device.interfaces[if_index] = {interface_map->config_get<std::string>("name"), interface_map->config_get<std::string>("description")};
                 } else {
-                    device->interfaces[if_index] = InterfaceEnrich{data[2], std::string()};
+                    enrich_device.interfaces[if_index] = {interface_map->config_get<std::string>("name"), std::string()};
                 }
             }
+            enrich_data[device] = enrich_device;
         }
     }
 
@@ -113,12 +112,12 @@ void FlowStreamHandler::start()
     if (config_exists("only_device_interfaces")) {
         auto devices = config_get<std::shared_ptr<Configurable>>("only_device_interfaces");
         for (const auto &device : devices->get_all_keys()) {
-            if (auto ipv4 = pcpp::IPv4Address(device); ipv4.isValid()) {
+            if (pcpp::IPv4Address(device).isValid()) {
                 _device_interfaces_list[device] = _parse_interfaces(devices->config_get<StringList>(device));
-            } else if (auto ipv6 = pcpp::IPv6Address(device); ipv6.isValid()) {
+            } else if (pcpp::IPv6Address(device).isValid()) {
                 _device_interfaces_list[device] = _parse_interfaces(devices->config_get<StringList>(device));
             } else {
-                throw StreamHandlerException(fmt::format("invalid device IP: {}", device));
+                throw StreamHandlerException(fmt::format("FlowHandler: 'only_device_interfaces' filter has an invalid device IP: {}", device));
             }
         }
         _f_enabled.set(Filters::OnlyDeviceInterfaces);

@@ -53,6 +53,7 @@ struct InterfaceEnrich {
 
 struct DeviceEnrich {
     std::string name;
+    std::string descr;
     std::unordered_map<uint32_t, InterfaceEnrich> interfaces;
 };
 
