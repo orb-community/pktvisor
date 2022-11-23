@@ -104,7 +104,7 @@ void NetProbeInputStream::start()
             }
             uint32_t port{0};
             if (!config->config_exists("port") && _type == TestType::TCP) {
-                throw NetProbeException(fmt::format("'{}' does not have key 'target' which is required", key));
+                throw NetProbeException(fmt::format("'{}' does not have key 'port' which is required", key));
             } else if (config->config_exists("port")) {
                 port = static_cast<uint32_t>(config->config_get<uint64_t>("port"));
             }
