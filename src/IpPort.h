@@ -4,13 +4,19 @@
 
 #pragma once
 
-#ifdef _WIN32
-#elif defined(__APPLE__) || defined(__linux__)
-#include <netdb.h>
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
 #endif
+#include <csv.h>
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
+#include <map>
 #include <nlohmann/json.hpp>
 #include <ostream>
 #include <string>
+#include <variant>
 
 namespace visor::network {
 
@@ -19,14 +25,24 @@ enum Protocol : uint16_t {
     UDP = 2
 };
 
+struct PortData {
+    std::string name;
+    uint16_t lower_bound;
+};
+
 struct IpPort {
     static inline const uint16_t BEGIN_DYNAMIC_PORT = 49152;
     static inline const uint16_t END_DYNAMIC_PORT = 65535;
+    static std::map<const uint16_t, PortData> ports_tcp_list;
+    static std::map<const uint16_t, PortData> ports_udp_list;
+
     uint16_t port{0};
     Protocol proto{0};
     NLOHMANN_DEFINE_TYPE_INTRUSIVE(IpPort, port);
 
     std::string get_service() const;
+
+    static void set_csv_iana_ports(std::string path);
 
     bool operator==(const IpPort &other) const
     {
