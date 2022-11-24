@@ -56,12 +56,12 @@ std::string IpPort::get_service() const
     }
     std::map<const uint16_t, PortData>::iterator it;
     if (proto == Protocol::TCP) {
-        it = ports_tcp_list.find(port);
+        it = ports_tcp_list.lower_bound(port);
         if (it == ports_tcp_list.end()) {
             return std::to_string(port);
         }
     } else if (proto == Protocol::UDP) {
-        it = ports_udp_list.find(port);
+        it = ports_udp_list.lower_bound(port);
         if (it == ports_udp_list.end()) {
             return std::to_string(port);
         }

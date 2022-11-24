@@ -55,6 +55,7 @@ add_executable(unit-tests-vizor-core
         tests/test_sketches.cpp
         tests/test_metrics.cpp
         tests/test_geoip.cpp
+        tests/test_ipport.cpp
         tests/test_taps.cpp
         tests/test_policies.cpp
         )
