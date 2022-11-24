@@ -20,6 +20,8 @@ enum Protocol : uint16_t {
 };
 
 struct IpPort {
+    static inline const uint16_t BEGIN_DYNAMIC_PORT = 49152;
+    static inline const uint16_t END_DYNAMIC_PORT = 65535;
     uint16_t port{0};
     Protocol proto{0};
     NLOHMANN_DEFINE_TYPE_INTRUSIVE(IpPort, port);
