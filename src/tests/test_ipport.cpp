@@ -11,9 +11,9 @@ TEST_CASE("IpPort", "[ipport]")
         IpPort::ports_tcp_list.clear();
         IpPort::ports_udp_list.clear();
         CHECK_NOTHROW(IpPort::set_csv_iana_ports("tests/fixtures/service-names-port-numbers.csv"));
-        IpPort test_tcp{53,Protocol::TCP};
+        IpPort test_tcp{53, Protocol::TCP};
         CHECK(test_tcp.get_service() == "domain");
-        IpPort test_udp{53,Protocol::UDP};
+        IpPort test_udp{53, Protocol::UDP};
         CHECK(test_udp.get_service() == "domain");
     }
 
@@ -22,11 +22,11 @@ TEST_CASE("IpPort", "[ipport]")
         IpPort::ports_tcp_list.clear();
         IpPort::ports_udp_list.clear();
         CHECK_NOTHROW(IpPort::set_csv_iana_ports("tests/fixtures/iana_mock_ports.csv"));
-        IpPort test_tcp{53,Protocol::TCP};
+        IpPort test_tcp{53, Protocol::TCP};
         CHECK(test_tcp.get_service() == "dns");
-        IpPort test_tcp_range{110,Protocol::TCP};
+        IpPort test_tcp_range{110, Protocol::TCP};
         CHECK(test_tcp_range.get_service() == "test");
-        IpPort test_udp_range{125,Protocol::UDP};
+        IpPort test_udp_range{125, Protocol::UDP};
         CHECK(test_udp_range.get_service() == "test");
     }
 }
