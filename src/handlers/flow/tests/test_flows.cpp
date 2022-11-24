@@ -2,7 +2,6 @@
 
 #include "FlowInputStream.h"
 #include "FlowStreamHandler.h"
-#include "GeoDB.h"
 #include "IpPort.h"
 
 using namespace visor::handler::flow;
