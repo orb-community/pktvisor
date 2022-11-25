@@ -73,6 +73,8 @@ public:
         _check_names();
     }
 
+    virtual ~Metric() = default;
+
     void set_info(std::string schema_key, std::initializer_list<std::string> names, const std::string &desc)
     {
         _name.clear();
