@@ -637,17 +637,17 @@ public:
 
     ~Rate()
     {
-        _timer_handle->cancel();
+        cancel();
     }
 
     /**
      * stop rate collection, ie. expect no more counter updates.
      * does not affect the quantiles - in effect, it makes the rate read only
-     * must be thread safe
      */
     void cancel()
     {
         _timer_handle->cancel();
+        std::unique_lock w_lock(_sketch_mutex);
         _rate.store(0, std::memory_order_relaxed);
         _counter.store(0, std::memory_order_relaxed);
     }

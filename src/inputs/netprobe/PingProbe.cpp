@@ -18,13 +18,6 @@ PingReceiver::PingReceiver()
 PingReceiver::~PingReceiver()
 {
     _poll->close();
-#ifdef _WIN32
-    closesocket(_sock);
-#else
-    close(_sock);
-#endif
-    _sock = INVALID_SOCKET;
-
     if (_async_h && _io_thread) {
         // we have to use AsyncHandle to stop the loop from the same thread the loop is running in
         _async_h->send();
@@ -33,6 +26,12 @@ PingReceiver::~PingReceiver()
             _io_thread->join();
         }
     }
+#ifdef _WIN32
+    closesocket(_sock);
+#else
+    close(_sock);
+#endif
+    _sock = INVALID_SOCKET;
 }
 
 void PingReceiver::_setup_receiver()

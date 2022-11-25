@@ -455,9 +455,7 @@ public:
         std::unique_lock wl(_base_mutex);
         std::shared_lock rl(_bucket_mutex);
         _groups = groups;
-        for (const auto &bucket : _metric_buckets) {
-            bucket->configure_groups(groups);
-        }
+        _metric_buckets.front()->configure_groups(groups);
     }
 
     void check_period_shift(timespec stamp)
