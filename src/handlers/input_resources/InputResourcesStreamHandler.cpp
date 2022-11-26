@@ -197,12 +197,12 @@ void InputResourcesMetricsBucket::process_policies(int16_t policy_count, int16_t
 {
     std::unique_lock lock(_mutex);
 
-    if (policy_count < 0 && std::abs(policy_count) > _policy_count.value()) {
+    if (policy_count < 0 && static_cast<uint64_t>(std::abs(policy_count)) > _policy_count.value()) {
         _policy_count.clear();
     } else {
         _policy_count += policy_count;
     }
-    if (handler_count < 0 && std::abs(handler_count) > _handler_count.value()) {
+    if (handler_count < 0 && static_cast<uint64_t>(std::abs(handler_count)) > _handler_count.value()) {
         _handler_count.clear();
     } else {
         _handler_count += handler_count;
