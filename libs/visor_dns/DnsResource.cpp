@@ -187,7 +187,8 @@ void IDnsResource::encodeName(const std::string &decodedName, char *result, size
 
 DnsType IDnsResource::getDnsType() const
 {
-    uint16_t dnsType = *(uint16_t *)(getRawData() + m_NameLength);
+    uint16_t dnsType{0};
+    memcpy(&dnsType, (getRawData() + m_NameLength), sizeof(dnsType));
     return (DnsType)be16toh(dnsType);
 }
 
@@ -306,7 +307,8 @@ void DnsResource::setTTL(uint32_t newTTL)
 
 size_t DnsResource::getDataLength() const
 {
-    uint16_t dataLength = *(uint16_t *)(getRawData() + m_NameLength + 2 * sizeof(uint16_t) + sizeof(uint32_t));
+    uint16_t dataLength{0};
+    memcpy(&dataLength, (getRawData() + m_NameLength + 2 * sizeof(uint16_t) + sizeof(uint32_t)), sizeof(dataLength));
     return be16toh(dataLength);
 }
 
