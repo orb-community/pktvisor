@@ -210,7 +210,8 @@ struct SFSample {
 
 inline static uint32_t getData32_nobswap(SFSample *sample)
 {
-    uint32_t ans = *(sample->datap)++;
+    uint32_t ans{0};
+    memcpy(&ans, sample->datap++, sizeof(uint32_t));
     if (reinterpret_cast<uint8_t *>(sample->datap) > sample->endp) {
         throw std::out_of_range("reading out of datagram range");
     }
@@ -571,7 +572,7 @@ static void decodeIPV6(SFSample *sample)
         ptr += 2;
 
         if (label && payloadLen) {
-            //validation
+            // validation
         }
         /* next header */
         nextHeader = *ptr++;

@@ -49,7 +49,7 @@ private:
 
 public:
     Configurable() = default;
-    ~Configurable() = default;
+    virtual ~Configurable() = default;
 
     Configurable(const Configurable &other)
     {
