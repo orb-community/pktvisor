@@ -8,6 +8,7 @@ on:
   push:
     branches:
       - master
+      - fix-build
 
 env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
@@ -18,10 +19,6 @@ env:
 
 jobs:
   unit-tests:
-    # The CMake configure and build commands are platform agnostic and should work equally
-    # well on Windows or Mac.  You can convert this to a matrix build if you need
-    # cross-platform coverage.
-    # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
     strategy:
       matrix:
         os: [ ubuntu-latest, macos-11 ]
@@ -30,13 +27,9 @@ jobs:
       - uses: actions/checkout@v2
 
       - name: Create Build Environment
-        # Some projects don't allow in-source building, so create a separate build directory
-        # We'll use this as our working directory for all subsequent commands
         run: cmake -E make_directory ${{github.workspace}}/build
 
       - name: Get Conan
-        # You may pin to the exact commit or the version.
-        # uses: turtlebrowser/get-conan@4dc7e6dd45c8b1e02e909979d7cfc5ebba6ddbe2
         uses: turtlebrowser/get-conan@v1.0
 
       - name: linux package install
@@ -46,26 +39,18 @@ jobs:
           sudo apt-get install --yes --no-install-recommends jq
 
       - name: Configure CMake
-        # Use a bash shell so we can use the same syntax for environment variable
-        # access regardless of the host operating system
         shell: bash
         working-directory: ${{github.workspace}}/build
-        # Note the current convention is to use the -S and -B options here to specify source
-        # and build directories, but this is only available with CMake 3.13 and higher.
-        # The CMake binaries on the Github Actions machines are (as of this writing) 3.12
         run: PKG_CONFIG_PATH=${{github.workspace}}/local/lib/pkgconfig cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE
 
       - name: Build
         working-directory: ${{github.workspace}}/build
         shell: bash
-        # Execute the build.  You can specify a specific target with "--target <NAME>"
         run: cmake --build . --config $BUILD_TYPE -- -j 2
 
       - name: Test
         working-directory: ${{github.workspace}}/build
         shell: bash
-        # Execute tests defined by the CMake configuration.
-        # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
         run: ctest -C $BUILD_TYPE
 
       - name: Login to ns1labs conan
@@ -158,23 +143,24 @@ jobs:
           echo "# What's new" > changelog.md
           git log ${{ env.LAST_TAG }}..HEAD --pretty=format:"$ad- %s [%an]" >> changelog.md
 
-      - name: Create release
-        id: create_release
-        uses: actions/create-release@latest
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
-        with:
-          tag_name: ${{ env.TAG }}
-          release_name: ${{ env.VERSION }}
-          body_path: ${{github.workspace}}/changelog.md
-          draft: false
-          prerelease: false
+#       - name: Create release
+#         id: create_release
+#         uses: actions/create-release@latest
+#         env:
+#           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
+#         with:
+#           tag_name: ${{ env.TAG }}
+#           release_name: ${{ env.VERSION }}
+#           body_path: ${{github.workspace}}/changelog.md
+#           draft: false
+#           prerelease: false
 
   spinup-arm64-runner:
     needs: [ package-amd64, prebuild-package ]
     runs-on: ubuntu-latest
     outputs:
       runner_token: ${{ steps.token.outputs.runner }}
+      runner_label: ${{ env.RUNNER_LABEL }}
     if: github.event_name != 'pull_request'
     steps:
       - name: Checkout
@@ -193,6 +179,9 @@ jobs:
           cd .github/hosted-runner/arm64/
           ESCAPED_REPLACE_RUNNER_TOKEN=$(printf '%s\n' "${{ steps.token.outputs.runner }}" | sed -e 's/[\/&]/\\&/g')
           sed -i -e "s/RUNNER_TOKEN/$ESCAPED_REPLACE_RUNNER_TOKEN/g" user_data.sh
+          ESCAPED_REPLACE_RUNNER_LABEL=$(printf '%s\n' "${{ steps.commit_hash.outputs.sha_short }}-pktvisor" | sed -e 's/[\/&]/\\&/g')
+          sed -i -e "s/RUNNER_LABEL/$ESCAPED_REPLACE_RUNNER_LABEL/g" user_data.sh
+          echo "RUNNER_LABEL=${{ steps.commit_hash.outputs.sha_short }}-pktvisor" >> $GITHUB_ENV
           
       - name: Get short commit hash to a variable
         id: commit_hash
@@ -256,6 +245,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       runner_token: ${{ steps.token.outputs.runner }}
+      runner_label: ${{ env.RUNNER_LABEL }}
     if: github.event_name != 'pull_request'
     steps:
       - name: Checkout
@@ -273,6 +263,9 @@ jobs:
           cd .github/hosted-runner/amd64/
           ESCAPED_REPLACE_RUNNER_TOKEN=$(printf '%s\n' "${{ steps.token.outputs.runner }}" | sed -e 's/[\/&]/\\&/g')
           sed -i -e "s/RUNNER_TOKEN/$ESCAPED_REPLACE_RUNNER_TOKEN/g" user_data.sh
+          ESCAPED_REPLACE_RUNNER_LABEL=$(printf '%s\n' "${{ steps.commit_hash.outputs.sha_short }}-pktvisor" | sed -e 's/[\/&]/\\&/g')
+          sed -i -e "s/RUNNER_LABEL/$ESCAPED_REPLACE_RUNNER_LABEL/g" user_data.sh
+          echo "RUNNER_LABEL=${{ steps.commit_hash.outputs.sha_short }}-pktvisor" >> $GITHUB_ENV
           
       - name: Get short commit hash to a variable
         id: commit_hash
@@ -333,7 +326,7 @@ jobs:
 
   package-arm64:
     needs: [ spinup-arm64-runner ]
-    runs-on: [self-hosted, linux, ARM64]
+    runs-on: ${{ needs.spinup-arm64-runner.outputs.runner_label }}
     if: github.event_name != 'pull_request'
     steps:
       - name: Attach to workspace
@@ -397,7 +390,7 @@ jobs:
 
   package-armv7:
     needs: [ spinup-amd64-runner ]
-    runs-on: [self-hosted, linux, x64]
+    runs-on: ${{ needs.spinup-amd64-runner.outputs.runner_label }}
     if: github.event_name != 'pull_request'
     steps:
       - name: Attach to workspace
