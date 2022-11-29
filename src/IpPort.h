@@ -16,7 +16,6 @@
 #include <nlohmann/json.hpp>
 #include <ostream>
 #include <string>
-#include <variant>
 
 namespace visor::network {
 
