@@ -414,8 +414,6 @@ jobs:
           platforms: linux/arm64
           push: true
           tags: ${{ env.IMAGE_NAME }}:arm64
-          build-args: |
-            ghtoken=${{ secrets.GITHUB_TOKEN }}
 
   package-armv7:
     needs: [ spinup-arm32-runner ]
@@ -434,6 +432,7 @@ jobs:
           build_type: "Release"
           asan: "OFF"
           symbol_url: ${{secrets.SYMBOL_URL}}
+          setting: settings.arch=armv8_32
           file: "./Dockerfile"
 
       - name: Build pktvisor-cli
@@ -583,7 +582,7 @@ jobs:
 
       - name: Build + push - pktvisor (multi-arch)
         env:
-          IMAGE_NAME2: ghcr.io/ns1labs/pktvisor
+          IMAGE_NAME: ghcr.io/ns1labs/pktvisor
         uses: docker/build-push-action@v3
         with:
           builder: ${{ steps.buildx.outputs.name }}
