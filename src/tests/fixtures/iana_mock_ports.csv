@@ -1,0 +1,7 @@
+Service Name,Port Number,Transport Protocol,Description,Assignee,Contact,Registration Date,Modification Date,Reference,Service Code,Unauthorized Use Reported,Assignment Notes
+,0,tcp,Reserved,[Jon_Postel],[Jon_Postel],,,,,,
+,0,udp,Reserved,[Jon_Postel],[Jon_Postel],,,,,,
+dns,53,tcp,,,,,,,,,
+dns,53,udp,,,,,,,,,
+test,100-120,tcp,,,,,,,,,
+test,121-132,udp,,,,,,,,,

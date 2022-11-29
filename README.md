@@ -6,12 +6,12 @@
 
 <p align="left">
   <strong>
-    <a href="#what-is-pktvisor">Introduction<a/>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
-    <a href="#get-started">Get Started<a/>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
-    <a href="#docs">Docs<a/>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
-    <a href="#build">Build<a/>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
-    <a href="#contribute">Contribute<a/>&nbsp;&nbsp;&bull;&nbsp;&nbsp;    
-    <a href="#contact-us">Contact Us<a/>
+    <a href="#what-is-pktvisor">Introduction</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
+    <a href="#get-started">Get Started</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
+    <a href="#docs">Docs</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
+    <a href="#build">Build</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
+    <a href="#contribute">Contribute</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;    
+    <a href="#contact-us">Contact Us</a>
   </strong>
 </p>
 
@@ -193,56 +193,65 @@ or
     Taps and Collection Policies may be created by passing the appropriate YAML configuration file to
     --config, and/or by enabling the admin REST API with --admin-api and using the appropriate endpoints.
 
-    Alternatively, for simple use cases you may specify IFACE, which is either a network interface or an
-    IP address (4 or 6). If this is specified, "default" Tap and Collection Policies will be created with
+    Alternatively, for simple use cases you may specify IFACE, which is either a network interface, an
+    IP address (4 or 6), or "auto". If this is specified, "default" Tap and Collection Policies will be created with
     a "pcap" input stream on the specified interfaced, along with the built in "net", "dns", and "pcap"
-    Stream Handler modules attached. Note that this feature may be deprecated in the future.
+    Stream Handler modules attached. If "auto" is specified, the most used ethernet interface will be chosen.
+    Note that this feature may be deprecated in the future.
 
     For more documentation, see https://pktvisor.dev
 
     Base Options:
-      -d                          Daemonize; fork and continue running in the background [default: false]
-      -h --help                   Show this screen
-      -v                          Verbose log output
-      --no-track                  Don't send lightweight, anonymous usage metrics
-      --version                   Show version
+      -d                                    Daemonize; fork and continue running in the background [default: false]
+      -h --help                             Show this screen
+      -v                                    Verbose log output
+      --no-track                            Don't send lightweight, anonymous usage metrics
+      --version                             Show version
     Web Server Options:
-      -l HOST                     Run web server on the given host or IP [default: localhost]
-      -p PORT                     Run web server on the given port [default: 10853]
-      --tls                       Enable TLS on the web server
-      --tls-cert FILE             Use given TLS cert. Required if --tls is enabled.
-      --tls-key FILE              Use given TLS private key. Required if --tls is enabled.
-      --admin-api                 Enable admin REST API giving complete control plane functionality [default: false]
-                                  When not specified, the exposed API is read-only access to module status and metrics.
-                                  When specified, write access is enabled for all modules.
+      -l HOST                               Run web server on the given host or IP (default: localhost)
+      -p PORT                               Run web server on the given port (default: 10853)
+      --tls                                 Enable TLS on the web server
+      --tls-cert FILE                       Use given TLS cert. Required if --tls is enabled.
+      --tls-key FILE                        Use given TLS private key. Required if --tls is enabled.
+      --admin-api                           Enable admin REST API giving complete control plane functionality [default: false]
+                                            When not specified, the exposed API is read-only access to module status and metrics.
+                                            When specified, write access is enabled for all modules.
     Geo Options:
-      --geo-city FILE             GeoLite2 City database to use for IP to Geo mapping
-      --geo-asn FILE              GeoLite2 ASN database to use for IP to ASN mapping
-      --geo-cache-size N          GeoLite2 LRU cache size, 0 to disable. (default: 10000)
-      --default-geo-city FILE     Default GeoLite2 City database to be loaded if no other is specified
-      --default-geo-asn FILE      Default GeoLite2 ASN database to be loaded if no other is specified
+      --geo-city FILE                       GeoLite2 City database to use for IP to Geo mapping
+      --geo-asn FILE                        GeoLite2 ASN database to use for IP to ASN mapping
+      --geo-cache-size N                    GeoLite2 LRU cache size, 0 to disable. (default: 10000)
+      --default-geo-city FILE               Default GeoLite2 City database to be loaded if no other is specified
+      --default-geo-asn FILE                Default GeoLite2 ASN database to be loaded if no other is specified
     Configuration:
-      --config FILE               Use specified YAML configuration to configure options, Taps, and Collection Policies
-                                  Please see https://pktvisor.dev for more information
+      --config FILE                         Use specified YAML configuration to configure options, Taps, and Collection Policies
+                                            Please see https://pktvisor.dev for more information
+    Crashpad:
+      --cp-disable                          Disable crashpad collector
+      --cp-token TOKEN                      Crashpad token for remote crash reporting
+      --cp-url URL                          Crashpad server url
+      --cp-custom USERDEF                   Crashpad optional user defined field
+      --cp-path PATH                        Crashpad handler binary
     Modules:
-      --module-list               List all modules which have been loaded (builtin and dynamic).
-      --module-dir DIR            Set module load path. All modules in this directory will be loaded.
+      --module-list                         List all modules which have been loaded (builtin and dynamic).
+      --module-dir DIR                      Set module load path. All modules in this directory will be loaded.
     Logging Options:
-      --log-file FILE             Log to the given output file name
-      --syslog                    Log to syslog
+      --log-file FILE                       Log to the given output file name
+      --syslog                              Log to syslog
     Prometheus Options:
-      --prometheus                Ignored, Prometheus output always enabled (left for backwards compatibility)
-      --prom-instance ID          Optionally set the 'instance' label to given ID
+      --prometheus                          Ignored, Prometheus output always enabled (left for backwards compatibility)
+      --prom-instance ID                    Optionally set the 'instance' label to given ID
+    Metric Enrichment Options:
+      --iana-service-port-registry FILE     IANA Service Name and Transport Protocol Port Number Registry file in CSV format
     Handler Module Defaults:
-      --max-deep-sample N         Never deep sample more than N% of streams (an int between 0 and 100) [default: 100]
-      --periods P                 Hold this many 60 second time periods of history in memory [default: 5]
-    pcap Input Module Options: (applicable to default policy when IFACE is specified only)
-      -b BPF                      Filter packets using the given tcpdump compatible filter expression. Example: "port 53"
-      -H HOSTSPEC                 Specify subnets (comma separated) to consider HOST, in CIDR form. In live capture this
-                                  /may/ be detected automatically from capture device but /must/ be specified for pcaps.
-                                  Example: "10.0.1.0/24,10.0.2.1/32,2001:db8::/64"
-                                  Specifying this for live capture will append to any automatic detection.
-
+      --max-deep-sample N                   Never deep sample more than N% of streams (an int between 0 and 100) (default: 100)
+      --periods P                            Hold this many 60 second time periods of history in memory (default: 5)
+    pcap Input Module Options:              (applicable to default policy when IFACE is specified only)
+      -b BPF                                Filter packets using the given tcpdump compatible filter expression. Example: "port 53"
+      -H HOSTSPEC                           Specify subnets (comma separated) to consider HOST, in CIDR form. In live capture this
+                                            /may/ be detected automatically from capture device but /must/ be specified for pcaps.
+                                            Example: "10.0.1.0/24,10.0.2.1/32,2001:db8::/64"
+                                            Specifying this for live capture will append to any automatic detection.
+                                                          
 ```
 
 ### Using a Configuration File

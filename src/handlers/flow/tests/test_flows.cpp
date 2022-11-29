@@ -2,7 +2,7 @@
 
 #include "FlowInputStream.h"
 #include "FlowStreamHandler.h"
-#include "GeoDB.h"
+#include "IpPort.h"
 
 using namespace visor::handler::flow;
 
@@ -12,7 +12,7 @@ TEST_CASE("Parse sflow stream", "[sflow][flow]")
     FlowInputStream stream{"sflow-test"};
     stream.config_set("flow_type", "sflow");
     stream.config_set("pcap_file", "tests/fixtures/ecmp.pcap");
-
+    visor::network::IpPort::set_csv_iana_ports("tests/fixtures/service-names-port-numbers.csv");
     visor::Config c;
     auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
@@ -41,11 +41,7 @@ TEST_CASE("Parse sflow stream", "[sflow][flow]")
     CHECK(j["devices"]["192.168.0.13"]["interfaces"]["52"]["top_out_src_ips_packets"][0]["estimate"] == 5160000);
     CHECK(j["devices"]["192.168.0.13"]["interfaces"]["52"]["top_out_src_ips_packets"][0]["name"] == "10.4.4.2");
     CHECK(j["devices"]["192.168.0.13"]["interfaces"]["52"]["top_in_dst_ports_bytes"][0]["estimate"] == 170879120000);
-#if __APPLE__
     CHECK(j["devices"]["192.168.0.13"]["interfaces"]["52"]["top_in_dst_ports_bytes"][0]["name"] == "commplex-link");
-#else
-    CHECK(j["devices"]["192.168.0.13"]["interfaces"]["52"]["top_in_dst_ports_bytes"][0]["name"] == "5001");
-#endif
     CHECK(j["devices"]["192.168.0.13"]["interfaces"]["52"]["top_in_src_ports_bytes"][0]["name"] == "dynamic-client");
     CHECK(j["devices"]["192.168.0.13"]["interfaces"]["52"]["top_in_src_ips_and_port_bytes"][0]["estimate"] == 26838240000);
     CHECK(j["devices"]["192.168.0.13"]["interfaces"]["52"]["top_in_src_ips_and_port_bytes"][0]["name"] == "10.4.1.2:57420");

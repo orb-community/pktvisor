@@ -5,6 +5,7 @@ corrade/2020.06
 cpp-httplib/0.11.2
 docopt.cpp/0.6.3
 fmt/8.1.1
+fast-cpp-csv-parser/cci.20211104
 json-schema-validator/2.1.0
 libmaxminddb/1.7.1
 nlohmann_json/3.10.5

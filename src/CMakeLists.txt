@@ -36,6 +36,7 @@ target_link_libraries(visor-core
         ${CONAN_LIBS_CORRADE}
         ${CONAN_LIBS_SPDLOG}
         ${CONAN_LIBS_FMT}
+        ${CONAN_LIBS_FAST-CPP-CSV-PARSER}
         ${CONAN_LIBS_YAML-CPP}
         ${CONAN_LIBS_OPENSSL}
         ${VISOR_STATIC_PLUGINS}
@@ -54,6 +55,7 @@ add_executable(unit-tests-vizor-core
         tests/test_sketches.cpp
         tests/test_metrics.cpp
         tests/test_geoip.cpp
+        tests/test_ipport.cpp
         tests/test_taps.cpp
         tests/test_policies.cpp
         )
