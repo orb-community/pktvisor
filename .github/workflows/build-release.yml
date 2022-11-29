@@ -336,6 +336,24 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: workspace
+          
+      - name: Build pktvisord + push symbol to backtrace.io
+        uses: ./.github/actions/build-cpp
+        with:
+          context: "."
+          build_type: "Release"
+          asan: "OFF"
+          symbol_url: ${{secrets.SYMBOL_URL}}
+          file: "./Dockerfile"
+
+      - name: Build pktvisor-cli
+        uses: ./.github/actions/build-go
+        with:
+          context: "."
+          file: "./Dockerfile"
+          
+      - name: Debug artifacts
+        run: ls -lha .
 
       - name: Get branch name
         shell: bash
@@ -375,6 +393,16 @@ jobs:
         id: buildx
         uses: docker/setup-buildx-action@v2
 
+      - name: Replace token
+        run: |
+          sed -i -e "s/CP_TOKEN/${{ secrets.CRASHPAD_TOKEN }}/g" docker/run.sh
+
+      - name: Replace escape url
+        run: |
+          REPLACE=${{ secrets.CRASHPAD_URL }}
+          ESCAPED_REPLACE=$(printf '%s\n' "$REPLACE" | sed -e 's/[\/&]/\\&/g')
+          sed -i -e "s/CP_URL/$ESCAPED_REPLACE/g" docker/run.sh
+
       - name: Build + push - pktvisor (multi-arch)
         env:
           IMAGE_NAME: ghcr.io/ns1labs/pktvisor
@@ -382,12 +410,10 @@ jobs:
         with:
           builder: ${{ steps.buildx.outputs.name }}
           context: .
-          file: ./docker/Dockerfile
+          file: ./docker/Dockerfile.crashhandler
           platforms: linux/arm64
           push: true
           tags: ${{ env.IMAGE_NAME }}:arm64
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
           build-args: |
             ghtoken=${{ secrets.GITHUB_TOKEN }}
 
@@ -400,6 +426,24 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: workspace
+          
+      - name: Build pktvisord + push symbol to backtrace.io
+        uses: ./.github/actions/build-cpp
+        with:
+          context: "."
+          build_type: "Release"
+          asan: "OFF"
+          symbol_url: ${{secrets.SYMBOL_URL}}
+          file: "./Dockerfile"
+
+      - name: Build pktvisor-cli
+        uses: ./.github/actions/build-go
+        with:
+          context: "."
+          file: "./Dockerfile"
+          
+      - name: Debug artifacts
+        run: ls -lha .
 
       - name: Get branch name
         shell: bash
@@ -438,6 +482,16 @@ jobs:
       - name: Set up Docker Buildx
         id: buildx
         uses: docker/setup-buildx-action@v2
+        
+      - name: Replace token
+        run: |
+          sed -i -e "s/CP_TOKEN/${{ secrets.CRASHPAD_TOKEN }}/g" docker/run.sh
+
+      - name: Replace escape url
+        run: |
+          REPLACE=${{ secrets.CRASHPAD_URL }}
+          ESCAPED_REPLACE=$(printf '%s\n' "$REPLACE" | sed -e 's/[\/&]/\\&/g')
+          sed -i -e "s/CP_URL/$ESCAPED_REPLACE/g" docker/run.sh
 
       - name: Build + push - pktvisor (multi-arch)
         env:
@@ -446,12 +500,10 @@ jobs:
         with:
           builder: ${{ steps.buildx.outputs.name }}
           context: .
-          file: ./docker/Dockerfile
+          file: ./docker/Dockerfile.crashhandler
           platforms: linux/arm/v7
           push: true
           tags: ${{ env.IMAGE_NAME }}:armv7
-          build-args: |
-            ghtoken=${{ secrets.GITHUB_TOKEN }}
 
   package-amd64:
     needs: [ prebuild-package ]
@@ -462,6 +514,24 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: workspace
+          
+      - name: Build pktvisord + push symbol to backtrace.io
+        uses: ./.github/actions/build-cpp
+        with:
+          context: "."
+          build_type: "Release"
+          asan: "OFF"
+          symbol_url: ${{secrets.SYMBOL_URL}}
+          file: "./Dockerfile"
+
+      - name: Build pktvisor-cli
+        uses: ./.github/actions/build-go
+        with:
+          context: "."
+          file: "./Dockerfile"
+
+      - name: Debug artifacts
+        run: ls -lha .
 
       - name: Get branch name
         shell: bash
@@ -497,22 +567,31 @@ jobs:
       - name: Set up Docker Buildx
         id: buildx
         uses: docker/setup-buildx-action@v2
+        
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+        
+      - name: Replace token
+        run: |
+          sed -i -e "s/CP_TOKEN/${{ secrets.CRASHPAD_TOKEN }}/g" docker/run.sh
+
+      - name: Replace escape url
+        run: |
+          REPLACE=${{ secrets.CRASHPAD_URL }}
+          ESCAPED_REPLACE=$(printf '%s\n' "$REPLACE" | sed -e 's/[\/&]/\\&/g')
+          sed -i -e "s/CP_URL/$ESCAPED_REPLACE/g" docker/run.sh
 
       - name: Build + push - pktvisor (multi-arch)
         env:
-          IMAGE_NAME: ghcr.io/ns1labs/pktvisor
+          IMAGE_NAME2: ghcr.io/ns1labs/pktvisor
         uses: docker/build-push-action@v3
         with:
           builder: ${{ steps.buildx.outputs.name }}
           context: .
-          file: ./docker/Dockerfile
+          file: ./docker/Dockerfile.crashhandler
           platforms: linux/amd64
           push: true
           tags: ${{ env.IMAGE_NAME }}:amd64
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          build-args: |
-            ghtoken=${{ secrets.GITHUB_TOKEN }}
 
   remove-github-runner-arm64:
     needs: [ package-arm64 ]
