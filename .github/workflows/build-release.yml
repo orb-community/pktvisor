@@ -169,7 +169,6 @@ jobs:
       - name: Generate runner token
         id: token
         run: |
-          sleep 3
           curl -X POST -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/ns1labs/pktvisor/actions/runners/registration-token -o token.json
           echo "::set-output name=runner::$(cat token.json | jq .token --raw-output )"
           cat token.json
@@ -242,7 +241,7 @@ jobs:
             .github/hosted-runner/arm64/terraform.tfstate
           retention-days: 1
 
-  spinup-amd64-runner:
+  spinup-arm32-runner:
     needs: [ prebuild-package ]
     runs-on: ubuntu-latest
     outputs:
@@ -267,18 +266,18 @@ jobs:
 
       - name: Inject runner token in user_data.sh
         run: |
-          cd .github/hosted-runner/amd64/
+          cd .github/hosted-runner/arm32/
           ESCAPED_REPLACE_RUNNER_TOKEN=$(printf '%s\n' "${{ steps.token.outputs.runner }}" | sed -e 's/[\/&]/\\&/g')
           sed -i -e "s/RUNNER_TOKEN/$ESCAPED_REPLACE_RUNNER_TOKEN/g" user_data.sh
-          ESCAPED_REPLACE_RUNNER_NAME=$(printf '%s\n' "${{ steps.commit_hash.outputs.sha_short }}-amd64" | sed -e 's/[\/&]/\\&/g')
+          ESCAPED_REPLACE_RUNNER_NAME=$(printf '%s\n' "${{ steps.commit_hash.outputs.sha_short }}-arm32" | sed -e 's/[\/&]/\\&/g')
           sed -i -e "s/AMD64_RUNNER/$ESCAPED_REPLACE_RUNNER_NAME/g" user_data.sh
-          ESCAPED_REPLACE_RUNNER_LABEL=$(printf '%s\n' "${{ steps.commit_hash.outputs.sha_short }}-amd64" | sed -e 's/[\/&]/\\&/g')
+          ESCAPED_REPLACE_RUNNER_LABEL=$(printf '%s\n' "${{ steps.commit_hash.outputs.sha_short }}-arm32" | sed -e 's/[\/&]/\\&/g')
           sed -i -e "s/RUNNER_LABEL/$ESCAPED_REPLACE_RUNNER_LABEL/g" user_data.sh
-          echo "RUNNER_LABEL=${{ steps.commit_hash.outputs.sha_short }}-amd64" >> $GITHUB_ENV
+          echo "RUNNER_LABEL=${{ steps.commit_hash.outputs.sha_short }}-arm32" >> $GITHUB_ENV
           
       - name: Inject AWS key
         run: |
-          cd .github/hosted-runner/amd64/
+          cd .github/hosted-runner/arm32/
           ESCAPED_REPLACE_KEY_ID=$(printf '%s\n' "${{ secrets.AWS_ACCESS_KEY_ID }}" | sed -e 's/[\/&]/\\&/g')
           sed -i -e "s/AWSID/$ESCAPED_REPLACE_KEY_ID/g" vars.tf
           ESCAPED_REPLACE_ACCESS_KEY=$(printf '%s\n' "${{ secrets.AWS_SECRET_ACCESS_KEY }}" | sed -e 's/[\/&]/\\&/g')
@@ -294,22 +293,22 @@ jobs:
 
       - name: Terraform Init
         run: |
-          cd .github/hosted-runner/amd64/
+          cd .github/hosted-runner/arm32/
           terraform init -input=false
 
       - name: Terraform plan
         run: |
-          cd .github/hosted-runner/amd64/
+          cd .github/hosted-runner/arm32/
           terraform plan -out=tfplan
 
       - name: Terraform apply
         run: |
-          cd .github/hosted-runner/amd64/
+          cd .github/hosted-runner/arm32/
           terraform apply -auto-approve tfplan
 
       - name: Terraform output
         run: |
-          cd .github/hosted-runner/amd64/
+          cd .github/hosted-runner/arm32/
           terraform output -raw ip > ip.txt
           
       - name: Persist IP to workspace
@@ -317,7 +316,7 @@ jobs:
         with:
           name: ip
           path: |
-            .github/hosted-runner/amd64/ip.txt
+            .github/hosted-runner/arm32/ip.txt
           retention-days: 1
 
       - name: Persist to workspace
@@ -325,7 +324,7 @@ jobs:
         with:
           name: terraform2
           path: |
-            .github/hosted-runner/amd64/terraform.tfstate
+            .github/hosted-runner/arm32/terraform.tfstate
           retention-days: 1
 
   package-arm64:
@@ -393,8 +392,8 @@ jobs:
             ghtoken=${{ secrets.GITHUB_TOKEN }}
 
   package-armv7:
-    needs: [ spinup-amd64-runner ]
-    runs-on: ${{ needs.spinup-amd64-runner.outputs.runner_label }}
+    needs: [ spinup-arm32-runner ]
+    runs-on: ${{ needs.spinup-arm32-runner.outputs.runner_label }}
     if: github.event_name != 'pull_request'
     steps:
       - name: Attach to workspace
@@ -594,7 +593,7 @@ jobs:
           cd .github/hosted-runner/arm64/
           terraform destroy -auto-approve
 
-  remove-github-runner-amd64:
+  remove-github-runner-arm32:
     needs: [ package-armv7 ]
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
@@ -611,12 +610,12 @@ jobs:
           echo "::set-output name=ip::$(cat ip.txt)"
           
       - name: Generate remove runner token
-        id: remove-token-amd64
+        id: remove-token-arm32
         run: |
           curl -X POST -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/ns1labs/pktvisor/actions/runners/remove-token -o token.json
           echo "::set-output name=remove-runner::$(cat token.json | jq .token --raw-output )"
           cat token.json
-          echo "TOKEN_RUNNER_AMD64=$(cat token.json | jq .token --raw-output )" >> $GITHUB_ENV
+          echo "TOKEN_RUNNER_ARM32=$(cat token.json | jq .token --raw-output )" >> $GITHUB_ENV
 
       - name: Executing remote ssh commands on runner
         uses: appleboy/ssh-action@master
@@ -628,10 +627,10 @@ jobs:
           script: |
                cd /actions-runner
                sudo chmod 777 . -R
-               ./config.sh remove --token ${{ env.TOKEN_RUNNER_AMD64 }}
+               ./config.sh remove --token ${{ env.TOKEN_RUNNER_ARM32 }}
 
-  remove-amd64-runner:
-    needs: [ remove-github-runner-amd64 ]
+  remove-arm32-runner:
+    needs: [ remove-github-runner-arm32 ]
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
     steps:
@@ -642,11 +641,11 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: terraform2
-          path: .github/hosted-runner/amd64/
+          path: .github/hosted-runner/arm32/
 
       - name: Inject AWS key
         run: |
-          cd .github/hosted-runner/amd64/
+          cd .github/hosted-runner/arm32/
           ESCAPED_REPLACE_KEY_ID=$(printf '%s\n' "${{ secrets.AWS_ACCESS_KEY_ID }}" | sed -e 's/[\/&]/\\&/g')
           sed -i -e "s/AWSID/$ESCAPED_REPLACE_KEY_ID/g" vars.tf
           ESCAPED_REPLACE_ACCESS_KEY=$(printf '%s\n' "${{ secrets.AWS_SECRET_ACCESS_KEY }}" | sed -e 's/[\/&]/\\&/g')
@@ -659,18 +658,18 @@ jobs:
 
       - name: Terraform Init
         run: |
-          cd .github/hosted-runner/amd64/
+          cd .github/hosted-runner/arm32/
           terraform init -input=false
 
       - name: Terraform plan destroy
         run: |
-          cd .github/hosted-runner/amd64/
+          cd .github/hosted-runner/arm32/
           terraform plan -destroy
         continue-on-error: true
 
       - name: Terraform destroy
         run: |
-          cd .github/hosted-runner/amd64/
+          cd .github/hosted-runner/arm32/
           terraform destroy -auto-approve
 
   pushing-manifests:
