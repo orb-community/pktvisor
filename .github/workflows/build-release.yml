@@ -173,20 +173,20 @@ jobs:
           curl -X POST -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/ns1labs/pktvisor/actions/runners/registration-token -o token.json
           echo "::set-output name=runner::$(cat token.json | jq .token --raw-output )"
           cat token.json
+          
+      - name: Get short commit hash to a variable
+        id: commit_hash
+        run: |
+          echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
 
       - name: Inject runner token in user_data.sh
         run: |
           cd .github/hosted-runner/arm64/
           ESCAPED_REPLACE_RUNNER_TOKEN=$(printf '%s\n' "${{ steps.token.outputs.runner }}" | sed -e 's/[\/&]/\\&/g')
           sed -i -e "s/RUNNER_TOKEN/$ESCAPED_REPLACE_RUNNER_TOKEN/g" user_data.sh
-          ESCAPED_REPLACE_RUNNER_LABEL=$(printf '%s\n' "${{ steps.commit_hash.outputs.sha_short }}-pktvisor" | sed -e 's/[\/&]/\\&/g')
+          ESCAPED_REPLACE_RUNNER_LABEL=$(printf '%s\n' "${{ steps.commit_hash.outputs.sha_short }}-arm64" | sed -e 's/[\/&]/\\&/g')
           sed -i -e "s/RUNNER_LABEL/$ESCAPED_REPLACE_RUNNER_LABEL/g" user_data.sh
-          echo "RUNNER_LABEL=${{ steps.commit_hash.outputs.sha_short }}-pktvisor" >> $GITHUB_ENV
-          
-      - name: Get short commit hash to a variable
-        id: commit_hash
-        run: |
-          echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
+          echo "RUNNER_LABEL=${{ steps.commit_hash.outputs.sha_short }}-arm64" >> $GITHUB_ENV
 
       - name: Inject AWS key
         run: |
@@ -257,21 +257,21 @@ jobs:
           curl -X POST -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/ns1labs/pktvisor/actions/runners/registration-token -o token.json
           echo "::set-output name=runner::$(cat token.json | jq .token --raw-output )"
           cat token.json
-
-      - name: Inject runner token in user_data.sh
-        run: |
-          cd .github/hosted-runner/amd64/
-          ESCAPED_REPLACE_RUNNER_TOKEN=$(printf '%s\n' "${{ steps.token.outputs.runner }}" | sed -e 's/[\/&]/\\&/g')
-          sed -i -e "s/RUNNER_TOKEN/$ESCAPED_REPLACE_RUNNER_TOKEN/g" user_data.sh
-          ESCAPED_REPLACE_RUNNER_LABEL=$(printf '%s\n' "${{ steps.commit_hash.outputs.sha_short }}-pktvisor" | sed -e 's/[\/&]/\\&/g')
-          sed -i -e "s/RUNNER_LABEL/$ESCAPED_REPLACE_RUNNER_LABEL/g" user_data.sh
-          echo "RUNNER_LABEL=${{ steps.commit_hash.outputs.sha_short }}-pktvisor" >> $GITHUB_ENV
           
       - name: Get short commit hash to a variable
         id: commit_hash
         run: |
           echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
 
+      - name: Inject runner token in user_data.sh
+        run: |
+          cd .github/hosted-runner/amd64/
+          ESCAPED_REPLACE_RUNNER_TOKEN=$(printf '%s\n' "${{ steps.token.outputs.runner }}" | sed -e 's/[\/&]/\\&/g')
+          sed -i -e "s/RUNNER_TOKEN/$ESCAPED_REPLACE_RUNNER_TOKEN/g" user_data.sh
+          ESCAPED_REPLACE_RUNNER_LABEL=$(printf '%s\n' "${{ steps.commit_hash.outputs.sha_short }}-amd64" | sed -e 's/[\/&]/\\&/g')
+          sed -i -e "s/RUNNER_LABEL/$ESCAPED_REPLACE_RUNNER_LABEL/g" user_data.sh
+          echo "RUNNER_LABEL=${{ steps.commit_hash.outputs.sha_short }}-amd64" >> $GITHUB_ENV
+          
       - name: Inject AWS key
         run: |
           cd .github/hosted-runner/amd64/
