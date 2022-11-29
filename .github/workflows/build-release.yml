@@ -156,7 +156,7 @@ jobs:
 #           prerelease: false
 
   spinup-arm64-runner:
-    needs: [ package-amd64, prebuild-package ]
+    needs: [ prebuild-package ]
     runs-on: ubuntu-latest
     outputs:
       runner_token: ${{ steps.token.outputs.runner }}
