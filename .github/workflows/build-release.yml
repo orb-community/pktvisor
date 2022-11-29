@@ -21,7 +21,7 @@ jobs:
   unit-tests:
     strategy:
       matrix:
-        os: [ ubuntu-latest, macos-11 ]
+        os: [ ubuntu-latest ]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
@@ -432,7 +432,7 @@ jobs:
           build_type: "Release"
           asan: "OFF"
           symbol_url: ${{secrets.SYMBOL_URL}}
-          setting: settings.arch=armv8_32
+          setting: settings.arch=armv7hf
           file: "./Dockerfile"
 
       - name: Build pktvisor-cli
