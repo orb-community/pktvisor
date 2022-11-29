@@ -9,6 +9,8 @@ apt-get install apt-transport-https curl -y
 # add GPG key
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
 
+RELEASE=$(lsb_release -c | cut -f2)
+
 # add repos
 add-apt-repository \
    "deb [arch=armhf] https://download.docker.com/linux/ubuntu \
@@ -24,6 +26,8 @@ libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libsqlite3-dev libreadline-de
 libfontconfig1 libfreetype6 xfonts-scalable fonts-liberation fonts-noto-cjk g++-10-arm-linux-gnueabihf cmake \
 gcc-10-arm-linux-gnueabihf gcc-10-arm-linux-gnueabihf-base python3-venv tcpreplay -y
 
+mkdir /etc/systemd/system/docker.service.d
+
 (
 cat <<END
 [Service]
@@ -32,6 +36,7 @@ ExecStart=/usr/bin/setarch linux32 -B /usr/bin/dockerd -H fd:// --containerd=/ru
 END
 ) > "/etc/systemd/system/docker.service.d/override.conf"
 
+mkdir /etc/systemd/system/containerd.service.d
 
 (
 cat <<END
