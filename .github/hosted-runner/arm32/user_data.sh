@@ -41,12 +41,12 @@ ExecStart=/usr/bin/setarch linux32 -B /usr/bin/containerd
 END
 ) > "/etc/systemd/system/containerd.service.d/override.conf"
 
-# restart services
-systemctl, daemon reload
-systemctl, restart, docker
-
 #set permission to use docker
 usermod -aG docker ubuntu
+
+# restart services
+systemctl daemon-reload
+systemctl restart docker
 
 #creating directory git actions runner
 mkdir actions-runner && cd actions-runner
