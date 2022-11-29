@@ -184,6 +184,8 @@ jobs:
           cd .github/hosted-runner/arm64/
           ESCAPED_REPLACE_RUNNER_TOKEN=$(printf '%s\n' "${{ steps.token.outputs.runner }}" | sed -e 's/[\/&]/\\&/g')
           sed -i -e "s/RUNNER_TOKEN/$ESCAPED_REPLACE_RUNNER_TOKEN/g" user_data.sh
+          ESCAPED_REPLACE_RUNNER_NAME=$(printf '%s\n' "${{ steps.commit_hash.outputs.sha_short }}-arm64" | sed -e 's/[\/&]/\\&/g')
+          sed -i -e "s/ARM64_RUNNER/$ESCAPED_REPLACE_RUNNER_NAME/g" user_data.sh
           ESCAPED_REPLACE_RUNNER_LABEL=$(printf '%s\n' "${{ steps.commit_hash.outputs.sha_short }}-arm64" | sed -e 's/[\/&]/\\&/g')
           sed -i -e "s/RUNNER_LABEL/$ESCAPED_REPLACE_RUNNER_LABEL/g" user_data.sh
           echo "RUNNER_LABEL=${{ steps.commit_hash.outputs.sha_short }}-arm64" >> $GITHUB_ENV
@@ -268,6 +270,8 @@ jobs:
           cd .github/hosted-runner/amd64/
           ESCAPED_REPLACE_RUNNER_TOKEN=$(printf '%s\n' "${{ steps.token.outputs.runner }}" | sed -e 's/[\/&]/\\&/g')
           sed -i -e "s/RUNNER_TOKEN/$ESCAPED_REPLACE_RUNNER_TOKEN/g" user_data.sh
+          ESCAPED_REPLACE_RUNNER_NAME=$(printf '%s\n' "${{ steps.commit_hash.outputs.sha_short }}-amd64" | sed -e 's/[\/&]/\\&/g')
+          sed -i -e "s/AMD64_RUNNER/$ESCAPED_REPLACE_RUNNER_NAME/g" user_data.sh
           ESCAPED_REPLACE_RUNNER_LABEL=$(printf '%s\n' "${{ steps.commit_hash.outputs.sha_short }}-amd64" | sed -e 's/[\/&]/\\&/g')
           sed -i -e "s/RUNNER_LABEL/$ESCAPED_REPLACE_RUNNER_LABEL/g" user_data.sh
           echo "RUNNER_LABEL=${{ steps.commit_hash.outputs.sha_short }}-amd64" >> $GITHUB_ENV
