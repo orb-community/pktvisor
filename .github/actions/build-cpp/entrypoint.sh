@@ -20,10 +20,13 @@ function build() {
   cp -rf /github/workspace/conanfile.txt /pktvisor-src/
   mkdir /tmp/build
   cd /tmp/build
-  conan profile new --detect default && \
-  conan profile update settings.compiler.libcxx=libstdc++11 $INPUT_SETTING default && \
+  conan profile new --detect default
+  conan profile update settings.compiler.libcxx=libstdc++11 default
+  if [[ $INPUT_SETTING != "" ]]; then
+      conan profile update $INPUT_SETTING default
+  fi
   conan config set general.revisions_enabled=1
-  PKG_CONFIG_PATH=/local/lib/pkgconfig cmake -DCMAKE_BUILD_TYPE=$INPUT_BUILD_TYPE -DASAN=$INPUT_ASAN /pktvisor-src && \
+  PKG_CONFIG_PATH=/local/lib/pkgconfig cmake -DCMAKE_BUILD_TYPE=$INPUT_BUILD_TYPE -DASAN=$INPUT_ASAN /pktvisor-src
   make all -j 4
 }
 
