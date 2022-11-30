@@ -453,6 +453,15 @@ jobs:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Replace token
+        run: |
+          sed -i -e "s/CP_TOKEN/${{ secrets.CRASHPAD_TOKEN }}/g" docker/run.sh
+      - name: Replace escape url
+        run: |
+          REPLACE=${{ secrets.CRASHPAD_URL }}
+          ESCAPED_REPLACE=$(printf '%s\n' "$REPLACE" | sed -e 's/[\/&]/\\&/g')
+          sed -i -e "s/CP_URL/$ESCAPED_REPLACE/g" docker/run.sh
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
