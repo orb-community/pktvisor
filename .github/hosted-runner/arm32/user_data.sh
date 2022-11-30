@@ -1,13 +1,13 @@
 #!/bin/sh
 
 #installing packages
-dpkg --add-architecture armhf
+# dpkg --add-architecture armhf
 
 apt-get update -y
 apt-get install apt-transport-https curl -y
 
 # add GPG key
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
+# curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
 
 RELEASE=$(lsb_release -c | cut -f2)
 
