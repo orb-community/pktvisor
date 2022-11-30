@@ -19,6 +19,8 @@ function build() {
   cp -rf /github/workspace/CMakeLists.txt /pktvisor-src/
   cp -rf /github/workspace/conanfile.txt /pktvisor-src/
   mkdir /tmp/build
+  mkdir /tmp/build/conan_home
+  mkdir /tmp/build/conan_home/.conan/profiles
   cd /tmp/build
   conan profile new --detect default
   conan profile update settings.compiler.libcxx=libstdc++11 default
