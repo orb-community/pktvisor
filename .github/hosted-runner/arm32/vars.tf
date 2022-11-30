@@ -16,7 +16,7 @@ variable "aws_region" {
 variable "amis" {
   type    = map
   default = {
-    us-east-1 = "ami-00266f51b6b22db58" //ubuntu 20.04 arm64 on us-east-1
+    us-east-1 = "ami-0c4f7023847b90238" //ubuntu 20.04 amd64 on us-east-1
   }
 }
 
@@ -25,5 +25,5 @@ variable "key_name" {
 }
 
 variable "instance_type" {
-  default = "a1.xlarge"
+  default = "t3.xlarge"
 }
