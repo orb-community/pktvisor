@@ -29,25 +29,25 @@ gcc-10-arm-linux-gnueabihf gcc-10-arm-linux-gnueabihf-base python3-venv tcprepla
 # make all install
 # ldconfig
 
-mkdir /etc/systemd/system/docker.service.d
+# mkdir /etc/systemd/system/docker.service.d
 
-(
-cat <<END
-[Service]
-ExecStart=
-ExecStart=/usr/bin/setarch linux32 -B /usr/bin/dockerd -H fd:// --containerd=/run/containerd/containerd.sock
-END
-) > "/etc/systemd/system/docker.service.d/override.conf"
+# (
+# cat <<END
+# [Service]
+# ExecStart=
+# ExecStart=/usr/bin/setarch linux32 -B /usr/bin/dockerd -H fd:// --containerd=/run/containerd/containerd.sock
+# END
+# ) > "/etc/systemd/system/docker.service.d/override.conf"
 
-mkdir /etc/systemd/system/containerd.service.d
+# mkdir /etc/systemd/system/containerd.service.d
 
-(
-cat <<END
-[Service]
-ExecStart=
-ExecStart=/usr/bin/setarch linux32 -B /usr/bin/containerd
-END
-) > "/etc/systemd/system/containerd.service.d/override.conf"
+# (
+# cat <<END
+# [Service]
+# ExecStart=
+# ExecStart=/usr/bin/setarch linux32 -B /usr/bin/containerd
+# END
+# ) > "/etc/systemd/system/containerd.service.d/override.conf"
 
 #set permission to use docker
 usermod -aG docker ubuntu
