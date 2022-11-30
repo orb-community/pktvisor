@@ -14,15 +14,127 @@
 
 namespace visor::handler::flow {
 
-template <typename Out>
-static void split(const std::string &s, char delim, Out result)
+static std::pair<bool, std::vector<Ipv4Subnet>::const_iterator> match_subnet(std::vector<Ipv4Subnet> &ipv4_list, uint32_t ipv4_val)
 {
-    std::stringstream ss;
-    ss.str(s);
-    std::string item;
-    while (std::getline(ss, item, delim)) {
-        *(result++) = item;
+    if (ipv4_val && !ipv4_list.empty()) {
+        in_addr ipv4{};
+        std::memcpy(&ipv4, &ipv4_val, sizeof(in_addr));
+        for (std::vector<Ipv4Subnet>::const_iterator it = ipv4_list.begin(); it != ipv4_list.end(); ++it) {
+            uint8_t cidr = it->cidr;
+            if (cidr == 0) {
+                return {true, it};
+            }
+            uint32_t mask = htonl((0xFFFFFFFFu) << (32 - cidr));
+            if (!((ipv4.s_addr ^ it->addr.s_addr) & mask)) {
+                return {true, it};
+            }
+        }
     }
+    return {false, std::vector<Ipv4Subnet>::const_iterator()};
+}
+
+static std::pair<bool, std::vector<Ipv6Subnet>::const_iterator> match_subnet(std::vector<Ipv6Subnet> &ipv6_list, const uint8_t *ipv6_val)
+{
+    if (ipv6_val && !ipv6_list.empty()) {
+        in6_addr ipv6{};
+        std::memcpy(&ipv6, ipv6_val, sizeof(in6_addr));
+        for (std::vector<Ipv6Subnet>::const_iterator it = ipv6_list.begin(); it != ipv6_list.end(); ++it) {
+            uint8_t prefixLength = it->cidr;
+            auto network = it->addr;
+            uint8_t compareByteCount = prefixLength / 8;
+            uint8_t compareBitCount = prefixLength % 8;
+            bool result = false;
+            if (compareByteCount > 0) {
+                result = std::memcmp(&network.s6_addr, &ipv6.s6_addr, compareByteCount) == 0;
+            }
+            if ((result || prefixLength < 8) && compareBitCount > 0) {
+                uint8_t subSubnetByte = network.s6_addr[compareByteCount] >> (8 - compareBitCount);
+                uint8_t subThisByte = ipv6.s6_addr[compareByteCount] >> (8 - compareBitCount);
+                result = subSubnetByte == subThisByte;
+            }
+            if (result) {
+                return {true, it};
+            }
+        }
+    }
+    return {false, std::vector<Ipv6Subnet>::const_iterator()};
+}
+
+static void parse_host_specs(const std::vector<std::string> &host_list, std::vector<Ipv4Subnet> &ipv4_list, std::vector<Ipv6Subnet> &ipv6_list)
+{
+    for (const auto &host : host_list) {
+        auto delimiter = host.find('/');
+        if (delimiter == host.npos) {
+            throw StreamHandlerException(fmt::format("invalid CIDR: {}", host));
+        }
+        auto ip = host.substr(0, delimiter);
+        auto cidr = host.substr(++delimiter);
+        auto not_number = std::count_if(cidr.begin(), cidr.end(),
+            [](unsigned char c) { return !std::isdigit(c); });
+        if (not_number) {
+            throw StreamHandlerException(fmt::format("invalid CIDR: {}", host));
+        }
+
+        auto cidr_number = std::stoi(cidr);
+        if (ip.find(':') != ip.npos) {
+            if (cidr_number < 0 || cidr_number > 128) {
+                throw StreamHandlerException(fmt::format("invalid CIDR: {}", host));
+            }
+            in6_addr ipv6{};
+            if (inet_pton(AF_INET6, ip.c_str(), &ipv6) != 1) {
+                throw StreamHandlerException(fmt::format("invalid IPv6 address: {}", ip));
+            }
+            ipv6_list.push_back({ipv6, static_cast<uint8_t>(cidr_number), host});
+        } else {
+            if (cidr_number < 0 || cidr_number > 32) {
+                throw StreamHandlerException(fmt::format("invalid CIDR: {}", host));
+            }
+            in_addr ipv4{};
+            if (inet_pton(AF_INET, ip.c_str(), &ipv4) != 1) {
+                throw StreamHandlerException(fmt::format("invalid IPv4 address: {}", ip));
+            }
+            ipv4_list.push_back({ipv4, static_cast<uint8_t>(cidr_number), host});
+        }
+    }
+}
+
+static std::string ip_summarization(const std::string &val, SummaryData *summary)
+{
+    if (summary) {
+        pcpp::IPv4Address ipv4;
+        pcpp::IPv6Address ipv6;
+        if (ipv4 = pcpp::IPv4Address(val); ipv4.isValid() && match_subnet(summary->ipv4_exclude_summary, ipv4.toInt()).first) {
+            return val;
+        } else if (ipv6 = pcpp::IPv6Address(val); ipv6.isValid() && match_subnet(summary->ipv6_exclude_summary, ipv6.toBytes()).first) {
+            return val;
+        } else {
+            return val;
+        }
+        if (summary->type == IpSummary::ByASN && HandlerModulePlugin::asn->enabled()) {
+            if (ipv4.isValid()) {
+                struct sockaddr_in sa4{};
+                if (IPv4_to_sockaddr(ipv4, &sa4)) {
+                    return HandlerModulePlugin::asn->getASNString(&sa4);
+                }
+            } else {
+                struct sockaddr_in6 sa6{};
+                if (IPv6_to_sockaddr(ipv6, &sa6)) {
+                    return HandlerModulePlugin::asn->getASNString(&sa6);
+                }
+            }
+        } else if (summary->type == IpSummary::BySubnet) {
+            if (ipv4.isValid()) {
+                if (auto [match, subnet] = match_subnet(summary->ipv4_summary, ipv4.toInt()); match) {
+                    return subnet->str;
+                }
+            } else {
+                if (auto [match, subnet] = match_subnet(summary->ipv6_summary, ipv6.toBytes()); match) {
+                    return subnet->str;
+                }
+            }
+        }
+    }
+    return val;
 }
 
 FlowStreamHandler::FlowStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config)
@@ -63,7 +175,7 @@ void FlowStreamHandler::start()
         _metrics->set_recorded_stream();
     }
 
-    EnrichMap enrich_data;
+    EnrichData enrich_data;
     if (config_exists("device_map")) {
         auto devices = config_get<std::shared_ptr<Configurable>>("device_map");
         for (const auto &device : devices->get_all_keys()) {
@@ -103,9 +215,25 @@ void FlowStreamHandler::start()
         _metrics->set_enrich_data(std::move(enrich_data));
     }
 
+    SummaryData summary_data;
+    if (config_exists("summarize_ips_by_asn") && config_get<bool>("summarize_ips_by_asn")) {
+        summary_data.type = IpSummary::ByASN;
+        if (config_exists("exclude_ips_from_summarization")) {
+            parse_host_specs(config_get<StringList>("exclude_ips_from_summarization"), summary_data.ipv4_exclude_summary, summary_data.ipv6_exclude_summary);
+        }
+        _metrics->set_summary_data(std::move(summary_data));
+    } else if (config_exists("subnets_for_summarization")) {
+        summary_data.type = IpSummary::BySubnet;
+        parse_host_specs(config_get<StringList>("subnets_for_summarization"), summary_data.ipv4_summary, summary_data.ipv6_summary);
+        if (config_exists("exclude_ips_from_summarization")) {
+            parse_host_specs(config_get<StringList>("exclude_ips_from_summarization"), summary_data.ipv4_exclude_summary, summary_data.ipv6_exclude_summary);
+        }
+        _metrics->set_summary_data(std::move(summary_data));
+    }
+
     // Setup Filters
     if (config_exists("only_ips")) {
-        _parse_host_specs(config_get<StringList>("only_ips"));
+        parse_host_specs(config_get<StringList>("only_ips"), _only_ipv4_list, _only_ipv6_list);
         _f_enabled.set(Filters::OnlyIps);
     }
 
@@ -181,7 +309,7 @@ void FlowStreamHandler::set_end_tstamp(timespec stamp)
 
 void FlowStreamHandler::process_sflow_cb(const SFSample &payload, [[maybe_unused]] size_t rawSize)
 {
-    timespec stamp;
+    timespec stamp{};
     // use now()
     std::timespec_get(&stamp, TIME_UTC);
 
@@ -271,7 +399,7 @@ void FlowStreamHandler::process_sflow_cb(const SFSample &payload, [[maybe_unused
 
 void FlowStreamHandler::process_netflow_cb(const std::string &senderIP, const NFSample &payload, [[maybe_unused]] size_t rawSize)
 {
-    timespec stamp;
+    timespec stamp{};
     if (payload.time_sec || payload.time_nanosec) {
         stamp.tv_sec = payload.time_sec;
         stamp.tv_nsec = payload.time_nanosec;
@@ -340,9 +468,9 @@ void FlowStreamHandler::process_netflow_cb(const std::string &senderIP, const NF
 bool FlowStreamHandler::_filtering(FlowData &flow, const std::string &device_id)
 {
     if (_f_enabled[Filters::OnlyIps]) {
-        if (flow.is_ipv6 && !_match_subnet(0, flow.ipv6_in.toBytes()) && !_match_subnet(0, flow.ipv6_out.toBytes())) {
+        if (flow.is_ipv6 && !match_subnet(_only_ipv6_list, flow.ipv6_in.toBytes()).first && !match_subnet(_only_ipv6_list, flow.ipv6_out.toBytes()).first) {
             return true;
-        } else if (!_match_subnet(flow.ipv4_in.toInt()) && !_match_subnet(flow.ipv4_out.toInt())) {
+        } else if (!match_subnet(_only_ipv4_list, flow.ipv4_in.toInt()).first && !match_subnet(_only_ipv4_list, flow.ipv4_out.toInt()).first) {
             return true;
         }
     }
@@ -374,13 +502,13 @@ bool FlowStreamHandler::_filtering(FlowData &flow, const std::string &device_id)
 
     if (_f_enabled[Filters::GeoLocNotFound] && HandlerModulePlugin::city->enabled()) {
         if (!flow.is_ipv6) {
-            struct sockaddr_in sa4;
+            struct sockaddr_in sa4{};
             if ((IPv4_to_sockaddr(flow.ipv4_in, &sa4) && HandlerModulePlugin::city->getGeoLoc(&sa4).location != "Unknown")
                 && (IPv4_to_sockaddr(flow.ipv4_out, &sa4) && HandlerModulePlugin::city->getGeoLoc(&sa4).location != "Unknown")) {
                 return true;
             }
         } else {
-            struct sockaddr_in6 sa6;
+            struct sockaddr_in6 sa6{};
             if ((IPv6_to_sockaddr(flow.ipv6_in, &sa6) && HandlerModulePlugin::city->getGeoLoc(&sa6).location != "Unknown")
                 && (IPv6_to_sockaddr(flow.ipv6_out, &sa6) && HandlerModulePlugin::city->getGeoLoc(&sa6).location != "Unknown")) {
                 return true;
@@ -389,13 +517,13 @@ bool FlowStreamHandler::_filtering(FlowData &flow, const std::string &device_id)
     }
     if (_f_enabled[Filters::AsnNotFound] && HandlerModulePlugin::asn->enabled()) {
         if (!flow.is_ipv6) {
-            struct sockaddr_in sa4;
+            struct sockaddr_in sa4{};
             if ((IPv4_to_sockaddr(flow.ipv4_in, &sa4) && HandlerModulePlugin::asn->getASNString(&sa4) != "Unknown")
                 && (IPv4_to_sockaddr(flow.ipv4_out, &sa4) && HandlerModulePlugin::asn->getASNString(&sa4) != "Unknown")) {
                 return true;
             }
         } else {
-            struct sockaddr_in6 sa6;
+            struct sockaddr_in6 sa6{};
             if ((IPv6_to_sockaddr(flow.ipv6_in, &sa6) && HandlerModulePlugin::asn->getASNString(&sa6) != "Unknown")
                 && (IPv6_to_sockaddr(flow.ipv6_out, &sa6) && HandlerModulePlugin::asn->getASNString(&sa6) != "Unknown")) {
                 return true;
@@ -414,16 +542,16 @@ void FlowStreamHandler::_parse_ports(const std::vector<std::string> &port_list)
                 auto first_value = std::stoul(port.substr(0, delimiter));
                 auto last_value = std::stoul(port.substr(delimiter + 1));
                 if (first_value > last_value) {
-                    _parsed_port_list.push_back(std::make_pair(last_value, first_value));
+                    _parsed_port_list.emplace_back(last_value, first_value);
                 } else {
-                    _parsed_port_list.push_back(std::make_pair(first_value, last_value));
+                    _parsed_port_list.emplace_back(first_value, last_value);
                 }
             } else {
                 if (!std::all_of(port.begin(), port.end(), ::isdigit)) {
                     throw StreamHandlerException("is not a digit");
                 };
                 auto value = std::stoul(port);
-                _parsed_port_list.push_back(std::make_pair(value, value));
+                _parsed_port_list.emplace_back(value, value);
             }
         } catch ([[maybe_unused]] const std::exception &e) {
             throw StreamHandlerException(fmt::format("FlowHandler: invalid 'only_ports' filter value: {}", port));
@@ -446,101 +574,22 @@ std::vector<std::pair<uint32_t, uint32_t>> FlowStreamHandler::_parse_interfaces(
                 auto first_value = std::stoul(interface.substr(0, delimiter));
                 auto last_value = std::stoul(interface.substr(delimiter + 1));
                 if (first_value > last_value) {
-                    result.push_back(std::make_pair(last_value, first_value));
+                    result.emplace_back(last_value, first_value);
                 } else {
-                    result.push_back(std::make_pair(first_value, last_value));
+                    result.emplace_back(first_value, last_value);
                 }
             } else {
                 if (!std::all_of(interface.begin(), interface.end(), ::isdigit)) {
                     throw StreamHandlerException("is not a digit");
                 };
                 auto value = std::stoul(interface);
-                result.push_back(std::make_pair(value, value));
+                result.emplace_back(value, value);
             }
         } catch ([[maybe_unused]] const std::exception &e) {
             throw StreamHandlerException(fmt::format("FlowHandler: invalid 'only_device_interfaces' filter interface value: {}", interface));
         }
     }
     return result;
-}
-
-void FlowStreamHandler::_parse_host_specs(const std::vector<std::string> &host_list)
-{
-    for (const auto &host : host_list) {
-        auto delimiter = host.find('/');
-        if (delimiter == host.npos) {
-            throw StreamHandlerException(fmt::format("invalid CIDR: {}", host));
-        }
-        auto ip = host.substr(0, delimiter);
-        auto cidr = host.substr(++delimiter);
-        auto not_number = std::count_if(cidr.begin(), cidr.end(),
-            [](unsigned char c) { return !std::isdigit(c); });
-        if (not_number) {
-            throw StreamHandlerException(fmt::format("invalid CIDR: {}", host));
-        }
-
-        auto cidr_number = std::stoi(cidr);
-        if (ip.find(':') != ip.npos) {
-            if (cidr_number < 0 || cidr_number > 128) {
-                throw StreamHandlerException(fmt::format("invalid CIDR: {}", host));
-            }
-            in6_addr ipv6;
-            if (inet_pton(AF_INET6, ip.c_str(), &ipv6) != 1) {
-                throw StreamHandlerException(fmt::format("invalid IPv6 address: {}", ip));
-            }
-            _IPv6_ips_list.emplace_back(ipv6, cidr_number);
-        } else {
-            if (cidr_number < 0 || cidr_number > 32) {
-                throw StreamHandlerException(fmt::format("invalid CIDR: {}", host));
-            }
-            in_addr ipv4;
-            if (inet_pton(AF_INET, ip.c_str(), &ipv4) != 1) {
-                throw StreamHandlerException(fmt::format("invalid IPv4 address: {}", ip));
-            }
-            _IPv4_ips_list.emplace_back(ipv4, cidr_number);
-        }
-    }
-}
-
-inline bool FlowStreamHandler::_match_subnet(uint32_t ipv4_val, const uint8_t *ipv6_val)
-{
-    if (ipv4_val && _IPv4_ips_list.size() > 0) {
-        in_addr ipv4;
-        std::memcpy(&ipv4, &ipv4_val, sizeof(in_addr));
-        for (const auto &net : _IPv4_ips_list) {
-            uint8_t cidr = net.second;
-            if (cidr == 0) {
-                return true;
-            }
-            uint32_t mask = htonl((0xFFFFFFFFu) << (32 - cidr));
-            if (!((ipv4.s_addr ^ net.first.s_addr) & mask)) {
-                return true;
-            }
-        }
-    } else if (ipv6_val && _IPv6_ips_list.size() > 0) {
-        in6_addr ipv6;
-        std::memcpy(&ipv6, ipv6_val, sizeof(in6_addr));
-        for (const auto &net : _IPv6_ips_list) {
-            uint8_t prefixLength = net.second;
-            auto network = net.first;
-            uint8_t compareByteCount = prefixLength / 8;
-            uint8_t compareBitCount = prefixLength % 8;
-            bool result = false;
-            if (compareByteCount > 0) {
-                result = std::memcmp(&network.s6_addr, &ipv6.s6_addr, compareByteCount) == 0;
-            }
-            if ((result || prefixLength < 8) && compareBitCount > 0) {
-                uint8_t subSubnetByte = network.s6_addr[compareByteCount] >> (8 - compareBitCount);
-                uint8_t subThisByte = ipv6.s6_addr[compareByteCount] >> (8 - compareBitCount);
-                result = subSubnetByte == subThisByte;
-            }
-            if (result) {
-                return true;
-            }
-        }
-    }
-
-    return false;
 }
 
 void FlowMetricsBucket::specialized_merge(const AbstractMetricsBucket &o, [[maybe_unused]] Metric::Aggregate agg_operator)
@@ -657,6 +706,11 @@ void FlowMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap a
 {
     std::shared_lock r_lock(_mutex);
 
+    SummaryData *summary{nullptr};
+    if (_summary_data && _summary_data->type != IpSummary::None) {
+        summary = _summary_data;
+    }
+
     for (const auto &device : _devices_metrics) {
         auto device_labels = add_labels;
         auto deviceId = device.first;
@@ -757,8 +811,12 @@ void FlowMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap a
                     continue;
                 }
                 if (group_enabled(group::FlowMetrics::TopIPs)) {
-                    top_dir.second.topSrcIP.to_prometheus(out, interface_labels);
-                    top_dir.second.topDstIP.to_prometheus(out, interface_labels);
+                    top_dir.second.topSrcIP.to_prometheus(out, interface_labels, [summary](const std::string &val) {
+                        return ip_summarization(val, summary);
+                    });
+                    top_dir.second.topDstIP.to_prometheus(out, interface_labels, [summary](const std::string &val) {
+                        return ip_summarization(val, summary);
+                    });
                 }
                 if (group_enabled(group::FlowMetrics::TopPorts)) {
                     top_dir.second.topSrcPort.to_prometheus(out, interface_labels, [](const network::IpPort &val) { return val.get_service(); });
@@ -808,6 +866,11 @@ void FlowMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap a
 void FlowMetricsBucket::to_json(json &j) const
 {
     std::shared_lock r_lock(_mutex);
+
+    SummaryData *summary{nullptr};
+    if (_summary_data && _summary_data->type != IpSummary::None) {
+        summary = _summary_data;
+    }
 
     for (const auto &device : _devices_metrics) {
         auto deviceId = device.first;
@@ -906,8 +969,12 @@ void FlowMetricsBucket::to_json(json &j) const
                     continue;
                 }
                 if (group_enabled(group::FlowMetrics::TopIPs)) {
-                    top_dir.second.topSrcIP.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
-                    top_dir.second.topDstIP.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
+                    top_dir.second.topSrcIP.to_json(j["devices"][deviceId]["interfaces"][interfaceId], [summary](const std::string &val) {
+                        return ip_summarization(val, summary);
+                    });
+                    top_dir.second.topDstIP.to_json(j["devices"][deviceId]["interfaces"][interfaceId], [summary](const std::string &val) {
+                        return ip_summarization(val, summary);
+                    });
                 }
                 if (group_enabled(group::FlowMetrics::TopPorts)) {
                     top_dir.second.topSrcPort.to_json(j["devices"][deviceId]["interfaces"][interfaceId], [](const network::IpPort &val) { return val.get_service(); });
@@ -1019,14 +1086,10 @@ void FlowMetricsBucket::process_interface(bool deep, FlowInterface *iface, const
     uint64_t aggregator{0};
     switch (type) {
     case InBytes:
-        aggregator = flow.payload_size;
-        break;
     case OutBytes:
         aggregator = flow.payload_size;
         break;
     case InPackets:
-        aggregator = flow.packets;
-        break;
     case OutPackets:
         aggregator = flow.packets;
         break;
@@ -1152,7 +1215,7 @@ void FlowMetricsBucket::process_interface(bool deep, FlowInterface *iface, const
 inline void FlowMetricsBucket::_process_geo_metrics(FlowInterface *interface, FlowDirectionType type, const pcpp::IPv4Address &ipv4, uint64_t aggregator)
 {
     if ((HandlerModulePlugin::asn->enabled() || HandlerModulePlugin::city->enabled()) && group_enabled(group::FlowMetrics::TopGeo)) {
-        struct sockaddr_in sa4;
+        struct sockaddr_in sa4{};
         if (IPv4_to_sockaddr(ipv4, &sa4)) {
             if (HandlerModulePlugin::city->enabled()) {
                 if (type == InBytes || type == OutBytes) {
@@ -1175,7 +1238,7 @@ inline void FlowMetricsBucket::_process_geo_metrics(FlowInterface *interface, Fl
 inline void FlowMetricsBucket::_process_geo_metrics(FlowInterface *interface, FlowDirectionType type, const pcpp::IPv6Address &ipv6, uint64_t aggregator)
 {
     if ((HandlerModulePlugin::asn->enabled() || HandlerModulePlugin::city->enabled()) && group_enabled(group::FlowMetrics::TopGeo)) {
-        struct sockaddr_in6 sa6;
+        struct sockaddr_in6 sa6{};
         if (IPv6_to_sockaddr(ipv6, &sa6)) {
             if (HandlerModulePlugin::city->enabled()) {
                 if (type == InBytes || type == OutBytes) {
