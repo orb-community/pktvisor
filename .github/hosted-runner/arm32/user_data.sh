@@ -53,6 +53,12 @@ usermod -aG docker ubuntu
 systemctl daemon-reload
 systemctl restart docker
 
+# instal corrade for cross-compiling
+git clone git://github.com/mosra/corrade && cd corrade
+ln -s package/debian .
+dpkg-buildpackage
+dpkg -i ../corrade*.deb
+
 #creating directory git actions runner
 mkdir actions-runner && cd actions-runner
 
