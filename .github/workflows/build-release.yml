@@ -425,25 +425,6 @@ jobs:
         with:
           name: workspace
           
-      - name: Build pktvisord + push symbol to backtrace.io
-        uses: ./.github/actions/build-cpp
-        with:
-          context: "."
-          build_type: "Release"
-          asan: "OFF"
-          symbol_url: ${{secrets.SYMBOL_URL}}
-          setting: armv7hf
-          file: "./Dockerfile"
-
-      - name: Build pktvisor-cli
-        uses: ./.github/actions/build-go
-        with:
-          context: "."
-          file: "./Dockerfile"
-          
-      - name: Debug artifacts
-        run: ls -lha .
-
       - name: Get branch name
         shell: bash
         run: echo "BRANCH_NAME=$(echo ${GITHUB_REF#refs/heads/} | tr / -)" >> $GITHUB_ENV
@@ -454,7 +435,6 @@ jobs:
       - name: Get VERSION
         run: |
           echo "VERSION=`cat ${{github.workspace}}/build/VERSION`" >> $GITHUB_ENV
-
       - name: Debug version
         run: echo ${{ env.VERSION }}
 
@@ -464,7 +444,6 @@ jobs:
           echo "REF_TAG=latest" >> $GITHUB_ENV
           echo "PRERELEASE=false" >> $GITHUB_ENV
           echo "DRAFT=true" >> $GITHUB_ENV
-
       - name: Debug ref tag
         run: echo ${{ env.REF_TAG }}
 
@@ -481,16 +460,6 @@ jobs:
       - name: Set up Docker Buildx
         id: buildx
         uses: docker/setup-buildx-action@v2
-        
-      - name: Replace token
-        run: |
-          sed -i -e "s/CP_TOKEN/${{ secrets.CRASHPAD_TOKEN }}/g" docker/run.sh
-
-      - name: Replace escape url
-        run: |
-          REPLACE=${{ secrets.CRASHPAD_URL }}
-          ESCAPED_REPLACE=$(printf '%s\n' "$REPLACE" | sed -e 's/[\/&]/\\&/g')
-          sed -i -e "s/CP_URL/$ESCAPED_REPLACE/g" docker/run.sh
 
       - name: Build + push - pktvisor (multi-arch)
         env:
@@ -499,7 +468,7 @@ jobs:
         with:
           builder: ${{ steps.buildx.outputs.name }}
           context: .
-          file: ./docker/Dockerfile.crashhandler
+          file: ./docker/Dockerfile
           platforms: linux/arm/v7
           push: true
           tags: ${{ env.IMAGE_NAME }}:armv7
