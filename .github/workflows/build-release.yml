@@ -432,7 +432,7 @@ jobs:
           build_type: "Release"
           asan: "OFF"
           symbol_url: ${{secrets.SYMBOL_URL}}
-          setting: settings.arch=armv7hf
+          setting: armv7hf
           file: "./Dockerfile"
 
       - name: Build pktvisor-cli
