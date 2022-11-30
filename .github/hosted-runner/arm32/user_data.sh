@@ -11,20 +11,11 @@ apt-get install apt-transport-https curl -y
 
 RELEASE=$(lsb_release -c | cut -f2)
 
-# add repos
-# add-apt-repository \
-#    "deb [arch=armhf] https://download.docker.com/linux/ubuntu \
-#    $RELEASE \
-#    stable"
-
-# apt-get update -y
-# apt-get install docker-ce:armhf -y
-
 apt-get update -y
 apt-get install qemu qemu-user-static ca-certificates gnupg2 curl tar software-properties-common build-essential zlib1g-dev \
 libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libsqlite3-dev libreadline-dev libffi-dev libbz2-dev python3 python3-pip python3-dev python2 xvfb \
 libfontconfig1 libfreetype6 xfonts-scalable fonts-liberation fonts-noto-cjk g++-10-arm-linux-gnueabihf cmake openssl \
-gcc-10-arm-linux-gnueabihf gcc-10-arm-linux-gnueabihf-base python3-venv tcpreplay docker-ce containerd -y
+gcc-10-arm-linux-gnueabihf gcc-10-arm-linux-gnueabihf-base python3-venv tcpreplay docker.io containerd -y
 
 wget https://www.openssl.org/source/openssl-1.1.1k.tar.gz
 tar zxf openssl-1.1.1k.tar.gz
@@ -32,11 +23,11 @@ make
 make install
 ldconfig
 
-wget https://zlib.net/zlib-1.2.11.tar.gz
-tar xvf zlib-1.2.11.tar.gz
-./configure
-make all install
-ldconfig
+# wget https://zlib.net/zlib-1.2.11.tar.gz
+# tar xvf zlib-1.2.11.tar.gz
+# ./configure
+# make all install
+# ldconfig
 
 mkdir /etc/systemd/system/docker.service.d
 
