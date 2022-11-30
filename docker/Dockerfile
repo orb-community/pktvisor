@@ -40,20 +40,27 @@ RUN go build -o pktvisor-cli cmd/pktvisor-cli/main.go
 
 FROM debian:bullseye-slim AS runtime
 
-ENV RUNTIME_DEPS "curl ca-certificates"
+ENV RUNTIME_DEPS "curl ca-certificates wget"
 
 RUN \
     apt-get update && \
     apt-get upgrade --yes --force-yes && \
     apt-get install --yes --force-yes --no-install-recommends ${RUNTIME_DEPS} && \
     rm -rf /var/lib/apt
+    
+#create dir and download geo db
+RUN mkdir /geo-db
+RUN cd /geo-db && wget https://github.com/ns1labs/geo-asn-database/raw/main/asn.mmdb.gz
+RUN cd /geo-db && wget https://github.com/ns1labs/geo-asn-database/raw/main/city.mmdb.gz
 
 COPY --from=cppbuild /tmp/build/bin/pktvisord /usr/local/sbin/pktvisord
 COPY --from=cppbuild /tmp/build/bin/crashpad_handler /usr/local/sbin/crashpad_handler
 COPY --from=cppbuild /tmp/build/bin/pktvisor-reader /usr/local/sbin/pktvisor-reader
 COPY --from=gobuild /src/pktvisor-cli /usr/local/bin/pktvisor-cli
-COPY docker/entry.sh /entry.sh
-RUN chmod a+x /entry.sh
+COPY ./docker/entry-cp.sh /entry-cp.sh
+COPY ./docker/run.sh /run.sh
+RUN chmod a+x /entry-cp.sh
+RUN chmod a+x /run.sh
 
-ENTRYPOINT [ "/entry.sh" ]
+ENTRYPOINT [ "/entry-cp.sh" ]
 
