@@ -142,6 +142,7 @@ jobs:
         run: |
           echo "# What's new" > changelog.md
           git log ${{ env.LAST_TAG }}..HEAD --pretty=format:"$ad- %s [%an]" >> changelog.md
+          echo "CHANGELOG=`cat changelog.md`" >> $GITHUB_ENV
 
 #       - name: Create release
 #         id: create_release
@@ -154,6 +155,16 @@ jobs:
 #           body_path: ${{github.workspace}}/changelog.md
 #           draft: false
 #           prerelease: false
+
+  post-changelog-message:
+    needs: [ release ]
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'pull_request' && needs.pre-test.outputs.prd == 'true' }}
+    steps:
+      - name: Post pktvisor changelog in slack channel
+        run: |
+          curl -d "text=:mega: *TEST pktvisor reporter TEST* :mega:
+          $(echo ${{ env.CHANGELOG }})" -d "channel=C02SEF78ZPT" -H "Authorization: Bearer ${{secrets.SLACK_APP_TOKEN}}" -X POST https://slack.com/api/chat.postMessage          
 
   spinup-arm64-runner:
     needs: [ prebuild-package ]
