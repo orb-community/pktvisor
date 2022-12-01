@@ -159,7 +159,7 @@ jobs:
   post-changelog-message:
     needs: [ release ]
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' && needs.pre-test.outputs.prd == 'true' }}
+    if: ${{ github.event_name != 'pull_request' }}
     steps:
       - name: Post pktvisor changelog in slack channel
         run: |
