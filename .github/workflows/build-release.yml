@@ -142,7 +142,6 @@ jobs:
         run: |
           echo "# What's new" > changelog.md
           git log ${{ env.LAST_TAG }}..HEAD --pretty=format:"$ad- %s [%an]" >> changelog.md
-          echo "CHANGELOG=`cat changelog.md`" >> $GITHUB_ENV
           
       - name: Post pktvisor changelog in slack channel
         run: |
