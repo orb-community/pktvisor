@@ -64,7 +64,7 @@ static void parse_host_specs(const std::vector<std::string> &host_list, std::vec
 {
     for (const auto &host : host_list) {
         auto delimiter = host.find('/');
-        if (delimiter == host.npos) {
+        if (delimiter == std::string::npos) {
             throw StreamHandlerException(fmt::format("invalid CIDR: {}", host));
         }
         auto ip = host.substr(0, delimiter);
@@ -76,7 +76,7 @@ static void parse_host_specs(const std::vector<std::string> &host_list, std::vec
         }
 
         auto cidr_number = std::stoi(cidr);
-        if (ip.find(':') != ip.npos) {
+        if (ip.find(':') != std::string::npos) {
             if (cidr_number < 0 || cidr_number > 128) {
                 throw StreamHandlerException(fmt::format("invalid CIDR: {}", host));
             }
@@ -538,7 +538,7 @@ void FlowStreamHandler::_parse_ports(const std::vector<std::string> &port_list)
     for (const auto &port : port_list) {
         try {
             auto delimiter = port.find('-');
-            if (delimiter != port.npos) {
+            if (delimiter != std::string::npos) {
                 auto first_value = std::stoul(port.substr(0, delimiter));
                 auto last_value = std::stoul(port.substr(delimiter + 1));
                 if (first_value > last_value) {
@@ -570,7 +570,7 @@ std::vector<std::pair<uint32_t, uint32_t>> FlowStreamHandler::_parse_interfaces(
                 return result;
             }
             auto delimiter = interface.find('-');
-            if (delimiter != interface.npos) {
+            if (delimiter != std::string::npos) {
                 auto first_value = std::stoul(interface.substr(0, delimiter));
                 auto last_value = std::stoul(interface.substr(delimiter + 1));
                 if (first_value > last_value) {
@@ -813,10 +813,10 @@ void FlowMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap a
                 if (group_enabled(group::FlowMetrics::TopIPs)) {
                     top_dir.second.topSrcIP.to_prometheus(out, interface_labels, [summary](const std::string &val) {
                         return ip_summarization(val, summary);
-                    });
+                    }, Metric::Aggregate::SUMMARY);
                     top_dir.second.topDstIP.to_prometheus(out, interface_labels, [summary](const std::string &val) {
                         return ip_summarization(val, summary);
-                    });
+                    }, Metric::Aggregate::SUMMARY);
                 }
                 if (group_enabled(group::FlowMetrics::TopPorts)) {
                     top_dir.second.topSrcPort.to_prometheus(out, interface_labels, [](const network::IpPort &val) { return val.get_service(); });

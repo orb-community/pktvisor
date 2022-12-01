@@ -21,6 +21,7 @@
 #endif
 #include <chrono>
 #include <regex>
+#include <set>
 #include <shared_mutex>
 #include <vector>
 
@@ -28,6 +29,18 @@ namespace visor {
 
 using json = nlohmann::json;
 using namespace std::chrono;
+
+struct comparator {
+    template <typename T>
+    // Comparator function
+    bool operator()(const T& l, const T& r) const
+    {
+        if (l.second != r.second) {
+            return l.second > r.second;
+        }
+        return l.first > r.first;
+    }
+};
 
 class Metric
 {
@@ -37,6 +50,7 @@ public:
     enum class Aggregate {
         DEFAULT,
         SUM,
+        SUMMARY
     };
 
 private:
@@ -457,17 +471,38 @@ public:
      * @param j json object
      * @param formatter std::function which takes a T as input (the type store it in top table) it needs to return a std::string
      */
-    void to_json(json &j, std::function<std::string(const T &)> formatter) const
+    void to_json(json &j, std::function<std::string(const T &)> formatter, Aggregate op = Aggregate::DEFAULT) const
     {
         auto section = json::array();
         auto items = _fi.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
         auto threshold = _get_threshold(items);
-        for (uint64_t i = 0; i < std::min(_top_count, items.size()); i++) {
-            if (items[i].get_estimate() >= threshold) {
-                section[i]["name"] = formatter(items[i].get_item());
-                section[i]["estimate"] = items[i].get_estimate();
-            } else {
-                break;
+        if (op == Aggregate::DEFAULT) {
+            for (uint64_t i = 0; i < std::min(_top_count, items.size()); i++) {
+                if (items[i].get_estimate() >= threshold) {
+                    section[i]["name"] = formatter(items[i].get_item());
+                    section[i]["estimate"] = items[i].get_estimate();
+                } else {
+                    break;
+                }
+            }
+        } else if (op == Aggregate::SUMMARY) {
+            std::map<std::string, uint64_t> summary;
+            for (uint64_t i = 0; i < std::min(_top_count, items.size()); i++) {
+                if (items[i].get_estimate() >= threshold) {
+                    auto [removed, not_exists] = summary.emplace(formatter(items[i].get_item()), items[i].get_estimate());
+                    if (!not_exists) {
+                        summary[removed->first] += items[i].get_estimate();
+                    }
+                } else {
+                    break;
+                }
+            }
+            std::set<std::pair<std::string, uint64_t>, comparator> sorted(summary.begin(), summary.end());
+            uint64_t i = 0;
+            for (const auto &data : sorted) {
+                section[i]["name"] = data.first;
+                section[i]["estimate"] = data.second;
+                i++;
             }
         }
         name_json_assign(j, section);
@@ -489,19 +524,38 @@ public:
         name_json_assign(j, section);
     }
 
-    void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels, std::function<std::string(const T &)> formatter) const
+    void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels, std::function<std::string(const T &)> formatter, Aggregate op = Aggregate::DEFAULT) const
     {
         LabelMap l(add_labels);
         auto items = _fi.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
         auto threshold = _get_threshold(items);
         out << "# HELP " << base_name_snake() << ' ' << _desc << std::endl;
         out << "# TYPE " << base_name_snake() << " gauge" << std::endl;
-        for (uint64_t i = 0; i < std::min(_top_count, items.size()); i++) {
-            if (items[i].get_estimate() >= threshold) {
-                l[_item_key] = formatter(items[i].get_item());
-                out << name_snake({}, l) << ' ' << items[i].get_estimate() << std::endl;
-            } else {
-                break;
+        if (op == Aggregate::DEFAULT) {
+            for (uint64_t i = 0; i < std::min(_top_count, items.size()); i++) {
+                if (items[i].get_estimate() >= threshold) {
+                    l[_item_key] = formatter(items[i].get_item());
+                    out << name_snake({}, l) << ' ' << items[i].get_estimate() << std::endl;
+                } else {
+                    break;
+                }
+            }
+        } else if (op == Aggregate::SUMMARY) {
+            std::map<std::string, uint64_t> summary;
+            for (uint64_t i = 0; i < std::min(_top_count, items.size()); i++) {
+                if (items[i].get_estimate() >= threshold) {
+                    auto [removed, not_exists] = summary.emplace(formatter(items[i].get_item()), items[i].get_estimate());
+                    if (!not_exists) {
+                        summary[removed->first] += items[i].get_estimate();
+                    }
+                } else {
+                    break;
+                }
+            }
+            std::set<std::pair<std::string, uint64_t>, comparator> sorted(summary.begin(), summary.end());
+            for (const auto &data : sorted) {
+                l[_item_key] = data.first;
+                out << name_snake({}, l) << ' ' << data.second << std::endl;
             }
         }
     }
