@@ -358,6 +358,24 @@ TEST_CASE("TopN metrics", "[metrics][topn]")
         CHECK(j["top"]["test"]["metric"][0]["name"] == "123");
     }
 
+    SECTION("TopN to json summary")
+    {
+        top_sting.update("top1");
+        top_sting.update("top2");
+        top_sting.update("top3");
+        top_sting.update("none");
+        top_sting.to_json(j["top"], [](const std::string &val) {
+            if(val.find("top") != std::string::npos) {
+                return std::string("top");
+            }
+            return val;
+        }, Metric::Aggregate::SUMMARY);
+        CHECK(j["top"]["test"]["metric"][0]["estimate"] == 3);
+        CHECK(j["top"]["test"]["metric"][0]["name"] == "top");
+        CHECK(j["top"]["test"]["metric"][1]["estimate"] == 1);
+        CHECK(j["top"]["test"]["metric"][1]["name"] == "none");
+    }
+
     SECTION("TopN prometheus")
     {
         top_sting.update("top1");
@@ -389,6 +407,28 @@ TEST_CASE("TopN metrics", "[metrics][topn]")
         CHECK(line == R"(root_test_metric{instance="test instance",integer="123",policy="default"} 2)");
         std::getline(output, line);
         CHECK(line == R"(root_test_metric{instance="test instance",integer="10",policy="default"} 1)");
+    }
+
+    SECTION("TopN to prometheus summary")
+    {
+        top_sting.update("top1");
+        top_sting.update("top2");
+        top_sting.update("top3");
+        top_sting.update("none");
+        top_sting.to_prometheus(output, {{"policy", "default"}}, [](const std::string &val) {
+                if(val.find("top") != std::string::npos) {
+                    return std::string("top");
+                }
+                return val;
+            }, Metric::Aggregate::SUMMARY);
+        std::getline(output, line);
+        CHECK(line == "# HELP root_test_metric A topn test metric");
+        std::getline(output, line);
+        CHECK(line == "# TYPE root_test_metric gauge");
+        std::getline(output, line);
+        CHECK(line == R"(root_test_metric{instance="test instance",policy="default",string="top"} 3)");
+        std::getline(output, line);
+        CHECK(line == R"(root_test_metric{instance="test instance",policy="default",string="none"} 1)");
     }
 
     SECTION("TopN get count size")

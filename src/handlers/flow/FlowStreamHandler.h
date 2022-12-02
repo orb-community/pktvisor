@@ -19,9 +19,6 @@ namespace visor::handler::flow {
 using namespace visor::input::mock;
 using namespace visor::input::flow;
 
-typedef std::pair<in_addr, uint8_t> Ipv4Subnet;
-typedef std::pair<in6_addr, uint8_t> Ipv6Subnet;
-
 static constexpr const char *FLOW_SCHEMA{"flow"};
 
 namespace group {
@@ -38,6 +35,12 @@ enum FlowMetrics : visor::MetricGroupIntType {
     TopInterfaces
 };
 }
+
+enum class IpSummary {
+    None,
+    ByASN,
+    BySubnet
+};
 
 enum FlowDirectionType {
     InBytes,
@@ -57,7 +60,15 @@ struct DeviceEnrich {
     std::unordered_map<uint32_t, InterfaceEnrich> interfaces;
 };
 
-typedef std::unordered_map<std::string, DeviceEnrich> EnrichMap;
+struct SummaryData {
+    IpSummary type{IpSummary::None};
+    lib::utils::IPv4subnetList ipv4_exclude_summary;
+    lib::utils::IPv6subnetList ipv6_exclude_summary;
+    lib::utils::IPv4subnetList ipv4_summary;
+    lib::utils::IPv6subnetList ipv6_summary;
+};
+
+typedef std::unordered_map<std::string, DeviceEnrich> EnrichData;
 
 struct FlowData {
     bool is_ipv6;
@@ -228,7 +239,8 @@ class FlowMetricsBucket final : public visor::AbstractMetricsBucket
 {
 protected:
     mutable std::shared_mutex _mutex;
-    EnrichMap *_enrich_data{nullptr};
+    EnrichData *_enrich_data{nullptr};
+    SummaryData *_summary_data{nullptr};
     size_t _topn_count{10};
     uint64_t _topn_percentile_threshold{0};
     //  <DeviceId, FlowDevice>
@@ -252,9 +264,14 @@ public:
         _topn_percentile_threshold = percentile_threshold;
     }
 
-    inline void set_enrich_data(EnrichMap *enrich_data)
+    inline void set_enrich_data(EnrichData *enrich_data)
     {
         _enrich_data = enrich_data;
+    }
+
+    inline void set_summary_data(SummaryData *summary_data)
+    {
+        _summary_data = summary_data;
     }
 
     inline void process_filtered(uint64_t filtered, const std::string &device)
@@ -272,7 +289,8 @@ public:
 
 class FlowMetricsManager final : public visor::AbstractMetricsManager<FlowMetricsBucket>
 {
-    EnrichMap _enrich_data;
+    EnrichData _enrich_data;
+    SummaryData _summary_data;
 
 public:
     FlowMetricsManager(const Configurable *window_config)
@@ -280,12 +298,18 @@ public:
     {
     }
 
-    inline void set_enrich_data(EnrichMap enrich_data)
+    inline void set_enrich_data(EnrichData enrich_data)
     {
         _enrich_data = enrich_data;
         if (!_enrich_data.empty()) {
             live_bucket()->set_enrich_data(&_enrich_data);
         }
+    }
+
+    inline void set_summary_data(SummaryData summary_data)
+    {
+        _summary_data = summary_data;
+        live_bucket()->set_summary_data(&_summary_data);
     }
 
     inline void process_filtered(timespec stamp, uint64_t filtered, const std::string &device)
@@ -315,8 +339,8 @@ class FlowStreamHandler final : public visor::StreamMetricsHandler<FlowMetricsMa
     sigslot::connection _netflow_connection;
     sigslot::connection _heartbeat_connection;
 
-    std::vector<Ipv4Subnet> _IPv4_ips_list;
-    std::vector<Ipv6Subnet> _IPv6_ips_list;
+    lib::utils::IPv4subnetList _only_ipv4_list;
+    lib::utils::IPv6subnetList _only_ipv6_list;
 
     std::map<std::string, std::vector<std::pair<uint32_t, uint32_t>>> _device_interfaces_list;
     std::vector<std::pair<uint32_t, uint32_t>> _parsed_port_list;
@@ -341,6 +365,9 @@ class FlowStreamHandler final : public visor::StreamMetricsHandler<FlowMetricsMa
         "only_ports",
         "geoloc_notfound",
         "asn_notfound",
+        "summarize_ips_by_asn",
+        "subnets_for_summarization",
+        "exclude_ips_from_summarization",
         "sample_rate_scaling",
         "recorded_stream"};
 
@@ -363,8 +390,6 @@ class FlowStreamHandler final : public visor::StreamMetricsHandler<FlowMetricsMa
 
     void _parse_ports(const std::vector<std::string> &port_list);
     std::vector<std::pair<uint32_t, uint32_t>> _parse_interfaces(const std::vector<std::string> &interface_list);
-    void _parse_host_specs(const std::vector<std::string> &host_list);
-    bool _match_subnet(uint32_t ipv4 = 0, const uint8_t *ipv6 = nullptr);
     bool _filtering(FlowData &flow, const std::string &device_id);
 
 public:

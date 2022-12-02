@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "PcapException.h"
 #include <pcap/pcap.h>
 #ifdef __GNUC__
 #pragma GCC diagnostic push

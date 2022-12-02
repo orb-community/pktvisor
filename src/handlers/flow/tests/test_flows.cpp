@@ -78,7 +78,7 @@ TEST_CASE("Parse sflow with enrichment", "[sflow][flow]")
     interfaces_map->config_set<std::shared_ptr<visor::Configurable>>("4", interface);
     device->config_set<std::shared_ptr<visor::Configurable>>("interfaces", interfaces_map);
     device_map->config_set<std::shared_ptr<visor::Configurable>>("192.168.0.12", device);
-    
+
     flow_handler.config_set<std::shared_ptr<visor::Configurable>>("device_map", device_map);
 
     auto devices = std::make_shared<visor::Configurable>();
@@ -141,7 +141,7 @@ TEST_CASE("Parse sflow stream without sampling", "[sflow][flow]")
     CHECK(j["devices"]["192.168.0.13"]["interfaces"]["52"]["top_in_src_ips_bytes"][0]["name"] == "10.4.1.2");
     CHECK(j["devices"]["192.168.0.13"]["interfaces"]["52"]["top_out_src_ips_packets"][0]["estimate"] == 258);
     CHECK(j["devices"]["192.168.0.13"]["interfaces"]["52"]["top_out_src_ips_packets"][0]["name"] == "10.4.4.2");
-    CHECK(j["devices"]["192.168.0.13"]["interfaces"]["52"]["top_out_dst_ports_bytes"][0]["estimate"] == 3010);
+    CHECK(j["devices"]["192.168.0.13"]["interfaces"]["52"]["top_out_dst_ports_bytes"][0]["estimate"] == 13230);
     CHECK(j["devices"]["192.168.0.13"]["interfaces"]["52"]["top_out_src_ips_and_port_bytes"][0]["estimate"] == 18060);
     CHECK(j["devices"]["192.168.0.13"]["interfaces"]["52"]["top_out_src_ips_and_port_bytes"][0]["name"] == "10.4.4.2:5001");
 }
@@ -272,6 +272,39 @@ TEST_CASE("Parse sflow stream with port filter", "[sflow][flow]")
     CHECK(j["devices"]["192.168.0.11"]["interfaces"]["38"]["top_out_src_ips_and_port_bytes"][0]["name"] == "10.4.4.2:5001");
 }
 
+TEST_CASE("Parse sflow stream with subnet summary", "[sflow][flow]")
+{
+
+    FlowInputStream stream{"sflow-test"};
+    stream.config_set("flow_type", "sflow");
+    stream.config_set("pcap_file", "tests/fixtures/ecmp.pcap");
+
+    visor::Config c;
+    auto stream_proxy = stream.add_event_proxy(c);
+    c.config_set<uint64_t>("num_periods", 1);
+    FlowStreamHandler flow_handler{"flow-test", stream_proxy, &c};
+    flow_handler.config_set<visor::Configurable::StringList>("subnets_for_summarization", {"10.4.0.0/16"});
+    flow_handler.config_set<visor::Configurable::StringList>("exclude_ips_from_summarization", {"10.4.4.0/24"});
+    flow_handler.start();
+    stream.start();
+    stream.stop();
+    flow_handler.stop();
+
+    auto event_data = flow_handler.metrics()->bucket(0)->event_data_locked();
+
+    // confirmed with wireshark
+    CHECK(event_data.num_events->value() == 9279);
+    CHECK(event_data.num_samples->value() == 9279);
+
+    nlohmann::json j;
+    flow_handler.metrics()->bucket(0)->to_json(j);
+
+    CHECK(j["devices"]["192.168.0.11"]["interfaces"]["4"]["top_in_src_ips_bytes"][0]["estimate"] == 399800000);
+    CHECK(j["devices"]["192.168.0.11"]["interfaces"]["4"]["top_in_src_ips_bytes"][0]["name"] == "10.4.4.2");
+    CHECK(j["devices"]["192.168.0.11"]["interfaces"]["38"]["top_in_src_ips_bytes"][0]["estimate"] == 249921240000);
+    CHECK(j["devices"]["192.168.0.11"]["interfaces"]["38"]["top_in_src_ips_bytes"][0]["name"] == "10.4.0.0/16");
+}
+
 TEST_CASE("Parse sflow stream with interfaces filter", "[sflow][flow]")
 {
 
@@ -359,5 +392,5 @@ TEST_CASE("Flow invalid config", "[flow][filter][config]")
     c.config_set<uint64_t>("num_periods", 1);
     FlowStreamHandler flow_handler{"flow-test", stream_proxy, &c};
     flow_handler.config_set<bool>("invalid_config", true);
-    REQUIRE_THROWS_WITH(flow_handler.start(), "invalid_config is an invalid/unsupported config or filter. The valid configs/filters are: device_map, enrichment, only_device_interfaces, only_ips, only_ports, geoloc_notfound, asn_notfound, sample_rate_scaling, recorded_stream, deep_sample_rate, num_periods, topn_count, topn_percentile_threshold");
+    REQUIRE_THROWS_WITH(flow_handler.start(), "invalid_config is an invalid/unsupported config or filter. The valid configs/filters are: device_map, enrichment, only_device_interfaces, only_ips, only_ports, geoloc_notfound, asn_notfound, summarize_ips_by_asn, subnets_for_summarization, exclude_ips_from_summarization, sample_rate_scaling, recorded_stream, deep_sample_rate, num_periods, topn_count, topn_percentile_threshold");
 }
