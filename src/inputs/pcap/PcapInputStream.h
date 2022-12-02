@@ -25,6 +25,7 @@
 #ifdef __GNUC__
 #pragma GCC diagnostic pop
 #endif
+#include "PcapException.h"
 #include "VisorLRUList.h"
 #include "utils.h"
 #include <functional>
@@ -98,8 +99,8 @@ private:
 
     static const PcapSource DefaultPcapSource = PcapSource::libpcap;
     LRUList<uint32_t, timeval> _lru_list;
-    IPv4subnetList _hostIPv4;
-    IPv6subnetList _hostIPv6;
+    lib::utils::IPv4subnetList _hostIPv4;
+    lib::utils::IPv6subnetList _hostIPv6;
     PacketDirection _packet_dir_cache{PacketDirection::unknown};
 
     PcapSource _cur_pcap_source{PcapSource::unknown};

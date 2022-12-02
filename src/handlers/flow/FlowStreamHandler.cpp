@@ -14,90 +14,6 @@
 
 namespace visor::handler::flow {
 
-static std::pair<bool, std::vector<Ipv4Subnet>::const_iterator> match_subnet(std::vector<Ipv4Subnet> &ipv4_list, uint32_t ipv4_val)
-{
-    if (ipv4_val && !ipv4_list.empty()) {
-        in_addr ipv4{};
-        std::memcpy(&ipv4, &ipv4_val, sizeof(in_addr));
-        for (std::vector<Ipv4Subnet>::const_iterator it = ipv4_list.begin(); it != ipv4_list.end(); ++it) {
-            uint8_t cidr = it->cidr;
-            if (cidr == 0) {
-                return {true, it};
-            }
-            uint32_t mask = htonl((0xFFFFFFFFu) << (32 - cidr));
-            if (!((ipv4.s_addr ^ it->addr.s_addr) & mask)) {
-                return {true, it};
-            }
-        }
-    }
-    return {false, std::vector<Ipv4Subnet>::const_iterator()};
-}
-
-static std::pair<bool, std::vector<Ipv6Subnet>::const_iterator> match_subnet(std::vector<Ipv6Subnet> &ipv6_list, const uint8_t *ipv6_val)
-{
-    if (ipv6_val && !ipv6_list.empty()) {
-        in6_addr ipv6{};
-        std::memcpy(&ipv6, ipv6_val, sizeof(in6_addr));
-        for (std::vector<Ipv6Subnet>::const_iterator it = ipv6_list.begin(); it != ipv6_list.end(); ++it) {
-            uint8_t prefixLength = it->cidr;
-            auto network = it->addr;
-            uint8_t compareByteCount = prefixLength / 8;
-            uint8_t compareBitCount = prefixLength % 8;
-            bool result = false;
-            if (compareByteCount > 0) {
-                result = std::memcmp(&network.s6_addr, &ipv6.s6_addr, compareByteCount) == 0;
-            }
-            if ((result || prefixLength < 8) && compareBitCount > 0) {
-                uint8_t subSubnetByte = network.s6_addr[compareByteCount] >> (8 - compareBitCount);
-                uint8_t subThisByte = ipv6.s6_addr[compareByteCount] >> (8 - compareBitCount);
-                result = subSubnetByte == subThisByte;
-            }
-            if (result) {
-                return {true, it};
-            }
-        }
-    }
-    return {false, std::vector<Ipv6Subnet>::const_iterator()};
-}
-
-static void parse_host_specs(const std::vector<std::string> &host_list, std::vector<Ipv4Subnet> &ipv4_list, std::vector<Ipv6Subnet> &ipv6_list)
-{
-    for (const auto &host : host_list) {
-        auto delimiter = host.find('/');
-        if (delimiter == std::string::npos) {
-            throw StreamHandlerException(fmt::format("invalid CIDR: {}", host));
-        }
-        auto ip = host.substr(0, delimiter);
-        auto cidr = host.substr(++delimiter);
-        auto not_number = std::count_if(cidr.begin(), cidr.end(),
-            [](unsigned char c) { return !std::isdigit(c); });
-        if (not_number) {
-            throw StreamHandlerException(fmt::format("invalid CIDR: {}", host));
-        }
-
-        auto cidr_number = std::stoi(cidr);
-        if (ip.find(':') != std::string::npos) {
-            if (cidr_number < 0 || cidr_number > 128) {
-                throw StreamHandlerException(fmt::format("invalid CIDR: {}", host));
-            }
-            in6_addr ipv6{};
-            if (inet_pton(AF_INET6, ip.c_str(), &ipv6) != 1) {
-                throw StreamHandlerException(fmt::format("invalid IPv6 address: {}", ip));
-            }
-            ipv6_list.push_back({ipv6, static_cast<uint8_t>(cidr_number), host});
-        } else {
-            if (cidr_number < 0 || cidr_number > 32) {
-                throw StreamHandlerException(fmt::format("invalid CIDR: {}", host));
-            }
-            in_addr ipv4{};
-            if (inet_pton(AF_INET, ip.c_str(), &ipv4) != 1) {
-                throw StreamHandlerException(fmt::format("invalid IPv4 address: {}", ip));
-            }
-            ipv4_list.push_back({ipv4, static_cast<uint8_t>(cidr_number), host});
-        }
-    }
-}
-
 static std::string ip_summarization(const std::string &val, SummaryData *summary)
 {
     if (summary) {
@@ -111,12 +27,12 @@ static std::string ip_summarization(const std::string &val, SummaryData *summary
         if (summary->type == IpSummary::ByASN && HandlerModulePlugin::asn->enabled()) {
             if (ipv4.isValid()) {
                 sockaddr_in sa4{};
-                if (IPv4_to_sockaddr(ipv4, &sa4)) {
+                if (lib::utils::ipv4_to_sockaddr(ipv4, &sa4)) {
                     return HandlerModulePlugin::asn->getASNString(&sa4);
                 }
             } else if (ipv6.isValid()) {
                 sockaddr_in6 sa6{};
-                if (IPv6_to_sockaddr(ipv6, &sa6)) {
+                if (lib::utils::ipv6_to_sockaddr(ipv6, &sa6)) {
                     return HandlerModulePlugin::asn->getASNString(&sa6);
                 }
             }
@@ -501,14 +417,14 @@ bool FlowStreamHandler::_filtering(FlowData &flow, const std::string &device_id)
     if (_f_enabled[Filters::GeoLocNotFound] && HandlerModulePlugin::city->enabled()) {
         if (!flow.is_ipv6) {
             sockaddr_in sa4{};
-            if ((IPv4_to_sockaddr(flow.ipv4_in, &sa4) && HandlerModulePlugin::city->getGeoLoc(&sa4).location != "Unknown")
-                && (IPv4_to_sockaddr(flow.ipv4_out, &sa4) && HandlerModulePlugin::city->getGeoLoc(&sa4).location != "Unknown")) {
+            if ((lib::utils::ipv4_to_sockaddr(flow.ipv4_in, &sa4) && HandlerModulePlugin::city->getGeoLoc(&sa4).location != "Unknown")
+                && (lib::utils::ipv4_to_sockaddr(flow.ipv4_out, &sa4) && HandlerModulePlugin::city->getGeoLoc(&sa4).location != "Unknown")) {
                 return true;
             }
         } else {
             sockaddr_in6 sa6{};
-            if ((IPv6_to_sockaddr(flow.ipv6_in, &sa6) && HandlerModulePlugin::city->getGeoLoc(&sa6).location != "Unknown")
-                && (IPv6_to_sockaddr(flow.ipv6_out, &sa6) && HandlerModulePlugin::city->getGeoLoc(&sa6).location != "Unknown")) {
+            if ((lib::utils::ipv6_to_sockaddr(flow.ipv6_in, &sa6) && HandlerModulePlugin::city->getGeoLoc(&sa6).location != "Unknown")
+                && (lib::utils::ipv6_to_sockaddr(flow.ipv6_out, &sa6) && HandlerModulePlugin::city->getGeoLoc(&sa6).location != "Unknown")) {
                 return true;
             }
         }
@@ -516,14 +432,14 @@ bool FlowStreamHandler::_filtering(FlowData &flow, const std::string &device_id)
     if (_f_enabled[Filters::AsnNotFound] && HandlerModulePlugin::asn->enabled()) {
         if (!flow.is_ipv6) {
             sockaddr_in sa4{};
-            if ((IPv4_to_sockaddr(flow.ipv4_in, &sa4) && HandlerModulePlugin::asn->getASNString(&sa4) != "Unknown")
-                && (IPv4_to_sockaddr(flow.ipv4_out, &sa4) && HandlerModulePlugin::asn->getASNString(&sa4) != "Unknown")) {
+            if ((lib::utils::ipv4_to_sockaddr(flow.ipv4_in, &sa4) && HandlerModulePlugin::asn->getASNString(&sa4) != "Unknown")
+                && (lib::utils::ipv4_to_sockaddr(flow.ipv4_out, &sa4) && HandlerModulePlugin::asn->getASNString(&sa4) != "Unknown")) {
                 return true;
             }
         } else {
             sockaddr_in6 sa6{};
-            if ((IPv6_to_sockaddr(flow.ipv6_in, &sa6) && HandlerModulePlugin::asn->getASNString(&sa6) != "Unknown")
-                && (IPv6_to_sockaddr(flow.ipv6_out, &sa6) && HandlerModulePlugin::asn->getASNString(&sa6) != "Unknown")) {
+            if ((lib::utils::ipv6_to_sockaddr(flow.ipv6_in, &sa6) && HandlerModulePlugin::asn->getASNString(&sa6) != "Unknown")
+                && (lib::utils::ipv6_to_sockaddr(flow.ipv6_out, &sa6) && HandlerModulePlugin::asn->getASNString(&sa6) != "Unknown")) {
                 return true;
             }
         }
@@ -1238,7 +1154,7 @@ inline void FlowMetricsBucket::_process_geo_metrics(FlowInterface *interface, Fl
 {
     if ((HandlerModulePlugin::asn->enabled() || HandlerModulePlugin::city->enabled()) && group_enabled(group::FlowMetrics::TopGeo)) {
         sockaddr_in sa4{};
-        if (IPv4_to_sockaddr(ipv4, &sa4)) {
+        if (lib::utils::ipv4_to_sockaddr(ipv4, &sa4)) {
             if (HandlerModulePlugin::city->enabled()) {
                 if (type == InBytes || type == OutBytes) {
                     interface->topN.first.topGeoLoc.update(HandlerModulePlugin::city->getGeoLoc(&sa4), aggregator);
@@ -1261,7 +1177,7 @@ inline void FlowMetricsBucket::_process_geo_metrics(FlowInterface *interface, Fl
 {
     if ((HandlerModulePlugin::asn->enabled() || HandlerModulePlugin::city->enabled()) && group_enabled(group::FlowMetrics::TopGeo)) {
         sockaddr_in6 sa6{};
-        if (IPv6_to_sockaddr(ipv6, &sa6)) {
+        if (lib::utils::ipv6_to_sockaddr(ipv6, &sa6)) {
             if (HandlerModulePlugin::city->enabled()) {
                 if (type == InBytes || type == OutBytes) {
                     interface->topN.first.topGeoLoc.update(HandlerModulePlugin::city->getGeoLoc(&sa6), aggregator);

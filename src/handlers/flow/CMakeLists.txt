@@ -16,6 +16,7 @@ target_include_directories(VisorHandlerFlow
 
 target_link_libraries(VisorHandlerFlow
         PUBLIC
+        Visor::Lib::Utils
         Visor::Input::Mock
         Visor::Input::Flow
         )

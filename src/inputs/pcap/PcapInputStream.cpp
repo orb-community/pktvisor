@@ -393,24 +393,16 @@ void PcapInputStream::process_raw_packet(pcpp::RawPacket *rawPacket)
     auto IP4layer = packet.getLayerOfType<pcpp::IPv4Layer>();
     auto IP6layer = packet.getLayerOfType<pcpp::IPv6Layer>();
     if (IP4layer) {
-        for (auto &i : _hostIPv4) {
-            if (IP4layer->getDstIPv4Address().matchSubnet(i.address, i.mask)) {
-                _packet_dir_cache = PacketDirection::toHost;
-                break;
-            } else if (IP4layer->getSrcIPv4Address().matchSubnet(i.address, i.mask)) {
-                _packet_dir_cache = PacketDirection::fromHost;
-                break;
-            }
+        if (lib::utils::match_subnet(_hostIPv4, IP4layer->getDstIPv4Address().toInt()).first) {
+            _packet_dir_cache = PacketDirection::toHost;
+        } else if (lib::utils::match_subnet(_hostIPv4, IP4layer->getSrcIPv4Address().toInt()).first) {
+            _packet_dir_cache = PacketDirection::fromHost;
         }
     } else if (IP6layer) {
-        for (auto &i : _hostIPv6) {
-            if (IP6layer->getDstIPv6Address().matchSubnet(i.address, i.mask)) {
-                _packet_dir_cache = PacketDirection::toHost;
-                break;
-            } else if (IP6layer->getSrcIPv6Address().matchSubnet(i.address, i.mask)) {
-                _packet_dir_cache = PacketDirection::fromHost;
-                break;
-            }
+        if (lib::utils::match_subnet(_hostIPv6, IP6layer->getDstIPv6Address().toBytes()).first) {
+            _packet_dir_cache = PacketDirection::toHost;
+        } else if (lib::utils::match_subnet(_hostIPv6, IP6layer->getSrcIPv6Address().toBytes()).first) {
+            _packet_dir_cache = PacketDirection::fromHost;
         }
     }
 
@@ -574,6 +566,9 @@ void PcapInputStream::_get_hosts_from_libpcap_iface()
         if (!i.addr) {
             continue;
         }
+        char buf[INET6_ADDRSTRLEN];
+        pcpp::internal::sockaddr2string(i.addr, buf);
+        std::string ip(buf);
         if (i.addr->sa_family == AF_INET) {
             auto adrcvt = pcpp::internal::sockaddr2in_addr(i.addr);
             if (!adrcvt) {
@@ -583,13 +578,16 @@ void PcapInputStream::_get_hosts_from_libpcap_iface()
             if (!nmcvt) {
                 throw PcapException("couldn't parse IPv4 netmask address on device");
             }
-            _hostIPv4.emplace_back(IPv4subnet(pcpp::IPv4Address(pcpp::internal::in_addr2int(*adrcvt)), pcpp::IPv4Address(pcpp::internal::in_addr2int(*nmcvt))));
+            uint8_t len = static_cast<uint8_t>(0xFFFFFFFFUL & nmcvt->s_addr);
+            _hostIPv4.push_back({*adrcvt, len, ip + "/" + std::to_string(len)});
         } else if (i.addr->sa_family == AF_INET6) {
-            char buf1[INET6_ADDRSTRLEN];
-            pcpp::internal::sockaddr2string(i.addr, buf1);
+            auto adrcvt = pcpp::internal::sockaddr2in6_addr(i.addr);
+            if (!adrcvt) {
+                throw PcapException("couldn't parse IPv6 address on device");
+            }
             auto nmcvt = pcpp::internal::sockaddr2in6_addr(i.netmask);
             if (!nmcvt) {
-                throw PcapException("couldn't parse IPv4 netmask address on device");
+                throw PcapException("couldn't parse IPv6 netmask address on device");
             }
             uint8_t len = 0;
             for (int i = 0; i < 16; i++) {
@@ -598,7 +596,7 @@ void PcapInputStream::_get_hosts_from_libpcap_iface()
                     nmcvt->s6_addr[i] >>= 1;
                 }
             }
-            _hostIPv6.emplace_back(IPv6subnet(pcpp::IPv6Address(buf1), len));
+            _hostIPv6.push_back({*adrcvt, len, ip + "/" + std::to_string(len)});
         }
     }
 }
@@ -611,18 +609,12 @@ void PcapInputStream::info_json(json &j) const
     info["host_ips"] = json::object();
     for (auto &i : _hostIPv4) {
         std::stringstream out;
-        int len = 0;
-        auto m = i.mask.toInt();
-        while (m) {
-            len++;
-            m >>= 1;
-        }
-        out << i.address.toString() << '/' << len;
+        out << i.str;
         info["host_ips"]["ipv4"].push_back(out.str());
     }
     for (auto &i : _hostIPv6) {
         std::stringstream out;
-        out << i.address.toString() << '/' << static_cast<int>(i.mask);
+        out << i.str;
         info["host_ips"]["ipv6"].push_back(out.str());
     }
     switch (_cur_pcap_source) {
@@ -650,7 +642,8 @@ std::unique_ptr<InputEventProxy> PcapInputStream::create_event_proxy(const Confi
 void PcapInputStream::parse_host_spec()
 {
     if (config_exists("host_spec")) {
-        parseHostSpec(config_get<std::string>("host_spec"), _hostIPv4, _hostIPv6);
+        lib::utils::parse_host_specs(lib::utils::split_str_to_vec_str(config_get<std::string>("host_spec"), ','),
+            _hostIPv4, _hostIPv6);
     }
 }
 }

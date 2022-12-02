@@ -2,6 +2,7 @@
 #include <catch2/catch.hpp>
 
 using namespace visor::input::dnstap;
+using namespace std::chrono;
 
 // bidirectional: READY with dnstap content-type
 static uint8_t bi_frame_1_len42[] = {
@@ -138,6 +139,7 @@ TEST_CASE("dnstap file filter by valid subnet", "[dnstap][file][filter][!mayfail
     });
 
     stream.start();
+    std::this_thread::sleep_for(200ms);
     stream.stop();
 
     CHECK(count_callbacks == 153);
@@ -172,36 +174,36 @@ TEST_CASE("dnstap invalid filters", "[dnstap][tcp][filter]")
     SECTION("invalid ipv4 cidr")
     {
         filter.config_set<visor::Configurable::StringList>("only_hosts", {"192.168.0.0/24/12ac"});
-        REQUIRE_THROWS_WITH(stream.add_event_proxy(filter), "unable to create event proxy due to invalid input filter config: invalid CIDR: 192.168.0.0/24/12ac");
+        REQUIRE_THROWS_WITH(stream.add_event_proxy(filter), "invalid CIDR: 192.168.0.0/24/12ac");
     }
 
     SECTION("ipv4 cidr over max value")
     {
         filter.config_set<visor::Configurable::StringList>("only_hosts", {"192.168.0.0/64"});
-        REQUIRE_THROWS_WITH(stream.add_event_proxy(filter), "unable to create event proxy due to invalid input filter config: invalid CIDR: 192.168.0.0/64");
+        REQUIRE_THROWS_WITH(stream.add_event_proxy(filter), "invalid CIDR: 192.168.0.0/64");
     }
 
     SECTION("invalid ipv4 ip")
     {
         filter.config_set<visor::Configurable::StringList>("only_hosts", {"192.168.AE.0/24"});
-        REQUIRE_THROWS_WITH(stream.add_event_proxy(filter), "unable to create event proxy due to invalid input filter config: invalid IPv4 address: 192.168.AE.0");
+        REQUIRE_THROWS_WITH(stream.add_event_proxy(filter), "invalid IPv4 address: 192.168.AE.0");
     }
 
     SECTION("invalid ipv6 cidr")
     {
         filter.config_set<visor::Configurable::StringList>("only_hosts", {"2001:db8::/48/12ac"});
-        REQUIRE_THROWS_WITH(stream.add_event_proxy(filter), "unable to create event proxy due to invalid input filter config: invalid CIDR: 2001:db8::/48/12ac");
+        REQUIRE_THROWS_WITH(stream.add_event_proxy(filter), "invalid CIDR: 2001:db8::/48/12ac");
     }
 
     SECTION("ipv6 cidr over max value")
     {
         filter.config_set<visor::Configurable::StringList>("only_hosts", {"2001:db8::/256"});
-        REQUIRE_THROWS_WITH(stream.add_event_proxy(filter), "unable to create event proxy due to invalid input filter config: invalid CIDR: 2001:db8::/256");
+        REQUIRE_THROWS_WITH(stream.add_event_proxy(filter), "invalid CIDR: 2001:db8::/256");
     }
 
     SECTION("invalid ipv6 ip")
     {
         filter.config_set<visor::Configurable::StringList>("only_hosts", {"fe80:2030:31:24/12"});
-        REQUIRE_THROWS_WITH(stream.add_event_proxy(filter), "unable to create event proxy due to invalid input filter config: invalid IPv6 address: fe80:2030:31:24");
+        REQUIRE_THROWS_WITH(stream.add_event_proxy(filter), "invalid IPv6 address: fe80:2030:31:24");
     }
 }

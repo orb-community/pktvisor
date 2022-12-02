@@ -7,17 +7,12 @@
 #ifdef _WIN32
 // Dnstap is currently not supported on Windows
 #include "WinFrameSession.h"
-#include <winsock2.h>
-typedef std::pair<std::string, uint8_t> Ipv4Subnet;
-typedef std::pair<std::string, uint8_t> Ipv6Subnet;
 #else
 #include "UnixFrameSession.h"
-#include <netinet/in.h>
-typedef std::pair<in_addr, uint8_t> Ipv4Subnet;
-typedef std::pair<in6_addr, uint8_t> Ipv6Subnet;
 #endif
 #include "InputStream.h"
 #include "dnstap.pb.h"
+#include "utils.h"
 #ifdef __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wold-style-cast"
@@ -102,19 +97,15 @@ class DnstapInputEventProxy : public visor::InputEventProxy
     };
     std::bitset<Filters::FiltersMAX> _f_enabled;
 
-    std::vector<Ipv4Subnet> _IPv4_host_list;
-    std::vector<Ipv6Subnet> _IPv6_host_list;
-
-    bool _match_subnet(const std::string &dnstap_ip);
-
-    void _parse_host_specs(const std::vector<std::string> &host_list);
+    lib::utils::IPv4subnetList _IPv4_host_list;
+    lib::utils::IPv6subnetList _IPv6_host_list;
 
 public:
     DnstapInputEventProxy(const std::string &name, const Configurable &filter)
         : InputEventProxy(name, filter)
     {
         if (config_exists("only_hosts")) {
-            _parse_host_specs(config_get<StringList>("only_hosts"));
+            lib::utils::parse_host_specs(config_get<StringList>("only_hosts"), _IPv4_host_list, _IPv6_host_list);
             _f_enabled.set(Filters::OnlyHosts);
         }
     }
@@ -130,14 +121,17 @@ public:
     {
         if (_f_enabled[Filters::OnlyHosts]) {
             if (dnstap.message().has_query_address() && dnstap.message().has_response_address()) {
-                if (!_match_subnet(dnstap.message().query_address()) && !_match_subnet(dnstap.message().response_address())) {
+                if (!lib::utils::match_subnet(_IPv4_host_list, _IPv6_host_list, dnstap.message().query_address())
+                    && !lib::utils::match_subnet(_IPv4_host_list, _IPv6_host_list, dnstap.message().response_address())) {
                     // message had both query and response address, and neither matched, so filter
                     return;
                 }
-            } else if (dnstap.message().has_query_address() && !_match_subnet(dnstap.message().query_address())) {
+            } else if (dnstap.message().has_query_address()
+                && !lib::utils::match_subnet(_IPv4_host_list, _IPv6_host_list, dnstap.message().query_address())) {
                 // message had only query address and it didn't match, so filter
                 return;
-            } else if (dnstap.message().has_response_address() && !_match_subnet(dnstap.message().response_address())) {
+            } else if (dnstap.message().has_response_address()
+                && !lib::utils::match_subnet(_IPv4_host_list, _IPv6_host_list, dnstap.message().response_address())) {
                 // message had only response address and it didn't match, so filter
                 return;
             } else {

@@ -49,18 +49,6 @@ enum FlowDirectionType {
     OutPackets
 };
 
-struct Ipv4Subnet {
-    in_addr addr;
-    uint8_t cidr;
-    std::string str;
-};
-
-struct Ipv6Subnet {
-    in6_addr addr;
-    uint8_t cidr;
-    std::string str;
-};
-
 struct InterfaceEnrich {
     std::string name;
     std::string descr;
@@ -74,10 +62,10 @@ struct DeviceEnrich {
 
 struct SummaryData {
     IpSummary type{IpSummary::None};
-    std::vector<Ipv4Subnet> ipv4_exclude_summary;
-    std::vector<Ipv6Subnet> ipv6_exclude_summary;
-    std::vector<Ipv4Subnet> ipv4_summary;
-    std::vector<Ipv6Subnet> ipv6_summary;
+    lib::utils::IPv4subnetList ipv4_exclude_summary;
+    lib::utils::IPv6subnetList ipv6_exclude_summary;
+    lib::utils::IPv4subnetList ipv4_summary;
+    lib::utils::IPv6subnetList ipv6_summary;
 };
 
 typedef std::unordered_map<std::string, DeviceEnrich> EnrichData;
@@ -351,8 +339,8 @@ class FlowStreamHandler final : public visor::StreamMetricsHandler<FlowMetricsMa
     sigslot::connection _netflow_connection;
     sigslot::connection _heartbeat_connection;
 
-    std::vector<Ipv4Subnet> _only_ipv4_list;
-    std::vector<Ipv6Subnet> _only_ipv6_list;
+    lib::utils::IPv4subnetList _only_ipv4_list;
+    lib::utils::IPv6subnetList _only_ipv6_list;
 
     std::map<std::string, std::vector<std::pair<uint32_t, uint32_t>>> _device_interfaces_list;
     std::vector<std::pair<uint32_t, uint32_t>> _parsed_port_list;
