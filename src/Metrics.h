@@ -33,7 +33,7 @@ using namespace std::chrono;
 struct comparator {
     template <typename T>
     // Comparator function
-    bool operator()(const T& l, const T& r) const
+    bool operator()(const T &l, const T &r) const
     {
         if (l.second != r.second) {
             return l.second > r.second;
@@ -424,6 +424,22 @@ private:
         return quantile.get_quantile(_percentile_threshold);
     }
 
+    auto _get_summarized_data(const std::vector<typename datasketches::frequent_items_sketch<T>::row> &items, std::function<std::string(const T &)> formatter, uint64_t threshold) const
+    {
+        std::map<std::string, uint64_t> summary;
+        for (uint64_t i = 0; i < std::min(_top_count, items.size()); i++) {
+            if (items[i].get_estimate() >= threshold) {
+                auto [removed, not_exists] = summary.emplace(formatter(items[i].get_item()), items[i].get_estimate());
+                if (!not_exists) {
+                    summary[removed->first] += items[i].get_estimate();
+                }
+            } else {
+                break;
+            }
+        }
+        return std::set<std::pair<std::string, uint64_t>, comparator>(summary.begin(), summary.end());
+    }
+
 public:
     TopN(std::string schema_key, std::string item_key, std::initializer_list<std::string> names, std::string desc)
         : Metric(schema_key, names, std::move(desc))
@@ -486,18 +502,7 @@ public:
                 }
             }
         } else if (op == Aggregate::SUMMARY) {
-            std::map<std::string, uint64_t> summary;
-            for (uint64_t i = 0; i < std::min(_top_count, items.size()); i++) {
-                if (items[i].get_estimate() >= threshold) {
-                    auto [removed, not_exists] = summary.emplace(formatter(items[i].get_item()), items[i].get_estimate());
-                    if (!not_exists) {
-                        summary[removed->first] += items[i].get_estimate();
-                    }
-                } else {
-                    break;
-                }
-            }
-            std::set<std::pair<std::string, uint64_t>, comparator> sorted(summary.begin(), summary.end());
+            auto sorted = _get_summarized_data(items, formatter, threshold);
             uint64_t i = 0;
             for (const auto &data : sorted) {
                 section[i]["name"] = data.first;
@@ -541,18 +546,7 @@ public:
                 }
             }
         } else if (op == Aggregate::SUMMARY) {
-            std::map<std::string, uint64_t> summary;
-            for (uint64_t i = 0; i < std::min(_top_count, items.size()); i++) {
-                if (items[i].get_estimate() >= threshold) {
-                    auto [removed, not_exists] = summary.emplace(formatter(items[i].get_item()), items[i].get_estimate());
-                    if (!not_exists) {
-                        summary[removed->first] += items[i].get_estimate();
-                    }
-                } else {
-                    break;
-                }
-            }
-            std::set<std::pair<std::string, uint64_t>, comparator> sorted(summary.begin(), summary.end());
+            auto sorted = _get_summarized_data(items, formatter, threshold);
             for (const auto &data : sorted) {
                 l[_item_key] = data.first;
                 out << name_snake({}, l) << ' ' << data.second << std::endl;
