@@ -142,7 +142,7 @@ jobs:
         run: |
           echo "# What's new" > changelog.md
           git log ${{ env.LAST_TAG }}..HEAD --pretty=format:"$ad- %s [%an]" >> changelog.md
-          sed -i -e "s/-/•/g" changelog.md
+          sed -i -e "s/- /• /g" changelog.md
           
       - name: Post pktvisor changelog in slack channel
         run: |
