@@ -38,6 +38,8 @@ function compact() {
   cp -rf /tmp/build/VERSION /github/workspace/
   #version for pktvisor-cli
   cp -rf /pktvisor-src/golang/pkg/client/version.go /github/workspace/version.go
+  #copy pktvisor custom iana port service names file
+  cp -rf /pktvisor-src/src/tests/fixtures/pktvisor-port-service-names.csv /github/workspace/custom-iana.csv
 }
 
 function publish() {

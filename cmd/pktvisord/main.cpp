@@ -102,6 +102,7 @@ static const char USAGE[] =
       --prom-instance ID                    Optionally set the 'instance' label to given ID
     Metric Enrichment Options:
       --iana-service-port-registry FILE     IANA Service Name and Transport Protocol Port Number Registry file in CSV format
+      --default-service-registry FILE       Default IANA Service Name Port Number Registry CSV file to be loaded if no other is specified
     Handler Module Defaults:
       --max-deep-sample N                   Never deep sample more than N% of streams (an int between 0 and 100) (default: 100)
       --periods P                            Hold this many 60 second time periods of history in memory (default: 5)
@@ -308,6 +309,10 @@ void fill_cmd_options(std::map<std::string, docopt::value> args, CmdOptions &opt
         options.iana_ports_path = args["--iana-service-port-registry"].asString();
     } else if (config["iana_service_port_registry"]) {
         options.iana_ports_path = config["iana_service_port_registry"].as<std::string>();
+    } else if (args["--default-service-registry"]) {
+        options.iana_ports_path = args["--default-service-registry"].asString();
+    } else if (config["default_service_registry"]) {
+        options.iana_ports_path = config["default_service_registry"].as<std::string>();
     }
 
     options.crashpad_info.disable = (config["cp_disable"] && config["cp_disable"].as<bool>()) || args["--cp-disable"].asBool();
