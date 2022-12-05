@@ -27,16 +27,16 @@ void IpPort::set_csv_iana_ports(std::string path)
                     auto first_value = static_cast<uint16_t>(std::stoul(ports.substr(0, delimiter)));
                     auto last_value = static_cast<uint16_t>(std::stoul(ports.substr(delimiter + 1)));
                     if (protocol == "tcp") {
-                        ports_tcp_list[last_value] = {service, first_value};
+                        ports_tcp_list.insert({last_value, {service, first_value}});
                     } else if (protocol == "udp") {
-                        ports_udp_list[last_value] = {service, first_value};
+                        ports_udp_list.insert({last_value, {service, first_value}});
                     }
                 } else {
                     auto value = static_cast<uint16_t>(std::stoul(ports));
                     if (protocol == "tcp") {
-                        ports_tcp_list[value] = {service, value};
+                        ports_tcp_list.insert({value, {service, value}});
                     } else if (protocol == "udp") {
-                        ports_udp_list[value] = {service, value};
+                        ports_udp_list.insert({value, {service, value}});
                     }
                 }
             }
@@ -50,10 +50,6 @@ void IpPort::set_csv_iana_ports(std::string path)
 
 std::string IpPort::get_service() const
 {
-    // dynamic range
-    if (port >= BEGIN_DYNAMIC_PORT && port <= END_DYNAMIC_PORT) {
-        return std::string("dynamic-client");
-    }
     std::map<const uint16_t, PortData>::iterator it;
     if (proto == Protocol::TCP) {
         it = ports_tcp_list.lower_bound(port);
