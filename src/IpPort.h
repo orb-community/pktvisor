@@ -30,8 +30,6 @@ struct PortData {
 };
 
 struct IpPort {
-    static inline const uint16_t BEGIN_DYNAMIC_PORT = 49152;
-    static inline const uint16_t END_DYNAMIC_PORT = 65535;
     static std::map<const uint16_t, PortData> ports_tcp_list;
     static std::map<const uint16_t, PortData> ports_udp_list;
 

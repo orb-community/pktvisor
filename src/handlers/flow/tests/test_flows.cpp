@@ -12,7 +12,7 @@ TEST_CASE("Parse sflow stream", "[sflow][flow]")
     FlowInputStream stream{"sflow-test"};
     stream.config_set("flow_type", "sflow");
     stream.config_set("pcap_file", "tests/fixtures/ecmp.pcap");
-    visor::network::IpPort::set_csv_iana_ports("tests/fixtures/service-names-port-numbers.csv");
+    visor::network::IpPort::set_csv_iana_ports("tests/fixtures/pktvisor-port-service-names.csv");
     visor::Config c;
     auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
@@ -112,7 +112,8 @@ TEST_CASE("Parse sflow stream without sampling", "[sflow][flow]")
     FlowInputStream stream{"sflow-test"};
     stream.config_set("flow_type", "sflow");
     stream.config_set("pcap_file", "tests/fixtures/ecmp.pcap");
-
+    visor::network::IpPort::set_csv_iana_ports("tests/fixtures/pktvisor-port-service-names.csv");
+    
     visor::Config c;
     auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
