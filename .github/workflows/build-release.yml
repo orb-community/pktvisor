@@ -361,6 +361,17 @@ jobs:
           
       - name: Debug artifacts
         run: ls -lha .
+        
+      - name: compacting arm64 binary
+        run: |
+          tar -cvzf pktvisor-arm64.tar.gz pktvisor-cli pktvisord
+          
+      - name: Persist arm64 binary to workspace
+        uses: actions/upload-artifact@v2
+        with:
+          name: binaries
+          path: ./pktvisor-arm64.tar.gz
+          retention-days: 1  
 
       - name: Get branch name
         shell: bash
@@ -516,6 +527,17 @@ jobs:
 
       - name: Debug artifacts
         run: ls -lha .
+        
+      - name: compacting amd64 binary
+        run: |
+          tar -cvzf pktvisor-amd64.tar.gz pktvisor-cli pktvisord
+          
+      - name: Persist amd64 binary to workspace
+        uses: actions/upload-artifact@v2
+        with:
+          name: binaries
+          path: ./pktvisor-amd64.tar.gz
+          retention-days: 1  
 
       - name: Get branch name
         shell: bash
