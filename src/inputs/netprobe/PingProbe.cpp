@@ -17,6 +17,7 @@ PingReceiver::PingReceiver()
 }
 PingReceiver::~PingReceiver()
 {
+    recv_signal.disconnect_all();
     _poll->close();
     if (_async_h && _io_thread) {
         // we have to use AsyncHandle to stop the loop from the same thread the loop is running in
@@ -162,7 +163,7 @@ bool PingProbe::start(std::shared_ptr<uvw::Loop> io_loop)
 
         _internal_timer = _io_loop->resource<uvw::TimerHandle>();
         _internal_timer->on<uvw::TimerEvent>([this](const auto &, auto &) {
-            if (_internal_sequence < _config.packets_per_test) {
+            if (_internal_sequence < static_cast<uint8_t>(_config.packets_per_test)) {
                 _internal_sequence++;
                 _timeout_timer->stop();
                 _timeout_timer->start(uvw::TimerHandle::Time{_config.timeout_msec}, uvw::TimerHandle::Time{0});
@@ -172,7 +173,7 @@ bool PingProbe::start(std::shared_ptr<uvw::Loop> io_loop)
 
         _recv_connection = PingReceiver::recv_signal.connect([this](pcpp::Packet &packet, timespec stamp) { _recv(packet, TestType::Ping, _name, stamp); });
 
-        (_sequence == USHRT_MAX) ? _sequence = 0 : _sequence++;
+        (_sequence == UCHAR_MAX) ? _sequence = 0 : _sequence++;
         _send_icmp_v4(_internal_sequence);
         _internal_sequence++;
         _timeout_timer->start(uvw::TimerHandle::Time{_config.timeout_msec}, uvw::TimerHandle::Time{0});
@@ -283,13 +284,13 @@ std::optional<ErrorType> PingProbe::_create_socket()
     return std::nullopt;
 }
 
-void PingProbe::_send_icmp_v4(uint16_t sequence)
+void PingProbe::_send_icmp_v4(uint8_t sequence)
 {
     auto icmp = pcpp::IcmpLayer();
     timespec stamp;
     std::timespec_get(&stamp, TIME_UTC);
     const uint64_t stamp64 = stamp.tv_sec * 1000000000ULL + stamp.tv_nsec;
-    icmp.setEchoRequestData(static_cast<uint16_t>(_id * _sequence), sequence, stamp64, _payload_array.data(), _payload_array.size());
+    icmp.setEchoRequestData(_id, (static_cast<uint16_t>(_sequence) << 8) | sequence, stamp64, _payload_array.data(), _payload_array.size());
     icmp.computeCalculateFields();
     int rc = sendto(_sock, reinterpret_cast<char *>(icmp.getData()), icmp.getDataLen(), 0, reinterpret_cast<sockaddr *>(&_sa), _sin_length);
     if (rc != SOCKET_ERROR) {

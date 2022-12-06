@@ -80,8 +80,8 @@ class PingProbe final : public NetProbe
     bool _init{false};
     bool _is_ipv6{false};
     bool _ip_set{false};
-    uint16_t _sequence{0};
-    uint16_t _internal_sequence{0};
+    uint8_t _sequence{0};
+    uint8_t _internal_sequence{0};
     std::shared_ptr<uvw::TimerHandle> _interval_timer;
     std::shared_ptr<uvw::TimerHandle> _internal_timer;
     std::shared_ptr<uvw::TimerHandle> _timeout_timer;
@@ -91,7 +91,7 @@ class PingProbe final : public NetProbe
     sockaddr_in6 _sa6;
     sigslot::connection _recv_connection;
 
-    void _send_icmp_v4(uint16_t sequence);
+    void _send_icmp_v4(uint8_t sequence);
     std::optional<ErrorType> _get_addr();
     std::optional<ErrorType> _create_socket();
     void _close_socket();
