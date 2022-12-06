@@ -19,17 +19,10 @@ function build() {
   cp -rf /github/workspace/CMakeLists.txt /pktvisor-src/
   cp -rf /github/workspace/conanfile.txt /pktvisor-src/
   mkdir /tmp/build
-  mkdir /tmp/build/conan_home
-  mkdir /tmp/build/conan_home/.conan/profiles
   cd /tmp/build
   conan profile new --detect default
   conan profile update settings.compiler.libcxx=libstdc++11 default
   conan config set general.revisions_enabled=1
-  if [[ $INPUT_SETTING != "armv7hf" ]]; then
-      conan profile update arch=armv7hf default
-      conan profile update arch_target=armv7hf default
-      cp -rpf ~/.conan/profiles/default /tmp/build/conan_home/.conan/profiles/default
-  fi
   PKG_CONFIG_PATH=/local/lib/pkgconfig cmake -DCMAKE_BUILD_TYPE=$INPUT_BUILD_TYPE -DASAN=$INPUT_ASAN /pktvisor-src
   make all -j 4
 }
