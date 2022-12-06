@@ -13,11 +13,6 @@ inputs:
     required: true
     default: ""
     
-  setting:
-    description: "custom settings for conan"
-    required: false
-    default: ""
-    
   build_type:
     description: "build type"
     required: true
