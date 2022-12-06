@@ -21,7 +21,7 @@ jobs:
   unit-tests:
     strategy:
       matrix:
-        os: [ ubuntu-latest ]
+        os: [ ubuntu-latest, macos-11 ]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
@@ -146,7 +146,7 @@ jobs:
           
       - name: Post pktvisor changelog in slack channel
         run: |
-          curl -d "text=:mega: *TEST pktvisor reporter TEST* :mega:
+          curl -d "text=:mega: *Pktvisor release reporter* :mega:
           $(cat changelog.md)" -d "channel=C02SEF78ZPT" -H "Authorization: Bearer ${{secrets.SLACK_APP_TOKEN}}" -X POST https://slack.com/api/chat.postMessage          
 
 #       - name: Create release
@@ -364,13 +364,13 @@ jobs:
         
       - name: compacting arm64 binary
         run: |
-          tar -cvzf pktvisor-arm64.tar.gz pktvisor-cli pktvisord
+          zip pktvisor-arm64.zip pktvisor-cli pktvisor-reader pktvisord
           
       - name: Persist arm64 binary to workspace
         uses: actions/upload-artifact@v2
         with:
           name: binaries
-          path: ./pktvisor-arm64.tar.gz
+          path: ./pktvisor-arm64.zip
           retention-days: 1  
 
       - name: Get branch name
@@ -530,13 +530,13 @@ jobs:
         
       - name: compacting amd64 binary
         run: |
-          tar -cvzf pktvisor-amd64.tar.gz pktvisor-cli pktvisord
+          zip pktvisor-amd64.zip pktvisor-cli pktvisor-reader pktvisord
           
       - name: Persist amd64 binary to workspace
         uses: actions/upload-artifact@v2
         with:
           name: binaries
-          path: ./pktvisor-amd64.tar.gz
+          path: ./pktvisor-amd64.zip
           retention-days: 1  
 
       - name: Get branch name
