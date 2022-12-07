@@ -230,7 +230,8 @@ public:
 class DnsMetricsManager final : public visor::AbstractMetricsManager<DnsMetricsBucket>
 {
     using DnsXactID = std::pair<uint32_t, uint16_t>;
-    visor::lib::transaction::TransactionManager<DnsXactID, DnsTransaction> _qr_pair_manager;
+    typedef lib::transaction::TransactionManager<DnsXactID, DnsTransaction> DnsTransactionManager;
+    std::unique_ptr<DnsTransactionManager> _qr_pair_manager;
     float _to90th{0.0};
     float _from90th{0.0};
 
@@ -238,12 +239,17 @@ public:
     DnsMetricsManager(const Configurable *window_config)
         : visor::AbstractMetricsManager<DnsMetricsBucket>(window_config)
     {
+        if (window_config->config_exists("xact_ttl_secs")) {
+            _qr_pair_manager = std::make_unique<DnsTransactionManager>(static_cast<uint32_t>(window_config->config_get<uint64_t>("xact_ttl_secs")));
+        } else {
+            _qr_pair_manager = std::make_unique<DnsTransactionManager>();
+        }
     }
 
     void on_period_shift(timespec stamp, [[maybe_unused]] const DnsMetricsBucket *maybe_expiring_bucket) override
     {
         // DNS transaction support
-        auto timed_out = _qr_pair_manager.purge_old_transactions(stamp);
+        auto timed_out = _qr_pair_manager->purge_old_transactions(stamp);
         if (timed_out) {
             live_bucket()->inc_xact_timed_out(timed_out);
         }
@@ -259,7 +265,7 @@ public:
 
     size_t num_open_transactions() const
     {
-        return _qr_pair_manager.open_transaction_count();
+        return _qr_pair_manager->open_transaction_count();
     }
 
     void process_filtered(timespec stamp);
@@ -372,7 +378,8 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
         "asn_notfound",
         "dnstap_msg_type",
         "public_suffix_list",
-        "recorded_stream"};
+        "recorded_stream",
+        "xact_ttl_secs"};
 
     static const inline StreamMetricsHandler::GroupDefType _group_defs = {
         {"cardinality", group::DnsMetrics::Cardinality},

@@ -118,18 +118,24 @@ public:
 
 class DhcpMetricsManager final : public visor::AbstractMetricsManager<DhcpMetricsBucket>
 {
-    TransactionManager<uint32_t, DhcpTransaction, std::hash<uint32_t>> _request_ack_manager;
+    typedef TransactionManager<uint32_t, DhcpTransaction, std::hash<uint32_t>> DhcpTransactionManager;
+    std::unique_ptr<DhcpTransactionManager> _request_ack_manager;
 
 public:
     DhcpMetricsManager(const Configurable *window_config)
         : visor::AbstractMetricsManager<DhcpMetricsBucket>(window_config)
     {
+        if (window_config->config_exists("xact_ttl_secs")) {
+            _request_ack_manager = std::make_unique<DhcpTransactionManager>(static_cast<uint32_t>(window_config->config_get<uint64_t>("xact_ttl_secs")));
+        } else {
+            _request_ack_manager = std::make_unique<DhcpTransactionManager>();
+        }
     }
 
     void on_period_shift(timespec stamp, [[maybe_unused]] const DhcpMetricsBucket *maybe_expiring_bucket) override
     {
         // Dhcp transaction support
-        _request_ack_manager.purge_old_transactions(stamp);
+        _request_ack_manager->purge_old_transactions(stamp);
     }
 
     void process_filtered(timespec stamp);
@@ -149,7 +155,8 @@ class DhcpStreamHandler final : public visor::StreamMetricsHandler<DhcpMetricsMa
     sigslot::connection _heartbeat_connection;
 
     static const inline StreamMetricsHandler::ConfigsDefType _config_defs = {
-        "recorded_stream"};
+        "recorded_stream",
+        "xact_ttl_secs"};
 
     void process_udp_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp);
 

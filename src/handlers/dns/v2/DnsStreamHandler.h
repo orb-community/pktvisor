@@ -355,25 +355,43 @@ public:
 class DnsMetricsManager final : public visor::AbstractMetricsManager<DnsMetricsBucket>
 {
     using DnsXactID = std::pair<uint32_t, uint16_t>;
+    typedef TransactionManager<DnsXactID, DnsTransaction> DnsTransactionManager;
     struct DirTransaction {
-        TransactionManager<DnsXactID, DnsTransaction> xact_map;
+        std::unique_ptr<DnsTransactionManager> xact_map;
         float per_90th{0.0};
+
+        DirTransaction()
+            : xact_map(std::make_unique<DnsTransactionManager>())
+        {
+        }
+        DirTransaction(uint32_t ttl)
+            : xact_map(std::make_unique<DnsTransactionManager>(ttl))
+        {
+        }
     };
-    std::map<TransactionDirection, DirTransaction> _pair_manager = {{TransactionDirection::in, DirTransaction()},
-        {TransactionDirection::out, DirTransaction()},
-        {TransactionDirection::unknown, DirTransaction()}};
+    std::map<TransactionDirection, DirTransaction> _pair_manager;
 
 public:
     DnsMetricsManager(const Configurable *window_config)
         : visor::AbstractMetricsManager<DnsMetricsBucket>(window_config)
     {
+        if (window_config->config_exists("xact_ttl_secs")) {
+            auto ttl = static_cast<uint32_t>(window_config->config_get<uint64_t>("xact_ttl_secs"));
+            _pair_manager[TransactionDirection::in] = DirTransaction(ttl);
+            _pair_manager[TransactionDirection::out] = DirTransaction(ttl);
+            _pair_manager[TransactionDirection::unknown] = DirTransaction(ttl);
+        } else {
+            _pair_manager[TransactionDirection::in] = DirTransaction();
+            _pair_manager[TransactionDirection::out] = DirTransaction();
+            _pair_manager[TransactionDirection::unknown] = DirTransaction();
+        }
     }
 
     void on_period_shift(timespec stamp, [[maybe_unused]] const DnsMetricsBucket *maybe_expiring_bucket) override
     {
         // DNS transaction support
         for (auto &manager : _pair_manager) {
-            if (auto timed_out = manager.second.xact_map.purge_old_transactions(stamp); timed_out && live_bucket()->has_dir(manager.first)) {
+            if (auto timed_out = manager.second.xact_map->purge_old_transactions(stamp); timed_out && live_bucket()->has_dir(manager.first)) {
                 live_bucket()->inc_xact_timed_out(timed_out, manager.first);
             }
             if (bucket(1)->has_dir(manager.first)) {
@@ -388,7 +406,7 @@ public:
     {
         size_t count{0};
         for (const auto &manager : _pair_manager) {
-            count += manager.second.xact_map.open_transaction_count();
+            count += manager.second.xact_map->open_transaction_count();
         }
         return count;
     }
