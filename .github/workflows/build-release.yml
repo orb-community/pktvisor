@@ -8,7 +8,6 @@ on:
   push:
     branches:
       - master
-      - fix-build
 
 env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
@@ -149,18 +148,18 @@ jobs:
           curl -d "text=:mega: *Pktvisor release reporter* :mega:
           $(cat changelog.md)" -d "channel=C02SEF78ZPT" -H "Authorization: Bearer ${{secrets.SLACK_APP_TOKEN}}" -X POST https://slack.com/api/chat.postMessage          
 
-#       - name: Create release
-#         id: create_release
-#         uses: actions/create-release@latest
-#         env:
-#           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
-#         with:
-#           tag_name: ${{ env.TAG }}
-#           release_name: ${{ env.VERSION }}
-#           body_path: ${{github.workspace}}/changelog.md
-#           draft: false
-#           prerelease: false
-#
+      - name: Create release
+        id: create_release
+        uses: actions/create-release@latest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
+        with:
+          tag_name: ${{ env.TAG }}
+          release_name: ${{ env.VERSION }}
+          body_path: ${{github.workspace}}/changelog.md
+          draft: false
+          prerelease: false
+
 
   spinup-arm64-runner:
     needs: [ prebuild-package ]
