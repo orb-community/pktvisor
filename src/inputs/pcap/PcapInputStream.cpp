@@ -3,13 +3,18 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 #include "PcapInputStream.h"
+#include "NetworkInterfaceScan.h"
+#include "ThreadName.h"
 #include <pcap.h>
 #include <timer.hpp>
+#ifdef __GNUC__
 #pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 #pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
 #pragma clang diagnostic ignored "-Wc99-extensions"
-#pragma GCC diagnostic ignored "-Wpedantic"
+#endif
 #include <DnsLayer.h> // used only for mock generator
 #include <EthLayer.h>
 #include <IPv4Layer.h>
@@ -18,13 +23,12 @@
 #include <PacketUtils.h>
 #include <PcapFileDevice.h>
 #include <SystemUtils.h>
+#ifdef __GNUC__
 #pragma GCC diagnostic pop
+#endif
 #include <IpUtils.h>
-#include <arpa/inet.h>
 #include <assert.h>
 #include <cstdint>
-#include <cstring>
-#include <netinet/in.h>
 #include <sstream>
 
 using namespace std::chrono;
@@ -87,9 +91,13 @@ void PcapInputStream::start()
         return;
     }
 
+    validate_configs(_config_defs);
+
     if (config_exists("pcap_file")) {
         // read from pcap file. this is a special case from a command line utility
-        assert(config_exists("bpf"));
+        if (!config_exists("bpf")) {
+            config_set("bpf", "");
+        }
         _pcapFile = true;
         // note, parse_host_spec should be called manually by now (in CLI)
         _running = true;
@@ -97,7 +105,7 @@ void PcapInputStream::start()
         return;
     }
 
-    if (config_exists("debug")) {
+    if (config_exists("debug") && config_get<bool>("debug")) {
         pcpp::Logger::getInstance().setAllModlesToLogLevel(pcpp::Logger::LogLevel::Debug);
     }
 
@@ -133,6 +141,13 @@ void PcapInputStream::start()
             config_set("bpf", "");
         }
         TARGET = config_get<std::string>("iface");
+        if (TARGET == "auto") {
+            TARGET = most_used_interface();
+            if (TARGET.empty()) {
+                throw PcapException("iface was set to 'auto' but no interface was found");
+            }
+            config_set("iface", TARGET);
+        }
         interfaceIP4 = TARGET;
         interfaceIP6 = TARGET;
     }
@@ -188,7 +203,11 @@ std::string PcapInputStream::_get_interface_list() const
     std::vector<std::string> ifNameListV;
     auto l = pcpp::PcapLiveDeviceList::getInstance().getPcapLiveDevicesList();
     for (const auto &ifd : l) {
+#ifdef _WIN32
+        ifNameListV.push_back(ifd->getName() + "(" + ifd->getDesc() + ")");
+#else
         ifNameListV.push_back(ifd->getName());
+#endif
     }
     std::string ifNameList = std::accumulate(std::begin(ifNameListV), std::end(ifNameListV), std::string(),
         [](std::string &ss, std::string &s) {
@@ -229,25 +248,50 @@ void PcapInputStream::stop()
 
 void PcapInputStream::tcp_message_ready(int8_t side, const pcpp::TcpStreamData &tcpData)
 {
-    tcp_message_ready_signal(side, tcpData);
+    std::shared_lock lock(_input_mutex);
+    for (auto &proxy : _event_proxies) {
+        dynamic_cast<PcapInputEventProxy *>(proxy.get())->tcp_message_ready_cb(side, tcpData, _packet_dir_cache);
+    }
     _lru_list.put(tcpData.getConnectionData().flowKey, tcpData.getConnectionData().endTime);
 }
 
 void PcapInputStream::tcp_connection_start(const pcpp::ConnectionData &connectionData)
 {
-    tcp_connection_start_signal(connectionData);
+    std::shared_lock lock(_input_mutex);
+    for (auto &proxy : _event_proxies) {
+        dynamic_cast<PcapInputEventProxy *>(proxy.get())->tcp_connection_start_cb(connectionData, _packet_dir_cache);
+    }
     _lru_list.put(connectionData.flowKey, connectionData.startTime);
 }
 
 void PcapInputStream::tcp_connection_end(const pcpp::ConnectionData &connectionData, pcpp::TcpReassembly::ConnectionEndReason reason)
 {
-    tcp_connection_end_signal(connectionData, reason);
+    std::shared_lock lock(_input_mutex);
+    for (auto &proxy : _event_proxies) {
+        static_cast<PcapInputEventProxy *>(proxy.get())->tcp_connection_end_cb(connectionData, reason);
+    }
     _lru_list.eraseElement(connectionData.flowKey);
 }
 
 void PcapInputStream::process_pcap_stats(const pcpp::IPcapDevice::PcapStats &stats)
 {
-    pcap_stats_signal(stats);
+    std::shared_lock lock(_input_mutex);
+    for (auto &proxy : _event_proxies) {
+        static_cast<PcapInputEventProxy *>(proxy.get())->process_pcap_stats(stats);
+    }
+    if (!repeat_counter) {
+        // use now()
+        timespec stamp;
+        std::timespec_get(&stamp, TIME_UTC);
+        for (auto &proxy : _event_proxies) {
+            static_cast<PcapInputEventProxy *>(proxy.get())->heartbeat_cb(stamp);
+        }
+        repeat_counter++;
+    } else if (repeat_counter < HEARTBEAT_INTERVAL) {
+        repeat_counter++;
+    } else {
+        repeat_counter = 0;
+    }
 }
 
 void PcapInputStream::_generate_mock_traffic()
@@ -316,12 +360,20 @@ void PcapInputStream::_generate_mock_traffic()
     pcpp::ProtocolType l4 = pcpp::UDP;
     timespec ts;
     timespec_get(&ts, TIME_UTC);
-    packet_signal(packet, dir, l3, l4, ts);
-    udp_signal(packet, dir, l3, pcpp::hash5Tuple(&packet), ts);
+    std::shared_lock lock(_input_mutex);
+    for (auto &proxy : _event_proxies) {
+        auto pcap_proxy = static_cast<PcapInputEventProxy *>(proxy.get());
+        pcap_proxy->process_packet_cb(packet, dir, l3, l4, ts);
+        pcap_proxy->process_udp_packet_cb(packet, dir, l3, pcpp::hash5Tuple(&packet), ts);
+    }
 }
 
 void PcapInputStream::process_raw_packet(pcpp::RawPacket *rawPacket)
 {
+    [[maybe_unused]] static thread_local bool name_thread = [this]() {
+        thread::change_self_name(schema_key(), name());
+        return true;
+    }();
     pcpp::ProtocolType l3(pcpp::UnknownProtocol), l4(pcpp::UnknownProtocol);
     pcpp::Packet packet(rawPacket, pcpp::TCP | pcpp::UDP);
     if (packet.isPacketOfType(pcpp::IPv4)) {
@@ -335,45 +387,47 @@ void PcapInputStream::process_raw_packet(pcpp::RawPacket *rawPacket)
         l4 = pcpp::TCP;
     }
     // determine packet direction by matching source/dest ips
+    // and cache it to be used on TCP Reassemble
     // note the direction may be indeterminate!
-    PacketDirection dir = PacketDirection::unknown;
+    _packet_dir_cache = PacketDirection::unknown;
     auto IP4layer = packet.getLayerOfType<pcpp::IPv4Layer>();
     auto IP6layer = packet.getLayerOfType<pcpp::IPv6Layer>();
     if (IP4layer) {
-        for (auto &i : _hostIPv4) {
-            if (IP4layer->getDstIPv4Address().matchSubnet(i.address, i.mask)) {
-                dir = PacketDirection::toHost;
-                break;
-            } else if (IP4layer->getSrcIPv4Address().matchSubnet(i.address, i.mask)) {
-                dir = PacketDirection::fromHost;
-                break;
-            }
+        if (lib::utils::match_subnet(_hostIPv4, IP4layer->getDstIPv4Address().toInt()).first) {
+            _packet_dir_cache = PacketDirection::toHost;
+        } else if (lib::utils::match_subnet(_hostIPv4, IP4layer->getSrcIPv4Address().toInt()).first) {
+            _packet_dir_cache = PacketDirection::fromHost;
         }
     } else if (IP6layer) {
-        for (auto &i : _hostIPv6) {
-            if (IP6layer->getDstIPv6Address().matchSubnet(i.address, i.mask)) {
-                dir = PacketDirection::toHost;
-                break;
-            } else if (IP6layer->getSrcIPv6Address().matchSubnet(i.address, i.mask)) {
-                dir = PacketDirection::fromHost;
-                break;
-            }
+        if (lib::utils::match_subnet(_hostIPv6, IP6layer->getDstIPv6Address().toBytes()).first) {
+            _packet_dir_cache = PacketDirection::toHost;
+        } else if (lib::utils::match_subnet(_hostIPv6, IP6layer->getSrcIPv6Address().toBytes()).first) {
+            _packet_dir_cache = PacketDirection::fromHost;
         }
     }
 
     auto timestamp = rawPacket->getPacketTimeStamp();
     // interface to handlers
-    packet_signal(packet, dir, l3, l4, timestamp);
+    std::shared_lock lock(_input_mutex);
+    for (auto &proxy : _event_proxies) {
+        static_cast<PcapInputEventProxy *>(proxy.get())->process_packet_cb(packet, _packet_dir_cache, l3, l4, timestamp);
+    }
 
     if (l4 == pcpp::UDP) {
-        udp_signal(packet, dir, l3, pcpp::hash5Tuple(&packet), timestamp);
+        for (auto &proxy : _event_proxies) {
+            static_cast<PcapInputEventProxy *>(proxy.get())->process_udp_packet_cb(packet, _packet_dir_cache, l3, pcpp::hash5Tuple(&packet), timestamp);
+        }
     } else if (l4 == pcpp::TCP) {
+        lock.unlock();
         auto result = _tcp_reassembly.reassemblePacket(packet);
+        lock.lock();
         switch (result) {
         case pcpp::TcpReassembly::Error_PacketDoesNotMatchFlow:
         case pcpp::TcpReassembly::NonTcpPacket:
         case pcpp::TcpReassembly::NonIpPacket:
-            tcp_reassembly_error_signal(packet, dir, l3, timestamp);
+            for (auto &proxy : _event_proxies) {
+                static_cast<PcapInputEventProxy *>(proxy.get())->process_pcap_tcp_reassembly_error(packet, _packet_dir_cache, l3, timestamp);
+            }
         case pcpp::TcpReassembly::TcpMessageHandled:
         case pcpp::TcpReassembly::OutOfOrderTcpMessageBuffered:
         case pcpp::TcpReassembly::FIN_RSTWithNoData:
@@ -423,7 +477,10 @@ void PcapInputStream::_open_pcap(const std::string &fileName, const std::string 
 
     // setup initial timestamp from first packet to initiate bucketing
     if (reader->getNextPacket(rawPacket)) {
-        start_tstamp_signal(rawPacket.getPacketTimeStamp());
+        std::shared_lock lock(_input_mutex);
+        for (auto &proxy : _event_proxies) {
+            static_cast<PcapInputEventProxy *>(proxy.get())->start_tstamp_cb(rawPacket.getPacketTimeStamp());
+        }
         process_raw_packet(&rawPacket);
     }
 
@@ -439,7 +496,10 @@ void PcapInputStream::_open_pcap(const std::string &fileName, const std::string 
         lastCount++;
         end_tstamp = rawPacket.getPacketTimeStamp();
     }
-    end_tstamp_signal(end_tstamp);
+    std::shared_lock lock(_input_mutex);
+    for (auto &proxy : _event_proxies) {
+        static_cast<PcapInputEventProxy *>(proxy.get())->end_tstamp_cb(end_tstamp);
+    }
     t0->cancel();
     std::cerr << "processed " << packetCount << " packets\n";
 
@@ -506,6 +566,9 @@ void PcapInputStream::_get_hosts_from_libpcap_iface()
         if (!i.addr) {
             continue;
         }
+        char buf[INET6_ADDRSTRLEN];
+        pcpp::internal::sockaddr2string(i.addr, buf);
+        std::string ip(buf);
         if (i.addr->sa_family == AF_INET) {
             auto adrcvt = pcpp::internal::sockaddr2in_addr(i.addr);
             if (!adrcvt) {
@@ -515,13 +578,16 @@ void PcapInputStream::_get_hosts_from_libpcap_iface()
             if (!nmcvt) {
                 throw PcapException("couldn't parse IPv4 netmask address on device");
             }
-            _hostIPv4.emplace_back(IPv4subnet(pcpp::IPv4Address(pcpp::internal::in_addr2int(*adrcvt)), pcpp::IPv4Address(pcpp::internal::in_addr2int(*nmcvt))));
+            uint8_t len = static_cast<uint8_t>(0xFFFFFFFFUL & nmcvt->s_addr);
+            _hostIPv4.push_back({*adrcvt, len, ip + "/" + std::to_string(len)});
         } else if (i.addr->sa_family == AF_INET6) {
-            char buf1[INET6_ADDRSTRLEN];
-            pcpp::internal::sockaddr2string(i.addr, buf1);
+            auto adrcvt = pcpp::internal::sockaddr2in6_addr(i.addr);
+            if (!adrcvt) {
+                throw PcapException("couldn't parse IPv6 address on device");
+            }
             auto nmcvt = pcpp::internal::sockaddr2in6_addr(i.netmask);
             if (!nmcvt) {
-                throw PcapException("couldn't parse IPv4 netmask address on device");
+                throw PcapException("couldn't parse IPv6 netmask address on device");
             }
             uint8_t len = 0;
             for (int i = 0; i < 16; i++) {
@@ -530,7 +596,7 @@ void PcapInputStream::_get_hosts_from_libpcap_iface()
                     nmcvt->s6_addr[i] >>= 1;
                 }
             }
-            _hostIPv6.emplace_back(IPv6subnet(pcpp::IPv6Address(buf1), len));
+            _hostIPv6.push_back({*adrcvt, len, ip + "/" + std::to_string(len)});
         }
     }
 }
@@ -543,18 +609,12 @@ void PcapInputStream::info_json(json &j) const
     info["host_ips"] = json::object();
     for (auto &i : _hostIPv4) {
         std::stringstream out;
-        int len = 0;
-        auto m = i.mask.toInt();
-        while (m) {
-            len++;
-            m >>= 1;
-        }
-        out << i.address.toString() << '/' << len;
+        out << i.str;
         info["host_ips"]["ipv4"].push_back(out.str());
     }
     for (auto &i : _hostIPv6) {
         std::stringstream out;
-        out << i.address.toString() << '/' << static_cast<int>(i.mask);
+        out << i.str;
         info["host_ips"]["ipv6"].push_back(out.str());
     }
     switch (_cur_pcap_source) {
@@ -574,10 +634,16 @@ void PcapInputStream::info_json(json &j) const
     j[schema_key()] = info;
 }
 
+std::unique_ptr<InputEventProxy> PcapInputStream::create_event_proxy(const Configurable &filter)
+{
+    return std::make_unique<PcapInputEventProxy>(_name, filter);
+}
+
 void PcapInputStream::parse_host_spec()
 {
     if (config_exists("host_spec")) {
-        parseHostSpec(config_get<std::string>("host_spec"), _hostIPv4, _hostIPv6);
+        lib::utils::parse_host_specs(lib::utils::split_str_to_vec_str(config_get<std::string>("host_spec"), ','),
+            _hostIPv4, _hostIPv6);
     }
 }
 }

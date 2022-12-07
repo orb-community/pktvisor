@@ -21,10 +21,15 @@ target_include_directories(VisorInputDnstap
         $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}> # for generated dnstap.pb.h
         )
 
+if(NOT WIN32)
+    set(DNSTAP_ADDITIONAL_LIBS fstrm)
+endif()
+
 target_link_libraries(VisorInputDnstap
         PUBLIC
-        fstrm
+        ${DNSTAP_ADDITIONAL_LIBS}
         Visor::Core
+        Visor::Lib::Utils
         ${CONAN_LIBS_PROTOBUF}
         ${CONAN_LIBS_LIBUV}
         ${CONAN_LIBS_UVW}

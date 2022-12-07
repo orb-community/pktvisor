@@ -15,20 +15,39 @@ namespace visor {
 class InputStream;
 class Policy;
 
+class TapException : public std::runtime_error
+{
+public:
+    TapException(const char *msg)
+        : std::runtime_error(msg)
+    {
+    }
+    TapException(const std::string &msg)
+        : std::runtime_error(msg)
+    {
+    }
+};
+
 class Tap : public AbstractModule
 {
 
     InputModulePlugin *_input_plugin;
+    std::unique_ptr<Configurable> _tags;
 
 public:
     Tap(const std::string &name, InputModulePlugin *input_plugin)
         : AbstractModule(name)
         , _input_plugin(input_plugin)
+        , _tags(std::make_unique<Configurable>())
     {
         assert(input_plugin);
     }
 
-    std::unique_ptr<InputStream> instantiate(const Configurable *filter_config, std::string input_name);
+    std::string get_input_name(const Configurable &config, const Configurable &filter);
+
+    std::unique_ptr<InputStream> instantiate(const Configurable *config, const Configurable *filter, std::string input_name);
+
+    bool tags_match_selector_yaml(const YAML::Node &tag_yaml, bool all);
 
     const InputModulePlugin *input_plugin() const
     {
@@ -40,6 +59,12 @@ public:
         j["input_type"] = _input_plugin->plugin();
         j["interface"] = _input_plugin->pluginInterface();
         config_json(j["config"]);
+        _tags->config_json(j["tags"]);
+    }
+
+    void tags_set_yaml(const YAML::Node &tag_yaml)
+    {
+        _tags->config_set_yaml(tag_yaml);
     }
 };
 
@@ -58,7 +83,9 @@ public:
     {
     }
 
-    void load(const YAML::Node &tap_yaml, bool strict);
+    std::vector<Tap *> load_from_str(const std::string &str);
+    std::vector<Tap *> load(const YAML::Node &tap_yaml, bool strict = true, bool single = false);
+    std::vector<std::string> get_input_taps_name(const YAML::Node &input_node);
 };
 
 }

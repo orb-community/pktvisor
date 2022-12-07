@@ -1,6 +1,6 @@
 FROM debian:bullseye-slim
 
-ENV RUNTIME_DEPS "curl ca-certificates libasan6 gdb"
+ENV RUNTIME_DEPS "curl ca-certificates libasan6 wget gzip"
 
 RUN \
     apt-get update && \
@@ -14,6 +14,16 @@ COPY ./crashpad_handler /usr/local/sbin/crashpad_handler
 COPY ./pktvisor-reader /usr/local/sbin/pktvisor-reader
 COPY ./pktvisor-cli /usr/local/bin/pktvisor-cli
 COPY ./docker/entry-cp.sh /entry-cp.sh
+COPY ./docker/run.sh /run.sh
+
+#create dir and download geo db
+RUN mkdir /geo-db
+RUN cd /geo-db && wget https://github.com/ns1labs/geo-asn-database/raw/main/asn.mmdb.gz
+RUN cd /geo-db && wget https://github.com/ns1labs/geo-asn-database/raw/main/city.mmdb.gz
+
+#create dir and setup iana csv
+RUN mkdir /iana
+COPY ./custom-iana.csv /iana/custom-iana.csv
 
 # permissions
 RUN chmod a+x /usr/local/sbin/pktvisord
@@ -21,6 +31,6 @@ RUN chmod a+x /usr/local/sbin/crashpad_handler
 RUN chmod a+x /usr/local/sbin/pktvisor-reader
 RUN chmod a+x /usr/local/bin/pktvisor-cli
 RUN chmod a+x /entry-cp.sh
+RUN chmod a+x /run.sh
 
 ENTRYPOINT [ "/entry-cp.sh" ]
-

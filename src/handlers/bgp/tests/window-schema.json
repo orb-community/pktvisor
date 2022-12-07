@@ -1,0 +1,232 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "$id": "http://example.com/example.json",
+  "type": "object",
+  "title": "The root schema",
+  "description": "The root schema comprises the entire JSON document.",
+  "default": {},
+  "examples": [
+    {
+      "bgp": {
+        "period": {
+          "length": 30,
+          "start_ts": 1634851620
+        },
+        "wire_packets": {
+          "deep_samples": 9,
+          "events": 9,
+          "filtered": 0,
+          "keepalive": 3,
+          "notification": 0,
+          "offer": 4,
+          "open": 2,
+          "routerefresh": 0,
+          "total": 9
+        }
+      }
+    }
+  ],
+  "required": [
+    "bgp"
+  ],
+  "properties": {
+    "bgp": {
+      "$id": "#/properties/bgp",
+      "type": "object",
+      "title": "The bgp schema",
+      "description": "An explanation about the purpose of this instance.",
+      "default": {},
+      "examples": [
+        {
+          "period": {
+            "length": 30,
+            "start_ts": 1634851620
+          },
+          "wire_packets": {
+            "deep_samples": 9,
+            "events": 9,
+            "filtered": 0,
+            "keepalive": 3,
+            "notification": 0,
+            "offer": 4,
+            "open": 2,
+            "routerefresh": 0,
+            "total": 9
+          }
+        }
+      ],
+      "required": [
+        "period",
+        "wire_packets"
+      ],
+      "properties": {
+        "period": {
+          "$id": "#/properties/bgp/properties/period",
+          "type": "object",
+          "title": "The period schema",
+          "description": "An explanation about the purpose of this instance.",
+          "default": {},
+          "examples": [
+            {
+              "length": 30,
+              "start_ts": 1634851620
+            }
+          ],
+          "required": [
+            "length",
+            "start_ts"
+          ],
+          "properties": {
+            "length": {
+              "$id": "#/properties/bgp/properties/period/properties/length",
+              "type": "integer",
+              "title": "The length schema",
+              "description": "An explanation about the purpose of this instance.",
+              "default": 0,
+              "examples": [
+                30
+              ]
+            },
+            "start_ts": {
+              "$id": "#/properties/bgp/properties/period/properties/start_ts",
+              "type": "integer",
+              "title": "The start_ts schema",
+              "description": "An explanation about the purpose of this instance.",
+              "default": 0,
+              "examples": [
+                1634851620
+              ]
+            }
+          },
+          "additionalProperties": true
+        },
+        "wire_packets": {
+          "$id": "#/properties/bgp/properties/wire_packets",
+          "type": "object",
+          "title": "The wire_packets schema",
+          "description": "An explanation about the purpose of this instance.",
+          "default": {},
+          "examples": [
+            {
+              "deep_samples": 9,
+              "events": 9,
+              "filtered": 0,
+              "keepalive": 3,
+              "notification": 0,
+              "offer": 4,
+              "open": 2,
+              "routerefresh": 0,
+              "total": 9
+            }
+          ],
+          "required": [
+            "deep_samples",
+            "events",
+            "filtered",
+            "keepalive",
+            "notification",
+            "offer",
+            "open",
+            "routerefresh",
+            "total"
+          ],
+          "properties": {
+            "deep_samples": {
+              "$id": "#/properties/bgp/properties/wire_packets/properties/deep_samples",
+              "type": "integer",
+              "title": "The deep_samples schema",
+              "description": "An explanation about the purpose of this instance.",
+              "default": 0,
+              "examples": [
+                8
+              ]
+            },
+            "events": {
+              "$id": "#/properties/bgp/properties/wire_packets/properties/events",
+              "type": "integer",
+              "title": "The events schema",
+              "description": "An explanation about the purpose of this instance.",
+              "default": 0,
+              "examples": [
+                9
+              ]
+            },
+            "filtered": {
+              "$id": "#/properties/bgp/properties/wire_packets/properties/filtered",
+              "type": "integer",
+              "title": "The filtered schema",
+              "description": "An explanation about the purpose of this instance.",
+              "default": 0,
+              "examples": [
+                0
+              ]
+            },
+            "keepalive": {
+              "$id": "#/properties/bgp/properties/wire_packets/properties/keepalive",
+              "type": "integer",
+              "title": "The keepalive schema",
+              "description": "An explanation about the purpose of this instance.",
+              "default": 0,
+              "examples": [
+                3
+              ]
+            },
+            "notification": {
+              "$id": "#/properties/bgp/properties/wire_packets/properties/notification",
+              "type": "integer",
+              "title": "The notification schema",
+              "description": "An explanation about the purpose of this instance.",
+              "default": 0,
+              "examples": [
+                0
+              ]
+            },
+            "offer": {
+              "$id": "#/properties/bgp/properties/wire_packets/properties/offer",
+              "type": "integer",
+              "title": "The offer schema",
+              "description": "An explanation about the purpose of this instance.",
+              "default": 0,
+              "examples": [
+                4
+              ]
+            },
+            "open": {
+              "$id": "#/properties/bgp/properties/wire_packets/properties/open",
+              "type": "integer",
+              "title": "The open schema",
+              "description": "An explanation about the purpose of this instance.",
+              "default": 0,
+              "examples": [
+                2
+              ]
+            },
+            "routerefresh": {
+              "$id": "#/properties/bgp/properties/wire_packets/properties/routerefresh",
+              "type": "integer",
+              "title": "The routerefresh schema",
+              "description": "An explanation about the purpose of this instance.",
+              "default": 0,
+              "examples": [
+                0
+              ]
+            },
+            "total": {
+              "$id": "#/properties/bgp/properties/wire_packets/properties/total",
+              "type": "integer",
+              "title": "The total schema",
+              "description": "An explanation about the purpose of this instance.",
+              "default": 0,
+              "examples": [
+                9
+              ]
+            }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

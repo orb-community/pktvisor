@@ -4,10 +4,16 @@
 
 #pragma once
 
+#include "PcapException.h"
+#include <pcap/pcap.h>
+#ifdef __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wold-style-cast"
+#endif
 #include <PcapLiveDevice.h>
+#ifdef __GNUC__
 #pragma GCC diagnostic pop
+#endif
 #include <atomic>
 #include <cstdint>
 #include <functional>

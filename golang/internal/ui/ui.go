@@ -7,11 +7,12 @@ package ui
 import (
 	"context"
 	"fmt"
-	"github.com/jroimartin/gocui"
 	"log"
 	"pktvisor/pkg/client"
 	"strconv"
 	"time"
+
+	"github.com/jroimartin/gocui"
 )
 
 type UI interface {
@@ -167,6 +168,7 @@ func (u *ui) Layout(g *gocui.Gui) error {
 	maxX, _ := u.gui.Size()
 
 	viewsWidth := 15
+	viewsWidthCopy := 15
 	viewsHeight := 7
 	//tableHeight := 10
 	//tableWidth := (maxX / 4) - 1
@@ -193,7 +195,7 @@ func (u *ui) Layout(g *gocui.Gui) error {
 	//	}
 	//}
 
-	if v, err := u.gui.SetView("header", viewsWidth-viewsWidth, 0, maxX-3, row1Y-1); err != nil {
+	if v, err := u.gui.SetView("header", viewsWidth-viewsWidthCopy, 0, maxX-3, row1Y-1); err != nil {
 		if err != gocui.ErrUnknownView {
 			return err
 		}
@@ -277,7 +279,7 @@ func (u *ui) updateViews() {
 			if err != nil {
 				return err
 			}
-			u.updateTable(stats.DNS.TopNX, v, replySample)
+			u.updateTable(stats.DNS.TopNxdomain, v, replySample)
 			v, err = u.gui.View("rcode")
 			if err != nil {
 				return err

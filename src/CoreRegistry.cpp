@@ -3,6 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 #include "CoreRegistry.h"
+#include "GeoDB.h"
 #include "HandlerManager.h"
 #include "InputStreamManager.h"
 #include "Policies.h"
@@ -25,7 +26,7 @@ CoreRegistry::CoreRegistry()
     _input_manager = std::make_unique<InputStreamManager>();
 
     // handlers
-    _handler_manager = std::make_unique<HandlerManager>();
+    _handler_manager = std::make_unique<HandlerManager>(this);
 
     // taps
     _tap_manager = std::make_unique<TapManager>(this);
@@ -42,37 +43,38 @@ void CoreRegistry::start(HttpServer *svr)
 
     // initialize input plugins
     {
-        auto alias_list = _input_registry.aliasList();
         auto plugin_list = _input_registry.pluginList();
-        std::vector<std::string> by_alias;
-        std::set_difference(alias_list.begin(), alias_list.end(),
-            plugin_list.begin(), plugin_list.end(), std::inserter(by_alias, by_alias.begin()));
-        for (auto &s : by_alias) {
+        for (auto &s : plugin_list) {
             auto meta = _input_registry.metadata(s);
             if (!meta) {
                 _logger->error("failed to load plugin metadata: {}", s);
                 continue;
             }
             if (meta->data().hasValue("type") && meta->data().value("type") == "input") {
+                if (!meta->data().hasValue("version")) {
+                    _logger->error("version field is mandatory and was not provided by '{}'", s);
+                }
+                auto version = meta->data().value("version");
                 if (_input_registry.loadState(s) == Corrade::PluginManager::LoadState::NotLoaded) {
                     _input_registry.load(s);
                 }
-                InputPluginPtr mod = _input_registry.instantiate(s);
-                _logger->info("Load input stream plugin: {} {}", s, mod->pluginInterface());
-                mod->init_plugin(this, svr);
-                _input_plugins.insert({s, std::move(mod)});
+                for (const auto &alias : meta->provides()) {
+                    InputPluginPtr mod = _input_registry.instantiate(alias);
+                    _logger->info("Load input stream plugin: {} version {} interface {}", alias, version, mod->pluginInterface());
+                    mod->init_plugin(this, svr, &geo::GeoIP(), &geo::GeoASN());
+                    auto result = _input_plugins.insert({std::make_pair(alias, version), std::move(mod)});
+                    if (!result.second) {
+                        throw std::runtime_error(fmt::format("Input alias '{}' with version '{}' was already loaded.", alias, version));
+                    }
+                }
             }
         }
     }
 
     // initialize handler plugins
     {
-        auto alias_list = _handler_registry.aliasList();
         auto plugin_list = _handler_registry.pluginList();
-        std::vector<std::string> by_alias;
-        std::set_difference(alias_list.begin(), alias_list.end(),
-            plugin_list.begin(), plugin_list.end(), std::inserter(by_alias, by_alias.begin()));
-        for (auto &s : by_alias) {
+        for (auto &s : plugin_list) {
             auto meta = _handler_registry.metadata(s);
             if (!meta) {
                 _logger->error("failed to load plugin metadata: {}", s);
@@ -82,10 +84,19 @@ void CoreRegistry::start(HttpServer *svr)
                 if (_handler_registry.loadState(s) == Corrade::PluginManager::LoadState::NotLoaded) {
                     _handler_registry.load(s);
                 }
-                HandlerPluginPtr mod = _handler_registry.instantiate(s);
-                _logger->info("Load stream handler plugin: {} {}", s, mod->pluginInterface());
-                mod->init_plugin(this, svr);
-                _handler_plugins.insert({s, std::move(mod)});
+                if (!meta->data().hasValue("version")) {
+                    _logger->error("version field is mandatory and was not provided by '{}'", s);
+                }
+                auto version = meta->data().value("version");
+                for (const auto &alias : meta->provides()) {
+                    HandlerPluginPtr mod = _handler_registry.instantiate(s);
+                    _logger->info("Load stream handler plugin: {} version {} interface {}", alias, version, mod->pluginInterface());
+                    mod->init_plugin(this, svr, &geo::GeoIP(), &geo::GeoASN());
+                    auto result = _handler_plugins.insert({std::make_pair(alias, version), std::move(mod)});
+                    if (!result.second) {
+                        throw std::runtime_error(fmt::format("Handler alias '{}' with version '{}' was already loaded.", alias, version));
+                    }
+                }
             }
         }
     }
@@ -119,6 +130,12 @@ void CoreRegistry::configure_from_yaml(YAML::Node &node)
     if (node["visor"]["taps"] && node["visor"]["taps"].IsMap()) {
         _tap_manager->load(node["visor"]["taps"], true);
     }
+
+    // global handlers config
+    if (node["visor"]["global_handler_config"] && node["visor"]["global_handler_config"].IsMap()) {
+        _handler_manager->set_default_handler_config(node["visor"]["global_handler_config"]);
+    }
+
     // policies
     if (node["visor"]["policies"] && node["visor"]["policies"].IsMap()) {
         auto policies = _policy_manager->load(node["visor"]["policies"]);

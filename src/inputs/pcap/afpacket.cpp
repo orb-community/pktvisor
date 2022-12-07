@@ -12,7 +12,6 @@
 #include <cstring>
 #include <net/ethernet.h>
 #include <net/if.h>
-#include <pcap/pcap.h>
 #include <poll.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
@@ -61,7 +60,7 @@ AFPacket::~AFPacket()
         fd = -1;
     }
     if (map != nullptr) {
-        munmap(map, block_size * num_blocks);
+        munmap(map,  static_cast<size_t>(block_size) * num_blocks);
     }
 }
 
@@ -76,16 +75,16 @@ void AFPacket::walk_block(struct block_desc *pbd)
     uint64_t bytes = 0;
     struct tpacket3_hdr *ppd;
 
-    ppd = (struct tpacket3_hdr *)((uint8_t *)pbd + pbd->h1.offset_to_first_pkt);
+    ppd = reinterpret_cast<struct tpacket3_hdr *>(reinterpret_cast<uint8_t *>(pbd) + pbd->h1.offset_to_first_pkt);
     for (i = 0; i < num_pkts; ++i) {
         bytes += ppd->tp_snaplen;
 
-        auto data_pointer = (uint8_t *)ppd + ppd->tp_mac;
+        auto data_pointer = reinterpret_cast<uint8_t *>(ppd) + ppd->tp_mac;
         pcpp::RawPacket packet(data_pointer, ppd->tp_snaplen, timespec{pbd->h1.ts_last_pkt.ts_sec, pbd->h1.ts_last_pkt.ts_nsec},
             false, pcpp::LINKTYPE_ETHERNET);
         cb(&packet, nullptr, inputStream);
 
-        ppd = (struct tpacket3_hdr *)((uint8_t *)ppd + ppd->tp_next_offset);
+        ppd = reinterpret_cast<struct tpacket3_hdr *>(reinterpret_cast<uint8_t *>(ppd) + ppd->tp_next_offset);
     }
 }
 
@@ -181,7 +180,7 @@ void AFPacket::setup()
     set_socket_opts();
 
     // Enable mmap for PACKET_RX_RING.
-    map = reinterpret_cast<uint8_t *>(mmap(nullptr, block_size * num_blocks, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_LOCKED, fd, 0));
+    map = reinterpret_cast<uint8_t *>(mmap(nullptr, static_cast<size_t>(block_size) * num_blocks, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_LOCKED, fd, 0));
 
     if (map == MAP_FAILED) {
         throw PcapException("Failed to initialize RX_RING mmap: " + std::string(strerror(errno)));

@@ -64,6 +64,7 @@ enum SocketProtocol {
     DOH = 4;         // DNS over HTTPS (RFC 8484)
     DNSCryptUDP = 5; // DNSCrypt over UDP (https://dnscrypt.info/protocol)
     DNSCryptTCP = 6; // DNSCrypt over TCP (https://dnscrypt.info/protocol)
+    DOQ = 7;         // DNS over QUIC (RFC 9250)
 }
 
 // Policy: information about any name server operator policy
@@ -215,13 +216,13 @@ message Message {
         // tool from a DNS server, from the perspective of the tool.
         TOOL_RESPONSE = 12;
 
-        // UPDATE_QUERY is a DNS update query message received from a resolver
+        // UPDATE_QUERY is a Dynamic DNS Update request (RFC 2136) received
         // by an authoritative name server, from the perspective of the
         // authoritative name server.
         UPDATE_QUERY = 13;
 
-        // UPDATE_RESPONSE is a DNS update response message sent from an
-        // authoritative name server to a resolver, from the perspective of the
+        // UPDATE_RESPONSE is a Dynamic DNS Update response (RFC 2136) sent
+        // from an authoritative name server, from the perspective of the
         // authoritative name server.
         UPDATE_RESPONSE = 14;
     }

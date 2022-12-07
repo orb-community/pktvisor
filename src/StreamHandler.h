@@ -6,6 +6,8 @@
 
 #include "AbstractMetricsManager.h"
 #include "AbstractModule.h"
+#include "InputEventProxy.h"
+#include <ctime>
 #include <fmt/ostream.h>
 #include <nlohmann/json.hpp>
 #include <sstream>
@@ -25,6 +27,8 @@ public:
 
 class StreamHandler : public AbstractRunnableModule
 {
+protected:
+    std::unique_ptr<InputEventProxy> _event_proxy;
 
 public:
     StreamHandler(const std::string &name)
@@ -34,9 +38,29 @@ public:
 
     virtual ~StreamHandler(){};
 
-    virtual size_t consumer_count() const = 0;
+    size_t consumer_count() const
+    {
+        if (_event_proxy) {
+            return _event_proxy->consumer_count();
+        }
+        return 0;
+    }
+
+    void set_event_proxy(std::unique_ptr<InputEventProxy> proxy)
+    {
+        _event_proxy = std::move(proxy);
+    }
+
+    InputEventProxy *get_event_proxy()
+    {
+        return _event_proxy.get();
+    }
+
     virtual void window_json(json &j, uint64_t period, bool merged) = 0;
+    virtual void window_json(json &j, AbstractMetricsBucket *bucket) = 0;
     virtual void window_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) = 0;
+    virtual void window_prometheus(std::stringstream &out, AbstractMetricsBucket *bucket, Metric::LabelMap add_labels = {}) = 0;
+    virtual std::unique_ptr<AbstractMetricsBucket> merge(AbstractMetricsBucket *bucket, uint64_t period, bool prometheus, bool merged) = 0;
 };
 
 template <class MetricsManagerClass>
@@ -44,8 +68,15 @@ class StreamMetricsHandler : public StreamHandler
 {
 public:
     typedef std::map<std::string, MetricGroupIntType> GroupDefType;
+    typedef std::vector<std::string> ConfigsDefType;
 
 private:
+    static const inline ConfigsDefType _window_config_defs = {
+        "deep_sample_rate",
+        "num_periods",
+        "topn_count",
+        "topn_percentile_threshold"};
+
     MetricGroupIntType _process_group(const GroupDefType &group_defs, const std::string &group)
     {
         auto it = group_defs.find(group);
@@ -54,7 +85,7 @@ private:
             for (const auto &defs : group_defs) {
                 valid_groups.push_back(defs.first);
             }
-            throw StreamHandlerException(fmt::format("{} is an invalid/unsupported metric group. The valid groups are {}", group, fmt::join(valid_groups, ", ")));
+            throw StreamHandlerException(fmt::format("{} is an invalid/unsupported metric group. The valid groups are: all, {}", group, fmt::join(valid_groups, ", ")));
         }
         return it->second;
     }
@@ -65,20 +96,45 @@ protected:
 
     void process_groups(const GroupDefType &group_defs)
     {
-
+        if (config_exists("disable")) {
+            for (const auto &group : config_get<StringList>("disable")) {
+                if (group == "all") {
+                    _groups.reset();
+                    break;
+                }
+                _groups.reset(_process_group(group_defs, group));
+            }
+        }
         if (config_exists("enable")) {
             for (const auto &group : config_get<StringList>("enable")) {
+                if (group == "all") {
+                    _groups.set();
+                    break;
+                }
                 _groups.set(_process_group(group_defs, group));
             }
         }
 
-        if (config_exists("disable")) {
-            for (const auto &group : config_get<StringList>("disable")) {
-                _groups.reset(_process_group(group_defs, group));
-            }
-        }
-
         _metrics->configure_groups(&_groups);
+    }
+
+    void validate_configs(const ConfigsDefType &config_defs)
+    {
+        auto all_configs = get_all_keys();
+        for (const auto &config : all_configs) {
+            if (std::any_of(_window_config_defs.begin(), _window_config_defs.end(), [config](const auto &def) { return config == def; })) {
+                continue;
+            } else if (std::any_of(config_defs.begin(), config_defs.end(), [config](const auto &def) { return config == def; })) {
+                continue;
+            } else if (config == "enable") {
+                continue;
+            } else if (config == "disable") {
+                continue;
+            } else if (config == "_internal_tap_name") {
+                continue;
+            }
+            throw StreamHandlerException(fmt::format("{} is an invalid/unsupported config or filter. The valid configs/filters are: {}, {}", config, fmt::join(config_defs, ", "), fmt::join(_window_config_defs, ", ")));
+        }
     }
 
     void common_info_json(json &j) const
@@ -93,13 +149,29 @@ protected:
             {
                 std::stringstream ssts;
                 time_t b_time_t = _metrics->bucket(i)->start_tstamp().tv_sec;
-                ssts << std::put_time(std::gmtime(&b_time_t), "%Y-%m-%d %X");
+#if defined(_MSC_VER)
+                struct tm *bt;
+                bt = gmtime(&b_time_t);
+                ssts << std::put_time(bt, "%Y-%m-%d %X");
+#else
+                std::tm bt{};
+                gmtime_r(&b_time_t, &bt);
+                ssts << std::put_time(&bt, "%Y-%m-%d %X");
+#endif
                 j["metrics"]["periods"][i]["start_tstamp"] = ssts.str();
             }
             if (_metrics->bucket(i)->read_only()) {
                 std::stringstream ssts;
                 time_t b_time_t = _metrics->bucket(i)->end_tstamp().tv_sec;
-                ssts << std::put_time(std::gmtime(&b_time_t), "%Y-%m-%d %X");
+#if defined(_MSC_VER)
+                struct tm *bt;
+                bt = gmtime(&b_time_t);
+                ssts << std::put_time(bt, "%Y-%m-%d %X");
+#else
+                std::tm bt{};
+                gmtime_r(&b_time_t, &bt);
+                ssts << std::put_time(&bt, "%Y-%m-%d %X");
+#endif
                 j["metrics"]["periods"][i]["end_tstamp"] = ssts.str();
             }
             j["metrics"]["periods"][i]["read_only"] = _metrics->bucket(i)->read_only();
@@ -132,6 +204,11 @@ public:
         }
     }
 
+    void window_json(json &j, AbstractMetricsBucket *bucket) override
+    {
+        _metrics->window_external_json(j, schema_key(), bucket);
+    }
+
     void window_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) override
     {
         if (_metrics->current_periods() > 1) {
@@ -139,6 +216,28 @@ public:
         } else {
             _metrics->window_single_prometheus(out, 0, add_labels);
         }
+    }
+
+    void window_prometheus(std::stringstream &out, AbstractMetricsBucket *bucket, Metric::LabelMap add_labels = {}) override
+    {
+        _metrics->window_external_prometheus(out, bucket, add_labels);
+    };
+
+    void check_period_shift(timespec stamp)
+    {
+        _metrics->check_period_shift(stamp);
+    }
+
+    std::unique_ptr<AbstractMetricsBucket> merge(AbstractMetricsBucket *bucket, uint64_t period, bool prometheus, bool merged) override
+    {
+        if (prometheus) {
+            (_metrics->current_periods() > 1) ? period = 1 : period = 0;
+            merged = false;
+        }
+        if (merged) {
+            return _metrics->multiple_merge(bucket, period);
+        }
+        return _metrics->simple_merge(bucket, period);
     }
 
     virtual ~StreamMetricsHandler(){};

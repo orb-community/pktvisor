@@ -7,24 +7,21 @@
 
 namespace visor::handler::resources {
 
-InputResourcesStreamHandler::InputResourcesStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config, StreamHandler *handler)
+InputResourcesStreamHandler::InputResourcesStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config)
     : visor::StreamMetricsHandler<InputResourcesMetricsManager>(name, window_config)
     , _timer(0)
     , _timestamp(timespec())
 {
-    if (handler) {
-        throw StreamHandlerException(fmt::format("ResourcesStreamHandler: unsupported upstream chained stream handler {}", handler->name()));
-    }
-
-    assert(stream);
+    assert(proxy);
     // figure out which input stream we have
-    if (stream) {
-        _pcap_stream = dynamic_cast<PcapInputStream *>(stream);
-        _dnstap_stream = dynamic_cast<DnstapInputStream *>(stream);
-        _mock_stream = dynamic_cast<MockInputStream *>(stream);
-        _sflow_stream = dynamic_cast<SflowInputStream *>(stream);
-        if (!_pcap_stream && !_mock_stream && !_dnstap_stream && !_sflow_stream) {
-            throw StreamHandlerException(fmt::format("NetStreamHandler: unsupported input stream {}", stream->name()));
+    if (proxy) {
+        _pcap_proxy = dynamic_cast<PcapInputEventProxy *>(proxy);
+        _dnstap_proxy = dynamic_cast<DnstapInputEventProxy *>(proxy);
+        _mock_proxy = dynamic_cast<MockInputEventProxy *>(proxy);
+        _flow_proxy = dynamic_cast<FlowInputEventProxy *>(proxy);
+        _netprobe_proxy = dynamic_cast<NetProbeInputEventProxy *>(proxy);
+        if (!_pcap_proxy && !_mock_proxy && !_dnstap_proxy && !_flow_proxy && !_netprobe_proxy) {
+            throw StreamHandlerException(fmt::format("InputResourcesStreamHandler: unsupported input event proxy {}", proxy->name()));
         }
     }
 }
@@ -39,15 +36,22 @@ void InputResourcesStreamHandler::start()
         _metrics->set_recorded_stream();
     }
 
-    if (_pcap_stream) {
-        _pkt_connection = _pcap_stream->packet_signal.connect(&InputResourcesStreamHandler::process_packet_cb, this);
-        _policies_connection = _pcap_stream->policy_signal.connect(&InputResourcesStreamHandler::process_policies_cb, this);
-    } else if (_dnstap_stream) {
-        _dnstap_connection = _dnstap_stream->dnstap_signal.connect(&InputResourcesStreamHandler::process_dnstap_cb, this);
-        _policies_connection = _dnstap_stream->policy_signal.connect(&InputResourcesStreamHandler::process_policies_cb, this);
-    } else if (_sflow_stream) {
-        _sflow_connection = _sflow_stream->sflow_signal.connect(&InputResourcesStreamHandler::process_sflow_cb, this);
-        _policies_connection = _sflow_stream->policy_signal.connect(&InputResourcesStreamHandler::process_policies_cb, this);
+    if (_pcap_proxy) {
+        _pkt_connection = _pcap_proxy->packet_signal.connect(&InputResourcesStreamHandler::process_packet_cb, this);
+        _policies_connection = _pcap_proxy->policy_signal.connect(&InputResourcesStreamHandler::process_policies_cb, this);
+        _heartbeat_connection = _pcap_proxy->heartbeat_signal.connect(&InputResourcesStreamHandler::check_period_shift, this);
+    } else if (_dnstap_proxy) {
+        _dnstap_connection = _dnstap_proxy->dnstap_signal.connect(&InputResourcesStreamHandler::process_dnstap_cb, this);
+        _policies_connection = _dnstap_proxy->policy_signal.connect(&InputResourcesStreamHandler::process_policies_cb, this);
+        _heartbeat_connection = _dnstap_proxy->heartbeat_signal.connect(&InputResourcesStreamHandler::check_period_shift, this);
+    } else if (_flow_proxy) {
+        _sflow_connection = _flow_proxy->sflow_signal.connect(&InputResourcesStreamHandler::process_sflow_cb, this);
+        _netflow_connection = _flow_proxy->netflow_signal.connect(&InputResourcesStreamHandler::process_netflow_cb, this);
+        _policies_connection = _flow_proxy->policy_signal.connect(&InputResourcesStreamHandler::process_policies_cb, this);
+        _heartbeat_connection = _flow_proxy->heartbeat_signal.connect(&InputResourcesStreamHandler::check_period_shift, this);
+    } else if (_netprobe_proxy) {
+        _policies_connection = _netprobe_proxy->policy_signal.connect(&InputResourcesStreamHandler::process_policies_cb, this);
+        _heartbeat_connection = _netprobe_proxy->heartbeat_signal.connect(&InputResourcesStreamHandler::check_period_shift, this);
     }
 
     _running = true;
@@ -59,29 +63,31 @@ void InputResourcesStreamHandler::stop()
         return;
     }
 
-    if (_pcap_stream) {
+    if (_pcap_proxy) {
         _pkt_connection.disconnect();
-    } else if (_dnstap_stream) {
+    } else if (_dnstap_proxy) {
         _dnstap_connection.disconnect();
-    } else if (_sflow_stream) {
+    } else if (_flow_proxy) {
         _sflow_connection.disconnect();
+        _netflow_connection.disconnect();
     }
     _policies_connection.disconnect();
+    _heartbeat_connection.disconnect();
 
     _running = false;
 }
 
-void InputResourcesStreamHandler::process_policies_cb(const Policy *policy, InputStream::Action action)
+void InputResourcesStreamHandler::process_policies_cb(const Policy *policy, Action action)
 {
     int16_t policies_number = 0;
     int16_t handlers_count = 0;
 
     switch (action) {
-    case InputStream::Action::AddPolicy:
+    case Action::AddPolicy:
         policies_number = 1;
         handlers_count = policy->get_handlers_list_size();
         break;
-    case InputStream::Action::RemovePolicy:
+    case Action::RemovePolicy:
         policies_number = -1;
         handlers_count = -policy->get_handlers_list_size();
         break;
@@ -90,7 +96,15 @@ void InputResourcesStreamHandler::process_policies_cb(const Policy *policy, Inpu
     _metrics->process_policies(policies_number, handlers_count);
 }
 
-void InputResourcesStreamHandler::process_sflow_cb([[maybe_unused]] const SFSample &)
+void InputResourcesStreamHandler::process_sflow_cb([[maybe_unused]] const SFSample &, [[maybe_unused]] size_t)
+{
+    if (difftime(time(NULL), _timer) >= MEASURE_INTERVAL) {
+        _timer = time(NULL);
+        _metrics->process_resources(_monitor.cpu_percentage(), _monitor.memory_usage());
+    }
+}
+
+void InputResourcesStreamHandler::process_netflow_cb([[maybe_unused]] const std::string &, [[maybe_unused]] const NFSample &, [[maybe_unused]] size_t)
 {
     if (difftime(time(NULL), _timer) >= MEASURE_INTERVAL) {
         _timer = time(NULL);
@@ -114,7 +128,7 @@ void InputResourcesStreamHandler::process_packet_cb([[maybe_unused]] pcpp::Packe
     }
 }
 
-void InputResourcesMetricsBucket::specialized_merge(const AbstractMetricsBucket &o)
+void InputResourcesMetricsBucket::specialized_merge(const AbstractMetricsBucket &o, Metric::Aggregate agg_operator)
 {
     // static because caller guarantees only our own bucket type
     const auto &other = static_cast<const InputResourcesMetricsBucket &>(o);
@@ -122,8 +136,8 @@ void InputResourcesMetricsBucket::specialized_merge(const AbstractMetricsBucket 
     std::shared_lock r_lock(other._mutex);
     std::unique_lock w_lock(_mutex);
 
-    _cpu_usage.merge(other._cpu_usage);
-    _memory_bytes.merge(other._memory_bytes);
+    _cpu_usage.merge(other._cpu_usage, agg_operator);
+    _memory_bytes.merge(other._memory_bytes, agg_operator);
 
     // Merge only the first bucket which is the more recent
     if (!_merged) {
@@ -183,8 +197,16 @@ void InputResourcesMetricsBucket::process_policies(int16_t policy_count, int16_t
 {
     std::unique_lock lock(_mutex);
 
-    _policy_count += policy_count;
-    _handler_count += handler_count;
+    if (policy_count < 0 && static_cast<uint64_t>(std::abs(policy_count)) > _policy_count.value()) {
+        _policy_count.clear();
+    } else {
+        _policy_count += policy_count;
+    }
+    if (handler_count < 0 && static_cast<uint64_t>(std::abs(handler_count)) > _handler_count.value()) {
+        _handler_count.clear();
+    } else {
+        _handler_count += handler_count;
+    }
 }
 
 void InputResourcesMetricsManager::process_resources(double cpu_usage, uint64_t memory_usage, timespec stamp)

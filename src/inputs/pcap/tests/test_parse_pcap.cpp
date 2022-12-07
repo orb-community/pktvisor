@@ -1,17 +1,27 @@
+#ifdef __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #pragma clang diagnostic ignored "-Wc99-extensions"
 #pragma clang diagnostic ignored "-Wrange-loop-analysis"
+#endif
 #include <Packet.h>
 #include <PcapFileDevice.h>
 #include <ProtocolType.h>
 #include <UdpLayer.h>
-#include <arpa/inet.h>
 #include <catch2/catch.hpp>
 #include <frequent_items_sketch.hpp>
+#ifdef __GNUC__
 #pragma GCC diagnostic pop
 #pragma GCC diagnostic ignored "-Wold-style-cast"
+#endif
+
+#ifdef _WIN32
+#include <winsock2.h>
+#else
+#include <netinet/in.h>
+#endif
+
 
 TEST_CASE("Top K Src Ports", "[pcap][ipv4][topk][dns][udp]")
 {

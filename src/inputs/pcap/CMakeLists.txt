@@ -7,7 +7,6 @@ corrade_add_static_plugin(VisorInputPcap ${CMAKE_CURRENT_BINARY_DIR}
         PcapInputModulePlugin.cpp
         PcapInputStream.cpp
         afpacket.cpp
-        utils.cpp
         )
 add_library(Visor::Input::Pcap ALIAS VisorInputPcap)
 
@@ -19,8 +18,11 @@ target_include_directories(VisorInputPcap
 target_link_libraries(VisorInputPcap
         PUBLIC
         ${CONAN_LIBS_PCAPPLUSPLUS}
+        ${CONAN_LIBS_PTHREADS4W}
         ${CONAN_LIBS_LIBPCAP}
+        ${CONAN_LIBS_NPCAP}
         Visor::Core
+        Visor::Lib::Utils
         )
 
 set(VISOR_STATIC_PLUGINS ${VISOR_STATIC_PLUGINS} Visor::Input::Pcap PARENT_SCOPE)
@@ -30,7 +32,6 @@ add_executable(unit-tests-input-pcap
         tests/main.cpp
         tests/test_mock_traffic.cpp
         tests/test_parse_pcap.cpp
-        tests/test_utils.cpp
         )
 
 target_link_libraries(unit-tests-input-pcap

@@ -5,12 +5,12 @@ cmake_minimum_required(VERSION 3.13)
 #######################################################
 
 # this is the source of truth for semver version
-project(visor VERSION 4.1.0)
+project(visor VERSION 4.2.0)
 
 # for main line release, this is empty
 # for development release, this is "-develop"
 # for release candidate, this is "-rc"
-set(VISOR_PRERELEASE "")
+set(VISOR_PRERELEASE "-develop")
 
 #######################################################
 
@@ -54,7 +54,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 ")
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 #set(CMAKE_VERBOSE_MAKEFILE ON)
-add_compile_options(-Wall -pedantic -W -Wextra -Wno-unknown-pragmas)
+if(NOT MSVC)
+    add_compile_options(-Wall -pedantic -W -Wextra -Wno-unknown-pragmas)
+endif()
 
 # Conan setup
 
@@ -76,6 +78,10 @@ if(PKTVISOR_CONAN_INIT)
             VERIFY_SSL True)
 endif()
 
+if(WIN32)
+    set(CUSTOM_CMAKE_OPTIONS docopt.cpp:boost_regex=True)
+endif()
+
 conan_cmake_install(
         PATH_OR_REFERENCE ${PROJECT_SOURCE_DIR}
         BUILD ${PKTVISOR_CONAN_BUILD}
@@ -83,6 +89,7 @@ conan_cmake_install(
         PROFILE_HOST ${PKTVISOR_CONAN_HOST_PROFILE}
         GENERATOR cmake
         SETTINGS ${CONAN_SETTINGS}
+        OPTIONS ${CUSTOM_CMAKE_OPTIONS}
         INSTALL_FOLDER ${CMAKE_BINARY_DIR})
 
 include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
@@ -90,6 +97,14 @@ conan_basic_setup()
 
 find_package(Corrade REQUIRED PluginManager)
 include(sanitizer)
+if(CODE_COVERAGE)
+    include(CodeCoverage)
+    append_coverage_compiler_flags()
+    setup_target_for_coverage_lcov(
+            NAME coverage
+            EXECUTABLE ctest
+            EXCLUDE "3rd/*" "cmd/*" "libs/*" "${PROJECT_BINARY_DIR}/*")
+endif()
 
 set(VISOR_STATIC_PLUGINS)
 
@@ -97,8 +112,11 @@ enable_testing()
 
 message(STATUS "Building pktvisor version ${CMAKE_PROJECT_VERSION_MAJOR}.${CMAKE_PROJECT_VERSION_MINOR}.${CMAKE_PROJECT_VERSION_PATCH}${VISOR_PRERELEASE}")
 add_subdirectory(3rd)
+add_subdirectory(libs)
 add_subdirectory(src)
 add_subdirectory(cmd)
+if(NOT WIN32)
 add_subdirectory(integration_tests)
+endif()
 
 endif()

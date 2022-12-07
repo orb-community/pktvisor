@@ -17,6 +17,7 @@ jobs:
     name: pktvisor
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         include:
           - arch: x86_64
@@ -89,8 +90,6 @@ jobs:
           compiler.libcxx=libstdc++11
           compiler.libc=musl
           build_type=Release
-          [options]
-          pcapplusplus:with_musl=True
           [build_requires]
           [env]
           CC=${{github.workspace}}/toolchain/bin/${{matrix.cc}}
@@ -111,6 +110,9 @@ jobs:
         uses: actions/checkout@v2
         with:
           path: src
+      - name: Remove crashpad from conanfile
+        run: |
+          sed -i -e "s/crashpad.*//g" ${{github.workspace}}/src/conanfile.txt
       - name: Install dependencies
         run: |
           mkdir build
@@ -124,6 +126,7 @@ jobs:
           export LDFLAGS=-static
           cmake "${{github.workspace}}/src" \
             -DCMAKE_BUILD_TYPE=Release \
+            -DCRASHPAD_NOT_SUPPORTED=true \
             -DCMAKE_C_COMPILER_LAUNCHER="${{github.workspace}}/bin/sccache" -DCMAKE_CXX_COMPILER_LAUNCHER="${{github.workspace}}/bin/sccache" \
             -DPKTVISOR_CONAN_INIT=OFF -DPKTVISOR_CONAN_BUILD="never" -DPKTVISOR_CONAN_BUILD_PROFILE="default" -DPKTVISOR_CONAN_HOST_PROFILE="host" \
             -DProtobuf_PROTOC_EXECUTABLE=$(command -v protoc) \
@@ -157,8 +160,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        os: [linux, macos]
-        arch: [x86_64, armv7lh, aarch64]
+        os: [ linux, macos ]
+        arch: [ x86_64, armv7lh, aarch64 ]
         exclude:
           - os: macos
             arch: armv7lh

@@ -47,9 +47,12 @@ public:
     }
 
     // visor::AbstractMetricsBucket
-    void specialized_merge(const AbstractMetricsBucket &other) override;
+    void specialized_merge(const AbstractMetricsBucket &other, Metric::Aggregate agg_operator) override;
     void to_json(json &j) const override;
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override;
+    void update_topn_metrics(size_t, uint64_t) override
+    {
+    }
 
     void process_random_int(uint64_t i);
 };
@@ -68,7 +71,7 @@ public:
 class MockStreamHandler final : public visor::StreamMetricsHandler<MockMetricsManager>
 {
 
-    MockInputStream *_mock_stream;
+    MockInputEventProxy *_mock_proxy;
     std::shared_ptr<spdlog::logger> _logger;
 
     sigslot::connection _random_int_connection;
@@ -76,18 +79,13 @@ class MockStreamHandler final : public visor::StreamMetricsHandler<MockMetricsMa
     void process_random_int(uint64_t i);
 
 public:
-    MockStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config, StreamHandler *handler = nullptr);
+    MockStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config);
     ~MockStreamHandler();
 
     // visor::AbstractModule
     std::string schema_key() const override
     {
         return "mock";
-    }
-
-    size_t consumer_count() const override
-    {
-        return 0;
     }
 
     void start() override;

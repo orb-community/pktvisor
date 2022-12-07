@@ -18,14 +18,15 @@ namespace visor::handler::net {
 using namespace visor::input::pcap;
 using json = nlohmann::json;
 
-void NetHandlerModulePlugin::setup_routes(HttpServer *svr)
+void NetHandlerModulePlugin::setup_routes(HttpServer *)
 {
 }
-std::unique_ptr<StreamHandler> NetHandlerModulePlugin::instantiate(const std::string &name, InputStream *input_stream, const Configurable *config, StreamHandler *stream_handler)
+std::unique_ptr<StreamHandler> NetHandlerModulePlugin::instantiate(const std::string &name, InputEventProxy *proxy, const Configurable *config, const Configurable *filter)
 {
     // TODO using config as both window config and module config
-    auto handler_module = std::make_unique<NetStreamHandler>(name, input_stream, config, stream_handler);
+    auto handler_module = std::make_unique<NetStreamHandler>(name, proxy, config);
     handler_module->config_merge(*config);
+    handler_module->config_merge(*filter);
     return handler_module;
 }
 

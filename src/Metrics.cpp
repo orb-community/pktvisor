@@ -29,45 +29,14 @@ void Rate::to_json(json &j, bool include_live) const
 
 void Rate::to_json(visor::json &j) const
 {
-    const double fractions[4]{0.50, 0.90, 0.95, 0.99};
-
     std::shared_lock lock(_sketch_mutex);
-
-    auto quantiles = _quantile.get_quantiles(fractions, 4);
-    if (quantiles.size()) {
-        name_json_assign(j, {"p50"}, quantiles[0]);
-        name_json_assign(j, {"p90"}, quantiles[1]);
-        name_json_assign(j, {"p95"}, quantiles[2]);
-        name_json_assign(j, {"p99"}, quantiles[3]);
-    }
+    _quantile.to_json(j);
 }
 
 void Rate::to_prometheus(std::stringstream &out, Metric::LabelMap add_labels) const
 {
-    const double fractions[4]{0.50, 0.90, 0.95, 0.99};
-
     std::shared_lock lock(_sketch_mutex);
-    auto quantiles = _quantile.get_quantiles(fractions, 4);
-
-    LabelMap l5(add_labels);
-    l5["quantile"] = "0.5";
-    LabelMap l9(add_labels);
-    l9["quantile"] = "0.9";
-    LabelMap l95(add_labels);
-    l95["quantile"] = "0.95";
-    LabelMap l99(add_labels);
-    l99["quantile"] = "0.99";
-
-    if (quantiles.size()) {
-        out << "# HELP " << base_name_snake() << ' ' << _desc << std::endl;
-        out << "# TYPE " << base_name_snake() << " summary" << std::endl;
-        out << name_snake({}, l5) << ' ' << quantiles[0] << std::endl;
-        out << name_snake({}, l9) << ' ' << quantiles[1] << std::endl;
-        out << name_snake({}, l95) << ' ' << quantiles[2] << std::endl;
-        out << name_snake({}, l99) << ' ' << quantiles[3] << std::endl;
-        out << name_snake({"sum"}, add_labels) << ' ' << _quantile.get_max_value() << std::endl;
-        out << name_snake({"count"}, add_labels) << ' ' << _quantile.get_n() << std::endl;
-    }
+    _quantile.to_prometheus(out, add_labels);
 }
 
 void Cardinality::merge(const Cardinality &other)

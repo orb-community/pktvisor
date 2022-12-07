@@ -15,6 +15,8 @@ namespace visor::handler::pcap {
 
 using namespace visor::input::pcap;
 
+static constexpr const char *PCAP_SCHEMA{"pcap"};
+
 class PcapMetricsBucket final : public visor::AbstractMetricsBucket
 {
 
@@ -33,9 +35,9 @@ protected:
         uint64_t pcap_last_if_drop{std::numeric_limits<uint64_t>::max()};
 
         counters()
-            : pcap_TCP_reassembly_errors("pcap", {"tcp_reassembly_errors"}, "Count of TCP reassembly errors")
-            , pcap_os_drop("pcap", {"os_drops"}, "Count of packets dropped by the operating system (if supported)")
-            , pcap_if_drop("pcap", {"if_drops"}, "Count of packets dropped by the interface (if supported)")
+            : pcap_TCP_reassembly_errors(PCAP_SCHEMA, {"tcp_reassembly_errors"}, "Count of TCP reassembly errors")
+            , pcap_os_drop(PCAP_SCHEMA, {"os_drops"}, "Count of packets dropped by the operating system (if supported)")
+            , pcap_if_drop(PCAP_SCHEMA, {"if_drops"}, "Count of packets dropped by the interface (if supported)")
         {
         }
     };
@@ -54,9 +56,12 @@ public:
     }
 
     // visor::AbstractMetricsBucket
-    void specialized_merge(const AbstractMetricsBucket &other) override;
+    void specialized_merge(const AbstractMetricsBucket &other, Metric::Aggregate agg_operator) override;
     void to_json(json &j) const override;
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override;
+    void update_topn_metrics(size_t, uint64_t) override
+    {
+    }
 
     void process_pcap_tcp_reassembly_error(bool deep, pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3);
     void process_pcap_stats(const pcpp::IPcapDevice::PcapStats &stats);
@@ -77,13 +82,18 @@ public:
 class PcapStreamHandler final : public visor::StreamMetricsHandler<PcapMetricsManager>
 {
 
-    PcapInputStream *_pcap_stream;
+    PcapInputEventProxy *_pcap_proxy;
 
     sigslot::connection _start_tstamp_connection;
     sigslot::connection _end_tstamp_connection;
 
     sigslot::connection _pcap_tcp_reassembly_errors_connection;
     sigslot::connection _pcap_stats_connection;
+
+    sigslot::connection _heartbeat_connection;
+
+    static const inline StreamMetricsHandler::ConfigsDefType _config_defs = {
+        "recorded_stream"};
 
     void process_pcap_tcp_reassembly_error(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, timespec stamp);
     void process_pcap_stats(const pcpp::IPcapDevice::PcapStats &stats);
@@ -92,18 +102,13 @@ class PcapStreamHandler final : public visor::StreamMetricsHandler<PcapMetricsMa
     void set_end_tstamp(timespec stamp);
 
 public:
-    PcapStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config, StreamHandler *handler = nullptr);
+    PcapStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config);
     ~PcapStreamHandler() = default;
 
     // visor::AbstractModule
     std::string schema_key() const override
     {
-        return "pcap";
-    }
-
-    size_t consumer_count() const override
-    {
-        return 0;
+        return PCAP_SCHEMA;
     }
 
     void start() override;

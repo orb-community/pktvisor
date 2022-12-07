@@ -3,8 +3,11 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 #include "HandlerModulePlugin.h"
+#include "GeoDB.h"
 
 namespace visor {
 
+geo::MaxmindDB *HandlerModulePlugin::asn = &geo::GeoASN();
+geo::MaxmindDB *HandlerModulePlugin::city = &geo::GeoIP();
 
 }

@@ -7,35 +7,42 @@
   "default": {},
   "examples": [
     {
-        "packets": {
-          "cardinality": {
-            "dst_ips_out": 1,
-            "src_ips_in": 1
-          },
-          "deep_samples": 16147,
-          "in": 6648,
-          "ipv4": 16147,
-          "ipv6": 0,
-          "other_l4": 0,
-          "out": 9499,
-          "period": {
-            "length": 31,
-            "start_ts": 1614874231
-          },
-          "tcp": 13176,
-          "top_ASN": [],
-          "top_geoLoc": [],
-          "top_ipv4": [
-            {
-              "estimate": 16147,
-              "name": "8.8.8.8"
-            }
-          ],
-          "top_ipv6": [],
-          "total": 16147,
-          "udp": 2971
-        }
+      "packets": {
+        "cardinality": {
+          "dst_ips_out": 1,
+          "src_ips_in": 1
+        },
+        "deep_samples": 16147,
+        "events": 16147,
+        "in": 6648,
+        "ipv4": 16147,
+        "ipv6": 0,
+        "other_l4": 0,
+        "out": 9499,
+        "period": {
+          "length": 31,
+          "start_ts": 1614874231
+        },
+        "tcp": 13176,
+        "protocol": {
+          "tcp": {
+            "syn": 2846
+          }
+        },
+        "top_ASN": [],
+        "top_geoLoc": [],
+        "top_ipv4": [
+          {
+            "estimate": 16147,
+            "name": "8.8.8.8"
+          }
+        ],
+        "top_ipv6": [],
+        "total": 16147,
+        "udp": 2971,
+        "unknown_dir": 0
       }
+    }
   ],
   "required": [
     "packets"
@@ -54,11 +61,13 @@
             "src_ips_in": 1
           },
           "deep_samples": 16147,
+          "events": 16147,
           "in": 6648,
           "ipv4": 16147,
           "ipv6": 0,
           "other_l4": 0,
           "out": 9499,
+          "filtered": 0,
           "period": {
             "length": 31,
             "start_ts": 1614874231
@@ -70,6 +79,11 @@
             "p99": 202
           },
           "tcp": 13176,
+          "protocol": {
+            "tcp": {
+              "syn": 2846
+            }
+          },
           "top_ASN": [],
           "top_geoLoc": [],
           "top_ipv4": [
@@ -80,26 +94,31 @@
           ],
           "top_ipv6": [],
           "total": 16147,
-          "udp": 2971
+          "udp": 2971,
+          "unknown_dir": 0
         }
       ],
       "required": [
         "cardinality",
         "deep_samples",
+        "events",
         "in",
         "ipv4",
         "ipv6",
         "other_l4",
         "out",
+        "filtered",
         "period",
         "payload_size",
         "tcp",
+        "protocol",
         "top_ASN",
         "top_geoLoc",
         "top_ipv4",
         "top_ipv6",
         "total",
-        "udp"
+        "udp",
+        "unknown_dir"
       ],
       "properties": {
         "cardinality": {
@@ -146,6 +165,16 @@
           "$id": "#/properties/packets/properties/deep_samples",
           "type": "integer",
           "title": "The deep_samples schema",
+          "description": "An explanation about the purpose of this instance.",
+          "default": 0,
+          "examples": [
+            16147
+          ]
+        },
+        "events": {
+          "$id": "#/properties/packets/properties/events",
+          "type": "integer",
+          "title": "The events schema",
           "description": "An explanation about the purpose of this instance.",
           "default": 0,
           "examples": [
@@ -200,6 +229,16 @@
           "default": 0,
           "examples": [
             9499
+          ]
+        },
+        "filtered": {
+          "$id": "#/properties/packets/properties/filtered",
+          "type": "integer",
+          "title": "The filtered schema",
+          "description": "An explanation about the purpose of this instance.",
+          "default": 0,
+          "examples": [
+            2
           ]
         },
         "period": {
@@ -261,6 +300,52 @@
           "examples": [
             13176
           ]
+        },
+        "protocol": {
+          "$id": "#/properties/packets/properties/protocol",
+          "type": "object",
+          "title": "The protocol schema",
+          "description": "An explanation about the purpose of this instance.",
+          "default": {},
+          "examples": [
+            {
+              "tcp": {
+                "syn": 10
+              }
+            }
+          ],
+          "required": [
+            "tcp"
+          ],
+          "properties": {
+            "tcp": {
+              "$id": "#/properties/packets/properties/protocol/properties/tcp",
+              "type": "object",
+              "title": "The tcp flags schema",
+              "description": "An explanation about the purpose of this instance.",
+              "default": 0,
+              "examples": [
+                {
+                  "syn": 10
+                }
+              ],
+              "required": [
+                "syn"
+              ],
+              "properties": {
+                "syn": {
+                  "$id": "#/properties/packets/properties/protocol/properties/tcp/properties/syn",
+                  "type": "integer",
+                  "title": "The syn flag schema",
+                  "description": "An explanation about the purpose of this instance.",
+                  "default": 0,
+                  "examples": [
+                    10
+                  ]
+                }
+              }
+            }
+          }
         },
         "top_ASN": {
           "$id": "#/properties/packets/properties/top_ASN",
@@ -383,6 +468,16 @@
           "default": 0,
           "examples": [
             2971
+          ]
+        },
+        "unknown_dir": {
+          "$id": "#/properties/packets/properties/unknown_dir",
+          "type": "integer",
+          "title": "The unknown_dir schema",
+          "description": "An explanation about the purpose of this instance.",
+          "default": 0,
+          "examples": [
+            0
           ]
         }
       },

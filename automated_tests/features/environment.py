@@ -1,22 +1,33 @@
 import docker
+from steps import test_config
+from steps import utils
+from hamcrest import *
+from behave.model_core import Status
 
 
 PKTVISOR_CONTAINER_NAME = "pktvisor-test"
+sudo = test_config.TestConfig.configs().get("sudo")
 
 
 def before_scenario(context, scenario):
-    cleanup_container(PKTVISOR_CONTAINER_NAME)
+    context.containers_id = dict()
+    context.mock_iface_name = utils.random_string(10)
+    add_return = test_config.send_terminal_commands(f"ip link add {context.mock_iface_name} type dummy", sudo=sudo)
+    set_return = test_config.send_terminal_commands(f"ip link set {context.mock_iface_name} up", sudo=sudo)
+    assert_that(add_return[1], not_(contains_string("Operation not permitted")), "Unable to add dummy iface")
+    assert_that(set_return, equal_to(('', '')), "Unable to up dummy iface")
 
 
-def after_scenario(context, feature):
-    cleanup_container(PKTVISOR_CONTAINER_NAME)
+def after_scenario(context, scenario):
+    if scenario.status != Status.failed:
+        cleanup_container(context.containers_id.keys())
+        test_config.send_terminal_commands(f"ip link set {context.mock_iface_name} down", sudo=sudo)
+        test_config.send_terminal_commands(f"ip link delete {context.mock_iface_name} type dummy", sudo=sudo)
 
 
-def cleanup_container(name_prefix):
+def cleanup_container(containers_id):
     docker_client = docker.from_env()
-    containers = docker_client.containers.list(all=True)
-    for container in containers:
-        test_container = container.name.startswith(name_prefix)
-        if test_container is True:
-            container.stop()
-            container.remove()
+    for container_id in containers_id:
+        container = docker_client.containers.get(container_id)
+        container.stop()
+        container.remove()

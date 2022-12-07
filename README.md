@@ -1,16 +1,17 @@
 ![pktvisor](docs/images/pktvisor-header.png)
 
-![Build status](https://github.com/ns1labs/pktvisor/workflows/Build/badge.svg)
-[![LGTM alerts](https://img.shields.io/lgtm/alerts/g/ns1/pktvisor.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/ns1/pktvisor/alerts/)
+[![Build status](https://github.com/ns1labs/pktvisor/workflows/Build/badge.svg)](https://github.com/ns1labs/pktvisor/actions)
+[![CodeQL](https://github.com/ns1labs/pktvisor/workflows/CodeQL/badge.svg)](https://github.com/ns1labs/pktvisor/security/code-scanning)
+[![CodeCov](https://codecov.io/gh/ns1labs/pktvisor/branch/develop/graph/badge.svg)](https://app.codecov.io/gh/ns1labs/pktvisor/tree/develop)
 
 <p align="left">
   <strong>
-    <a href="#what-is-pktvisor">Introduction<a/>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
-    <a href="#get-started">Get Started<a/>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
-    <a href="#docs">Docs<a/>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
-    <a href="#build">Build<a/>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
-    <a href="#contribute">Contribute<a/>&nbsp;&nbsp;&bull;&nbsp;&nbsp;    
-    <a href="#contact-us">Contact Us<a/>
+    <a href="#what-is-pktvisor">Introduction</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
+    <a href="#get-started">Get Started</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
+    <a href="#docs">Docs</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
+    <a href="#build">Build</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
+    <a href="#contribute">Contribute</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;    
+    <a href="#contact-us">Contact Us</a>
   </strong>
 </p>
 
@@ -25,7 +26,7 @@ both on-node via command line UI (for localized, hyper real-time actions)
 as well as centrally collected into industry standard observability stacks like Prometheus and Grafana.
 
 The [input stream system](src/inputs) is designed to _tap into_ data streams. It currently supports [packet capture](https://en.wikipedia.org/wiki/Packet_analyzer),
-[dnstap](https://dnstap.info/) and [sFlow](https://en.wikipedia.org/wiki/SFlow) and will soon support additional taps such as [Netflow](https://en.wikipedia.org/wiki/NetFlow),
+[dnstap](https://dnstap.info/), [sFlow](https://en.wikipedia.org/wiki/SFlow) and [Netflow](https://en.wikipedia.org/wiki/NetFlow)/[IPFIX](https://en.wikipedia.org/wiki/IP_Flow_Information_Export) and will soon support additional taps such as
 [envoy taps](https://www.envoyproxy.io/docs/envoy/latest/operations/traffic_tapping), and [eBPF](https://ebpf.io/).
 
 The [stream analyzer system](src/handlers) includes full application layer analysis, and [efficiently](https://en.wikipedia.org/wiki/Streaming_algorithm) summarizes to:
@@ -153,6 +154,13 @@ We are working on support for additional operating systems, CPU architectures an
 If you have a preferred installation method that you would like to see support
 for, [please create an issue](https://github.com/ns1/pktvisor/issues/new).
 
+### Execute Pktvisord binary without root
+Pktvisord uses libpcap to capture PCAP from the desired interface. To do so, it needs system network capture permissions.
+You are able to authorize those specific requirements only once and then be able to run the binary without `sudo`.
+```shell
+sudo setcap cap_net_raw,cap_net_admin=eip /<full_path>/pktvisord-x86_64
+```
+
 ## Docs
 
 ### Agent Usage
@@ -185,53 +193,66 @@ or
     Taps and Collection Policies may be created by passing the appropriate YAML configuration file to
     --config, and/or by enabling the admin REST API with --admin-api and using the appropriate endpoints.
 
-    Alternatively, for simple use cases you may specify IFACE, which is either a network interface or an
-    IP address (4 or 6). If this is specified, "default" Tap and Collection Policies will be created with
+    Alternatively, for simple use cases you may specify IFACE, which is either a network interface, an
+    IP address (4 or 6), or "auto". If this is specified, "default" Tap and Collection Policies will be created with
     a "pcap" input stream on the specified interfaced, along with the built in "net", "dns", and "pcap"
-    Stream Handler modules attached. Note that this feature may be deprecated in the future.
+    Stream Handler modules attached. If "auto" is specified, the most used ethernet interface will be chosen.
+    Note that this feature may be deprecated in the future.
 
     For more documentation, see https://pktvisor.dev
 
     Base Options:
-      -d                          Daemonize; fork and continue running in the background [default: false]
-      -h --help                   Show this screen
-      -v                          Verbose log output
-      --no-track                  Don't send lightweight, anonymous usage metrics
-      --version                   Show version
+      -d                                    Daemonize; fork and continue running in the background [default: false]
+      -h --help                             Show this screen
+      -v                                    Verbose log output
+      --no-track                            Don't send lightweight, anonymous usage metrics
+      --version                             Show version
     Web Server Options:
-      -l HOST                     Run web server on the given host or IP [default: localhost]
-      -p PORT                     Run web server on the given port [default: 10853]
-      --tls                       Enable TLS on the web server
-      --tls-cert FILE             Use given TLS cert. Required if --tls is enabled.
-      --tls-key FILE              Use given TLS private key. Required if --tls is enabled.
-      --admin-api                 Enable admin REST API giving complete control plane functionality [default: false]
-                                  When not specified, the exposed API is read-only access to module status and metrics.
-                                  When specified, write access is enabled for all modules.
+      -l HOST                               Run web server on the given host or IP (default: localhost)
+      -p PORT                               Run web server on the given port (default: 10853)
+      --tls                                 Enable TLS on the web server
+      --tls-cert FILE                       Use given TLS cert. Required if --tls is enabled.
+      --tls-key FILE                        Use given TLS private key. Required if --tls is enabled.
+      --admin-api                           Enable admin REST API giving complete control plane functionality [default: false]
+                                            When not specified, the exposed API is read-only access to module status and metrics.
+                                            When specified, write access is enabled for all modules.
     Geo Options:
-      --geo-city FILE             GeoLite2 City database to use for IP to Geo mapping
-      --geo-asn FILE              GeoLite2 ASN database to use for IP to ASN mapping
+      --geo-city FILE                       GeoLite2 City database to use for IP to Geo mapping
+      --geo-asn FILE                        GeoLite2 ASN database to use for IP to ASN mapping
+      --geo-cache-size N                    GeoLite2 LRU cache size, 0 to disable. (default: 10000)
+      --default-geo-city FILE               Default GeoLite2 City database to be loaded if no other is specified
+      --default-geo-asn FILE                Default GeoLite2 ASN database to be loaded if no other is specified
     Configuration:
-      --config FILE               Use specified YAML configuration to configure options, Taps, and Collection Policies
-                                  Please see https://pktvisor.dev for more information
+      --config FILE                         Use specified YAML configuration to configure options, Taps, and Collection Policies
+                                            Please see https://pktvisor.dev for more information
+    Crashpad:
+      --cp-disable                          Disable crashpad collector
+      --cp-token TOKEN                      Crashpad token for remote crash reporting
+      --cp-url URL                          Crashpad server url
+      --cp-custom USERDEF                   Crashpad optional user defined field
+      --cp-path PATH                        Crashpad handler binary
     Modules:
-      --module-list               List all modules which have been loaded (builtin and dynamic).
-      --module-dir DIR            Set module load path. All modules in this directory will be loaded.
+      --module-list                         List all modules which have been loaded (builtin and dynamic).
+      --module-dir DIR                      Set module load path. All modules in this directory will be loaded.
     Logging Options:
-      --log-file FILE             Log to the given output file name
-      --syslog                    Log to syslog
+      --log-file FILE                       Log to the given output file name
+      --syslog                              Log to syslog
     Prometheus Options:
-      --prometheus                Ignored, Prometheus output always enabled (left for backwards compatibility)
-      --prom-instance ID          Optionally set the 'instance' label to given ID
+      --prometheus                          Ignored, Prometheus output always enabled (left for backwards compatibility)
+      --prom-instance ID                    Optionally set the 'instance' label to given ID
+    Metric Enrichment Options:
+      --iana-service-port-registry FILE     IANA Service Name and Transport Protocol Port Number Registry file in CSV format
+      --default-service-registry FILE       Default IANA Service Name Port Number Registry CSV file to be loaded if no other is specified
     Handler Module Defaults:
-      --max-deep-sample N         Never deep sample more than N% of streams (an int between 0 and 100) [default: 100]
-      --periods P                 Hold this many 60 second time periods of history in memory [default: 5]
-    pcap Input Module Options: (applicable to default policy when IFACE is specified only)
-      -b BPF                      Filter packets using the given tcpdump compatible filter expression. Example: "port 53"
-      -H HOSTSPEC                 Specify subnets (comma separated) to consider HOST, in CIDR form. In live capture this
-                                  /may/ be detected automatically from capture device but /must/ be specified for pcaps.
-                                  Example: "10.0.1.0/24,10.0.2.1/32,2001:db8::/64"
-                                  Specifying this for live capture will append to any automatic detection.
-
+      --max-deep-sample N                   Never deep sample more than N% of streams (an int between 0 and 100) (default: 100)
+      --periods P                            Hold this many 60 second time periods of history in memory (default: 5)
+    pcap Input Module Options:              (applicable to default policy when IFACE is specified only)
+      -b BPF                                Filter packets using the given tcpdump compatible filter expression. Example: "port 53"
+      -H HOSTSPEC                           Specify subnets (comma separated) to consider HOST, in CIDR form. In live capture this
+                                            /may/ be detected automatically from capture device but /must/ be specified for pcaps.
+                                            Example: "10.0.1.0/24,10.0.2.1/32,2001:db8::/64"
+                                            Specifying this for live capture will append to any automatic detection.
+                                                          
 ```
 
 ### Using a Configuration File
@@ -343,7 +364,7 @@ pcap files can come from many sources, the most famous of which is [tcpdump](htt
 can be generated from most DNS server software that support dnstap logging, either directly or 
 using a tool such as [golang-dnstap](https://github.com/dnstap/golang-dnstap).
 
-Both take many of the same options, and do all of the same analysis, as `pktvisord` for live capture. pcap files may include sFlow capture data.
+Both take many of the same options, and do all of the same analysis, as `pktvisord` for live capture. pcap files may include Flow capture data.
 
 ```
 docker run --rm ns1labs/pktvisor pktvisor-reader --help
@@ -364,7 +385,7 @@ docker run --rm ns1labs/pktvisor pktvisor-reader --help
     to stderr.
 
     Options:
-      -i INPUT              Input type (pcap|dnstap|sflow). If not set, default is pcap input
+      -i INPUT              Input type (pcap|dnstap|sflow|netflow). If not set, default is pcap input
       --max-deep-sample N   Never deep sample more than N% of streams (an int between 0 and 100) [default: 100]
       --periods P           Hold this many 60 second time periods of history in memory. Use 1 to summarize all data. [default: 5]
       -h --help             Show this screen

@@ -1,0 +1,17 @@
+name: 'nightly orphaned runners cleanup'
+
+on:
+  workflow_dispatch:
+
+  schedule:
+    - cron: '0 1 * * *' # every night at 1 am UTC
+
+jobs:
+  remove-runners:
+    runs-on: ubuntu-latest
+    steps:
+      - name: removing orphaned self-runners
+        env:
+          GITHUB_TOKEN: ${{ secrets.BOT_TOKEN }}
+        run: |
+          gh api -H "Accept: application/vnd.github.v3+json" /repos/ns1labs/pktvisor/actions/runners -q '.runners[] | {id,status,busy} | select((.busy == false) and (.status == "offline")) | {id} | .[]' --paginate | xargs -I {} gh api --method DELETE -H "Accept: application/vnd.github.v3+json" /repos/ns1labs/pktvisor/actions/runners/{}

@@ -9,15 +9,19 @@
 #include <deque>
 #include <exception>
 #include <nlohmann/json.hpp>
+#ifdef __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
+#endif
 #include <jsf.h>
+#ifdef __GNUC__
 #pragma GCC diagnostic pop
+#endif
 #include "Configurable.h"
 #include "Metrics.h"
+#include <bitset>
 #include <shared_mutex>
 #include <sstream>
-#include <sys/time.h>
 #include <unordered_map>
 
 namespace visor {
@@ -62,10 +66,10 @@ private:
     bool _recorded_stream = false;
 
 protected:
-    const std::bitset<GROUP_SIZE> *_groups;
+    const std::bitset<GROUP_SIZE> *_groups{nullptr};
 
     // merge the metrics of the specialized metric bucket
-    virtual void specialized_merge(const AbstractMetricsBucket &other) = 0;
+    virtual void specialized_merge(const AbstractMetricsBucket &other, Metric::Aggregate agg_operator) = 0;
 
     // should be thread safe
     // can be used to set any bucket metrics to read only, e.g. cancel Rate metrics
@@ -170,7 +174,7 @@ public:
         return eventData{&_num_events, &_num_samples, &_rate_events, std::move(lock)};
     }
 
-    void merge(const AbstractMetricsBucket &other)
+    void merge(const AbstractMetricsBucket &other, Metric::Aggregate agg_operator = Metric::Aggregate::DEFAULT)
     {
         {
             std::shared_lock r_lock(other._base_mutex);
@@ -184,10 +188,10 @@ public:
             if (other._end_tstamp.tv_sec > _end_tstamp.tv_sec) {
                 _end_tstamp.tv_sec = other._end_tstamp.tv_sec;
             }
-            _rate_events.merge(other._rate_events);
+            _rate_events.merge(other._rate_events, agg_operator);
             _groups = other._groups;
         }
-        specialized_merge(other);
+        specialized_merge(other, agg_operator);
     }
 
     void new_event(bool deep)
@@ -214,6 +218,7 @@ public:
 
     virtual void to_json(json &j) const = 0;
     virtual void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const = 0;
+    virtual void update_topn_metrics(size_t topn_count, uint64_t percentile_threshold) = 0;
 };
 
 template <typename MetricsBucketClass>
@@ -225,7 +230,7 @@ private:
     // this protects changes to the bucket container, _not_ changes to the bucket itself
     mutable std::shared_mutex _bucket_mutex;
     std::deque<std::unique_ptr<MetricsBucketClass>> _metric_buckets;
-
+    std::string _tap_name;
     mutable std::shared_mutex _base_mutex;
 
     /**
@@ -238,6 +243,8 @@ private:
      */
     jsf32 _rng;
     uint32_t _deep_sample_rate{100};
+    size_t _topn_count{10};
+    uint64_t _topn_percentile_threshold{0};
 
 protected:
     std::atomic_bool _deep_sampling_now; // atomic so we can reference without mutex
@@ -247,7 +254,7 @@ protected:
      */
     bool _recorded_stream = false;
 
-    const std::bitset<GROUP_SIZE> *_groups;
+    const std::bitset<GROUP_SIZE> *_groups{nullptr};
 
 private:
     /**
@@ -274,6 +281,7 @@ private:
         _metric_buckets.emplace_front(std::make_unique<MetricsBucketClass>());
         _metric_buckets[0]->configure_groups(_groups);
         _metric_buckets[0]->set_start_tstamp(stamp);
+        _metric_buckets[0]->update_topn_metrics(_topn_count, _topn_percentile_threshold);
         if (_recorded_stream) {
             _metric_buckets[0]->set_recorded_stream();
         }
@@ -355,6 +363,10 @@ public:
             _deep_sample_rate = 1;
         }
 
+        if (window_config->config_exists("_internal_tap_name")) {
+            _tap_name = window_config->config_get<std::string>("_internal_tap_name");
+        }
+
         if (window_config->config_exists("num_periods")) {
             _num_periods = window_config->config_get<uint64_t>("num_periods");
         }
@@ -364,7 +376,15 @@ public:
         _next_shift_tstamp = _last_shift_tstamp;
         _next_shift_tstamp.tv_sec += AbstractMetricsManager::PERIOD_SEC;
 
+        if (window_config->config_exists("topn_count")) {
+            _topn_count = window_config->config_get<uint64_t>("topn_count");
+        }
+        if (window_config->config_exists("topn_percentile_threshold")) {
+            _topn_percentile_threshold = window_config->config_get<uint64_t>("topn_percentile_threshold");
+        }
+
         _metric_buckets.emplace_front(std::make_unique<MetricsBucketClass>());
+        _metric_buckets[0]->update_topn_metrics(_topn_count, _topn_percentile_threshold);
     }
 
     virtual ~AbstractMetricsManager() = default;
@@ -435,8 +455,16 @@ public:
         std::unique_lock wl(_base_mutex);
         std::shared_lock rl(_bucket_mutex);
         _groups = groups;
-        for (const auto &bucket : _metric_buckets) {
-            bucket->configure_groups(groups);
+        _metric_buckets.front()->configure_groups(groups);
+    }
+
+    void check_period_shift(timespec stamp)
+    {
+        std::shared_lock rlb(_base_mutex);
+        bool will_shift = _num_periods > 1 && stamp.tv_sec >= _next_shift_tstamp.tv_sec;
+        rlb.unlock();
+        if (will_shift) {
+            _period_shift(stamp);
         }
     }
 
@@ -464,6 +492,10 @@ public:
             throw PeriodException(err.str());
         }
 
+        if (_groups && _groups->none()) {
+            return;
+        }
+
         j[key]["period"]["start_ts"] = _metric_buckets.at(period)->start_tstamp().tv_sec;
         j[key]["period"]["length"] = _metric_buckets.at(period)->period_length();
 
@@ -486,7 +518,36 @@ public:
             throw PeriodException(err.str());
         }
 
+        if (_groups && _groups->none()) {
+            return;
+        }
+
+        if (!_tap_name.empty() && add_labels.find("tap") == add_labels.end()) {
+            add_labels["tap"] = _tap_name;
+        }
+
         _metric_buckets.at(period)->to_prometheus(out, add_labels);
+    }
+
+    void window_external_prometheus(std::stringstream &out, AbstractMetricsBucket *bucket, Metric::LabelMap add_labels = {}) const
+    {
+        if (_groups && _groups->none()) {
+            return;
+        }
+        // static because caller guarantees only our own bucket type
+        static_cast<MetricsBucketClass *>(bucket)->to_prometheus(out, add_labels);
+    }
+
+    void window_external_json(json &j, const std::string &key, AbstractMetricsBucket *bucket) const
+    {
+        if (_groups && _groups->none()) {
+            return;
+        }
+        // static because caller guarantees only our own bucket type
+        auto custom = static_cast<MetricsBucketClass *>(bucket);
+        j[key]["period"]["start_ts"] = custom->start_tstamp().tv_sec;
+        j[key]["period"]["length"] = custom->period_length();
+        custom->to_json(j[key]);
     }
 
     void window_merged_json(json &j, const std::string &key, uint64_t period) const
@@ -498,6 +559,10 @@ public:
             std::stringstream err;
             err << "invalid metrics period, specify [2, " << _num_periods << "]";
             throw PeriodException(err.str());
+        }
+
+        if (_groups && _groups->none()) {
+            return;
         }
 
         auto cached = _mergeResultCache.find(period);
@@ -532,7 +597,66 @@ public:
 
         merged.to_json(j[key]);
 
-        _mergeResultCache[period] = std::pair<std::chrono::high_resolution_clock::time_point, json>(std::chrono::high_resolution_clock::now(), j);
+        _mergeResultCache[period] = std::make_pair(std::chrono::high_resolution_clock::now(), j);
+    }
+
+    std::unique_ptr<AbstractMetricsBucket> simple_merge(AbstractMetricsBucket *bucket, uint64_t period)
+    {
+        std::shared_lock rl(_base_mutex);
+        std::shared_lock rbl(_bucket_mutex);
+
+        if (period >= _num_periods) {
+            std::stringstream err;
+            err << "invalid metrics period, specify [0, " << _num_periods - 1 << "]";
+            throw PeriodException(err.str());
+        }
+        if (period >= _metric_buckets.size()) {
+            std::stringstream err;
+            err << "requested metrics period has not yet accumulated, current range is [0, " << _metric_buckets.size() - 1 << "]";
+            throw PeriodException(err.str());
+        }
+
+        if (auto merged = dynamic_cast<MetricsBucketClass *>(bucket); merged) {
+            merged->merge(*_metric_buckets[period].get(), Metric::Aggregate::SUM);
+            return nullptr;
+        }
+
+        auto merged = std::make_unique<MetricsBucketClass>();
+        merged->merge(*_metric_buckets[period].get());
+
+        return merged;
+    }
+
+    std::unique_ptr<AbstractMetricsBucket> multiple_merge(AbstractMetricsBucket *bucket, uint64_t period)
+    {
+        std::shared_lock rl(_base_mutex);
+        std::shared_lock rbl(_bucket_mutex);
+
+        if (period <= 1 || period > _num_periods) {
+            std::stringstream err;
+            err << "invalid metrics period, specify [2, " << _num_periods << "]";
+            throw PeriodException(err.str());
+        }
+
+        auto merged = std::make_unique<MetricsBucketClass>();
+        if (_recorded_stream) {
+            merged->set_recorded_stream();
+        }
+
+        auto p = period;
+        for (auto &m : _metric_buckets) {
+            if (p-- == 0) {
+                break;
+            }
+            merged->merge(*m);
+        }
+
+        if (auto external_bucket = dynamic_cast<MetricsBucketClass *>(bucket); external_bucket) {
+            external_bucket->merge(*merged.get(), Metric::Aggregate::SUM);
+            return nullptr;
+        }
+
+        return merged;
     }
 };
 

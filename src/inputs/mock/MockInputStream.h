@@ -28,9 +28,28 @@ public:
     void start() override;
     void stop() override;
     void info_json(json &j) const override;
+    std::unique_ptr<InputEventProxy> create_event_proxy(const Configurable &filter) override;
+};
+
+class MockInputEventProxy : public visor::InputEventProxy
+{
+
+public:
+    MockInputEventProxy(const std::string &name, const Configurable &filter)
+        : InputEventProxy(name, filter)
+    {
+    }
+
+    ~MockInputEventProxy() = default;
+
     size_t consumer_count() const override
     {
-        return policy_signal.slot_count() + random_int_signal.slot_count();
+        return policy_signal.slot_count() + heartbeat_signal.slot_count() + random_int_signal.slot_count();
+    }
+
+    void random_int_cb(uint64_t value)
+    {
+        random_int_signal(value);
     }
 
     // handler functionality

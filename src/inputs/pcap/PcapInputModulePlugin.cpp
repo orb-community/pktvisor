@@ -13,10 +13,10 @@ CORRADE_PLUGIN_REGISTER(VisorInputPcap, visor::input::pcap::PcapInputModulePlugi
 
 namespace visor::input::pcap {
 
-void PcapInputModulePlugin::setup_routes(HttpServer *svr)
+void PcapInputModulePlugin::setup_routes([[maybe_unused]] HttpServer *svr)
 {
     // GET
-    //svr->Get("/api/v1/inputs/pcap/(\\w+)", std::bind(&PcapInputModulePlugin::_read, this, std::placeholders::_1, std::placeholders::_2));
+    // svr->Get("/api/v1/inputs/pcap/(\\w+)", std::bind(&PcapInputModulePlugin::_read, this, std::placeholders::_1, std::placeholders::_2));
 }
 
 /*
@@ -43,11 +43,19 @@ void PcapInputModulePlugin::_read(const httplib::Request &req, httplib::Response
 }
 */
 
-std::unique_ptr<InputStream> PcapInputModulePlugin::instantiate(const std::string name, const Configurable *config)
+std::unique_ptr<InputStream> PcapInputModulePlugin::instantiate(const std::string name, const Configurable *config, const Configurable *filter)
 {
     auto input_stream = std::make_unique<PcapInputStream>(name);
     input_stream->config_merge(*config);
+    input_stream->config_merge(*filter);
     return input_stream;
+}
+
+std::string PcapInputModulePlugin::generate_input_name(std::string prefix, const Configurable &config, const Configurable &filter)
+{
+    auto input_name(config);
+    input_name.config_merge(filter);
+    return prefix + "-" + input_name.config_hash();
 }
 
 }

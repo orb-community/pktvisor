@@ -6,9 +6,10 @@ package ui
 
 import (
 	"fmt"
-	"github.com/jroimartin/gocui"
 	"pktvisor/pkg/client"
 	"time"
+
+	"github.com/jroimartin/gocui"
 )
 
 func (u *ui) updateHeader(v *gocui.View, window5m *client.StatSnapshot) {
@@ -36,21 +37,21 @@ func (u *ui) updateHeader(v *gocui.View, window5m *client.StatSnapshot) {
 		(float64(pcounts.DeepSamples)/float64(pcounts.Total))*100,
 	)
 	_, _ = fmt.Fprintf(v, "Pkt Rates Total %d/s %d/%d/%d/%d pps | In %d/s %d/%d/%d/%d pps | Out %d/s %d/%d/%d/%d pps | IP Card. In: %d | Out: %d | TCP Errors %d | OS Drops %d | IF Drops %d\n",
-		pcounts.Rates.Pps_total.Live,
-		pcounts.Rates.Pps_total.P50,
-		pcounts.Rates.Pps_total.P90,
-		pcounts.Rates.Pps_total.P95,
-		pcounts.Rates.Pps_total.P99,
-		pcounts.Rates.Pps_in.Live,
-		pcounts.Rates.Pps_in.P50,
-		pcounts.Rates.Pps_in.P90,
-		pcounts.Rates.Pps_in.P95,
-		pcounts.Rates.Pps_in.P99,
-		pcounts.Rates.Pps_out.Live,
-		pcounts.Rates.Pps_out.P50,
-		pcounts.Rates.Pps_out.P90,
-		pcounts.Rates.Pps_out.P95,
-		pcounts.Rates.Pps_out.P99,
+		pcounts.Rates.PpsTotal.Live,
+		pcounts.Rates.PpsTotal.P50,
+		pcounts.Rates.PpsTotal.P90,
+		pcounts.Rates.PpsTotal.P95,
+		pcounts.Rates.PpsTotal.P99,
+		pcounts.Rates.PpsIn.Live,
+		pcounts.Rates.PpsIn.P50,
+		pcounts.Rates.PpsIn.P90,
+		pcounts.Rates.PpsIn.P95,
+		pcounts.Rates.PpsIn.P99,
+		pcounts.Rates.PpsOut.Live,
+		pcounts.Rates.PpsOut.P50,
+		pcounts.Rates.PpsOut.P90,
+		pcounts.Rates.PpsOut.P95,
+		pcounts.Rates.PpsOut.P99,
 		pcounts.Cardinality.SrcIpsIn,
 		pcounts.Cardinality.DstIpsOut,
 		window5m.Pcap.TcpReassemblyErrors,
@@ -77,8 +78,8 @@ func (u *ui) updateHeader(v *gocui.View, window5m *client.StatSnapshot) {
 	)
 	dnsc := window5m.DNS.WirePackets
 	_, _ = fmt.Fprintf(v, "DNS Wire Pkts %d/%d | Rates Total %d/s %d/%d/%d/%d | UDP %d (%3.1f%%) | TCP %d (%3.1f%%) | IPv4 %d (%3.1f%%) | IPv6 %d (%3.1f%%) | Query %d (%3.1f%%) | Response %d (%3.1f%%)\n",
-		dnsc.Total-dnsc.Filtered,
 		dnsc.Total,
+		dnsc.Events,
 		window5m.DNS.Rates.Total.Live,
 		window5m.DNS.Rates.Total.P50,
 		window5m.DNS.Rates.Total.P90,
@@ -118,12 +119,12 @@ func (u *ui) updateHeader(v *gocui.View, window5m *client.StatSnapshot) {
 	startTime := time.Unix(window5m.Packets.Period.StartTS, 0)
 	endTime := time.Unix(window5m.Packets.Period.StartTS+window5m.Packets.Period.Length, 0)
 	_, _ = fmt.Fprintf(v, "DNS NOERROR %d (%3.1f%%) | SRVFAIL %d (%3.1f%%) | NXDOMAIN %d (%3.1f%%) | REFUSED %d (%3.1f%%) | Time Window %v to %v, Period %ds\n",
-		dnsc.NoError,
-		(float64(dnsc.NoError)/float64(dnsc.Replies))*100,
-		dnsc.SrvFail,
-		(float64(dnsc.SrvFail)/float64(dnsc.Replies))*100,
-		dnsc.NxDomain,
-		(float64(dnsc.NxDomain)/float64(dnsc.Replies))*100,
+		dnsc.Noerror,
+		(float64(dnsc.Noerror)/float64(dnsc.Replies))*100,
+		dnsc.Srvfail,
+		(float64(dnsc.Srvfail)/float64(dnsc.Replies))*100,
+		dnsc.Nxdomain,
+		(float64(dnsc.Nxdomain)/float64(dnsc.Replies))*100,
 		dnsc.Refused,
 		(float64(dnsc.Refused)/float64(dnsc.Replies))*100,
 		startTime.Format(time.Kitchen),

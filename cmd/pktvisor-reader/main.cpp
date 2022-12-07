@@ -19,11 +19,11 @@
 
 #include "GeoDB.h"
 #include "handlers/dhcp/DhcpStreamHandler.h"
-#include "handlers/dns/DnsStreamHandler.h"
+#include "handlers/dns/v1/DnsStreamHandler.h"
 #include "handlers/net/NetStreamHandler.h"
-#include "inputs/dnstap/DnstapInputStream.h"
 #include "inputs/pcap/PcapInputStream.h"
-#include "inputs/sflow/SflowInputStream.h"
+#include "inputs/flow/FlowInputStream.h"
+#include "inputs/dnstap/DnstapInputStream.h"
 
 static const char USAGE[] =
     R"(pktvisor-reader
@@ -36,7 +36,7 @@ static const char USAGE[] =
     to stderr.
 
     Options:
-      -i INPUT              Input type (pcap|dnstap|sflow). If not set, default is pcap input
+      -i INPUT              Input type (pcap|dnstap|sflow|netflow). If not set, default is pcap input
       --max-deep-sample N   Never deep sample more than N% of streams (an int between 0 and 100) [default: 100]
       --periods P           Hold this many 60 second time periods of history in memory. Use 1 to summarize all data. [default: 5]
       -h --help             Show this screen
@@ -63,13 +63,15 @@ using namespace visor;
 enum InputType {
     PCAP = 0,
     DNSTAP = 1,
-    SFLOW = 2
+    SFLOW = 2,
+    NETFLOW = 3,
 };
 
 static const std::map<std::string, InputType> input_map = {
     {"pcap", PCAP},
     {"dnstap", DNSTAP},
-    {"sflow", SFLOW}};
+    {"sflow", SFLOW},
+    {"netflow", NETFLOW}};
 
 void initialize_geo(const docopt::value &city, const docopt::value &asn)
 {
@@ -149,8 +151,15 @@ int main(int argc, char *argv[])
             new_input_stream->config_set("dnstap_file", args["FILE"].asString());
             break;
         case SFLOW:
-            input_text = "sflow";
-            new_input_stream = std::make_unique<input::sflow::SflowInputStream>(input_text);
+            input_text = "flow";
+            new_input_stream = std::make_unique<input::flow::FlowInputStream>(input_text);
+            new_input_stream->config_set("flow_type", "sflow");
+            new_input_stream->config_set("pcap_file", args["FILE"].asString());
+            break;
+        case NETFLOW:
+            input_text = "flow";
+            new_input_stream = std::make_unique<input::flow::FlowInputStream>(input_text);
+            new_input_stream->config_set("flow_type", "netflow");
             new_input_stream->config_set("pcap_file", args["FILE"].asString());
             break;
         case PCAP:
@@ -171,6 +180,8 @@ int main(int argc, char *argv[])
         auto [input_stream_, stream_mgr_lock] = registry.input_manager()->module_get_locked(input_text);
         stream_mgr_lock.unlock();
         auto input_stream = input_stream_;
+        visor::Config filter;
+        auto input_proxy = input_stream->add_event_proxy(filter);
 
         shutdown_handler = [&]([[maybe_unused]] int signal) {
             input_stream->stop();
@@ -179,7 +190,7 @@ int main(int argc, char *argv[])
 
         handler::net::NetStreamHandler *net_handler{nullptr};
         {
-            auto handler_module = std::make_unique<handler::net::NetStreamHandler>("net", input_stream, &window_config);
+            auto handler_module = std::make_unique<handler::net::NetStreamHandler>("net", input_proxy, &window_config);
             handler_module->config_set("recorded_stream", true);
             handler_module->start();
             registry.handler_manager()->module_add(std::move(handler_module));
@@ -190,7 +201,7 @@ int main(int argc, char *argv[])
 
         handler::dns::DnsStreamHandler *dns_handler{nullptr};
         if (input_type == PCAP || input_type == DNSTAP) {
-            auto handler_module = std::make_unique<handler::dns::DnsStreamHandler>("dns", input_stream, &window_config);
+            auto handler_module = std::make_unique<handler::dns::DnsStreamHandler>("dns", input_proxy, &window_config);
             handler_module->config_set("recorded_stream", true);
             handler_module->start();
             registry.handler_manager()->module_add(std::move(handler_module));
@@ -201,7 +212,7 @@ int main(int argc, char *argv[])
 
         handler::dhcp::DhcpStreamHandler *dhcp_handler{nullptr};
         if (input_type == PCAP) {
-            auto handler_module = std::make_unique<handler::dhcp::DhcpStreamHandler>("dhcp", input_stream, &window_config);
+            auto handler_module = std::make_unique<handler::dhcp::DhcpStreamHandler>("dhcp", input_proxy, &window_config);
             handler_module->config_set("recorded_stream", true);
             handler_module->start();
             registry.handler_manager()->module_add(std::move(handler_module));
@@ -236,7 +247,7 @@ int main(int argc, char *argv[])
         }
         std::cout << result.dump() << std::endl;
 
-        shutdown_handler(SIGUSR1);
+        shutdown_handler(SIGINT);
 
     } catch (const std::exception &e) {
         logger->error("Fatal error: {}", e.what());

@@ -5,22 +5,47 @@
 #pragma once
 
 #include "AbstractMetricsManager.h"
-#include "PcapInputStream.h"
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
+#pragma GCC diagnostic ignored "-Wold-style-cast"
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
+#endif
 #include "DhcpLayer.h"
+#include "DhcpV6Layer.h"
+#include "EthLayer.h"
+#include "IPv6Layer.h"
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
+#include "PcapInputStream.h"
 #include "StreamHandler.h"
+#include "TransactionManager.h"
 #include <Corrade/Utility/Debug.h>
 #include <limits>
 #include <string>
 
 namespace visor::handler::dhcp {
 
+using namespace visor::lib::transaction;
 using namespace visor::input::pcap;
+
+static constexpr const char *DHCP_SCHEMA{"dhcp"};
+
+struct DhcpTransaction : public Transaction {
+    std::string hostname;
+    std::string mac_address;
+};
 
 class DhcpMetricsBucket final : public visor::AbstractMetricsBucket
 {
 
 protected:
     mutable std::shared_mutex _mutex;
+
+    TopN<std::string> _dhcp_topClients;
+    TopN<std::string> _dhcp_topServers;
 
     // total numPackets is tracked in base class num_events
     struct counters {
@@ -29,25 +54,39 @@ protected:
         Counter OFFER;
         Counter REQUEST;
         Counter ACK;
+        Counter SOLICIT;
+        Counter ADVERTISE;
+        Counter REQUESTV6;
+        Counter REPLY;
+        Counter total;
         Counter filtered;
 
         counters()
-            : DISCOVER("dhcp", {"wire_packets", "discover"}, "Total DHCP packets with message type DISCOVER")
-            , OFFER("dhcp", {"wire_packets", "offer"}, "Total DHCP packets with message type OFFER")
-            , REQUEST("dhcp", {"wire_packets", "request"}, "Total DHCP packets with message type REQUEST")
-            , ACK("dhcp", {"wire_packets", "ack"}, "Total DHCP packets with message type ACK")
-            , filtered("dhcp", {"wire_packets", "filtered"}, "Total DHCP wire packets seen that did not match the configured filter(s) (if any)")
+            : DISCOVER(DHCP_SCHEMA, {"wire_packets", "discover"}, "Total DHCP packets with message type DISCOVER")
+            , OFFER(DHCP_SCHEMA, {"wire_packets", "offer"}, "Total DHCP packets with message type OFFER")
+            , REQUEST(DHCP_SCHEMA, {"wire_packets", "request"}, "Total DHCP packets with message type REQUEST")
+            , ACK(DHCP_SCHEMA, {"wire_packets", "ack"}, "Total DHCP packets with message type ACK")
+            , SOLICIT(DHCP_SCHEMA, {"wire_packets", "solicit"}, "Total DHCPv6 packets with message type SOLICIT")
+            , ADVERTISE(DHCP_SCHEMA, {"wire_packets", "advertise"}, "Total DHCPv6 packets with message type ADVERTISE")
+            , REQUESTV6(DHCP_SCHEMA, {"wire_packets", "request_v6"}, "Total DHCPv6 packets with message type REQUEST")
+            , REPLY(DHCP_SCHEMA, {"wire_packets", "reply"}, "Total DHCPv6 packets with message type REPLY")
+            , total(DHCP_SCHEMA, {"wire_packets", "total"}, "Total DHCP/DHCPv6 wire packets matching the configured filter(s)")
+            , filtered(DHCP_SCHEMA, {"wire_packets", "filtered"}, "Total DHCP/DHCPv6 wire packets seen that did not match the configured filter(s) (if any)")
         {
         }
     };
     counters _counters;
+    Rate _rate_total;
 
 public:
     DhcpMetricsBucket()
+        : _dhcp_topClients(DHCP_SCHEMA, "client", {"top_clients"}, "Top DHCP clients")
+        , _dhcp_topServers(DHCP_SCHEMA, "server", {"top_servers"}, "Top DHCP servers")
+        , _rate_total(DHCP_SCHEMA, {"rates", "total"}, "Rate of all DHCP wire packets (combined ingress and egress) in packets per second")
     {
-        set_event_rate_info("dhcp", {"rates", "total"}, "Rate of all DHCP wire packets (combined ingress and egress) per second");
-        set_num_events_info("dhcp", {"wire_packets", "total"}, "Total DHCP wire packets");
-        set_num_sample_info("dhcp", {"wire_packets", "deep_samples"}, "Total DHCP wire packets that were sampled for deep inspection");
+        set_event_rate_info(DHCP_SCHEMA, {"rates", "events"}, "Rate of all DHCP wire packets before filtering per second");
+        set_num_events_info(DHCP_SCHEMA, {"wire_packets", "events"}, "Total DHCP wire packets events");
+        set_num_sample_info(DHCP_SCHEMA, {"wire_packets", "deep_samples"}, "Total DHCP wire packets that were sampled for deep inspection");
     }
 
     // get a copy of the counters
@@ -58,56 +97,76 @@ public:
     }
 
     // visor::AbstractMetricsBucket
-    void specialized_merge(const AbstractMetricsBucket &other) override;
+    void specialized_merge(const AbstractMetricsBucket &other, Metric::Aggregate agg_operator) override;
     void to_json(json &j) const override;
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override;
+    void update_topn_metrics(size_t, uint64_t) override
+    {
+    }
+
+    void on_set_read_only() override
+    {
+        // stop rate collection
+        _rate_total.cancel();
+    }
 
     void process_filtered();
-    void process_dhcp_layer(bool deep, pcpp::DhcpLayer *payload, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint16_t src_port, uint16_t dst_port);
-
+    void process_dhcp_layer(bool deep, pcpp::DhcpLayer *dhcp, pcpp::Packet *payload);
+    void new_dhcp_transaction(bool deep, pcpp::DhcpLayer *payload, DhcpTransaction &xact);
+    void process_dhcp_v6_layer(bool deep, pcpp::DhcpV6Layer *dhcp, pcpp::Packet *payload);
 };
 
 class DhcpMetricsManager final : public visor::AbstractMetricsManager<DhcpMetricsBucket>
 {
+    TransactionManager<uint32_t, DhcpTransaction, std::hash<uint32_t>> _request_ack_manager;
+
 public:
     DhcpMetricsManager(const Configurable *window_config)
         : visor::AbstractMetricsManager<DhcpMetricsBucket>(window_config)
     {
     }
 
+    void on_period_shift(timespec stamp, [[maybe_unused]] const DhcpMetricsBucket *maybe_expiring_bucket) override
+    {
+        // Dhcp transaction support
+        _request_ack_manager.purge_old_transactions(stamp);
+    }
+
     void process_filtered(timespec stamp);
-    void process_dhcp_layer(pcpp::DhcpLayer *payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowkey, uint16_t src_port, uint16_t dst_port, timespec stamp);
+    void process_dhcp_layer(pcpp::DhcpLayer *dhcp, pcpp::Packet *payload, timespec stamp);
+    void process_dhcp_v6_layer(pcpp::DhcpV6Layer *dhcp, pcpp::Packet *payload, timespec stamp);
 };
 
 class DhcpStreamHandler final : public visor::StreamMetricsHandler<DhcpMetricsManager>
 {
 
-    PcapInputStream *_pcap_stream;
+    PcapInputEventProxy *_pcap_proxy;
 
     sigslot::connection _pkt_udp_connection;
     sigslot::connection _start_tstamp_connection;
     sigslot::connection _end_tstamp_connection;
+
+    sigslot::connection _heartbeat_connection;
+
+    static const inline StreamMetricsHandler::ConfigsDefType _config_defs = {
+        "recorded_stream"};
 
     void process_udp_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp);
 
     void set_start_tstamp(timespec stamp);
     void set_end_tstamp(timespec stamp);
 
-    bool _filtering(pcpp::DhcpLayer *payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint16_t src_port, uint16_t dst_port, timespec stamp);
+    bool _filtering(pcpp::DhcpLayer *payload, timespec stamp);
+    bool _filtering_v6(pcpp::DhcpV6Layer *payload, timespec stamp);
 
 public:
-    DhcpStreamHandler(const std::string &name, InputStream *stream, const Configurable *window_config, StreamHandler *handler = nullptr);
+    DhcpStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config);
     ~DhcpStreamHandler() = default;
 
     // visor::AbstractModule
     std::string schema_key() const override
     {
-        return "dhcp";
-    }
-
-    size_t consumer_count() const override
-    {
-        return 0;
+        return DHCP_SCHEMA;
     }
 
     void start() override;

@@ -203,6 +203,81 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
             res.set_content(j.dump(), "text/json");
         }
     });
+    _svr.Get(fmt::format("/api/v1/taps/({})", AbstractModule::MODULE_ID_REGEX).c_str(), [&](const httplib::Request &req, httplib::Response &res) {
+        json j = json::object();
+        auto name = req.matches[1];
+        if (!_registry->tap_manager()->module_exists(name)) {
+            res.status = 404;
+            j["error"] = "tap does not exists";
+            res.set_content(j.dump(), "text/json");
+            return;
+        }
+        try {
+            auto [tap, lock] = _registry->tap_manager()->module_get_locked(name);
+            tap->info_json(j[name]);
+            res.set_content(j.dump(), "text/json");
+        } catch (const std::exception &e) {
+            res.status = 500;
+            j["error"] = e.what();
+            res.set_content(j.dump(), "text/json");
+        }
+    });
+    _svr.Post(R"(/api/v1/taps)", [&]([[maybe_unused]] const httplib::Request &req, httplib::Response &res) {
+        json j = json::object();
+        if (!req.has_header("Content-Type")) {
+            res.status = 400;
+            j["error"] = "must include Content-Type header";
+            res.set_content(j.dump(), "text/json");
+            return;
+        }
+        auto content_type = req.get_header_value("Content-Type");
+        if (content_type != "application/x-yaml" && content_type != "application/json") {
+            res.status = 400;
+            j["error"] = "Content-Type not supported";
+            res.set_content(j.dump(), "text/json");
+            return;
+        }
+        try {
+            auto taps = _registry->tap_manager()->load_from_str(req.body);
+            for (auto &mod : taps) {
+                mod->info_json(j[mod->name()]);
+            }
+            res.status = 201;
+            res.set_content(j.dump(), "text/json");
+        } catch (const std::exception &e) {
+            (std::string(e.what()).find("already") != std::string::npos) ? res.status = 409 : res.status = 500;
+            j["error"] = e.what();
+            res.set_content(j.dump(), "text/json");
+        }
+    });
+    _svr.Delete(fmt::format("/api/v1/taps/({})", AbstractModule::MODULE_ID_REGEX).c_str(), [&](const httplib::Request &req, httplib::Response &res) {
+        json j = json::object();
+        auto name = req.matches[1];
+        if (!_registry->tap_manager()->module_exists(name)) {
+            res.status = 404;
+            j["error"] = "tap does not exists";
+            res.set_content(j.dump(), "text/json");
+            return;
+        }
+        try {
+            auto [tap, lock] = _registry->tap_manager()->module_get_locked(name);
+            auto [policy_modules, hm_lock] = _registry->policy_manager()->module_get_all_locked();
+            for (auto &[name, mod] : policy_modules) {
+                auto tmod = dynamic_cast<Policy *>(mod.get());
+                if (tmod) {
+                    tmod->remove_tap(tap);
+                }
+            }
+            lock.unlock();
+            _registry->tap_manager()->module_remove(name);
+            res.status = 200;
+            res.set_content(j.dump(), "text/json");
+        } catch (const std::exception &e) {
+            res.status = 500;
+            j["error"] = e.what();
+            res.set_content(j.dump(), "text/json");
+        }
+    });
     // Policies
     _svr.Get(R"(/api/v1/policies)", [&]([[maybe_unused]] const httplib::Request &req, httplib::Response &res) {
         json j = json::object();
@@ -241,9 +316,14 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
             for (auto &mod : policies) {
                 mod->info_json(j[mod->name()]);
             }
+            res.status = 201;
+            res.set_content(j.dump(), "text/json");
+        } catch (const std::invalid_argument &e) {
+            res.status = 422;
+            j["error"] = e.what();
             res.set_content(j.dump(), "text/json");
         } catch (const std::exception &e) {
-            res.status = 500;
+            (std::string(e.what()).find("already") != std::string::npos) ? res.status = 409 : res.status = 500;
             j["error"] = e.what();
             res.set_content(j.dump(), "text/json");
         }
@@ -278,6 +358,7 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
         }
         try {
             _registry->policy_manager()->remove_policy(name);
+            res.status = 200;
             res.set_content(j.dump(), "text/json");
         } catch (const std::exception &e) {
             res.status = 500;
@@ -301,26 +382,20 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
             plist.emplace_back(name);
         }
         try {
+            uint64_t period(std::stol(req.matches[3]));
+            auto merge = (req.matches[2] == "window");
             for (const auto &p_mname : plist) {
                 spdlog::stopwatch psw;
                 auto [policy, lock] = _registry->policy_manager()->module_get_locked(p_mname);
-                uint64_t period(std::stol(req.matches[3]));
-                for (auto &mod : policy->modules()) {
-                    auto hmod = dynamic_cast<StreamHandler *>(mod);
-                    assert(hmod);
-                    try {
-                        spdlog::stopwatch hsw;
-                        hmod->window_json(j[policy->name()][hmod->name()], period, req.matches[2] == "window");
-                        _logger->debug("{} handler bucket json elapsed time: {}", hmod->name(), hsw);
-                    } catch (const PeriodException &e) {
-                        // if period is bad for a single policy in __all mode, skip it. otherwise fail
-                        if (name == "__all") {
-                            _logger->warn("{} handler for policy {} had a PeriodException, skipping: {}", hmod->name(), policy->name(), e.what());
-                            j.erase(policy->name());
-                            continue;
-                        } else {
-                            throw e;
-                        }
+                try {
+                    policy->json_metrics(j, period, merge);
+                } catch (const PeriodException &e) {
+                    // if period is bad for a single policy in __all mode, skip it. otherwise fail
+                    if (name == "__all") {
+                        j.erase(policy->name());
+                        continue;
+                    } else {
+                        throw e;
                     }
                 }
                 _logger->debug("{} policy json metrics elapsed time: {}", policy->name(), psw);
@@ -355,14 +430,7 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
         for (const auto &p_mname : plist) {
             try {
                 auto [policy, lock] = _registry->policy_manager()->module_get_locked(p_mname);
-                for (auto &mod : policy->modules()) {
-                    auto hmod = dynamic_cast<StreamHandler *>(mod);
-                    if (hmod) {
-                        spdlog::stopwatch sw;
-                        hmod->window_prometheus(output, {{"policy", p_mname}, {"module", hmod->name()}});
-                        _logger->debug("{} window_prometheus elapsed time: {}", hmod->name(), sw);
-                    }
-                }
+                policy->prometheus_metrics(output);
             } catch (const std::exception &e) {
                 res.status = 500;
                 res.set_content(e.what(), "text/plain");
@@ -371,5 +439,4 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
         }
     });
 }
-
 }

@@ -6,17 +6,22 @@
 #include <nlohmann/json.hpp>
 #include <sstream>
 #include <timer.hpp>
+#ifdef __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 #pragma GCC diagnostic ignored "-Wunused-function"
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #pragma clang diagnostic ignored "-Wrange-loop-analysis"
+#endif
 #include <cpc_sketch.hpp>
 #include <frequent_items_sketch.hpp>
 #include <kll_sketch.hpp>
+#ifdef __GNUC__
 #pragma GCC diagnostic pop
+#endif
 #include <chrono>
 #include <regex>
+#include <set>
 #include <shared_mutex>
 #include <vector>
 
@@ -25,10 +30,28 @@ namespace visor {
 using json = nlohmann::json;
 using namespace std::chrono;
 
+struct comparator {
+    template <typename T>
+    // Comparator function
+    bool operator()(const T &l, const T &r) const
+    {
+        if (l.second != r.second) {
+            return l.second > r.second;
+        }
+        return l.first > r.first;
+    }
+};
+
 class Metric
 {
 public:
     typedef std::map<std::string, std::string> LabelMap;
+
+    enum class Aggregate {
+        DEFAULT,
+        SUM,
+        SUMMARY
+    };
 
 private:
     /**
@@ -63,6 +86,8 @@ public:
     {
         _check_names();
     }
+
+    virtual ~Metric() = default;
 
     void set_info(std::string schema_key, std::initializer_list<std::string> names, const std::string &desc)
     {
@@ -123,9 +148,123 @@ public:
         _value += other._value;
     }
 
+    void clear()
+    {
+        _value = 0;
+    }
+
     // Metric
     void to_json(json &j) const override;
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override;
+};
+
+/**
+ * A Histogram metric class which knows how to render its output into buckets
+ *
+ * NOTE: intentionally _not_ thread safe; it should be protected by a mutex
+ */
+template <typename T>
+class Histogram final : public Metric
+{
+    static_assert(std::is_integral<T>::value || std::is_floating_point<T>::value);
+    T _pace;
+    datasketches::kll_sketch<T> _sketch;
+
+public:
+    Histogram(std::string schema_key, std::initializer_list<std::string> names, std::string desc)
+        : Metric(schema_key, names, std::move(desc))
+    {
+        if constexpr (std::is_integral<T>::value) {
+            _pace = 1;
+        } else {
+            _pace = 0.0000001;
+        }
+    }
+
+    void update(const T &value)
+    {
+        _sketch.update(value);
+    }
+
+    void update(T &&value)
+    {
+        _sketch.update(value);
+    }
+
+    void merge(const Histogram &other)
+    {
+        _sketch.merge(other._sketch);
+    }
+
+    auto get_n() const
+    {
+        return _sketch.get_n();
+    }
+
+    auto get_min() const
+    {
+        return _sketch.get_min_value();
+    }
+
+    auto get_max() const
+    {
+        return _sketch.get_max_value();
+    }
+
+    // Metric
+    void to_json(json &j) const override
+    {
+        if (_sketch.is_empty()) {
+            return;
+        }
+        std::size_t split_point_size = 1 + static_cast<std::size_t>(std::log2(_sketch.get_n())); // Sturge’s Rule
+        T step = _sketch.get_max_value() / split_point_size;
+        T split_point = step;
+        std::unique_ptr<T[]> bins = std::make_unique<T[]>(split_point_size);
+        for (std::size_t i = 0; i < split_point_size; ++i) {
+            bins[i] = split_point + _pace;
+            split_point += step;
+            if (split_point > _sketch.get_max_value()) {
+                split_point = _sketch.get_max_value();
+            }
+        }
+        auto histogram = _sketch.get_CDF(bins.get(), split_point_size);
+        for (std::size_t i = 0; i < split_point_size; ++i) {
+            name_json_assign(j, {"buckets", std::to_string(bins[i] - _pace)}, histogram[i] * _sketch.get_n());
+        }
+        name_json_assign(j, {"buckets", "+Inf"}, histogram[split_point_size] * _sketch.get_n());
+    }
+
+    void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override
+    {
+        if (_sketch.is_empty()) {
+            return;
+        }
+        std::size_t split_point_size = 1 + static_cast<std::size_t>(std::log2(_sketch.get_n())); // Sturge’s Rule
+        T step = _sketch.get_max_value() / split_point_size;
+        T split_point = step;
+        std::unique_ptr<T[]> bins = std::make_unique<T[]>(split_point_size);
+        for (std::size_t i = 0; i < split_point_size; ++i) {
+            bins[i] = split_point + _pace;
+            split_point += step;
+            if (split_point > _sketch.get_max_value()) {
+                split_point = _sketch.get_max_value();
+            }
+        }
+        auto histogram = _sketch.get_CDF(bins.get(), split_point_size);
+
+        out << "# HELP " << base_name_snake() << ' ' << _desc << std::endl;
+        out << "# TYPE " << base_name_snake() << " histogram" << std::endl;
+        for (std::size_t i = 0; i < split_point_size; ++i) {
+            LabelMap le(add_labels);
+            le["le"] = std::to_string(bins[i] - _pace);
+            out << name_snake({"bucket"}, le) << ' ' << histogram[i] * _sketch.get_n() << std::endl;
+        }
+        LabelMap le(add_labels);
+        le["le"] = "+Inf";
+        out << name_snake({"bucket"}, le) << ' ' << histogram[split_point_size] * _sketch.get_n() << std::endl;
+        out << name_snake({"count"}, add_labels) << ' ' << _sketch.get_n() << std::endl;
+    }
 };
 
 /**
@@ -137,6 +276,7 @@ template <typename T>
 class Quantile final : public Metric
 {
     datasketches::kll_sketch<T> _quantile;
+    std::vector<T> _quantiles_sum;
 
 public:
     Quantile(std::string schema_key, std::initializer_list<std::string> names, std::string desc)
@@ -154,9 +294,23 @@ public:
         _quantile.update(value);
     }
 
-    void merge(const Quantile &other)
+    void merge(const Quantile &other, Aggregate agg_operator)
     {
-        _quantile.merge(other._quantile);
+        if (agg_operator == Aggregate::SUM && !_quantile.is_empty()) {
+            if (other._quantile.is_empty()) {
+                return;
+            }
+            const double fractions[4]{0.50, 0.90, 0.95, 0.99};
+            auto other_quantiles = other._quantile.get_quantiles(fractions, 4);
+            if (_quantiles_sum.empty()) {
+                _quantiles_sum = _quantile.get_quantiles(fractions, 4);
+            }
+            for (uint8_t i = 0; i < 4; i++) {
+                _quantiles_sum[i] += other_quantiles[i];
+            }
+        } else {
+            _quantile.merge(other._quantile);
+        }
     }
 
     auto get_n() const
@@ -169,12 +323,27 @@ public:
         return _quantile.get_quantile(p);
     }
 
+    auto get_min() const
+    {
+        return _quantile.get_min_value();
+    }
+
+    auto get_max() const
+    {
+        return _quantile.get_max_value();
+    }
+
     // Metric
     void to_json(json &j) const override
     {
-        const double fractions[4]{0.50, 0.90, 0.95, 0.99};
+        std::vector<T> quantiles;
+        if (_quantiles_sum.empty()) {
+            const double fractions[4]{0.50, 0.90, 0.95, 0.99};
+            quantiles = _quantile.get_quantiles(fractions, 4);
+        } else {
+            quantiles = _quantiles_sum;
+        }
 
-        auto quantiles = _quantile.get_quantiles(fractions, 4);
         if (quantiles.size()) {
             name_json_assign(j, {"p50"}, quantiles[0]);
             name_json_assign(j, {"p90"}, quantiles[1]);
@@ -185,9 +354,13 @@ public:
 
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override
     {
-        const double fractions[4]{0.50, 0.90, 0.95, 0.99};
-
-        auto quantiles = _quantile.get_quantiles(fractions, 4);
+        std::vector<T> quantiles;
+        if (_quantiles_sum.empty()) {
+            const double fractions[4]{0.50, 0.90, 0.95, 0.99};
+            quantiles = _quantile.get_quantiles(fractions, 4);
+        } else {
+            quantiles = _quantiles_sum;
+        }
 
         LabelMap l5(add_labels);
         l5["quantile"] = "0.5";
@@ -219,6 +392,8 @@ public:
 template <typename T>
 class TopN final : public Metric
 {
+    static constexpr uint64_t DEFAULT_PERCENTILE_THRESHOLD = 0;
+
 public:
     //
     // https://datasketches.github.io/docs/Frequency/FrequentItemsErrorTable.html
@@ -235,6 +410,35 @@ private:
     datasketches::frequent_items_sketch<T> _fi;
     size_t _top_count = 10;
     std::string _item_key;
+    double _percentile_threshold = 0.0;
+
+    uint64_t _get_threshold(const std::vector<typename datasketches::frequent_items_sketch<T>::row> &items) const
+    {
+        datasketches::kll_sketch<uint64_t> quantile;
+        for (uint64_t i = 0; i < std::min(_top_count, items.size()); i++) {
+            quantile.update(items[i].get_estimate());
+        }
+        if (quantile.is_empty()) {
+            return 0;
+        }
+        return quantile.get_quantile(_percentile_threshold);
+    }
+
+    auto _get_summarized_data(const std::vector<typename datasketches::frequent_items_sketch<T>::row> &items, std::function<std::string(const T &)> formatter, uint64_t threshold) const
+    {
+        std::map<std::string, uint64_t> summary;
+        for (uint64_t i = 0; i < std::min(_top_count, items.size()); i++) {
+            if (items[i].get_estimate() >= threshold) {
+                auto [removed, not_exists] = summary.emplace(formatter(items[i].get_item()), items[i].get_estimate());
+                if (!not_exists) {
+                    summary[removed->first] += items[i].get_estimate();
+                }
+            } else {
+                break;
+            }
+        }
+        return std::set<std::pair<std::string, uint64_t>, comparator>(summary.begin(), summary.end());
+    }
 
 public:
     TopN(std::string schema_key, std::string item_key, std::initializer_list<std::string> names, std::string desc)
@@ -244,14 +448,14 @@ public:
     {
     }
 
-    void update(const T &value)
+    void update(const T &value, uint64_t weight = 1)
     {
-        _fi.update(value);
+        _fi.update(value, weight);
     }
 
-    void update(T &&value)
+    void update(T &&value, uint64_t weight = 1)
     {
-        _fi.update(value);
+        _fi.update(value, weight);
     }
 
     void merge(const TopN &other)
@@ -259,31 +463,111 @@ public:
         _fi.merge(other._fi);
     }
 
+    void set_settings(const size_t top_count, uint64_t percentile_threshold)
+    {
+        _top_count = top_count;
+        _percentile_threshold = static_cast<double>(percentile_threshold) / 100;
+        if (_percentile_threshold > 1.0) {
+            throw std::runtime_error("threshold must be between 0 and 100 but has value " + std::to_string(_percentile_threshold));
+        }
+    }
+
+    size_t topn_count() const
+    {
+        return _top_count;
+    }
+
+    double percentile_threshold() const
+    {
+        return _percentile_threshold;
+    }
+
     /**
      * to_json which takes a formater to format the "name"
      * @param j json object
      * @param formatter std::function which takes a T as input (the type store it in top table) it needs to return a std::string
      */
-    void to_json(json &j, std::function<std::string(const T &)> formatter) const
+    void to_json(json &j, std::function<std::string(const T &)> formatter, Aggregate op = Aggregate::DEFAULT) const
     {
         auto section = json::array();
         auto items = _fi.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
-        for (uint64_t i = 0; i < std::min(_top_count, items.size()); i++) {
-            section[i]["name"] = formatter(items[i].get_item());
-            section[i]["estimate"] = items[i].get_estimate();
+        auto threshold = _get_threshold(items);
+        if (op == Aggregate::DEFAULT) {
+            for (uint64_t i = 0; i < std::min(_top_count, items.size()); i++) {
+                if (items[i].get_estimate() >= threshold) {
+                    section[i]["name"] = formatter(items[i].get_item());
+                    section[i]["estimate"] = items[i].get_estimate();
+                } else {
+                    break;
+                }
+            }
+        } else if (op == Aggregate::SUMMARY) {
+            auto sorted = _get_summarized_data(items, formatter, threshold);
+            uint64_t i = 0;
+            for (const auto &data : sorted) {
+                section[i]["name"] = data.first;
+                section[i]["estimate"] = data.second;
+                i++;
+            }
         }
         name_json_assign(j, section);
     }
 
-    void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels, std::function<std::string(const T &)> formatter) const
+    void to_json(json &j, std::function<void(json &, const std::string &, const T &)> formatter) const
+    {
+        auto section = json::array();
+        auto items = _fi.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
+        auto threshold = _get_threshold(items);
+        for (uint64_t i = 0; i < std::min(_top_count, items.size()); i++) {
+            if (items[i].get_estimate() >= threshold) {
+                formatter(section[i], "name", items[i].get_item());
+                section[i]["estimate"] = items[i].get_estimate();
+            } else {
+                break;
+            }
+        }
+        name_json_assign(j, section);
+    }
+
+    void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels, std::function<std::string(const T &)> formatter, Aggregate op = Aggregate::DEFAULT) const
     {
         LabelMap l(add_labels);
         auto items = _fi.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
+        auto threshold = _get_threshold(items);
+        out << "# HELP " << base_name_snake() << ' ' << _desc << std::endl;
+        out << "# TYPE " << base_name_snake() << " gauge" << std::endl;
+        if (op == Aggregate::DEFAULT) {
+            for (uint64_t i = 0; i < std::min(_top_count, items.size()); i++) {
+                if (items[i].get_estimate() >= threshold) {
+                    l[_item_key] = formatter(items[i].get_item());
+                    out << name_snake({}, l) << ' ' << items[i].get_estimate() << std::endl;
+                } else {
+                    break;
+                }
+            }
+        } else if (op == Aggregate::SUMMARY) {
+            auto sorted = _get_summarized_data(items, formatter, threshold);
+            for (const auto &data : sorted) {
+                l[_item_key] = data.first;
+                out << name_snake({}, l) << ' ' << data.second << std::endl;
+            }
+        }
+    }
+
+    void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels, std::function<void(LabelMap &, const std::string &, const T &)> formatter) const
+    {
+        LabelMap l(add_labels);
+        auto items = _fi.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
+        auto threshold = _get_threshold(items);
         out << "# HELP " << base_name_snake() << ' ' << _desc << std::endl;
         out << "# TYPE " << base_name_snake() << " gauge" << std::endl;
         for (uint64_t i = 0; i < std::min(_top_count, items.size()); i++) {
-            l[_item_key] = formatter(items[i].get_item());
-            out << name_snake({}, l) << ' ' << items[i].get_estimate() << std::endl;
+            if (items[i].get_estimate() >= threshold) {
+                formatter(l, _item_key, items[i].get_item());
+                out << name_snake({}, l) << ' ' << items[i].get_estimate() << std::endl;
+            } else {
+                break;
+            }
         }
     }
 
@@ -292,9 +576,14 @@ public:
     {
         auto section = json::array();
         auto items = _fi.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
+        auto threshold = _get_threshold(items);
         for (uint64_t i = 0; i < std::min(_top_count, items.size()); i++) {
-            section[i]["name"] = items[i].get_item();
-            section[i]["estimate"] = items[i].get_estimate();
+            if (items[i].get_estimate() >= threshold) {
+                section[i]["name"] = items[i].get_item();
+                section[i]["estimate"] = items[i].get_estimate();
+            } else {
+                break;
+            }
         }
         name_json_assign(j, section);
     }
@@ -303,13 +592,18 @@ public:
     {
         LabelMap l(add_labels);
         auto items = _fi.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
+        auto threshold = _get_threshold(items);
         out << "# HELP " << base_name_snake() << ' ' << _desc << std::endl;
         out << "# TYPE " << base_name_snake() << " gauge" << std::endl;
         for (uint64_t i = 0; i < std::min(_top_count, items.size()); i++) {
-            std::stringstream name_text;
-            name_text << items[i].get_item();
-            l[_item_key] = name_text.str();
-            out << name_snake({}, l) << ' ' << items[i].get_estimate() << std::endl;
+            if (items[i].get_estimate() >= threshold) {
+                std::stringstream name_text;
+                name_text << items[i].get_item();
+                l[_item_key] = name_text.str();
+                out << name_snake({}, l) << ' ' << items[i].get_estimate() << std::endl;
+            } else {
+                break;
+            }
         }
     }
 };
@@ -364,7 +658,7 @@ class Rate final : public Metric
     std::atomic_uint64_t _counter;
     std::atomic_uint64_t _rate;
     mutable std::shared_mutex _sketch_mutex;
-    datasketches::kll_sketch<int_fast32_t> _quantile;
+    Quantile<int_fast32_t> _quantile;
 
     std::shared_ptr<timer::interval_handle> _timer_handle;
 
@@ -383,27 +677,27 @@ class Rate final : public Metric
 
 public:
     Rate(std::string schema_key, std::initializer_list<std::string> names, std::string desc)
-        : Metric(schema_key, names, std::move(desc))
+        : Metric(schema_key, names, desc)
         , _counter(0)
         , _rate(0)
-        , _quantile()
+        , _quantile(schema_key, names, std::move(desc))
     {
         _start_timer();
     }
 
     ~Rate()
     {
-        _timer_handle->cancel();
+        cancel();
     }
 
     /**
      * stop rate collection, ie. expect no more counter updates.
      * does not affect the quantiles - in effect, it makes the rate read only
-     * must be thread safe
      */
     void cancel()
     {
         _timer_handle->cancel();
+        std::unique_lock w_lock(_sketch_mutex);
         _rate.store(0, std::memory_order_relaxed);
         _counter.store(0, std::memory_order_relaxed);
     }
@@ -424,11 +718,11 @@ public:
         return _rate.load(std::memory_order_relaxed);
     }
 
-    void merge(const Rate &other)
+    void merge(const Rate &other, Aggregate agg_operator)
     {
         std::shared_lock r_lock(other._sketch_mutex);
         std::unique_lock w_lock(_sketch_mutex);
-        _quantile.merge(other._quantile);
+        _quantile.merge(other._quantile, agg_operator);
         // the live rate is simply copied if non zero
         if (other._rate != 0) {
             _rate.store(other._rate, std::memory_order_relaxed);

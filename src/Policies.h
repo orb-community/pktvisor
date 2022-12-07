@@ -10,12 +10,14 @@
 #include "HandlerModulePlugin.h"
 #include "InputModulePlugin.h"
 #include "Taps.h"
+#include <map>
 #include <vector>
 #include <yaml-cpp/yaml.h>
 
 namespace visor {
 
 class CoreRegistry;
+class AbstractMetricsBucket;
 
 class PolicyException : public std::runtime_error
 {
@@ -28,19 +30,23 @@ public:
 
 class Policy : public AbstractRunnableModule
 {
+protected:
+    typedef std::map<std::unique_ptr<AbstractMetricsBucket>, StreamHandler *> BucketMap;
+
+private:
     static constexpr size_t HANDLERS_SEQUENCE_SIZE = 1;
 
-    Tap *_tap;
-    bool _modules_sequence;
-    InputStream *_input_stream;
+    std::vector<Tap *> _taps;
+    std::vector<InputStream *> _input_streams;
+    bool _modules_sequence{false};
+    bool _merge_like_handlers{false};
     std::vector<AbstractRunnableModule *> _modules;
 
+    BucketMap _get_merged_buckets(bool prometheus = true, uint64_t period = 0, bool merged = false);
+
 public:
-    Policy(const std::string &name, Tap *tap, bool modules_sequence)
+    Policy(const std::string &name)
         : AbstractRunnableModule(name)
-        , _tap(tap)
-        , _modules_sequence(modules_sequence)
-        , _input_stream(nullptr)
     {
     }
 
@@ -49,14 +55,29 @@ public:
         return "policy";
     }
 
-    void set_input_stream(InputStream *input_stream)
+    void set_modules_sequence(bool sequence)
     {
-        _input_stream = input_stream;
+        _modules_sequence = sequence;
     }
 
-    const InputStream *input_stream() const
+    void add_tap(Tap *tap)
     {
-        return _input_stream;
+        _taps.push_back(tap);
+    }
+
+    void remove_tap(const Tap *tap)
+    {
+        _taps.erase(std::remove(_taps.begin(), _taps.end(), tap), _taps.end());
+    }
+
+    void add_input_stream(InputStream *input_stream)
+    {
+        _input_streams.push_back(input_stream);
+    }
+
+    const std::vector<InputStream *> &input_stream() const
+    {
+        return _input_streams;
     }
 
     void add_module(AbstractRunnableModule *m)
@@ -83,19 +104,17 @@ public:
     void stop() override;
 
     void info_json(json &j) const override;
+
+    void json_metrics(json &j, uint64_t period, bool merge);
+    void prometheus_metrics(std::stringstream &out);
 };
 
 class PolicyManager : public AbstractManager<Policy>
 {
     mutable std::mutex _load_mutex;
-
     CoreRegistry *_registry;
 
-    /**
-     * the default number of periods we will maintain in the window for handlers
-     */
-    unsigned int _default_num_periods{5};
-    uint32_t _default_deep_sample_rate{100};
+    std::string _get_policy_name(YAML::const_iterator it);
 
 public:
     PolicyManager(CoreRegistry *registry)
@@ -107,27 +126,9 @@ public:
     {
     }
 
-    void set_default_num_periods(unsigned int n)
-    {
-        _default_num_periods = n;
-    }
-    void set_default_deep_sample_rate(uint32_t r)
-    {
-        _default_deep_sample_rate = r;
-    }
-
-    unsigned int default_num_periods() const
-    {
-        return _default_num_periods;
-    }
-
-    uint32_t default_deep_sample_rate() const
-    {
-        return _default_deep_sample_rate;
-    }
-
     std::vector<Policy *> load_from_str(const std::string &str);
-    std::vector<Policy *> load(const YAML::Node &tap_yaml);
+    std::vector<Policy *> load(const YAML::Node &tap_yaml, bool single = false);
+    std::pair<std::string, std::string> create_resources_policy(const std::string &policy_name, InputStream *input, const Config &window_config);
     void remove_policy(const std::string &name);
 };
 

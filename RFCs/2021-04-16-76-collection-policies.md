@@ -43,14 +43,19 @@ visor:
       handlers:
         # default configuration for the stream handlers
         config:
-          periods: 5
-          max_deep_sample: 50
+          num_periods: 2 #default is 5
+          deep_sample_rate: 50 #default is 100
+          topn_count: 5 #default is 10
+          topn_percentile_threshold: 20 #default is 0
         modules:
           # the keys at this level are unique identifiers
           default_net:
             type: net
           udp_traffic:
             type: net
+            config:
+              topn_count: 7
+              topn_percentile_threshold: 10
             filter:
               protocols: [ udp ]
             metric_groups:
@@ -74,15 +79,22 @@ visor:
               qname_suffix: .mydomain.com
             metric_groups:
               disable:
-                - top_qtypes
-                - top_udp_ports
+                - top_qname
+                - dns_transaction
     chaning_handlers:
       kind: collection
+      #policy configs
+      config:
+        merge_like_handlers: true
       description: "base chaning NET to DNS policy"
       # input stream to create based on the given tap and optional filter config
       input:
-        # this must reference a tap name, or application of the policy will fail
-        tap: anycast
+        # this must reference valid tags existent on applied taps, or application of the policy will fail
+        tap_selector:
+          # It can be either "any" or "all" and it must be a sequence
+          any:
+            - virtual: true
+            - vhost: 1
         # this must match the input_type of the matching tap name, or application of the policy will fail
         input_type: pcap
         filter:
@@ -90,19 +102,27 @@ visor:
       handlers:
         # default configuration for the stream handlers
         config:
-          periods: 5
-          max_deep_sample: 50
+          num_periods: 5
+          deep_sample_rate: 50
         modules:
           # the keys at this level are unique identifiers
           # Chaning handlers example. It needs proper indentation as shown below
           - upstream_dns:
               type: dns
+              metric_groups:
+                # disable all metric groups - no metrics will be scraped for this handler
+                disable:
+                  - all
               filter:
                 # must match the available configuration options for this version of this stream handler
                 qname_suffix: .mydomain.com
           # net handler will only receive .mydomain.com packages
           - chain_net:
               type: net
+              metric_groups:
+                # enable all metric groups - all the handler metrics will be scraped 
+                enable:
+                  - all
 ```
 
 ## REST API

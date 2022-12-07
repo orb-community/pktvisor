@@ -13,12 +13,14 @@ namespace visor {
 
 class Configurable;
 class StreamHandler;
-class InputStream;
+class InputEventProxy;
 
 class HandlerModulePlugin : public AbstractPlugin
 {
-
 public:
+    static geo::MaxmindDB *asn;
+    static geo::MaxmindDB *city;
+
     static std::string pluginInterface()
     {
         return "visor.module.handler/1.0";
@@ -34,10 +36,16 @@ public:
     {
     }
 
+    void on_init_plugin(geo::MaxmindDB *city_db, geo::MaxmindDB *asn_db) override
+    {
+        city = city_db;
+        asn = asn_db;
+    }
+
     /**
      * Instantiate a new StreamHandler
      */
-    virtual std::unique_ptr<StreamHandler> instantiate(const std::string &name, InputStream *input_stream, const Configurable *config, StreamHandler *stream_handler = nullptr) = 0;
+    virtual std::unique_ptr<StreamHandler> instantiate(const std::string &name, InputEventProxy *proxy, const Configurable *config, const Configurable *filter) = 0;
 };
 
 typedef Corrade::PluginManager::Manager<HandlerModulePlugin> HandlerPluginRegistry;

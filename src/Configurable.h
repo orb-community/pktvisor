@@ -16,8 +16,15 @@
 #include <unordered_map>
 #include <variant>
 #include <vector>
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wold-style-cast"
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#endif
 #include <yaml-cpp/yaml.h>
-
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
 namespace visor {
 
 using json = nlohmann::json;
@@ -37,12 +44,12 @@ public:
     typedef std::vector<std::string> StringList;
 
 private:
-    std::unordered_map<std::string, std::variant<std::string, uint64_t, bool, StringList>> _config;
+    std::unordered_map<std::string, std::variant<std::string, uint64_t, bool, StringList, std::shared_ptr<Configurable>>> _config;
     mutable std::shared_mutex _config_mutex;
 
 public:
     Configurable() = default;
-    ~Configurable() = default;
+    virtual ~Configurable() = default;
 
     Configurable(const Configurable &other)
     {
@@ -78,6 +85,16 @@ public:
         for (const auto &[key, value] : other._config) {
             _config[key] = value;
         }
+    }
+
+    StringList get_all_keys() const
+    {
+        std::unique_lock lock(_config_mutex);
+        StringList list;
+        for (const auto &[key, value] : _config) {
+            list.push_back(key);
+        }
+        return list;
     }
 
     template <class T>
@@ -120,7 +137,12 @@ public:
         std::shared_lock lock(_config_mutex);
         for (const auto &[key, value] : _config) {
             std::visit([&j, key = key](auto &&arg) {
-                j[key] = arg;
+                using T = std::decay_t<decltype(arg)>;
+                if constexpr (std::is_same_v<T, std::shared_ptr<Configurable>>) {
+                    arg->config_json(j[key]);
+                } else {
+                    j[key] = arg;
+                }
             },
                 value);
         }
@@ -133,8 +155,11 @@ public:
         for (YAML::const_iterator it = config_yaml.begin(); it != config_yaml.end(); ++it) {
             auto key = it->first.as<std::string>();
 
-            if (!it->second.IsScalar() && !it->second.IsSequence()) {
-                throw ConfigException(fmt::format("invalid value for key: {}", key));
+            if (it->second.IsMap()) {
+                auto config = std::make_shared<Configurable>();
+                config->config_set_yaml(it->second);
+                _config[key] = config;
+                continue;
             }
 
             if (it->second.IsSequence()) {
@@ -163,7 +188,7 @@ public:
         }
     }
 
-    const std::string config_hash()
+    const std::string config_hash() const
     {
         std::shared_lock lock(_config_mutex);
         std::vector<std::string> key_values;
@@ -180,6 +205,8 @@ public:
                     }
                 } else if constexpr (std::is_same_v<T, std::string>) {
                     data += arg;
+                } else if constexpr (std::is_same_v<T, std::shared_ptr<Configurable>>) {
+                    data += arg->config_hash();
                 } else {
                     data += std::to_string(arg);
                 }

@@ -4,13 +4,14 @@
 
 #include "DnstapInputStream.h"
 #include "DnstapException.h"
-#include "FrameSession.h"
+#include "ThreadName.h"
 #include <filesystem>
 #include <uvw/async.h>
 #include <uvw/loop.h>
 #include <uvw/pipe.h>
 #include <uvw/stream.h>
 #include <uvw/tcp.h>
+#include <uvw/timer.h>
 
 namespace visor::input::dnstap {
 
@@ -26,6 +27,7 @@ void DnstapInputStream::_read_frame_stream_file()
 {
     assert(config_exists("dnstap_file"));
 
+#ifndef _WIN32
     // Setup file reader options
     auto fileOptions = fstrm_file_options_init();
     fstrm_file_options_set_file_path(fileOptions, config_get<std::string>("dnstap_file").c_str());
@@ -63,7 +65,10 @@ void DnstapInputStream::_read_frame_stream_file()
 
             // Emit signal to handlers
             if (!_filtering(d)) {
-                dnstap_signal(d, len_data);
+                std::shared_lock lock(_input_mutex);
+                for (auto &proxy : _event_proxies) {
+                    static_cast<DnstapInputEventProxy *>(proxy.get())->dnstap_cb(d, len_data);
+                }
             }
         } else if (result == fstrm_res_stop) {
             // Normal end of data stream
@@ -76,6 +81,7 @@ void DnstapInputStream::_read_frame_stream_file()
     }
 
     fstrm_reader_destroy(&reader);
+#endif
 }
 
 void DnstapInputStream::start()
@@ -85,10 +91,7 @@ void DnstapInputStream::start()
         return;
     }
 
-    if (config_exists("only_hosts")) {
-        _parse_host_specs(config_get<StringList>("only_hosts"));
-        _f_enabled.set(Filters::OnlyHosts);
-    }
+    validate_configs(_config_defs);
 
     if (config_exists("dnstap_file")) {
         // read from dnstap file. this is a special case from a command line utility
@@ -136,6 +139,8 @@ void DnstapInputStream::_create_frame_stream_tcp_socket()
         throw DnstapException("unable to initialize AsyncHandle");
     }
     _async_h->once<uvw::AsyncEvent>([this](const auto &, auto &handle) {
+        _timer->stop();
+        _timer->close();
         _tcp_server_h->stop();
         _tcp_server_h->close();
         _io_loop->stop();
@@ -144,6 +149,24 @@ void DnstapInputStream::_create_frame_stream_tcp_socket()
     });
     _async_h->on<uvw::ErrorEvent>([this](const auto &err, auto &handle) {
         _logger->error("[{}] AsyncEvent error: {}", _name, err.what());
+        handle.close();
+    });
+
+    _timer = _io_loop->resource<uvw::TimerHandle>();
+    if (!_timer) {
+        throw DnstapException("unable to initialize TimerHandle");
+    }
+    _timer->on<uvw::TimerEvent>([this](const auto &, auto &) {
+        timespec stamp;
+        // use now()
+        std::timespec_get(&stamp, TIME_UTC);
+        std::shared_lock lock(_input_mutex);
+        for (auto &proxy : _event_proxies) {
+            static_cast<DnstapInputEventProxy *>(proxy.get())->heartbeat_cb(stamp);
+        }
+    });
+    _timer->on<uvw::ErrorEvent>([this](const auto &err, auto &handle) {
+        _logger->error("[{}] TimerEvent error: {}", _name, err.what());
         handle.close();
     });
 
@@ -179,7 +202,10 @@ void DnstapInputStream::_create_frame_stream_tcp_socket()
 
             // Emit signal to handlers
             if (!_filtering(d)) {
-                dnstap_signal(d, len_data);
+                std::shared_lock lock(_input_mutex);
+                for (auto &proxy : _event_proxies) {
+                    static_cast<DnstapInputEventProxy *>(proxy.get())->dnstap_cb(d, len_data);
+                }
             }
         };
 
@@ -224,6 +250,8 @@ void DnstapInputStream::_create_frame_stream_tcp_socket()
 
     // spawn the loop
     _io_thread = std::make_unique<std::thread>([this] {
+        _timer->start(uvw::TimerHandle::Time{1000}, uvw::TimerHandle::Time{HEARTBEAT_INTERVAL * 1000});
+        thread::change_self_name(schema_key(), name());
         _io_loop->run();
     });
 }
@@ -242,6 +270,8 @@ void DnstapInputStream::_create_frame_stream_unix_socket()
         throw DnstapException("unable to initialize AsyncHandle");
     }
     _async_h->once<uvw::AsyncEvent>([this](const auto &, auto &handle) {
+        _timer->stop();
+        _timer->close();
         _unix_server_h->stop();
         _unix_server_h->close();
         _io_loop->stop();
@@ -250,6 +280,24 @@ void DnstapInputStream::_create_frame_stream_unix_socket()
     });
     _async_h->on<uvw::ErrorEvent>([this](const auto &err, auto &handle) {
         _logger->error("[{}] AsyncEvent error: {}", _name, err.what());
+        handle.close();
+    });
+
+    _timer = _io_loop->resource<uvw::TimerHandle>();
+    if (!_timer) {
+        throw DnstapException("unable to initialize TimerHandle");
+    }
+    _timer->on<uvw::TimerEvent>([this](const auto &, auto &) {
+        timespec stamp;
+        // use now()
+        std::timespec_get(&stamp, TIME_UTC);
+        std::shared_lock lock(_input_mutex);
+        for (auto &proxy : _event_proxies) {
+            static_cast<DnstapInputEventProxy *>(proxy.get())->heartbeat_cb(stamp);
+        }
+    });
+    _timer->on<uvw::ErrorEvent>([this](const auto &err, auto &handle) {
+        _logger->error("[{}] TimerEvent error: {}", _name, err.what());
         handle.close();
     });
 
@@ -284,7 +332,10 @@ void DnstapInputStream::_create_frame_stream_unix_socket()
             }
             // Emit signal to handlers
             if (!_filtering(d)) {
-                dnstap_signal(d, len_data);
+                std::shared_lock lock(_input_mutex);
+                for (auto &proxy : _event_proxies) {
+                    static_cast<DnstapInputEventProxy *>(proxy.get())->dnstap_cb(d, len_data);
+                }
             }
         };
 
@@ -332,87 +383,10 @@ void DnstapInputStream::_create_frame_stream_unix_socket()
 
     // spawn the loop
     _io_thread = std::make_unique<std::thread>([this] {
+        _timer->start(uvw::TimerHandle::Time{1000}, uvw::TimerHandle::Time{HEARTBEAT_INTERVAL * 1000});
+        thread::change_self_name(schema_key(), name());
         _io_loop->run();
     });
-}
-
-void DnstapInputStream::_parse_host_specs(const std::vector<std::string> &host_list)
-{
-    for (const auto &host : host_list) {
-        auto delimiter = host.find('/');
-        if (delimiter == host.npos) {
-            throw DnstapException(fmt::format("invalid CIDR: {}", host));
-        }
-        auto ip = host.substr(0, delimiter);
-        auto cidr = host.substr(++delimiter);
-        auto not_number = std::count_if(cidr.begin(), cidr.end(),
-            [](unsigned char c) { return !std::isdigit(c); });
-        if (not_number) {
-            throw DnstapException(fmt::format("invalid CIDR: {}", host));
-        }
-
-        auto cidr_number = std::stoi(cidr);
-        if (ip.find(':') != ip.npos) {
-            if (cidr_number < 0 || cidr_number > 128) {
-                throw DnstapException(fmt::format("invalid CIDR: {}", host));
-            }
-            in6_addr ipv6;
-            if (inet_pton(AF_INET6, ip.c_str(), &ipv6) != 1) {
-                throw DnstapException(fmt::format("invalid IPv6 address: {}", ip));
-            }
-            _IPv6_host_list.emplace_back(ipv6, cidr_number);
-        } else {
-            if (cidr_number < 0 || cidr_number > 32) {
-                throw DnstapException(fmt::format("invalid CIDR: {}", host));
-            }
-            in_addr ipv4;
-            if (inet_pton(AF_INET, ip.c_str(), &ipv4) != 1) {
-                throw DnstapException(fmt::format("invalid IPv4 address: {}", ip));
-            }
-            _IPv4_host_list.emplace_back(ipv4, cidr_number);
-        }
-    }
-}
-
-bool DnstapInputStream::_match_subnet(const std::string &dnstap_ip)
-{
-    if (dnstap_ip.size() == 16 && _IPv6_host_list.size() > 0) {
-        in6_addr ipv6;
-        std::memcpy(&ipv6, dnstap_ip.c_str(), sizeof(in6_addr));
-        for (const auto &net : _IPv6_host_list) {
-            uint8_t prefixLength = net.second;
-            auto network = net.first;
-            uint8_t compareByteCount = prefixLength / 8;
-            uint8_t compareBitCount = prefixLength % 8;
-            bool result = false;
-            if (compareByteCount > 0) {
-                result = std::memcmp(&network.s6_addr, &ipv6.s6_addr, compareByteCount) == 0;
-            }
-            if ((result || prefixLength < 8) && compareBitCount > 0) {
-                uint8_t subSubnetByte = network.s6_addr[compareByteCount] >> (8 - compareBitCount);
-                uint8_t subThisByte = ipv6.s6_addr[compareByteCount] >> (8 - compareBitCount);
-                result = subSubnetByte == subThisByte;
-            }
-            if (result) {
-                return true;
-            }
-        }
-    } else if (dnstap_ip.size() == 4 && _IPv4_host_list.size() > 0) {
-        in_addr ipv4;
-        std::memcpy(&ipv4, dnstap_ip.c_str(), sizeof(in_addr));
-        for (const auto &net : _IPv4_host_list) {
-            uint8_t cidr = net.second;
-            if (cidr == 0) {
-                return true;
-            }
-            uint32_t mask = htonl((0xFFFFFFFFu) << (32 - cidr));
-            if (!((ipv4.s_addr ^ net.first.s_addr) & mask)) {
-                return true;
-            }
-        }
-    }
-
-    return false;
 }
 
 void DnstapInputStream::stop()
@@ -425,7 +399,9 @@ void DnstapInputStream::stop()
         // we have to use AsyncHandle to stop the loop from the same thread the loop is running in
         _async_h->send();
         // waits for _io_loop->run() to return
-        _io_thread->join();
+        if (_io_thread->joinable()) {
+            _io_thread->join();
+        }
     }
 
     _running = false;
@@ -434,5 +410,10 @@ void DnstapInputStream::stop()
 void DnstapInputStream::info_json(json &j) const
 {
     common_info_json(j);
+}
+
+std::unique_ptr<InputEventProxy> DnstapInputStream::create_event_proxy(const Configurable &filter)
+{
+    return std::make_unique<DnstapInputEventProxy>(_name, filter);
 }
 }

@@ -7,7 +7,18 @@
 #include "HandlerModulePlugin.h"
 #include "InputModulePlugin.h"
 #include <map>
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wold-style-cast"
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#endif
 #include <yaml-cpp/yaml.h>
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
+namespace spdlog {
+class logger;
+}
 
 namespace visor {
 
@@ -22,8 +33,10 @@ class PolicyManager;
 class CoreRegistry
 {
 public:
-    typedef std::map<std::string, std::unique_ptr<InputModulePlugin>> InputPluginMap;
-    typedef std::map<std::string, std::unique_ptr<HandlerModulePlugin>> HandlerPluginMap;
+    static constexpr const char *DEFAULT_HANDLER_PLUGIN_VERSION{"1.0"};
+    static constexpr const char *DEFAULT_INPUT_PLUGIN_VERSION{"1.0"};
+    typedef std::map<std::pair<std::string, std::string>, std::unique_ptr<InputModulePlugin>> InputPluginMap;
+    typedef std::map<std::pair<std::string, std::string>, std::unique_ptr<HandlerModulePlugin>> HandlerPluginMap;
 
 private:
     // this is the interface to load/instantiate/unload Corrade plugins (Corrade::PluginManager::Manager)
