@@ -368,6 +368,7 @@ jobs:
           
       - name: Upload arm64 binary to latest release
         run: |
+          chmod a+x ./docker/upload-gh-asset.sh
           ./docker/upload-gh-asset.sh github_api_token=${{ secrets.BOT_TOKEN }} owner=ns1labs repo=pktvisor tag=LATEST filename=./pktvisor-arm64.zip  
 
       - name: Get branch name
@@ -531,6 +532,7 @@ jobs:
           
       - name: Upload amd64 binary to latest release
         run: |
+          chmod a+x ./docker/upload-gh-asset.sh
           ./docker/upload-gh-asset.sh github_api_token=${{ secrets.BOT_TOKEN }} owner=ns1labs repo=pktvisor tag=LATEST filename=./pktvisor-amd64.zip 
 
       - name: Get branch name
