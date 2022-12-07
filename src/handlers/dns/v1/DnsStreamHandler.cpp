@@ -67,15 +67,10 @@ void DnsStreamHandler::start()
         } catch (const std::exception &e) {
             throw ConfigException("DnsStreamHandler: wrong value type for only_rcode filter. It should be an integer");
         }
-        switch (want_code) {
-        case NoError:
-        case NXDomain:
-        case SrvFail:
-        case Refused:
+        if (RCodeNames.find(want_code) != RCodeNames.end()) {
             _f_enabled.set(Filters::OnlyRCode);
             _f_rcode = want_code;
-            break;
-        default:
+        } else {
             throw ConfigException("DnsStreamHandler: only_rcode filter contained an invalid/unsupported rcode");
         }
         _register_predicate_filter(Filters::OnlyRCode, "only_rcode", std::to_string(_f_rcode));
