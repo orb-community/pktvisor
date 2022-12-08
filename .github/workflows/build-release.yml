@@ -8,7 +8,6 @@ on:
   push:
     branches:
       - master
-      - fix-release
 
 env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
@@ -144,22 +143,22 @@ jobs:
           git log ${{ env.LAST_TAG }}..HEAD --pretty=format:"$ad- %s [%an]" >> changelog.md
           sed -i -e "s/- /• /g" changelog.md
           
-#       - name: Post pktvisor changelog in slack channel
-#         run: |
-#           curl -d "text=:mega: *Pktvisor release reporter* :mega:
-#           $(cat changelog.md)" -d "channel=C02SEF78ZPT" -H "Authorization: Bearer ${{secrets.SLACK_APP_TOKEN}}" -X POST https://slack.com/api/chat.postMessage          
+      - name: Post pktvisor changelog in slack channel
+        run: |
+          curl -d "text=:mega: *Pktvisor release reporter* :mega:
+          $(cat changelog.md)" -d "channel=C02SEF78ZPT" -H "Authorization: Bearer ${{secrets.SLACK_APP_TOKEN}}" -X POST https://slack.com/api/chat.postMessage          
 
-#       - name: Create release
-#         id: create_release
-#         uses: actions/create-release@latest
-#         env:
-#           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
-#         with:
-#           tag_name: ${{ env.TAG }}
-#           release_name: ${{ env.VERSION }}
-#           body_path: ${{github.workspace}}/changelog.md
-#           draft: false
-#           prerelease: false
+      - name: Create release
+        id: create_release
+        uses: actions/create-release@latest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
+        with:
+          tag_name: ${{ env.TAG }}
+          release_name: ${{ env.VERSION }}
+          body_path: ${{github.workspace}}/changelog.md
+          draft: false
+          prerelease: false
 
 
   spinup-arm64-runner:
