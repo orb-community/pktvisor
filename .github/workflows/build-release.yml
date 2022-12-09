@@ -428,7 +428,7 @@ jobs:
           file: ./docker/Dockerfile.crashhandler
           platforms: linux/arm64
           push: true
-          tags: ${{ env.IMAGE_NAME }}:arm64
+          tags: ${{ env.IMAGE_NAME }}:release-arm64
 
   package-armv7:
     needs: [ spinup-amd64-runner ]
@@ -495,7 +495,7 @@ jobs:
           file: ./docker/Dockerfile
           platforms: linux/arm/v7
           push: true
-          tags: ${{ env.IMAGE_NAME }}:armv7
+          tags: ${{ env.IMAGE_NAME }}:release-armv7
 
   package-amd64:
     needs: [ prebuild-package ]
@@ -592,7 +592,7 @@ jobs:
           file: ./docker/Dockerfile.crashhandler
           platforms: linux/amd64
           push: true
-          tags: ${{ env.IMAGE_NAME }}:amd64
+          tags: ${{ env.IMAGE_NAME }}:release-amd64
 
   remove-github-runner-arm64:
     needs: [ package-arm64 ]
@@ -767,9 +767,9 @@ jobs:
       - name: Create docker manifest
         run: |
           docker manifest create ghcr.io/ns1labs/pktvisor:latest \
-          ghcr.io/ns1labs/pktvisor:amd64 \
-          ghcr.io/ns1labs/pktvisor:armv7 \
-          ghcr.io/ns1labs/pktvisor:arm64
+          ghcr.io/ns1labs/pktvisor:release-amd64 \
+          ghcr.io/ns1labs/pktvisor:release-armv7 \
+          ghcr.io/ns1labs/pktvisor:release-arm64
 
       - name: Push manifest to ghcr.io
         run: |
