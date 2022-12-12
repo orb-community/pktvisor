@@ -6,6 +6,7 @@
 
 #include "CoreRegistry.h"
 #include "HttpServer.h"
+#include "OpenTelemetry.h"
 #include <chrono>
 #include <spdlog/spdlog.h>
 

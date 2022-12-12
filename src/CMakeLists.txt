@@ -5,6 +5,10 @@ find_package(Corrade REQUIRED PluginManager)
 
 set_directory_properties(PROPERTIES CORRADE_USE_PEDANTIC_FLAGS ON)
 
+find_package(Protobuf REQUIRED)
+set(OTELCPP_PROTO_PATH ${CONAN_OPENTELEMETRY-PROTO_ROOT}/res)
+include(opentelemetry-proto)
+
 add_library(visor-core
         AbstractModule.cpp
         AbstractPlugin.cpp
@@ -25,6 +29,7 @@ target_include_directories(visor-core
         ${CMAKE_CURRENT_BINARY_DIR} # Visor::Core config.h
         INTERFACE
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+        $<BUILD_INTERFACE:${GENERATED_PROTOBUF_PATH}> # for generated otel proto headers
         )
 
 target_link_libraries(visor-core
@@ -32,6 +37,7 @@ target_link_libraries(visor-core
         datasketches
         rng
         timer
+        opentelemetry_proto
         ${CONAN_LIBS_LIBMAXMINDDB}
         ${CONAN_LIBS_CORRADE}
         ${CONAN_LIBS_SPDLOG}
