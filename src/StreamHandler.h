@@ -6,6 +6,7 @@
 
 #include "AbstractMetricsManager.h"
 #include "AbstractModule.h"
+#include "CoreRegistry.h"
 #include "InputEventProxy.h"
 #include <ctime>
 #include <fmt/ostream.h>
@@ -29,6 +30,7 @@ class StreamHandler : public AbstractRunnableModule
 {
 protected:
     std::unique_ptr<InputEventProxy> _event_proxy;
+    std::string _version{CoreRegistry::DEFAULT_HANDLER_PLUGIN_VERSION};
 
 public:
     StreamHandler(const std::string &name)
@@ -54,6 +56,16 @@ public:
     InputEventProxy *get_event_proxy()
     {
         return _event_proxy.get();
+    }
+
+    void set_version(const std::string &version)
+    {
+        _version = version;
+    }
+
+    const std::string &version() const
+    {
+        return _version;
     }
 
     virtual void window_json(json &j, uint64_t period, bool merged) = 0;

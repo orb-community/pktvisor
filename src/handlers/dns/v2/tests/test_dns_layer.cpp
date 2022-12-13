@@ -648,9 +648,9 @@ TEST_CASE("Parse DNS with ECS data", "[pcap][dns][ecs]")
 
     CHECK(j["unknown"]["cardinality"]["qname"] == 8);
 
-    CHECK(j["unknown"]["top_query_ecs_xacts"][0]["name"] == "2001:470:1f0b:1600::"); // wireshark
-    CHECK(j["unknown"]["top_query_ecs_xacts"][0]["estimate"] == 2);
-    CHECK(j["unknown"]["top_query_ecs_xacts"][1] == nullptr);
+    CHECK(j["unknown"]["top_ecs_xacts"][0]["name"] == "2001:470:1f0b:1600::"); // wireshark
+    CHECK(j["unknown"]["top_ecs_xacts"][0]["estimate"] == 2);
+    CHECK(j["unknown"]["top_ecs_xacts"][1] == nullptr);
     CHECK(j["unknown"]["top_geo_loc_ecs_xacts"][0]["name"] == "Unknown");
     CHECK(j["unknown"]["top_geo_loc_ecs_xacts"][0]["estimate"] == 2);
     CHECK(j["unknown"]["top_asn_ecs_xacts"][0]["name"] == "Unknown");
@@ -700,9 +700,9 @@ TEST_CASE("DNS filter: GeoLoc not found", "[pcap][dns][ecs]")
 
     CHECK(j["unknown"]["cardinality"]["qname"] == 1);
 
-    CHECK(j["unknown"]["top_query_ecs_xacts"][0]["name"] == "2001:470:1f0b:1600::"); // wireshark
-    CHECK(j["unknown"]["top_query_ecs_xacts"][0]["estimate"] == 2);
-    CHECK(j["unknown"]["top_query_ecs_xacts"][1] == nullptr);
+    CHECK(j["unknown"]["top_ecs_xacts"][0]["name"] == "2001:470:1f0b:1600::"); // wireshark
+    CHECK(j["unknown"]["top_ecs_xacts"][0]["estimate"] == 2);
+    CHECK(j["unknown"]["top_ecs_xacts"][1] == nullptr);
     CHECK(j["unknown"]["top_geo_loc_ecs_xacts"][0]["name"] == "Unknown");
     CHECK(j["unknown"]["top_geo_loc_ecs_xacts"][0]["estimate"] == 2);
 }
@@ -750,9 +750,9 @@ TEST_CASE("DNS filter: ASN not found", "[pcap][dns][ecs]")
 
     CHECK(j["unknown"]["cardinality"]["qname"] == 1);
 
-    CHECK(j["unknown"]["top_query_ecs_xacts"][0]["name"] == "2001:470:1f0b:1600::"); // wireshark
-    CHECK(j["unknown"]["top_query_ecs_xacts"][0]["estimate"] == 2);
-    CHECK(j["unknown"]["top_query_ecs_xacts"][1] == nullptr);
+    CHECK(j["unknown"]["top_ecs_xacts"][0]["name"] == "2001:470:1f0b:1600::"); // wireshark
+    CHECK(j["unknown"]["top_ecs_xacts"][0]["estimate"] == 2);
+    CHECK(j["unknown"]["top_ecs_xacts"][1] == nullptr);
     CHECK(j["unknown"]["top_asn_ecs_xacts"][0]["name"] == "Unknown");
     CHECK(j["unknown"]["top_asn_ecs_xacts"][0]["estimate"] == 2);
 }
