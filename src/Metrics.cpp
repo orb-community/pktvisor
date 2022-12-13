@@ -19,6 +19,20 @@ void Counter::to_prometheus(std::stringstream &out, Metric::LabelMap add_labels)
     out << name_snake({}, add_labels) << ' ' << _value << std::endl;
 }
 
+void Counter::to_opentelemetry(metrics::v1::ScopeMetrics &scope, Metric::LabelMap add_labels) const
+{
+    auto metric = scope.add_metrics();
+    metric->set_name(base_name_snake() + " gauge");
+    metric->set_description(base_name_snake() + " " + _desc);
+    auto gauge_data_point = metric->mutable_gauge()->add_data_points();
+    gauge_data_point->set_as_int(_value);
+    for (const auto &label: add_labels) {
+        auto attribute = gauge_data_point->add_attributes();
+        attribute->set_key(label.first);
+        attribute->mutable_value()->set_string_value(label.second);
+    }
+}
+
 void Rate::to_json(json &j, bool include_live) const
 {
     to_json(j);
@@ -39,6 +53,12 @@ void Rate::to_prometheus(std::stringstream &out, Metric::LabelMap add_labels) co
     _quantile.to_prometheus(out, add_labels);
 }
 
+void Rate::to_opentelemetry(metrics::v1::ScopeMetrics &scope, Metric::LabelMap add_labels) const
+{
+    std::shared_lock lock(_sketch_mutex);
+    _quantile.to_opentelemetry(scope, add_labels);
+}
+
 void Cardinality::merge(const Cardinality &other)
 {
     datasketches::cpc_union merge_set;
@@ -55,6 +75,20 @@ void Cardinality::to_prometheus(std::stringstream &out, Metric::LabelMap add_lab
     out << "# HELP " << base_name_snake() << ' ' << _desc << std::endl;
     out << "# TYPE " << base_name_snake() << " gauge" << std::endl;
     out << name_snake({}, add_labels) << ' ' << lround(_set.get_estimate()) << std::endl;
+}
+
+void Cardinality::to_opentelemetry(metrics::v1::ScopeMetrics &scope, Metric::LabelMap add_labels) const
+{
+    auto metric = scope.add_metrics();
+    metric->set_name(base_name_snake() + " gauge");
+    metric->set_description(base_name_snake() + " " + _desc);
+    auto gauge_data_point = metric->mutable_gauge()->add_data_points();
+    gauge_data_point->set_as_int(lround(_set.get_estimate()));
+    for (const auto &label: add_labels) {
+        auto attribute = gauge_data_point->add_attributes();
+        attribute->set_key(label.first);
+        attribute->mutable_value()->set_string_value(label.second);
+    }
 }
 
 // static storage for base labels

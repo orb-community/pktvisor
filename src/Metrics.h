@@ -4,6 +4,7 @@
 
 #pragma once
 #include <nlohmann/json.hpp>
+#include <opentelemetry/proto/metrics/v1/metrics.pb.h>
 #include <sstream>
 #include <timer.hpp>
 #ifdef __GNUC__
@@ -28,6 +29,7 @@
 namespace visor {
 
 using json = nlohmann::json;
+using namespace opentelemetry::proto;
 using namespace std::chrono;
 
 struct comparator {
@@ -111,6 +113,7 @@ public:
 
     virtual void to_json(json &j) const = 0;
     virtual void to_prometheus(std::stringstream &out, LabelMap add_labels = {}) const = 0;
+    virtual void to_opentelemetry(metrics::v1::ScopeMetrics &scope, LabelMap add_labels = {}) const = 0;
 };
 
 /**
@@ -156,6 +159,7 @@ public:
     // Metric
     void to_json(json &j) const override;
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override;
+    void to_opentelemetry(metrics::v1::ScopeMetrics &scope, LabelMap add_labels = {}) const override;
 };
 
 /**
@@ -264,6 +268,20 @@ public:
         le["le"] = "+Inf";
         out << name_snake({"bucket"}, le) << ' ' << histogram[split_point_size] * _sketch.get_n() << std::endl;
         out << name_snake({"count"}, add_labels) << ' ' << _sketch.get_n() << std::endl;
+    }
+
+    void to_opentelemetry(metrics::v1::ScopeMetrics &scope, LabelMap add_labels = {}) const
+    {
+        auto metric = scope.add_metrics();
+        metric->set_name(base_name_snake() + " histogram");
+        metric->set_description(base_name_snake() + " " + _desc);
+        auto hist_data_point = metric->mutable_histogram()->add_data_points();
+        // Implement histogram
+        for (const auto &label : add_labels) {
+            auto attribute = hist_data_point->add_attributes();
+            attribute->set_key(label.first);
+            attribute->mutable_value()->set_string_value(label.second);
+        }
     }
 };
 
@@ -380,6 +398,32 @@ public:
             out << name_snake({}, l99) << ' ' << quantiles[3] << std::endl;
             out << name_snake({"sum"}, add_labels) << ' ' << _quantile.get_max_value() << std::endl;
             out << name_snake({"count"}, add_labels) << ' ' << _quantile.get_n() << std::endl;
+        }
+    }
+
+    void to_opentelemetry(metrics::v1::ScopeMetrics &scope, LabelMap add_labels = {}) const override
+    {
+        std::vector<T> quantiles;
+        const double fractions[4]{0.50, 0.90, 0.95, 0.99};
+        if (_quantiles_sum.empty()) {
+            quantiles = _quantile.get_quantiles(fractions, 4);
+        } else {
+            quantiles = _quantiles_sum;
+        }
+
+        auto metric = scope.add_metrics();
+        metric->set_name(base_name_snake() + " summary");
+        metric->set_description(base_name_snake() + " " + _desc);
+        auto summary_data_point = metric->mutable_summary()->add_data_points();
+        for (auto it = quantiles.begin(); it != quantiles.end(); ++it) {
+            auto quantile = summary_data_point->add_quantile_values();
+            quantile->set_quantile(fractions[it - quantiles.begin()]);
+            quantile->set_value(*it);
+        }
+        for (const auto &label : add_labels) {
+            auto attribute = summary_data_point->add_attributes();
+            attribute->set_key(label.first);
+            attribute->mutable_value()->set_string_value(label.second);
         }
     }
 };
@@ -606,6 +650,33 @@ public:
             }
         }
     }
+
+    void to_opentelemetry(metrics::v1::ScopeMetrics &scope, LabelMap add_labels = {}) const override
+    {
+        LabelMap l(add_labels);
+        auto metric = scope.add_metrics();
+        metric->set_name(base_name_snake() + " gauge");
+        metric->set_description(base_name_snake() + " " + _desc);
+        auto items = _fi.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
+        auto threshold = _get_threshold(items);
+        for (uint64_t i = 0; i < std::min(_top_count, items.size()); i++) {
+            if (items[i].get_estimate() >= threshold) {
+                std::stringstream name_text;
+                name_text << items[i].get_item();
+                l[_item_key] = name_text.str();
+                auto gauge_data_point = metric->mutable_gauge()->add_data_points();
+                gauge_data_point->set_as_int(items[i].get_estimate());
+                for (const auto &label : l) {
+                    auto attribute = gauge_data_point->add_attributes();
+                    attribute->set_key(label.first);
+                    attribute->mutable_value()->set_string_value(label.second);
+                }
+            } else {
+                break;
+            }
+        }
+
+    }
 };
 
 /**
@@ -645,6 +716,7 @@ public:
     // Metric
     void to_json(json &j) const override;
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override;
+    void to_opentelemetry(metrics::v1::ScopeMetrics &scope, LabelMap add_labels = {}) const override;
 };
 
 /**
@@ -734,6 +806,7 @@ public:
     // Metric
     void to_json(json &j) const override;
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override;
+    void to_opentelemetry(metrics::v1::ScopeMetrics &scope, LabelMap add_labels = {}) const override;
 };
 
 }
