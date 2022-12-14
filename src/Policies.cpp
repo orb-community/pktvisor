@@ -124,6 +124,7 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml, bool si
                         handler_modules.back()->set_event_proxy(input_ptr->create_event_proxy(Configurable()));
                         handler_module = handler_plugin->second->instantiate(handler_name, handler_modules.back()->get_event_proxy(), &handler_config.config, &handler_config.filter);
                     }
+                    handler_module->set_version(handler_config.version);
                     policy_ptr->add_module(handler_module.get());
                     handler_modules.emplace_back(std::move(handler_module));
                 }
@@ -409,7 +410,8 @@ Policy::BucketMap Policy::_get_merged_buckets(bool prometheus, uint64_t period, 
         }
         for (auto &[bucket, handler] : bucket_map) {
             bool is_last = (bucket == std::prev(bucket_map.end())->first);
-            if (hmod->schema_key() != handler->schema_key() && !is_last) {
+            if (!is_last && (hmod->schema_key() != handler->schema_key())
+                && (hmod->version() != handler->version())) {
                 continue;
             }
             auto new_bucket = hmod->merge(bucket.get(), period, prometheus, merged);
