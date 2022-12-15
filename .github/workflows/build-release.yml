@@ -146,7 +146,7 @@ jobs:
       - name: Post pktvisor changelog in slack channel
         run: |
           curl -d "text=:mega: *Pktvisor release reporter* :mega:
-          $(cat changelog.md)" -d "channel=C02SEF78ZPT" -H "Authorization: Bearer ${{secrets.SLACK_APP_TOKEN}}" -X POST https://slack.com/api/chat.postMessage          
+          $(cat changelog.md)" -d "channel=C041B9204CF" -H "Authorization: Bearer ${{secrets.SLACK_APP_TOKEN}}" -X POST https://slack.com/api/chat.postMessage          
 
       - name: Create release
         id: create_release
