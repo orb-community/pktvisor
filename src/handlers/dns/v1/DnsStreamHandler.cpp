@@ -1084,6 +1084,102 @@ void DnsMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap ad
         }
     });
 }
+
+
+void DnsMetricsBucket::to_opentelemetry(metrics::v1::ScopeMetrics &scope, Metric::LabelMap add_labels) const
+{
+    _rate_total.to_opentelemetry(scope, add_labels);
+    
+    {
+        auto [num_events, num_samples, event_rate, event_lock] = event_data_locked(); // thread safe
+
+        event_rate->to_opentelemetry(scope, add_labels);
+        num_events->to_opentelemetry(scope, add_labels);
+        num_samples->to_opentelemetry(scope, add_labels);
+    }
+
+    std::shared_lock r_lock(_mutex);
+    if (group_enabled(group::DnsMetrics::Counters)) {
+        _counters.queries.to_opentelemetry(scope, add_labels);
+        _counters.replies.to_opentelemetry(scope, add_labels);
+        _counters.TCP.to_opentelemetry(scope, add_labels);
+        _counters.UDP.to_opentelemetry(scope, add_labels);
+        _counters.IPv4.to_opentelemetry(scope, add_labels);
+        _counters.IPv6.to_opentelemetry(scope, add_labels);
+        _counters.NX.to_opentelemetry(scope, add_labels);
+        _counters.REFUSED.to_opentelemetry(scope, add_labels);
+        _counters.SRVFAIL.to_opentelemetry(scope, add_labels);
+        _counters.RNOERROR.to_opentelemetry(scope, add_labels);
+        _counters.NODATA.to_opentelemetry(scope, add_labels);
+        _counters.total.to_opentelemetry(scope, add_labels);
+        _counters.filtered.to_opentelemetry(scope, add_labels);
+    }
+
+    if (group_enabled(group::DnsMetrics::Cardinality)) {
+        _dns_qnameCard.to_opentelemetry(scope, add_labels);
+    }
+
+    if (group_enabled(group::DnsMetrics::DnsTransactions)) {
+        _counters.xacts_total.to_opentelemetry(scope, add_labels);
+        _counters.xacts_timed_out.to_opentelemetry(scope, add_labels);
+
+        _counters.xacts_in.to_opentelemetry(scope, add_labels);
+        _dns_slowXactIn.to_opentelemetry(scope, add_labels);
+
+        _dnsXactFromTimeUs.to_opentelemetry(scope, add_labels);
+        _dnsXactToTimeUs.to_opentelemetry(scope, add_labels);
+        _dnsXactRatio.to_opentelemetry(scope, add_labels);
+
+        _counters.xacts_out.to_opentelemetry(scope, add_labels);
+        _dns_slowXactOut.to_opentelemetry(scope, add_labels);
+    }
+
+    if (group_enabled(group::DnsMetrics::TopPorts)) {
+        _dns_topUDPPort.to_opentelemetry(scope, add_labels, [](const uint16_t &val) { return std::to_string(val); });
+    }
+    if (group_enabled(group::DnsMetrics::TopEcs)) {
+        group_enabled(group::DnsMetrics::Counters) ? _counters.queryECS.to_opentelemetry(scope, add_labels) : void();
+        _dns_topGeoLocECS.to_opentelemetry(scope, add_labels, [](Metric::LabelMap &l, const std::string &key, const visor::geo::City &val) {
+            l[key] = val.location;
+            if (!val.latitude.empty() && !val.longitude.empty()) {
+                l["lat"] = val.latitude;
+                l["lon"] = val.longitude;
+            }
+        });
+        _dns_topASNECS.to_opentelemetry(scope, add_labels);
+        _dns_topQueryECS.to_opentelemetry(scope, add_labels);
+    }
+
+    if (group_enabled(group::DnsMetrics::TopQnames)) {
+        _dns_topQname2.to_opentelemetry(scope, add_labels);
+        _dns_topQname3.to_opentelemetry(scope, add_labels);
+        _dns_topNX.to_opentelemetry(scope, add_labels);
+        _dns_topREFUSED.to_opentelemetry(scope, add_labels);
+
+        _dns_topSRVFAIL.to_opentelemetry(scope, add_labels);
+        _dns_topNODATA.to_opentelemetry(scope, add_labels);
+        if (group_enabled(group::DnsMetrics::TopQnamesDetails)) {
+            _dns_topSizedQnameResp.to_opentelemetry(scope, add_labels);
+            _dns_topNOERROR.to_opentelemetry(scope, add_labels);
+        }
+    }
+    _dns_topRCode.to_opentelemetry(scope, add_labels, [](const uint16_t &val) {
+        if (RCodeNames.find(val) != RCodeNames.end()) {
+            return RCodeNames[val];
+        } else {
+            return std::to_string(val);
+        }
+    });
+
+    _dns_topQType.to_opentelemetry(scope, add_labels, [](const uint16_t &val) {
+        if (QTypeNames.find(val) != QTypeNames.end()) {
+            return QTypeNames[val];
+        } else {
+            return std::to_string(val);
+        }
+    });
+}
+
 void DnsMetricsBucket::process_filtered()
 {
     std::unique_lock lock(_mutex);

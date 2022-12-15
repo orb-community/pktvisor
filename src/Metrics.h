@@ -484,6 +484,16 @@ private:
         return std::set<std::pair<std::string, uint64_t>, comparator>(summary.begin(), summary.end());
     }
 
+    void _set_opentelemetry_data(opentelemetry::proto::metrics::v1::NumberDataPoint *data_point, const Metric::LabelMap &l, uint64_t value) const
+    {
+        data_point->set_as_int(value);
+        for (const auto &label : l) {
+            auto attribute = data_point->add_attributes();
+            attribute->set_key(label.first);
+            attribute->mutable_value()->set_string_value(label.second);
+        }
+    }
+
 public:
     TopN(std::string schema_key, std::string item_key, std::initializer_list<std::string> names, std::string desc)
         : Metric(schema_key, names, std::move(desc))
@@ -664,18 +674,55 @@ public:
                 std::stringstream name_text;
                 name_text << items[i].get_item();
                 l[_item_key] = name_text.str();
-                auto gauge_data_point = metric->mutable_gauge()->add_data_points();
-                gauge_data_point->set_as_int(items[i].get_estimate());
-                for (const auto &label : l) {
-                    auto attribute = gauge_data_point->add_attributes();
-                    attribute->set_key(label.first);
-                    attribute->mutable_value()->set_string_value(label.second);
-                }
+                _set_opentelemetry_data(metric->mutable_gauge()->add_data_points(), l, items[i].get_estimate());
             } else {
                 break;
             }
         }
+    }
 
+    void to_opentelemetry(metrics::v1::ScopeMetrics &scope, Metric::LabelMap add_labels, std::function<std::string(const T &)> formatter, Aggregate op = Aggregate::DEFAULT) const
+    {
+        LabelMap l(add_labels);
+        auto metric = scope.add_metrics();
+        metric->set_name(base_name_snake() + " gauge");
+        metric->set_description(base_name_snake() + " " + _desc);
+        auto items = _fi.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
+        auto threshold = _get_threshold(items);
+        if (op == Aggregate::DEFAULT) {
+            for (uint64_t i = 0; i < std::min(_top_count, items.size()); i++) {
+                if (items[i].get_estimate() >= threshold) {
+                    l[_item_key] = formatter(items[i].get_item());
+                    _set_opentelemetry_data(metric->mutable_gauge()->add_data_points(), l, items[i].get_estimate());
+                } else {
+                    break;
+                }
+            }
+        } else if (op == Aggregate::SUMMARY) {
+            auto sorted = _get_summarized_data(items, formatter, threshold);
+            for (const auto &data : sorted) {
+                l[_item_key] = data.first;
+                _set_opentelemetry_data(metric->mutable_gauge()->add_data_points(), l, data.second);
+            }
+        }
+    }
+
+    void to_opentelemetry(metrics::v1::ScopeMetrics &scope, Metric::LabelMap add_labels, std::function<void(LabelMap &, const std::string &, const T &)> formatter) const
+    {
+        LabelMap l(add_labels);
+        auto metric = scope.add_metrics();
+        metric->set_name(base_name_snake() + " gauge");
+        metric->set_description(base_name_snake() + " " + _desc);
+        auto items = _fi.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
+        auto threshold = _get_threshold(items);
+        for (uint64_t i = 0; i < std::min(_top_count, items.size()); i++) {
+            if (items[i].get_estimate() >= threshold) {
+                formatter(l, _item_key, items[i].get_item());
+                _set_opentelemetry_data(metric->mutable_gauge()->add_data_points(), l, items[i].get_estimate());
+            } else {
+                break;
+            }
+        }
     }
 };
 

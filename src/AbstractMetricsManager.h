@@ -218,6 +218,7 @@ public:
 
     virtual void to_json(json &j) const = 0;
     virtual void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const = 0;
+    virtual void to_opentelemetry(metrics::v1::ScopeMetrics &scope, Metric::LabelMap add_labels = {}) const = 0;
     virtual void update_topn_metrics(size_t topn_count, uint64_t percentile_threshold) = 0;
 };
 
@@ -527,6 +528,42 @@ public:
         }
 
         _metric_buckets.at(period)->to_prometheus(out, add_labels);
+    }
+
+    void window_single_opentelemetry(metrics::v1::ScopeMetrics &scope, uint64_t period = 0, Metric::LabelMap add_labels = {}) const
+    {
+        std::shared_lock rl(_base_mutex);
+        std::shared_lock rbl(_bucket_mutex);
+
+        if (period >= _num_periods) {
+            std::stringstream err;
+            err << "invalid metrics period, specify [0, " << _num_periods - 1 << "]";
+            throw PeriodException(err.str());
+        }
+        if (period >= _metric_buckets.size()) {
+            std::stringstream err;
+            err << "requested metrics period has not yet accumulated, current range is [0, " << _metric_buckets.size() - 1 << "]";
+            throw PeriodException(err.str());
+        }
+
+        if (_groups && _groups->none()) {
+            return;
+        }
+
+        if (!_tap_name.empty() && add_labels.find("tap") == add_labels.end()) {
+            add_labels["tap"] = _tap_name;
+        }
+
+        _metric_buckets.at(period)->to_opentelemetry(scope, add_labels);
+    }
+
+    void window_external_opentelemetry(metrics::v1::ScopeMetrics &scope, AbstractMetricsBucket *bucket, Metric::LabelMap add_labels = {}) const
+    {
+        if (_groups && _groups->none()) {
+            return;
+        }
+        // static because caller guarantees only our own bucket type
+        static_cast<MetricsBucketClass *>(bucket)->to_opentelemetry(scope, add_labels);
     }
 
     void window_external_prometheus(std::stringstream &out, AbstractMetricsBucket *bucket, Metric::LabelMap add_labels = {}) const

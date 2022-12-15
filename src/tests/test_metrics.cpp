@@ -17,6 +17,9 @@ public:
     {
         out << "test_performed" << std::endl;
     }
+    void to_opentelemetry(metrics::v1::ScopeMetrics &, Metric::LabelMap) const
+    {
+    }
     void update_topn_metrics(size_t, uint64_t)
     {
     }
