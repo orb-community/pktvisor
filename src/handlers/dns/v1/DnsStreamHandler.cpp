@@ -155,6 +155,11 @@ void DnsStreamHandler::start()
         _metrics->set_recorded_stream();
     }
 
+    if (config_exists("xact_ttl_secs")) {
+        auto ttl = config_get<uint64_t>("xact_ttl_secs");
+        _metrics->set_xact_ttl(static_cast<uint32_t>(ttl));
+    }
+
     if (_pcap_proxy) {
         if (!_using_predicate_signals) {
             _pkt_udp_connection = _pcap_proxy->udp_signal.connect(&DnsStreamHandler::process_udp_packet_cb, this);
@@ -1098,14 +1103,14 @@ void DnsMetricsManager::process_dns_layer(DnsLayer &payload, PacketDirection dir
     if (group_enabled(group::DnsMetrics::DnsTransactions)) {
         // handle dns transactions (query/response pairs)
         if (payload.getDnsHeader()->queryOrResponse == QR::response) {
-            auto xact = _qr_pair_manager.maybe_end_transaction(DnsXactID(flowkey, payload.getDnsHeader()->transactionID), stamp);
+            auto xact = _qr_pair_manager->maybe_end_transaction(DnsXactID(flowkey, payload.getDnsHeader()->transactionID), stamp);
             if (xact.first == Result::Valid) {
                 live_bucket()->new_dns_transaction(_deep_sampling_now, _to90th, _from90th, payload, dir, xact.second);
             } else if (xact.first == Result::TimedOut) {
                 live_bucket()->inc_xact_timed_out(1);
             }
         } else {
-            _qr_pair_manager.start_transaction(DnsXactID(flowkey, payload.getDnsHeader()->transactionID), {{stamp, {0, 0}}, payload.getDataLen()});
+            _qr_pair_manager->start_transaction(DnsXactID(flowkey, payload.getDnsHeader()->transactionID), {{stamp, {0, 0}}, payload.getDataLen()});
         }
     }
 }

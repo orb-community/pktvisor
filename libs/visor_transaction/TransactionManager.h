@@ -53,11 +53,11 @@ class TransactionManager
     static_assert(std::is_base_of<Transaction, TransactionType>::value, "TransactionType must inherit from Transaction structure");
     typedef robin_hood::unordered_map<XactID, TransactionType, Hash> XactMap;
 
-    unsigned int _ttl_secs;
+    uint32_t _ttl_secs;
     XactMap _transactions;
 
 public:
-    TransactionManager(unsigned int ttl_secs = 5)
+    TransactionManager(uint32_t ttl_secs = 5)
         : _ttl_secs(ttl_secs)
     {
     }

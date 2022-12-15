@@ -95,18 +95,25 @@ public:
 
 class NetProbeMetricsManager final : public visor::AbstractMetricsManager<NetProbeMetricsBucket>
 {
-    TransactionManager<uint32_t, NetProbeTransaction, std::hash<uint32_t>> _request_reply_manager;
+    typedef TransactionManager<uint32_t, NetProbeTransaction, std::hash<uint32_t>> NetProbeTransactionManager;
+    std::unique_ptr<NetProbeTransactionManager> _request_reply_manager;
 
 public:
     NetProbeMetricsManager(const Configurable *window_config)
         : visor::AbstractMetricsManager<NetProbeMetricsBucket>(window_config)
+        , _request_reply_manager(std::make_unique<NetProbeTransactionManager>())
     {
     }
 
     void on_period_shift(timespec stamp, [[maybe_unused]] const NetProbeMetricsBucket *maybe_expiring_bucket) override
     {
         // NetProbe transaction support
-        _request_reply_manager.purge_old_transactions(stamp);
+        _request_reply_manager->purge_old_transactions(stamp);
+    }
+
+    void set_xact_ttl(uint32_t ttl)
+    {
+        _request_reply_manager = std::make_unique<NetProbeTransactionManager>(ttl);
     }
 
     void process_filtered(timespec stamp);
@@ -126,7 +133,8 @@ class NetProbeStreamHandler final : public visor::StreamMetricsHandler<NetProbeM
     sigslot::connection _heartbeat_connection;
 
     static const inline StreamMetricsHandler::ConfigsDefType _config_defs = {
-        "recorded_stream"};
+        "recorded_stream",
+        "xact_ttl_secs"};
 
     static const inline NetProbeStreamHandler::GroupDefType _group_defs = {
         {"counters", group::NetProbeMetrics::Counters},

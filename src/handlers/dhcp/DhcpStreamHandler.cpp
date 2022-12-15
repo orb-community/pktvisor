@@ -50,6 +50,11 @@ void DhcpStreamHandler::start()
         _metrics->set_recorded_stream();
     }
 
+    if (config_exists("xact_ttl_secs")) {
+        auto ttl = config_get<uint64_t>("xact_ttl_secs");
+        _metrics->set_xact_ttl(static_cast<uint32_t>(ttl));
+    }
+
     if (_pcap_proxy) {
         _pkt_udp_connection = _pcap_proxy->udp_signal.connect(&DhcpStreamHandler::process_udp_packet_cb, this);
         _start_tstamp_connection = _pcap_proxy->start_tstamp_signal.connect(&DhcpStreamHandler::set_start_tstamp, this);
@@ -291,9 +296,9 @@ void DhcpMetricsManager::process_dhcp_layer(pcpp::DhcpLayer *dhcp, pcpp::Packet 
             hostname = option.getValueAsString();
         }
         auto mac_address = dhcp->getClientHardwareAddress().toString();
-        _request_ack_manager.start_transaction(dhcp->getDhcpHeader()->transactionID, {{stamp, {0, 0}}, hostname, mac_address});
+        _request_ack_manager->start_transaction(dhcp->getDhcpHeader()->transactionID, {{stamp, {0, 0}}, hostname, mac_address});
     } else if (type == pcpp::DHCP_ACK) {
-        auto xact = _request_ack_manager.maybe_end_transaction(dhcp->getDhcpHeader()->transactionID, stamp);
+        auto xact = _request_ack_manager->maybe_end_transaction(dhcp->getDhcpHeader()->transactionID, stamp);
         if (xact.first == Result::Valid) {
             live_bucket()->new_dhcp_transaction(_deep_sampling_now, dhcp, xact.second);
         }
