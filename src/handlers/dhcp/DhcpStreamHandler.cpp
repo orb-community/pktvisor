@@ -50,6 +50,11 @@ void DhcpStreamHandler::start()
         _metrics->set_recorded_stream();
     }
 
+    if (config_exists("xact_ttl_secs")) {
+        auto ttl = config_get<uint64_t>("xact_ttl_secs");
+        _metrics->set_xact_ttl(static_cast<uint32_t>(ttl));
+    }
+
     if (_pcap_proxy) {
         _pkt_udp_connection = _pcap_proxy->udp_signal.connect(&DhcpStreamHandler::process_udp_packet_cb, this);
         _start_tstamp_connection = _pcap_proxy->start_tstamp_signal.connect(&DhcpStreamHandler::set_start_tstamp, this);

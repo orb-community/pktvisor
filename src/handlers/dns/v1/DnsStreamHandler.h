@@ -238,12 +238,8 @@ class DnsMetricsManager final : public visor::AbstractMetricsManager<DnsMetricsB
 public:
     DnsMetricsManager(const Configurable *window_config)
         : visor::AbstractMetricsManager<DnsMetricsBucket>(window_config)
+        , _qr_pair_manager(std::make_unique<DnsTransactionManager>())
     {
-        if (window_config->config_exists("xact_ttl_secs")) {
-            _qr_pair_manager = std::make_unique<DnsTransactionManager>(static_cast<uint32_t>(window_config->config_get<uint64_t>("xact_ttl_secs")));
-        } else {
-            _qr_pair_manager = std::make_unique<DnsTransactionManager>();
-        }
     }
 
     void on_period_shift(timespec stamp, [[maybe_unused]] const DnsMetricsBucket *maybe_expiring_bucket) override
@@ -266,6 +262,11 @@ public:
     size_t num_open_transactions() const
     {
         return _qr_pair_manager->open_transaction_count();
+    }
+
+    void set_xact_ttl(uint32_t ttl)
+    {
+        _qr_pair_manager = std::make_unique<DnsTransactionManager>(ttl);
     }
 
     void process_filtered(timespec stamp);

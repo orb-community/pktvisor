@@ -160,6 +160,11 @@ void DnsStreamHandler::start()
         _metrics->set_recorded_stream();
     }
 
+    if (config_exists("xact_ttl_secs")) {
+        auto ttl = config_get<uint64_t>("xact_ttl_secs");
+        _metrics->set_xact_ttl(static_cast<uint32_t>(ttl));
+    }
+
     if (_pcap_proxy) {
         if (!_using_predicate_signals) {
             _pkt_udp_connection = _pcap_proxy->udp_signal.connect(&DnsStreamHandler::process_udp_packet_cb, this);

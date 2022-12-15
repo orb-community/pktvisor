@@ -101,18 +101,19 @@ class NetProbeMetricsManager final : public visor::AbstractMetricsManager<NetPro
 public:
     NetProbeMetricsManager(const Configurable *window_config)
         : visor::AbstractMetricsManager<NetProbeMetricsBucket>(window_config)
+        , _request_reply_manager(std::make_unique<NetProbeTransactionManager>())
     {
-        if (window_config->config_exists("xact_ttl_secs")) {
-            _request_reply_manager = std::make_unique<NetProbeTransactionManager>(static_cast<uint32_t>(window_config->config_get<uint64_t>("xact_ttl_secs")));
-        } else {
-            _request_reply_manager = std::make_unique<NetProbeTransactionManager>();
-        }
     }
 
     void on_period_shift(timespec stamp, [[maybe_unused]] const NetProbeMetricsBucket *maybe_expiring_bucket) override
     {
         // NetProbe transaction support
         _request_reply_manager->purge_old_transactions(stamp);
+    }
+
+    void set_xact_ttl(uint32_t ttl)
+    {
+        _request_reply_manager = std::make_unique<NetProbeTransactionManager>(ttl);
     }
 
     void process_filtered(timespec stamp);

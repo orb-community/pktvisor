@@ -124,18 +124,19 @@ class DhcpMetricsManager final : public visor::AbstractMetricsManager<DhcpMetric
 public:
     DhcpMetricsManager(const Configurable *window_config)
         : visor::AbstractMetricsManager<DhcpMetricsBucket>(window_config)
+        , _request_ack_manager(std::make_unique<DhcpTransactionManager>())
     {
-        if (window_config->config_exists("xact_ttl_secs")) {
-            _request_ack_manager = std::make_unique<DhcpTransactionManager>(static_cast<uint32_t>(window_config->config_get<uint64_t>("xact_ttl_secs")));
-        } else {
-            _request_ack_manager = std::make_unique<DhcpTransactionManager>();
-        }
     }
 
     void on_period_shift(timespec stamp, [[maybe_unused]] const DhcpMetricsBucket *maybe_expiring_bucket) override
     {
         // Dhcp transaction support
         _request_ack_manager->purge_old_transactions(stamp);
+    }
+
+    void set_xact_ttl(uint32_t ttl)
+    {
+        _request_ack_manager = std::make_unique<DhcpTransactionManager>(ttl);
     }
 
     void process_filtered(timespec stamp);

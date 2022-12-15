@@ -34,6 +34,11 @@ void NetProbeStreamHandler::start()
         _metrics->set_recorded_stream();
     }
 
+    if (config_exists("xact_ttl_secs")) {
+        auto ttl = config_get<uint64_t>("xact_ttl_secs");
+        _metrics->set_xact_ttl(static_cast<uint32_t>(ttl));
+    }
+
     if (_netprobe_proxy) {
         _probe_send_connection = _netprobe_proxy->probe_send_signal.connect(&NetProbeStreamHandler::probe_signal_send, this);
         _probe_recv_connection = _netprobe_proxy->probe_recv_signal.connect(&NetProbeStreamHandler::probe_signal_recv, this);

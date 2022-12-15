@@ -375,16 +375,9 @@ public:
     DnsMetricsManager(const Configurable *window_config)
         : visor::AbstractMetricsManager<DnsMetricsBucket>(window_config)
     {
-        if (window_config->config_exists("xact_ttl_secs")) {
-            auto ttl = static_cast<uint32_t>(window_config->config_get<uint64_t>("xact_ttl_secs"));
-            _pair_manager[TransactionDirection::in] = DirTransaction(ttl);
-            _pair_manager[TransactionDirection::out] = DirTransaction(ttl);
-            _pair_manager[TransactionDirection::unknown] = DirTransaction(ttl);
-        } else {
-            _pair_manager[TransactionDirection::in] = DirTransaction();
-            _pair_manager[TransactionDirection::out] = DirTransaction();
-            _pair_manager[TransactionDirection::unknown] = DirTransaction();
-        }
+        _pair_manager[TransactionDirection::in] = DirTransaction();
+        _pair_manager[TransactionDirection::out] = DirTransaction();
+        _pair_manager[TransactionDirection::unknown] = DirTransaction();
     }
 
     void on_period_shift(timespec stamp, [[maybe_unused]] const DnsMetricsBucket *maybe_expiring_bucket) override
@@ -409,6 +402,13 @@ public:
             count += manager.second.xact_map->open_transaction_count();
         }
         return count;
+    }
+
+    void set_xact_ttl(uint32_t ttl)
+    {
+        _pair_manager[TransactionDirection::in] = DirTransaction(ttl);
+        _pair_manager[TransactionDirection::out] = DirTransaction(ttl);
+        _pair_manager[TransactionDirection::unknown] = DirTransaction(ttl);
     }
 
     void process_filtered(timespec stamp)
