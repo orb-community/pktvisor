@@ -168,7 +168,6 @@ struct CmdOptions {
     };
     Opentelemetry otel_setup;
 
-
     struct Crashpad {
         bool disable{false};
         std::optional<std::string> token;
@@ -605,9 +604,25 @@ int main(int argc, char *argv[])
         logger->info("Enabling TLS with cert {} and key {}", http_config.key, http_config.cert);
     }
 
+    OtelConfig otel_config;
+    if (options.otel_setup.otel_support) {
+        otel_config.enable = true;
+        if (options.otel_setup.tls_support) {
+            if (!options.otel_setup.tls_key.has_value() || !options.otel_setup.tls_cert.has_value()) {
+                logger->error("you must specify --otel-tls-key and --otel-tls-cert to use --otel-tls");
+                exit(EXIT_FAILURE);
+            }
+            otel_config.tls_key = options.otel_setup.tls_key.value();
+            otel_config.tls_cert = options.otel_setup.tls_cert.value();
+            logger->info("Enabling OTEL TLS with cert {} and key {}", otel_config.tls_key, otel_config.tls_cert);
+        }
+        otel_config.endpoint = options.otel_setup.host.value();
+        otel_config.port_number = options.otel_setup.port.value();
+    }
+
     std::unique_ptr<CoreServer> svr;
     try {
-        svr = std::make_unique<CoreServer>(&registry, logger, http_config, prom_config);
+        svr = std::make_unique<CoreServer>(&registry, logger, http_config, otel_config, prom_config);
     } catch (const std::exception &e) {
         logger->error(e.what());
         logger->info("exit with failure");

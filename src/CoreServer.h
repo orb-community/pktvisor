@@ -26,10 +26,11 @@ class CoreServer
     std::shared_ptr<spdlog::logger> _logger;
     std::chrono::system_clock::time_point _start_time;
 
+    std::unique_ptr<OpenTelemetry> _otel;
     void _setup_routes(const PrometheusConfig &prom_config);
 
 public:
-    CoreServer(CoreRegistry *registry, std::shared_ptr<spdlog::logger> logger, const HttpConfig &http_config, const PrometheusConfig &prom_config);
+    CoreServer(CoreRegistry *registry, std::shared_ptr<spdlog::logger> logger, const HttpConfig &http_config, const OtelConfig &otel_config, const PrometheusConfig &prom_config);
     ~CoreServer();
 
     void start(const std::string &host, int port);

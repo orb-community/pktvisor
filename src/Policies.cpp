@@ -398,6 +398,25 @@ void Policy::prometheus_metrics(std::stringstream &out)
     }
 }
 
+void Policy::opentelemetry_metrics(metrics::v1::ScopeMetrics &scope)
+{
+    if (_merge_like_handlers) {
+        auto bucket_map = _get_merged_buckets();
+        for (auto &[bucket, hmod] : bucket_map) {
+            hmod->window_opentelemetry(scope, bucket.get(), {{"policy", name()}, {"handler", hmod->schema_key() + "_merged"}});
+        }
+    } else {
+        for (auto &mod : modules()) {
+            auto hmod = dynamic_cast<StreamHandler *>(mod);
+            if (hmod) {
+                spdlog::stopwatch sw;
+                hmod->window_opentelemetry(scope, {{"policy", name()}, {"handler", hmod->name()}});
+                spdlog::get("visor")->debug("{} window_prometheus elapsed time: {}", hmod->name(), sw);
+            }
+        }
+    }
+}
+
 Policy::BucketMap Policy::_get_merged_buckets(bool prometheus, uint64_t period, bool merged)
 {
     BucketMap bucket_map;
