@@ -8,6 +8,7 @@
 namespace visor::input::netprobe {
 
 sigslot::signal<pcpp::Packet &, timespec> PingReceiver::recv_signal;
+std::recursive_mutex PingReceiver::mutex;
 thread_local std::atomic<uint32_t> PingProbe::sock_count{0};
 thread_local SOCKET PingProbe::_sock{INVALID_SOCKET};
 
@@ -93,6 +94,7 @@ void PingReceiver::_setup_receiver()
                 TIMESPEC_TO_TIMEVAL(&time, &stamp);
                 pcpp::RawPacket raw(reinterpret_cast<uint8_t *>(_array.data()), rc, time, false, pcpp::LINKTYPE_DLT_RAW1);
                 pcpp::Packet packet(&raw, pcpp::ICMP);
+                std::lock_guard<std::recursive_mutex> lock(mutex);
                 recv_signal(packet, stamp);
             }
         }
@@ -172,7 +174,6 @@ bool PingProbe::start(std::shared_ptr<uvw::Loop> io_loop)
         });
 
         _recv_connection = PingReceiver::recv_signal.connect([this](pcpp::Packet &packet, timespec stamp) {
-            std::unique_lock<std::mutex> lock(_mutex);
             _recv(packet, TestType::Ping, _name, stamp);
         });
 
@@ -299,7 +300,8 @@ void PingProbe::_send_icmp_v4(uint8_t sequence)
     if (rc != SOCKET_ERROR) {
         pcpp::Packet packet;
         packet.addLayer(&icmp);
-        std::unique_lock<std::mutex> lock(_mutex);
+        //Ensure that _send and recv_signal is not called at same time
+        std::lock_guard<std::recursive_mutex> lock(PingReceiver::mutex);
         _send(packet, TestType::Ping, _name, stamp);
     }
 }
