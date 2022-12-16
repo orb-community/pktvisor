@@ -90,6 +90,7 @@ class PingProbe final : public NetProbe
     sockaddr_in _sa;
     sockaddr_in6 _sa6;
     sigslot::connection _recv_connection;
+    std::mutex _mutex;
 
     void _send_icmp_v4(uint8_t sequence);
     std::optional<ErrorType> _get_addr();

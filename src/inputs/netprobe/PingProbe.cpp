@@ -171,7 +171,10 @@ bool PingProbe::start(std::shared_ptr<uvw::Loop> io_loop)
             }
         });
 
-        _recv_connection = PingReceiver::recv_signal.connect([this](pcpp::Packet &packet, timespec stamp) { _recv(packet, TestType::Ping, _name, stamp); });
+        _recv_connection = PingReceiver::recv_signal.connect([this](pcpp::Packet &packet, timespec stamp) {
+            std::unique_lock<std::mutex> lock(_mutex);
+            _recv(packet, TestType::Ping, _name, stamp);
+        });
 
         (_sequence == UCHAR_MAX) ? _sequence = 0 : _sequence++;
         _send_icmp_v4(_internal_sequence);
@@ -296,6 +299,7 @@ void PingProbe::_send_icmp_v4(uint8_t sequence)
     if (rc != SOCKET_ERROR) {
         pcpp::Packet packet;
         packet.addLayer(&icmp);
+        std::unique_lock<std::mutex> lock(_mutex);
         _send(packet, TestType::Ping, _name, stamp);
     }
 }
