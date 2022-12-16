@@ -100,6 +100,14 @@ static const char USAGE[] =
     Prometheus Options:
       --prometheus                          Ignored, Prometheus output always enabled (left for backwards compatibility)
       --prom-instance ID                    Optionally set the 'instance' label to given ID
+    Opentelemetry Options
+      --opentelemetry                       Enable Opentelemetry OTLP exporter over HTTP
+      --otel-host HOST                      Setup OTEL Collector IP to where the data will be pushed to (default: localhost)
+      --otel-port PORT                      Setup OTEL Collector port number (default: 4317)
+      --otel-interval N                     The interval in seconds that exporter will periodically push data (default: 60)
+      --otel-tls                            Enable TLS communication between Exporter and Collector
+      --otel-tls-cert FILE                  Use given TLS cert. Required if --otel-tls is enabled.
+      --otel-tls-key FILE                   Use given TLS private key. Required if --otel-tls is enabled.
     Metric Enrichment Options:
       --iana-service-port-registry FILE     IANA Service Name and Transport Protocol Port Number Registry file in CSV format
       --default-service-registry FILE       Default IANA Service Name Port Number Registry CSV file to be loaded if no other is specified
@@ -148,6 +156,18 @@ struct CmdOptions {
         std::optional<std::string> tls_key;
     };
     WebServer web_server;
+
+    struct Opentelemetry {
+        bool otel_support{false};
+        bool tls_support{false};
+        std::optional<unsigned int> interval;
+        std::optional<unsigned int> port;
+        std::optional<std::string> host;
+        std::optional<std::string> tls_cert;
+        std::optional<std::string> tls_key;
+    };
+    Opentelemetry otel_setup;
+
 
     struct Crashpad {
         bool disable{false};
@@ -295,6 +315,45 @@ void fill_cmd_options(std::map<std::string, docopt::value> args, CmdOptions &opt
         options.web_server.tls_key = args["--tls-key"].asString();
     } else if (config["tls_key"]) {
         options.web_server.tls_key = config["tls_key"].as<std::string>();
+    }
+
+    options.otel_setup.otel_support = (config["opentelemetry"] && config["opentelemetry"].as<bool>()) || args["--opentelemetry"].asBool();
+    options.otel_setup.tls_support = (config["otel_tls"] && config["otel_tls"].as<bool>()) || args["--admin-api"].asBool();
+
+    if (args["--otel-host"]) {
+        options.otel_setup.host = args["--otel-host"].asString();
+    } else if (config["otel_host"]) {
+        options.otel_setup.host = config["otel_host"].as<std::string>();
+    } else {
+        options.otel_setup.host = "localhost";
+    }
+
+    if (args["--otel-port"]) {
+        options.otel_setup.port = static_cast<unsigned int>(args["--otel-port"].asLong());
+    } else if (config["otel_port"]) {
+        options.otel_setup.port = config["otel_port"].as<unsigned int>();
+    } else {
+        options.otel_setup.port = 4317;
+    }
+
+    if (args["--otel-interval"]) {
+        options.otel_setup.interval = static_cast<unsigned int>(args["--otel-interval"].asLong());
+    } else if (config["otel_interval"]) {
+        options.otel_setup.interval = config["otel_interval"].as<unsigned int>();
+    } else {
+        options.otel_setup.interval = 60;
+    }
+
+    if (args["--otel-tls-cert"]) {
+        options.otel_setup.tls_cert = args["--otel-tls-cert"].asString();
+    } else if (config["otel_tls_cert"]) {
+        options.otel_setup.tls_cert = config["otel_tls_cert"].as<std::string>();
+    }
+
+    if (args["--otel-tls-key"]) {
+        options.otel_setup.tls_key = args["--otel-tls-key"].asString();
+    } else if (config["otel_tls_key"]) {
+        options.otel_setup.tls_key = config["otel_tls_key"].as<std::string>();
     }
 
     options.module.list = (config["module_list"] && config["module_list"].as<bool>()) || args["--module-list"].asBool();

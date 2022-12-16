@@ -24,9 +24,11 @@ constexpr char BIN_CONTENT_TYPE[] = "application/x-protobuf";
 using namespace opentelemetry::proto;
 
 struct OtelConfig {
-    std::string endpoint{"localhost"};
-    uint32_t port_number{4318};
-    uint64_t interval_sec{60};
+    std::string endpoint;
+    uint32_t port_number;
+    uint64_t interval_sec;
+    std::string tls_cert;
+    std::string tls_key;
 };
 
 class OpenTelemetry
