@@ -10,6 +10,9 @@
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 #pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
 #endif
+#ifdef __apple__
+#include <netdb.h>
+#endif
 #include <httplib.h>
 #ifdef __GNUC__
 #pragma GCC diagnostic pop

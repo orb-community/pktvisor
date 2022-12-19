@@ -56,6 +56,9 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 #set(CMAKE_VERBOSE_MAKEFILE ON)
 if(NOT MSVC)
     add_compile_options(-Wall -pedantic -W -Wextra -Wno-unknown-pragmas)
+else()
+    ADD_DEFINITIONS(-DPROTOBUF_USE_DLLS)
+    ADD_DEFINITIONS(-DPROTOBUF_C_EXPORT)
 endif()
 
 # Conan setup
