@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "visor_config.h"
 #include <functional>
 #include <timer.hpp>
 #ifdef __GNUC__
@@ -36,7 +37,7 @@ class OpenTelemetry
 {
     httplib::Client _client;
     collector::metrics::v1::ExportMetricsServiceRequest _request;
-    metrics::v1::ScopeMetrics _scope;
+    metrics::v1::ScopeMetrics *_scope;
     std::shared_ptr<timer::interval_handle> _timer_handle;
     std::function<bool(metrics::v1::ScopeMetrics &scope)> _callback;
 
@@ -45,21 +46,27 @@ public:
         : _client(config.endpoint, config.port_number)
     {
         auto resource = _request.add_resource_metrics();
-        _scope.Swap(resource->add_scope_metrics());
-        _scope.mutable_scope()->set_name("pktvisor");
-        _scope.mutable_scope()->set_version("4.2.0");
-
+        _scope = resource->add_scope_metrics();
+        _scope->mutable_scope()->set_name("pktvisor");
+        _scope->mutable_scope()->set_version(VISOR_VERSION_NUM);
         static timer timer_thread{std::chrono::seconds(config.interval_sec)};
         _timer_handle = timer_thread.set_interval(std::chrono::seconds(config.interval_sec), [this] {
-            _scope.clear_metrics();
-            if (_callback && _callback(_scope)) {
-                if (auto body_size = _request.ByteSizeLong(); body_size > 0) {
+            _scope->clear_metrics();
+            if (_callback && _callback(*_scope)) {
+                if (auto body_size = _request.ByteSizeLong(); _scope->metrics_size()) {
                     auto body = std::make_unique<char[]>(body_size);
                     _request.SerializeToArray(body.get(), body_size);
                     auto result = _client.Post("/v1/metrics", body.get(), body_size, BIN_CONTENT_TYPE);
                 }
             }
         });
+    }
+
+    ~OpenTelemetry()
+    {
+        _timer_handle->cancel();
+        _scope->clear_scope();
+        _scope = nullptr;
     }
 
     void OnInterval(std::function<bool(metrics::v1::ScopeMetrics &scope)> callback)
