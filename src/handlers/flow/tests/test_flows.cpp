@@ -320,6 +320,7 @@ TEST_CASE("Parse sflow stream with interfaces filter", "[sflow][flow]")
     auto devices = std::make_shared<visor::Configurable>();
     devices->config_set<visor::Configurable::StringList>("192.168.0.11", {"37", "4", "35-37"});
     flow_handler.config_set<std::shared_ptr<visor::Configurable>>("only_device_interfaces", devices);
+    flow_handler.config_set<visor::Configurable::StringList>("only_directions", {"in"});
 
     flow_handler.start();
     stream.start();
@@ -335,16 +336,14 @@ TEST_CASE("Parse sflow stream with interfaces filter", "[sflow][flow]")
     nlohmann::json j;
     flow_handler.metrics()->bucket(0)->to_json(j);
 
-    CHECK(j["devices"]["192.168.0.11"]["interfaces"]["37"]["cardinality"]["dst_ips_out"] == 2);
-    CHECK(j["devices"]["192.168.0.11"]["interfaces"]["37"]["cardinality"]["src_ips_in"] == 2);
-    CHECK(j["devices"]["192.168.0.11"]["interfaces"]["37"]["cardinality"]["dst_ports_out"] == 16);
-    CHECK(j["devices"]["192.168.0.11"]["interfaces"]["37"]["cardinality"]["src_ports_in"] == 16);
+    CHECK(j["devices"]["192.168.0.11"]["interfaces"]["37"]["cardinality"]["dst_ips_out"] == 1);
+    CHECK(j["devices"]["192.168.0.11"]["interfaces"]["37"]["cardinality"]["src_ips_in"] == 1);
+    CHECK(j["devices"]["192.168.0.11"]["interfaces"]["37"]["cardinality"]["dst_ports_out"] == 1);
+    CHECK(j["devices"]["192.168.0.11"]["interfaces"]["37"]["cardinality"]["src_ports_in"] == 15);
     CHECK(j["devices"]["192.168.0.11"]["interfaces"]["37"]["top_in_src_ips_bytes"][0]["estimate"] == 264021720000);
     CHECK(j["devices"]["192.168.0.11"]["interfaces"]["37"]["top_in_src_ips_bytes"][0]["name"] == "10.4.1.2");
-    CHECK(j["devices"]["192.168.0.11"]["interfaces"]["37"]["top_out_src_ips_packets"][0]["estimate"] == 8040000);
-    CHECK(j["devices"]["192.168.0.11"]["interfaces"]["37"]["top_out_src_ips_packets"][0]["name"] == "10.4.2.2");
-    CHECK(j["devices"]["192.168.0.11"]["interfaces"]["37"]["top_out_src_ips_and_port_bytes"][0]["estimate"] == 563840000);
-    CHECK(j["devices"]["192.168.0.11"]["interfaces"]["37"]["top_out_src_ips_and_port_bytes"][0]["name"] == "10.4.2.2:5001");
+    CHECK(j["devices"]["192.168.0.11"]["interfaces"]["37"]["top_out_src_ips_packets"][0]["name"] == nullptr);
+    CHECK(j["devices"]["192.168.0.11"]["interfaces"]["37"]["top_out_src_ips_and_port_bytes"][0]["estimate"] == nullptr);
 }
 
 TEST_CASE("Parse netflow stream", "[netflow][flow]")
@@ -393,5 +392,5 @@ TEST_CASE("Flow invalid config", "[flow][filter][config]")
     c.config_set<uint64_t>("num_periods", 1);
     FlowStreamHandler flow_handler{"flow-test", stream_proxy, &c};
     flow_handler.config_set<bool>("invalid_config", true);
-    REQUIRE_THROWS_WITH(flow_handler.start(), "invalid_config is an invalid/unsupported config or filter. The valid configs/filters are: device_map, enrichment, only_device_interfaces, only_ips, only_ports, geoloc_notfound, asn_notfound, summarize_ips_by_asn, subnets_for_summarization, exclude_ips_from_summarization, sample_rate_scaling, recorded_stream, deep_sample_rate, num_periods, topn_count, topn_percentile_threshold");
+    REQUIRE_THROWS_WITH(flow_handler.start(), "invalid_config is an invalid/unsupported config or filter. The valid configs/filters are: device_map, enrichment, only_device_interfaces, only_ips, only_ports, only_directions, geoloc_notfound, asn_notfound, summarize_ips_by_asn, subnets_for_summarization, exclude_ips_from_summarization, sample_rate_scaling, recorded_stream, deep_sample_rate, num_periods, topn_count, topn_percentile_threshold");
 }

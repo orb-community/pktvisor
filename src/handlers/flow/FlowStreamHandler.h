@@ -353,6 +353,8 @@ class FlowStreamHandler final : public visor::StreamMetricsHandler<FlowMetricsMa
         OnlyPorts,
         GeoLocNotFound,
         AsnNotFound,
+        DisableIn,
+        DisableOut,
         FiltersMAX
     };
     std::bitset<Filters::FiltersMAX> _f_enabled;
@@ -363,6 +365,7 @@ class FlowStreamHandler final : public visor::StreamMetricsHandler<FlowMetricsMa
         "only_device_interfaces",
         "only_ips",
         "only_ports",
+        "only_directions",
         "geoloc_notfound",
         "asn_notfound",
         "summarize_ips_by_asn",

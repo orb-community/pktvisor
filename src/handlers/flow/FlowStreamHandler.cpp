@@ -170,6 +170,20 @@ void FlowStreamHandler::start()
         _f_enabled.set(Filters::OnlyPorts);
     }
 
+    if (config_exists("only_directions")) {
+        _f_enabled.set(Filters::DisableIn);
+        _f_enabled.set(Filters::DisableOut);
+        for (const auto &dir : config_get<StringList>("only_directions")) {
+            if (dir == "in") {
+                _f_enabled.reset(Filters::DisableIn);
+            } else if (dir == "out") {
+                _f_enabled.reset(Filters::DisableOut);
+            } else {
+                throw ConfigException(fmt::format("FlowStreamHandler: only_directions filter contained an invalid/unsupported direction: {}", dir));
+            }
+        }
+    }
+
     if (config_exists("geoloc_notfound") && config_get<bool>("geoloc_notfound")) {
         _f_enabled.set(Filters::GeoLocNotFound);
     }
@@ -394,8 +408,9 @@ bool FlowStreamHandler::_filtering(FlowData &flow, const std::string &device_id)
         })) {
         return true;
     }
+
+    static constexpr uint8_t DEF_NO_MATCH = 2;
     if (_f_enabled[Filters::OnlyDeviceInterfaces]) {
-        static constexpr uint8_t DEF_NO_MATCH = 2;
         uint8_t no_match{0};
         if (std::none_of(_device_interfaces_list[device_id].begin(), _device_interfaces_list[device_id].end(), [flow](auto pair) {
                 return (flow.if_in_index >= pair.first && flow.if_in_index <= pair.second);
@@ -406,6 +421,22 @@ bool FlowStreamHandler::_filtering(FlowData &flow, const std::string &device_id)
         if (std::none_of(_device_interfaces_list[device_id].begin(), _device_interfaces_list[device_id].end(), [flow](auto pair) {
                 return (flow.if_out_index >= pair.first && flow.if_out_index <= pair.second);
             })) {
+            flow.if_out_index.reset();
+            ++no_match;
+        }
+        if (no_match == DEF_NO_MATCH) {
+            return true;
+        }
+    }
+
+    {
+        uint8_t no_match{0};
+        if (_f_enabled[Filters::DisableIn]) {
+            flow.if_in_index.reset();
+            ++no_match;
+        }
+
+        if (_f_enabled[Filters::DisableOut]) {
             flow.if_out_index.reset();
             ++no_match;
         }
