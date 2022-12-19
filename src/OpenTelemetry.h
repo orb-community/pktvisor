@@ -4,19 +4,11 @@
 
 #pragma once
 
+#include "HttpServer.h"
+#include "opentelemetry/proto/collector/metrics/v1/metrics_service.pb.h"
 #include "visor_config.h"
 #include <functional>
 #include <timer.hpp>
-#ifdef __GNUC__
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wold-style-cast"
-#pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
-#endif
-#include <httplib.h>
-#ifdef __GNUC__
-#pragma GCC diagnostic pop
-#endif
-#include "opentelemetry/proto/collector/metrics/v1/metrics_service.pb.h"
 
 namespace visor {
 
