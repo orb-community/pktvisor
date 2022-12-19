@@ -59,21 +59,47 @@ void DnsStreamHandler::start()
     // Setup Filters
     if (config_exists("exclude_noerror") && config_get<bool>("exclude_noerror")) {
         _f_enabled.set(Filters::ExcludingRCode);
-        _f_rcode = NoError;
+        _f_rcodes.push_back(NoError);
     } else if (config_exists("only_rcode")) {
+        std::vector<std::string> rcodes;
         uint64_t want_code;
         try {
             want_code = config_get<uint64_t>("only_rcode");
         } catch (const std::exception &e) {
-            throw ConfigException("DnsStreamHandler: wrong value type for only_rcode filter. It should be an integer");
+            try {
+                rcodes = config_get<StringList>("only_rcode");
+            } catch (const std::exception &e) {
+                throw ConfigException("DnsStreamHandler: wrong value type for only_rcode filter. It should be an integer or an array");
+            }
         }
-        if (RCodeNames.find(want_code) != RCodeNames.end()) {
-            _f_enabled.set(Filters::OnlyRCode);
-            _f_rcode = want_code;
+        _f_enabled.set(Filters::OnlyRCode);
+        if (rcodes.empty()) {
+            if (RCodeNames.find(want_code) != RCodeNames.end()) {
+                _f_rcodes.push_back(static_cast<uint16_t>(want_code));
+            } else {
+                throw ConfigException("DnsStreamHandler: only_rcode filter contained an invalid/unsupported rcode");
+            }
+            _register_predicate_filter(Filters::OnlyRCode, "only_rcode", std::to_string(want_code));
         } else {
-            throw ConfigException("DnsStreamHandler: only_rcode filter contained an invalid/unsupported rcode");
+            for (const auto &rcode : rcodes) {
+                if (std::all_of(rcode.begin(), rcode.end(), ::isdigit)) {
+                    auto value = std::stoul(rcode);
+                    if (RCodeNames.find(value) == RCodeNames.end()) {
+                        throw ConfigException(fmt::format("DnsStreamHandler: only_rcode filter contained an invalid/unsupported rcode: {}", value));
+                    }
+                    _f_rcodes.push_back(value);
+                } else {
+                    std::string upper_rcode{rcode};
+                    std::transform(upper_rcode.begin(), upper_rcode.end(), upper_rcode.begin(),
+                        [](unsigned char c) { return std::toupper(c); });
+                    if (RCodeNumbers.find(upper_rcode) != RCodeNumbers.end()) {
+                        _f_rcodes.push_back(RCodeNumbers[upper_rcode]);
+                    } else {
+                        throw ConfigException(fmt::format("DnsStreamHandler: only_rcode filter contained an invalid/unsupported rcode: {}", rcode));
+                    }
+                }
+            }
         }
-        _register_predicate_filter(Filters::OnlyRCode, "only_rcode", std::to_string(_f_rcode));
     }
     if (config_exists("only_queries") && config_get<bool>("only_queries")) {
         _f_enabled.set(Filters::OnlyQueries);
@@ -430,8 +456,17 @@ inline void DnsStreamHandler::_register_predicate_filter(Filters filter, std::st
 }
 inline bool DnsStreamHandler::_filtering(DnsLayer &payload, [[maybe_unused]] PacketDirection dir, [[maybe_unused]] pcpp::ProtocolType l3, [[maybe_unused]] pcpp::ProtocolType l4, [[maybe_unused]] uint16_t port, timespec stamp)
 {
-    if (_f_enabled[Filters::ExcludingRCode] && payload.getDnsHeader()->responseCode == _f_rcode) {
-        goto will_filter;
+    if (_f_enabled[Filters::ExcludingRCode]) {
+        auto rcode = payload.getDnsHeader()->responseCode;
+        if (std::any_of(_f_rcodes.begin(), _f_rcodes.end(), [rcode](uint16_t f_rcode) { return rcode == f_rcode; })) {
+            goto will_filter;
+        }
+    }
+    if (_f_enabled[Filters::OnlyRCode] && !_using_predicate_signals) {
+        auto rcode = payload.getDnsHeader()->responseCode;
+        if (std::none_of(_f_rcodes.begin(), _f_rcodes.end(), [rcode](uint16_t f_rcode) { return rcode == f_rcode; })) {
+            goto will_filter;
+        }
     }
     if (_f_enabled[Filters::AnswerCount] && payload.getAnswerCount() != _f_answer_count) {
         goto will_filter;

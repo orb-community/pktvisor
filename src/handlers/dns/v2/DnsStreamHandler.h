@@ -506,7 +506,7 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
         ConfigsMAX
     };
     std::bitset<Configs::ConfigsMAX> _c_enabled;
-    uint16_t _f_rcode{0};
+    std::vector<uint16_t> _f_rcodes;
     uint64_t _f_answer_count{0};
     std::vector<std::string> _f_qnames;
     std::vector<uint16_t> _f_qtypes;
