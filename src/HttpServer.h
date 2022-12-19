@@ -10,7 +10,7 @@
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 #pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
 #endif
-#ifdef __apple__
+#ifdef __APPLE__
 #ifndef NI_MAXHOST
 #define	NI_MAXHOST	1025
 #endif
