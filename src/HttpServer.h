@@ -11,7 +11,9 @@
 #pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
 #endif
 #ifdef __apple__
-#include <netdb.h>
+#ifndef NI_MAXHOST
+#define	NI_MAXHOST	1025
+#endif
 #endif
 #include <httplib.h>
 #ifdef __GNUC__
