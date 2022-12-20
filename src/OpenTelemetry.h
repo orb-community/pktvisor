@@ -6,7 +6,6 @@
 
 #include "HttpServer.h"
 #include "opentelemetry/proto/collector/metrics/v1/metrics_service.pb.h"
-#include "visor_config.h"
 #include <functional>
 #include <timer.hpp>
 
@@ -29,23 +28,20 @@ class OpenTelemetry
 {
     httplib::Client _client;
     collector::metrics::v1::ExportMetricsServiceRequest _request;
-    metrics::v1::ScopeMetrics *_scope;
+    metrics::v1::ResourceMetrics *_resorce;
     std::shared_ptr<timer::interval_handle> _timer_handle;
-    std::function<bool(metrics::v1::ScopeMetrics &scope)> _callback;
+    std::function<bool(metrics::v1::ResourceMetrics &resource)> _callback;
 
 public:
     OpenTelemetry(const OtelConfig &config)
         : _client(config.endpoint, config.port_number)
     {
-        auto resource = _request.add_resource_metrics();
-        _scope = resource->add_scope_metrics();
-        _scope->mutable_scope()->set_name("pktvisor");
-        _scope->mutable_scope()->set_version(VISOR_VERSION_NUM);
+        _resorce = _request.add_resource_metrics();
         static timer timer_thread{std::chrono::seconds(config.interval_sec)};
         _timer_handle = timer_thread.set_interval(std::chrono::seconds(config.interval_sec), [this] {
-            _scope->clear_metrics();
-            if (_callback && _callback(*_scope)) {
-                if (auto body_size = _request.ByteSizeLong(); _scope->metrics_size()) {
+            _resorce->clear_scope_metrics();
+            if (_callback && _callback(*_resorce)) {
+                if (auto body_size = _request.ByteSizeLong(); body_size > sizeof(_request)) {
                     auto body = std::make_unique<char[]>(body_size);
                     _request.SerializeToArray(body.get(), body_size);
                     auto result = _client.Post("/v1/metrics", body.get(), body_size, BIN_CONTENT_TYPE);
@@ -57,11 +53,11 @@ public:
     ~OpenTelemetry()
     {
         _timer_handle->cancel();
-        _scope->clear_scope();
-        _scope = nullptr;
+        _resorce->clear_resource();
+        _resorce = nullptr;
     }
 
-    void OnInterval(std::function<bool(metrics::v1::ScopeMetrics &scope)> callback)
+    void OnInterval(std::function<bool(metrics::v1::ResourceMetrics &resource)> callback)
     {
         _callback = callback;
     }
