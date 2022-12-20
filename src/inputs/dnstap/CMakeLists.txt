@@ -3,6 +3,7 @@ message(STATUS "Input Module: Dnstap")
 set_directory_properties(PROPERTIES CORRADE_USE_PEDANTIC_FLAGS ON)
 
 find_package(Protobuf REQUIRED)
+set(Protobuf_USE_STATIC_LIBS ON)
 protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS pb/dnstap.proto)
 
 corrade_add_static_plugin(VisorInputDnstap ${CMAKE_CURRENT_BINARY_DIR}
