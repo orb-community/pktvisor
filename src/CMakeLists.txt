@@ -6,7 +6,6 @@ find_package(Corrade REQUIRED PluginManager)
 set_directory_properties(PROPERTIES CORRADE_USE_PEDANTIC_FLAGS ON)
 
 find_package(Protobuf REQUIRED)
-set(Protobuf_USE_STATIC_LIBS ON)
 set(OTELCPP_PROTO_PATH ${CONAN_OPENTELEMETRY-PROTO_ROOT}/res)
 include(opentelemetry-proto)
 

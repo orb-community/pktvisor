@@ -273,8 +273,10 @@ install(
   PATTERN "*.h")
 
 if(TARGET protobuf::libprotobuf)
+  message("called!!")
   target_link_libraries(opentelemetry_proto PUBLIC protobuf::libprotobuf)
 else() # cmake 3.8 or lower
+  message("not found!!")
   target_include_directories(opentelemetry_proto
                              PUBLIC ${Protobuf_INCLUDE_DIRS})
   target_link_libraries(opentelemetry_proto INTERFACE ${Protobuf_LIBRARIES})
