@@ -37,7 +37,6 @@ target_link_libraries(visor-core
         datasketches
         rng
         timer
-        ${CONAN_LIBS_PROTOBUF}
         opentelemetry_proto
         ${CONAN_LIBS_LIBMAXMINDDB}
         ${CONAN_LIBS_CORRADE}
