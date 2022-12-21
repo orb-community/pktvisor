@@ -182,7 +182,7 @@ bool PingProbe::start(std::shared_ptr<uvw::Loop> io_loop)
 
     _recv_handler = _io_loop->resource<uvw::CheckHandle>();
     if (!_recv_handler) {
-        throw NetProbeException("PingProbe - unable to initialize receive CheckHandle");
+        throw NetProbeException("PingProbe - unable to initialize CheckHandle receiver");
     }
 
     _recv_handler->on<uvw::CheckEvent>([this](const auto &, auto &) {
