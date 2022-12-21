@@ -331,7 +331,7 @@ TEST_CASE("DNS Filters: only_rcode nx", "[pcap][net]")
     REQUIRE(j["filtered_packets"] == 19);
 }
 
-TEST_CASE("DNS Filters: only_rcode refused", "[pcap][dns]")
+TEST_CASE("DNS Filters: only_rcode refused and nx", "[pcap][dns]")
 {
 
     PcapInputStream stream{"pcap-test"};
@@ -345,7 +345,7 @@ TEST_CASE("DNS Filters: only_rcode refused", "[pcap][dns]")
     c.config_set<uint64_t>("num_periods", 1);
     DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
 
-    dns_handler.config_set<uint64_t>("only_rcode", Refused);
+    dns_handler.config_set<visor::Configurable::StringList>("only_rcode", {"nxdomain", "5"});
 
     dns_handler.start();
     stream.start();
@@ -356,11 +356,11 @@ TEST_CASE("DNS Filters: only_rcode refused", "[pcap][dns]")
     REQUIRE(counters.RNOERROR.value() == 0);
     REQUIRE(counters.SRVFAIL.value() == 0);
     REQUIRE(counters.REFUSED.value() == 1);
-    REQUIRE(counters.NX.value() == 0);
+    REQUIRE(counters.NX.value() == 1);
     REQUIRE(counters.NODATA.value() == 0);
     nlohmann::json j;
     dns_handler.metrics()->bucket(0)->to_json(j);
-    REQUIRE(j["filtered_packets"] == 19);
+    REQUIRE(j["filtered_packets"] == 17);
 }
 TEST_CASE("DNS Filters: only_qtypes AAAA and TXT", "[pcap][dns]")
 {
@@ -773,7 +773,7 @@ TEST_CASE("DNS filter exceptions", "[pcap][dns][filter]")
     SECTION("only_rcode as string")
     {
         dns_handler.config_set<std::string>("only_rcode", "1");
-        REQUIRE_THROWS_WITH(dns_handler.start(), "DnsStreamHandler: wrong value type for only_rcode filter. It should be an integer");
+        REQUIRE_THROWS_WITH(dns_handler.start(), "DnsStreamHandler: wrong value type for only_rcode filter. It should be an integer or an array");
     }
 
     SECTION("only_rcode invalid")
