@@ -1,6 +1,7 @@
 #include "PingProbe.h"
 
 #include "NetProbeException.h"
+#include "ThreadName.h"
 #include <Packet.h>
 #include <TimespecTimeval.h>
 #include <uvw/idle.h>
@@ -8,7 +9,6 @@
 namespace visor::input::netprobe {
 
 sigslot::signal<pcpp::Packet &, timespec> PingReceiver::recv_signal;
-std::recursive_mutex PingReceiver::mutex;
 thread_local std::atomic<uint32_t> PingProbe::sock_count{0};
 thread_local SOCKET PingProbe::_sock{INVALID_SOCKET};
 
@@ -94,7 +94,6 @@ void PingReceiver::_setup_receiver()
                 TIMESPEC_TO_TIMEVAL(&time, &stamp);
                 pcpp::RawPacket raw(reinterpret_cast<uint8_t *>(_array.data()), rc, time, false, pcpp::LINKTYPE_DLT_RAW1);
                 pcpp::Packet packet(&raw, pcpp::ICMP);
-                std::lock_guard<std::recursive_mutex> lock(mutex);
                 recv_signal(packet, stamp);
             }
         }
@@ -105,6 +104,7 @@ void PingReceiver::_setup_receiver()
 
     // spawn the loop
     _io_thread = std::make_unique<std::thread>([this] {
+        thread::change_self_name("receiver", "ping");
         _io_loop->run();
     });
 }
@@ -173,15 +173,32 @@ bool PingProbe::start(std::shared_ptr<uvw::Loop> io_loop)
             }
         });
 
-        _recv_connection = PingReceiver::recv_signal.connect([this](pcpp::Packet &packet, timespec stamp) {
-            _recv(packet, TestType::Ping, _name, stamp);
-        });
-
         (_sequence == UCHAR_MAX) ? _sequence = 0 : _sequence++;
         _send_icmp_v4(_internal_sequence);
         _internal_sequence++;
         _timeout_timer->start(uvw::TimerHandle::Time{_config.timeout_msec}, uvw::TimerHandle::Time{0});
         _internal_timer->start(uvw::TimerHandle::Time{_config.packets_interval_msec}, uvw::TimerHandle::Time{_config.packets_interval_msec});
+    });
+
+    _recv_handler = _io_loop->resource<uvw::CheckHandle>();
+    if (!_recv_handler) {
+        throw NetProbeException("PingProbe - unable to initialize receive CheckHandle");
+    }
+
+    _recv_handler->on<uvw::CheckEvent>([this](const auto &, auto &) {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
+        if (!_recv_packets.empty()) {
+            for (auto &[packet, stamp] : _recv_packets) {
+                _recv(packet, TestType::Ping, _name, stamp);
+            }
+            _recv_packets.clear();
+        }
+    });
+    _recv_handler->start();
+
+    _recv_connection = PingReceiver::recv_signal.connect([this](pcpp::Packet &packet, timespec stamp) {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
+        _recv_packets.push_back({packet, stamp});
     });
 
     ++sock_count;
@@ -194,6 +211,9 @@ bool PingProbe::stop()
 {
     if (_interval_timer) {
         _interval_timer->stop();
+    }
+    if (_recv_handler) {
+        _recv_handler->stop();
     }
     _recv_connection.disconnect();
     _close_socket();
@@ -300,8 +320,6 @@ void PingProbe::_send_icmp_v4(uint8_t sequence)
     if (rc != SOCKET_ERROR) {
         pcpp::Packet packet;
         packet.addLayer(&icmp);
-        //Ensure that _send and recv_signal is not called at same time
-        std::lock_guard<std::recursive_mutex> lock(PingReceiver::mutex);
         _send(packet, TestType::Ping, _name, stamp);
     }
 }

@@ -39,6 +39,7 @@ typedef int SOCKET;
 #include <uvw/async.h>
 #include <uvw/poll.h>
 #include <uvw/timer.h>
+#include <uvw/check.h>
 
 namespace visor::input::netprobe {
 
@@ -61,7 +62,6 @@ class PingReceiver
 
 public:
     static sigslot::signal<pcpp::Packet &, timespec> recv_signal;
-    static std::recursive_mutex mutex;
 
     PingReceiver();
     ~PingReceiver();
@@ -86,11 +86,14 @@ class PingProbe final : public NetProbe
     std::shared_ptr<uvw::TimerHandle> _interval_timer;
     std::shared_ptr<uvw::TimerHandle> _internal_timer;
     std::shared_ptr<uvw::TimerHandle> _timeout_timer;
+    std::shared_ptr<uvw::CheckHandle> _recv_handler;
     SOCKETLEN _sin_length{0};
     std::vector<uint8_t> _payload_array;
     sockaddr_in _sa;
     sockaddr_in6 _sa6;
     sigslot::connection _recv_connection;
+    std::recursive_mutex _mutex;
+    std::vector<std::pair<pcpp::Packet, timespec>> _recv_packets;
 
     void _send_icmp_v4(uint8_t sequence);
     std::optional<ErrorType> _get_addr();
