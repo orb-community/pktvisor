@@ -278,8 +278,8 @@ public:
     void to_opentelemetry(metrics::v1::ScopeMetrics &scope, timespec &start, timespec &end, LabelMap add_labels = {}) const
     {
         auto metric = scope.add_metrics();
-        metric->set_name(base_name_snake() + " histogram");
-        metric->set_description(base_name_snake() + " " + _desc);
+        metric->set_name(base_name_snake());
+        metric->set_description(_desc);
         auto hist_data_point = metric->mutable_histogram()->add_data_points();
         hist_data_point->set_start_time_unix_nano(timespec_to_uint64(start));
         hist_data_point->set_time_unix_nano(timespec_to_uint64(end));
@@ -419,8 +419,8 @@ public:
         }
 
         auto metric = scope.add_metrics();
-        metric->set_name(base_name_snake() + " summary");
-        metric->set_description(base_name_snake() + " " + _desc);
+        metric->set_name(base_name_snake());
+        metric->set_description(_desc);
         auto summary_data_point = metric->mutable_summary()->add_data_points();
         summary_data_point->set_start_time_unix_nano(timespec_to_uint64(start));
         summary_data_point->set_time_unix_nano(timespec_to_uint64(end));
@@ -676,8 +676,8 @@ public:
     {
         LabelMap l(add_labels);
         auto metric = scope.add_metrics();
-        metric->set_name(base_name_snake() + " gauge");
-        metric->set_description(base_name_snake() + " " + _desc);
+        metric->set_name(base_name_snake());
+        metric->set_description(_desc);
         auto items = _fi.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
         auto threshold = _get_threshold(items);
         auto start_time = timespec_to_uint64(start);
@@ -698,8 +698,8 @@ public:
     {
         LabelMap l(add_labels);
         auto metric = scope.add_metrics();
-        metric->set_name(base_name_snake() + " gauge");
-        metric->set_description(base_name_snake() + " " + _desc);
+        metric->set_name(base_name_snake());
+        metric->set_description(_desc);
         auto items = _fi.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
         auto threshold = _get_threshold(items);
         auto start_time = timespec_to_uint64(start);
@@ -726,8 +726,8 @@ public:
     {
         LabelMap l(add_labels);
         auto metric = scope.add_metrics();
-        metric->set_name(base_name_snake() + " gauge");
-        metric->set_description(base_name_snake() + " " + _desc);
+        metric->set_name(base_name_snake());
+        metric->set_description(_desc);
         auto items = _fi.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
         auto threshold = _get_threshold(items);
         auto start_time = timespec_to_uint64(start);

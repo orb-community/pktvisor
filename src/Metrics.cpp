@@ -22,8 +22,8 @@ void Counter::to_prometheus(std::stringstream &out, Metric::LabelMap add_labels)
 void Counter::to_opentelemetry(metrics::v1::ScopeMetrics &scope, timespec &start, timespec &end, Metric::LabelMap add_labels) const
 {
     auto metric = scope.add_metrics();
-    metric->set_name(base_name_snake() + " gauge");
-    metric->set_description(base_name_snake() + " " + _desc);
+    metric->set_name(base_name_snake());
+    metric->set_description(_desc);
     auto gauge_data_point = metric->mutable_gauge()->add_data_points();
     gauge_data_point->set_as_int(_value);
     gauge_data_point->set_start_time_unix_nano(timespec_to_uint64(start));
@@ -82,8 +82,8 @@ void Cardinality::to_prometheus(std::stringstream &out, Metric::LabelMap add_lab
 void Cardinality::to_opentelemetry(metrics::v1::ScopeMetrics &scope, timespec &start, timespec &end, Metric::LabelMap add_labels) const
 {
     auto metric = scope.add_metrics();
-    metric->set_name(base_name_snake() + " gauge");
-    metric->set_description(base_name_snake() + " " + _desc);
+    metric->set_name(base_name_snake());
+    metric->set_description(_desc);
     auto gauge_data_point = metric->mutable_gauge()->add_data_points();
     gauge_data_point->set_as_int(lround(_set.get_estimate()));
     gauge_data_point->set_start_time_unix_nano(timespec_to_uint64(start));
