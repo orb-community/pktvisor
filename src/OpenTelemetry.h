@@ -26,7 +26,7 @@ struct OtelConfig {
 
 class OpenTelemetry
 {
-    httplib::Client _client;
+    std::unique_ptr<httplib::Client> _client;
     collector::metrics::v1::ExportMetricsServiceRequest _request;
     metrics::v1::ResourceMetrics *_resorce;
     std::shared_ptr<timer::interval_handle> _timer_handle;
@@ -34,8 +34,12 @@ class OpenTelemetry
 
 public:
     OpenTelemetry(const OtelConfig &config)
-        : _client(config.endpoint, config.port_number)
     {
+        if (!config.tls_cert.empty() && !config.tls_key.empty()) {
+            _client = std::make_unique<httplib::Client>(config.endpoint, config.port_number, config.tls_cert, config.tls_key);
+        } else {
+            _client = std::make_unique<httplib::Client>(config.endpoint, config.port_number);
+        }
         _resorce = _request.add_resource_metrics();
         static timer timer_thread{std::chrono::seconds(config.interval_sec)};
         _timer_handle = timer_thread.set_interval(std::chrono::seconds(config.interval_sec), [this] {
@@ -44,7 +48,7 @@ public:
                 if (auto body_size = _request.ByteSizeLong(); body_size > sizeof(_request)) {
                     auto body = std::make_unique<char[]>(body_size);
                     _request.SerializeToArray(body.get(), body_size);
-                    auto result = _client.Post("/v1/metrics", body.get(), body_size, BIN_CONTENT_TYPE);
+                    auto result = _client->Post("/v1/metrics", body.get(), body_size, BIN_CONTENT_TYPE);
                 }
             }
         });
