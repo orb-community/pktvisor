@@ -734,51 +734,54 @@ void DnsMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap ad
 
 void DnsMetricsBucket::to_opentelemetry(metrics::v1::ScopeMetrics &scope, Metric::LabelMap add_labels) const
 {
+    auto start_ts = start_tstamp();
+    auto end_ts = end_tstamp();
+
     for (auto &dns : _dns) {
         auto dir_labels = add_labels;
         dir_labels["direction"] = _dir_str.at(dns.first);
-        group_enabled(group::DnsMetrics::Quantiles) ? dns.second.dnsRate.to_opentelemetry(scope, dir_labels) : void();
+        group_enabled(group::DnsMetrics::Quantiles) ? dns.second.dnsRate.to_opentelemetry(scope, start_ts, end_ts, dir_labels) : void();
     }
     
     {
         auto [num_events, num_samples, event_rate, event_lock] = event_data_locked(); // thread safe
 
-        event_rate->to_opentelemetry(scope, add_labels);
-        num_events->to_opentelemetry(scope, add_labels);
-        num_samples->to_opentelemetry(scope, add_labels);
+        event_rate->to_opentelemetry(scope, start_ts, end_ts, add_labels);
+        num_events->to_opentelemetry(scope, start_ts, end_ts, add_labels);
+        num_samples->to_opentelemetry(scope, start_ts, end_ts, add_labels);
     }
 
     std::shared_lock r_lock(_mutex);
 
-    group_enabled(group::DnsMetrics::Counters) ? _filtered.to_opentelemetry(scope, add_labels) : void();
+    group_enabled(group::DnsMetrics::Counters) ? _filtered.to_opentelemetry(scope, start_ts, end_ts, add_labels) : void();
 
     for (auto &dns : _dns) {
         auto dir_labels = add_labels;
         dir_labels["direction"] = _dir_str.at(dns.first);
 
-        group_enabled(group::DnsMetrics::Counters) ? dns.second.counters.to_opentelemetry(scope, dir_labels) : void();
-        group_enabled(group::DnsMetrics::Cardinality) ? dns.second.qnameCard.to_opentelemetry(scope, dir_labels) : void();
-        group_enabled(group::DnsMetrics::TopPorts) ? dns.second.topUDPPort.to_opentelemetry(scope, dir_labels, [](const uint16_t &val) { return std::to_string(val); }) : void();
+        group_enabled(group::DnsMetrics::Counters) ? dns.second.counters.to_opentelemetry(scope, start_ts, end_ts, dir_labels) : void();
+        group_enabled(group::DnsMetrics::Cardinality) ? dns.second.qnameCard.to_opentelemetry(scope, start_ts, end_ts, dir_labels) : void();
+        group_enabled(group::DnsMetrics::TopPorts) ? dns.second.topUDPPort.to_opentelemetry(scope, start_ts, end_ts, dir_labels, [](const uint16_t &val) { return std::to_string(val); }) : void();
 
         if (group_enabled(group::DnsMetrics::TopEcs)) {
-            dns.second.topGeoLocECS.to_opentelemetry(scope, dir_labels, [](Metric::LabelMap &l, const std::string &key, const visor::geo::City &val) {
+            dns.second.topGeoLocECS.to_opentelemetry(scope, start_ts, end_ts, dir_labels, [](Metric::LabelMap &l, const std::string &key, const visor::geo::City &val) {
                 l[key] = val.location;
                 if (!val.latitude.empty() && !val.longitude.empty()) {
                     l["lat"] = val.latitude;
                     l["lon"] = val.longitude;
                 }
             });
-            dns.second.topASNECS.to_opentelemetry(scope, dir_labels);
-            dns.second.topQueryECS.to_opentelemetry(scope, dir_labels);
+            dns.second.topASNECS.to_opentelemetry(scope, start_ts, end_ts, dir_labels);
+            dns.second.topQueryECS.to_opentelemetry(scope, start_ts, end_ts, dir_labels);
         }
 
         if (group_enabled(group::DnsMetrics::TopRcodes)) {
-            dns.second.topNX.to_opentelemetry(scope, dir_labels);
-            dns.second.topREFUSED.to_opentelemetry(scope, dir_labels);
-            dns.second.topSRVFAIL.to_opentelemetry(scope, dir_labels);
-            dns.second.topNODATA.to_opentelemetry(scope, dir_labels);
-            dns.second.topNOERROR.to_opentelemetry(scope, dir_labels);
-            dns.second.topRCode.to_opentelemetry(scope, dir_labels, [](const uint16_t &val) {
+            dns.second.topNX.to_opentelemetry(scope, start_ts, end_ts, dir_labels);
+            dns.second.topREFUSED.to_opentelemetry(scope, start_ts, end_ts, dir_labels);
+            dns.second.topSRVFAIL.to_opentelemetry(scope, start_ts, end_ts, dir_labels);
+            dns.second.topNODATA.to_opentelemetry(scope, start_ts, end_ts, dir_labels);
+            dns.second.topNOERROR.to_opentelemetry(scope, start_ts, end_ts, dir_labels);
+            dns.second.topRCode.to_opentelemetry(scope, start_ts, end_ts, dir_labels, [](const uint16_t &val) {
                 if (RCodeNames.find(val) != RCodeNames.end()) {
                     return RCodeNames[val];
                 } else {
@@ -788,17 +791,17 @@ void DnsMetricsBucket::to_opentelemetry(metrics::v1::ScopeMetrics &scope, Metric
         }
 
         if (group_enabled(group::DnsMetrics::TopQnames)) {
-            dns.second.topQname2.to_opentelemetry(scope, dir_labels);
-            dns.second.topQname3.to_opentelemetry(scope, dir_labels);
+            dns.second.topQname2.to_opentelemetry(scope, start_ts, end_ts, dir_labels);
+            dns.second.topQname3.to_opentelemetry(scope, start_ts, end_ts, dir_labels);
         }
 
         if (group_enabled(group::DnsMetrics::TopSize)) {
-            dns.second.topSizedQnameResp.to_opentelemetry(scope, dir_labels);
-            dns.second.dnsRatio.to_opentelemetry(scope, dir_labels);
+            dns.second.topSizedQnameResp.to_opentelemetry(scope, start_ts, end_ts, dir_labels);
+            dns.second.dnsRatio.to_opentelemetry(scope, start_ts, end_ts, dir_labels);
         }
 
         if (group_enabled(group::DnsMetrics::TopQtypes)) {
-            dns.second.topQType.to_opentelemetry(scope, dir_labels, [](const uint16_t &val) {
+            dns.second.topQType.to_opentelemetry(scope, start_ts, end_ts, dir_labels, [](const uint16_t &val) {
                 if (QTypeNames.find(val) != QTypeNames.end()) {
                     return QTypeNames[val];
                 } else {
@@ -808,8 +811,8 @@ void DnsMetricsBucket::to_opentelemetry(metrics::v1::ScopeMetrics &scope, Metric
         }
 
         if (group_enabled(group::DnsMetrics::XactTimes)) {
-            dns.second.dnsTimeUs.to_opentelemetry(scope, dir_labels);
-            dns.second.topSlow.to_opentelemetry(scope, dir_labels);
+            dns.second.dnsTimeUs.to_opentelemetry(scope, start_ts, end_ts, dir_labels);
+            dns.second.topSlow.to_opentelemetry(scope, start_ts, end_ts, dir_labels);
         }
     }
 }

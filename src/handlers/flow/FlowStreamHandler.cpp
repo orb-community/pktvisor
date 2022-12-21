@@ -793,6 +793,9 @@ void FlowMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap a
 
 void FlowMetricsBucket::to_opentelemetry(metrics::v1::ScopeMetrics &scope, Metric::LabelMap add_labels) const
 {
+    auto start_ts = start_tstamp();
+    auto end_ts = end_tstamp();
+
     std::shared_lock r_lock(_mutex);
     
     SummaryData *summary{nullptr};
@@ -813,12 +816,12 @@ void FlowMetricsBucket::to_opentelemetry(metrics::v1::ScopeMetrics &scope, Metri
         device_labels["device"] = deviceId;
 
         if (group_enabled(group::FlowMetrics::Counters)) {
-            device.second->total.to_opentelemetry(scope, device_labels);
-            device.second->filtered.to_opentelemetry(scope, device_labels);
+            device.second->total.to_opentelemetry(scope, start_ts, end_ts, device_labels);
+            device.second->filtered.to_opentelemetry(scope, start_ts, end_ts, device_labels);
         }
 
         if (group_enabled(group::FlowMetrics::ByBytes) && group_enabled(group::FlowMetrics::TopInterfaces)) {
-            device.second->topInIfIndexBytes.to_opentelemetry(scope, device_labels, [dev](const uint32_t &val) {
+            device.second->topInIfIndexBytes.to_opentelemetry(scope, start_ts, end_ts, device_labels, [dev](const uint32_t &val) {
                 if (dev) {
                     if (auto it = dev->interfaces.find(val); it != dev->interfaces.end()) {
                         return it->second.name;
@@ -826,7 +829,7 @@ void FlowMetricsBucket::to_opentelemetry(metrics::v1::ScopeMetrics &scope, Metri
                 }
                 return std::to_string(val);
             });
-            device.second->topOutIfIndexBytes.to_opentelemetry(scope, device_labels, [dev](const uint32_t &val) {
+            device.second->topOutIfIndexBytes.to_opentelemetry(scope, start_ts, end_ts, device_labels, [dev](const uint32_t &val) {
                 if (dev) {
                     if (auto it = dev->interfaces.find(val); it != dev->interfaces.end()) {
                         return it->second.name;
@@ -837,7 +840,7 @@ void FlowMetricsBucket::to_opentelemetry(metrics::v1::ScopeMetrics &scope, Metri
         }
 
         if (group_enabled(group::FlowMetrics::ByPackets) && group_enabled(group::FlowMetrics::TopInterfaces)) {
-            device.second->topInIfIndexPackets.to_opentelemetry(scope, device_labels, [dev](const uint32_t &val) {
+            device.second->topInIfIndexPackets.to_opentelemetry(scope, start_ts, end_ts, device_labels, [dev](const uint32_t &val) {
                 if (dev) {
                     if (auto it = dev->interfaces.find(val); it != dev->interfaces.end()) {
                         return it->second.name;
@@ -845,7 +848,7 @@ void FlowMetricsBucket::to_opentelemetry(metrics::v1::ScopeMetrics &scope, Metri
                 }
                 return std::to_string(val);
             });
-            device.second->topOutIfIndexPackets.to_opentelemetry(scope, device_labels, [dev](const uint32_t &val) {
+            device.second->topOutIfIndexPackets.to_opentelemetry(scope, start_ts, end_ts, device_labels, [dev](const uint32_t &val) {
                 if (dev) {
                     if (auto it = dev->interfaces.find(val); it != dev->interfaces.end()) {
                         return it->second.name;
@@ -867,12 +870,12 @@ void FlowMetricsBucket::to_opentelemetry(metrics::v1::ScopeMetrics &scope, Metri
 
             if (group_enabled(group::FlowMetrics::Cardinality)) {
                 if (group_enabled(group::FlowMetrics::Conversations)) {
-                    interface.second->conversationsCard.to_opentelemetry(scope, device_labels);
+                    interface.second->conversationsCard.to_opentelemetry(scope, start_ts, end_ts, device_labels);
                 }
-                interface.second->srcIPCard.to_opentelemetry(scope, interface_labels);
-                interface.second->dstIPCard.to_opentelemetry(scope, interface_labels);
-                interface.second->srcPortCard.to_opentelemetry(scope, interface_labels);
-                interface.second->dstPortCard.to_opentelemetry(scope, interface_labels);
+                interface.second->srcIPCard.to_opentelemetry(scope, start_ts, end_ts, interface_labels);
+                interface.second->dstIPCard.to_opentelemetry(scope, start_ts, end_ts, interface_labels);
+                interface.second->srcPortCard.to_opentelemetry(scope, start_ts, end_ts, interface_labels);
+                interface.second->dstPortCard.to_opentelemetry(scope, start_ts, end_ts, interface_labels);
             }
 
             for (auto &count_dir : interface.second->counters) {
@@ -883,12 +886,12 @@ void FlowMetricsBucket::to_opentelemetry(metrics::v1::ScopeMetrics &scope, Metri
                     continue;
                 }
                 if (group_enabled(group::FlowMetrics::Counters)) {
-                    count_dir.second.UDP.to_opentelemetry(scope, interface_labels);
-                    count_dir.second.TCP.to_opentelemetry(scope, interface_labels);
-                    count_dir.second.OtherL4.to_opentelemetry(scope, interface_labels);
-                    count_dir.second.IPv4.to_opentelemetry(scope, interface_labels);
-                    count_dir.second.IPv6.to_opentelemetry(scope, interface_labels);
-                    count_dir.second.total.to_opentelemetry(scope, interface_labels);
+                    count_dir.second.UDP.to_opentelemetry(scope, start_ts, end_ts, interface_labels);
+                    count_dir.second.TCP.to_opentelemetry(scope, start_ts, end_ts, interface_labels);
+                    count_dir.second.OtherL4.to_opentelemetry(scope, start_ts, end_ts, interface_labels);
+                    count_dir.second.IPv4.to_opentelemetry(scope, start_ts, end_ts, interface_labels);
+                    count_dir.second.IPv6.to_opentelemetry(scope, start_ts, end_ts, interface_labels);
+                    count_dir.second.total.to_opentelemetry(scope, start_ts, end_ts, interface_labels);
                 }
             }
 
@@ -902,64 +905,64 @@ void FlowMetricsBucket::to_opentelemetry(metrics::v1::ScopeMetrics &scope, Metri
                 if (group_enabled(group::FlowMetrics::TopIPs)) {
                     if (summary) {
                         top_dir.second.topSrcIP.to_opentelemetry(
-                            scope, interface_labels, [summary](const std::string &val) {
+                            scope, start_ts, end_ts, interface_labels, [summary](const std::string &val) {
                                 return ip_summarization(val, summary);
                             },
                             Metric::Aggregate::SUMMARY);
                     } else {
-                        top_dir.second.topSrcIP.to_opentelemetry(scope, interface_labels);
+                        top_dir.second.topSrcIP.to_opentelemetry(scope, start_ts, end_ts, interface_labels);
                     }
                     if (summary) {
                         top_dir.second.topDstIP.to_opentelemetry(
-                            scope, interface_labels, [summary](const std::string &val) {
+                            scope, start_ts, end_ts, interface_labels, [summary](const std::string &val) {
                                 return ip_summarization(val, summary);
                             },
                             Metric::Aggregate::SUMMARY);
                     } else {
-                        top_dir.second.topDstIP.to_opentelemetry(scope, interface_labels);
+                        top_dir.second.topDstIP.to_opentelemetry(scope, start_ts, end_ts, interface_labels);
                     }
                 }
                 if (group_enabled(group::FlowMetrics::TopPorts)) {
                     top_dir.second.topSrcPort.to_opentelemetry(
-                        scope, interface_labels, [](const network::IpPort &val) { return val.get_service(); }, Metric::Aggregate::SUMMARY);
+                        scope, start_ts, end_ts, interface_labels, [](const network::IpPort &val) { return val.get_service(); }, Metric::Aggregate::SUMMARY);
                     top_dir.second.topDstPort.to_opentelemetry(
-                        scope, interface_labels, [](const network::IpPort &val) { return val.get_service(); }, Metric::Aggregate::SUMMARY);
+                        scope, start_ts, end_ts, interface_labels, [](const network::IpPort &val) { return val.get_service(); }, Metric::Aggregate::SUMMARY);
                 }
                 if (group_enabled(group::FlowMetrics::TopIPPorts)) {
-                    top_dir.second.topSrcIPandPort.to_opentelemetry(scope, interface_labels);
-                    top_dir.second.topDstIPandPort.to_opentelemetry(scope, interface_labels);
+                    top_dir.second.topSrcIPandPort.to_opentelemetry(scope, start_ts, end_ts, interface_labels);
+                    top_dir.second.topDstIPandPort.to_opentelemetry(scope, start_ts, end_ts, interface_labels);
                 }
             }
 
             if (group_enabled(group::FlowMetrics::ByBytes)) {
                 if (group_enabled(group::FlowMetrics::TopGeo)) {
-                    interface.second->topN.first.topGeoLoc.to_opentelemetry(scope, interface_labels, [](Metric::LabelMap &l, const std::string &key, const visor::geo::City &val) {
+                    interface.second->topN.first.topGeoLoc.to_opentelemetry(scope, start_ts, end_ts, interface_labels, [](Metric::LabelMap &l, const std::string &key, const visor::geo::City &val) {
                         l[key] = val.location;
                         if (!val.latitude.empty() && !val.longitude.empty()) {
                             l["lat"] = val.latitude;
                             l["lon"] = val.longitude;
                         }
                     });
-                    interface.second->topN.first.topASN.to_opentelemetry(scope, interface_labels);
+                    interface.second->topN.first.topASN.to_opentelemetry(scope, start_ts, end_ts, interface_labels);
                 }
                 if (group_enabled(group::FlowMetrics::Conversations)) {
-                    interface.second->topN.first.topConversations.to_opentelemetry(scope, interface_labels);
+                    interface.second->topN.first.topConversations.to_opentelemetry(scope, start_ts, end_ts, interface_labels);
                 }
             }
 
             if (group_enabled(group::FlowMetrics::ByPackets)) {
                 if (group_enabled(group::FlowMetrics::TopGeo)) {
-                    interface.second->topN.second.topGeoLoc.to_opentelemetry(scope, interface_labels, [](Metric::LabelMap &l, const std::string &key, const visor::geo::City &val) {
+                    interface.second->topN.second.topGeoLoc.to_opentelemetry(scope, start_ts, end_ts, interface_labels, [](Metric::LabelMap &l, const std::string &key, const visor::geo::City &val) {
                         l[key] = val.location;
                         if (!val.latitude.empty() && !val.longitude.empty()) {
                             l["lat"] = val.latitude;
                             l["lon"] = val.longitude;
                         }
                     });
-                    interface.second->topN.second.topASN.to_opentelemetry(scope, interface_labels);
+                    interface.second->topN.second.topASN.to_opentelemetry(scope, start_ts, end_ts, interface_labels);
                 }
                 if (group_enabled(group::FlowMetrics::Conversations)) {
-                    interface.second->topN.second.topConversations.to_opentelemetry(scope, interface_labels);
+                    interface.second->topN.second.topConversations.to_opentelemetry(scope, start_ts, end_ts, interface_labels);
                 }
             }
         }

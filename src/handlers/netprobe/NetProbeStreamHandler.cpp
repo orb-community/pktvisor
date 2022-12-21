@@ -180,6 +180,9 @@ void NetProbeMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelM
 
 void NetProbeMetricsBucket::to_opentelemetry(metrics::v1::ScopeMetrics &scope, Metric::LabelMap add_labels) const
 {
+    auto start_ts = start_tstamp();
+    auto end_ts = end_tstamp();
+    
     std::shared_lock r_lock(_mutex);
     
     for (const auto &target : _targets_metrics) {
@@ -188,9 +191,9 @@ void NetProbeMetricsBucket::to_opentelemetry(metrics::v1::ScopeMetrics &scope, M
         target_labels["target"] = targetId;
 
         if (group_enabled(group::NetProbeMetrics::Counters)) {
-            target.second->attempts.to_opentelemetry(scope, target_labels);
-            target.second->successes.to_opentelemetry(scope, target_labels);
-            target.second->dns_failures.to_opentelemetry(scope, target_labels);
+            target.second->attempts.to_opentelemetry(scope, start_ts, end_ts, target_labels);
+            target.second->successes.to_opentelemetry(scope, start_ts, end_ts, target_labels);
+            target.second->dns_failures.to_opentelemetry(scope, start_ts, end_ts, target_labels);
         }
 
         bool h_max_min{true};
@@ -201,12 +204,12 @@ void NetProbeMetricsBucket::to_opentelemetry(metrics::v1::ScopeMetrics &scope, M
 
                 if (group_enabled(group::NetProbeMetrics::Counters)) {
                     target.second->minimum += target.second->h_time_us.get_min();
-                    target.second->minimum.to_opentelemetry(scope, target_labels);
+                    target.second->minimum.to_opentelemetry(scope, start_ts, end_ts, target_labels);
                     target.second->maximum += target.second->h_time_us.get_max();
-                    target.second->maximum.to_opentelemetry(scope, target_labels);
+                    target.second->maximum.to_opentelemetry(scope, start_ts, end_ts, target_labels);
                 }
 
-                target.second->h_time_us.to_opentelemetry(scope, target_labels);
+                target.second->h_time_us.to_opentelemetry(scope, start_ts, end_ts, target_labels);
             } catch (const std::exception &) {
                 h_max_min = false;
             }
@@ -221,11 +224,11 @@ void NetProbeMetricsBucket::to_opentelemetry(metrics::v1::ScopeMetrics &scope, M
                     target.second->maximum.clear();
 
                     target.second->minimum += target.second->q_time_us.get_min();
-                    target.second->minimum.to_opentelemetry(scope, target_labels);
+                    target.second->minimum.to_opentelemetry(scope, start_ts, end_ts, target_labels);
                     target.second->maximum += target.second->q_time_us.get_max();
-                    target.second->maximum.to_opentelemetry(scope, target_labels);
+                    target.second->maximum.to_opentelemetry(scope, start_ts, end_ts, target_labels);
                 }
-                target.second->q_time_us.to_opentelemetry(scope, target_labels);
+                target.second->q_time_us.to_opentelemetry(scope, start_ts, end_ts, target_labels);
             } catch (const std::exception &) {
             }
         }

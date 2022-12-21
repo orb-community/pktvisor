@@ -195,29 +195,29 @@ struct DnsDirection {
             orphan.to_prometheus(out, add_labels);
         }
 
-        void to_opentelemetry(metrics::v1::ScopeMetrics &scope, Metric::LabelMap add_labels) const
+        void to_opentelemetry(metrics::v1::ScopeMetrics &scope, timespec &start, timespec &end, Metric::LabelMap add_labels) const
         {
-            xacts.to_opentelemetry(scope, add_labels);
-            UDP.to_opentelemetry(scope, add_labels);
-            TCP.to_opentelemetry(scope, add_labels);
-            DOT.to_opentelemetry(scope, add_labels);
-            DOH.to_opentelemetry(scope, add_labels);
-            cryptUDP.to_opentelemetry(scope, add_labels);
-            cryptTCP.to_opentelemetry(scope, add_labels);
-            DOQ.to_opentelemetry(scope, add_labels);
-            IPv4.to_opentelemetry(scope, add_labels);
-            IPv6.to_opentelemetry(scope, add_labels);
-            NX.to_opentelemetry(scope, add_labels);
-            ECS.to_opentelemetry(scope, add_labels);
-            REFUSED.to_opentelemetry(scope, add_labels);
-            SRVFAIL.to_opentelemetry(scope, add_labels);
-            RNOERROR.to_opentelemetry(scope, add_labels);
-            NODATA.to_opentelemetry(scope, add_labels);
-            authData.to_opentelemetry(scope, add_labels);
-            authAnswer.to_opentelemetry(scope, add_labels);
-            checkDisabled.to_opentelemetry(scope, add_labels);
-            timeout.to_opentelemetry(scope, add_labels);
-            orphan.to_opentelemetry(scope, add_labels);
+            xacts.to_opentelemetry(scope, start, end, add_labels);
+            UDP.to_opentelemetry(scope, start, end, add_labels);
+            TCP.to_opentelemetry(scope, start, end, add_labels);
+            DOT.to_opentelemetry(scope, start, end, add_labels);
+            DOH.to_opentelemetry(scope, start, end, add_labels);
+            cryptUDP.to_opentelemetry(scope, start, end, add_labels);
+            cryptTCP.to_opentelemetry(scope, start, end, add_labels);
+            DOQ.to_opentelemetry(scope, start, end, add_labels);
+            IPv4.to_opentelemetry(scope, start, end, add_labels);
+            IPv6.to_opentelemetry(scope, start, end, add_labels);
+            NX.to_opentelemetry(scope, start, end, add_labels);
+            ECS.to_opentelemetry(scope, start, end, add_labels);
+            REFUSED.to_opentelemetry(scope, start, end, add_labels);
+            SRVFAIL.to_opentelemetry(scope, start, end, add_labels);
+            RNOERROR.to_opentelemetry(scope, start, end, add_labels);
+            NODATA.to_opentelemetry(scope, start, end, add_labels);
+            authData.to_opentelemetry(scope, start, end, add_labels);
+            authAnswer.to_opentelemetry(scope, start, end, add_labels);
+            checkDisabled.to_opentelemetry(scope, start, end, add_labels);
+            timeout.to_opentelemetry(scope, start, end, add_labels);
+            orphan.to_opentelemetry(scope, start, end, add_labels);
         }
     };
     Counters counters;

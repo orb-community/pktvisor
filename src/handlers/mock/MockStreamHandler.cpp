@@ -80,9 +80,12 @@ void MockMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap a
 
 void MockMetricsBucket::to_opentelemetry(metrics::v1::ScopeMetrics &scope, Metric::LabelMap add_labels) const
 {
+    auto start_ts = start_tstamp();
+    auto end_ts = end_tstamp();
+    
     std::shared_lock r_lock(_mutex);
 
-    _counters.mock_counter.to_opentelemetry(scope, add_labels);
+    _counters.mock_counter.to_opentelemetry(scope, start_ts, end_ts, add_labels);
 }
 
 void MockMetricsBucket::to_json(json &j) const
