@@ -8,7 +8,9 @@
 
 namespace visor::input::netprobe {
 
-sigslot::signal<pcpp::Packet &, timespec> PingReceiver::recv_signal;
+std::vector<std::pair<pcpp::Packet, timespec>> PingReceiver::recv_packets;
+std::shared_mutex PingReceiver::mutex;
+uint8_t PingReceiver::bucket{0};
 thread_local std::atomic<uint32_t> PingProbe::sock_count{0};
 thread_local SOCKET PingProbe::_sock{INVALID_SOCKET};
 
@@ -18,7 +20,6 @@ PingReceiver::PingReceiver()
 }
 PingReceiver::~PingReceiver()
 {
-    recv_signal.disconnect_all();
     _poll->close();
     if (_async_h && _io_thread) {
         // we have to use AsyncHandle to stop the loop from the same thread the loop is running in
@@ -93,11 +94,21 @@ void PingReceiver::_setup_receiver()
                 timeval time;
                 TIMESPEC_TO_TIMEVAL(&time, &stamp);
                 pcpp::RawPacket raw(reinterpret_cast<uint8_t *>(_array.data()), rc, time, false, pcpp::LINKTYPE_DLT_RAW1);
-                pcpp::Packet packet(&raw, pcpp::ICMP);
-                recv_signal(packet, stamp);
+                _recv_packets.push_back({pcpp::Packet(&raw, pcpp::ICMP), stamp});
             }
         }
     });
+
+    _timer = _io_loop->resource<uvw::TimerHandle>();
+    _timer->on<uvw::TimerEvent>([this](const auto &, auto &) {
+        if (!_recv_packets.empty()) {
+            std::unique_lock lock(mutex);
+            (bucket == UCHAR_MAX) ? bucket = 0 : bucket++;
+            recv_packets = _recv_packets;
+            _recv_packets.clear();
+        }
+    });
+    _timer->start(uvw::TimerHandle::Time{100}, uvw::TimerHandle::Time{100});
 
     _poll->init();
     _poll->start(uvw::PollHandle::Event::READABLE);
@@ -186,20 +197,15 @@ bool PingProbe::start(std::shared_ptr<uvw::Loop> io_loop)
     }
 
     _recv_handler->on<uvw::CheckEvent>([this](const auto &, auto &) {
-        std::lock_guard<std::recursive_mutex> lock(_mutex);
-        if (!_recv_packets.empty()) {
-            for (auto &[packet, stamp] : _recv_packets) {
+        std::shared_lock lock(PingReceiver::mutex);
+        if (_bucket != PingReceiver::bucket) {
+            _bucket = PingReceiver::bucket;
+            for (auto &[packet, stamp] : PingReceiver::recv_packets) {
                 _recv(packet, TestType::Ping, _name, stamp);
             }
-            _recv_packets.clear();
         }
     });
     _recv_handler->start();
-
-    _recv_connection = PingReceiver::recv_signal.connect([this](pcpp::Packet &packet, timespec stamp) {
-        std::lock_guard<std::recursive_mutex> lock(_mutex);
-        _recv_packets.push_back({packet, stamp});
-    });
 
     ++sock_count;
     _interval_timer->start(uvw::TimerHandle::Time{0}, uvw::TimerHandle::Time{_config.interval_msec});
@@ -215,7 +221,6 @@ bool PingProbe::stop()
     if (_recv_handler) {
         _recv_handler->stop();
     }
-    _recv_connection.disconnect();
     _close_socket();
     return true;
 }

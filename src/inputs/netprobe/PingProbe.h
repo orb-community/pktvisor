@@ -35,11 +35,12 @@ typedef int SOCKET;
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <shared_mutex>
 #include <sigslot/signal.hpp>
 #include <uvw/async.h>
+#include <uvw/check.h>
 #include <uvw/poll.h>
 #include <uvw/timer.h>
-#include <uvw/check.h>
 
 namespace visor::input::netprobe {
 
@@ -57,11 +58,14 @@ class PingReceiver
     std::unique_ptr<std::thread> _io_thread;
     std::shared_ptr<uvw::Loop> _io_loop;
     std::shared_ptr<uvw::AsyncHandle> _async_h;
-
+    std::shared_ptr<uvw::TimerHandle> _timer;
+    std::vector<std::pair<pcpp::Packet, timespec>> _recv_packets;
     void _setup_receiver();
 
 public:
-    static sigslot::signal<pcpp::Packet &, timespec> recv_signal;
+    static std::vector<std::pair<pcpp::Packet, timespec>> recv_packets;
+    static uint8_t bucket;
+    static std::shared_mutex mutex;
 
     PingReceiver();
     ~PingReceiver();
@@ -91,9 +95,7 @@ class PingProbe final : public NetProbe
     std::vector<uint8_t> _payload_array;
     sockaddr_in _sa;
     sockaddr_in6 _sa6;
-    sigslot::connection _recv_connection;
-    std::recursive_mutex _mutex;
-    std::vector<std::pair<pcpp::Packet, timespec>> _recv_packets;
+    uint8_t _bucket{0};
 
     void _send_icmp_v4(uint8_t sequence);
     std::optional<ErrorType> _get_addr();
