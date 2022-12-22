@@ -181,7 +181,7 @@ private:
     // key example: dnsonly_rcode3
     std::unordered_map<std::string, UdpPredicateSignal> _udp_predicate_signals;
     // key: <handlerid>
-    std::map<std::string, sigslot::connection> _udp_predicate_connections;
+    std::map<std::string, std::vector<sigslot::connection>> _udp_predicate_connections;
 
     mutable std::shared_mutex _pcap_proxy_mutex;
     std::shared_ptr<spdlog::logger> _logger;
@@ -218,14 +218,16 @@ public:
         }
         // now install the given conditional signal based on the jump key
         // record the connection so we can remove it later when the handler disconnects
-        _udp_predicate_connections[handler_id] = _udp_predicate_signals[predicate_jump_key].connect(callback);
+        _udp_predicate_connections[handler_id].push_back(_udp_predicate_signals[predicate_jump_key].connect(callback));
     }
 
     void unregister_udp_predicate_signal(const std::string &handler_id)
     {
         assert(_udp_predicate_connections.find(handler_id) != _udp_predicate_connections.end());
         std::shared_lock lock(_pcap_proxy_mutex);
-        _udp_predicate_connections[handler_id].disconnect();
+        for (auto &connection : _udp_predicate_connections[handler_id]) {
+            connection.disconnect();
+        }
     }
 
     void process_udp_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp)
