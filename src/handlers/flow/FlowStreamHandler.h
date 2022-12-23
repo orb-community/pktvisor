@@ -64,6 +64,7 @@ struct SummaryData {
     IpSummary type{IpSummary::None};
     lib::utils::IPv4subnetList ipv4_exclude_summary;
     lib::utils::IPv6subnetList ipv6_exclude_summary;
+    std::vector<std::string> asn_exclude_summary;
     lib::utils::IPv4subnetList ipv4_summary;
     lib::utils::IPv6subnetList ipv6_summary;
 };
@@ -325,6 +326,9 @@ public:
         if (!_enrich_data.empty()) {
             live_bucket()->set_enrich_data(&_enrich_data);
         }
+        if (_summary_data.type != IpSummary::None) {
+            live_bucket()->set_summary_data(&_summary_data);
+        }
     }
 };
 
@@ -370,6 +374,7 @@ class FlowStreamHandler final : public visor::StreamMetricsHandler<FlowMetricsMa
         "asn_notfound",
         "summarize_ips_by_asn",
         "subnets_for_summarization",
+        "exclude_asns_from_summarization",
         "exclude_ips_from_summarization",
         "sample_rate_scaling",
         "recorded_stream"};

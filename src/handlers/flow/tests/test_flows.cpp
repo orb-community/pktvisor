@@ -113,7 +113,7 @@ TEST_CASE("Parse sflow stream without sampling", "[sflow][flow]")
     stream.config_set("flow_type", "sflow");
     stream.config_set("pcap_file", "tests/fixtures/ecmp.pcap");
     visor::network::IpPort::set_csv_iana_ports("tests/fixtures/pktvisor-port-service-names.csv");
-    
+
     visor::Config c;
     auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
@@ -392,5 +392,5 @@ TEST_CASE("Flow invalid config", "[flow][filter][config]")
     c.config_set<uint64_t>("num_periods", 1);
     FlowStreamHandler flow_handler{"flow-test", stream_proxy, &c};
     flow_handler.config_set<bool>("invalid_config", true);
-    REQUIRE_THROWS_WITH(flow_handler.start(), "invalid_config is an invalid/unsupported config or filter. The valid configs/filters are: device_map, enrichment, only_device_interfaces, only_ips, only_ports, only_directions, geoloc_notfound, asn_notfound, summarize_ips_by_asn, subnets_for_summarization, exclude_ips_from_summarization, sample_rate_scaling, recorded_stream, deep_sample_rate, num_periods, topn_count, topn_percentile_threshold");
+    REQUIRE_THROWS_WITH(flow_handler.start(), "invalid_config is an invalid/unsupported config or filter. The valid configs/filters are: device_map, enrichment, only_device_interfaces, only_ips, only_ports, only_directions, geoloc_notfound, asn_notfound, summarize_ips_by_asn, subnets_for_summarization, exclude_asns_from_summarization, exclude_ips_from_summarization, sample_rate_scaling, recorded_stream, deep_sample_rate, num_periods, topn_count, topn_percentile_threshold");
 }
