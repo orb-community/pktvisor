@@ -149,16 +149,22 @@ void DnsStreamHandler::start()
             }
         }
     }
-    if (config_exists("only_qname_suffix")) {
-        _f_enabled.set(Filters::OnlyQNameSuffix);
-        for (const auto &qname : config_get<StringList>("only_qname_suffix")) {
-            // note, this currently copies the strings, meaning there could be a big list that is duplicated
-            // we can work on trying to make this a string_view instead
-            // we copy it out so that we don't have to hit the config mutex
+    if (config_exists("only_qname")) {
+        _f_enabled.set(Filters::OnlyQName);
+        for (const auto &qname : config_get<StringList>("only_qname")) {
             std::string qname_ci{qname};
             std::transform(qname_ci.begin(), qname_ci.end(), qname_ci.begin(),
                 [](unsigned char c) { return std::tolower(c); });
             _f_qnames.emplace_back(std::move(qname_ci));
+        }
+    }
+    if (config_exists("only_qname_suffix")) {
+        _f_enabled.set(Filters::OnlyQNameSuffix);
+        for (const auto &qname : config_get<StringList>("only_qname_suffix")) {
+            std::string qname_ci{qname};
+            std::transform(qname_ci.begin(), qname_ci.end(), qname_ci.begin(),
+                [](unsigned char c) { return std::tolower(c); });
+            _f_qnames_suffix.emplace_back(std::move(qname_ci));
         }
     }
     if (config_exists("geoloc_notfound") && config_get<bool>("geoloc_notfound")) {
@@ -516,22 +522,33 @@ inline bool DnsStreamHandler::_filtering(DnsLayer &payload, PacketDirection dir,
                 goto will_filter;
             }
         }
-    }
 
-    if (_f_enabled[Filters::OnlyQNameSuffix]) {
-        if (!payload.parseResources(true) || payload.getFirstQuery() == nullptr) {
-            goto will_filter;
+        if (_f_enabled[Filters::OnlyQName]) {
+            if (!payload.parseResources(true) || payload.getFirstQuery() == nullptr) {
+                goto will_filter;
+            }
+            std::string_view qname_ci = payload.getFirstQuery()->getNameLower();
+            if (std::none_of(_f_qnames.begin(), _f_qnames.end(), [&qname_ci](std::string fqn) { return qname_ci == fqn; })) {
+                // checked the whole list and none of them matched: filter
+                goto will_filter;
+            }
         }
-        std::string_view qname_ci = payload.getFirstQuery()->getNameLower();
-        if (std::none_of(_f_qnames.begin(), _f_qnames.end(), [this, qname_ci](std::string fqn) {
-                if (ends_with(qname_ci, fqn)) {
-                    _static_suffix_size = fqn.size();
-                    return true;
-                }
-                return false;
-            })) {
-            // checked the whole list and none of them matched: filter
-            goto will_filter;
+
+        if (_f_enabled[Filters::OnlyQNameSuffix]) {
+            if (!payload.parseResources(true) || payload.getFirstQuery() == nullptr) {
+                goto will_filter;
+            }
+            std::string_view qname_ci = payload.getFirstQuery()->getNameLower();
+            if (std::none_of(_f_qnames_suffix.begin(), _f_qnames_suffix.end(), [this, &qname_ci](std::string fqn) {
+                    if (ends_with(qname_ci, fqn)) {
+                        _static_suffix_size = fqn.size();
+                        return true;
+                    }
+                    return false;
+                })) {
+                // checked the whole list and none of them matched: filter
+                goto will_filter;
+            }
         }
     }
 

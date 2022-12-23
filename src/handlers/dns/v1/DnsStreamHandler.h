@@ -345,6 +345,7 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
         OnlyResponses,
         OnlyQtype,
         AnswerCount,
+        OnlyQName,
         OnlyQNameSuffix,
         OnlyDNSSECResponse,
         DnstapMsgType,
@@ -360,11 +361,13 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
     std::bitset<Configs::ConfigsMAX> _c_enabled;
     std::vector<uint16_t> _f_rcodes;
     uint64_t _f_answer_count{0};
+    std::vector<std::string> _f_qnames_suffix;
     std::vector<std::string> _f_qnames;
     std::vector<uint16_t> _f_qtypes;
     size_t _static_suffix_size{0};
     std::bitset<DNSTAP_TYPE_SIZE> _f_dnstap_types;
     bool _using_predicate_signals{false};
+    Filters _predicate_filter_type{Filters::FiltersMAX};
 
     static const inline StreamMetricsHandler::ConfigsDefType _config_defs = {
         "exclude_noerror",
@@ -374,6 +377,7 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
         "only_dnssec_response",
         "answer_count",
         "only_qtype",
+        "only_qname",
         "only_qname_suffix",
         "geoloc_notfound",
         "asn_notfound",

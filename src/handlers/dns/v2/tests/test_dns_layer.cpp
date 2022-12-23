@@ -376,7 +376,7 @@ TEST_CASE("DNS Filters: only_qtypes AAAA and TXT", "[pcap][dns]")
     c.config_set<uint64_t>("num_periods", 1);
     DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
 
-    // notice case insensitive
+    // notice case-insensitive
     dns_handler.config_set<visor::Configurable::StringList>("only_qtype", {"AAAA", "TxT"});
     dns_handler.start();
     stream.start();
@@ -442,6 +442,46 @@ TEST_CASE("DNS TopN custom size", "[pcap][dns]")
     CHECK(j["out"]["top_qtype_xacts"][3] == nullptr);
 }
 
+TEST_CASE("DNS Filters: only_qname", "[pcap][dns]")
+{
+
+    PcapInputStream stream{"pcap-test"};
+    stream.config_set("pcap_file", "tests/fixtures/dns_udp_mixed_rcode.pcap");
+    stream.config_set("bpf", "");
+    stream.config_set("host_spec", "192.168.0.0/24");
+    stream.parse_host_spec();
+
+    visor::Config c;
+    auto stream_proxy = stream.add_event_proxy(c);
+    c.config_set<uint64_t>("num_periods", 1);
+    DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
+
+    // notice, case-insensitive
+    dns_handler.config_set<visor::Configurable::StringList>("only_qname", {"play.GooGle.com", "nonexistent.google.com"});
+    dns_handler.start();
+    stream.start();
+    stream.stop();
+    dns_handler.stop();
+
+    auto counters = dns_handler.metrics()->bucket(0)->counters(TransactionDirection::out);
+
+    CHECK(counters.UDP.value() == 2);
+    CHECK(counters.RNOERROR.value() == 1);
+    CHECK(counters.SRVFAIL.value() == 0);
+    CHECK(counters.REFUSED.value() == 0);
+    CHECK(counters.NX.value() == 1);
+    CHECK(counters.NODATA.value() == 1);
+    CHECK(counters.xacts.value() == 2);
+    CHECK(counters.timeout.value() == 0);
+    CHECK(counters.orphan.value() == 3);
+
+    nlohmann::json j;
+    dns_handler.metrics()->bucket(0)->to_json(j);
+
+    CHECK(j["out"]["top_qname2_xacts"][0]["name"] == ".google.com");
+    CHECK(j["out"]["top_qname3_xacts"][0]["name"] != nullptr);
+}
+
 TEST_CASE("DNS Filters: only_qname_suffix", "[pcap][dns]")
 {
 
@@ -456,7 +496,7 @@ TEST_CASE("DNS Filters: only_qname_suffix", "[pcap][dns]")
     c.config_set<uint64_t>("num_periods", 1);
     DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
 
-    // notice, case insensitive
+    // notice, case-insensitive
     dns_handler.config_set<visor::Configurable::StringList>("only_qname_suffix", {"GooGle.com"});
     dns_handler.start();
     stream.start();
@@ -473,15 +513,14 @@ TEST_CASE("DNS Filters: only_qname_suffix", "[pcap][dns]")
     CHECK(counters.NODATA.value() == 1);
     CHECK(counters.xacts.value() == 4);
     CHECK(counters.timeout.value() == 0);
-    CHECK(counters.orphan.value() == 1);
+    CHECK(counters.orphan.value() == 3);
 
     nlohmann::json j;
     dns_handler.metrics()->bucket(0)->to_json(j);
 
-    REQUIRE(j["filtered_packets"] == 14);
+    REQUIRE(j["filtered_packets"] == 12);
 
     CHECK(j["out"]["top_qname2_xacts"][0]["name"].get<std::string>().find("google.com") != std::string::npos);
-    CHECK(j["out"]["top_qname3_xacts"][0]["name"] == nullptr);
 }
 
 TEST_CASE("DNS Filters: answer_count", "[pcap][dns]")
@@ -583,7 +622,7 @@ TEST_CASE("DNS Configs: public_suffix_list", "[pcap][dns]")
     c.config_set<uint64_t>("num_periods", 1);
     DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
 
-    // notice, case insensitive
+    // notice, case-insensitive
     dns_handler.config_set<bool>("public_suffix_list", true);
     dns_handler.start();
     stream.start();
@@ -897,5 +936,5 @@ TEST_CASE("DNS invalid config", "[dns][filter][config]")
     c.config_set<uint64_t>("num_periods", 1);
     DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
     dns_handler.config_set<bool>("invalid_config", true);
-    REQUIRE_THROWS_WITH(dns_handler.start(), "invalid_config is an invalid/unsupported config or filter. The valid configs/filters are: exclude_noerror, only_rcode, only_dnssec_response, answer_count, only_qtype, only_qname_suffix, geoloc_notfound, asn_notfound, dnstap_msg_type, public_suffix_list, recorded_stream, deep_sample_rate, num_periods, topn_count, topn_percentile_threshold");
+    REQUIRE_THROWS_WITH(dns_handler.start(), "invalid_config is an invalid/unsupported config or filter. The valid configs/filters are: exclude_noerror, only_rcode, only_dnssec_response, answer_count, only_qtype, only_qname, only_qname_suffix, geoloc_notfound, asn_notfound, dnstap_msg_type, public_suffix_list, recorded_stream, deep_sample_rate, num_periods, topn_count, topn_percentile_threshold");
 }

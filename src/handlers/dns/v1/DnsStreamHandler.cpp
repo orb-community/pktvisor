@@ -88,12 +88,15 @@ void DnsStreamHandler::start()
                         throw ConfigException(fmt::format("DnsStreamHandler: only_rcode filter contained an invalid/unsupported rcode: {}", value));
                     }
                     _f_rcodes.push_back(value);
+                    _register_predicate_filter(Filters::OnlyRCode, "only_rcode", rcode);
                 } else {
                     std::string upper_rcode{rcode};
                     std::transform(upper_rcode.begin(), upper_rcode.end(), upper_rcode.begin(),
                         [](unsigned char c) { return std::toupper(c); });
                     if (RCodeNumbers.find(upper_rcode) != RCodeNumbers.end()) {
-                        _f_rcodes.push_back(RCodeNumbers[upper_rcode]);
+                        auto value = RCodeNumbers[upper_rcode];
+                        _f_rcodes.push_back(value);
+                        _register_predicate_filter(Filters::OnlyRCode, "only_rcode", std::to_string(value));
                     } else {
                         throw ConfigException(fmt::format("DnsStreamHandler: only_rcode filter contained an invalid/unsupported rcode: {}", rcode));
                     }
@@ -139,16 +142,23 @@ void DnsStreamHandler::start()
             }
         }
     }
-    if (config_exists("only_qname_suffix")) {
-        _f_enabled.set(Filters::OnlyQNameSuffix);
-        for (const auto &qname : config_get<StringList>("only_qname_suffix")) {
-            // note, this currently copies the strings, meaning there could be a big list that is duplicated
-            // we can work on trying to make this a string_view instead
-            // we copy it out so that we don't have to hit the config mutex
+    if (config_exists("only_qname")) {
+        _f_enabled.set(Filters::OnlyQName);
+        for (const auto &qname : config_get<StringList>("only_qname")) {
             std::string qname_ci{qname};
             std::transform(qname_ci.begin(), qname_ci.end(), qname_ci.begin(),
                 [](unsigned char c) { return std::tolower(c); });
-            _f_qnames.emplace_back(std::move(qname_ci));
+            _f_qnames.emplace_back(qname_ci);
+            _register_predicate_filter(Filters::OnlyQName, "only_qname", qname_ci);
+        }
+    }
+    if (config_exists("only_qname_suffix")) {
+        _f_enabled.set(Filters::OnlyQNameSuffix);
+        for (const auto &qname : config_get<StringList>("only_qname_suffix")) {
+            std::string qname_ci{qname};
+            std::transform(qname_ci.begin(), qname_ci.end(), qname_ci.begin(),
+                [](unsigned char c) { return std::tolower(c); });
+            _f_qnames_suffix.emplace_back(std::move(qname_ci));
         }
     }
     if (config_exists("geoloc_notfound") && config_get<bool>("geoloc_notfound")) {
@@ -423,8 +433,9 @@ void DnsStreamHandler::info_json(json &j) const
 
 inline void DnsStreamHandler::_register_predicate_filter(Filters filter, std::string f_key, std::string f_value)
 {
-    if (!_using_predicate_signals && filter == Filters::OnlyRCode) {
-        // all DnsStreamHandler race to install this predicate, which is only installed once and called once per udp event
+    PcapInputEventProxy::UdpPredicate predicate;
+    if (filter == Filters::OnlyRCode) {
+        // all DnsStreamHandler race to install this predicate, which is only installed once per thread and called once per udp event
         // it's job is to return the predicate "jump key" to call matching signals
         static thread_local auto udp_rcode_predicate = [&cache = _cached_dns_layer](pcpp::Packet &payload, PacketDirection, pcpp::ProtocolType, uint32_t flowkey, timespec stamp) -> std::string {
             pcpp::UdpLayer *udpLayer = payload.getLayerOfType<pcpp::UdpLayer>();
@@ -441,17 +452,36 @@ inline void DnsStreamHandler::_register_predicate_filter(Filters filter, std::st
             }
             return std::string(DNS_SCHEMA) + "only_rcode" + std::to_string(dnsLayer->getDnsHeader()->responseCode);
         };
-
-        // if the jump key matches, this callback fires
-        auto rcode_signal = [this](pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp) {
-            process_udp_packet_cb(payload, dir, l3, flowkey, stamp);
+        predicate = udp_rcode_predicate;
+    } else if (filter == Filters::OnlyQName) {
+        static thread_local auto udp_qname_predicate = [&cache = _cached_dns_layer](pcpp::Packet &payload, PacketDirection, pcpp::ProtocolType, uint32_t flowkey, timespec stamp) -> std::string {
+            pcpp::UdpLayer *udpLayer = payload.getLayerOfType<pcpp::UdpLayer>();
+            assert(udpLayer);
+            if (flowkey != cache.flowKey || stamp.tv_sec != cache.timestamp.tv_sec || stamp.tv_nsec != cache.timestamp.tv_nsec) {
+                cache.flowKey = flowkey;
+                cache.timestamp = stamp;
+                cache.dnsLayer = std::make_unique<DnsLayer>(udpLayer, &payload);
+            }
+            auto dnsLayer = cache.dnsLayer.get();
+            // return the 'jump key' for pcap to make O(1) call to appropriate signals
+            if (!dnsLayer->parseResources(true) || dnsLayer->getFirstQuery() == nullptr) {
+                return std::string(DNS_SCHEMA) + "only_qname"; // invalid qname
+            }
+            return std::string(DNS_SCHEMA) + "only_qname" + dnsLayer->getFirstQuery()->getNameLower();
         };
-        if (_pcap_proxy) {
-            // even though predicate and callback are sent, pcap will only install the first one it sees from dns handler
-            // module name is sent to allow disconnect at shutdown time
-            _pcap_proxy->register_udp_predicate_signal(schema_key(), name(), f_key, f_value, udp_rcode_predicate, rcode_signal);
-            _using_predicate_signals = true;
-        }
+        predicate = udp_qname_predicate;
+    }
+    // if the jump key matches, this callback fires
+    auto signal = [filter, this](pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp) {
+        _predicate_filter_type = filter;
+        process_udp_packet_cb(payload, dir, l3, flowkey, stamp);
+        _predicate_filter_type = Filters::FiltersMAX;
+    };
+    if (_pcap_proxy) {
+        // even though predicate and callback are sent, pcap will only install the first one it sees from dns handler
+        // module name is sent to allow disconnect at shutdown time
+        _pcap_proxy->register_udp_predicate_signal(schema_key(), name(), f_key, f_value, predicate, signal);
+        _using_predicate_signals = true;
     }
 }
 inline bool DnsStreamHandler::_filtering(DnsLayer &payload, [[maybe_unused]] PacketDirection dir, [[maybe_unused]] pcpp::ProtocolType l3, [[maybe_unused]] pcpp::ProtocolType l4, [[maybe_unused]] uint16_t port, timespec stamp)
@@ -462,7 +492,7 @@ inline bool DnsStreamHandler::_filtering(DnsLayer &payload, [[maybe_unused]] Pac
             goto will_filter;
         }
     }
-    if (_f_enabled[Filters::OnlyRCode] && !_using_predicate_signals) {
+    if (_f_enabled[Filters::OnlyRCode] && _predicate_filter_type != Filters::OnlyRCode) {
         auto rcode = payload.getDnsHeader()->responseCode;
         if (std::none_of(_f_rcodes.begin(), _f_rcodes.end(), [rcode](uint16_t f_rcode) { return rcode == f_rcode; })) {
             goto will_filter;
@@ -509,12 +539,22 @@ inline bool DnsStreamHandler::_filtering(DnsLayer &payload, [[maybe_unused]] Pac
             goto will_filter;
         }
     }
+    if (_f_enabled[Filters::OnlyQName] && _predicate_filter_type != Filters::OnlyQName) {
+        if (!payload.parseResources(true) || payload.getFirstQuery() == nullptr) {
+            goto will_filter;
+        }
+        std::string_view qname_ci = payload.getFirstQuery()->getNameLower();
+        if (std::none_of(_f_qnames.begin(), _f_qnames.end(), [&qname_ci](std::string fqn) { return qname_ci == fqn; })) {
+            // checked the whole list and none of them matched: filter
+            goto will_filter;
+        }
+    }
     if (_f_enabled[Filters::OnlyQNameSuffix]) {
         if (!payload.parseResources(true) || payload.getFirstQuery() == nullptr) {
             goto will_filter;
         }
         std::string_view qname_ci = payload.getFirstQuery()->getNameLower();
-        if (std::none_of(_f_qnames.begin(), _f_qnames.end(), [this, qname_ci](std::string fqn) {
+        if (std::none_of(_f_qnames_suffix.begin(), _f_qnames_suffix.end(), [this, &qname_ci](std::string fqn) {
                 if (ends_with(qname_ci, fqn)) {
                     _static_suffix_size = fqn.size();
                     return true;
