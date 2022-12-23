@@ -158,15 +158,6 @@ void DnsStreamHandler::start()
             _f_qnames.emplace_back(std::move(qname_ci));
         }
     }
-    if (config_exists("only_qname")) {
-        _f_enabled.set(Filters::OnlyQName);
-        for (const auto &qname : config_get<StringList>("only_qname")) {
-            std::string qname_ci{qname};
-            std::transform(qname_ci.begin(), qname_ci.end(), qname_ci.begin(),
-                [](unsigned char c) { return std::tolower(c); });
-            _f_qnames.emplace_back(std::move(qname_ci));
-        }
-    }
     if (config_exists("only_qname_suffix")) {
         _f_enabled.set(Filters::OnlyQNameSuffix);
         for (const auto &qname : config_get<StringList>("only_qname_suffix")) {
