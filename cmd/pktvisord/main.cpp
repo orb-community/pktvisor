@@ -100,12 +100,13 @@ static const char USAGE[] =
     Prometheus Options:
       --prometheus                          Ignored, Prometheus output always enabled (left for backwards compatibility)
       --prom-instance ID                    Optionally set the 'instance' label to given ID
-    Opentelemetry Options
-      --opentelemetry                       Enable Opentelemetry OTLP exporter over HTTP
-      --otel-host HOST                      Setup OTEL Collector IP to where the data will be pushed to (default: localhost)
-      --otel-port PORT                      Setup OTEL Collector port number (default: 4317)
+    OpenTelemetry Options
+      --otel                                Enable OpenTelemetry OTLP exporter over HTTP(S)
+      --otel-host HOST                      Set OTEL destination IP where the data will be pushed to (default: localhost)
+      --otel-path PATH                      Set OTEL destination URL path (default: /v1/metrics)
+      --otel-port PORT                      Set OTEL destination port number (default: 4318)
       --otel-interval N                     The interval in seconds that exporter will periodically push data (default: 60)
-      --otel-tls                            Enable TLS communication between Exporter and Collector
+      --otel-tls                            Enable TLS when connecting to OTEL destination
       --otel-tls-cert FILE                  Use given TLS cert. Required if --otel-tls is enabled.
       --otel-tls-key FILE                   Use given TLS private key. Required if --otel-tls is enabled.
     Metric Enrichment Options:
@@ -163,6 +164,7 @@ struct CmdOptions {
         std::optional<unsigned int> interval;
         std::optional<unsigned int> port;
         std::optional<std::string> host;
+        std::optional<std::string> path;
         std::optional<std::string> tls_cert;
         std::optional<std::string> tls_key;
     };
@@ -316,7 +318,7 @@ void fill_cmd_options(std::map<std::string, docopt::value> args, CmdOptions &opt
         options.web_server.tls_key = config["tls_key"].as<std::string>();
     }
 
-    options.otel_setup.otel_support = (config["opentelemetry"] && config["opentelemetry"].as<bool>()) || args["--opentelemetry"].asBool();
+    options.otel_setup.otel_support = (config["otel"] && config["otel"].as<bool>()) || args["--otel"].asBool();
     options.otel_setup.tls_support = (config["otel_tls"] && config["otel_tls"].as<bool>()) || args["--admin-api"].asBool();
 
     if (args["--otel-host"]) {
@@ -327,12 +329,20 @@ void fill_cmd_options(std::map<std::string, docopt::value> args, CmdOptions &opt
         options.otel_setup.host = "localhost";
     }
 
+    if (args["--otel-path"]) {
+        options.otel_setup.path = args["--otel-path"].asString();
+    } else if (config["otel_host"]) {
+        options.otel_setup.path = config["otel_path"].as<std::string>();
+    } else {
+        options.otel_setup.path = "/v1/metrics";
+    }
+
     if (args["--otel-port"]) {
         options.otel_setup.port = static_cast<unsigned int>(args["--otel-port"].asLong());
     } else if (config["otel_port"]) {
         options.otel_setup.port = config["otel_port"].as<unsigned int>();
     } else {
-        options.otel_setup.port = 4317;
+        options.otel_setup.port = 4318;
     }
 
     if (args["--otel-interval"]) {
@@ -616,6 +626,7 @@ int main(int argc, char *argv[])
             otel_config.tls_cert = options.otel_setup.tls_cert.value();
             logger->info("Enabling OTEL TLS with cert {} and key {}", otel_config.tls_key, otel_config.tls_cert);
         }
+        otel_config.path = options.otel_setup.path.value();
         otel_config.endpoint = options.otel_setup.host.value();
         otel_config.port_number = options.otel_setup.port.value();
     }

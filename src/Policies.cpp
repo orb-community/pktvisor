@@ -411,7 +411,7 @@ void Policy::opentelemetry_metrics(metrics::v1::ScopeMetrics &scope)
             if (hmod) {
                 spdlog::stopwatch sw;
                 hmod->window_opentelemetry(scope, {{"policy", name()}, {"handler", hmod->name()}});
-                spdlog::get("visor")->debug("{} window_prometheus elapsed time: {}", hmod->name(), sw);
+                spdlog::get("visor")->debug("{} window_opentelemetry elapsed time: {}", hmod->name(), sw);
             }
         }
     }

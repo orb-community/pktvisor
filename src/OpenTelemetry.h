@@ -18,7 +18,8 @@ using namespace opentelemetry::proto;
 struct OtelConfig {
     bool enable{false};
     std::string endpoint{"localhost"};
-    uint32_t port_number{4317};
+    std::string path{"/v1/metrics"};
+    uint32_t port_number{4318};
     uint64_t interval_sec{60};
     std::string tls_cert;
     std::string tls_key;
@@ -28,7 +29,7 @@ class OpenTelemetry
 {
     std::unique_ptr<httplib::Client> _client;
     collector::metrics::v1::ExportMetricsServiceRequest _request;
-    metrics::v1::ResourceMetrics *_resorce;
+    metrics::v1::ResourceMetrics *_resource;
     std::shared_ptr<timer::interval_handle> _timer_handle;
     std::function<bool(metrics::v1::ResourceMetrics &resource)> _callback;
 
@@ -40,15 +41,16 @@ public:
         } else {
             _client = std::make_unique<httplib::Client>(config.endpoint, config.port_number);
         }
-        _resorce = _request.add_resource_metrics();
+        _resource = _request.add_resource_metrics();
         static timer timer_thread{std::chrono::seconds(config.interval_sec)};
-        _timer_handle = timer_thread.set_interval(std::chrono::seconds(config.interval_sec), [this] {
-            _resorce->clear_scope_metrics();
-            if (_callback && _callback(*_resorce)) {
+        auto path = config.path;
+        _timer_handle = timer_thread.set_interval(std::chrono::seconds(config.interval_sec), [path, this] {
+            _resource->clear_scope_metrics();
+            if (_callback && _callback(*_resource)) {
                 if (auto body_size = _request.ByteSizeLong(); body_size > sizeof(_request)) {
                     auto body = std::make_unique<char[]>(body_size);
                     _request.SerializeToArray(body.get(), body_size);
-                    auto result = _client->Post("/v1/metrics", body.get(), body_size, BIN_CONTENT_TYPE);
+                    auto result = _client->Post(path, body.get(), body_size, BIN_CONTENT_TYPE);
                 }
             }
         });
@@ -57,8 +59,8 @@ public:
     ~OpenTelemetry()
     {
         _timer_handle->cancel();
-        _resorce->clear_resource();
-        _resorce = nullptr;
+        _resource->clear_resource();
+        _resource = nullptr;
     }
 
     void OnInterval(std::function<bool(metrics::v1::ResourceMetrics &resource)> callback)
