@@ -554,6 +554,12 @@ void DnsMetricsBucket::specialized_merge(const AbstractMetricsBucket &o, Metric:
     // static because caller guarantees only our own bucket type
     const auto &other = static_cast<const DnsMetricsBucket &>(o);
 
+
+    // generate transaction directions if they do not exist
+    for (auto &dns : other._dns) {
+        dir_setup(dns.first);
+    }
+
     // rates maintain their own thread safety
     for (auto &dns : _dns) {
         group_enabled(group::DnsMetrics::Quantiles) ? dns.second.dnsRate.merge(other._dns.at(dns.first).dnsRate, agg_operator) : void();
