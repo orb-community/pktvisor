@@ -889,6 +889,10 @@ jobs:
           sudo skopeo copy \
           --all \
           docker://ghcr.io/ns1labs/pktvisor:latest-develop \
+          docker://docker.io/ns1labs/pktvisor:develop
+          sudo skopeo copy \
+          --all \
+          docker://ghcr.io/ns1labs/pktvisor:latest-develop \
           docker://docker.io/ns1labs/pktvisor:${{ needs.unit-tests-linux.outputs.version_number }}
 
 
