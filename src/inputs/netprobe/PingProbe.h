@@ -58,17 +58,26 @@ class PingReceiver
     std::unique_ptr<std::thread> _io_thread;
     std::shared_ptr<uvw::Loop> _io_loop;
     std::shared_ptr<uvw::AsyncHandle> _async_h;
+    std::vector<std::shared_ptr<uvw::AsyncHandle>> _callbacks;
     std::shared_ptr<uvw::TimerHandle> _timer;
     std::vector<std::pair<pcpp::Packet, timespec>> _recv_packets;
     void _setup_receiver();
 
 public:
     static std::vector<std::pair<pcpp::Packet, timespec>> recv_packets;
-    static uint8_t bucket;
-    static std::shared_mutex mutex;
 
     PingReceiver();
     ~PingReceiver();
+
+    void register_async_callback(std::shared_ptr<uvw::AsyncHandle> callback)
+    {
+        _callbacks.push_back(callback);
+    }
+
+    void remove_async_callback(std::shared_ptr<uvw::AsyncHandle> callback)
+    {
+        _callbacks.erase(std::remove(_callbacks.begin(), _callbacks.end(), callback), _callbacks.end());
+    }
 };
 
 /**
@@ -80,6 +89,7 @@ public:
  */
 class PingProbe final : public NetProbe
 {
+    static std::unique_ptr<PingReceiver> _receiver;
     static thread_local SOCKET _sock;
 
     bool _init{false};
@@ -90,7 +100,7 @@ class PingProbe final : public NetProbe
     std::shared_ptr<uvw::TimerHandle> _interval_timer;
     std::shared_ptr<uvw::TimerHandle> _internal_timer;
     std::shared_ptr<uvw::TimerHandle> _timeout_timer;
-    std::shared_ptr<uvw::CheckHandle> _recv_handler;
+    std::shared_ptr<uvw::AsyncHandle> _recv_handler;
     SOCKETLEN _sin_length{0};
     std::vector<uint8_t> _payload_array;
     sockaddr_in _sa;

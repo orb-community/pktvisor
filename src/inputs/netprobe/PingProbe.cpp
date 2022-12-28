@@ -8,9 +8,8 @@
 
 namespace visor::input::netprobe {
 
-std::vector<std::pair<pcpp::Packet, timespec>> PingReceiver::recv_packets;
-std::shared_mutex PingReceiver::mutex;
-uint8_t PingReceiver::bucket{0};
+std::vector<std::pair<pcpp::Packet, timespec>> PingReceiver::recv_packets{};
+std::unique_ptr<PingReceiver> PingProbe::_receiver{nullptr};
 thread_local std::atomic<uint32_t> PingProbe::sock_count{0};
 thread_local SOCKET PingProbe::_sock{INVALID_SOCKET};
 
@@ -102,9 +101,10 @@ void PingReceiver::_setup_receiver()
     _timer = _io_loop->resource<uvw::TimerHandle>();
     _timer->on<uvw::TimerEvent>([this](const auto &, auto &) {
         if (!_recv_packets.empty()) {
-            std::unique_lock lock(mutex);
-            (bucket == UCHAR_MAX) ? bucket = 0 : bucket++;
             recv_packets = _recv_packets;
+            for (const auto &callback : _callbacks) {
+                callback->send();
+            }
             _recv_packets.clear();
         }
     });
@@ -140,8 +140,10 @@ bool PingProbe::start(std::shared_ptr<uvw::Loop> io_loop)
 
     _io_loop = io_loop;
 
-    // execute once
-    static auto receiver = std::make_unique<PingReceiver>();
+    if (!_receiver) {
+        // only once
+        _receiver = std::make_unique<PingReceiver>();
+    }
 
     _interval_timer = _io_loop->resource<uvw::TimerHandle>();
     if (!_interval_timer) {
@@ -191,21 +193,17 @@ bool PingProbe::start(std::shared_ptr<uvw::Loop> io_loop)
         _internal_timer->start(uvw::TimerHandle::Time{_config.packets_interval_msec}, uvw::TimerHandle::Time{_config.packets_interval_msec});
     });
 
-    _recv_handler = _io_loop->resource<uvw::CheckHandle>();
+    _recv_handler = _io_loop->resource<uvw::AsyncHandle>();
     if (!_recv_handler) {
-        throw NetProbeException("PingProbe - unable to initialize CheckHandle receiver");
+        throw NetProbeException("PingProbe - unable to initialize AsyncHandle receiver");
     }
-
-    _recv_handler->on<uvw::CheckEvent>([this](const auto &, auto &) {
-        std::shared_lock lock(PingReceiver::mutex);
-        if (_bucket != PingReceiver::bucket) {
-            _bucket = PingReceiver::bucket;
-            for (auto &[packet, stamp] : PingReceiver::recv_packets) {
-                _recv(packet, TestType::Ping, _name, stamp);
-            }
+    _recv_handler->on<uvw::AsyncEvent>([this](const auto &, auto &) {
+        for (auto &[packet, stamp] : PingReceiver::recv_packets) {
+            _recv(packet, TestType::Ping, _name, stamp);
         }
     });
-    _recv_handler->start();
+    _receiver->register_async_callback(_recv_handler);
+    _recv_handler->init();
 
     ++sock_count;
     _interval_timer->start(uvw::TimerHandle::Time{0}, uvw::TimerHandle::Time{_config.interval_msec});
@@ -219,7 +217,8 @@ bool PingProbe::stop()
         _interval_timer->stop();
     }
     if (_recv_handler) {
-        _recv_handler->stop();
+        _receiver->remove_async_callback(_recv_handler);
+        _recv_handler->close();
     }
     _close_socket();
     return true;
