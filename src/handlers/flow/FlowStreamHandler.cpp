@@ -25,17 +25,24 @@ static std::string ip_summarization(const std::string &val, SummaryData *summary
             return val;
         }
         if (summary->type == IpSummary::ByASN && HandlerModulePlugin::asn->enabled()) {
+            std::string asn;
             if (ipv4.isValid()) {
                 sockaddr_in sa4{};
                 if (lib::utils::ipv4_to_sockaddr(ipv4, &sa4)) {
-                    return HandlerModulePlugin::asn->getASNString(&sa4);
+                    asn = HandlerModulePlugin::asn->getASNString(&sa4);
                 }
             } else if (ipv6.isValid()) {
                 sockaddr_in6 sa6{};
                 if (lib::utils::ipv6_to_sockaddr(ipv6, &sa6)) {
-                    return HandlerModulePlugin::asn->getASNString(&sa6);
+                    asn = HandlerModulePlugin::asn->getASNString(&sa6);
                 }
             }
+            if (!summary->asn_exclude_summary.empty() && std::any_of(summary->asn_exclude_summary.begin(), summary->asn_exclude_summary.end(), [&asn](const auto &prefix) {
+                    return asn.size() >= prefix.size() && 0 == asn.compare(0, prefix.size(), prefix);
+                })) {
+                return val;
+            }
+            return asn;
         } else if (summary->type == IpSummary::BySubnet) {
             if (ipv4.isValid()) {
                 if (auto [match, subnet] = match_subnet(summary->ipv4_summary, ipv4.toInt()); match) {
@@ -134,6 +141,11 @@ void FlowStreamHandler::start()
         summary_data.type = IpSummary::ByASN;
         if (config_exists("exclude_ips_from_summarization")) {
             parse_host_specs(config_get<StringList>("exclude_ips_from_summarization"), summary_data.ipv4_exclude_summary, summary_data.ipv6_exclude_summary);
+        }
+        if (config_exists("exclude_asns_from_summarization")) {
+            for (const auto &asn : config_get<StringList>("exclude_ips_from_summarization")) {
+                summary_data.asn_exclude_summary.push_back(asn + "/");
+            }
         }
         _metrics->set_summary_data(std::move(summary_data));
     } else if (config_exists("subnets_for_summarization")) {
@@ -929,16 +941,20 @@ void FlowMetricsBucket::to_json(json &j) const
                 }
                 if (group_enabled(group::FlowMetrics::TopIPs)) {
                     if (summary) {
-                        top_dir.second.topSrcIP.to_json(j["devices"][deviceId]["interfaces"][interfaceId], [summary](const std::string &val) {
-                            return ip_summarization(val, summary);
-                        });
+                        top_dir.second.topSrcIP.to_json(
+                            j["devices"][deviceId]["interfaces"][interfaceId], [summary](const std::string &val) {
+                                return ip_summarization(val, summary);
+                            },
+                            Metric::Aggregate::SUMMARY);
                     } else {
                         top_dir.second.topSrcIP.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
                     }
                     if (summary) {
-                        top_dir.second.topDstIP.to_json(j["devices"][deviceId]["interfaces"][interfaceId], [summary](const std::string &val) {
-                            return ip_summarization(val, summary);
-                        });
+                        top_dir.second.topDstIP.to_json(
+                            j["devices"][deviceId]["interfaces"][interfaceId], [summary](const std::string &val) {
+                                return ip_summarization(val, summary);
+                            },
+                            Metric::Aggregate::SUMMARY);
                     } else {
                         top_dir.second.topDstIP.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
                     }
