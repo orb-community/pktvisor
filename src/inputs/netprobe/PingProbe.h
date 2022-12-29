@@ -105,7 +105,6 @@ class PingProbe final : public NetProbe
     std::vector<uint8_t> _payload_array;
     sockaddr_in _sa;
     sockaddr_in6 _sa6;
-    uint8_t _bucket{0};
 
     void _send_icmp_v4(uint8_t sequence);
     std::optional<ErrorType> _get_addr();
