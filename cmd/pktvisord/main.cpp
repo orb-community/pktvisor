@@ -182,8 +182,10 @@ void fill_cmd_options(std::map<std::string, docopt::value> args, CmdOptions &opt
                 logger->error("invalid schema in config file: {}", args["--config"].asString());
                 exit(EXIT_FAILURE);
             }
-            if (!config_file["version"] || !config_file["version"].IsScalar() || config_file["version"].as<std::string>() != "1.0") {
-                logger->error("missing or unsupported version in config file: {}", args["--config"].asString());
+            if (!config_file["version"]) {
+                logger->info("missing version in config file, using version \"1.0\"");
+            } else if (!config_file["version"].IsScalar() || config_file["version"].as<std::string>() != "1.0") {
+                logger->error("unsupported version in config file: {}", args["--config"].asString());
                 exit(EXIT_FAILURE);
             }
 

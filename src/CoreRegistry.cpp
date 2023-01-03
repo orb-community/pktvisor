@@ -122,8 +122,12 @@ void CoreRegistry::configure_from_yaml(YAML::Node &node)
     if (!node.IsMap() || !node["visor"]) {
         throw ConfigException("invalid schema");
     }
-    if (!node["version"] || !node["version"].IsScalar() || node["version"].as<std::string>() != "1.0") {
-        throw ConfigException("missing or unsupported version");
+
+    if (!node["version"]) {
+        _logger->info("missing version, using version \"1.0\"");
+    }
+    if (!node["version"].IsScalar() || node["version"].as<std::string>() != "1.0") {
+        throw ConfigException("unsupported version");
     }
 
     // taps
