@@ -334,6 +334,66 @@ void NetworkMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMa
     _payload_size.to_prometheus(out, add_labels);
 }
 
+void NetworkMetricsBucket::to_opentelemetry(metrics::v1::ScopeMetrics &scope, Metric::LabelMap add_labels) const
+{
+    auto start_ts = start_tstamp();
+    auto end_ts = end_tstamp();
+
+    _rate_in.to_opentelemetry(scope, start_ts, end_ts, add_labels);
+    _rate_out.to_opentelemetry(scope, start_ts, end_ts, add_labels);
+    _rate_total.to_opentelemetry(scope, start_ts, end_ts, add_labels);
+    _throughput_in.to_opentelemetry(scope, start_ts, end_ts, add_labels);
+    _throughput_out.to_opentelemetry(scope, start_ts, end_ts, add_labels);
+    _throughput_total.to_opentelemetry(scope, start_ts, end_ts, add_labels);
+
+    {
+        auto [num_events, num_samples, event_rate, event_lock] = event_data_locked(); // thread safe
+
+        event_rate->to_opentelemetry(scope, start_ts, end_ts, add_labels);
+        num_events->to_opentelemetry(scope, start_ts, end_ts, add_labels);
+        num_samples->to_opentelemetry(scope, start_ts, end_ts, add_labels);
+    }
+
+    std::shared_lock r_lock(_mutex);
+
+    if (group_enabled(group::NetMetrics::Counters)) {
+        _counters.UDP.to_opentelemetry(scope, start_ts, end_ts, add_labels);
+        _counters.TCP.to_opentelemetry(scope, start_ts, end_ts, add_labels);
+        _counters.TCP_SYN.to_opentelemetry(scope, start_ts, end_ts, add_labels);
+        _counters.OtherL4.to_opentelemetry(scope, start_ts, end_ts, add_labels);
+        _counters.IPv4.to_opentelemetry(scope, start_ts, end_ts, add_labels);
+        _counters.IPv6.to_opentelemetry(scope, start_ts, end_ts, add_labels);
+        _counters.total_in.to_opentelemetry(scope, start_ts, end_ts, add_labels);
+        _counters.total_out.to_opentelemetry(scope, start_ts, end_ts, add_labels);
+        _counters.total_unk.to_opentelemetry(scope, start_ts, end_ts, add_labels);
+        _counters.total.to_opentelemetry(scope, start_ts, end_ts, add_labels);
+        _counters.filtered.to_opentelemetry(scope, start_ts, end_ts, add_labels);
+    }
+
+    if (group_enabled(group::NetMetrics::Cardinality)) {
+        _srcIPCard.to_opentelemetry(scope, start_ts, end_ts, add_labels);
+        _dstIPCard.to_opentelemetry(scope, start_ts, end_ts, add_labels);
+    }
+
+    if (group_enabled(group::NetMetrics::TopIps)) {
+        _topIPv4.to_opentelemetry(scope, start_ts, end_ts, add_labels, [](const uint32_t &val) { return pcpp::IPv4Address(val).toString(); });
+        _topIPv6.to_opentelemetry(scope, start_ts, end_ts, add_labels);
+    }
+
+    if (group_enabled(group::NetMetrics::TopGeo)) {
+        _topGeoLoc.to_opentelemetry(scope, start_ts, end_ts, add_labels, [](Metric::LabelMap &l, const std::string &key, const visor::geo::City &val) {
+            l[key] = val.location;
+            if (!val.latitude.empty() && !val.longitude.empty()) {
+                l["lat"] = val.latitude;
+                l["lon"] = val.longitude;
+            }
+        });
+        _topASN.to_opentelemetry(scope, start_ts, end_ts, add_labels);
+    }
+
+    _payload_size.to_opentelemetry(scope, start_ts, end_ts, add_labels);
+}
+
 void NetworkMetricsBucket::to_json(json &j) const
 {
 

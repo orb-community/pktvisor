@@ -98,6 +98,19 @@ void PcapMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap a
     _counters.pcap_if_drop.to_prometheus(out, add_labels);
 }
 
+void PcapMetricsBucket::to_opentelemetry(metrics::v1::ScopeMetrics &scope, Metric::LabelMap add_labels) const
+{
+    auto start_ts = start_tstamp();
+    auto end_ts = end_tstamp();
+    
+    std::shared_lock r_lock(_mutex);
+
+    _counters.pcap_TCP_reassembly_errors.to_opentelemetry(scope, start_ts, end_ts, add_labels);
+    _counters.pcap_os_drop.to_opentelemetry(scope, start_ts, end_ts, add_labels);
+    _counters.pcap_if_drop.to_opentelemetry(scope, start_ts, end_ts, add_labels);
+}
+
+
 void PcapMetricsBucket::to_json(json &j) const
 {
     std::shared_lock r_lock(_mutex);

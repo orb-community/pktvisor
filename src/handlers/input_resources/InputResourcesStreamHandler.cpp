@@ -165,6 +165,27 @@ void InputResourcesMetricsBucket::to_prometheus(std::stringstream &out, Metric::
     _handler_count.to_prometheus(out, add_labels);
 }
 
+void InputResourcesMetricsBucket::to_opentelemetry(metrics::v1::ScopeMetrics &scope, Metric::LabelMap add_labels) const
+{
+    auto start_ts = start_tstamp();
+    auto end_ts = end_tstamp();
+    
+    {
+        auto [num_events, num_samples, event_rate, event_lock] = event_data_locked(); // thread safe
+
+        event_rate->to_opentelemetry(scope, start_ts, end_ts, add_labels);
+        num_events->to_opentelemetry(scope, start_ts, end_ts, add_labels);
+        num_samples->to_opentelemetry(scope, start_ts, end_ts, add_labels);
+    }
+
+    std::shared_lock r_lock(_mutex);
+
+    _cpu_usage.to_opentelemetry(scope, start_ts, end_ts, add_labels);
+    _memory_bytes.to_opentelemetry(scope, start_ts, end_ts, add_labels);
+    _policy_count.to_opentelemetry(scope, start_ts, end_ts, add_labels);
+    _handler_count.to_opentelemetry(scope, start_ts, end_ts, add_labels);
+}
+
 void InputResourcesMetricsBucket::to_json(json &j) const
 {
     bool live_rates = !read_only() && !recorded_stream();

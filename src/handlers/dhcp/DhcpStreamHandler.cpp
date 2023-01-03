@@ -147,6 +147,38 @@ void DhcpMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap a
     _dhcp_topServers.to_prometheus(out, add_labels);
 }
 
+void DhcpMetricsBucket::to_opentelemetry(metrics::v1::ScopeMetrics &scope, Metric::LabelMap add_labels) const
+{
+    auto start_ts = start_tstamp();
+    auto end_ts = end_tstamp();
+    
+    _rate_total.to_opentelemetry(scope, start_ts, end_ts, add_labels);
+    
+    {
+        auto [num_events, num_samples, event_rate, event_lock] = event_data_locked(); // thread safe
+
+        event_rate->to_opentelemetry(scope, start_ts, end_ts, add_labels);
+        num_events->to_opentelemetry(scope, start_ts, end_ts, add_labels);
+        num_samples->to_opentelemetry(scope, start_ts, end_ts, add_labels);
+    }
+
+    std::shared_lock r_lock(_mutex);
+
+    _counters.DISCOVER.to_opentelemetry(scope, start_ts, end_ts, add_labels);
+    _counters.OFFER.to_opentelemetry(scope, start_ts, end_ts, add_labels);
+    _counters.REQUEST.to_opentelemetry(scope, start_ts, end_ts, add_labels);
+    _counters.ACK.to_opentelemetry(scope, start_ts, end_ts, add_labels);
+    _counters.SOLICIT.to_opentelemetry(scope, start_ts, end_ts, add_labels);
+    _counters.ADVERTISE.to_opentelemetry(scope, start_ts, end_ts, add_labels);
+    _counters.REQUESTV6.to_opentelemetry(scope, start_ts, end_ts, add_labels);
+    _counters.REPLY.to_opentelemetry(scope, start_ts, end_ts, add_labels);
+    _counters.total.to_opentelemetry(scope, start_ts, end_ts, add_labels);
+    _counters.filtered.to_opentelemetry(scope, start_ts, end_ts, add_labels);
+
+    _dhcp_topClients.to_opentelemetry(scope, start_ts, end_ts, add_labels);
+    _dhcp_topServers.to_opentelemetry(scope, start_ts, end_ts, add_labels);
+}
+
 void DhcpMetricsBucket::to_json(json &j) const
 {
 
