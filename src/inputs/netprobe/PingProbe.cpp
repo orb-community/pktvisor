@@ -93,7 +93,7 @@ void PingReceiver::_setup_receiver()
                 timeval time;
                 TIMESPEC_TO_TIMEVAL(&time, &stamp);
                 pcpp::RawPacket raw(reinterpret_cast<uint8_t *>(_array.data()), rc, time, false, pcpp::LINKTYPE_DLT_RAW1);
-                _recv_packets.push_back({pcpp::Packet(&raw, pcpp::ICMP), stamp});
+                _recv_packets.emplace_back(pcpp::Packet(&raw, pcpp::ICMP), stamp);
             }
         }
     });
@@ -102,10 +102,10 @@ void PingReceiver::_setup_receiver()
     _timer->on<uvw::TimerEvent>([this](const auto &, auto &) {
         if (!_recv_packets.empty()) {
             recv_packets = _recv_packets;
+            _recv_packets.clear();
             for (const auto &callback : _callbacks) {
                 callback->send();
             }
-            _recv_packets.clear();
         }
     });
     _timer->start(uvw::TimerHandle::Time{100}, uvw::TimerHandle::Time{100});
