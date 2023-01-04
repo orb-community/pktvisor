@@ -571,57 +571,55 @@ void DnsMetricsBucket::specialized_merge(const AbstractMetricsBucket &o, Metric:
     // static because caller guarantees only our own bucket type
     const auto &other = static_cast<const DnsMetricsBucket &>(o);
 
-
     // generate transaction directions if they do not exist
     for (auto &dns : other._dns) {
         dir_setup(dns.first);
     }
 
     // rates maintain their own thread safety
-    for (auto &dns : _dns) {
-        group_enabled(group::DnsMetrics::Quantiles) ? dns.second.dnsRate.merge(other._dns.at(dns.first).dnsRate, agg_operator) : void();
+    for (auto &dns : other._dns) {
+        group_enabled(group::DnsMetrics::Quantiles) ? _dns.at(dns.first).dnsRate.merge(dns.second.dnsRate, agg_operator) : void();
     }
 
     std::shared_lock r_lock(other._mutex);
     std::unique_lock w_lock(_mutex);
 
     group_enabled(group::DnsMetrics::Counters) ? _filtered += other._filtered : void();
-    for (auto &dns : _dns) {
-
-        group_enabled(group::DnsMetrics::Counters) ? dns.second.counters += other._dns.at(dns.first).counters : void();
-        group_enabled(group::DnsMetrics::Cardinality) ? dns.second.qnameCard.merge(other._dns.at(dns.first).qnameCard) : void();
+    for (auto &dns : other._dns) {
+        group_enabled(group::DnsMetrics::Counters) ? _dns.at(dns.first).counters += dns.second.counters : void();
+        group_enabled(group::DnsMetrics::Cardinality) ? _dns.at(dns.first).qnameCard.merge(dns.second.qnameCard) : void();
 
         if (group_enabled(group::DnsMetrics::TopEcs)) {
-            dns.second.topGeoLocECS.merge(other._dns.at(dns.first).topGeoLocECS);
-            dns.second.topASNECS.merge(other._dns.at(dns.first).topASNECS);
-            dns.second.topQueryECS.merge(other._dns.at(dns.first).topQueryECS);
+            _dns.at(dns.first).topGeoLocECS.merge(dns.second.topGeoLocECS);
+            _dns.at(dns.first).topASNECS.merge(dns.second.topASNECS);
+            _dns.at(dns.first).topQueryECS.merge(dns.second.topQueryECS);
         }
 
         if (group_enabled(group::DnsMetrics::TopRcodes)) {
-            dns.second.topNX.merge(other._dns.at(dns.first).topNX);
-            dns.second.topREFUSED.merge(other._dns.at(dns.first).topREFUSED);
-            dns.second.topSRVFAIL.merge(other._dns.at(dns.first).topSRVFAIL);
-            dns.second.topNODATA.merge(other._dns.at(dns.first).topNODATA);
-            dns.second.topNOERROR.merge(other._dns.at(dns.first).topNOERROR);
-            dns.second.topRCode.merge(other._dns.at(dns.first).topRCode);
+            _dns.at(dns.first).topNX.merge(dns.second.topNX);
+            _dns.at(dns.first).topREFUSED.merge(dns.second.topREFUSED);
+            _dns.at(dns.first).topSRVFAIL.merge(dns.second.topSRVFAIL);
+            _dns.at(dns.first).topNODATA.merge(dns.second.topNODATA);
+            _dns.at(dns.first).topNOERROR.merge(dns.second.topNOERROR);
+            _dns.at(dns.first).topRCode.merge(dns.second.topRCode);
         }
 
         if (group_enabled(group::DnsMetrics::TopQnames)) {
-            dns.second.topQname2.merge(other._dns.at(dns.first).topQname2);
-            dns.second.topQname3.merge(other._dns.at(dns.first).topQname3);
+            _dns.at(dns.first).topQname2.merge(dns.second.topQname2);
+            _dns.at(dns.first).topQname3.merge(dns.second.topQname3);
         }
 
         if (group_enabled(group::DnsMetrics::TopSize)) {
-            dns.second.topSizedQnameResp.merge(other._dns.at(dns.first).topSizedQnameResp);
-            dns.second.dnsRatio.merge(other._dns.at(dns.first).dnsRatio, agg_operator);
+            _dns.at(dns.first).topSizedQnameResp.merge(dns.second.topSizedQnameResp);
+            _dns.at(dns.first).dnsRatio.merge(dns.second.dnsRatio, agg_operator);
         }
 
-        group_enabled(group::DnsMetrics::TopPorts) ? dns.second.topUDPPort.merge(other._dns.at(dns.first).topUDPPort) : void();
-        group_enabled(group::DnsMetrics::TopQtypes) ? dns.second.topQType.merge(other._dns.at(dns.first).topQType) : void();
+        group_enabled(group::DnsMetrics::TopPorts) ? _dns.at(dns.first).topUDPPort.merge(dns.second.topUDPPort) : void();
+        group_enabled(group::DnsMetrics::TopQtypes) ? _dns.at(dns.first).topQType.merge(dns.second.topQType) : void();
 
         if (group_enabled(group::DnsMetrics::XactTimes)) {
-            dns.second.dnsTimeUs.merge(other._dns.at(dns.first).dnsTimeUs, agg_operator);
-            dns.second.topSlow.merge(other._dns.at(dns.first).topSlow);
+            _dns.at(dns.first).dnsTimeUs.merge(dns.second.dnsTimeUs, agg_operator);
+            _dns.at(dns.first).topSlow.merge(dns.second.topSlow);
         }
     }
 }
@@ -798,7 +796,7 @@ void DnsMetricsBucket::to_opentelemetry(metrics::v1::ScopeMetrics &scope, Metric
         dir_labels["direction"] = _dir_str.at(dns.first);
         group_enabled(group::DnsMetrics::Quantiles) ? dns.second.dnsRate.to_opentelemetry(scope, start_ts, end_ts, dir_labels) : void();
     }
-    
+
     {
         auto [num_events, num_samples, event_rate, event_lock] = event_data_locked(); // thread safe
 
