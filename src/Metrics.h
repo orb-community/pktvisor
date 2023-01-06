@@ -197,6 +197,7 @@ class Histogram final : public Metric
     {
         auto pace = _get_pace();
         std::array<T, HIST_N_BUCKETS> boundaries{};
+        std::fill(boundaries.begin(), boundaries.end(), 0);
         size_t index = 0;
         for (auto exponent = HIST_MIN_EXP; exponent < HIST_MAX_EXP; exponent++) {
             for (auto buckets = 0; buckets < HIST_LOG_BUCK; buckets++) {
