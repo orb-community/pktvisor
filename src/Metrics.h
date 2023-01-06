@@ -197,7 +197,6 @@ class Histogram final : public Metric
     {
         auto pace = _get_pace();
         std::array<T, HIST_N_BUCKETS> boundaries{};
-        std::fill(boundaries.begin(), boundaries.end(), 0);
         size_t index = 0;
         for (auto exponent = HIST_MIN_EXP; exponent < HIST_MAX_EXP; exponent++) {
             for (auto buckets = 0; buckets < HIST_LOG_BUCK; buckets++) {
@@ -252,12 +251,6 @@ public:
             return;
         }
         auto bins_pmf = _get_boundaries();
-        std::cerr << "bins ";
-        for (const auto &val : bins_pmf.first) {
-            std::cerr << val << ' ';
-        }
-        std::cerr << '\n';
-        std::cerr << "index " << bins_pmf.second << '\n';
         auto histogram_pmf = _sketch.get_PMF(bins_pmf.first.data(), bins_pmf.second);
         std::vector<T> bins;
         for (size_t i = 0; i < bins_pmf.second; ++i) {
