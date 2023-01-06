@@ -198,18 +198,13 @@ class Histogram final : public Metric
         auto pace = _get_pace();
         std::array<T, HIST_N_BUCKETS> boundaries{};
         size_t index = 0;
-        T last_value{0};
         for (auto exponent = HIST_MIN_EXP; exponent < HIST_MAX_EXP; exponent++) {
             for (auto buckets = 0; buckets < HIST_LOG_BUCK; buckets++) {
-                T result = static_cast<T>((std::pow(10.0, static_cast<float>(buckets) / HIST_LOG_BUCK) * std::pow(10.0, exponent)) + pace);
-                if (result != last_value) {
-                    last_value = result;
-                    boundaries[index] = last_value;
-                    index++;
-                }
+                boundaries[index++] = static_cast<T>((std::pow(10.0, static_cast<float>(buckets) / HIST_LOG_BUCK) * std::pow(10.0, exponent)) + pace);
             }
         }
-        return {boundaries, index};
+        auto itr = std::unique(boundaries.begin(), boundaries.end());
+        return {boundaries, std::distance(boundaries.begin(), itr)};
     }
     datasketches::kll_sketch<T> _sketch;
 
@@ -896,5 +891,4 @@ public:
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override;
     void to_opentelemetry(metrics::v1::ScopeMetrics &scope, timespec &start, timespec &end, LabelMap add_labels = {}) const override;
 };
-
 }
