@@ -183,12 +183,12 @@ jobs:
       - name: Debug artifacts
         shell: pwsh
         run: |
-          Get-ChildItem -Force ${{github.workspace}}\build
+          Get-ChildItem -Force ${{github.workspace}}\build\bin
         
       - name: compacting x64 windows binary
         run: |
           $compress = @{
-            Path = "${{github.workspace}}\build\pktvisor-cli.exe", "${{github.workspace}}\build\pktvisor-reader.exe", "${{github.workspace}}\build\pktvisord.exe"
+            Path = "${{github.workspace}}\build\bin\pktvisor-cli.exe", "${{github.workspace}}\build\bin\pktvisor-reader.exe", "${{github.workspace}}\build\bin\pktvisord.exe"
             CompressionLevel = "Fastest"
             DestinationPath = "${{github.workspace}}\build\pktvisor-win64.zip"
           }
