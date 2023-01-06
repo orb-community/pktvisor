@@ -251,7 +251,11 @@ public:
             return;
         }
         auto bins_pmf = _get_boundaries();
-        std::cerr << "bins " << bins_pmf.first << '\n';
+        std::cerr << "bins ";
+        for (const auto &val : bins_pmf.first) {
+            std::cerr << val << ' ';
+        }
+        std::cerr << '\n';
         std::cerr << "index " << bins_pmf.second << '\n';
         auto histogram_pmf = _sketch.get_PMF(bins_pmf.first.data(), bins_pmf.second);
         std::vector<T> bins;
