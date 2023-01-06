@@ -254,13 +254,13 @@ TEST_CASE("Histogram int metrics", "[metrics][histogram]")
     std::stringstream output;
     metrics::v1::ScopeMetrics scope;
     std::string line;
-    Histogram<int_fast32_t> h("root", {"test", "metric"}, "A histogram test metric");
+    Histogram<uint64_t> h("root", {"test", "metric"}, "A histogram test metric");
 
     SECTION("Histogram to json")
     {
         h.name_json_assign(j, 58);
         CHECK(j["test"]["metric"] == 58);
-        int_fast32_t value = 12;
+        uint64_t value = 12;
         h.update(value);
         h.update(value);
         h.update(value);
