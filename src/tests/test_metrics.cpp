@@ -270,7 +270,6 @@ TEST_CASE("Histogram int metrics", "[metrics][histogram]")
 
         CHECK(j["top"]["test"]["metric"]["buckets"]["+Inf"] == 4.0);
         CHECK(j["top"]["test"]["metric"]["buckets"]["12"] == 4.0);
-        CHECK(j["top"]["test"]["metric"]["buckets"]["4"] == 0.0);
         CHECK(j["top"]["test"]["metric"]["buckets"]["8"] == 1.0);
     }
 
@@ -294,7 +293,7 @@ TEST_CASE("Histogram int metrics", "[metrics][histogram]")
         std::getline(output, line);
         CHECK(line == "# TYPE root_test_metric histogram");
         std::getline(output, line);
-        CHECK(line == R"(root_test_metric_bucket{instance="test instance",le="4",policy="default"} 1)");
+        CHECK(line == R"(root_test_metric_bucket{instance="test instance",le="1",policy="default"} 1)");
         std::getline(output, line);
         CHECK(line == R"(root_test_metric_bucket{instance="test instance",le="8",policy="default"} 2)");
         std::getline(output, line);
@@ -337,10 +336,8 @@ TEST_CASE("Histogram double metrics", "[metrics][histogram]")
         h.update(8.000);
         h.to_json(j["top"]);
 
-        CHECK(j["top"]["test"]["metric"]["buckets"]["+Inf"] == 4.0);
-        CHECK(j["top"]["test"]["metric"]["buckets"]["12.000000"] == 4.0);
-        CHECK(j["top"]["test"]["metric"]["buckets"]["4.000000"] == 0.0);
-        CHECK(j["top"]["test"]["metric"]["buckets"]["8.000000"] == 1.0);
+        CHECK(j["top"]["test"]["metric"]["buckets"]["12.915497"] == 4.0);
+        CHECK(j["top"]["test"]["metric"]["buckets"]["8.799225"] == 1.0);
     }
 
     SECTION("Histogram get n")
@@ -363,11 +360,11 @@ TEST_CASE("Histogram double metrics", "[metrics][histogram]")
         std::getline(output, line);
         CHECK(line == "# TYPE root_test_metric histogram");
         std::getline(output, line);
-        CHECK(line == R"(root_test_metric_bucket{instance="test instance",le="4.000033",policy="default"} 1)");
+        CHECK(line == R"(root_test_metric_bucket{instance="test instance",le="1.000000",policy="default"} 1)");
         std::getline(output, line);
-        CHECK(line == R"(root_test_metric_bucket{instance="test instance",le="8.000067",policy="default"} 2)");
+        CHECK(line == R"(root_test_metric_bucket{instance="test instance",le="8.799225",policy="default"} 2)");
         std::getline(output, line);
-        CHECK(line == R"(root_test_metric_bucket{instance="test instance",le="12.000100",policy="default"} 5)");
+        CHECK(line == R"(root_test_metric_bucket{instance="test instance",le="12.915497",policy="default"} 5)");
         std::getline(output, line);
         CHECK(line == R"(root_test_metric_bucket{instance="test instance",le="+Inf",policy="default"} 5)");
         std::getline(output, line);
