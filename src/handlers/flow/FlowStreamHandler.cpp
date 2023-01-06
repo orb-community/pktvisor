@@ -1237,7 +1237,7 @@ void FlowMetricsBucket::process_flow(bool deep, const FlowPacket &payload)
             if (group_enabled(group::FlowMetrics::ByPackets)) {
                 process_interface(deep, device_flow->interfaces[flow.if_out_index.value()].get(), flow, OutPackets);
                 if (deep && group_enabled(group::FlowMetrics::TopInterfaces)) {
-                    device_flow->topInIfIndexBytes.update(flow.if_out_index.value(), flow.packets);
+                    device_flow->topOutIfIndexPackets.update(flow.if_out_index.value(), flow.packets);
                 }
             }
         }
