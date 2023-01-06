@@ -332,6 +332,56 @@ jobs:
           path: |
             .github/hosted-runner/amd64/terraform.tfstate
           retention-days: 1
+          
+  build-windows:
+    runs-on: windows-2019
+    outputs:
+      version_number: ${{ env.VERSION }}
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Create Build Environment
+        run: cmake -E make_directory ${{github.workspace}}\build
+
+      - name: Get Conan
+        uses: turtlebrowser/get-conan@v1.0
+
+      - name: Configure CMake
+        shell: bash
+        working-directory: ${{github.workspace}}\build
+        run: PKG_CONFIG_PATH=${{github.workspace}}\local\lib\pkgconfig cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE
+
+      - name: Get VERSION
+        shell: pwsh
+        id: build
+        run: |
+          $text = Get-Content ${{github.workspace}}\build\VERSION -Raw 
+          echo "VERSION=$text" >> $env:GITHUB_ENV
+
+      - name: Build
+        working-directory: ${{github.workspace}}\build
+        shell: pwsh
+        run: cmake --build . --config $BUILD_TYPE -- -m
+
+      - name: Debug artifacts
+        shell: pwsh
+        run: |
+          Get-ChildItem -Force ${{github.workspace}}\build
+        
+      - name: compacting x64 windows binary
+        run: |
+          $compress = @{
+            Path = "${{github.workspace}}\build\pktvisor-cli.exe", "${{github.workspace}}\build\pktvisor-reader.exe", "${{github.workspace}}\build\pktvisord.exe"
+            CompressionLevel = "Fastest"
+            DestinationPath = "${{github.workspace}}\build\pktvisor-win64.zip"
+          }
+          Compress-Archive @compress
+          
+      - name: Upload arm64 binary to latest release
+        shell: bash
+        run: |
+          chmod a+x ./docker/upload-gh-asset.sh
+          ./docker/upload-gh-asset.sh github_api_token=${{ secrets.BOT_TOKEN }} owner=ns1labs repo=pktvisor tag=LATEST filename=./pktvisor-win64.zip
 
   package-arm64:
     needs: [ spinup-arm64-runner ]
