@@ -388,11 +388,11 @@ void FlowStreamHandler::process_netflow_cb(const std::string &senderIP, const NF
         flow.if_in_index = sample.if_index_in;
 
         if (sample.is_ipv6) {
-            flow.ipv6_in = pcpp::IPv6Address(reinterpret_cast<uint8_t *>(sample.src_ip));
-            flow.ipv6_out = pcpp::IPv6Address(reinterpret_cast<uint8_t *>(sample.dst_ip));
+            flow.ipv6_in = pcpp::IPv6Address(sample.src_ip.data());
+            flow.ipv6_out = pcpp::IPv6Address(sample.dst_ip.data());
         } else {
-            flow.ipv4_in = pcpp::IPv4Address(sample.src_ip);
-            flow.ipv4_out = pcpp::IPv4Address(sample.dst_ip);
+            flow.ipv4_in = pcpp::IPv4Address(sample.src_ip.data());
+            flow.ipv4_out = pcpp::IPv4Address(sample.dst_ip.data());
         }
 
         if (!_filtering(flow, packet.device_id)) {
@@ -840,7 +840,7 @@ void FlowMetricsBucket::to_opentelemetry(metrics::v1::ScopeMetrics &scope, Metri
     auto end_ts = end_tstamp();
 
     std::shared_lock r_lock(_mutex);
-    
+
     SummaryData *summary{nullptr};
     if (_summary_data && _summary_data->type != IpSummary::None) {
         summary = _summary_data;
