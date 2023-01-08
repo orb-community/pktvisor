@@ -215,9 +215,21 @@ static bool process_netflow_v7(NFSample *sample)
 static inline void be_copy(uint8_t *data, uint8_t *target, uint32_t target_length, uint32_t rec_length)
 {
     if (target_length < rec_length) {
-        return;
+        // truncate for known common types
+        if (target_length == sizeof(uint16_t) && rec_length == sizeof(uint32_t)) {
+            uint32_t value{0};
+            memcpy(&value, data, rec_length);
+            uint16_t truncated = static_cast<uint16_t>(value >> 16);
+            memcpy(target, &truncated, target_length);
+        } else if (target_length == sizeof(uint32_t) && rec_length == sizeof(uint64_t)) {
+            uint64_t value{0};
+            memcpy(&value, data, rec_length);
+            uint32_t truncated = static_cast<uint32_t>(value >> 32);
+            memcpy(target, &truncated, target_length);
+        }
+    } else {
+        memcpy(target + (target_length - rec_length), data, rec_length);
     }
-    memcpy(target + (target_length - rec_length), data, rec_length);
 }
 
 static bool process_netflow_v9_template(uint8_t *pkt, size_t len, uint32_t source_id)
@@ -310,14 +322,11 @@ static void nf9_rec_to_flow(NFSample::Flows *flow, struct peer_nf9_record *rec, 
         V9_FIELD(NF9_IPV4_NEXT_HOP, &flow->nexthop_ip, sizeof(uint32_t));
         V9_FIELD(NF9_IPV6_NEXT_HOP, &flow->nexthop_ip, sizeof(flow->nexthop_ip));
 
-    case NF9_IP_PROTOCOL_VERSION: {
-        uint8_t version{0};
-        be_copy(data, &version, sizeof(version), rec->len);
-        if (version == 6) {
+    case NF9_IP_PROTOCOL_VERSION:
+        if (*data == 6) {
             flow->is_ipv6 = true;
         }
         break;
-    }
 #undef V9_FIELD_32
 #undef V9_FIELD_16
 #undef V9_FIELD
@@ -488,14 +497,11 @@ static void nf10_rec_to_flow(NFSample::Flows *flow, struct peer_nf10_record *rec
         V10_FIELD(NF10_IPV4_NEXT_HOP, &flow->nexthop_ip, sizeof(uint32_t));
         V10_FIELD(NF10_IPV6_NEXT_HOP, &flow->nexthop_ip, sizeof(flow->nexthop_ip));
 
-    case NF10_IP_PROTOCOL_VERSION: {
-        uint8_t version{0};
-        be_copy(data, &version, sizeof(version), rec->len);
-        if (version == 6) {
+    case NF10_IP_PROTOCOL_VERSION:
+        if (*data == 6) {
             flow->is_ipv6 = true;
         }
         break;
-    }
 #undef V10_FIELD_32
 #undef V10_FIELD_16
 #undef V10_FIELD
