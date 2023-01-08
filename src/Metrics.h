@@ -21,10 +21,16 @@
 #pragma GCC diagnostic pop
 #endif
 #include <chrono>
+#include <math.h>
 #include <regex>
 #include <set>
 #include <shared_mutex>
 #include <vector>
+
+#define HIST_MIN_EXP -9
+#define HIST_MAX_EXP 18
+#define HIST_LOG_BUCK 18
+#define HIST_N_BUCKETS (HIST_LOG_BUCK * (HIST_MAX_EXP - HIST_MIN_EXP))
 
 namespace visor {
 
@@ -176,18 +182,36 @@ template <typename T>
 class Histogram final : public Metric
 {
     static_assert(std::is_integral<T>::value || std::is_floating_point<T>::value);
-    T _pace;
+
+    static constexpr T _get_pace()
+    {
+        if constexpr (std::is_integral<T>::value) {
+            return 1;
+        } else {
+            return 0.0000001;
+        }
+    }
+
+    // calculated at compile time
+    static constexpr std::pair<std::array<T, HIST_N_BUCKETS>, size_t> _get_boundaries()
+    {
+        auto pace = _get_pace();
+        std::array<T, HIST_N_BUCKETS> boundaries{};
+        size_t index = 0;
+        for (auto exponent = HIST_MIN_EXP; exponent < HIST_MAX_EXP; exponent++) {
+            for (auto buckets = 0; buckets < HIST_LOG_BUCK; buckets++) {
+                boundaries[index++] = static_cast<T>((std::pow(10.0, static_cast<float>(buckets) / HIST_LOG_BUCK) * std::pow(10.0, exponent)) + pace);
+            }
+        }
+        auto itr = std::unique(boundaries.begin(), boundaries.end());
+        return {boundaries, std::distance(boundaries.begin(), itr)};
+    }
     datasketches::kll_sketch<T> _sketch;
 
 public:
     Histogram(std::string schema_key, std::initializer_list<std::string> names, std::string desc)
         : Metric(schema_key, names, std::move(desc))
     {
-        if constexpr (std::is_integral<T>::value) {
-            _pace = 1;
-        } else {
-            _pace = 0.0000001;
-        }
     }
 
     void update(const T &value)
@@ -226,22 +250,20 @@ public:
         if (_sketch.is_empty()) {
             return;
         }
-        std::size_t split_point_size = 1 + static_cast<std::size_t>(std::log2(_sketch.get_n())); // Sturge’s Rule
-        T step = _sketch.get_max_value() / split_point_size;
-        T split_point = step;
-        std::unique_ptr<T[]> bins = std::make_unique<T[]>(split_point_size);
-        for (std::size_t i = 0; i < split_point_size; ++i) {
-            bins[i] = split_point + _pace;
-            split_point += step;
-            if (split_point > _sketch.get_max_value()) {
-                split_point = _sketch.get_max_value();
+        auto bins_pmf = _get_boundaries();
+        auto histogram_pmf = _sketch.get_PMF(bins_pmf.first.data(), bins_pmf.second);
+        std::vector<T> bins;
+        for (size_t i = 0; i < bins_pmf.second; ++i) {
+            if (histogram_pmf[i]) {
+                bins.push_back(bins_pmf.first[i]);
             }
         }
-        auto histogram = _sketch.get_CDF(bins.get(), split_point_size);
-        for (std::size_t i = 0; i < split_point_size; ++i) {
-            name_json_assign(j, {"buckets", std::to_string(bins[i] - _pace)}, histogram[i] * _sketch.get_n());
+        auto histogram = _sketch.get_CDF(bins.data(), bins.size());
+        auto pace = _get_pace();
+        for (std::size_t i = 0; i < bins.size(); ++i) {
+            name_json_assign(j, {"buckets", std::to_string(bins[i] - pace)}, histogram[i] * _sketch.get_n());
         }
-        name_json_assign(j, {"buckets", "+Inf"}, histogram[split_point_size] * _sketch.get_n());
+        name_json_assign(j, {"buckets", "+Inf"}, histogram[bins.size()] * _sketch.get_n());
     }
 
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override
@@ -249,29 +271,26 @@ public:
         if (_sketch.is_empty()) {
             return;
         }
-        std::size_t split_point_size = 1 + static_cast<std::size_t>(std::log2(_sketch.get_n())); // Sturge’s Rule
-        T step = _sketch.get_max_value() / split_point_size;
-        T split_point = step;
-        std::unique_ptr<T[]> bins = std::make_unique<T[]>(split_point_size);
-        for (std::size_t i = 0; i < split_point_size; ++i) {
-            bins[i] = split_point + _pace;
-            split_point += step;
-            if (split_point > _sketch.get_max_value()) {
-                split_point = _sketch.get_max_value();
+        auto bins_pmf = _get_boundaries();
+        auto histogram_pmf = _sketch.get_PMF(bins_pmf.first.data(), bins_pmf.second);
+        std::vector<T> bins;
+        for (size_t i = 0; i < bins_pmf.second; ++i) {
+            if (histogram_pmf[i]) {
+                bins.push_back(bins_pmf.first[i]);
             }
         }
-        auto histogram = _sketch.get_CDF(bins.get(), split_point_size);
-
+        auto histogram = _sketch.get_CDF(bins.data(), bins.size());
+        auto pace = _get_pace();
         out << "# HELP " << base_name_snake() << ' ' << _desc << std::endl;
         out << "# TYPE " << base_name_snake() << " histogram" << std::endl;
-        for (std::size_t i = 0; i < split_point_size; ++i) {
+        for (std::size_t i = 0; i < bins.size(); ++i) {
             LabelMap le(add_labels);
-            le["le"] = std::to_string(bins[i] - _pace);
+            le["le"] = std::to_string(bins[i] - pace);
             out << name_snake({"bucket"}, le) << ' ' << histogram[i] * _sketch.get_n() << std::endl;
         }
         LabelMap le(add_labels);
         le["le"] = "+Inf";
-        out << name_snake({"bucket"}, le) << ' ' << histogram[split_point_size] * _sketch.get_n() << std::endl;
+        out << name_snake({"bucket"}, le) << ' ' << histogram[bins.size()] * _sketch.get_n() << std::endl;
         out << name_snake({"count"}, add_labels) << ' ' << _sketch.get_n() << std::endl;
     }
 
@@ -872,5 +891,4 @@ public:
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override;
     void to_opentelemetry(metrics::v1::ScopeMetrics &scope, timespec &start, timespec &end, LabelMap add_labels = {}) const override;
 };
-
 }
