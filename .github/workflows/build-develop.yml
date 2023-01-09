@@ -212,14 +212,7 @@ jobs:
   build-cli-win64:
     needs: [ build-win64 ]
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      
-      - name: Debug artifacts
-        shell: bash
-        run: |
-          ls -lha
-      
+    steps:    
       - name: Attach to workspace
         uses: actions/download-artifact@v2
         with:
@@ -228,6 +221,24 @@ jobs:
       - name: Debug artifacts
         shell: bash
         run: |
+          ls -lha
+          
+      - name: Debug artifacts
+        shell: bash
+        run: |
+            cp -rpf ./build/bin/pktvisor-reader.exe .
+            cp -rpf ./build/bin/pktvisord.exe .
+            cp -rpf ./golang/pkg/client/version.go .
+            rm -rf ./build
+            rm -rf ./golang
+            
+      - uses: actions/checkout@v2
+      
+      - name: Debug artifacts
+        shell: bash
+        run: |
+          ls -lha
+          mv src pktvisor-src
           ls -lha
 
       - name: Build pktvisor-cli
