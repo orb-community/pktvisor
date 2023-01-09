@@ -231,8 +231,9 @@ jobs:
             cp -rpf ./golang/pkg/client/version.go .
             rm -rf ./build
             rm -rf ./golang
-            
-      - uses: actions/checkout@v2
+
+      - name: Checkout code
+        uses: actions/checkout@v2
       
       - name: Debug artifacts
         shell: bash
