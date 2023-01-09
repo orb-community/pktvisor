@@ -231,6 +231,7 @@ jobs:
         run: |
           ls -lha
           mv src pktvisor-src
+          cp -rpf golang/pkg/client/version.go .
           ls -lha
 
       - name: Build pktvisor-cli
