@@ -720,7 +720,7 @@ void NetworkMetricsBucket::process_net_layer(NetworkPacket &packet)
 inline void NetworkMetricsBucket::_process_geo_metrics(const pcpp::IPv4Address &ipv4)
 {
     if ((HandlerModulePlugin::asn->enabled() || HandlerModulePlugin::city->enabled()) && group_enabled(group::NetMetrics::TopGeo)) {
-        struct sockaddr_in sa4;
+        struct sockaddr_in sa4{};
         if (lib::utils::ipv4_to_sockaddr(ipv4, &sa4)) {
             if (HandlerModulePlugin::city->enabled()) {
                 _topGeoLoc.update(HandlerModulePlugin::city->getGeoLoc(&sa4));
@@ -735,7 +735,7 @@ inline void NetworkMetricsBucket::_process_geo_metrics(const pcpp::IPv4Address &
 inline void NetworkMetricsBucket::_process_geo_metrics(const pcpp::IPv6Address &ipv6)
 {
     if ((HandlerModulePlugin::asn->enabled() || HandlerModulePlugin::city->enabled()) && group_enabled(group::NetMetrics::TopGeo)) {
-        struct sockaddr_in6 sa6;
+        struct sockaddr_in6 sa6{};
         if (lib::utils::ipv6_to_sockaddr(ipv6, &sa6)) {
             if (HandlerModulePlugin::city->enabled()) {
                 _topGeoLoc.update(HandlerModulePlugin::city->getGeoLoc(&sa6));
