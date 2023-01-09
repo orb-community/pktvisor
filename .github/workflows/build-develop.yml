@@ -239,7 +239,12 @@ jobs:
         with:
           context: "."
           goos: windows
-          file: "./Dockerfile"  
+          file: "./Dockerfile"
+          
+      - name: Debug artifacts
+        shell: bash
+        run: |
+          ls -lha
 
   package-amd64:
     needs: [ unit-tests-linux ]
