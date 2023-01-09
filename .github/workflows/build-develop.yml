@@ -187,18 +187,13 @@ jobs:
 #           goos: windows
 #           file: "./Dockerfile"
         
-#       - name: Debug artifacts
-#         shell: pwsh
-#         run: |
-#           Get-ChildItem -Force ${{github.workspace}}\build\bin
-                
-      - name: Upload arm64 binary to latest release
-        shell: bash
+      - name: Debug artifacts
+        shell: pwsh
         run: |
-          ls -lha ${{github.workspace}}
-          ls -lha ${{github.workspace}}\build\
-          ls -lha ${{github.workspace}}\build\bin\
-          
+          Get-ChildItem -Force ${{github.workspace}}
+          Get-ChildItem -Force ${{github.workspace}}\build
+          Get-ChildItem -Force ${{github.workspace}}\build\bin
+                         
       - name: Persist to workspace
         uses: actions/upload-artifact@v2
         with:
@@ -208,17 +203,17 @@ jobs:
             ${{github.workspace}}\build\bin\pktvisord.exe
           retention-days: 1
 
-#       - name: Login to ns1labs conan
-#         shell: pwsh
-#         run: |
-#           $env:CONAN_USER_HOME = "${{github.workspace}}\build\conan_home"
-#           conan user -p ${{ secrets.CONAN_LABS_PASSWORD }} -r ns1labs ${{ secrets.CONAN_LABS_USERNAME }}
+      - name: Login to ns1labs conan
+        shell: pwsh
+        run: |
+          $env:CONAN_USER_HOME = "${{github.workspace}}\build\conan_home"
+          conan user -p ${{ secrets.CONAN_LABS_PASSWORD }} -r ns1labs ${{ secrets.CONAN_LABS_USERNAME }}
 
-#       - name: Cache conan packages
-#         shell: pwsh
-#         run: |
-#           $env:CONAN_USER_HOME = "${{github.workspace}}\build\conan_home"
-#           conan upload "*" --all -r ns1labs -c
+      - name: Cache conan packages
+        shell: pwsh
+        run: |
+          $env:CONAN_USER_HOME = "${{github.workspace}}\build\conan_home"
+          conan upload "*" --all -r ns1labs -c
 
   package-amd64:
     needs: [ unit-tests-linux ]
