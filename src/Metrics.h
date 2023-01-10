@@ -296,13 +296,33 @@ public:
 
     void to_opentelemetry(metrics::v1::ScopeMetrics &scope, timespec &start, timespec &end, LabelMap add_labels = {}) const
     {
+        if (_sketch.is_empty()) {
+            return;
+        }
+        auto bins_pmf = _get_boundaries();
+        auto histogram_pmf = _sketch.get_PMF(bins_pmf.first.data(), bins_pmf.second);
+        std::vector<T> bins;
+        for (size_t i = 0; i < bins_pmf.second; ++i) {
+            if (histogram_pmf[i]) {
+                bins.push_back(bins_pmf.first[i]);
+            }
+        }
+        auto histogram = _sketch.get_CDF(bins.data(), bins.size());
+        auto pace = _get_pace();
+
         auto metric = scope.add_metrics();
         metric->set_name(base_name_snake());
         metric->set_description(_desc);
         auto hist_data_point = metric->mutable_histogram()->add_data_points();
         hist_data_point->set_start_time_unix_nano(timespec_to_uint64(start));
         hist_data_point->set_time_unix_nano(timespec_to_uint64(end));
-        // Implement histogram
+
+        for (std::size_t i = 0; i < bins.size(); ++i) {
+            hist_data_point->add_explicit_bounds(bins[i] - pace);
+            hist_data_point->add_bucket_counts(histogram[i] * _sketch.get_n());
+        }
+        hist_data_point->set_count(_sketch.get_n());
+
         for (const auto &label : add_labels) {
             auto attribute = hist_data_point->add_attributes();
             attribute->set_key(label.first);
