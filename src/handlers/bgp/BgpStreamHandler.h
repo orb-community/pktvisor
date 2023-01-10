@@ -46,7 +46,7 @@ protected:
 
         counters()
             : OPEN(BGP_SCHEMA, {"wire_packets", "open"}, "Total BGP packets with message type OPEN")
-            , UPDATE(BGP_SCHEMA, {"wire_packets", "offer"}, "Total BGP packets with message type KEEPALIVE")
+            , UPDATE(BGP_SCHEMA, {"wire_packets", "update"}, "Total BGP packets with message type UPDATE")
             , NOTIFICATION(BGP_SCHEMA, {"wire_packets", "notification"}, "Total BGP packets with message type NOTIFICATION")
             , KEEPALIVE(BGP_SCHEMA, {"wire_packets", "keepalive"}, "Total BGP packets with message type KEEPALIVE")
             , ROUTEREFRESH(BGP_SCHEMA, {"wire_packets", "routerefresh"}, "Total BGP packets with message type ROUTEREFRESH")
