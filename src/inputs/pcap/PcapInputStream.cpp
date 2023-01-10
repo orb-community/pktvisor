@@ -393,15 +393,15 @@ void PcapInputStream::process_raw_packet(pcpp::RawPacket *rawPacket)
     auto IP4layer = packet.getLayerOfType<pcpp::IPv4Layer>();
     auto IP6layer = packet.getLayerOfType<pcpp::IPv6Layer>();
     if (IP4layer) {
-        if (lib::utils::match_subnet(_hostIPv4, IP4layer->getDstIPv4Address().toInt()).first) {
+        if (lib::utils::match_subnet(_hostIPv4, IP4layer->getDstIPv4Address().toInt()).has_value()) {
             _packet_dir_cache = PacketDirection::toHost;
-        } else if (lib::utils::match_subnet(_hostIPv4, IP4layer->getSrcIPv4Address().toInt()).first) {
+        } else if (lib::utils::match_subnet(_hostIPv4, IP4layer->getSrcIPv4Address().toInt()).has_value()) {
             _packet_dir_cache = PacketDirection::fromHost;
         }
     } else if (IP6layer) {
-        if (lib::utils::match_subnet(_hostIPv6, IP6layer->getDstIPv6Address().toBytes()).first) {
+        if (lib::utils::match_subnet(_hostIPv6, IP6layer->getDstIPv6Address().toBytes()).has_value()) {
             _packet_dir_cache = PacketDirection::toHost;
-        } else if (lib::utils::match_subnet(_hostIPv6, IP6layer->getSrcIPv6Address().toBytes()).first) {
+        } else if (lib::utils::match_subnet(_hostIPv6, IP6layer->getSrcIPv6Address().toBytes()).has_value()) {
             _packet_dir_cache = PacketDirection::fromHost;
         }
     }

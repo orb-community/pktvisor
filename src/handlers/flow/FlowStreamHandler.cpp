@@ -19,9 +19,9 @@ static std::string ip_summarization(const std::string &val, SummaryData *summary
     if (summary) {
         pcpp::IPv4Address ipv4;
         pcpp::IPv6Address ipv6;
-        if (ipv4 = pcpp::IPv4Address(val); ipv4.isValid() && match_subnet(summary->ipv4_exclude_summary, ipv4.toInt()).first) {
+        if (ipv4 = pcpp::IPv4Address(val); ipv4.isValid() && match_subnet(summary->ipv4_exclude_summary, ipv4.toInt()).has_value()) {
             return val;
-        } else if (ipv6 = pcpp::IPv6Address(val); ipv6.isValid() && match_subnet(summary->ipv6_exclude_summary, ipv6.toBytes()).first) {
+        } else if (ipv6 = pcpp::IPv6Address(val); ipv6.isValid() && match_subnet(summary->ipv6_exclude_summary, ipv6.toBytes()).has_value()) {
             return val;
         }
         if (summary->type == IpSummary::ByASN && HandlerModulePlugin::asn->enabled()) {
@@ -45,12 +45,12 @@ static std::string ip_summarization(const std::string &val, SummaryData *summary
             return asn;
         } else if (summary->type == IpSummary::BySubnet) {
             if (ipv4.isValid()) {
-                if (auto [match, subnet] = match_subnet(summary->ipv4_summary, ipv4.toInt()); match) {
-                    return subnet->str;
+                if (auto subnet = match_subnet(summary->ipv4_summary, ipv4.toInt()); subnet.has_value()) {
+                    return subnet.value()->str;
                 }
             } else if (ipv6.isValid()) {
-                if (auto [match, subnet] = match_subnet(summary->ipv6_summary, ipv6.toBytes()); match) {
-                    return subnet->str;
+                if (auto subnet = match_subnet(summary->ipv6_summary, ipv6.toBytes()); subnet.has_value()) {
+                    return subnet.value()->str;
                 }
             }
         }
@@ -408,9 +408,9 @@ void FlowStreamHandler::process_netflow_cb(const std::string &senderIP, const NF
 bool FlowStreamHandler::_filtering(FlowData &flow, const std::string &device_id)
 {
     if (_f_enabled[Filters::OnlyIps]) {
-        if (flow.is_ipv6 && !match_subnet(_only_ipv6_list, flow.ipv6_in.toBytes()).first && !match_subnet(_only_ipv6_list, flow.ipv6_out.toBytes()).first) {
+        if (flow.is_ipv6 && !match_subnet(_only_ipv6_list, flow.ipv6_in.toBytes()).has_value() && !match_subnet(_only_ipv6_list, flow.ipv6_out.toBytes()).has_value()) {
             return true;
-        } else if (!match_subnet(_only_ipv4_list, flow.ipv4_in.toInt()).first && !match_subnet(_only_ipv4_list, flow.ipv4_out.toInt()).first) {
+        } else if (!match_subnet(_only_ipv4_list, flow.ipv4_in.toInt()).has_value() && !match_subnet(_only_ipv4_list, flow.ipv4_out.toInt()).has_value()) {
             return true;
         }
     }
@@ -840,7 +840,7 @@ void FlowMetricsBucket::to_opentelemetry(metrics::v1::ScopeMetrics &scope, Metri
     auto end_ts = end_tstamp();
 
     std::shared_lock r_lock(_mutex);
-    
+
     SummaryData *summary{nullptr};
     if (_summary_data && _summary_data->type != IpSummary::None) {
         summary = _summary_data;

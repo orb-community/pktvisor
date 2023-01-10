@@ -1,6 +1,6 @@
 /* This Source Code Form is subject to the terms of the Mozilla Public
-* License, v. 2.0. If a copy of the MPL was not distributed with this
-* file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 #pragma once
 
@@ -19,6 +19,7 @@
 #ifdef __GNUC__
 #pragma GCC diagnostic pop
 #endif
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -58,7 +59,7 @@ bool ipv6_to_sockaddr(const pcpp::IPv6Address &ip, struct sockaddr_in6 *sa);
 
 std::vector<std::string> split_str_to_vec_str(const std::string &spec, const char &delimiter);
 void parse_host_specs(const std::vector<std::string> &host_list, IPv4subnetList &ipv4_list, IPv6subnetList &ipv6_list);
-std::pair<bool, IPv4subnetList::const_iterator> match_subnet(IPv4subnetList &ipv4_list, uint32_t ipv4_val);
-std::pair<bool, IPv6subnetList::const_iterator> match_subnet(IPv6subnetList &ipv6_list, const uint8_t *ipv6_val);
+std::optional<IPv4subnetList::const_iterator> match_subnet(IPv4subnetList &ipv4_list, uint32_t ipv4_val);
+std::optional<IPv6subnetList::const_iterator> match_subnet(IPv6subnetList &ipv6_list, const uint8_t *ipv6_val);
 bool match_subnet(IPv4subnetList &ipv4_list, IPv6subnetList &ipv6_list, const std::string &ip_val);
 }

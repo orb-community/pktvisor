@@ -16,7 +16,7 @@ static void split(const std::string &s, char delim, Out result)
     }
 }
 
-std::pair<bool, IPv4subnetList::const_iterator> match_subnet(IPv4subnetList &ipv4_list, uint32_t ipv4_val)
+std::optional<IPv4subnetList::const_iterator> match_subnet(IPv4subnetList &ipv4_list, uint32_t ipv4_val)
 {
     if (ipv4_val && !ipv4_list.empty()) {
         in_addr ipv4{};
@@ -24,18 +24,18 @@ std::pair<bool, IPv4subnetList::const_iterator> match_subnet(IPv4subnetList &ipv
         for (IPv4subnetList::const_iterator it = ipv4_list.begin(); it != ipv4_list.end(); ++it) {
             uint8_t cidr = it->cidr;
             if (cidr == 0) {
-                return {true, it};
+                return it;
             }
             uint32_t mask = htonl((0xFFFFFFFFu) << (32 - cidr));
             if (!((ipv4.s_addr ^ it->addr.s_addr) & mask)) {
-                return {true, it};
+                return it;
             }
         }
     }
-    return {false, IPv4subnetList::const_iterator()};
+    return std::nullopt;
 }
 
-std::pair<bool, IPv6subnetList::const_iterator> match_subnet(IPv6subnetList &ipv6_list, const uint8_t *ipv6_val)
+std::optional<IPv6subnetList::const_iterator> match_subnet(IPv6subnetList &ipv6_list, const uint8_t *ipv6_val)
 {
     if (ipv6_val && !ipv6_list.empty()) {
         in6_addr ipv6{};
@@ -55,11 +55,11 @@ std::pair<bool, IPv6subnetList::const_iterator> match_subnet(IPv6subnetList &ipv
                 result = subSubnetByte == subThisByte;
             }
             if (result) {
-                return {true, it};
+                return it;
             }
         }
     }
-    return {false, IPv6subnetList::const_iterator()};
+    return std::nullopt;
 }
 
 bool match_subnet(IPv4subnetList &ipv4_list, IPv6subnetList &ipv6_list, const std::string &ip_val)
@@ -67,9 +67,9 @@ bool match_subnet(IPv4subnetList &ipv4_list, IPv6subnetList &ipv6_list, const st
     pcpp::IPv4Address ipv4;
     pcpp::IPv6Address ipv6;
     if (ipv4 = pcpp::IPv4Address(ip_val); ipv4.isValid()) {
-        return match_subnet(ipv4_list, ipv4.toInt()).first;
+        return match_subnet(ipv4_list, ipv4.toInt()).has_value();
     } else if (ipv6 = pcpp::IPv6Address(ip_val); ipv6.isValid()) {
-        return match_subnet(ipv6_list, ipv6.toBytes()).first;
+        return match_subnet(ipv6_list, ipv6.toBytes()).has_value();
     }
     return false;
 }
