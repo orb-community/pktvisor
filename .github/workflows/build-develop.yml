@@ -245,6 +245,7 @@ jobs:
         shell: bash
         run: |
           ls -lha
+          mv pktvisor-cli pktvisor-cli.exe
 
   package-amd64:
     needs: [ unit-tests-linux ]
