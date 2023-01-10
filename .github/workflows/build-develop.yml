@@ -244,8 +244,15 @@ jobs:
       - name: Debug artifacts
         shell: bash
         run: |
+          mv ./pktvisor-cli pktvisor-cli.exe
+          mv ./build/bin/pktvisord.exe ./pktvisord.exe
+          mv ./build/bin/pktvisor-reader.exe ./pktvisor-reader.exe
           ls -lha
-          mv pktvisor-cli pktvisor-cli.exe
+          
+      - name: compacting windows binary
+        run: |
+          zip pktvisor-win64.zip pktvisor-cli.exe pktvisor-reader.exe pktvisord.exe
+          ls -lha
 
   package-amd64:
     needs: [ unit-tests-linux ]
