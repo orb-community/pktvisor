@@ -158,7 +158,8 @@ class DhcpStreamHandler final : public visor::StreamMetricsHandler<DhcpMetricsMa
 
     static const inline StreamMetricsHandler::ConfigsDefType _config_defs = {
         "recorded_stream",
-        "xact_ttl_secs"};
+        "xact_ttl_secs",
+        "xact_ttl_ms"};
 
     void process_udp_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp);
 

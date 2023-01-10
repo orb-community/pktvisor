@@ -553,7 +553,9 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
         "asn_notfound",
         "dnstap_msg_type",
         "public_suffix_list",
-        "recorded_stream"};
+        "recorded_stream",
+        "xact_ttl_secs",
+        "xact_ttl_ms"};
 
     static const inline StreamMetricsHandler::GroupDefType _group_defs = {
         {"cardinality", group::DnsMetrics::Cardinality},

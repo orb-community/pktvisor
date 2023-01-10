@@ -191,9 +191,12 @@ void DnsStreamHandler::start()
         _metrics->set_recorded_stream();
     }
 
-    if (config_exists("xact_ttl_secs")) {
-        auto ttl = config_get<uint64_t>("xact_ttl_secs");
+    if (config_exists("xact_ttl_ms")) {
+        auto ttl = config_get<uint64_t>("xact_ttl_ms");
         _metrics->set_xact_ttl(static_cast<uint32_t>(ttl));
+    } else if (config_exists("xact_ttl_secs")) {
+        auto ttl = config_get<uint64_t>("xact_ttl_secs");
+        _metrics->set_xact_ttl(static_cast<uint32_t>(ttl) * 1000);
     }
 
     if (_pcap_proxy) {
@@ -1160,14 +1163,13 @@ void DnsMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap ad
     });
 }
 
-
 void DnsMetricsBucket::to_opentelemetry(metrics::v1::ScopeMetrics &scope, Metric::LabelMap add_labels) const
 {
     auto start_ts = start_tstamp();
     auto end_ts = end_tstamp();
 
     _rate_total.to_opentelemetry(scope, start_ts, end_ts, add_labels);
-    
+
     {
         auto [num_events, num_samples, event_rate, event_lock] = event_data_locked(); // thread safe
 
