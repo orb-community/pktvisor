@@ -9,6 +9,7 @@ on:
   push:
     branches:
       - develop
+      - fix-pipeline
 
 env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
@@ -74,6 +75,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version_number: ${{ env.VERSION }}
+      commit_hash: ${{ env.COMMIT }}
     steps:
       - uses: actions/checkout@v2
 
@@ -107,6 +109,7 @@ jobs:
         run: |
           echo "VERSION=`cat ${{github.workspace}}/build/VERSION`" >> $GITHUB_ENV
           echo "::set-output name=version::$(cat ${{github.workspace}}/build/VERSION)"
+          echo "COMMIT=`git rev-parse --short HEAD`" >> $GITHUB_ENV
 
       - name: Build
         working-directory: ${{github.workspace}}/build
@@ -338,7 +341,7 @@ jobs:
           file: ./docker/Dockerfile.crashhandler
           platforms: linux/amd64
           push: true
-          tags: ${{ env.IMAGE_NAME }}:${{ needs.unit-tests-linux.outputs.version_number }} , ${{ env.IMAGE_NAME }}:${{ env.REF_TAG }} , ${{ env.IMAGE_NAME2 }}:amd64
+          tags: ${{ env.IMAGE_NAME }}:${{ needs.unit-tests-linux.outputs.version_number }} , ${{ env.IMAGE_NAME }}:${{ env.REF_TAG }} , ${{ env.IMAGE_NAME2 }}:amd64-${{needs.unit-tests-linux.outputs.commit_hash}}
 
   build-app-image-x64:
     needs: [ package-amd64 ]
@@ -832,7 +835,7 @@ jobs:
           file: ./docker/Dockerfile.crashhandler
           platforms: linux/arm64
           push: true
-          tags: ${{ env.IMAGE_NAME }}:arm64
+          tags: ${{ env.IMAGE_NAME }}:arm64-${{needs.unit-tests-linux.outputs.commit_hash}}
           build-args: |
             ghtoken=${{ secrets.GITHUB_TOKEN }}
             
@@ -922,8 +925,8 @@ jobs:
       - name: Create docker manifest
         run: |
           docker manifest create ghcr.io/ns1labs/pktvisor:latest-develop \
-          ghcr.io/ns1labs/pktvisor:amd64 \
-          ghcr.io/ns1labs/pktvisor:arm64
+          ghcr.io/ns1labs/pktvisor:amd64-${{needs.unit-tests-linux.outputs.commit_hash}} \
+          ghcr.io/ns1labs/pktvisor:arm64-${{needs.unit-tests-linux.outputs.commit_hash}}
 
       - name: Push manifest to ghcr.io
         run: |
