@@ -925,8 +925,8 @@ jobs:
       - name: Create docker manifest
         run: |
           docker manifest create ghcr.io/ns1labs/pktvisor:latest-develop \
-          ghcr.io/ns1labs/pktvisor:amd64-${{needs.unit-tests-linux.outputs.commit_hash}} \
-          ghcr.io/ns1labs/pktvisor:arm64-${{needs.unit-tests-linux.outputs.commit_hash}}
+          --amend ghcr.io/ns1labs/pktvisor:amd64-${{needs.unit-tests-linux.outputs.commit_hash}} \
+          --amend ghcr.io/ns1labs/pktvisor:arm64-${{needs.unit-tests-linux.outputs.commit_hash}}
 
       - name: Push manifest to ghcr.io
         run: |
@@ -959,5 +959,27 @@ jobs:
           --all \
           docker://ghcr.io/ns1labs/pktvisor:latest-develop \
           docker://docker.io/ns1labs/pktvisor:${{ needs.unit-tests-linux.outputs.version_number }}
-
-
+          
+      - name: Delete arm64 images from ghcr.io
+        uses: bots-house/ghcr-delete-image-action@v1.0.0
+        with:
+          owner: ns1labs
+          name: pktvisor
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag: arm64-${{needs.unit-tests-linux.outputs.commit_hash}}
+          
+      - name: Delete amd64 images from ghcr.io
+        uses: bots-house/ghcr-delete-image-action@v1.0.0
+        with:
+          owner: ns1labs
+          name: pktvisor
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag: amd64-${{needs.unit-tests-linux.outputs.commit_hash}}
+          
+      - name: Delete latest-develop images from ghcr.io
+        uses: bots-house/ghcr-delete-image-action@v1.0.0
+        with:
+          owner: ns1labs
+          name: pktvisor
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag: latest-develop
