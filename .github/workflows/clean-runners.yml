@@ -16,42 +16,42 @@ jobs:
         run: |
           gh api -H "Accept: application/vnd.github.v3+json" /repos/ns1labs/pktvisor/actions/runners -q '.runners[] | {id,status,busy} | select((.busy == false) and (.status == "offline")) | {id} | .[]' --paginate | xargs -I {} gh api --method DELETE -H "Accept: application/vnd.github.v3+json" /repos/ns1labs/pktvisor/actions/runners/{}
 
-      - name: Delete arm64 images from ghcr.io
-        uses: bots-house/ghcr-delete-image-action@v1.0.0
-        with:
-          owner: ns1labs
-          name: pktvisor
-          token: ${{ secrets.GITHUB_TOKEN }}
-          tag: arm64-d5d197f
+#       - name: Delete arm64 images from ghcr.io
+#         uses: bots-house/ghcr-delete-image-action@v1.0.0
+#         with:
+#           owner: ns1labs
+#           name: pktvisor
+#           token: ${{ secrets.GITHUB_TOKEN }}
+#           tag: arm64-d5d197f
           
-      - name: Delete amd64 images from ghcr.io
-        uses: bots-house/ghcr-delete-image-action@v1.0.0
-        with:
-          owner: ns1labs
-          name: pktvisor
-          token: ${{ secrets.GITHUB_TOKEN }}
-          tag: amd64-d5d197f
+#       - name: Delete amd64 images from ghcr.io
+#         uses: bots-house/ghcr-delete-image-action@v1.0.0
+#         with:
+#           owner: ns1labs
+#           name: pktvisor
+#           token: ${{ secrets.GITHUB_TOKEN }}
+#           tag: amd64-d5d197f
           
-      - name: Delete arm64 images from ghcr.io
-        uses: bots-house/ghcr-delete-image-action@v1.0.0
-        with:
-          owner: ns1labs
-          name: pktvisor
-          token: ${{ secrets.GITHUB_TOKEN }}
-          tag: arm64
+#       - name: Delete arm64 images from ghcr.io
+#         uses: bots-house/ghcr-delete-image-action@v1.0.0
+#         with:
+#           owner: ns1labs
+#           name: pktvisor
+#           token: ${{ secrets.GITHUB_TOKEN }}
+#           tag: arm64
           
-      - name: Delete amd64 images from ghcr.io
-        uses: bots-house/ghcr-delete-image-action@v1.0.0
-        with:
-          owner: ns1labs
-          name: pktvisor
-          token: ${{ secrets.GITHUB_TOKEN }}
-          tag: amd64
+#       - name: Delete amd64 images from ghcr.io
+#         uses: bots-house/ghcr-delete-image-action@v1.0.0
+#         with:
+#           owner: ns1labs
+#           name: pktvisor
+#           token: ${{ secrets.GITHUB_TOKEN }}
+#           tag: amd64
           
-      - name: Delete latest-develop images from ghcr.io
-        uses: bots-house/ghcr-delete-image-action@v1.0.0
-        with:
-          owner: ns1labs
-          name: pktvisor
-          token: ${{ secrets.GITHUB_TOKEN }}
-          tag: latest-develop
+#       - name: Delete latest-develop images from ghcr.io
+#         uses: bots-house/ghcr-delete-image-action@v1.0.0
+#         with:
+#           owner: ns1labs
+#           name: pktvisor
+#           token: ${{ secrets.GITHUB_TOKEN }}
+#           tag: latest-develop
