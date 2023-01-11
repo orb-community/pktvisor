@@ -163,10 +163,13 @@ bool PingProbe::start(std::shared_ptr<uvw::Loop> io_loop)
         }
 
         _internal_timer = _io_loop->resource<uvw::TimerHandle>();
-        _internal_timer->on<uvw::TimerEvent>([this](const auto &, auto &) {
+        _internal_timer->on<uvw::TimerEvent>([this](const auto &, auto &handle) {
             if (_internal_sequence < static_cast<uint8_t>(_config.packets_per_test)) {
                 _internal_sequence++;
                 _send_icmp_v4(_internal_sequence);
+            } else {
+                handle.stop();
+                handle.close();
             }
         });
 
@@ -198,6 +201,7 @@ bool PingProbe::stop()
 {
     if (_interval_timer) {
         _interval_timer->stop();
+        _interval_timer->close();
     }
     if (_recv_handler) {
         _receiver->remove_async_callback(_recv_handler);
