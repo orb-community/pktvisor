@@ -16,61 +16,21 @@ jobs:
         run: |
           gh api -H "Accept: application/vnd.github.v3+json" /repos/ns1labs/pktvisor/actions/runners -q '.runners[] | {id,status,busy} | select((.busy == false) and (.status == "offline")) | {id} | .[]' --paginate | xargs -I {} gh api --method DELETE -H "Accept: application/vnd.github.v3+json" /repos/ns1labs/pktvisor/actions/runners/{}
 
-      - name: Clear cache
-        uses: actions/github-script@v6
-        with:
-          script: |
-            console.log("About to clear")
-            const caches = await github.rest.actions.getActionsCacheList({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-            })
-            for (const cache of caches.data.actions_caches) {
-              console.log(cache)
-              github.rest.actions.deleteActionsCacheById({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                cache_id: cache.id,
-              })
-            }
-            console.log("Clear completed")
-
-#       - name: Delete arm64 images from ghcr.io
-#         uses: bots-house/ghcr-delete-image-action@v1.0.0
+#       - name: Clear cache
+#         uses: actions/github-script@v6
 #         with:
-#           owner: ns1labs
-#           name: pktvisor
-#           token: ${{ secrets.GITHUB_TOKEN }}
-#           tag: arm64-d5d197f
-          
-#       - name: Delete amd64 images from ghcr.io
-#         uses: bots-house/ghcr-delete-image-action@v1.0.0
-#         with:
-#           owner: ns1labs
-#           name: pktvisor
-#           token: ${{ secrets.GITHUB_TOKEN }}
-#           tag: amd64-d5d197f
-          
-#       - name: Delete arm64 images from ghcr.io
-#         uses: bots-house/ghcr-delete-image-action@v1.0.0
-#         with:
-#           owner: ns1labs
-#           name: pktvisor
-#           token: ${{ secrets.GITHUB_TOKEN }}
-#           tag: arm64
-          
-#       - name: Delete amd64 images from ghcr.io
-#         uses: bots-house/ghcr-delete-image-action@v1.0.0
-#         with:
-#           owner: ns1labs
-#           name: pktvisor
-#           token: ${{ secrets.GITHUB_TOKEN }}
-#           tag: amd64
-          
-#       - name: Delete latest-develop images from ghcr.io
-#         uses: bots-house/ghcr-delete-image-action@v1.0.0
-#         with:
-#           owner: ns1labs
-#           name: pktvisor
-#           token: ${{ secrets.GITHUB_TOKEN }}
-#           tag: latest-develop
+#           script: |
+#             console.log("About to clear")
+#             const caches = await github.rest.actions.getActionsCacheList({
+#               owner: context.repo.owner,
+#               repo: context.repo.repo,
+#             })
+#             for (const cache of caches.data.actions_caches) {
+#               console.log(cache)
+#               github.rest.actions.deleteActionsCacheById({
+#                 owner: context.repo.owner,
+#                 repo: context.repo.repo,
+#                 cache_id: cache.id,
+#               })
+#             }
+#             console.log("Clear completed")
