@@ -828,16 +828,14 @@ jobs:
       - name: Build + push - pktvisor (multi-arch)
         env:
           IMAGE_NAME: ghcr.io/ns1labs/pktvisor
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v2
         with:
           builder: ${{ steps.buildx.outputs.name }}
           context: .
           file: ./docker/Dockerfile.crashhandler
           platforms: linux/arm64
           push: true
-          tags: ${{ env.IMAGE_NAME }}:arm64-${{needs.unit-tests-linux.outputs.commit_hash}}
-          build-args: |
-            ghtoken=${{ secrets.GITHUB_TOKEN }}
+          tags: ${{ env.IMAGE_NAME }}:arm64-${{needs.unit-tests-linux.outputs.commit_hash}}, ${{ env.IMAGE_NAME }}:arm64
             
   remove-github-runner-arm64:
     needs: [ spinup-arm64-runner, package-arm64 ]
