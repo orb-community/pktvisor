@@ -373,12 +373,47 @@ TEST_CASE("Parse netflow stream", "[netflow][flow]")
     flow_handler.metrics()->bucket(0)->to_json(j);
 
     CHECK(j["devices"]["192.168.100.1"]["records_flows"] == 24);
-    CHECK(j["devices"]["192.168.100.1"]["interfaces"]["0"]["cardinality"]["dst_ips_out"] == 24);
-    CHECK(j["devices"]["192.168.100.1"]["interfaces"]["0"]["cardinality"]["src_ips_in"] == 24);
-    CHECK(j["devices"]["192.168.100.1"]["interfaces"]["0"]["cardinality"]["dst_ports_out"] == 0);
-    CHECK(j["devices"]["192.168.100.1"]["interfaces"]["0"]["cardinality"]["src_ports_in"] == 0);
-    CHECK(j["devices"]["192.168.100.1"]["interfaces"]["0"]["top_in_src_ips_bytes"][0]["estimate"] == 6066232);
-    CHECK(j["devices"]["192.168.100.1"]["interfaces"]["0"]["top_in_src_ips_packets"][0]["estimate"] == 7858);
+    CHECK(j["devices"]["192.168.100.1"]["interfaces"]["800"]["cardinality"]["dst_ips_out"] == 24);
+    CHECK(j["devices"]["192.168.100.1"]["interfaces"]["800"]["cardinality"]["src_ips_in"] == 24);
+    CHECK(j["devices"]["192.168.100.1"]["interfaces"]["800"]["cardinality"]["dst_ports_out"] == 0);
+    CHECK(j["devices"]["192.168.100.1"]["interfaces"]["800"]["cardinality"]["src_ports_in"] == 0);
+    CHECK(j["devices"]["192.168.100.1"]["interfaces"]["800"]["top_in_src_ips_bytes"][0]["estimate"] == 6066232);
+    CHECK(j["devices"]["192.168.100.1"]["interfaces"]["800"]["top_in_src_ips_packets"][0]["estimate"] == 7858);
+}
+
+TEST_CASE("Parse IPFIX stream", "[netflow][flow]")
+{
+
+    FlowInputStream stream{"ipfix-test"};
+    stream.config_set("flow_type", "netflow");
+    stream.config_set("pcap_file", "tests/fixtures/ipfix.pcap");
+
+    visor::Config c;
+    auto stream_proxy = stream.add_event_proxy(c);
+    c.config_set<uint64_t>("num_periods", 1);
+    FlowStreamHandler flow_handler{"flow-test", stream_proxy, &c};
+
+    flow_handler.start();
+    stream.start();
+    stream.stop();
+    flow_handler.stop();
+
+    auto event_data = flow_handler.metrics()->bucket(0)->event_data_locked();
+
+    // confirmed with wireshark
+    CHECK(event_data.num_events->value() == 23);
+    CHECK(event_data.num_samples->value() == 23);
+
+    nlohmann::json j;
+    flow_handler.metrics()->bucket(0)->to_json(j);
+
+    CHECK(j["devices"]["192.168.100.2"]["records_flows"] == 23);
+    CHECK(j["devices"]["192.168.100.2"]["interfaces"]["0"]["cardinality"]["dst_ips_out"] == 1);
+    CHECK(j["devices"]["192.168.100.2"]["interfaces"]["0"]["cardinality"]["src_ips_in"] == 1);
+    CHECK(j["devices"]["192.168.100.2"]["interfaces"]["0"]["cardinality"]["dst_ports_out"] == 9);
+    CHECK(j["devices"]["192.168.100.2"]["interfaces"]["0"]["cardinality"]["src_ports_in"] == 16);
+    CHECK(j["devices"]["192.168.100.2"]["interfaces"]["0"]["top_out_src_ips_bytes"][0]["estimate"] == 120000);
+    CHECK(j["devices"]["192.168.100.2"]["interfaces"]["0"]["top_out_src_ips_packets"][0]["estimate"] == 1472);
 }
 
 TEST_CASE("Flow invalid config", "[flow][filter][config]")
