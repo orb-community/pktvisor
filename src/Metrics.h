@@ -102,7 +102,7 @@ public:
 
     virtual ~Metric() = default;
 
-    void set_info(std::string schema_key, std::initializer_list<std::string> names, const std::string &desc)
+    virtual void set_info(std::string schema_key, std::initializer_list<std::string> names, const std::string &desc)
     {
         _name.clear();
         _name = names;
@@ -886,8 +886,19 @@ public:
 
     void to_json(json &j, bool include_live) const;
 
+    void set_info(std::string schema_key, std::initializer_list<std::string> names, const std::string &desc) override
+    {
+        _name.clear();
+        _name = names;
+        _desc = desc;
+        _schema_key = schema_key;
+        _check_names();
+        _quantile.set_info(schema_key, names, desc);
+    }
+
     // Metric
     void to_json(json &j) const override;
+
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override;
     void to_opentelemetry(metrics::v1::ScopeMetrics &scope, timespec &start, timespec &end, LabelMap add_labels = {}) const override;
 };
