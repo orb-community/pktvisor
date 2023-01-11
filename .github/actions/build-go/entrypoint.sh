@@ -6,7 +6,7 @@ function build() {
   # Copying this from previous build (cpp)
   cp -rf ./version.go /src/pkg/client/version.go
   cd /src
-  go build -o pktvisor-cli cmd/pktvisor-cli/main.go
+  GOOS=$INPUT_GOOS go build -o pktvisor-cli cmd/pktvisor-cli/main.go
 }
 
 function copy() {
