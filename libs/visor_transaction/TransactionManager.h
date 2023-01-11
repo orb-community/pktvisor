@@ -53,13 +53,19 @@ class TransactionManager
     static_assert(std::is_base_of<Transaction, TransactionType>::value, "TransactionType must inherit from Transaction structure");
     typedef robin_hood::unordered_map<XactID, TransactionType, Hash> XactMap;
 
-    uint32_t _ttl_secs;
+    uint32_t _ttl_secs{0};
+    uint32_t _ttl_ms{0};
     XactMap _transactions;
 
 public:
-    TransactionManager(uint32_t ttl_secs = 5)
-        : _ttl_secs(ttl_secs)
+    TransactionManager(uint32_t ttl_ms = 5000)
     {
+        if (ttl_ms > 1000) {
+            _ttl_secs = ttl_ms / 1000;
+            _ttl_ms = ttl_ms - _ttl_secs * 1000;
+        } else {
+            _ttl_ms = ttl_ms;
+        }
     }
 
     void start_transaction(XactID id, TransactionType type)
@@ -73,7 +79,9 @@ public:
             auto result = _transactions[id];
             timespec_diff(&endTS, &result.startTS, &result.totalTS);
             _transactions.erase(id);
-            if (result.totalTS.tv_sec >= _ttl_secs) {
+            if (result.totalTS.tv_sec > _ttl_secs) {
+                return std::pair<Result, TransactionType>(Result::TimedOut, result);
+            } else if (result.totalTS.tv_sec == _ttl_secs && (result.totalTS.tv_nsec / 1.0e6) >= _ttl_ms) {
                 return std::pair<Result, TransactionType>(Result::TimedOut, result);
             } else {
                 return std::pair<Result, TransactionType>(Result::Valid, result);
@@ -95,6 +103,11 @@ public:
             _transactions.erase(i);
         }
         return timed_out.size();
+    }
+
+    void clear()
+    {
+        _transactions.clear();
     }
 
     typename XactMap::size_type open_transaction_count() const

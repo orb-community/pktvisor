@@ -152,20 +152,6 @@ bool PingProbe::start(std::shared_ptr<uvw::Loop> io_loop)
     _interval_timer->on<uvw::TimerEvent>([this](const auto &, auto &) {
         _internal_sequence = 0;
 
-        _timeout_timer = _io_loop->resource<uvw::TimerHandle>();
-        if (!_timeout_timer) {
-            throw NetProbeException("PingProbe - unable to initialize timeout TimerHandle");
-        }
-
-        _timeout_timer->on<uvw::TimerEvent>([this](const auto &, auto &) {
-            _internal_sequence = _config.packets_per_test;
-            _fail(ErrorType::Timeout, TestType::Ping, _name);
-            if (_internal_timer) {
-                _internal_timer->stop();
-            }
-            _interval_timer->again();
-        });
-
         if (auto error = _create_socket(); error.has_value()) {
             _fail(error.value(), TestType::Ping, _name);
             return;
@@ -180,8 +166,6 @@ bool PingProbe::start(std::shared_ptr<uvw::Loop> io_loop)
         _internal_timer->on<uvw::TimerEvent>([this](const auto &, auto &) {
             if (_internal_sequence < static_cast<uint8_t>(_config.packets_per_test)) {
                 _internal_sequence++;
-                _timeout_timer->stop();
-                _timeout_timer->start(uvw::TimerHandle::Time{_config.timeout_msec}, uvw::TimerHandle::Time{0});
                 _send_icmp_v4(_internal_sequence);
             }
         });
@@ -189,7 +173,6 @@ bool PingProbe::start(std::shared_ptr<uvw::Loop> io_loop)
         (_sequence == UCHAR_MAX) ? _sequence = 0 : _sequence++;
         _send_icmp_v4(_internal_sequence);
         _internal_sequence++;
-        _timeout_timer->start(uvw::TimerHandle::Time{_config.timeout_msec}, uvw::TimerHandle::Time{0});
         _internal_timer->start(uvw::TimerHandle::Time{_config.packets_interval_msec}, uvw::TimerHandle::Time{_config.packets_interval_msec});
     });
 

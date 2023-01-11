@@ -50,6 +50,7 @@ struct Target {
     Counter minimum;
     Counter maximum;
     Counter dns_failures;
+    Counter timed_out;
 
     Target()
         : q_time_us(NET_PROBE_SCHEMA, {"response_quantiles_us"}, "Net Probe quantile in microseconds")
@@ -59,6 +60,7 @@ struct Target {
         , minimum(NET_PROBE_SCHEMA, {"response_min_us"}, "Minimum response time measured in the reporting interval")
         , maximum(NET_PROBE_SCHEMA, {"response_max_us"}, "Maximum response time measured in the reporting interval")
         , dns_failures(NET_PROBE_SCHEMA, {"dns_lookup_failures"}, "Total Net Probe failures when performed DNS lookup")
+        , timed_out(NET_PROBE_SCHEMA, {"packets_timeout"}, "Total Net Probe timeout transactions")
     {
     }
 };
@@ -106,10 +108,10 @@ public:
     {
     }
 
-    void on_period_shift(timespec stamp, [[maybe_unused]] const NetProbeMetricsBucket *maybe_expiring_bucket) override
+    void on_period_shift([[maybe_unused]] timespec stamp, [[maybe_unused]] const NetProbeMetricsBucket *maybe_expiring_bucket) override
     {
-        // NetProbe transaction support
-        _request_reply_manager->purge_old_transactions(stamp);
+        // Clear all old transactions
+        _request_reply_manager->clear();
     }
 
     void set_xact_ttl(uint32_t ttl)
@@ -135,7 +137,8 @@ class NetProbeStreamHandler final : public visor::StreamMetricsHandler<NetProbeM
 
     static const inline StreamMetricsHandler::ConfigsDefType _config_defs = {
         "recorded_stream",
-        "xact_ttl_secs"};
+        "xact_ttl_secs",
+        "xact_ttl_ms"};
 
     static const inline NetProbeStreamHandler::GroupDefType _group_defs = {
         {"counters", group::NetProbeMetrics::Counters},

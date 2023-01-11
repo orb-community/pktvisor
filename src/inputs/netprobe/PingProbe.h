@@ -99,7 +99,6 @@ class PingProbe final : public NetProbe
     uint8_t _internal_sequence{0};
     std::shared_ptr<uvw::TimerHandle> _interval_timer;
     std::shared_ptr<uvw::TimerHandle> _internal_timer;
-    std::shared_ptr<uvw::TimerHandle> _timeout_timer;
     std::shared_ptr<uvw::AsyncHandle> _recv_handler;
     SOCKETLEN _sin_length{0};
     std::vector<uint8_t> _payload_array;
