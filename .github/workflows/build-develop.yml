@@ -839,9 +839,12 @@ jobs:
           outputs: type=docker,dest=/tmp/arm64.tar
 
       - name: Load image
+        env:
+          IMAGE_NAME: ghcr.io/ns1labs/pktvisor
         run: |
           docker load --input /tmp/arm64.tar
           docker image ls -a
+          docker push ${{ env.IMAGE_NAME }}:arm64-${{needs.unit-tests-linux.outputs.commit_hash}}
             
   remove-github-runner-arm64:
     needs: [ spinup-arm64-runner, package-arm64 ]
