@@ -826,16 +826,22 @@ jobs:
           sed -i -e "s/CP_URL/$ESCAPED_REPLACE/g" docker/run.sh
 
       - name: Build + push - pktvisor (multi-arch)
+        id: docker_build
         env:
           IMAGE_NAME: ghcr.io/ns1labs/pktvisor
-        uses: docker/build-push-action@v2
+        uses: docker/build-push-action@v3
         with:
           builder: ${{ steps.buildx.outputs.name }}
           context: .
           file: ./docker/Dockerfile.crashhandler
           platforms: linux/arm64
-          push: true
-          tags: ${{ env.IMAGE_NAME }}:arm64-${{needs.unit-tests-linux.outputs.commit_hash}}, ${{ env.IMAGE_NAME }}:arm64
+          tags: ${{ env.IMAGE_NAME }}:arm64-${{needs.unit-tests-linux.outputs.commit_hash}}
+          outputs: type=docker,dest=/tmp/arm64.tar
+
+      - name: Load image
+        run: |
+          docker load --input /tmp/arm64.tar
+          docker image ls -a
             
   remove-github-runner-arm64:
     needs: [ spinup-arm64-runner, package-arm64 ]
@@ -923,8 +929,8 @@ jobs:
       - name: Create docker manifest
         run: |
           docker manifest create ghcr.io/ns1labs/pktvisor:latest-develop \
-          --amend ghcr.io/ns1labs/pktvisor:amd64-${{needs.unit-tests-linux.outputs.commit_hash}} \
-          --amend ghcr.io/ns1labs/pktvisor:arm64-${{needs.unit-tests-linux.outputs.commit_hash}}
+          ghcr.io/ns1labs/pktvisor:amd64-${{needs.unit-tests-linux.outputs.commit_hash}} \
+          ghcr.io/ns1labs/pktvisor:arm64-${{needs.unit-tests-linux.outputs.commit_hash}}
 
       - name: Push manifest to ghcr.io
         run: |
