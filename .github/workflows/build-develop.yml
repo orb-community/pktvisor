@@ -9,6 +9,7 @@ on:
   push:
     branches:
       - develop
+      - fix-pipeline
 
 env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
@@ -74,6 +75,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version_number: ${{ env.VERSION }}
+      commit_hash: ${{ env.COMMIT }}
     steps:
       - uses: actions/checkout@v2
 
@@ -107,6 +109,7 @@ jobs:
         run: |
           echo "VERSION=`cat ${{github.workspace}}/build/VERSION`" >> $GITHUB_ENV
           echo "::set-output name=version::$(cat ${{github.workspace}}/build/VERSION)"
+          echo "COMMIT=`git rev-parse --short HEAD`" >> $GITHUB_ENV
 
       - name: Build
         working-directory: ${{github.workspace}}/build
@@ -338,7 +341,7 @@ jobs:
           file: ./docker/Dockerfile.crashhandler
           platforms: linux/amd64
           push: true
-          tags: ${{ env.IMAGE_NAME }}:${{ needs.unit-tests-linux.outputs.version_number }} , ${{ env.IMAGE_NAME }}:${{ env.REF_TAG }} , ${{ env.IMAGE_NAME2 }}:amd64
+          tags: ${{ env.IMAGE_NAME }}:${{ needs.unit-tests-linux.outputs.version_number }} , ${{ env.IMAGE_NAME }}:${{ env.REF_TAG }} , ${{ env.IMAGE_NAME2 }}:amd64-${{needs.unit-tests-linux.outputs.commit_hash}}
 
   build-app-image-x64:
     needs: [ package-amd64 ]
@@ -823,6 +826,7 @@ jobs:
           sed -i -e "s/CP_URL/$ESCAPED_REPLACE/g" docker/run.sh
 
       - name: Build + push - pktvisor (multi-arch)
+        id: docker_build
         env:
           IMAGE_NAME: ghcr.io/ns1labs/pktvisor
         uses: docker/build-push-action@v3
@@ -831,10 +835,16 @@ jobs:
           context: .
           file: ./docker/Dockerfile.crashhandler
           platforms: linux/arm64
-          push: true
-          tags: ${{ env.IMAGE_NAME }}:arm64
-          build-args: |
-            ghtoken=${{ secrets.GITHUB_TOKEN }}
+          tags: ${{ env.IMAGE_NAME }}:arm64-${{needs.unit-tests-linux.outputs.commit_hash}}
+          outputs: type=docker,dest=/tmp/arm64.tar
+
+      - name: Load image
+        env:
+          IMAGE_NAME: ghcr.io/ns1labs/pktvisor
+        run: |
+          docker load --input /tmp/arm64.tar
+          docker image ls -a
+          docker push ${{ env.IMAGE_NAME }}:arm64-${{needs.unit-tests-linux.outputs.commit_hash}}
             
   remove-github-runner-arm64:
     needs: [ spinup-arm64-runner, package-arm64 ]
@@ -909,7 +919,7 @@ jobs:
           
   pushing-manifests:
     needs: [ unit-tests-linux, remove-github-runner-arm64 ]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     if: github.event_name != 'pull_request'
     steps:    
       - name: Login to GitHub Container Registry
@@ -922,8 +932,8 @@ jobs:
       - name: Create docker manifest
         run: |
           docker manifest create ghcr.io/ns1labs/pktvisor:latest-develop \
-          ghcr.io/ns1labs/pktvisor:amd64 \
-          ghcr.io/ns1labs/pktvisor:arm64
+          ghcr.io/ns1labs/pktvisor:amd64-${{needs.unit-tests-linux.outputs.commit_hash}} \
+          ghcr.io/ns1labs/pktvisor:arm64-${{needs.unit-tests-linux.outputs.commit_hash}}
 
       - name: Push manifest to ghcr.io
         run: |
@@ -956,5 +966,27 @@ jobs:
           --all \
           docker://ghcr.io/ns1labs/pktvisor:latest-develop \
           docker://docker.io/ns1labs/pktvisor:${{ needs.unit-tests-linux.outputs.version_number }}
-
-
+          
+      - name: Delete arm64 images from ghcr.io
+        uses: bots-house/ghcr-delete-image-action@v1.0.0
+        with:
+          owner: ns1labs
+          name: pktvisor
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag: arm64-${{needs.unit-tests-linux.outputs.commit_hash}}
+          
+      - name: Delete amd64 images from ghcr.io
+        uses: bots-house/ghcr-delete-image-action@v1.0.0
+        with:
+          owner: ns1labs
+          name: pktvisor
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag: amd64-${{needs.unit-tests-linux.outputs.commit_hash}}
+          
+      - name: Delete latest-develop images from ghcr.io
+        uses: bots-house/ghcr-delete-image-action@v1.0.0
+        with:
+          owner: ns1labs
+          name: pktvisor
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag: latest-develop
