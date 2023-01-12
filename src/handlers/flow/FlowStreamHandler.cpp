@@ -143,7 +143,7 @@ void FlowStreamHandler::start()
             parse_host_specs(config_get<StringList>("exclude_ips_from_summarization"), summary_data.ipv4_exclude_summary, summary_data.ipv6_exclude_summary);
         }
         if (config_exists("exclude_asns_from_summarization")) {
-            for (const auto &asn : config_get<StringList>("exclude_ips_from_summarization")) {
+            for (const auto &asn : config_get<StringList>("exclude_asns_from_summarization")) {
                 summary_data.asn_exclude_summary.push_back(asn + "/");
             }
         }
