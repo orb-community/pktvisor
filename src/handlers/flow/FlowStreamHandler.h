@@ -108,7 +108,7 @@ struct FlowTopN {
     FlowTopN(std::string metric)
         : topConversations(FLOW_SCHEMA, "conversations", {"top_conversations_" + metric}, "Top source IP addresses and port by " + metric)
         , topGeoLoc(FLOW_SCHEMA, "geo_loc", {"top_geo_loc_" + metric}, "Top GeoIP locations by " + metric)
-        , topASN(FLOW_SCHEMA, "asn", {"top_ASN_" + metric}, "Top ASNs by IP by " + metric)
+        , topASN(FLOW_SCHEMA, "asn", {"top_asn_" + metric}, "Top ASNs by IP by " + metric)
     {
     }
 
