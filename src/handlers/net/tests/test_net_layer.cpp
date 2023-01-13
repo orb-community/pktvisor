@@ -264,6 +264,56 @@ TEST_CASE("Parse DNS with NET filter geo", "[pcap][dns][net]")
     CHECK(dns_counters.IPv4.value() == 24);
 }
 
+TEST_CASE("Parse DNS TCP data with NET filter geo", "[pcap][dns][net]")
+{
+    CHECK_NOTHROW(visor::geo::GeoIP().enable("tests/fixtures/GeoIP2-City-Test.mmdb"));
+    CHECK_NOTHROW(visor::geo::GeoASN().enable("tests/fixtures/GeoIP2-ISP-Test.mmdb"));
+
+    PcapInputStream stream{"pcap-test"};
+    stream.config_set("pcap_file", "tests/fixtures/dns_ipv4_tcp.pcap");
+    stream.config_set("bpf", "");
+    stream.config_set("host_spec", "127.0.0.0/24");
+    stream.parse_host_spec();
+
+    visor::Config c;
+    auto stream_proxy = stream.add_event_proxy(c);
+    c.config_set<uint64_t>("num_periods", 1);
+    NetStreamHandler net_handler{"net-test", stream_proxy, &c};
+    net_handler.set_event_proxy(stream.create_event_proxy(c));
+    DnsStreamHandler dns_handler{"dns-test", net_handler.get_event_proxy(), &c};
+    dns_handler.set_event_proxy(stream.create_event_proxy(c));
+    NetStreamHandler net_handler_2{"net-test-2", dns_handler.get_event_proxy(), &c};
+
+    net_handler.config_set<bool>("geoloc_notfound", true);
+
+    net_handler_2.start();
+    dns_handler.start();
+    net_handler.start();
+    stream.start();
+    stream.stop();
+    net_handler.stop();
+    dns_handler.stop();
+    net_handler_2.stop();
+
+    auto net_counters = net_handler.metrics()->bucket(0)->counters();
+    auto event_data = net_handler.metrics()->bucket(0)->event_data_locked();
+
+    CHECK(event_data.num_events->value() == 2310);
+    CHECK(net_counters.TCP.value() == 2100);
+    CHECK(net_counters.IPv4.value() == 2100);
+
+    auto dns_counters = dns_handler.metrics()->bucket(0)->counters();
+    CHECK(dns_counters.TCP.value() == 420);
+    CHECK(dns_counters.IPv4.value() == 420);
+
+    nlohmann::json j;
+    dns_handler.metrics()->bucket(0)->to_json(j);
+
+    auto net_counters_2 = net_handler_2.metrics()->bucket(0)->counters();
+    CHECK(net_counters_2.TCP.value() == 420);
+    CHECK(net_counters_2.IPv4.value() == 420);
+}
+
 TEST_CASE("Parse net dnstap stream", "[dnstap][net][!mayfail]")
 {
 
