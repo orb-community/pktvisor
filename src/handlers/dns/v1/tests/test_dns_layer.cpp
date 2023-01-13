@@ -16,7 +16,7 @@
 #include <Packet.h>
 #include <PcapFileDevice.h>
 #include <ProtocolType.h>
-#include <TcpLayer.h>
+#include <VisorTcpLayer.h>
 #include <UdpLayer.h>
 #ifdef __GNUC__
 #pragma GCC diagnostic pop
