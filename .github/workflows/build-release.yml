@@ -548,6 +548,7 @@ jobs:
           sed -i -e "s/CP_URL/$ESCAPED_REPLACE/g" docker/run.sh
 
       - name: Build + push - pktvisor (multi-arch)
+        id: docker_build
         env:
           IMAGE_NAME: ghcr.io/ns1labs/pktvisor
         uses: docker/build-push-action@v3
@@ -556,8 +557,16 @@ jobs:
           context: .
           file: ./docker/Dockerfile.crashhandler
           platforms: linux/arm64
-          push: true
           tags: ${{ env.IMAGE_NAME }}:release-arm64
+          outputs: type=docker,dest=/tmp/arm64.tar
+
+      - name: Load image
+        env:
+          IMAGE_NAME: ghcr.io/ns1labs/pktvisor
+        run: |
+          docker load --input /tmp/arm64.tar
+          docker image ls -a
+          docker push ${{ env.IMAGE_NAME }}:release-arm64
 
   package-armv7:
     needs: [ spinup-amd64-runner ]
