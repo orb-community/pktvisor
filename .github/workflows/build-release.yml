@@ -632,8 +632,16 @@ jobs:
           context: .
           file: ./docker/Dockerfile
           platforms: linux/arm/v7
-          push: true
           tags: ${{ env.IMAGE_NAME }}:release-armv7
+          outputs: type=docker,dest=/tmp/armv7.tar
+
+      - name: Load image
+        env:
+          IMAGE_NAME: ghcr.io/ns1labs/pktvisor
+        run: |
+          docker load --input /tmp/armv7.tar
+          docker image ls -a
+          docker push ${{ env.IMAGE_NAME }}:release-armv7
 
   package-amd64:
     needs: [ prebuild-package ]
