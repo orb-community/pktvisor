@@ -160,7 +160,6 @@ jobs:
           draft: false
           prerelease: false
 
-
   spinup-arm64-runner:
     needs: [ prebuild-package ]
     runs-on: ubuntu-latest
