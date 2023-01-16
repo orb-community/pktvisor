@@ -197,22 +197,17 @@ void NetStreamHandler::set_end_tstamp(timespec stamp)
 bool NetStreamHandler::validate_tcp_data(const pcpp::ConnectionData &connectionData, PacketDirection dir, timeval timeInterval)
 {
     pcpp::Packet packet;
-    timespec stamp;
-    TIMEVAL_TO_TIMESPEC(&timeInterval, &stamp);
     if (connectionData.srcIP.isIPv4()) {
         packet.addLayer(new pcpp::IPv4Layer(connectionData.srcIP.getIPv4(), connectionData.dstIP.getIPv4()), true);
-        packet.addLayer(new pcpp::TcpLayer(connectionData.srcPort, connectionData.dstPort), true);
-        if (_filtering(packet, dir, stamp)) {
-            return false;
-        }
     } else {
         packet.addLayer(new pcpp::IPv6Layer(connectionData.srcIP.getIPv6(), connectionData.dstIP.getIPv6()), true);
-        packet.addLayer(new pcpp::TcpLayer(connectionData.srcPort, connectionData.dstPort), true);
-        if (_filtering(packet, dir, stamp)) {
-            return false;
-        }
     }
-    return true;
+    packet.addLayer(new pcpp::TcpLayer(connectionData.srcPort, connectionData.dstPort), true);
+
+    timespec stamp;
+    TIMEVAL_TO_TIMESPEC(&timeInterval, &stamp);
+
+    return !_filtering(packet, dir, stamp);
 }
 
 void NetStreamHandler::process_dnstap_cb(const dnstap::Dnstap &payload, size_t size)
