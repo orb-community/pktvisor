@@ -742,6 +742,7 @@ jobs:
           tags: ${{ env.IMAGE_NAME }}:release-amd64
 
   remove-github-runner-arm64:
+    continue-on-error: true
     needs: [ package-arm64 ]
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
@@ -821,6 +822,7 @@ jobs:
           terraform destroy -auto-approve
 
   remove-github-runner-amd64:
+    continue-on-error: true
     needs: [ package-armv7 ]
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
