@@ -283,9 +283,12 @@ TEST_CASE("Parse DNS TCP data with NET filter geo", "[pcap][dns][net]")
     DnsStreamHandler dns_handler{"dns-test", net_handler.get_event_proxy(), &c};
     dns_handler.set_event_proxy(stream.create_event_proxy(c));
     NetStreamHandler net_handler_2{"net-test-2", dns_handler.get_event_proxy(), &c};
+    net_handler_2.set_event_proxy(stream.create_event_proxy(c));
+    DnsStreamHandler dns_handler_2{"dns-test-2", net_handler_2.get_event_proxy(), &c};
 
     net_handler.config_set<bool>("geoloc_notfound", true);
 
+    dns_handler_2.start();
     net_handler_2.start();
     dns_handler.start();
     net_handler.start();
@@ -294,6 +297,7 @@ TEST_CASE("Parse DNS TCP data with NET filter geo", "[pcap][dns][net]")
     net_handler.stop();
     dns_handler.stop();
     net_handler_2.stop();
+    dns_handler_2.stop();
 
     auto net_counters = net_handler.metrics()->bucket(0)->counters();
     auto event_data = net_handler.metrics()->bucket(0)->event_data_locked();
@@ -306,12 +310,13 @@ TEST_CASE("Parse DNS TCP data with NET filter geo", "[pcap][dns][net]")
     CHECK(dns_counters.TCP.value() == 420);
     CHECK(dns_counters.IPv4.value() == 420);
 
-    nlohmann::json j;
-    dns_handler.metrics()->bucket(0)->to_json(j);
-
     auto net_counters_2 = net_handler_2.metrics()->bucket(0)->counters();
     CHECK(net_counters_2.TCP.value() == 420);
     CHECK(net_counters_2.IPv4.value() == 420);
+
+    auto dns_counters_2 = dns_handler_2.metrics()->bucket(0)->counters();
+    CHECK(dns_counters_2.TCP.value() == 420);
+    CHECK(dns_counters_2.IPv4.value() == 420);
 }
 
 TEST_CASE("Parse net dnstap stream", "[dnstap][net][!mayfail]")

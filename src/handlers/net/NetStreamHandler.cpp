@@ -197,18 +197,17 @@ void NetStreamHandler::set_end_tstamp(timespec stamp)
 bool NetStreamHandler::validate_tcp_data(const pcpp::ConnectionData &connectionData, PacketDirection dir, timeval timeInterval)
 {
     pcpp::Packet packet;
-    auto tcp_layer = pcpp::TcpLayer(connectionData.srcPort, connectionData.dstPort);
-    packet.addLayer(&tcp_layer);
     timespec stamp;
     TIMEVAL_TO_TIMESPEC(&timeInterval, &stamp);
     if (connectionData.srcIP.isIPv4()) {
-        auto ipv4_layer = pcpp::IPv4Layer(connectionData.srcIP.getIPv4(), connectionData.dstIP.getIPv4());
-        packet.addLayer(&ipv4_layer);
+        packet.addLayer(new pcpp::IPv4Layer(connectionData.srcIP.getIPv4(), connectionData.dstIP.getIPv4()), true);
+        packet.addLayer(new pcpp::TcpLayer(connectionData.srcPort, connectionData.dstPort), true);
         if (_filtering(packet, dir, stamp)) {
             return false;
         }
     } else {
-        auto ipv6_layer = pcpp::IPv6Layer(connectionData.srcIP.getIPv6(), connectionData.dstIP.getIPv6());
+        packet.addLayer(new pcpp::IPv6Layer(connectionData.srcIP.getIPv6(), connectionData.dstIP.getIPv6()), true);
+        packet.addLayer(new pcpp::TcpLayer(connectionData.srcPort, connectionData.dstPort), true);
         if (_filtering(packet, dir, stamp)) {
             return false;
         }
