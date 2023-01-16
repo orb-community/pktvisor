@@ -17,7 +17,6 @@
 #endif
 #include <IPv4Layer.h>
 #include <IPv6Layer.h>
-#include <TcpLayer.h>
 #include <TimespecTimeval.h>
 #ifdef __GNUC__
 #pragma GCC diagnostic pop
