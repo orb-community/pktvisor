@@ -611,6 +611,7 @@ jobs:
           target: "/usr/share/nginx/html/pktvisor/develop/${{ needs.integration-tests.outputs.commit_hash }}/pktvisor/python-test"
           
   remove-github-runner-amd64:
+    continue-on-error: true
     needs: [ spinup-amd64-runner , upload-qa-artifact ]
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
@@ -846,6 +847,7 @@ jobs:
           docker push ${{ env.IMAGE_NAME }}:arm64-${{needs.unit-tests-linux.outputs.commit_hash}}
             
   remove-github-runner-arm64:
+    continue-on-error: true
     needs: [ spinup-arm64-runner, package-arm64 ]
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
