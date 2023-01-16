@@ -12,11 +12,10 @@
 #pragma clang diagnostic ignored "-Wc99-extensions"
 #pragma clang diagnostic ignored "-Wrange-loop-analysis"
 #endif
-#include <DnsLayer.h>
+#include "DnsLayer.h"
 #include <Packet.h>
 #include <PcapFileDevice.h>
 #include <ProtocolType.h>
-#include <VisorTcpLayer.h>
 #include <UdpLayer.h>
 #ifdef __GNUC__
 #pragma GCC diagnostic pop

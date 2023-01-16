@@ -10,7 +10,6 @@ add_executable(unit-tests-handler-dns
 target_link_libraries(unit-tests-handler-dns
         PRIVATE
         ${CONAN_LIBS_JSON-SCHEMA-VALIDATOR}
-        Visor::Lib::Tcp
         Visor::Handler::Dns)
 
 add_test(NAME unit-tests-handler-dns

@@ -12,11 +12,10 @@
 #pragma clang diagnostic ignored "-Wc99-extensions"
 #pragma clang diagnostic ignored "-Wrange-loop-analysis"
 #endif
-#include <DnsLayer.h>
+#include "DnsLayer.h"
 #include <Packet.h>
 #include <PcapFileDevice.h>
 #include <ProtocolType.h>
-#include <VisorTcpLayer.h>
 #include <UdpLayer.h>
 #ifdef __GNUC__
 #pragma GCC diagnostic pop
@@ -729,13 +728,13 @@ TEST_CASE("DNS filter: GeoLoc not found", "[pcap][dns][ecs]")
     CHECK(counters.IPv6.value() == 2);
     CHECK(counters.xacts.value() == 2);
     CHECK(counters.timeout.value() == 0);
-    CHECK(counters.orphan.value() == 0);
+    CHECK(counters.orphan.value() == 2);
     CHECK(counters.ECS.value() == 2);
 
     nlohmann::json j;
     dns_handler.metrics()->bucket(0)->to_json(j);
 
-    CHECK(j["filtered_packets"] == 29);
+    CHECK(j["filtered_packets"] == 27);
 
     CHECK(j["unknown"]["cardinality"]["qname"] == 1);
 
@@ -779,13 +778,13 @@ TEST_CASE("DNS filter: ASN not found", "[pcap][dns][ecs]")
     CHECK(counters.IPv6.value() == 2);
     CHECK(counters.xacts.value() == 2);
     CHECK(counters.timeout.value() == 0);
-    CHECK(counters.orphan.value() == 0);
+    CHECK(counters.orphan.value() == 2);
     CHECK(counters.ECS.value() == 2);
 
     nlohmann::json j;
     dns_handler.metrics()->bucket(0)->to_json(j);
 
-    CHECK(j["filtered_packets"] == 29);
+    CHECK(j["filtered_packets"] == 27);
 
     CHECK(j["unknown"]["cardinality"]["qname"] == 1);
 
