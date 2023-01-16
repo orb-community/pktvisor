@@ -9,7 +9,6 @@ on:
   push:
     branches:
       - develop
-      - fix-pipeline
 
 env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
@@ -919,7 +918,7 @@ jobs:
           
   pushing-manifests:
     needs: [ unit-tests-linux, remove-github-runner-arm64 ]
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
     steps:    
       - name: Login to GitHub Container Registry
