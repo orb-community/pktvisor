@@ -52,26 +52,15 @@ static std::string ip_summarization(const std::string &val, SummaryData *summary
                 if (auto subnet = match_subnet(summary->ipv4_summary, ipv4.toInt()); subnet.has_value()) {
                     return subnet.value()->str;
                 } else if (summary->ipv4_wildcard.has_value()) {
-                    return pcpp::IPv4Address(ipv4.toInt() & (htobe32((0xFFFFFFFFu) << (32 - summary->ipv4_wildcard.value().cidr)))).toString()
-                        + "/" + std::to_string(summary->ipv4_wildcard.value().cidr);
+                    auto cidr = summary->ipv4_wildcard.value().cidr;
+                    return pcpp::IPv4Address(lib::utils::get_subnet(ipv4.toInt(), cidr)).toString() + "/" + std::to_string(cidr);
                 }
             } else if (ipv6.isValid()) {
                 if (auto subnet = match_subnet(summary->ipv6_summary, ipv6.toBytes()); subnet.has_value()) {
                     return subnet.value()->str;
                 } else if (summary->ipv6_wildcard.has_value()) {
-                    uint8_t bits = 128 - summary->ipv6_wildcard.value().cidr;
-                    std::array<uint8_t, 16> mask{};
-                    ipv6.copyTo(mask.data());
-                    uint8_t byte_count = bits / 8;
-                    uint8_t bit_count = bits % 8;
-                    for (uint8_t b = 0; b < sizeof(summary->ipv6_wildcard.value().addr.s6_addr); ++b) {
-                        if (b < byte_count) {
-                            mask[b] = 0;
-                        } else if (b == byte_count && bit_count) {
-                            mask[b] = mask[b] >> bit_count;
-                        }
-                    }
-                    return pcpp::IPv6Address(mask.data()).toString() + "/" + std::to_string(summary->ipv6_wildcard.value().cidr);
+                    auto cidr = summary->ipv6_wildcard.value().cidr;
+                    return pcpp::IPv6Address(lib::utils::get_subnet(ipv6.toBytes(), cidr).data()).toString() + "/" + std::to_string(cidr);
                 }
             }
         }

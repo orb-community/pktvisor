@@ -74,6 +74,28 @@ bool match_subnet(IPv4subnetList &ipv4_list, IPv6subnetList &ipv6_list, const st
     return false;
 }
 
+uint32_t get_subnet(const uint32_t addr, uint8_t cidr)
+{
+    return addr & (htobe32((0xFFFFFFFFu) << (32 - cidr)));
+}
+
+std::array<uint8_t, 16> get_subnet(const uint8_t *addr, uint8_t cidr)
+{
+    std::array<uint8_t, 16> mask{};
+    std::memcpy(mask.data(), addr, mask.size());
+    uint8_t bits = 128 - cidr;
+    uint8_t byte_count = bits / 8;
+    uint8_t bit_count = bits % 8;
+    for (uint8_t b = 0; b < mask.size(); ++b) {
+        if (b < byte_count) {
+            mask[b] = 0;
+        } else if (b == byte_count && bit_count) {
+            mask[b] = mask[b] >> bit_count;
+        }
+    }
+    return mask;
+}
+
 void parse_host_specs(const std::vector<std::string> &host_list, IPv4subnetList &ipv4_list, IPv6subnetList &ipv6_list)
 {
     for (const auto &host : host_list) {
