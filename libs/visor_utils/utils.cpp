@@ -1,4 +1,5 @@
 #include "utils.h"
+#include "EndianPortable.h"
 #include <IpUtils.h>
 #include <fmt/format.h>
 #include <sstream>
