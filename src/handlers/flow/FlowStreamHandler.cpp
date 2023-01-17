@@ -38,6 +38,9 @@ static std::string ip_summarization(const std::string &val, SummaryData *summary
                     asn = HandlerModulePlugin::asn->getASNString(&sa6);
                 }
             }
+            if (summary->exclude_unknown_asns && asn == "Unknown") {
+                check_subnet = true;
+            }
             if (!summary->asn_exclude_summary.empty() && std::any_of(summary->asn_exclude_summary.begin(), summary->asn_exclude_summary.end(), [&asn](const auto &prefix) {
                     return asn.size() >= prefix.size() && 0 == asn.compare(0, prefix.size(), prefix);
                 })) {
@@ -156,6 +159,9 @@ void FlowStreamHandler::start()
             for (const auto &asn : config_get<StringList>("exclude_asns_from_summarization")) {
                 summary_data.asn_exclude_summary.push_back(asn + "/");
             }
+        }
+        if (config_exists("exclude_unknown_asns_from_summarization")) {
+            summary_data.exclude_unknown_asns = config_get<bool>("exclude_unknown_asns_from_summarization");
         }
     }
     if (config_exists("subnets_for_summarization")) {
