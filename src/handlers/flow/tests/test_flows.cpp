@@ -338,6 +338,20 @@ TEST_CASE("Parse sflow stream with subnet summary wildcard", "[sflow][flow]")
     CHECK(j["devices"]["192.168.0.11"]["interfaces"]["38"]["top_in_src_ips_bytes"][0]["name"] == "10.4.0.0/16");
 }
 
+TEST_CASE("Flow handler error with multiple wildcards", "[sflow][flow]")
+{
+    FlowInputStream stream{"sflow-test"};
+    stream.config_set("flow_type", "sflow");
+    stream.config_set("pcap_file", "tests/fixtures/ecmp.pcap");
+
+    visor::Config c;
+    auto stream_proxy = stream.add_event_proxy(c);
+    c.config_set<uint64_t>("num_periods", 1);
+    FlowStreamHandler flow_handler{"flow-test", stream_proxy, &c};
+    flow_handler.config_set<visor::Configurable::StringList>("subnets_for_summarization", {"0.0.0.0/16", "0.0.0.0/24"});
+    REQUIRE_THROWS_WITH(flow_handler.start(), "FlowHandler: 'subnets_for_summarization' only allows one ipv4 and one ipv6 wildcard");
+}
+
 TEST_CASE("Parse sflow stream with interfaces filter", "[sflow][flow]")
 {
 

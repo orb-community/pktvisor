@@ -179,7 +179,7 @@ void FlowStreamHandler::start()
         for (auto it = summary_data.ipv4_summary.begin(); it != summary_data.ipv4_summary.end(); it++) {
             if (!it->addr.s_addr) {
                 if (summary_data.ipv4_wildcard.has_value()) {
-                    throw StreamHandlerException("FlowHandler: 'subnets_for_summarization' it is only allowed one ipv4 and one ipv6 wildcard per handler");
+                    throw StreamHandlerException("FlowHandler: 'subnets_for_summarization' only allows one ipv4 and one ipv6 wildcard");
                 }
                 summary_data.ipv4_wildcard = *it;
                 it_v4_remove = it;
@@ -200,7 +200,7 @@ void FlowStreamHandler::start()
             }
             if (wildcard) {
                 if (summary_data.ipv6_wildcard.has_value()) {
-                    throw StreamHandlerException("FlowHandler: 'subnets_for_summarization' it is only allowed one ipv4 and one ipv6 wildcard per handler");
+                    throw StreamHandlerException("FlowHandler: 'subnets_for_summarization' only allows one ipv4 and one ipv6 wildcard");
                 }
                 summary_data.ipv6_wildcard = *it;
                 it_v6_remove = it;
