@@ -24,6 +24,7 @@ static std::string ip_summarization(const std::string &val, SummaryData *summary
         } else if (ipv6 = pcpp::IPv6Address(val); ipv6.isValid() && match_subnet(summary->ipv6_exclude_summary, ipv6.toBytes()).has_value()) {
             return val;
         }
+        bool check_subnet{false};
         if (summary->type == IpSummary::ByASN && HandlerModulePlugin::asn->enabled()) {
             std::string asn;
             if (ipv4.isValid()) {
@@ -40,10 +41,13 @@ static std::string ip_summarization(const std::string &val, SummaryData *summary
             if (!summary->asn_exclude_summary.empty() && std::any_of(summary->asn_exclude_summary.begin(), summary->asn_exclude_summary.end(), [&asn](const auto &prefix) {
                     return asn.size() >= prefix.size() && 0 == asn.compare(0, prefix.size(), prefix);
                 })) {
-                return val;
+                check_subnet = true;
             }
-            return asn;
-        } else if (summary->type == IpSummary::BySubnet) {
+            if (!check_subnet) {
+                return asn;
+            }
+        }
+        if (summary->type == IpSummary::BySubnet || check_subnet) {
             if (ipv4.isValid()) {
                 if (auto subnet = match_subnet(summary->ipv4_summary, ipv4.toInt()); subnet.has_value()) {
                     return subnet.value()->str;
@@ -154,19 +158,21 @@ void FlowStreamHandler::start()
     }
 
     SummaryData summary_data;
+    if (config_exists("exclude_ips_from_summarization")) {
+        parse_host_specs(config_get<StringList>("exclude_ips_from_summarization"), summary_data.ipv4_exclude_summary, summary_data.ipv6_exclude_summary);
+    }
     if (config_exists("summarize_ips_by_asn") && config_get<bool>("summarize_ips_by_asn")) {
         summary_data.type = IpSummary::ByASN;
-        if (config_exists("exclude_ips_from_summarization")) {
-            parse_host_specs(config_get<StringList>("exclude_ips_from_summarization"), summary_data.ipv4_exclude_summary, summary_data.ipv6_exclude_summary);
-        }
         if (config_exists("exclude_asns_from_summarization")) {
             for (const auto &asn : config_get<StringList>("exclude_asns_from_summarization")) {
                 summary_data.asn_exclude_summary.push_back(asn + "/");
             }
         }
-        _metrics->set_summary_data(std::move(summary_data));
-    } else if (config_exists("subnets_for_summarization")) {
-        summary_data.type = IpSummary::BySubnet;
+    }
+    if (config_exists("subnets_for_summarization")) {
+        if (summary_data.type == IpSummary::None) {
+            summary_data.type = IpSummary::BySubnet;
+        }
         parse_host_specs(config_get<StringList>("subnets_for_summarization"), summary_data.ipv4_summary, summary_data.ipv6_summary);
         // check ipv4 wildcard
         auto it_v4_remove = summary_data.ipv4_summary.end();
@@ -203,9 +209,9 @@ void FlowStreamHandler::start()
         if (it_v6_remove != summary_data.ipv6_summary.end()) {
             summary_data.ipv6_summary.erase(it_v6_remove);
         }
-        if (config_exists("exclude_ips_from_summarization")) {
-            parse_host_specs(config_get<StringList>("exclude_ips_from_summarization"), summary_data.ipv4_exclude_summary, summary_data.ipv6_exclude_summary);
-        }
+    }
+
+    if (summary_data.type != IpSummary::None) {
         _metrics->set_summary_data(std::move(summary_data));
     }
 
