@@ -40,10 +40,9 @@ static std::string ip_summarization(const std::string &val, SummaryData *summary
             }
             if (summary->exclude_unknown_asns && asn == "Unknown") {
                 check_subnet = true;
-            }
-            if (!summary->asn_exclude_summary.empty() && std::any_of(summary->asn_exclude_summary.begin(), summary->asn_exclude_summary.end(), [&asn](const auto &prefix) {
-                    return asn.size() >= prefix.size() && 0 == asn.compare(0, prefix.size(), prefix);
-                })) {
+            } else if (!summary->asn_exclude_summary.empty() && std::any_of(summary->asn_exclude_summary.begin(), summary->asn_exclude_summary.end(), [&asn](const auto &prefix) {
+                           return asn.size() >= prefix.size() && 0 == asn.compare(0, prefix.size(), prefix);
+                       })) {
                 check_subnet = true;
             }
             if (!check_subnet) {
