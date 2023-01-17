@@ -47,10 +47,27 @@ static std::string ip_summarization(const std::string &val, SummaryData *summary
             if (ipv4.isValid()) {
                 if (auto subnet = match_subnet(summary->ipv4_summary, ipv4.toInt()); subnet.has_value()) {
                     return subnet.value()->str;
+                } else if (summary->ipv4_wildcard.has_value()) {
+                    return pcpp::IPv4Address(ipv4.toInt() & (htobe32((0xFFFFFFFFu) << (32 - summary->ipv4_wildcard.value().cidr)))).toString()
+                        + "/" + std::to_string(summary->ipv4_wildcard.value().cidr);
                 }
             } else if (ipv6.isValid()) {
                 if (auto subnet = match_subnet(summary->ipv6_summary, ipv6.toBytes()); subnet.has_value()) {
                     return subnet.value()->str;
+                } else if (summary->ipv6_wildcard.has_value()) {
+                    uint8_t bits = 128 - summary->ipv6_wildcard.value().cidr;
+                    std::array<uint8_t, 16> mask{};
+                    ipv6.copyTo(mask.data());
+                    uint8_t byte_count = bits / 8;
+                    uint8_t bit_count = bits % 8;
+                    for (uint8_t b = 0; b < sizeof(summary->ipv6_wildcard.value().addr.s6_addr); ++b) {
+                        if (b < byte_count) {
+                            mask[b] = 0;
+                        } else if (b == byte_count && bit_count) {
+                            mask[b] = mask[b] >> bit_count;
+                        }
+                    }
+                    return pcpp::IPv6Address(mask.data()).toString() + "/" + std::to_string(summary->ipv6_wildcard.value().cidr);
                 }
             }
         }
@@ -151,6 +168,41 @@ void FlowStreamHandler::start()
     } else if (config_exists("subnets_for_summarization")) {
         summary_data.type = IpSummary::BySubnet;
         parse_host_specs(config_get<StringList>("subnets_for_summarization"), summary_data.ipv4_summary, summary_data.ipv6_summary);
+        // check ipv4 wildcard
+        auto it_v4_remove = summary_data.ipv4_summary.end();
+        for (auto it = summary_data.ipv4_summary.begin(); it != summary_data.ipv4_summary.end(); it++) {
+            if (!it->addr.s_addr) {
+                if (summary_data.ipv4_wildcard.has_value()) {
+                    throw StreamHandlerException("FlowHandler: 'subnets_for_summarization' it is only allowed one ipv4 and one ipv6 wildcard per handler");
+                }
+                summary_data.ipv4_wildcard = *it;
+                it_v4_remove = it;
+            }
+        }
+        if (it_v4_remove != summary_data.ipv4_summary.end()) {
+            summary_data.ipv4_summary.erase(it_v4_remove);
+        }
+        // check ipv6 wildcard
+        auto it_v6_remove = summary_data.ipv6_summary.end();
+        for (auto it = summary_data.ipv6_summary.begin(); it != summary_data.ipv6_summary.end(); it++) {
+            bool wildcard = true;
+            for (size_t i = 0; i < sizeof(it->addr.s6_addr); ++i) {
+                if (it->addr.s6_addr[i]) {
+                    wildcard = false;
+                    break;
+                }
+            }
+            if (wildcard) {
+                if (summary_data.ipv6_wildcard.has_value()) {
+                    throw StreamHandlerException("FlowHandler: 'subnets_for_summarization' it is only allowed one ipv4 and one ipv6 wildcard per handler");
+                }
+                summary_data.ipv6_wildcard = *it;
+                it_v6_remove = it;
+            }
+        }
+        if (it_v6_remove != summary_data.ipv6_summary.end()) {
+            summary_data.ipv6_summary.erase(it_v6_remove);
+        }
         if (config_exists("exclude_ips_from_summarization")) {
             parse_host_specs(config_get<StringList>("exclude_ips_from_summarization"), summary_data.ipv4_exclude_summary, summary_data.ipv6_exclude_summary);
         }

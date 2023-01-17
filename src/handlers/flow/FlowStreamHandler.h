@@ -67,6 +67,8 @@ struct SummaryData {
     std::vector<std::string> asn_exclude_summary;
     lib::utils::IPv4subnetList ipv4_summary;
     lib::utils::IPv6subnetList ipv6_summary;
+    std::optional<lib::utils::IPv4subnet> ipv4_wildcard;
+    std::optional<lib::utils::IPv6subnet> ipv6_wildcard;
 };
 
 typedef std::unordered_map<std::string, DeviceEnrich> EnrichData;

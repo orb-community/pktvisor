@@ -306,6 +306,38 @@ TEST_CASE("Parse sflow stream with subnet summary", "[sflow][flow]")
     CHECK(j["devices"]["192.168.0.11"]["interfaces"]["38"]["top_in_src_ips_bytes"][0]["name"] == "10.4.0.0/16");
 }
 
+TEST_CASE("Parse sflow stream with subnet summary wildcard", "[sflow][flow]")
+{
+
+    FlowInputStream stream{"sflow-test"};
+    stream.config_set("flow_type", "sflow");
+    stream.config_set("pcap_file", "tests/fixtures/ecmp.pcap");
+
+    visor::Config c;
+    auto stream_proxy = stream.add_event_proxy(c);
+    c.config_set<uint64_t>("num_periods", 1);
+    FlowStreamHandler flow_handler{"flow-test", stream_proxy, &c};
+    flow_handler.config_set<visor::Configurable::StringList>("subnets_for_summarization", {"0.0.0.0/16"});
+    flow_handler.start();
+    stream.start();
+    stream.stop();
+    flow_handler.stop();
+
+    auto event_data = flow_handler.metrics()->bucket(0)->event_data_locked();
+
+    // confirmed with wireshark
+    CHECK(event_data.num_events->value() == 9279);
+    CHECK(event_data.num_samples->value() == 9279);
+
+    nlohmann::json j;
+    flow_handler.metrics()->bucket(0)->to_json(j);
+
+    CHECK(j["devices"]["192.168.0.11"]["interfaces"]["4"]["top_in_src_ips_bytes"][0]["estimate"] == 738240000);
+    CHECK(j["devices"]["192.168.0.11"]["interfaces"]["4"]["top_in_src_ips_bytes"][0]["name"] == "10.4.0.0/16");
+    CHECK(j["devices"]["192.168.0.11"]["interfaces"]["38"]["top_in_src_ips_bytes"][0]["estimate"] == 249921240000);
+    CHECK(j["devices"]["192.168.0.11"]["interfaces"]["38"]["top_in_src_ips_bytes"][0]["name"] == "10.4.0.0/16");
+}
+
 TEST_CASE("Parse sflow stream with interfaces filter", "[sflow][flow]")
 {
 
@@ -413,6 +445,44 @@ TEST_CASE("Parse IPFIX stream", "[netflow][flow]")
     CHECK(j["devices"]["192.168.100.2"]["interfaces"]["0"]["cardinality"]["dst_ports_out"] == 9);
     CHECK(j["devices"]["192.168.100.2"]["interfaces"]["0"]["cardinality"]["src_ports_in"] == 16);
     CHECK(j["devices"]["192.168.100.2"]["interfaces"]["0"]["top_out_src_ips_bytes"][0]["estimate"] == 120000);
+    CHECK(j["devices"]["192.168.100.2"]["interfaces"]["0"]["top_out_src_ips_bytes"][0]["name"] == "::1");
+    CHECK(j["devices"]["192.168.100.2"]["interfaces"]["0"]["top_out_src_ips_packets"][0]["estimate"] == 1472);
+}
+
+TEST_CASE("Parse IPFIX stream with subnet summary wildcard", "[netflow][flow]")
+{
+
+    FlowInputStream stream{"ipfix-test"};
+    stream.config_set("flow_type", "netflow");
+    stream.config_set("pcap_file", "tests/fixtures/ipfix.pcap");
+
+    visor::Config c;
+    auto stream_proxy = stream.add_event_proxy(c);
+    c.config_set<uint64_t>("num_periods", 1);
+    FlowStreamHandler flow_handler{"flow-test", stream_proxy, &c};
+    flow_handler.config_set<visor::Configurable::StringList>("subnets_for_summarization", {"0.0.0.0/16", "::0/24"});
+
+    flow_handler.start();
+    stream.start();
+    stream.stop();
+    flow_handler.stop();
+
+    auto event_data = flow_handler.metrics()->bucket(0)->event_data_locked();
+
+    // confirmed with wireshark
+    CHECK(event_data.num_events->value() == 23);
+    CHECK(event_data.num_samples->value() == 23);
+
+    nlohmann::json j;
+    flow_handler.metrics()->bucket(0)->to_json(j);
+
+    CHECK(j["devices"]["192.168.100.2"]["records_flows"] == 23);
+    CHECK(j["devices"]["192.168.100.2"]["interfaces"]["0"]["cardinality"]["dst_ips_out"] == 1);
+    CHECK(j["devices"]["192.168.100.2"]["interfaces"]["0"]["cardinality"]["src_ips_in"] == 1);
+    CHECK(j["devices"]["192.168.100.2"]["interfaces"]["0"]["cardinality"]["dst_ports_out"] == 9);
+    CHECK(j["devices"]["192.168.100.2"]["interfaces"]["0"]["cardinality"]["src_ports_in"] == 16);
+    CHECK(j["devices"]["192.168.100.2"]["interfaces"]["0"]["top_out_src_ips_bytes"][0]["estimate"] == 120000);
+    CHECK(j["devices"]["192.168.100.2"]["interfaces"]["0"]["top_out_src_ips_bytes"][0]["name"] == "::1/24");
     CHECK(j["devices"]["192.168.100.2"]["interfaces"]["0"]["top_out_src_ips_packets"][0]["estimate"] == 1472);
 }
 
