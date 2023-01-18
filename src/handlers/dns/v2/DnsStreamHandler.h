@@ -484,6 +484,7 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
     sigslot::connection _dnstap_connection;
 
     sigslot::connection _pkt_udp_connection;
+    sigslot::connection _pkt_tcp_reassembled_connection;
     sigslot::connection _start_tstamp_connection;
     sigslot::connection _end_tstamp_connection;
 
@@ -494,6 +495,7 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
     sigslot::connection _heartbeat_connection;
 
     void process_udp_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp);
+    void process_tcp_reassembled_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp);
     void process_dnstap_cb(const dnstap::Dnstap &, size_t);
     void tcp_message_ready_cb(int8_t side, const pcpp::TcpStreamData &tcpData, PacketDirection dir);
     void tcp_connection_start_cb(const pcpp::ConnectionData &connectionData, PacketDirection dir);

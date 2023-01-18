@@ -16,6 +16,7 @@
 #pragma clang diagnostic ignored "-Wc99-extensions"
 #endif
 #include <IPv4Layer.h>
+#include <IPv6Layer.h>
 #include <TimespecTimeval.h>
 #ifdef __GNUC__
 #pragma GCC diagnostic pop
@@ -207,6 +208,7 @@ void DnsStreamHandler::start()
 
     if (_pcap_proxy) {
         _pkt_udp_connection = _pcap_proxy->udp_signal.connect(&DnsStreamHandler::process_udp_packet_cb, this);
+        _pkt_tcp_reassembled_connection = _pcap_proxy->tcp_reassembled_signal.connect(&DnsStreamHandler::process_tcp_reassembled_packet_cb, this);
         _start_tstamp_connection = _pcap_proxy->start_tstamp_signal.connect([this](timespec stamp) {
             set_start_tstamp(stamp);
             _event_proxy ? static_cast<PcapInputEventProxy *>(_event_proxy.get())->start_tstamp_signal(stamp) : void();
@@ -241,6 +243,7 @@ void DnsStreamHandler::stop()
 
     if (_pcap_proxy) {
         _pkt_udp_connection.disconnect();
+        _pkt_tcp_reassembled_connection.disconnect();
         _start_tstamp_connection.disconnect();
         _end_tstamp_connection.disconnect();
         _tcp_start_connection.disconnect();
@@ -271,8 +274,8 @@ void DnsStreamHandler::process_udp_packet_cb(pcpp::Packet &payload, PacketDirect
     assert(udpLayer);
 
     uint16_t metric_port{0};
-    auto dst_port = ntohs(udpLayer->getUdpHeader()->portDst);
-    auto src_port = ntohs(udpLayer->getUdpHeader()->portSrc);
+    auto dst_port = udpLayer->getDstPort();
+    auto src_port = udpLayer->getSrcPort();
     // note we want to capture metrics only when one of the ports is dns,
     // but metrics on the port which is _not_ the dns port
     if (DnsLayer::isDnsPort(dst_port)) {
@@ -294,6 +297,39 @@ void DnsStreamHandler::process_udp_packet_cb(pcpp::Packet &payload, PacketDirect
             if (_event_proxy) {
                 static_cast<PcapInputEventProxy *>(_event_proxy.get())->packet_signal(payload, dir, l3, pcpp::UDP, stamp);
                 static_cast<PcapInputEventProxy *>(_event_proxy.get())->udp_signal(payload, dir, l3, flowkey, stamp);
+            }
+        }
+    }
+}
+
+void DnsStreamHandler::process_tcp_reassembled_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp)
+{
+    pcpp::TcpLayer *tcpLayer = payload.getLayerOfType<pcpp::TcpLayer>();
+    assert(tcpLayer);
+
+    uint16_t metric_port{0};
+    auto dst_port = tcpLayer->getDstPort();
+    auto src_port = tcpLayer->getSrcPort();
+    // note we want to capture metrics only when one of the ports is dns,
+    // but metrics on the port which is _not_ the dns port
+    if (DnsLayer::isDnsPort(dst_port)) {
+        metric_port = src_port;
+    } else if (DnsLayer::isDnsPort(src_port)) {
+        metric_port = dst_port;
+    }
+    if (metric_port) {
+        if (flowkey != _cached_dns_layer.flowKey || stamp.tv_sec != _cached_dns_layer.timestamp.tv_sec || stamp.tv_nsec != _cached_dns_layer.timestamp.tv_nsec) {
+            _cached_dns_layer.flowKey = flowkey;
+            _cached_dns_layer.timestamp = stamp;
+            _cached_dns_layer.dnsLayer = std::make_unique<DnsLayer>(tcpLayer, &payload);
+        }
+        auto dnsLayer = _cached_dns_layer.dnsLayer.get();
+        if (!_filtering(*dnsLayer, dir, flowkey, stamp) && _configs(*dnsLayer)) {
+            _metrics->process_dns_layer(*dnsLayer, dir, l3, pcpp::TCP, flowkey, metric_port, _static_suffix_size, stamp);
+            _static_suffix_size = 0;
+            // signal for chained stream handlers, if we have any
+            if (_event_proxy) {
+                static_cast<PcapInputEventProxy *>(_event_proxy.get())->tcp_reassembled_signal(payload, dir, l3, flowkey, stamp);
             }
         }
     }
@@ -343,7 +379,6 @@ void DnsStreamHandler::tcp_message_ready_cb(int8_t side, const pcpp::TcpStreamDa
 
     // check if this flow already appears in the connection manager. If not add it
     auto iter = _tcp_connections.find(flowKey);
-
     // if not tracking connection, and it's DNS, then start tracking.
     if (iter == _tcp_connections.end()) {
         // note we want to capture metrics only when one of the ports is dns,
@@ -369,14 +404,27 @@ void DnsStreamHandler::tcp_message_ready_cb(int8_t side, const pcpp::TcpStreamDa
     // for tcp, endTime is updated by pcpp to represent the time stamp from the latest packet in the stream
     TIMEVAL_TO_TIMESPEC(&tcpData.getConnectionData().endTime, &stamp);
 
-    auto got_dns_message = [this, port, dir, l3Type, flowKey, stamp](std::unique_ptr<uint8_t[]> data, size_t size) {
+    auto got_dns_message = [this, &conn = tcpData.getConnectionData(), port, dir, l3Type, flowKey, stamp](std::unique_ptr<uint8_t[]> data, size_t size) {
         // this dummy packet prevents DnsLayer from owning and trying to free the data. it is otherwise unused by the DNS layer,
         // instead using the packet meta data we pass in
         pcpp::Packet dummy_packet;
-        DnsLayer dnsLayer(data.get(), size, nullptr, &dummy_packet);
-        if (!_filtering(dnsLayer, dir, flowKey, stamp) && _configs(dnsLayer)) {
-            _metrics->process_dns_layer(dnsLayer, dir, l3Type, pcpp::TCP, flowKey, port, _static_suffix_size, stamp);
+        auto dnsLayer = new DnsLayer(data.release(), size, nullptr, nullptr);
+        dummy_packet.addLayer(dnsLayer, true);
+        if (!_filtering(*dnsLayer, dir, l3Type, stamp) && _configs(*dnsLayer)) {
+            _metrics->process_dns_layer(*dnsLayer, dir, l3Type, pcpp::TCP, flowKey, port, _static_suffix_size, stamp);
             _static_suffix_size = 0;
+            // signal for chained stream handlers, if we have any
+            if (_event_proxy) {
+                dummy_packet.detachLayer(dnsLayer);
+                if (conn.srcIP.isIPv4()) {
+                    dummy_packet.addLayer(new pcpp::IPv4Layer(conn.srcIP.getIPv4(), conn.dstIP.getIPv4()), true);
+                } else {
+                    dummy_packet.addLayer(new pcpp::IPv6Layer(conn.srcIP.getIPv6(), conn.dstIP.getIPv6()), true);
+                }
+                dummy_packet.addLayer(new pcpp::TcpLayer(conn.srcPort, conn.dstPort), true);
+                dummy_packet.addLayer(dnsLayer, true);
+                static_cast<PcapInputEventProxy *>(_event_proxy.get())->tcp_reassembled_signal(dummy_packet, dir, l3Type, flowKey, stamp);
+            }
         }
         // data is freed upon return
     };

@@ -6,6 +6,7 @@
 #include "HandlerModulePlugin.h"
 #include "utils.h"
 #include <Corrade/Utility/Debug.h>
+
 #ifdef __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpedantic"
@@ -14,10 +15,11 @@
 #pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
 #pragma clang diagnostic ignored "-Wc99-extensions"
 #endif
-#include "TcpLayer.h"
 #include <IPv4Layer.h>
 #include <IPv6Layer.h>
 #include <PacketUtils.h>
+#include <TimespecTimeval.h>
+#include <VisorTcpLayer.h>
 #ifdef __GNUC__
 #pragma GCC diagnostic pop
 #endif
@@ -91,12 +93,31 @@ void NetStreamHandler::start()
 
     if (_pcap_proxy) {
         _pkt_connection = _pcap_proxy->packet_signal.connect(&NetStreamHandler::process_packet_cb, this);
+        _pkt_tcp_reassembled_connection = _pcap_proxy->tcp_reassembled_signal.connect(&NetStreamHandler::process_tcp_reassembled_packet_cb, this);
         _start_tstamp_connection = _pcap_proxy->start_tstamp_signal.connect(&NetStreamHandler::set_start_tstamp, this);
         _end_tstamp_connection = _pcap_proxy->end_tstamp_signal.connect(&NetStreamHandler::set_end_tstamp, this);
         _heartbeat_connection = _pcap_proxy->heartbeat_signal.connect([this](const timespec stamp) {
             check_period_shift(stamp);
             _event_proxy ? _event_proxy->heartbeat_signal(stamp) : void();
         });
+        // only connect to TCP reassembly data if it is in chaining mode
+        if (_event_proxy) {
+            _tcp_start_connection = _pcap_proxy->tcp_connection_start_signal.connect([this](const pcpp::ConnectionData &connectionData, PacketDirection dir) {
+                if (validate_tcp_data(connectionData, dir, connectionData.startTime)) {
+                    static_cast<PcapInputEventProxy *>(_event_proxy.get())->tcp_connection_start_signal(connectionData, dir);
+                }
+            });
+            _tcp_message_connection = _pcap_proxy->tcp_message_ready_signal.connect([this](int8_t side, const pcpp::TcpStreamData &tcpData, PacketDirection dir) {
+                if (validate_tcp_data(tcpData.getConnectionData(), dir, tcpData.getTimeStamp())) {
+                    static_cast<PcapInputEventProxy *>(_event_proxy.get())->tcp_message_ready_signal(side, tcpData, dir);
+                }
+            });
+            _tcp_end_connection = _pcap_proxy->tcp_connection_end_signal.connect([this](const pcpp::ConnectionData &connectionData, pcpp::TcpReassembly::ConnectionEndReason reason) {
+                if (validate_tcp_data(connectionData, PacketDirection::unknown, connectionData.endTime)) {
+                    static_cast<PcapInputEventProxy *>(_event_proxy.get())->tcp_connection_end_signal(connectionData, reason);
+                }
+            });
+        }
     } else if (_dnstap_proxy) {
         _dnstap_connection = _dnstap_proxy->dnstap_signal.connect(&NetStreamHandler::process_dnstap_cb, this);
         _heartbeat_connection = _dnstap_proxy->heartbeat_signal.connect([this](const timespec stamp) {
@@ -118,6 +139,12 @@ void NetStreamHandler::stop()
         _pkt_connection.disconnect();
         _start_tstamp_connection.disconnect();
         _end_tstamp_connection.disconnect();
+        _pkt_tcp_reassembled_connection.disconnect();
+        if (_event_proxy) {
+            _tcp_start_connection.disconnect();
+            _tcp_message_connection.disconnect();
+            _tcp_end_connection.disconnect();
+        }
     } else if (_dnstap_proxy) {
         _dnstap_connection.disconnect();
     }
@@ -141,6 +168,16 @@ void NetStreamHandler::process_packet_cb(pcpp::Packet &payload, PacketDirection 
     }
 }
 
+void NetStreamHandler::process_tcp_reassembled_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp)
+{
+    if (!_filtering(payload, dir, stamp)) {
+        _metrics->process_packet(payload, dir, l3, pcpp::TCP, stamp);
+        if (_event_proxy) {
+            static_cast<PcapInputEventProxy *>(_event_proxy.get())->tcp_reassembled_signal(payload, dir, l3, flowkey, stamp);
+        }
+    }
+}
+
 void NetStreamHandler::set_start_tstamp(timespec stamp)
 {
     _metrics->set_start_tstamp(stamp);
@@ -155,6 +192,22 @@ void NetStreamHandler::set_end_tstamp(timespec stamp)
     if (_event_proxy) {
         static_cast<PcapInputEventProxy *>(_event_proxy.get())->end_tstamp_signal(stamp);
     }
+}
+
+bool NetStreamHandler::validate_tcp_data(const pcpp::ConnectionData &connectionData, PacketDirection dir, timeval timeInterval)
+{
+    pcpp::Packet packet;
+    if (connectionData.srcIP.isIPv4()) {
+        packet.addLayer(new pcpp::IPv4Layer(connectionData.srcIP.getIPv4(), connectionData.dstIP.getIPv4()), true);
+    } else {
+        packet.addLayer(new pcpp::IPv6Layer(connectionData.srcIP.getIPv6(), connectionData.dstIP.getIPv6()), true);
+    }
+    packet.addLayer(new pcpp::TcpLayer(connectionData.srcPort, connectionData.dstPort), true);
+
+    timespec stamp;
+    TIMEVAL_TO_TIMESPEC(&timeInterval, &stamp);
+
+    return !_filtering(packet, dir, stamp);
 }
 
 void NetStreamHandler::process_dnstap_cb(const dnstap::Dnstap &payload, size_t size)
@@ -478,17 +531,15 @@ void NetworkMetricsBucket::process_packet(bool deep, pcpp::Packet &payload, Pack
         }
     }
 
-    NetworkPacket packet(dir, l3, l4, payload.getRawPacket()->getRawDataLen(), syn_flag, false);
+    NetworkPacket packet(dir, l3, l4, payload.getRawPacket()->getRawDataLen(), syn_flag);
 
     if (auto IP4layer = payload.getLayerOfType<pcpp::IPv4Layer>(); IP4layer) {
-        packet.is_ipv6 = false;
         if (dir == PacketDirection::toHost) {
             packet.ipv4_in = IP4layer->getSrcIPv4Address();
         } else if (dir == PacketDirection::fromHost) {
             packet.ipv4_out = IP4layer->getDstIPv4Address();
         }
     } else if (auto IP6layer = payload.getLayerOfType<pcpp::IPv6Layer>(); IP6layer) {
-        packet.is_ipv6 = true;
         if (dir == PacketDirection::toHost) {
             packet.ipv6_in = IP6layer->getSrcIPv6Address();
         } else if (dir == PacketDirection::fromHost) {
@@ -501,11 +552,9 @@ void NetworkMetricsBucket::process_packet(bool deep, pcpp::Packet &payload, Pack
 void NetworkMetricsBucket::process_dnstap(bool deep, const dnstap::Dnstap &payload, size_t size)
 {
     pcpp::ProtocolType l3{pcpp::UnknownProtocol};
-    bool is_ipv6{false};
     if (payload.message().has_socket_family()) {
         if (payload.message().socket_family() == dnstap::INET6) {
             l3 = pcpp::IPv6;
-            is_ipv6 = true;
         } else if (payload.message().socket_family() == dnstap::INET) {
             l3 = pcpp::IPv4;
         }
@@ -555,17 +604,17 @@ void NetworkMetricsBucket::process_dnstap(bool deep, const dnstap::Dnstap &paylo
         process_net_layer(dir, l3, l4, size);
         return;
     }
-    NetworkPacket packet(dir, l3, l4, size, false, is_ipv6);
+    NetworkPacket packet(dir, l3, l4, size, false);
 
-    if (!is_ipv6 && payload.message().has_query_address() && payload.message().query_address().size() == 4) {
+    if (l3 == pcpp::IPv4 && payload.message().has_query_address() && payload.message().query_address().size() == 4) {
         packet.ipv4_in = pcpp::IPv4Address(reinterpret_cast<const uint8_t *>(payload.message().query_address().data()));
-    } else if (is_ipv6 && payload.message().has_query_address() && payload.message().query_address().size() == 16) {
+    } else if (l3 == pcpp::IPv6 && payload.message().has_query_address() && payload.message().query_address().size() == 16) {
         packet.ipv6_in = pcpp::IPv6Address(reinterpret_cast<const uint8_t *>(payload.message().query_address().data()));
     }
 
-    if (!is_ipv6 && payload.message().has_response_address() && payload.message().response_address().size() == 4) {
+    if (l3 == pcpp::IPv4 && payload.message().has_response_address() && payload.message().response_address().size() == 4) {
         packet.ipv4_out = pcpp::IPv4Address(reinterpret_cast<const uint8_t *>(payload.message().response_address().data()));
-    } else if (is_ipv6 && payload.message().has_response_address() && payload.message().response_address().size() == 16) {
+    } else if (l3 == pcpp::IPv6 && payload.message().has_response_address() && payload.message().response_address().size() == 16) {
         packet.ipv6_out = pcpp::IPv6Address(reinterpret_cast<const uint8_t *>(payload.message().response_address().data()));
     }
 
@@ -696,21 +745,21 @@ void NetworkMetricsBucket::process_net_layer(NetworkPacket &packet)
 
     _payload_size.update(packet.payload_size);
 
-    if (!packet.is_ipv6 && packet.ipv4_in.isValid()) {
+    if (packet.l3 == pcpp::IPv4 && packet.ipv4_in.isValid()) {
         group_enabled(group::NetMetrics::Cardinality) ? _srcIPCard.update(packet.ipv4_in.toInt()) : void();
         group_enabled(group::NetMetrics::TopIps) ? _topIPv4.update(packet.ipv4_in.toInt()) : void();
         _process_geo_metrics(packet.ipv4_in);
-    } else if (packet.is_ipv6 && packet.ipv6_in.isValid()) {
+    } else if (packet.l3 == pcpp::IPv6 && packet.ipv6_in.isValid()) {
         group_enabled(group::NetMetrics::Cardinality) ? _srcIPCard.update(reinterpret_cast<const void *>(packet.ipv6_in.toBytes()), 16) : void();
         group_enabled(group::NetMetrics::TopIps) ? _topIPv6.update(packet.ipv6_in.toString()) : void();
         _process_geo_metrics(packet.ipv6_in);
     }
 
-    if (!packet.is_ipv6 && packet.ipv4_out.isValid()) {
+    if (packet.l3 == pcpp::IPv4 && packet.ipv4_out.isValid()) {
         group_enabled(group::NetMetrics::Cardinality) ? _dstIPCard.update(packet.ipv4_out.toInt()) : void();
         group_enabled(group::NetMetrics::TopIps) ? _topIPv4.update(packet.ipv4_out.toInt()) : void();
         _process_geo_metrics(packet.ipv4_out);
-    } else if (packet.is_ipv6 && packet.ipv6_out.isValid()) {
+    } else if (packet.l3 == pcpp::IPv6 && packet.ipv6_out.isValid()) {
         group_enabled(group::NetMetrics::Cardinality) ? _dstIPCard.update(reinterpret_cast<const void *>(packet.ipv6_out.toBytes()), 16) : void();
         group_enabled(group::NetMetrics::TopIps) ? _topIPv6.update(packet.ipv6_out.toString()) : void();
         _process_geo_metrics(packet.ipv6_out);
@@ -720,7 +769,7 @@ void NetworkMetricsBucket::process_net_layer(NetworkPacket &packet)
 inline void NetworkMetricsBucket::_process_geo_metrics(const pcpp::IPv4Address &ipv4)
 {
     if ((HandlerModulePlugin::asn->enabled() || HandlerModulePlugin::city->enabled()) && group_enabled(group::NetMetrics::TopGeo)) {
-        struct sockaddr_in sa4{};
+        sockaddr_in sa4{};
         if (lib::utils::ipv4_to_sockaddr(ipv4, &sa4)) {
             if (HandlerModulePlugin::city->enabled()) {
                 _topGeoLoc.update(HandlerModulePlugin::city->getGeoLoc(&sa4));
@@ -735,7 +784,7 @@ inline void NetworkMetricsBucket::_process_geo_metrics(const pcpp::IPv4Address &
 inline void NetworkMetricsBucket::_process_geo_metrics(const pcpp::IPv6Address &ipv6)
 {
     if ((HandlerModulePlugin::asn->enabled() || HandlerModulePlugin::city->enabled()) && group_enabled(group::NetMetrics::TopGeo)) {
-        struct sockaddr_in6 sa6{};
+        sockaddr_in6 sa6{};
         if (lib::utils::ipv6_to_sockaddr(ipv6, &sa6)) {
             if (HandlerModulePlugin::city->enabled()) {
                 _topGeoLoc.update(HandlerModulePlugin::city->getGeoLoc(&sa6));

@@ -282,6 +282,7 @@ public:
     // note: these are mutable because consumer_count() calls slot_count() which is not const (unclear if it could/should be)
     mutable sigslot::signal<pcpp::Packet &, PacketDirection, pcpp::ProtocolType, pcpp::ProtocolType, timespec> packet_signal;
     mutable sigslot::signal<pcpp::Packet &, PacketDirection, pcpp::ProtocolType, uint32_t, timespec> udp_signal;
+    mutable sigslot::signal<pcpp::Packet &, PacketDirection, pcpp::ProtocolType, uint32_t, timespec> tcp_reassembled_signal;
     mutable sigslot::signal<timespec> start_tstamp_signal;
     mutable sigslot::signal<timespec> end_tstamp_signal;
     mutable sigslot::signal<int8_t, const pcpp::TcpStreamData &, PacketDirection> tcp_message_ready_signal;

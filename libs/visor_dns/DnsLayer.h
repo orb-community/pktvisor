@@ -11,6 +11,7 @@
 #include "DnsResource.h"
 #include "DnsResourceData.h"
 #include <UdpLayer.h>
+#include <VisorTcpLayer.h>
 #ifdef __GNUC__
 #pragma GCC diagnostic pop
 #endif
@@ -112,6 +113,11 @@ struct dnshdr {
 
             DnsLayer(pcpp::UdpLayer *udpLayer, pcpp::Packet *packet)
                 : DnsLayer(udpLayer->getData()+sizeof(pcpp::udphdr), udpLayer->getDataLen()-sizeof(pcpp::udphdr), udpLayer, packet)
+            {
+            }
+
+            DnsLayer(pcpp::TcpLayer *tcpLayer, pcpp::Packet *packet)
+                : DnsLayer(tcpLayer->getData()+sizeof(pcpp::tcphdr), tcpLayer->getDataLen()-sizeof(pcpp::tcphdr), tcpLayer, packet)
             {
             }
 
