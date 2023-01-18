@@ -1,13 +1,13 @@
-#include <catch2/catch.hpp>
+#include "catch2/catch.hpp"
 
 #include "DnsStreamHandler.h"
 #include "DnstapInputStream.h"
 #include "GeoDB.h"
-#include "NetStreamHandler.h"
 #include "PcapInputStream.h"
+#include "NetStreamHandler.h"
 
-using namespace visor::handler::net;
-using namespace visor::handler::dns;
+using namespace visor::handler::net::v2;
+using namespace visor::handler::dns::v2;
 using namespace visor::input::pcap;
 
 TEST_CASE("Parse net (dns) UDP IPv4 tests", "[pcap][ipv4][udp][net]")
@@ -203,23 +203,23 @@ TEST_CASE("Parse net (dns) with DNS filter only_qname_suffix", "[pcap][dns][net]
     dns_handler.stop();
     net_handler.stop();
 
-    auto dns_counters = dns_handler.metrics()->bucket(0)->counters();
-    CHECK(dns_counters.UDP.value() == 10);
-    CHECK(dns_counters.IPv4.value() == 10);
+    auto dns_counters = dns_handler.metrics()->bucket(0)->counters(TransactionDirection::out);
+    CHECK(dns_counters.UDP.value() == 4);
+    CHECK(dns_counters.IPv4.value() == 4);
 
     auto net_counters = net_handler.metrics()->bucket(0)->counters();
     auto event_data = net_handler.metrics()->bucket(0)->event_data_locked();
 
-    CHECK(event_data.num_events->value() == 10);
+    CHECK(event_data.num_events->value() == 17);
     CHECK(net_counters.TCP.value() == 0);
-    CHECK(net_counters.UDP.value() == 10);
-    CHECK(net_counters.IPv4.value() == 10);
+    CHECK(net_counters.UDP.value() == 17);
+    CHECK(net_counters.IPv4.value() == 17);
 
     nlohmann::json j;
     net_handler.metrics()->bucket(0)->to_json(j);
 
     CHECK(j["cardinality"]["dst_ips_out"] == 3);
-    CHECK(j["cardinality"]["src_ips_in"] == 5);
+    CHECK(j["cardinality"]["src_ips_in"] == 8);
     CHECK(j["top_ipv4"][0]["estimate"] == 4);
     CHECK(j["top_ipv4"][0]["name"] == "216.239.38.10");
 }
@@ -259,9 +259,9 @@ TEST_CASE("Parse DNS with NET filter geo", "[pcap][dns][net]")
     CHECK(net_counters.UDP.value() == 24);
     CHECK(net_counters.IPv4.value() == 24);
 
-    auto dns_counters = dns_handler.metrics()->bucket(0)->counters();
-    CHECK(dns_counters.UDP.value() == 24);
-    CHECK(dns_counters.IPv4.value() == 24);
+    auto dns_counters = dns_handler.metrics()->bucket(0)->counters(TransactionDirection::out);
+    CHECK(dns_counters.UDP.value() == 9);
+    CHECK(dns_counters.IPv4.value() == 9);
 }
 
 TEST_CASE("Parse DNS TCP data with NET filter geo", "[pcap][dns][net]")
@@ -272,7 +272,6 @@ TEST_CASE("Parse DNS TCP data with NET filter geo", "[pcap][dns][net]")
     PcapInputStream stream{"pcap-test"};
     stream.config_set("pcap_file", "tests/fixtures/dns_ipv4_tcp.pcap");
     stream.config_set("bpf", "");
-    stream.config_set("host_spec", "127.0.0.0/24");
     stream.parse_host_spec();
 
     visor::Config c;
@@ -285,8 +284,6 @@ TEST_CASE("Parse DNS TCP data with NET filter geo", "[pcap][dns][net]")
     NetStreamHandler net_handler_2{"net-test-2", dns_handler.get_event_proxy(), &c};
     net_handler_2.set_event_proxy(stream.create_event_proxy(c));
     DnsStreamHandler dns_handler_2{"dns-test-2", net_handler_2.get_event_proxy(), &c};
-
-    net_handler.config_set<bool>("geoloc_notfound", true);
 
     dns_handler_2.start();
     net_handler_2.start();
@@ -302,21 +299,21 @@ TEST_CASE("Parse DNS TCP data with NET filter geo", "[pcap][dns][net]")
     auto net_counters = net_handler.metrics()->bucket(0)->counters();
     auto event_data = net_handler.metrics()->bucket(0)->event_data_locked();
 
-    CHECK(event_data.num_events->value() == 2310);
+    CHECK(event_data.num_events->value() == 2100);
     CHECK(net_counters.TCP.value() == 2100);
     CHECK(net_counters.IPv4.value() == 2100);
 
-    auto dns_counters = dns_handler.metrics()->bucket(0)->counters();
-    CHECK(dns_counters.TCP.value() == 420);
-    CHECK(dns_counters.IPv4.value() == 420);
+    auto dns_counters = dns_handler.metrics()->bucket(0)->counters(TransactionDirection::unknown);
+    CHECK(dns_counters.TCP.value() == 210);
+    CHECK(dns_counters.IPv4.value() == 210);
 
     auto net_counters_2 = net_handler_2.metrics()->bucket(0)->counters();
     CHECK(net_counters_2.TCP.value() == 420);
     CHECK(net_counters_2.IPv4.value() == 420);
 
-    auto dns_counters_2 = dns_handler_2.metrics()->bucket(0)->counters();
-    CHECK(dns_counters_2.TCP.value() == 420);
-    CHECK(dns_counters_2.IPv4.value() == 420);
+    auto dns_counters_2 = dns_handler_2.metrics()->bucket(0)->counters(TransactionDirection::unknown);
+    CHECK(dns_counters_2.TCP.value() == 210);
+    CHECK(dns_counters_2.IPv4.value() == 210);
 }
 
 TEST_CASE("Parse net dnstap stream", "[dnstap][net][!mayfail]")
@@ -485,8 +482,8 @@ TEST_CASE("Net geolocation filtering", "[pcap][net][geo]")
         net_handler.metrics()->bucket(0)->to_json(j);
         CHECK(j["top_ipv4"][0]["estimate"] == 4);
         CHECK(j["top_ipv4"][0]["name"] == "198.51.44.1");
-        CHECK(j["top_geoLoc"][0]["estimate"] == 24);
-        CHECK(j["top_geoLoc"][0]["name"] == "Unknown");
+        CHECK(j["top_geo_loc"][0]["estimate"] == 24);
+        CHECK(j["top_geo_loc"][0]["name"] == "Unknown");
     }
 
     SECTION("Enable asn not found")
@@ -502,8 +499,8 @@ TEST_CASE("Net geolocation filtering", "[pcap][net][geo]")
         net_handler.metrics()->bucket(0)->to_json(j);
         CHECK(j["top_ipv4"][0]["estimate"] == 4);
         CHECK(j["top_ipv4"][0]["name"] == "198.51.44.1");
-        CHECK(j["top_ASN"][0]["estimate"] == 24);
-        CHECK(j["top_ASN"][0]["name"] == "Unknown");
+        CHECK(j["top_asn"][0]["estimate"] == 24);
+        CHECK(j["top_asn"][0]["name"] == "Unknown");
     }
 
     SECTION("Enable geoloc and asn not found")
@@ -520,10 +517,10 @@ TEST_CASE("Net geolocation filtering", "[pcap][net][geo]")
         net_handler.metrics()->bucket(0)->to_json(j);
         CHECK(j["top_ipv4"][0]["estimate"] == 4);
         CHECK(j["top_ipv4"][0]["name"] == "198.51.44.1");
-        CHECK(j["top_geoLoc"][0]["estimate"] == 24);
-        CHECK(j["top_geoLoc"][0]["name"] == "Unknown");
-        CHECK(j["top_ASN"][0]["estimate"] == 24);
-        CHECK(j["top_ASN"][0]["name"] == "Unknown");
+        CHECK(j["top_geo_loc"][0]["estimate"] == 24);
+        CHECK(j["top_geo_loc"][0]["name"] == "Unknown");
+        CHECK(j["top_asn"][0]["estimate"] == 24);
+        CHECK(j["top_asn"][0]["name"] == "Unknown");
     }
 
     SECTION("Enable geoloc prefix")

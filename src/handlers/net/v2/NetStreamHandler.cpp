@@ -3,9 +3,9 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 #include "NetStreamHandler.h"
+#include "Corrade/Utility/Debug.h"
 #include "HandlerModulePlugin.h"
 #include "utils.h"
-#include <Corrade/Utility/Debug.h>
 
 #ifdef __GNUC__
 #pragma GCC diagnostic push
@@ -15,18 +15,18 @@
 #pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
 #pragma clang diagnostic ignored "-Wc99-extensions"
 #endif
-#include <IPv4Layer.h>
-#include <IPv6Layer.h>
-#include <PacketUtils.h>
-#include <TimespecTimeval.h>
-#include <VisorTcpLayer.h>
+#include "IPv4Layer.h"
+#include "IPv6Layer.h"
+#include "PacketUtils.h"
+#include "TimespecTimeval.h"
+#include "VisorTcpLayer.h"
 #ifdef __GNUC__
 #pragma GCC diagnostic pop
 #endif
-#include <cpc_union.hpp>
-#include <fmt/format.h>
+#include "cpc_union.hpp"
+#include "fmt/format.h"
 
-namespace visor::handler::net {
+namespace visor::handler::net::v2 {
 
 NetStreamHandler::NetStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config)
     : visor::StreamMetricsHandler<NetworkMetricsManager>(name, window_config)
