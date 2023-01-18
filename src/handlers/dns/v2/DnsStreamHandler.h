@@ -411,6 +411,7 @@ public:
         // DNS transaction support
         for (auto &manager : _pair_manager) {
             if (auto timed_out = manager.second.xact_map->purge_old_transactions(stamp); timed_out && live_bucket()->has_dir(manager.first)) {
+                live_bucket()->dir_setup(manager.first);
                 live_bucket()->inc_xact_timed_out(timed_out, manager.first);
             }
             if (bucket(1)->has_dir(manager.first)) {
