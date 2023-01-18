@@ -19,6 +19,7 @@
 #ifdef __GNUC__
 #pragma GCC diagnostic pop
 #endif
+#include <array>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -62,4 +63,6 @@ void parse_host_specs(const std::vector<std::string> &host_list, IPv4subnetList 
 std::optional<IPv4subnetList::const_iterator> match_subnet(IPv4subnetList &ipv4_list, uint32_t ipv4_val);
 std::optional<IPv6subnetList::const_iterator> match_subnet(IPv6subnetList &ipv6_list, const uint8_t *ipv6_val);
 bool match_subnet(IPv4subnetList &ipv4_list, IPv6subnetList &ipv6_list, const std::string &ip_val);
+uint32_t get_subnet(const uint32_t addr, uint8_t cidr);
+std::array<uint8_t, 16> get_subnet(const uint8_t *addr, uint8_t cidr);
 }

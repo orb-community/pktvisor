@@ -62,11 +62,14 @@ struct DeviceEnrich {
 
 struct SummaryData {
     IpSummary type{IpSummary::None};
+    bool exclude_unknown_asns{false};
     lib::utils::IPv4subnetList ipv4_exclude_summary;
     lib::utils::IPv6subnetList ipv6_exclude_summary;
     std::vector<std::string> asn_exclude_summary;
     lib::utils::IPv4subnetList ipv4_summary;
     lib::utils::IPv6subnetList ipv6_summary;
+    std::optional<lib::utils::IPv4subnet> ipv4_wildcard;
+    std::optional<lib::utils::IPv6subnet> ipv6_wildcard;
 };
 
 typedef std::unordered_map<std::string, DeviceEnrich> EnrichData;
@@ -376,6 +379,7 @@ class FlowStreamHandler final : public visor::StreamMetricsHandler<FlowMetricsMa
         "summarize_ips_by_asn",
         "subnets_for_summarization",
         "exclude_asns_from_summarization",
+        "exclude_unknown_asns_from_summarization",
         "exclude_ips_from_summarization",
         "sample_rate_scaling",
         "recorded_stream"};
