@@ -204,7 +204,7 @@ void DnsStreamHandler::start()
         if (!_using_predicate_signals) {
             _pkt_udp_connection = _pcap_proxy->udp_signal.connect(&DnsStreamHandler::process_udp_packet_cb, this);
         }
-        _pkt_tcp_connection = _pcap_proxy->tcp_signal.connect(&DnsStreamHandler::process_tcp_packet_cb, this);
+        _pkt_tcp_reassembled_connection = _pcap_proxy->tcp_reassembled_signal.connect(&DnsStreamHandler::process_tcp_reassembled_packet_cb, this);
         _start_tstamp_connection = _pcap_proxy->start_tstamp_signal.connect([this](timespec stamp) {
             set_start_tstamp(stamp);
             _event_proxy ? static_cast<PcapInputEventProxy *>(_event_proxy.get())->start_tstamp_signal(stamp) : void();
@@ -239,7 +239,7 @@ void DnsStreamHandler::stop()
 
     if (_pcap_proxy) {
         _pkt_udp_connection.disconnect();
-        _pkt_tcp_connection.disconnect();
+        _pkt_tcp_reassembled_connection.disconnect();
         _start_tstamp_connection.disconnect();
         _end_tstamp_connection.disconnect();
         _tcp_start_connection.disconnect();
@@ -301,7 +301,7 @@ void DnsStreamHandler::process_udp_packet_cb(pcpp::Packet &payload, PacketDirect
     }
 }
 
-void DnsStreamHandler::process_tcp_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp)
+void DnsStreamHandler::process_tcp_reassembled_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp)
 {
     pcpp::TcpLayer *tcpLayer = payload.getLayerOfType<pcpp::TcpLayer>();
     assert(tcpLayer);
@@ -328,7 +328,7 @@ void DnsStreamHandler::process_tcp_packet_cb(pcpp::Packet &payload, PacketDirect
             _static_suffix_size = 0;
             // signal for chained stream handlers, if we have any
             if (_event_proxy) {
-                static_cast<PcapInputEventProxy *>(_event_proxy.get())->tcp_signal(payload, dir, l3, flowkey, stamp);
+                static_cast<PcapInputEventProxy *>(_event_proxy.get())->tcp_reassembled_signal(payload, dir, l3, flowkey, stamp);
             }
         }
     }
@@ -422,7 +422,7 @@ void DnsStreamHandler::tcp_message_ready_cb(int8_t side, const pcpp::TcpStreamDa
                 }
                 dummy_packet.addLayer(new pcpp::TcpLayer(conn.srcPort, conn.dstPort), true);
                 dummy_packet.addLayer(dnsLayer, true);
-                static_cast<PcapInputEventProxy *>(_event_proxy.get())->tcp_signal(dummy_packet, dir, l3Type, flowKey, stamp);
+                static_cast<PcapInputEventProxy *>(_event_proxy.get())->tcp_reassembled_signal(dummy_packet, dir, l3Type, flowKey, stamp);
             }
         }
         // data is freed upon return

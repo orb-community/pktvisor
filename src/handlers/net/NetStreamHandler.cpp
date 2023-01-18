@@ -93,7 +93,7 @@ void NetStreamHandler::start()
 
     if (_pcap_proxy) {
         _pkt_connection = _pcap_proxy->packet_signal.connect(&NetStreamHandler::process_packet_cb, this);
-        _tcp_connection = _pcap_proxy->tcp_signal.connect(&NetStreamHandler::process_tcp_packet_cb, this);
+        _pkt_tcp_reassembled_connection = _pcap_proxy->tcp_reassembled_signal.connect(&NetStreamHandler::process_tcp_reassembled_packet_cb, this);
         _start_tstamp_connection = _pcap_proxy->start_tstamp_signal.connect(&NetStreamHandler::set_start_tstamp, this);
         _end_tstamp_connection = _pcap_proxy->end_tstamp_signal.connect(&NetStreamHandler::set_end_tstamp, this);
         _heartbeat_connection = _pcap_proxy->heartbeat_signal.connect([this](const timespec stamp) {
@@ -137,9 +137,9 @@ void NetStreamHandler::stop()
 
     if (_pcap_proxy) {
         _pkt_connection.disconnect();
-        _tcp_connection.disconnect();
         _start_tstamp_connection.disconnect();
         _end_tstamp_connection.disconnect();
+        _pkt_tcp_reassembled_connection.disconnect();
         if (_event_proxy) {
             _tcp_start_connection.disconnect();
             _tcp_message_connection.disconnect();
@@ -168,12 +168,12 @@ void NetStreamHandler::process_packet_cb(pcpp::Packet &payload, PacketDirection 
     }
 }
 
-void NetStreamHandler::process_tcp_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp)
+void NetStreamHandler::process_tcp_reassembled_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp)
 {
     if (!_filtering(payload, dir, stamp)) {
         _metrics->process_packet(payload, dir, l3, pcpp::TCP, stamp);
         if (_event_proxy) {
-            static_cast<PcapInputEventProxy *>(_event_proxy.get())->tcp_signal(payload, dir, l3, flowkey, stamp);
+            static_cast<PcapInputEventProxy *>(_event_proxy.get())->tcp_reassembled_signal(payload, dir, l3, flowkey, stamp);
         }
     }
 }

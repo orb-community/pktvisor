@@ -191,7 +191,7 @@ class NetStreamHandler final : public visor::StreamMetricsHandler<NetworkMetrics
     sigslot::connection _dnstap_connection;
 
     sigslot::connection _pkt_connection;
-    sigslot::connection _tcp_connection;
+    sigslot::connection _pkt_tcp_reassembled_connection;
     sigslot::connection _start_tstamp_connection;
     sigslot::connection _end_tstamp_connection;
 
@@ -216,7 +216,7 @@ class NetStreamHandler final : public visor::StreamMetricsHandler<NetworkMetrics
 
     void process_dnstap_cb(const dnstap::Dnstap &, size_t);
     void process_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp);
-    void process_tcp_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp);
+    void process_tcp_reassembled_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp);
     void set_start_tstamp(timespec stamp);
     void set_end_tstamp(timespec stamp);
     bool validate_tcp_data(const pcpp::ConnectionData &connectionData, PacketDirection dir, timeval timeInterval);
