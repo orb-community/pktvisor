@@ -28,7 +28,7 @@ enum RCode {
 };
 
 static std::unordered_map<uint16_t, std::string> QTypeNames({
-    {0, "Reserved"},
+    {0, "Reserved (0)"},
     {1, "A"},
     {2, "NS"},
     {3, "MD"},
@@ -110,18 +110,18 @@ static std::unordered_map<uint16_t, std::string> QTypeNames({
     {252, "AXFR"},
     {253, "MAILB"},
     {254, "MAILA"},
-    {254, "*"},
+    {255, "*"},
     {256, "URI"},
     {257, "CAA"},
     {258, "AVC"},
     {259, "DOA"},
     {32768, "TA"},
     {32769, "DLV"},
-    {65535, "Reserved"},
+    {65535, "Reserved (65535)"},
 });
 
 static std::unordered_map<std::string, uint16_t> QTypeNumbers({
-    {"Reserved", 0},
+    {"Reserved (0)", 0},
     {"A", 1},
     {"NS", 2},
     {"MD", 3},
@@ -202,8 +202,8 @@ static std::unordered_map<std::string, uint16_t> QTypeNumbers({
     {"IXFR", 251},
     {"AXFR", 252},
     {"MAILB", 253},
-    {"MAILA", 554},
-    {"*", 254},
+    {"MAILA", 254},
+    {"*", 255},
     {"URI", 256},
     {"CAA", 257},
     {"AVC", 258},
@@ -211,7 +211,7 @@ static std::unordered_map<std::string, uint16_t> QTypeNumbers({
     {"AMTRELAY", 260},
     {"TA", 32768},
     {"DLV", 32769},
-    {"Reserved", 65535},
+    {"Reserved (65535)", 65535},
 });
 
 static std::unordered_map<uint16_t, std::string> RCodeNames({
