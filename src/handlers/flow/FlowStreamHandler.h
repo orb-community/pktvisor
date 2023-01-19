@@ -10,6 +10,7 @@
 #include "IpPort.h"
 #include "MockInputStream.h"
 #include "StreamHandler.h"
+#include "VisorLRUList.h"
 #include "utils.h"
 #include <Corrade/Utility/Debug.h>
 #include <string>
@@ -103,6 +104,12 @@ struct FlowPacket {
     }
 };
 
+struct FlowCache {
+    LRUList<network::IpPort, std::string> lru_port_list{2000};
+    LRUList<uint32_t, std::string> lru_ipv4_list{1000};
+    LRUList<std::string, std::string> lru_ipv6_list{1000};
+};
+
 struct FlowTopN {
     TopN<std::string> topConversations;
     TopN<visor::geo::City> topGeoLoc;
@@ -126,8 +133,8 @@ struct FlowTopN {
 struct FlowDirectionTopN {
     TopN<std::string> topSrcIP;
     TopN<std::string> topDstIP;
-    TopN<network::IpPort> topSrcPort;
-    TopN<network::IpPort> topDstPort;
+    TopN<std::string> topSrcPort;
+    TopN<std::string> topDstPort;
     TopN<std::string> topSrcIPandPort;
     TopN<std::string> topDstIPandPort;
 
@@ -288,14 +295,15 @@ public:
         }
         _devices_metrics[device]->filtered += filtered;
     }
-    void process_flow(bool deep, const FlowPacket &payload);
-    void process_interface(bool deep, FlowInterface *iface, const FlowData &flow, FlowDirectionType type);
+    void process_flow(bool deep, const FlowPacket &payload, FlowCache &cache);
+    void process_interface(bool deep, FlowInterface *iface, const FlowData &flow, FlowCache &cache, FlowDirectionType type);
 };
 
 class FlowMetricsManager final : public visor::AbstractMetricsManager<FlowMetricsBucket>
 {
     EnrichData _enrich_data;
     SummaryData _summary_data;
+    FlowCache _cache;
 
 public:
     FlowMetricsManager(const Configurable *window_config)

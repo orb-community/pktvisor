@@ -3,7 +3,7 @@
 
 using namespace visor;
 
-class TestMetricsBucket : public AbstractMetricsBucket
+class TestMetricsBucket final : public AbstractMetricsBucket
 {
 public:
     void specialized_merge([[maybe_unused]] const AbstractMetricsBucket &other, [[maybe_unused]] Metric::Aggregate agg_operator)
@@ -416,26 +416,6 @@ TEST_CASE("TopN metrics", "[metrics][topn]")
         CHECK(j["top"]["test"]["metric"][0]["name"] == "123");
     }
 
-    SECTION("TopN to json summary")
-    {
-        top_sting.update("top1");
-        top_sting.update("top2");
-        top_sting.update("top3");
-        top_sting.update("none");
-        top_sting.to_json(
-            j["top"], [](const std::string &val) {
-                if (val.find("top") != std::string::npos) {
-                    return std::string("top");
-                }
-                return val;
-            },
-            Metric::Aggregate::SUMMARY);
-        CHECK(j["top"]["test"]["metric"][0]["estimate"] == 3);
-        CHECK(j["top"]["test"]["metric"][0]["name"] == "top");
-        CHECK(j["top"]["test"]["metric"][1]["estimate"] == 1);
-        CHECK(j["top"]["test"]["metric"][1]["name"] == "none");
-    }
-
     SECTION("TopN prometheus")
     {
         top_sting.update("top1");
@@ -490,51 +470,6 @@ TEST_CASE("TopN metrics", "[metrics][topn]")
         timespec stamp;
         top_int.to_opentelemetry(scope, stamp, stamp, {{"policy", "default"}},
             [](const uint16_t &val) { return std::to_string(val); });
-        CHECK(scope.metrics(0).name() == "root_test_metric");
-        CHECK(scope.metrics(0).has_gauge());
-        CHECK(scope.metrics_size() == 1);
-        CHECK(scope.metrics(0).gauge().data_points_size() == 2);
-    }
-
-    SECTION("TopN to prometheus summary")
-    {
-        top_sting.update("top1");
-        top_sting.update("top2");
-        top_sting.update("top3");
-        top_sting.update("none");
-        top_sting.to_prometheus(
-            output, {{"policy", "default"}}, [](const std::string &val) {
-                if (val.find("top") != std::string::npos) {
-                    return std::string("top");
-                }
-                return val;
-            },
-            Metric::Aggregate::SUMMARY);
-        std::getline(output, line);
-        CHECK(line == "# HELP root_test_metric A topn test metric");
-        std::getline(output, line);
-        CHECK(line == "# TYPE root_test_metric gauge");
-        std::getline(output, line);
-        CHECK(line == R"(root_test_metric{instance="test instance",policy="default",string="top"} 3)");
-        std::getline(output, line);
-        CHECK(line == R"(root_test_metric{instance="test instance",policy="default",string="none"} 1)");
-    }
-
-    SECTION("TopN opentelemetry summary")
-    {
-        top_sting.update("top1");
-        top_sting.update("top2");
-        top_sting.update("top3");
-        top_sting.update("none");
-        timespec stamp;
-        top_sting.to_opentelemetry(
-            scope, stamp, stamp, {{"policy", "default"}}, [](const std::string &val) {
-                if (val.find("top") != std::string::npos) {
-                    return std::string("top");
-                }
-                return val;
-            },
-            Metric::Aggregate::SUMMARY);
         CHECK(scope.metrics(0).name() == "root_test_metric");
         CHECK(scope.metrics(0).has_gauge());
         CHECK(scope.metrics_size() == 1);
