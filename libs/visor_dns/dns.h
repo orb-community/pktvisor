@@ -115,6 +115,7 @@ static std::unordered_map<uint16_t, std::string> QTypeNames({
     {257, "CAA"},
     {258, "AVC"},
     {259, "DOA"},
+    {260, "AMTRELAY"},
     {32768, "TA"},
     {32769, "DLV"},
     {65535, "Reserved (65535)"},
