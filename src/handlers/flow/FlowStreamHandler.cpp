@@ -16,7 +16,7 @@ namespace visor::handler::flow {
 
 static std::string ip_summarization(const pcpp::IPAddress &ip, SummaryData *summary)
 {
-    if (summary) {
+    if (summary && summary->type != IpSummary::None) {
         if (ip.isIPv4() && match_subnet(summary->ipv4_exclude_summary, ip.getIPv4().toInt()).has_value()) {
             return ip.toString();
         } else if (ip.isIPv6() && match_subnet(summary->ipv6_exclude_summary, ip.getIPv6().toBytes()).has_value()) {
