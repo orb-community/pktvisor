@@ -43,8 +43,8 @@ TEST_CASE("Parse sflow stream", "[sflow][flow]")
     CHECK(j["devices"]["192.168.0.13"]["interfaces"]["52"]["top_in_dst_ports_bytes"][0]["estimate"] == 170879120000);
     CHECK(j["devices"]["192.168.0.13"]["interfaces"]["52"]["top_in_dst_ports_bytes"][0]["name"] == "commplex-link");
     CHECK(j["devices"]["192.168.0.13"]["interfaces"]["52"]["top_in_src_ports_bytes"][0]["name"] == "dynamic-client");
-    CHECK(j["devices"]["192.168.0.13"]["interfaces"]["52"]["top_in_src_ips_and_port_bytes"][0]["estimate"] == 26838240000);
-    CHECK(j["devices"]["192.168.0.13"]["interfaces"]["52"]["top_in_src_ips_and_port_bytes"][0]["name"] == "10.4.1.2:57420");
+    CHECK(j["devices"]["192.168.0.13"]["interfaces"]["52"]["top_in_src_ips_and_port_bytes"][0]["estimate"] == 108027400000);
+    CHECK(j["devices"]["192.168.0.13"]["interfaces"]["52"]["top_in_src_ips_and_port_bytes"][0]["name"] == "10.4.1.2:dynamic-client");
 }
 
 TEST_CASE("Parse sflow with enrichment", "[sflow][flow]")
@@ -142,9 +142,9 @@ TEST_CASE("Parse sflow stream without sampling", "[sflow][flow]")
     CHECK(j["devices"]["192.168.0.13"]["interfaces"]["52"]["top_in_src_ips_bytes"][0]["name"] == "10.4.1.2");
     CHECK(j["devices"]["192.168.0.13"]["interfaces"]["52"]["top_out_src_ips_packets"][0]["estimate"] == 258);
     CHECK(j["devices"]["192.168.0.13"]["interfaces"]["52"]["top_out_src_ips_packets"][0]["name"] == "10.4.4.2");
-    CHECK(j["devices"]["192.168.0.13"]["interfaces"]["52"]["top_out_dst_ports_bytes"][0]["estimate"] == 13230);
+    CHECK(j["devices"]["192.168.0.13"]["interfaces"]["52"]["top_out_dst_ports_bytes"][0]["estimate"] == 18060);
     CHECK(j["devices"]["192.168.0.13"]["interfaces"]["52"]["top_out_src_ips_and_port_bytes"][0]["estimate"] == 18060);
-    CHECK(j["devices"]["192.168.0.13"]["interfaces"]["52"]["top_out_src_ips_and_port_bytes"][0]["name"] == "10.4.4.2:5001");
+    CHECK(j["devices"]["192.168.0.13"]["interfaces"]["52"]["top_out_src_ips_and_port_bytes"][0]["name"] == "10.4.4.2:commplex-link");
 }
 
 TEST_CASE("Parse sflow stream with ip filter", "[sflow][flow]")
@@ -183,8 +183,8 @@ TEST_CASE("Parse sflow stream with ip filter", "[sflow][flow]")
     CHECK(j["devices"]["192.168.0.13"]["interfaces"]["52"]["top_out_src_ips_packets"][0]["estimate"] == 5160000);
     CHECK(j["devices"]["192.168.0.13"]["interfaces"]["52"]["top_out_src_ips_packets"][0]["name"] == "10.4.4.2");
     CHECK(j["devices"]["192.168.0.13"]["interfaces"]["52"]["top_in_dst_ports_bytes"][0]["estimate"] == 62851720000);
-    CHECK(j["devices"]["192.168.0.13"]["interfaces"]["52"]["top_in_src_ips_and_port_bytes"][0]["estimate"] == 26443560000);
-    CHECK(j["devices"]["192.168.0.13"]["interfaces"]["52"]["top_in_src_ips_and_port_bytes"][0]["name"] == "10.4.3.2:40268");
+    CHECK(j["devices"]["192.168.0.13"]["interfaces"]["52"]["top_in_src_ips_and_port_bytes"][0]["estimate"] == 62851720000);
+    CHECK(j["devices"]["192.168.0.13"]["interfaces"]["52"]["top_in_src_ips_and_port_bytes"][0]["name"] == "10.4.3.2:registered-40k");
 }
 
 TEST_CASE("Parse sflow stream with device filter", "[sflow][flow]")
@@ -226,7 +226,7 @@ TEST_CASE("Parse sflow stream with device filter", "[sflow][flow]")
     CHECK(j["devices"]["192.168.0.11"]["interfaces"]["37"]["top_out_src_ips_packets"][0]["name"] == "10.4.2.2");
     CHECK(j["devices"]["192.168.0.11"]["interfaces"]["37"]["top_in_dst_ports_bytes"][0]["estimate"] == 264021720000);
     CHECK(j["devices"]["192.168.0.11"]["interfaces"]["37"]["top_out_src_ips_and_port_bytes"][0]["estimate"] == 563840000);
-    CHECK(j["devices"]["192.168.0.11"]["interfaces"]["37"]["top_out_src_ips_and_port_bytes"][0]["name"] == "10.4.2.2:5001");
+    CHECK(j["devices"]["192.168.0.11"]["interfaces"]["37"]["top_out_src_ips_and_port_bytes"][0]["name"] == "10.4.2.2:commplex-link");
 
     CHECK(j["devices"]["192.168.0.13"]["records_filtered"] == 7189);
 }
@@ -270,7 +270,7 @@ TEST_CASE("Parse sflow stream with port filter", "[sflow][flow]")
     CHECK(j["devices"]["192.168.0.11"]["interfaces"]["38"]["top_in_src_ips_packets"][0]["name"] == "10.4.3.2");
     CHECK(j["devices"]["192.168.0.11"]["interfaces"]["38"]["top_in_dst_ports_bytes"][0]["estimate"] == 25532760000);
     CHECK(j["devices"]["192.168.0.11"]["interfaces"]["38"]["top_out_src_ips_and_port_bytes"][0]["estimate"] == 71400000);
-    CHECK(j["devices"]["192.168.0.11"]["interfaces"]["38"]["top_out_src_ips_and_port_bytes"][0]["name"] == "10.4.4.2:5001");
+    CHECK(j["devices"]["192.168.0.11"]["interfaces"]["38"]["top_out_src_ips_and_port_bytes"][0]["name"] == "10.4.4.2:commplex-link");
 }
 
 TEST_CASE("Parse sflow stream with subnet summary", "[sflow][flow]")

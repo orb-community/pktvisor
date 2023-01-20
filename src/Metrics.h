@@ -62,8 +62,7 @@ public:
 
     enum class Aggregate {
         DEFAULT,
-        SUM,
-        SUMMARY
+        SUM
     };
 
 private:
@@ -591,27 +590,17 @@ public:
      * @param j json object
      * @param formatter std::function which takes a T as input (the type store it in top table) it needs to return a std::string
      */
-    void to_json(json &j, std::function<std::string(const T &)> formatter, Aggregate op = Aggregate::DEFAULT) const
+    void to_json(json &j, std::function<std::string(const T &)> formatter) const
     {
         auto section = json::array();
         auto items = _fi.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
         auto threshold = _get_threshold(items);
-        if (op == Aggregate::DEFAULT) {
-            for (uint64_t i = 0; i < std::min(_top_count, items.size()); i++) {
-                if (items[i].get_estimate() >= threshold) {
-                    section[i]["name"] = formatter(items[i].get_item());
-                    section[i]["estimate"] = items[i].get_estimate();
-                } else {
-                    break;
-                }
-            }
-        } else if (op == Aggregate::SUMMARY) {
-            auto sorted = _get_summarized_data(items, formatter, threshold);
-            uint64_t i = 0;
-            for (const auto &data : sorted) {
-                section[i]["name"] = data.first;
-                section[i]["estimate"] = data.second;
-                i++;
+        for (uint64_t i = 0; i < std::min(_top_count, items.size()); i++) {
+            if (items[i].get_estimate() >= threshold) {
+                section[i]["name"] = formatter(items[i].get_item());
+                section[i]["estimate"] = items[i].get_estimate();
+            } else {
+                break;
             }
         }
         name_json_assign(j, section);
@@ -633,27 +622,19 @@ public:
         name_json_assign(j, section);
     }
 
-    void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels, std::function<std::string(const T &)> formatter, Aggregate op = Aggregate::DEFAULT) const
+    void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels, std::function<std::string(const T &)> formatter) const
     {
         LabelMap l(add_labels);
         auto items = _fi.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
         auto threshold = _get_threshold(items);
         out << "# HELP " << base_name_snake() << ' ' << _desc << std::endl;
         out << "# TYPE " << base_name_snake() << " gauge" << std::endl;
-        if (op == Aggregate::DEFAULT) {
-            for (uint64_t i = 0; i < std::min(_top_count, items.size()); i++) {
-                if (items[i].get_estimate() >= threshold) {
-                    l[_item_key] = formatter(items[i].get_item());
-                    out << name_snake({}, l) << ' ' << items[i].get_estimate() << std::endl;
-                } else {
-                    break;
-                }
-            }
-        } else if (op == Aggregate::SUMMARY) {
-            auto sorted = _get_summarized_data(items, formatter, threshold);
-            for (const auto &data : sorted) {
-                l[_item_key] = data.first;
-                out << name_snake({}, l) << ' ' << data.second << std::endl;
+        for (uint64_t i = 0; i < std::min(_top_count, items.size()); i++) {
+            if (items[i].get_estimate() >= threshold) {
+                l[_item_key] = formatter(items[i].get_item());
+                out << name_snake({}, l) << ' ' << items[i].get_estimate() << std::endl;
+            } else {
+                break;
             }
         }
     }
@@ -733,7 +714,7 @@ public:
         }
     }
 
-    void to_opentelemetry(metrics::v1::ScopeMetrics &scope, timespec &start, timespec &end, Metric::LabelMap add_labels, std::function<std::string(const T &)> formatter, Aggregate op = Aggregate::DEFAULT) const
+    void to_opentelemetry(metrics::v1::ScopeMetrics &scope, timespec &start, timespec &end, Metric::LabelMap add_labels, std::function<std::string(const T &)> formatter) const
     {
         LabelMap l(add_labels);
         auto metric = scope.add_metrics();
@@ -743,20 +724,12 @@ public:
         auto threshold = _get_threshold(items);
         auto start_time = timespec_to_uint64(start);
         auto end_time = timespec_to_uint64(end);
-        if (op == Aggregate::DEFAULT) {
-            for (uint64_t i = 0; i < std::min(_top_count, items.size()); i++) {
-                if (items[i].get_estimate() >= threshold) {
-                    l[_item_key] = formatter(items[i].get_item());
-                    _set_opentelemetry_data(metric->mutable_gauge()->add_data_points(), start_time, end_time, l, items[i].get_estimate());
-                } else {
-                    break;
-                }
-            }
-        } else if (op == Aggregate::SUMMARY) {
-            auto sorted = _get_summarized_data(items, formatter, threshold);
-            for (const auto &data : sorted) {
-                l[_item_key] = data.first;
-                _set_opentelemetry_data(metric->mutable_gauge()->add_data_points(), start_time, end_time, l, data.second);
+        for (uint64_t i = 0; i < std::min(_top_count, items.size()); i++) {
+            if (items[i].get_estimate() >= threshold) {
+                l[_item_key] = formatter(items[i].get_item());
+                _set_opentelemetry_data(metric->mutable_gauge()->add_data_points(), start_time, end_time, l, items[i].get_estimate());
+            } else {
+                break;
             }
         }
     }
