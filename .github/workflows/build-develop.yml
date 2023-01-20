@@ -344,7 +344,8 @@ jobs:
 
       - name: Load image
         env:
-          IMAGE_NAME: ghcr.io/ns1labs/pktvisor
+          IMAGE_NAME: ns1labs/pktvisor
+          IMAGE_NAME2: ghcr.io/ns1labs/pktvisor
         run: |
           docker load --input /tmp/amd64.tar
           docker image ls -a
