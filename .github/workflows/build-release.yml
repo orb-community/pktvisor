@@ -738,8 +738,16 @@ jobs:
           context: .
           file: ./docker/Dockerfile.crashhandler
           platforms: linux/amd64
-          push: true
           tags: ${{ env.IMAGE_NAME }}:release-amd64
+          outputs: type=docker,dest=/tmp/amd64.tar
+
+      - name: Load image
+        env:
+          IMAGE_NAME: ghcr.io/ns1labs/pktvisor
+        run: |
+          docker load --input /tmp/amd64.tar
+          docker image ls -a
+          docker push ${{ env.IMAGE_NAME }}:release-amd64
 
   remove-github-runner-arm64:
     continue-on-error: true
