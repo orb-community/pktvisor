@@ -17,6 +17,12 @@ static void split(const std::string &s, char delim, Out result)
     }
 }
 
+static uint8_t reverse_bits(uint8_t n)
+{
+    static constexpr std::array<uint8_t, 9> bit_reverse_masks{0, 128, 192, 224, 240, 248, 252, 254, 255};
+    return bit_reverse_masks[n];
+}
+
 std::optional<IPv4subnetList::const_iterator> match_subnet(IPv4subnetList &ipv4_list, uint32_t ipv4_val)
 {
     if (ipv4_val && !ipv4_list.empty()) {
@@ -84,14 +90,15 @@ std::array<uint8_t, 16> get_subnet(const uint8_t *addr, uint8_t cidr)
 {
     std::array<uint8_t, 16> mask{};
     std::memcpy(mask.data(), addr, mask.size());
-    uint8_t bits = 128 - cidr;
-    uint8_t byte_count = bits / 8;
-    uint8_t bit_count = bits % 8;
-    for (uint8_t b = 0; b < mask.size(); ++b) {
-        if (b < byte_count) {
+    uint8_t byte_count = cidr / 8;
+    uint8_t bit_count = cidr % 8;
+    for (uint8_t b = mask.size(); b-- > 0;) {
+        if (b > byte_count) {
             mask[b] = 0;
         } else if (b == byte_count && bit_count) {
-            mask[b] = mask[b] >> bit_count;
+            mask[b] &= reverse_bits(bit_count);
+        } else if (b == byte_count) {
+            mask[b] = 0;
         }
     }
     return mask;

@@ -496,7 +496,7 @@ TEST_CASE("Parse IPFIX stream with subnet summary wildcard", "[netflow][flow]")
     CHECK(j["devices"]["192.168.100.2"]["interfaces"]["0"]["cardinality"]["dst_ports_out"] == 9);
     CHECK(j["devices"]["192.168.100.2"]["interfaces"]["0"]["cardinality"]["src_ports_in"] == 16);
     CHECK(j["devices"]["192.168.100.2"]["interfaces"]["0"]["top_out_src_ips_bytes"][0]["estimate"] == 120000);
-    CHECK(j["devices"]["192.168.100.2"]["interfaces"]["0"]["top_out_src_ips_bytes"][0]["name"] == "::1/24");
+    CHECK(j["devices"]["192.168.100.2"]["interfaces"]["0"]["top_out_src_ips_bytes"][0]["name"] == "::/24");
     CHECK(j["devices"]["192.168.100.2"]["interfaces"]["0"]["top_out_src_ips_packets"][0]["estimate"] == 1472);
 }
 
