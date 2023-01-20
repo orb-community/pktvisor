@@ -624,21 +624,21 @@ void NetworkMetricsBucket::process_dnstap(bool deep, const dnstap::Dnstap &paylo
 void NetworkMetricsBucket::process_net_layer(PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, size_t payload_size)
 {
     std::unique_lock lock(_mutex);
-
+    auto payload_size_bits = payload_size * sizeof(uint8_t);
     switch (dir) {
     case PacketDirection::fromHost:
         ++_rate_out;
-        _throughput_out += payload_size;
+        _throughput_out += payload_size_bits;
         break;
     case PacketDirection::toHost:
         ++_rate_in;
-        _throughput_in += payload_size;
+        _throughput_in += payload_size_bits;
         break;
     case PacketDirection::unknown:
         break;
     }
     ++_rate_total;
-    _throughput_total += payload_size;
+    _throughput_total += payload_size_bits;
 
     if (group_enabled(group::NetMetrics::Counters)) {
         ++_counters.total;
@@ -685,21 +685,21 @@ void NetworkMetricsBucket::process_net_layer(PacketDirection dir, pcpp::Protocol
 void NetworkMetricsBucket::process_net_layer(NetworkPacket &packet)
 {
     std::unique_lock lock(_mutex);
-
+    auto payload_size_bits = packet.payload_size * sizeof(uint8_t);
     switch (packet.dir) {
     case PacketDirection::fromHost:
         ++_rate_out;
-        _throughput_out += packet.payload_size;
+        _throughput_out += payload_size_bits;
         break;
     case PacketDirection::toHost:
         ++_rate_in;
-        _throughput_in += packet.payload_size;
+        _throughput_in += payload_size_bits;
         break;
     case PacketDirection::unknown:
         break;
     }
     ++_rate_total;
-    _throughput_total += packet.payload_size;
+    _throughput_total += payload_size_bits;
 
     if (group_enabled(group::NetMetrics::Counters)) {
         ++_counters.total;

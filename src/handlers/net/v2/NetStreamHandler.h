@@ -19,7 +19,7 @@ using namespace visor::input::pcap;
 using namespace visor::input::dnstap;
 using namespace visor::input::mock;
 
-static constexpr const char *NET_SCHEMA{"packets"};
+static constexpr const char *NET_SCHEMA{"net"};
 
 namespace group {
 enum NetMetrics : visor::MetricGroupIntType {
@@ -79,17 +79,17 @@ protected:
         Counter total;
         Counter filtered;
         counters()
-            : UDP(NET_SCHEMA, {"udp"}, "Count of UDP packets")
-            , TCP(NET_SCHEMA, {"tcp"}, "Count of TCP packets")
-            , OtherL4(NET_SCHEMA, {"other_l4"}, "Count of packets which are not UDP or TCP")
-            , IPv4(NET_SCHEMA, {"ipv4"}, "Count of IPv4 packets")
-            , IPv6(NET_SCHEMA, {"ipv6"}, "Count of IPv6 packets")
-            , TCP_SYN(NET_SCHEMA, {"protocol", "tcp", "syn"}, "Count of TCP SYN packets")
-            , total_in(NET_SCHEMA, {"in"}, "Count of total ingress packets")
-            , total_out(NET_SCHEMA, {"out"}, "Count of total egress packets")
-            , total_unk(NET_SCHEMA, {"unknown_dir"}, "Count of total unknown direction packets")
-            , total(NET_SCHEMA, {"total"}, "Count of total packets matching the configured filter(s)")
-            , filtered(NET_SCHEMA, {"filtered"}, "Count of total packets that did not match the configured filter(s) (if any)")
+            : UDP(NET_SCHEMA, {"udp_packets"}, "Count of UDP packets")
+            , TCP(NET_SCHEMA, {"tcp_packets"}, "Count of TCP packets")
+            , OtherL4(NET_SCHEMA, {"other_l4_packets"}, "Count of packets which are not UDP or TCP")
+            , IPv4(NET_SCHEMA, {"ipv4_packets"}, "Count of IPv4 packets")
+            , IPv6(NET_SCHEMA, {"ipv6_packets"}, "Count of IPv6 packets")
+            , TCP_SYN(NET_SCHEMA, {"protocol", "tcp", "syn_packets"}, "Count of TCP SYN packets")
+            , total_in(NET_SCHEMA, {"in_packets"}, "Count of total ingress packets")
+            , total_out(NET_SCHEMA, {"out_packets"}, "Count of total egress packets")
+            , total_unk(NET_SCHEMA, {"unknown_dir_packets"}, "Count of total unknown direction packets")
+            , total(NET_SCHEMA, {"total_packets"}, "Count of total packets matching the configured filter(s)")
+            , filtered(NET_SCHEMA, {"filtered_packets"}, "Count of total packets that did not match the configured filter(s) (if any)")
         {
         }
     };
@@ -111,21 +111,21 @@ public:
     NetworkMetricsBucket()
         : _srcIPCard(NET_SCHEMA, {"cardinality", "src_ips_in"}, "Source IP cardinality")
         , _dstIPCard(NET_SCHEMA, {"cardinality", "dst_ips_out"}, "Destination IP cardinality")
-        , _topGeoLoc(NET_SCHEMA, "geo_loc", {"top_geo_loc"}, "Top GeoIP locations")
-        , _topASN(NET_SCHEMA, "asn", {"top_asn"}, "Top ASNs by IP")
-        , _topIPv4(NET_SCHEMA, "ipv4", {"top_ipv4"}, "Top IPv4 IP addresses")
-        , _topIPv6(NET_SCHEMA, "ipv6", {"top_ipv6"}, "Top IPv6 IP addresses")
-        , _payload_size(NET_SCHEMA, {"payload_size"}, "Quantiles of payload sizes, in bytes")
-        , _rate_in(NET_SCHEMA, {"rates", "pps_in"}, "Rate of ingress in packets per second")
-        , _rate_out(NET_SCHEMA, {"rates", "pps_out"}, "Rate of egress in packets per second")
-        , _rate_total(NET_SCHEMA, {"rates", "pps_total"}, "Rate of all packets (combined ingress and egress) in packets per second")
-        , _throughput_in(NET_SCHEMA, {"rates", "bytes_in"}, "Data rate of ingress packets in bytes per second")
-        , _throughput_out(NET_SCHEMA, {"rates", "bytes_out"}, "Data rate of egress packets in bytes per second")
-        , _throughput_total(NET_SCHEMA, {"rates", "bytes_total"}, "Data rate of all packets (combined ingress and egress) in bytes per second")
+        , _topGeoLoc(NET_SCHEMA, "geo_loc", {"top_geo_loc_packets"}, "Top GeoIP locations")
+        , _topASN(NET_SCHEMA, "asn", {"top_asn_packets"}, "Top ASNs by IP")
+        , _topIPv4(NET_SCHEMA, "ipv4", {"top_ipv4_packets"}, "Top IPv4 IP addresses")
+        , _topIPv6(NET_SCHEMA, "ipv6", {"top_ipv6_packets"}, "Top IPv6 IP addresses")
+        , _payload_size(NET_SCHEMA, {"payload_size_bytes"}, "Quantiles of payload sizes, in bytes")
+        , _rate_in(NET_SCHEMA, {"rates", "in_pps"}, "Rate of ingress in packets per second")
+        , _rate_out(NET_SCHEMA, {"rates", "out_pps"}, "Rate of egress in packets per second")
+        , _rate_total(NET_SCHEMA, {"rates", "total_pps"}, "Rate of all packets (combined ingress and egress) in packets per second")
+        , _throughput_in(NET_SCHEMA, {"rates", "in_bps"}, "Data rate of ingress packets in bits per second")
+        , _throughput_out(NET_SCHEMA, {"rates", "out_bps"}, "Data rate of egress packets in bits per second")
+        , _throughput_total(NET_SCHEMA, {"rates", "total_bps"}, "Data rate of all packets (combined ingress and egress) in bits per second")
     {
-        set_event_rate_info(NET_SCHEMA, {"rates", "pps_events"}, "Rate of all packets before filtering in packets per second");
-        set_num_events_info(NET_SCHEMA, {"events"}, "Total packets events generated");
-        set_num_sample_info(NET_SCHEMA, {"deep_samples"}, "Total packets that were sampled for deep inspection");
+        set_event_rate_info(NET_SCHEMA, {"rates", "observed_pps"}, "Rate of all packets before filtering in packets per second");
+        set_num_events_info(NET_SCHEMA, {"observed_packets"}, "Total packets events generated");
+        set_num_sample_info(NET_SCHEMA, {"deep_sampled_packets"}, "Total packets that were sampled for deep inspection");
     }
 
     // get a copy of the counters

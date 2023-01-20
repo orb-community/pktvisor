@@ -173,9 +173,9 @@ TEST_CASE("Parse net (dns) random UDP/TCP tests", "[pcap][net]")
 
     CHECK(j["cardinality"]["dst_ips_out"] == 1);
     CHECK(j["cardinality"]["src_ips_in"] == 1);
-    CHECK(j["top_ipv4"][0]["estimate"] == 16147);
-    CHECK(j["top_ipv4"][0]["name"] == "8.8.8.8");
-    CHECK(j["payload_size"]["p50"] >= 66);
+    CHECK(j["top_ipv4_packets"][0]["estimate"] == 16147);
+    CHECK(j["top_ipv4_packets"][0]["name"] == "8.8.8.8");
+    CHECK(j["payload_size_bytes"]["p50"] >= 66);
 }
 
 TEST_CASE("Parse net (dns) with DNS filter only_qname_suffix", "[pcap][dns][net]")
@@ -220,8 +220,8 @@ TEST_CASE("Parse net (dns) with DNS filter only_qname_suffix", "[pcap][dns][net]
 
     CHECK(j["cardinality"]["dst_ips_out"] == 3);
     CHECK(j["cardinality"]["src_ips_in"] == 8);
-    CHECK(j["top_ipv4"][0]["estimate"] == 4);
-    CHECK(j["top_ipv4"][0]["name"] == "216.239.38.10");
+    CHECK(j["top_ipv4_packets"][0]["estimate"] == 4);
+    CHECK(j["top_ipv4_packets"][0]["name"] == "216.239.38.10");
 }
 
 TEST_CASE("Parse DNS with NET filter geo", "[pcap][dns][net]")
@@ -351,9 +351,9 @@ TEST_CASE("Parse net dnstap stream", "[dnstap][net][!mayfail]")
 
     CHECK(j["cardinality"]["dst_ips_out"] == 1);
     CHECK(j["cardinality"]["src_ips_in"] == 1);
-    CHECK(j["top_ipv4"][0]["estimate"] == 153);
-    CHECK(j["top_ipv4"][0]["name"] == "192.168.0.54");
-    CHECK(j["payload_size"]["p50"] == 100);
+    CHECK(j["top_ipv4_packets"][0]["estimate"] == 153);
+    CHECK(j["top_ipv4_packets"][0]["name"] == "192.168.0.54");
+    CHECK(j["payload_size_bytes"]["p50"] == 100);
 }
 
 TEST_CASE("Net groups", "[pcap][net]")
@@ -401,8 +401,8 @@ TEST_CASE("Net groups", "[pcap][net]")
 
         CHECK(j["cardinality"]["dst_ips_out"] == nullptr);
         CHECK(j["cardinality"]["src_ips_in"] == nullptr);
-        CHECK(j["top_ipv4"][0]["estimate"] == 16147);
-        CHECK(j["top_ipv4"][0]["name"] == "8.8.8.8");
+        CHECK(j["top_ipv4_packets"][0]["estimate"] == 16147);
+        CHECK(j["top_ipv4_packets"][0]["name"] == "8.8.8.8");
     }
 
     SECTION("disable Top ips and Top geo")
@@ -480,10 +480,10 @@ TEST_CASE("Net geolocation filtering", "[pcap][net][geo]")
 
         nlohmann::json j;
         net_handler.metrics()->bucket(0)->to_json(j);
-        CHECK(j["top_ipv4"][0]["estimate"] == 4);
-        CHECK(j["top_ipv4"][0]["name"] == "198.51.44.1");
-        CHECK(j["top_geo_loc"][0]["estimate"] == 24);
-        CHECK(j["top_geo_loc"][0]["name"] == "Unknown");
+        CHECK(j["top_ipv4_packets"][0]["estimate"] == 4);
+        CHECK(j["top_ipv4_packets"][0]["name"] == "198.51.44.1");
+        CHECK(j["top_geo_loc_packets"][0]["estimate"] == 24);
+        CHECK(j["top_geo_loc_packets"][0]["name"] == "Unknown");
     }
 
     SECTION("Enable asn not found")
@@ -497,10 +497,10 @@ TEST_CASE("Net geolocation filtering", "[pcap][net][geo]")
 
         nlohmann::json j;
         net_handler.metrics()->bucket(0)->to_json(j);
-        CHECK(j["top_ipv4"][0]["estimate"] == 4);
-        CHECK(j["top_ipv4"][0]["name"] == "198.51.44.1");
-        CHECK(j["top_asn"][0]["estimate"] == 24);
-        CHECK(j["top_asn"][0]["name"] == "Unknown");
+        CHECK(j["top_ipv4_packets"][0]["estimate"] == 4);
+        CHECK(j["top_ipv4_packets"][0]["name"] == "198.51.44.1");
+        CHECK(j["top_asn_packets"][0]["estimate"] == 24);
+        CHECK(j["top_asn_packets"][0]["name"] == "Unknown");
     }
 
     SECTION("Enable geoloc and asn not found")
@@ -515,12 +515,12 @@ TEST_CASE("Net geolocation filtering", "[pcap][net][geo]")
 
         nlohmann::json j;
         net_handler.metrics()->bucket(0)->to_json(j);
-        CHECK(j["top_ipv4"][0]["estimate"] == 4);
-        CHECK(j["top_ipv4"][0]["name"] == "198.51.44.1");
-        CHECK(j["top_geo_loc"][0]["estimate"] == 24);
-        CHECK(j["top_geo_loc"][0]["name"] == "Unknown");
-        CHECK(j["top_asn"][0]["estimate"] == 24);
-        CHECK(j["top_asn"][0]["name"] == "Unknown");
+        CHECK(j["top_ipv4_packets"][0]["estimate"] == 4);
+        CHECK(j["top_ipv4_packets"][0]["name"] == "198.51.44.1");
+        CHECK(j["top_geo_loc_packets"][0]["estimate"] == 24);
+        CHECK(j["top_geo_loc_packets"][0]["name"] == "Unknown");
+        CHECK(j["top_asn_packets"][0]["estimate"] == 24);
+        CHECK(j["top_asn_packets"][0]["name"] == "Unknown");
     }
 
     SECTION("Enable geoloc prefix")
@@ -534,8 +534,8 @@ TEST_CASE("Net geolocation filtering", "[pcap][net][geo]")
 
         nlohmann::json j;
         net_handler.metrics()->bucket(0)->to_json(j);
-        CHECK(j["filtered"] == 24);
-        CHECK(j["top_geoLoc"][0]["name"] == nullptr);
+        CHECK(j["filtered_packets"] == 24);
+        CHECK(j["top_geo_loc_packets"][0]["name"] == nullptr);
     }
 
     SECTION("Enable asn number")
@@ -549,8 +549,8 @@ TEST_CASE("Net geolocation filtering", "[pcap][net][geo]")
 
         nlohmann::json j;
         net_handler.metrics()->bucket(0)->to_json(j);
-        CHECK(j["filtered"] == 24);
-        CHECK(j["top_ASN"][0]["name"] == nullptr);
+        CHECK(j["filtered_packets"] == 24);
+        CHECK(j["top_asn_packets"][0]["name"] == nullptr);
     }
 
     SECTION("Invalid asn number")
