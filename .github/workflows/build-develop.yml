@@ -339,8 +339,18 @@ jobs:
           context: .
           file: ./docker/Dockerfile.crashhandler
           platforms: linux/amd64
-          push: true
           tags: ${{ env.IMAGE_NAME }}:${{ needs.unit-tests-linux.outputs.version_number }} , ${{ env.IMAGE_NAME }}:${{ env.REF_TAG }} , ${{ env.IMAGE_NAME2 }}:amd64-${{needs.unit-tests-linux.outputs.commit_hash}}
+          outputs: type=docker,dest=/tmp/amd64.tar
+
+      - name: Load image
+        env:
+          IMAGE_NAME: ghcr.io/ns1labs/pktvisor
+        run: |
+          docker load --input /tmp/amd64.tar
+          docker image ls -a
+          docker push ${{ env.IMAGE_NAME2 }}:amd64-${{needs.unit-tests-linux.outputs.commit_hash}}
+          docker push ${{ env.IMAGE_NAME }}:${{ env.REF_TAG }}
+          docker push ${{ env.IMAGE_NAME }}:${{ needs.unit-tests-linux.outputs.version_number }}
 
   build-app-image-x64:
     needs: [ package-amd64 ]
