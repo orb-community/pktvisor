@@ -48,7 +48,15 @@ function publish() {
   curl --data-binary @pktvisord.zip -H "Expect: gzip" "${INPUT_SYMBOL_URL}"
 }
 
+function publishToBugsplat() {
+  echo "========================= Publishing symbol to bugsplat ========================="
+  cd /tmp/build
+  curl --data-binary @pktvisord.zip -H "Expect: gzip" "${INPUT_SYMBOL_URL}"
+}
+
+
 validateParams
 build
 compact
 publish
+publishToBugsplat
