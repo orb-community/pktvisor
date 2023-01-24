@@ -276,7 +276,7 @@ jobs:
           symbol_url: ${{secrets.SYMBOL_URL}}
           bugsplat_key: ${{secrets.BUGSPLAT_KEY}}
           bugsplat_symbol_url: ${{secrets.BUGSPLAT_SYMBOL_URL}}
-          bugsplat: true
+          bugsplat: "true"
           file: "./Dockerfile"
 
       - name: Build pktvisor-cli
@@ -800,7 +800,7 @@ jobs:
           symbol_url: ${{secrets.SYMBOL_URL}}
           bugsplat_key: ${{secrets.BUGSPLAT_KEY}}
           bugsplat_symbol_url: ${{secrets.BUGSPLAT_SYMBOL_URL}}
-          bugsplat: false
+          bugsplat: "false"
           file: "./Dockerfile"
 
       - name: Build pktvisor-cli
