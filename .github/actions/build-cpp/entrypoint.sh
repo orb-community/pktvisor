@@ -52,7 +52,7 @@ function publish() {
 function publishToBugsplat() {
   echo "========================= Publishing symbol to bugsplat ========================="
   cd /tmp/build
-  if [[ $INPUT_BUGSPLAT ]]; then
+  if [[ $INPUT_BUGSPLAT == "true" ]]; then
     # getting tools
     wget https://github.com/orb-community/CrashpadTools/raw/main/linux/dump_syms
     chmod a+x ./dump_syms
