@@ -60,7 +60,7 @@ function publishToBugsplat() {
   chmod a+x ./symupload
   # pushing to bugsplat
   PKTVISOR_VERSION=$(cat VERSION)
-  ./symupload pktvisor.sym "https://pktvisor.bugsplat.com/post/bp/symbol/breakpadsymbols.php?appName=pktvisord&appVer=$PKTVISOR_VERSION"
+  ./symupload -p sym-upload-v2 -k "${INPUT_BUGSPLAT_KEY}" -f pktvisor.sym "https://pktvisor.bugsplat.com/post/bp/symbol/breakpadsymbols.php?appName=pktvisord&appVer=$PKTVISOR_VERSION"
 }
 
 
