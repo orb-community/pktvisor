@@ -13,6 +13,11 @@ inputs:
     required: true
     default: ""
     
+  bugsplat_key:
+    description: "bugsplat key"
+    required: true
+    default: ""
+    
   build_type:
     description: "build type"
     required: true
