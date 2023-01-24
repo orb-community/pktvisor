@@ -116,7 +116,7 @@ struct FlowTopN {
     TopN<std::string> topASN;
 
     FlowTopN(std::string metric)
-        : topConversations(FLOW_SCHEMA, "conversations", {"top_conversations_" + metric}, "Top source IP addresses and port by " + metric)
+        : topConversations(FLOW_SCHEMA, "conversation", {"top_conversations_" + metric}, "Top source IP addresses and port by " + metric)
         , topGeoLoc(FLOW_SCHEMA, "geo_loc", {"top_geo_loc_" + metric}, "Top GeoIP locations by " + metric)
         , topASN(FLOW_SCHEMA, "asn", {"top_asn_" + metric}, "Top ASNs by IP by " + metric)
     {
@@ -135,16 +135,16 @@ struct FlowDirectionTopN {
     TopN<std::string> topDstIP;
     TopN<std::string> topSrcPort;
     TopN<std::string> topDstPort;
-    TopN<std::string> topSrcIPandPort;
-    TopN<std::string> topDstIPandPort;
+    TopN<std::string> topSrcIPPort;
+    TopN<std::string> topDstIPPort;
 
     FlowDirectionTopN(std::string direction, std::string metric)
         : topSrcIP(FLOW_SCHEMA, "ip", {"top_" + direction + "_src_ips_" + metric}, "Top " + direction + " source IP addresses by " + metric)
         , topDstIP(FLOW_SCHEMA, "ip", {"top_" + direction + "_dst_ips_" + metric}, "Top " + direction + " destination IP addresses by " + metric)
         , topSrcPort(FLOW_SCHEMA, "port", {"top_" + direction + "_src_ports_" + metric}, "Top " + direction + " source ports by " + metric)
         , topDstPort(FLOW_SCHEMA, "port", {"top_" + direction + "_dst_ports_" + metric}, "Top " + direction + " destination ports by " + metric)
-        , topSrcIPandPort(FLOW_SCHEMA, "ip_port", {"top_" + direction + "_src_ips_and_port_" + metric}, "Top " + direction + " source IP addresses and port by " + metric)
-        , topDstIPandPort(FLOW_SCHEMA, "ip_port", {"top_" + direction + "_dst_ips_and_port_" + metric}, "Top " + direction + " destination IP addresses and port by " + metric)
+        , topSrcIPPort(FLOW_SCHEMA, "ip_port", {"top_" + direction + "_src_ip_ports_" + metric}, "Top " + direction + " source IP addresses and port by " + metric)
+        , topDstIPPort(FLOW_SCHEMA, "ip_port", {"top_" + direction + "_dst_ip_ports_" + metric}, "Top " + direction + " destination IP addresses and port by " + metric)
     {
     }
 
@@ -154,8 +154,8 @@ struct FlowDirectionTopN {
         topDstIP.set_settings(topn_count, percentile_threshold);
         topSrcPort.set_settings(topn_count, percentile_threshold);
         topDstPort.set_settings(topn_count, percentile_threshold);
-        topSrcIPandPort.set_settings(topn_count, percentile_threshold);
-        topDstIPandPort.set_settings(topn_count, percentile_threshold);
+        topSrcIPPort.set_settings(topn_count, percentile_threshold);
+        topDstIPPort.set_settings(topn_count, percentile_threshold);
     }
 };
 

@@ -681,8 +681,8 @@ void FlowMetricsBucket::specialized_merge(const AbstractMetricsBucket &o, [[mayb
                     top_dir.second.topDstPort.merge(interface.second->directionTopN.at(top_dir.first).topDstPort);
                 }
                 if (group_enabled(group::FlowMetrics::TopIPPorts)) {
-                    top_dir.second.topSrcIPandPort.merge(interface.second->directionTopN.at(top_dir.first).topSrcIPandPort);
-                    top_dir.second.topDstIPandPort.merge(interface.second->directionTopN.at(top_dir.first).topDstIPandPort);
+                    top_dir.second.topSrcIPPort.merge(interface.second->directionTopN.at(top_dir.first).topSrcIPPort);
+                    top_dir.second.topDstIPPort.merge(interface.second->directionTopN.at(top_dir.first).topDstIPPort);
                 }
             }
 
@@ -821,8 +821,8 @@ void FlowMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap a
                     top_dir.second.topDstPort.to_prometheus(out, interface_labels);
                 }
                 if (group_enabled(group::FlowMetrics::TopIPPorts)) {
-                    top_dir.second.topSrcIPandPort.to_prometheus(out, interface_labels);
-                    top_dir.second.topDstIPandPort.to_prometheus(out, interface_labels);
+                    top_dir.second.topSrcIPPort.to_prometheus(out, interface_labels);
+                    top_dir.second.topDstIPPort.to_prometheus(out, interface_labels);
                 }
             }
 
@@ -976,8 +976,8 @@ void FlowMetricsBucket::to_opentelemetry(metrics::v1::ScopeMetrics &scope, Metri
                     top_dir.second.topDstPort.to_opentelemetry(scope, start_ts, end_ts, interface_labels);
                 }
                 if (group_enabled(group::FlowMetrics::TopIPPorts)) {
-                    top_dir.second.topSrcIPandPort.to_opentelemetry(scope, start_ts, end_ts, interface_labels);
-                    top_dir.second.topDstIPandPort.to_opentelemetry(scope, start_ts, end_ts, interface_labels);
+                    top_dir.second.topSrcIPPort.to_opentelemetry(scope, start_ts, end_ts, interface_labels);
+                    top_dir.second.topDstIPPort.to_opentelemetry(scope, start_ts, end_ts, interface_labels);
                 }
             }
 
@@ -1125,8 +1125,8 @@ void FlowMetricsBucket::to_json(json &j) const
                     top_dir.second.topDstPort.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
                 }
                 if (group_enabled(group::FlowMetrics::TopIPPorts)) {
-                    top_dir.second.topSrcIPandPort.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
-                    top_dir.second.topDstIPandPort.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
+                    top_dir.second.topSrcIPPort.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
+                    top_dir.second.topDstIPPort.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
                 }
             }
 
@@ -1319,7 +1319,7 @@ void FlowMetricsBucket::process_interface(bool deep, FlowInterface *iface, const
             iface->directionTopN.at(type).topSrcIP.update(ip, aggregator);
         }
         if ((flow.src_port > 0) && group_enabled(group::FlowMetrics::TopIPPorts)) {
-            iface->directionTopN.at(type).topSrcIPandPort.update(application_src, aggregator);
+            iface->directionTopN.at(type).topSrcIPPort.update(application_src, aggregator);
         }
         _process_geo_metrics(iface, type, flow.ipv4_in, aggregator);
     } else if (flow.is_ipv6 && flow.ipv6_in.isValid()) {
@@ -1336,7 +1336,7 @@ void FlowMetricsBucket::process_interface(bool deep, FlowInterface *iface, const
             iface->directionTopN.at(type).topSrcIP.update(ip, aggregator);
         }
         if ((flow.src_port > 0) && group_enabled(group::FlowMetrics::TopIPPorts)) {
-            iface->directionTopN.at(type).topSrcIPandPort.update(application_src, aggregator);
+            iface->directionTopN.at(type).topSrcIPPort.update(application_src, aggregator);
         }
         _process_geo_metrics(iface, type, flow.ipv6_in, aggregator);
     }
@@ -1353,7 +1353,7 @@ void FlowMetricsBucket::process_interface(bool deep, FlowInterface *iface, const
             iface->directionTopN.at(type).topDstIP.update(ip, aggregator);
         }
         if ((flow.dst_port > 0) && group_enabled(group::FlowMetrics::TopIPPorts)) {
-            iface->directionTopN.at(type).topDstIPandPort.update(application_dst, aggregator);
+            iface->directionTopN.at(type).topDstIPPort.update(application_dst, aggregator);
         }
         _process_geo_metrics(iface, type, flow.ipv4_out, aggregator);
     } else if (flow.is_ipv6 && flow.ipv6_out.isValid()) {
@@ -1370,7 +1370,7 @@ void FlowMetricsBucket::process_interface(bool deep, FlowInterface *iface, const
             iface->directionTopN.at(type).topDstIP.update(ip, aggregator);
         }
         if ((flow.dst_port > 0) && group_enabled(group::FlowMetrics::TopIPPorts)) {
-            iface->directionTopN.at(type).topDstIPandPort.update(application_dst, aggregator);
+            iface->directionTopN.at(type).topDstIPPort.update(application_dst, aggregator);
         }
         _process_geo_metrics(iface, type, flow.ipv6_out, aggregator);
     }
