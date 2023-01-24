@@ -3,6 +3,7 @@
 function validateParams() {
   echo "========================= Checking parameters ========================="
   [[ -z $INPUT_SYMBOL_URL ]] && echo "Backtrace symbol url is required" && exit 1 || echo "Backtrace symbol url present"
+  [[ -z $INPUT_BUGSPLAT_SYMBOL_URL ]] && echo "Bugsplat symbol url is required" && exit 1 || echo "Bugsplat symbol url
 }
 
 function build() {
@@ -27,10 +28,10 @@ function build() {
   make all -j 4
 }
 
-function compact() {
+function move() {
   echo "========================= Compacting binary and copying ========================="
   cd /tmp/build
-  zip pktvisord.zip /tmp/build/bin/pktvisord
+  #zip pktvisord.zip /tmp/build/bin/pktvisord
   cp -rf /tmp/build/bin/pktvisord /github/workspace/
   strip -s /tmp/build/bin/crashpad_handler
   cp -rf /tmp/build/bin/crashpad_handler /github/workspace/
@@ -51,21 +52,22 @@ function publish() {
 function publishToBugsplat() {
   echo "========================= Publishing symbol to bugsplat ========================="
   cd /tmp/build
-  # getting tools
-  wget https://github.com/orb-community/CrashpadTools/raw/main/linux/dump_syms
-  chmod a+x ./dump_syms
-  wget https://github.com/orb-community/CrashpadTools/raw/main/linux/symupload
-  chmod a+x ./symupload
-  # generating symbol
-  ./dump_syms /github/workspace/pktvisord > pktvisor.sym
-  # pushing to bugsplat
-  PKTVISOR_VERSION=$(cat VERSION)
-  ls -lha
-  ./symupload -k "${INPUT_BUGSPLAT_KEY}" pktvisor.sym "${INPUT_BUGSPLAT_SYMBOL_URL}$PKTVISOR_VERSION"
+  if [[ $INPUT_BUGSPLAT ]]; then
+    # getting tools
+    wget https://github.com/orb-community/CrashpadTools/raw/main/linux/dump_syms
+    chmod a+x ./dump_syms
+    wget https://github.com/orb-community/CrashpadTools/raw/main/linux/symupload
+    chmod a+x ./symupload
+    # generating symbol
+    ./dump_syms /github/workspace/pktvisord > pktvisor.sym
+    # pushing to bugsplat
+    PKTVISOR_VERSION=$(cat VERSION)
+    ls -lha
+    ./symupload -k "${INPUT_BUGSPLAT_KEY}" pktvisor.sym "${INPUT_BUGSPLAT_SYMBOL_URL}${PKTVISOR_VERSION}"
+  fi
 }
 
 validateParams
 build
-compact
-publish
+move
 publishToBugsplat
