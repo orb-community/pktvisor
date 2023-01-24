@@ -3,7 +3,7 @@
 function validateParams() {
   echo "========================= Checking parameters ========================="
   [[ -z $INPUT_SYMBOL_URL ]] && echo "Backtrace symbol url is required" && exit 1 || echo "Backtrace symbol url present"
-  [[ -z $INPUT_BUGSPLAT_SYMBOL_URL ]] && echo "Bugsplat symbol url is required" && exit 1 || echo "Bugsplat symbol url
+  [[ -z $INPUT_BUGSPLAT_SYMBOL_URL ]] && echo "Bugsplat symbol url is required" && exit 1 || echo "Bugsplat symbol url"
 }
 
 function build() {
@@ -52,7 +52,7 @@ function publish() {
 function publishToBugsplat() {
   echo "========================= Publishing symbol to bugsplat ========================="
   cd /tmp/build
-#  if [ "$INPUT_BUGSPLAT" == "true" ]; then
+  if [ "$INPUT_BUGSPLAT" == "true" ]; then
   wget https://github.com/orb-community/CrashpadTools/raw/main/linux/dump_syms
   chmod a+x ./dump_syms
   wget https://github.com/orb-community/CrashpadTools/raw/main/linux/symupload
@@ -61,7 +61,7 @@ function publishToBugsplat() {
   PKTVISOR_VERSION=$(cat VERSION)
   ls -lha
   ./symupload -k $INPUT_BUGSPLAT_KEY pktvisor.sym $INPUT_BUGSPLAT_SYMBOL_URL$PKTVISOR_VERSION
-#  fi
+  fi
 }
 
 validateParams
