@@ -1,6 +1,11 @@
 
 ## TEST SUITE
-if(NOT WIN32)
+if(WIN32)
+    #dnstap not supported
+    add_executable(unit-tests-handler-net-v2
+            main.cpp
+            )
+else()
     add_executable(unit-tests-handler-net-v2
             main.cpp
             test_net_layer.cpp
