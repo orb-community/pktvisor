@@ -9,8 +9,8 @@
     {
       "net": {
         "cardinality": {
-          "dst_ips_out": 1,
-          "src_ips_in": 1
+          "dst_ips": 1,
+          "src_ips": 1
         },
         "deep_sampled_packets": 16147,
         "observed_packets": 16147,
@@ -23,11 +23,9 @@
           "length": 31,
           "start_ts": 1614874231
         },
-        "tcp": 13176,
-        "protocol": {
-          "tcp": {
-            "syn": 2846
-          }
+        "tcp_packets": 13176,
+        "tcp": {
+            "syn_packets": 2846
         },
         "top_asn_packets": [],
         "top_geo_loc_packets": [],
@@ -57,8 +55,8 @@
       "examples": [
         {
           "cardinality": {
-            "dst_ips_out": 1,
-            "src_ips_in": 1
+            "dst_ips": 1,
+            "src_ips": 1
           },
           "deep_sampled_packets": 16147,
           "observed_packets": 16147,
@@ -78,11 +76,9 @@
             "p95": 187,
             "p99": 202
           },
-          "tcp": 13176,
-          "protocol": {
-            "tcp": {
-              "syn": 2846
-            }
+          "tcp_packets": 13176,
+          "tcp": {
+            "syn": 2846
           },
           "top_asn_packets": [],
           "top_geo_loc_packets": [],
@@ -110,8 +106,7 @@
         "filtered_packets",
         "period",
         "payload_size_bytes",
-        "tcp",
-        "protocol",
+        "tcp_packets",
         "top_asn_packets",
         "top_geo_loc_packets",
         "top_ipv4_packets",
@@ -129,29 +124,29 @@
           "default": {},
           "examples": [
             {
-              "dst_ips_out": 1,
-              "src_ips_in": 1
+              "dst_ips": 1,
+              "src_ips": 1
             }
           ],
           "required": [
-            "dst_ips_out",
-            "src_ips_in"
+            "dst_ips",
+            "src_ips"
           ],
           "properties": {
-            "dst_ips_out": {
-              "$id": "#/properties/packets/properties/cardinality/properties/dst_ips_out",
+            "dst_ips": {
+              "$id": "#/properties/packets/properties/cardinality/properties/dst_ips",
               "type": "integer",
-              "title": "The dst_ips_out schema",
+              "title": "The dst_ips schema",
               "description": "An explanation about the purpose of this instance.",
               "default": 0,
               "examples": [
                 1
               ]
             },
-            "src_ips_in": {
-              "$id": "#/properties/packets/properties/cardinality/properties/src_ips_in",
+            "src_ips": {
+              "$id": "#/properties/packets/properties/cardinality/properties/src_ips",
               "type": "integer",
-              "title": "The src_ips_in schema",
+              "title": "The src_ips schema",
               "description": "An explanation about the purpose of this instance.",
               "default": 0,
               "examples": [
@@ -301,49 +296,30 @@
             13176
           ]
         },
-        "protocol": {
-          "$id": "#/properties/packets/properties/protocol",
+        "tcp": {
+          "$id": "#/properties/packets/properties/tcp",
           "type": "object",
-          "title": "The protocol schema",
+          "title": "The tcp schema",
           "description": "An explanation about the purpose of this instance.",
           "default": {},
           "examples": [
             {
-              "tcp": {
-                "syn": 10
-              }
+              "syn_packets": 10
             }
           ],
           "required": [
-            "tcp"
+            "syn_packets"
           ],
           "properties": {
-            "tcp": {
-              "$id": "#/properties/packets/properties/protocol/properties/tcp",
+            "syn_packets": {
+              "$id": "#/properties/packets/properties/tcp/properties/syn_packets",
               "type": "object",
-              "title": "The tcp flags schema",
+              "title": "The syn_packets flag schema",
               "description": "An explanation about the purpose of this instance.",
               "default": 0,
               "examples": [
-                {
-                  "syn": 10
-                }
-              ],
-              "required": [
-                "syn"
-              ],
-              "properties": {
-                "syn": {
-                  "$id": "#/properties/packets/properties/protocol/properties/tcp/properties/syn",
-                  "type": "integer",
-                  "title": "The syn flag schema",
-                  "description": "An explanation about the purpose of this instance.",
-                  "default": 0,
-                  "examples": [
-                    10
-                  ]
-                }
-              }
+                10
+              ]
             }
           }
         },

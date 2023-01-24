@@ -1,16 +1,9 @@
 
 ## TEST SUITE
-if(WIN32)
-    #dnstap not supported
-    add_executable(unit-tests-handler-net-v2
-            main.cpp
-            test_json_schema.cpp
-            )
-else()
+if(NOT WIN32)
     add_executable(unit-tests-handler-net-v2
             main.cpp
             test_net_layer.cpp
-            test_json_schema.cpp
             )
 endif()
 

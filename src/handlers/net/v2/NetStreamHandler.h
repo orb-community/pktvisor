@@ -25,23 +25,30 @@ namespace group {
 enum NetMetrics : visor::MetricGroupIntType {
     Counters,
     Cardinality,
+    Quantiles,
     TopGeo,
     TopIps
 };
 }
 
+enum NetworkPacketDirection {
+    in,
+    out,
+    unknown
+};
+
 struct NetworkPacket {
-    PacketDirection dir;
+    NetworkPacketDirection dir;
     pcpp::ProtocolType l3;
     pcpp::ProtocolType l4;
     size_t payload_size;
     bool syn_flag;
-    pcpp::IPv4Address ipv4_in;
-    pcpp::IPv4Address ipv4_out;
-    pcpp::IPv6Address ipv6_in;
-    pcpp::IPv6Address ipv6_out;
+    pcpp::IPv4Address ipv4_src;
+    pcpp::IPv4Address ipv4_dst;
+    pcpp::IPv6Address ipv6_src;
+    pcpp::IPv6Address ipv6_dst;
 
-    NetworkPacket(PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, size_t payload_size, bool syn_flag)
+    NetworkPacket(NetworkPacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, size_t payload_size, bool syn_flag)
         : dir(dir)
         , l3(l3)
         , l4(l4)
@@ -51,88 +58,134 @@ struct NetworkPacket {
     }
 };
 
-class NetworkMetricsBucket final : public visor::AbstractMetricsBucket
-{
-
-protected:
-    mutable std::shared_mutex _mutex;
-
-    Cardinality _srcIPCard;
-    Cardinality _dstIPCard;
-
-    TopN<visor::geo::City> _topGeoLoc;
-    TopN<std::string> _topASN;
-    TopN<uint32_t> _topIPv4;
-    TopN<std::string> _topIPv6;
-
+struct NetworkDirection {
     // total numPackets is tracked in base class num_events
-    struct counters {
+    struct Counters {
         Counter UDP;
         Counter TCP;
         Counter OtherL4;
         Counter IPv4;
         Counter IPv6;
         Counter TCP_SYN;
-        Counter total_in;
-        Counter total_out;
-        Counter total_unk;
         Counter total;
-        Counter filtered;
-        counters()
+        Counters()
             : UDP(NET_SCHEMA, {"udp_packets"}, "Count of UDP packets")
             , TCP(NET_SCHEMA, {"tcp_packets"}, "Count of TCP packets")
             , OtherL4(NET_SCHEMA, {"other_l4_packets"}, "Count of packets which are not UDP or TCP")
             , IPv4(NET_SCHEMA, {"ipv4_packets"}, "Count of IPv4 packets")
             , IPv6(NET_SCHEMA, {"ipv6_packets"}, "Count of IPv6 packets")
-            , TCP_SYN(NET_SCHEMA, {"protocol", "tcp", "syn_packets"}, "Count of TCP SYN packets")
-            , total_in(NET_SCHEMA, {"in_packets"}, "Count of total ingress packets")
-            , total_out(NET_SCHEMA, {"out_packets"}, "Count of total egress packets")
-            , total_unk(NET_SCHEMA, {"unknown_dir_packets"}, "Count of total unknown direction packets")
+            , TCP_SYN(NET_SCHEMA, {"tcp", "syn_packets"}, "Count of TCP SYN packets")
             , total(NET_SCHEMA, {"total_packets"}, "Count of total packets matching the configured filter(s)")
-            , filtered(NET_SCHEMA, {"filtered_packets"}, "Count of total packets that did not match the configured filter(s) (if any)")
         {
         }
+        void operator+=(const Counters &other)
+        {
+            UDP += other.UDP;
+            TCP += other.TCP;
+            OtherL4 += other.OtherL4;
+            IPv4 += other.IPv4;
+            IPv6 += other.IPv6;
+            TCP_SYN += other.TCP_SYN;
+            total += other.total;
+        }
+
+        void to_json(json &j) const
+        {
+            UDP.to_json(j);
+            TCP.to_json(j);
+            OtherL4.to_json(j);
+            IPv4.to_json(j);
+            IPv6.to_json(j);
+            TCP_SYN.to_json(j);
+            total.to_json(j);
+        }
+
+        void to_prometheus(std::stringstream &out, const Metric::LabelMap &add_labels) const
+        {
+            UDP.to_prometheus(out, add_labels);
+            TCP.to_prometheus(out, add_labels);
+            OtherL4.to_prometheus(out, add_labels);
+            IPv4.to_prometheus(out, add_labels);
+            IPv6.to_prometheus(out, add_labels);
+            TCP_SYN.to_prometheus(out, add_labels);
+            total.to_prometheus(out, add_labels);
+        }
+
+        void to_opentelemetry(metrics::v1::ScopeMetrics &scope, timespec &start, timespec &end, Metric::LabelMap add_labels) const
+        {
+            UDP.to_opentelemetry(scope, start, end, add_labels);
+            TCP.to_opentelemetry(scope, start, end, add_labels);
+            OtherL4.to_opentelemetry(scope, start, end, add_labels);
+            IPv4.to_opentelemetry(scope, start, end, add_labels);
+            IPv6.to_opentelemetry(scope, start, end, add_labels);
+            TCP_SYN.to_opentelemetry(scope, start, end, add_labels);
+            total.to_opentelemetry(scope, start, end, add_labels);
+        }
     };
-    counters _counters;
+    Counters counters;
 
-    Quantile<std::size_t> _payload_size;
+    Cardinality ipCard;
+    TopN<visor::geo::City> topGeoLoc;
+    TopN<std::string> topASN;
+    TopN<uint32_t> topIPv4;
+    TopN<std::string> topIPv6;
+    Quantile<std::size_t> payload_size;
+    Rate rate;
+    Rate throughput;
 
-    Rate _rate_in;
-    Rate _rate_out;
-    Rate _rate_total;
-    Rate _throughput_in;
-    Rate _throughput_out;
-    Rate _throughput_total;
+    NetworkDirection()
+        : counters()
+        , ipCard(NET_SCHEMA, {"cardinality", "ips"}, "IP cardinality")
+        , topGeoLoc(NET_SCHEMA, "geo_loc", {"top_geo_loc_packets"}, "Top GeoIP locations")
+        , topASN(NET_SCHEMA, "asn", {"top_asn_packets"}, "Top ASNs by IP")
+        , topIPv4(NET_SCHEMA, "ipv4", {"top_ipv4_packets"}, "Top IPv4 addresses")
+        , topIPv6(NET_SCHEMA, "ipv6", {"top_ipv6_packets"}, "Top IPv6 addresses")
+        , payload_size(NET_SCHEMA, {"payload_size_bytes"}, "Quantiles of payload sizes, in bytes")
+        , rate(NET_SCHEMA, {"rates", "pps"}, "Rate of packets per second")
+        , throughput(NET_SCHEMA, {"rates", "bps"}, "Data rate of bits per second")
+    {
+    }
 
-    void _process_geo_metrics(const pcpp::IPv4Address &ipv4);
-    void _process_geo_metrics(const pcpp::IPv6Address &ipv6);
+    void update_topn_metrics(size_t topn_count, uint64_t percentile_threshold)
+    {
+        topGeoLoc.set_settings(topn_count, percentile_threshold);
+        topASN.set_settings(topn_count, percentile_threshold);
+        topIPv4.set_settings(topn_count, percentile_threshold);
+        topIPv6.set_settings(topn_count, percentile_threshold);
+    }
+};
+
+class NetworkMetricsBucket final : public visor::AbstractMetricsBucket
+{
+
+protected:
+    mutable std::shared_mutex _mutex;
+    size_t _topn_count{10};
+    uint64_t _topn_percentile_threshold{0};
+    inline static const std::unordered_map<NetworkPacketDirection, std::string> _dir_str = {
+        {NetworkPacketDirection::in, "in"},
+        {NetworkPacketDirection::out, "out"},
+        {NetworkPacketDirection::unknown, "unknown"}};
+    Counter _filtered;
+    std::map<NetworkPacketDirection, NetworkDirection> _net;
+
+    void _process_geo_metrics(NetworkDirection &net, const pcpp::IPv4Address &ipv4);
+    void _process_geo_metrics(NetworkDirection &net, const pcpp::IPv6Address &ipv6);
 
 public:
     NetworkMetricsBucket()
-        : _srcIPCard(NET_SCHEMA, {"cardinality", "src_ips_in"}, "Source IP cardinality")
-        , _dstIPCard(NET_SCHEMA, {"cardinality", "dst_ips_out"}, "Destination IP cardinality")
-        , _topGeoLoc(NET_SCHEMA, "geo_loc", {"top_geo_loc_packets"}, "Top GeoIP locations")
-        , _topASN(NET_SCHEMA, "asn", {"top_asn_packets"}, "Top ASNs by IP")
-        , _topIPv4(NET_SCHEMA, "ipv4", {"top_ipv4_packets"}, "Top IPv4 IP addresses")
-        , _topIPv6(NET_SCHEMA, "ipv6", {"top_ipv6_packets"}, "Top IPv6 IP addresses")
-        , _payload_size(NET_SCHEMA, {"payload_size_bytes"}, "Quantiles of payload sizes, in bytes")
-        , _rate_in(NET_SCHEMA, {"rates", "in_pps"}, "Rate of ingress in packets per second")
-        , _rate_out(NET_SCHEMA, {"rates", "out_pps"}, "Rate of egress in packets per second")
-        , _rate_total(NET_SCHEMA, {"rates", "total_pps"}, "Rate of all packets (combined ingress and egress) in packets per second")
-        , _throughput_in(NET_SCHEMA, {"rates", "in_bps"}, "Data rate of ingress packets in bits per second")
-        , _throughput_out(NET_SCHEMA, {"rates", "out_bps"}, "Data rate of egress packets in bits per second")
-        , _throughput_total(NET_SCHEMA, {"rates", "total_bps"}, "Data rate of all packets (combined ingress and egress) in bits per second")
+        : _filtered(NET_SCHEMA, {"filtered_packets"}, "Total packets seen that did not match the configured filter(s) (if any)")
     {
-        set_event_rate_info(NET_SCHEMA, {"rates", "observed_pps"}, "Rate of all packets before filtering in packets per second");
+        set_event_rate_info(NET_SCHEMA, {"rates", "observed_pps"}, "Rate of all packets before filtering per second");
         set_num_events_info(NET_SCHEMA, {"observed_packets"}, "Total packets events generated");
         set_num_sample_info(NET_SCHEMA, {"deep_sampled_packets"}, "Total packets that were sampled for deep inspection");
     }
 
     // get a copy of the counters
-    counters counters() const
+    NetworkDirection::Counters counters(NetworkPacketDirection dir) const
     {
         std::shared_lock lock(_mutex);
-        return _counters;
+        return _net.at(dir).counters;
     }
 
     // visor::AbstractMetricsBucket
@@ -142,28 +195,24 @@ public:
     void to_opentelemetry(metrics::v1::ScopeMetrics &scope, Metric::LabelMap add_labels = {}) const override;
     void update_topn_metrics(size_t topn_count, uint64_t percentile_threshold) override
     {
-        _topGeoLoc.set_settings(topn_count, percentile_threshold);
-        _topASN.set_settings(topn_count, percentile_threshold);
-        _topIPv4.set_settings(topn_count, percentile_threshold);
-        _topIPv6.set_settings(topn_count, percentile_threshold);
+        _topn_count = topn_count;
+        _topn_percentile_threshold = percentile_threshold;
     }
 
     // must be thread safe as it is called from time window maintenance thread
     void on_set_read_only() override
     {
         // stop rate collection
-        _rate_in.cancel();
-        _rate_out.cancel();
-        _rate_total.cancel();
-        _throughput_in.cancel();
-        _throughput_out.cancel();
-        _throughput_total.cancel();
+        for (auto &net : _net) {
+            net.second.rate.cancel();
+            net.second.throughput.cancel();
+        }
     }
 
     void process_filtered();
     void process_packet(bool deep, pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4);
     void process_dnstap(bool deep, const dnstap::Dnstap &payload, size_t size);
-    void process_net_layer(PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, size_t payload_size);
+    void process_net_layer(NetworkPacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, size_t payload_size);
     void process_net_layer(NetworkPacket &packet);
 };
 
