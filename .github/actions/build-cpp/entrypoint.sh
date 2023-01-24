@@ -54,14 +54,14 @@ function publishToBugsplat() {
   # getting tools
   wget https://github.com/orb-community/CrashpadTools/raw/main/linux/dump_syms
   chmod a+x ./dump_syms
-  ls -lha /github/workspace/
-  ./dump_syms /github/workspace/pktvisord > pktvisor.sym
-  ls -lha
   wget https://github.com/orb-community/CrashpadTools/raw/main/linux/symupload
   chmod a+x ./symupload
+  # generating symbol
+  ./dump_syms /github/workspace/pktvisord > pktvisor.sym
   # pushing to bugsplat
   PKTVISOR_VERSION=$(cat VERSION)
-  ./symupload -p sym-upload-v2 -k "${INPUT_BUGSPLAT_KEY}" -f pktvisor.sym "https://pktvisor.bugsplat.com/post/bp/symbol/breakpadsymbols.php?appName=pktvisord&appVer=$PKTVISOR_VERSION"
+  ls -lha
+  ./symupload -f -p sym-upload-v2 -k "${INPUT_BUGSPLAT_KEY}" pktvisor.sym "https://pktvisor.bugsplat.com/post/bp/symbol/breakpadsymbols.php?appName=pktvisord&appVer=$PKTVISOR_VERSION"
 }
 
 validateParams
