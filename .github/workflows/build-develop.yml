@@ -274,6 +274,7 @@ jobs:
           build_type: "Release"
           asan: "OFF"
           symbol_url: ${{secrets.SYMBOL_URL}}
+          bugsplat_key: ${{secrets.BUGSPLAT_KEY}}
           file: "./Dockerfile"
 
       - name: Build pktvisor-cli
@@ -795,6 +796,7 @@ jobs:
           build_type: "Release"
           asan: "OFF"
           symbol_url: ${{secrets.SYMBOL_URL}}
+          bugsplat_key: ${{secrets.BUGSPLAT_KEY}}
           file: "./Dockerfile"
 
       - name: Build pktvisor-cli
