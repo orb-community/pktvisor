@@ -51,8 +51,16 @@ function publish() {
 function publishToBugsplat() {
   echo "========================= Publishing symbol to bugsplat ========================="
   cd /tmp/build
-  #curl --data-binary @pktvisord.zip -H "Expect: gzip" "${INPUT_SYMBOL_URL}"
-  symbol-upload -h
+  # curl --data-binary @pktvisord.zip -H "Expect: gzip" "${INPUT_SYMBOL_URL}"
+  # getting tools
+  wget https://github.com/orb-community/CrashpadTools/raw/main/linux/dump_syms
+  chmod a+x ./dump_syms
+  ./dump_syms ./pktvisord > pktvisor.sym
+  wget https://github.com/orb-community/CrashpadTools/raw/main/linux/symupload
+  chmod a+x ./symupload
+  # pushing to bugsplat
+  PKTVISOR_VERSION=$(cat VERSION)
+  ./symupload pktvisor.sym "https://pktvisor.bugsplat.com/post/bp/symbol/breakpadsymbols.php?appName=pktvisord&appVer=$PKTVISOR_VERSION"
 }
 
 
