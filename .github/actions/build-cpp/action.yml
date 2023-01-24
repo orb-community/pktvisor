@@ -28,6 +28,11 @@ inputs:
     required: true
     default: "Debug"
     
+  bugsplat:
+    description: "bugsplat active"
+    required: true
+    default: "true"
+    
   asan:
     description: "asan"
     required: true
