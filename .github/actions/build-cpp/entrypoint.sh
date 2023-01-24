@@ -52,7 +52,7 @@ function publish() {
 function publishToBugsplat() {
   echo "========================= Publishing symbol to bugsplat ========================="
   cd /tmp/build
-  if [ ${INPUT_BUGSPLAT} == "true" ]; then
+  if [ "$INPUT_BUGSPLAT" == "true" ]; then
     wget https://github.com/orb-community/CrashpadTools/raw/main/linux/dump_syms
     chmod a+x ./dump_syms
     wget https://github.com/orb-community/CrashpadTools/raw/main/linux/symupload
@@ -60,7 +60,7 @@ function publishToBugsplat() {
     ./dump_syms /github/workspace/pktvisord > pktvisor.sym
     PKTVISOR_VERSION=$(cat VERSION)
     ls -lha
-    ./symupload -k ${INPUT_BUGSPLAT_KEY} pktvisor.sym ${INPUT_BUGSPLAT_SYMBOL_URL}${PKTVISOR_VERSION}
+    ./symupload -k "$INPUT_BUGSPLAT_KEY" pktvisor.sym "$INPUT_BUGSPLAT_SYMBOL_URL$PKTVISOR_VERSION"
   fi
 }
 
