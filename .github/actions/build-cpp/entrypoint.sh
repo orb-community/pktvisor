@@ -61,7 +61,7 @@ function publishToBugsplat() {
   # pushing to bugsplat
   PKTVISOR_VERSION=$(cat VERSION)
   ls -lha
-  ./symupload -k "${INPUT_BUGSPLAT_KEY}" pktvisor.sym "https://pktvisor.bugsplat.com/post/bp/symbol/breakpadsymbols.php?appName=pktvisord&appVer=$PKTVISOR_VERSION"
+  ./symupload -k "${INPUT_BUGSPLAT_KEY}" pktvisor.sym "${INPUT_BUGSPLAT_SYMBOL_URL}$PKTVISOR_VERSION"
 }
 
 validateParams
