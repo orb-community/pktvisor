@@ -2,7 +2,6 @@
 #
 function validateParams() {
   echo "========================= Checking parameters ========================="
-  [[ -z $INPUT_SYMBOL_URL ]] && echo "Backtrace symbol url is required" && exit 1 || echo "Backtrace symbol url present"
   [[ -z $INPUT_BUGSPLAT_SYMBOL_URL ]] && echo "Bugsplat symbol url is required" && exit 1 || echo "Bugsplat symbol url pŕesent"
 }
 
@@ -31,22 +30,13 @@ function build() {
 function move() {
   echo "========================= Compacting binary and copying ========================="
   cd /tmp/build
-  #zip pktvisord.zip /tmp/build/bin/pktvisord
   cp -rf /tmp/build/bin/pktvisord /github/workspace/
   strip -s /tmp/build/bin/crashpad_handler
   cp -rf /tmp/build/bin/crashpad_handler /github/workspace/
   cp -rf /tmp/build/bin/pktvisor-reader /github/workspace/
   cp -rf /tmp/build/VERSION /github/workspace/
-  #version for pktvisor-cli
   cp -rf /pktvisor-src/golang/pkg/client/version.go /github/workspace/version.go
-  #copy pktvisor custom iana port service names file
   cp -rf /pktvisor-src/src/tests/fixtures/pktvisor-port-service-names.csv /github/workspace/custom-iana.csv
-}
-
-function publish() {
-  echo "========================= Publishing symbol to backtrace ========================="
-  cd /tmp/build
-  curl --data-binary @pktvisord.zip -H "Expect: gzip" "${INPUT_SYMBOL_URL}"
 }
 
 function publishToBugsplat() {
