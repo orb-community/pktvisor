@@ -4,7 +4,7 @@ LABEL author="Everton Haise Taques <everton.taques@encora.com>"
 LABEL maintainer="NS1 Labs"
 LABEL version="1.0.0"
 
-ENV BUILD_DEPS "g++ cmake make git pkgconf jq python3-pip python3-setuptools ca-certificates libasan6 zip curl python nodejs npm wget"
+ENV BUILD_DEPS "g++ cmake make git pkgconf jq python3-pip python3-setuptools ca-certificates libasan6 zip curl python wget"
 
 COPY ./entrypoint.sh /entrypoint.sh
 
