@@ -96,6 +96,9 @@ jobs:
           build_type: "Debug"
           asan: "ON"
           symbol_url: ${{secrets.SYMBOL_URL}}
+          bugsplat_key: ${{secrets.BUGSPLAT_KEY}}
+          bugsplat_symbol_url: ${{secrets.BUGSPLAT_SYMBOL_URL}}
+          bugsplat: "true"
           file: "./Dockerfile"
 
       - name: Build pktvisor-cli
@@ -161,7 +164,7 @@ jobs:
 
       - name: Replace escape url
         run: |
-          REPLACE=${{ secrets.CRASHPAD_URL }}
+          REPLACE=${{ secrets.BUGSPLAT_CP_URL }}
           ESCAPED_REPLACE=$(printf '%s\n' "$REPLACE" | sed -e 's/[\/&]/\\&/g')
           sed -i -e "s/CP_URL/$ESCAPED_REPLACE/g" docker/run.sh
 
