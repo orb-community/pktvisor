@@ -1,0 +1,464 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "$id": "http://example.com/example.json",
+  "type": "object",
+  "title": "The root schema",
+  "description": "The root schema comprises the entire JSON document.",
+  "default": {},
+  "examples": [
+    {
+      "net": {
+        "cardinality": {
+          "dst_ips": 1,
+          "src_ips": 1
+        },
+        "deep_sampled_packets": 16147,
+        "observed_packets": 16147,
+        "in_packets": 6648,
+        "ipv4_packets": 16147,
+        "ipv6_packets": 0,
+        "other_l4_packets": 0,
+        "out_packets": 9499,
+        "period": {
+          "length": 31,
+          "start_ts": 1614874231
+        },
+        "tcp_packets": 13176,
+        "tcp": {
+            "syn_packets": 2846
+        },
+        "top_asn_packets": [],
+        "top_geo_loc_packets": [],
+        "top_ipv4_packets": [
+          {
+            "estimate": 16147,
+            "name": "8.8.8.8"
+          }
+        ],
+        "top_ipv6_packets": [],
+        "total_packets": 16147,
+        "udp_packets": 2971,
+        "unknown_dir_packets": 0
+      }
+    }
+  ],
+  "required": [
+    "packets"
+  ],
+  "properties": {
+    "packets": {
+      "$id": "#/properties/packets",
+      "type": "object",
+      "title": "The packets schema",
+      "description": "An explanation about the purpose of this instance.",
+      "default": {},
+      "examples": [
+        {
+          "cardinality": {
+            "dst_ips": 1,
+            "src_ips": 1
+          },
+          "deep_sampled_packets": 16147,
+          "observed_packets": 16147,
+          "in_packets": 6648,
+          "ipv4_packets": 16147,
+          "ipv6_packets": 0,
+          "other_l4_packets": 0,
+          "out_packets": 9499,
+          "filtered_packets": 0,
+          "period": {
+            "length": 31,
+            "start_ts": 1614874231
+          },
+          "payload_size_bytes": {
+            "p50": 74,
+            "p90": 176,
+            "p95": 187,
+            "p99": 202
+          },
+          "tcp_packets": 13176,
+          "tcp": {
+            "syn": 2846
+          },
+          "top_asn_packets": [],
+          "top_geo_loc_packets": [],
+          "top_ipv4_packets": [
+            {
+              "estimate": 16147,
+              "name": "8.8.8.8"
+            }
+          ],
+          "top_ipv6_packets": [],
+          "total_packets": 16147,
+          "udp_packets": 2971,
+          "unknown_dir_packets": 0
+        }
+      ],
+      "required": [
+        "cardinality",
+        "deep_sampled_packets",
+        "observed_packets",
+        "in_packets",
+        "ipv4_packets",
+        "ipv6_packets",
+        "other_l4_packets",
+        "out_packets",
+        "filtered_packets",
+        "period",
+        "payload_size_bytes",
+        "tcp_packets",
+        "top_asn_packets",
+        "top_geo_loc_packets",
+        "top_ipv4_packets",
+        "top_ipv6_packets",
+        "total_packets",
+        "udp_packets",
+        "unknown_dir_packets"
+      ],
+      "properties": {
+        "cardinality": {
+          "$id": "#/properties/packets/properties/cardinality",
+          "type": "object",
+          "title": "The cardinality schema",
+          "description": "An explanation about the purpose of this instance.",
+          "default": {},
+          "examples": [
+            {
+              "dst_ips": 1,
+              "src_ips": 1
+            }
+          ],
+          "required": [
+            "dst_ips",
+            "src_ips"
+          ],
+          "properties": {
+            "dst_ips": {
+              "$id": "#/properties/packets/properties/cardinality/properties/dst_ips",
+              "type": "integer",
+              "title": "The dst_ips schema",
+              "description": "An explanation about the purpose of this instance.",
+              "default": 0,
+              "examples": [
+                1
+              ]
+            },
+            "src_ips": {
+              "$id": "#/properties/packets/properties/cardinality/properties/src_ips",
+              "type": "integer",
+              "title": "The src_ips schema",
+              "description": "An explanation about the purpose of this instance.",
+              "default": 0,
+              "examples": [
+                1
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "deep_sampled_packets": {
+          "$id": "#/properties/packets/properties/deep_sampled_packets",
+          "type": "integer",
+          "title": "The deep_sampled_packets schema",
+          "description": "An explanation about the purpose of this instance.",
+          "default": 0,
+          "examples": [
+            16147
+          ]
+        },
+        "observed_packets": {
+          "$id": "#/properties/packets/properties/observed_packets",
+          "type": "integer",
+          "title": "The observed_packets schema",
+          "description": "An explanation about the purpose of this instance.",
+          "default": 0,
+          "examples": [
+            16147
+          ]
+        },
+        "in_packets": {
+          "$id": "#/properties/packets/properties/in_packets",
+          "type": "integer",
+          "title": "The in_packets schema",
+          "description": "An explanation about the purpose of this instance.",
+          "default": 0,
+          "examples": [
+            6648
+          ]
+        },
+        "ipv4_packets": {
+          "$id": "#/properties/packets/properties/ipv4_packets",
+          "type": "integer",
+          "title": "The ipv4_packets schema",
+          "description": "An explanation about the purpose of this instance.",
+          "default": 0,
+          "examples": [
+            16147
+          ]
+        },
+        "ipv6_packets": {
+          "$id": "#/properties/packets/properties/ipv6_packets",
+          "type": "integer",
+          "title": "The ipv6_packets schema",
+          "description": "An explanation about the purpose of this instance.",
+          "default": 0,
+          "examples": [
+            0
+          ]
+        },
+        "other_l4_packets": {
+          "$id": "#/properties/packets/properties/other_l4_packets",
+          "type": "integer",
+          "title": "The other_l4_packets schema",
+          "description": "An explanation about the purpose of this instance.",
+          "default": 0,
+          "examples": [
+            0
+          ]
+        },
+        "out_packets": {
+          "$id": "#/properties/packets/properties/out_packets",
+          "type": "integer",
+          "title": "The out_packets schema",
+          "description": "An explanation about the purpose of this instance.",
+          "default": 0,
+          "examples": [
+            9499
+          ]
+        },
+        "filtered_packets": {
+          "$id": "#/properties/packets/properties/filtered_packets",
+          "type": "integer",
+          "title": "The filtered_packets schema",
+          "description": "An explanation about the purpose of this instance.",
+          "default": 0,
+          "examples": [
+            2
+          ]
+        },
+        "period": {
+          "$id": "#/properties/packets/properties/period",
+          "type": "object",
+          "title": "The period schema",
+          "description": "An explanation about the purpose of this instance.",
+          "default": {},
+          "examples": [
+            {
+              "length": 31,
+              "start_ts": 1614874231
+            }
+          ],
+          "required": [
+            "length",
+            "start_ts"
+          ],
+          "properties": {
+            "length": {
+              "$id": "#/properties/packets/properties/period/properties/length",
+              "type": "integer",
+              "title": "The length schema",
+              "description": "An explanation about the purpose of this instance.",
+              "default": 0,
+              "examples": [
+                31
+              ]
+            },
+            "start_ts": {
+              "$id": "#/properties/packets/properties/period/properties/start_ts",
+              "type": "integer",
+              "title": "The start_ts schema",
+              "description": "An explanation about the purpose of this instance.",
+              "default": 0,
+              "examples": [
+                1614874231
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "payload_size_bytes": {
+          "$id": "#/properties/packets/properties/payload_size_bytes",
+          "type": "object",
+          "title": "The payload_size_bytes schema",
+          "description": "An explanation about the purpose of this instance.",
+          "default": {},
+          "examples": [
+            {}
+          ]
+        },
+        "tcp_packets": {
+          "$id": "#/properties/packets/properties/tcp_packets",
+          "type": "integer",
+          "title": "The tcp_packets schema",
+          "description": "An explanation about the purpose of this instance.",
+          "default": 0,
+          "examples": [
+            13176
+          ]
+        },
+        "tcp": {
+          "$id": "#/properties/packets/properties/tcp",
+          "type": "object",
+          "title": "The tcp schema",
+          "description": "An explanation about the purpose of this instance.",
+          "default": {},
+          "examples": [
+            {
+              "syn_packets": 10
+            }
+          ],
+          "required": [
+            "syn_packets"
+          ],
+          "properties": {
+            "syn_packets": {
+              "$id": "#/properties/packets/properties/tcp/properties/syn_packets",
+              "type": "object",
+              "title": "The syn_packets flag schema",
+              "description": "An explanation about the purpose of this instance.",
+              "default": 0,
+              "examples": [
+                10
+              ]
+            }
+          }
+        },
+        "top_asn_packets": {
+          "$id": "#/properties/packets/properties/top_asn_packets",
+          "type": "array",
+          "title": "The top_asn_packets schema",
+          "description": "An explanation about the purpose of this instance.",
+          "default": [],
+          "examples": [
+            []
+          ],
+          "additionalItems": true,
+          "items": {
+            "$id": "#/properties/packets/properties/top_asn_packets/items"
+          }
+        },
+        "top_geo_loc_packets": {
+          "$id": "#/properties/packets/properties/top_geo_loc_packets",
+          "type": "array",
+          "title": "The top_geo_loc_packets schema",
+          "description": "An explanation about the purpose of this instance.",
+          "default": [],
+          "examples": [
+            []
+          ],
+          "additionalItems": true,
+          "items": {
+            "$id": "#/properties/packets/properties/top_geo_loc_packets/items"
+          }
+        },
+        "top_ipv4_packets": {
+          "$id": "#/properties/packets/properties/top_ipv4_packets",
+          "type": "array",
+          "title": "The top_ipv4_packets schema",
+          "description": "An explanation about the purpose of this instance.",
+          "default": [],
+          "examples": [
+            [
+              {
+                "estimate": 16147,
+                "name": "8.8.8.8"
+              }
+            ]
+          ],
+          "additionalItems": true,
+          "items": {
+            "$id": "#/properties/packets/properties/top_ipv4_packets/items",
+            "anyOf": [
+              {
+                "$id": "#/properties/packets/properties/top_ipv4_packets/items/anyOf/0",
+                "type": "object",
+                "title": "The first anyOf schema",
+                "description": "An explanation about the purpose of this instance.",
+                "default": {},
+                "examples": [
+                  {
+                    "estimate": 16147,
+                    "name": "8.8.8.8"
+                  }
+                ],
+                "required": [
+                  "estimate",
+                  "name"
+                ],
+                "properties": {
+                  "estimate": {
+                    "$id": "#/properties/packets/properties/top_ipv4_packets/items/anyOf/0/properties/estimate",
+                    "type": "integer",
+                    "title": "The estimate schema",
+                    "description": "An explanation about the purpose of this instance.",
+                    "default": 0,
+                    "examples": [
+                      16147
+                    ]
+                  },
+                  "name": {
+                    "$id": "#/properties/packets/properties/top_ipv4_packets/items/anyOf/0/properties/name",
+                    "type": "string",
+                    "title": "The name schema",
+                    "description": "An explanation about the purpose of this instance.",
+                    "default": "",
+                    "examples": [
+                      "8.8.8.8"
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              }
+            ]
+          }
+        },
+        "top_ipv6_packets": {
+          "$id": "#/properties/packets/properties/top_ipv6_packets",
+          "type": "array",
+          "title": "The top_ipv6_packets schema",
+          "description": "An explanation about the purpose of this instance.",
+          "default": [],
+          "examples": [
+            []
+          ],
+          "additionalItems": true,
+          "items": {
+            "$id": "#/properties/packets/properties/top_ipv6_packets/items"
+          }
+        },
+        "total_packets": {
+          "$id": "#/properties/packets/properties/total_packets",
+          "type": "integer",
+          "title": "The total_packets schema",
+          "description": "An explanation about the purpose of this instance.",
+          "default": 0,
+          "examples": [
+            16147
+          ]
+        },
+        "udp_packets": {
+          "$id": "#/properties/packets/properties/udp_packets",
+          "type": "integer",
+          "title": "The udp_packets schema",
+          "description": "An explanation about the purpose of this instance.",
+          "default": 0,
+          "examples": [
+            2971
+          ]
+        },
+        "unknown_dir_packets": {
+          "$id": "#/properties/packets/properties/unknown_dir_packets",
+          "type": "integer",
+          "title": "The unknown_dir_packets schema",
+          "description": "An explanation about the purpose of this instance.",
+          "default": 0,
+          "examples": [
+            0
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

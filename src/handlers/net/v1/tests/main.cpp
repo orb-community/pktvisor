@@ -1,8 +1,8 @@
 #define CATCH_CONFIG_RUNNER
-#include <catch2/catch.hpp>
+#include "catch2/catch.hpp"
+#include "spdlog/sinks/stdout_color_sinks.h"
+#include "spdlog/spdlog.h"
 #include <cstdlib>
-#include <spdlog/sinks/stdout_color_sinks.h>
-#include <spdlog/spdlog.h>
 
 int main(int argc, char *argv[])
 {
