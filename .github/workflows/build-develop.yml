@@ -272,7 +272,6 @@ jobs:
           context: "."
           build_type: "Release"
           asan: "OFF"
-          symbol_url: ${{secrets.SYMBOL_URL}}
           bugsplat_key: ${{secrets.BUGSPLAT_KEY}}
           bugsplat_symbol_url: ${{secrets.BUGSPLAT_SYMBOL_URL}}
           bugsplat: "true"
@@ -796,7 +795,6 @@ jobs:
           context: "."
           build_type: "Release"
           asan: "OFF"
-          symbol_url: ${{secrets.SYMBOL_URL}}
           bugsplat_key: ${{secrets.BUGSPLAT_KEY}}
           bugsplat_symbol_url: ${{secrets.BUGSPLAT_SYMBOL_URL}}
           bugsplat: "false"

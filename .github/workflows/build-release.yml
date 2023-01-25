@@ -459,7 +459,7 @@ jobs:
         shell: bash
         run: |
           chmod a+x ./docker/upload-gh-asset.sh
-          ./docker/upload-gh-asset.sh github_api_token=${{ secrets.BOT_TOKEN }} owner=ns1labs repo=pktvisor tag=LATEST filename=./pktvisor-win64.zip
+          ./docker/upload-gh-asset.sh github_api_token=${{ secrets.BOT_TOKEN }} owner=orb-community repo=pktvisor tag=LATEST filename=./pktvisor-win64.zip
 
   package-arm64:
     needs: [ spinup-arm64-runner ]
@@ -477,7 +477,9 @@ jobs:
           context: "."
           build_type: "Release"
           asan: "OFF"
-          symbol_url: ${{secrets.SYMBOL_URL}}
+          bugsplat_key: ${{secrets.BUGSPLAT_KEY}}
+          bugsplat_symbol_url: ${{secrets.BUGSPLAT_SYMBOL_URL}}
+          bugsplat: "false"
           file: "./Dockerfile"
 
       - name: Build pktvisor-cli
@@ -542,7 +544,7 @@ jobs:
 
       - name: Replace escape url
         run: |
-          REPLACE=${{ secrets.CRASHPAD_URL }}
+          REPLACE=${{ secrets.BUGSPLAT_CP_URL }}
           ESCAPED_REPLACE=$(printf '%s\n' "$REPLACE" | sed -e 's/[\/&]/\\&/g')
           sed -i -e "s/CP_URL/$ESCAPED_REPLACE/g" docker/run.sh
 
@@ -611,7 +613,7 @@ jobs:
           sed -i -e "s/CP_TOKEN/${{ secrets.CRASHPAD_TOKEN }}/g" docker/run.sh
       - name: Replace escape url
         run: |
-          REPLACE=${{ secrets.CRASHPAD_URL }}
+          REPLACE=${{ secrets.BUGSPLAT_CP_URL }}
           ESCAPED_REPLACE=$(printf '%s\n' "$REPLACE" | sed -e 's/[\/&]/\\&/g')
           sed -i -e "s/CP_URL/$ESCAPED_REPLACE/g" docker/run.sh
 
@@ -660,7 +662,9 @@ jobs:
           context: "."
           build_type: "Release"
           asan: "OFF"
-          symbol_url: ${{secrets.SYMBOL_URL}}
+          bugsplat_key: ${{secrets.BUGSPLAT_KEY}}
+          bugsplat_symbol_url: ${{secrets.BUGSPLAT_SYMBOL_URL}}
+          bugsplat: "true"
           file: "./Dockerfile"
 
       - name: Build pktvisor-cli
@@ -725,7 +729,7 @@ jobs:
 
       - name: Replace escape url
         run: |
-          REPLACE=${{ secrets.CRASHPAD_URL }}
+          REPLACE=${{ secrets.BUGSPLAT_CP_URL }}
           ESCAPED_REPLACE=$(printf '%s\n' "$REPLACE" | sed -e 's/[\/&]/\\&/g')
           sed -i -e "s/CP_URL/$ESCAPED_REPLACE/g" docker/run.sh
 
