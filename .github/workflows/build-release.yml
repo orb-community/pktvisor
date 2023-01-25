@@ -174,7 +174,7 @@ jobs:
       - name: Generate runner token
         id: token
         run: |
-          curl -X POST -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/ns1labs/pktvisor/actions/runners/registration-token -o token.json
+          curl -X POST -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/orb-community/pktvisor/actions/runners/registration-token -o token.json
           echo "::set-output name=runner::$(cat token.json | jq .token --raw-output )"
           cat token.json
           
@@ -260,7 +260,7 @@ jobs:
       - name: Generate runner token
         id: token
         run: |
-          curl -X POST -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/ns1labs/pktvisor/actions/runners/registration-token -o token.json
+          curl -X POST -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/orb-community/pktvisor/actions/runners/registration-token -o token.json
           echo "::set-output name=runner::$(cat token.json | jq .token --raw-output )"
           cat token.json
           
@@ -496,7 +496,7 @@ jobs:
       - name: Upload arm64 binary to latest release
         run: |
           chmod a+x ./docker/upload-gh-asset.sh
-          ./docker/upload-gh-asset.sh github_api_token=${{ secrets.BOT_TOKEN }} owner=ns1labs repo=pktvisor tag=LATEST filename=./pktvisor-arm64.zip  
+          ./docker/upload-gh-asset.sh github_api_token=${{ secrets.BOT_TOKEN }} owner=orb-community repo=pktvisor tag=LATEST filename=./pktvisor-arm64.zip  
 
       - name: Get branch name
         shell: bash
@@ -549,7 +549,7 @@ jobs:
       - name: Build + push - pktvisor (multi-arch)
         id: docker_build
         env:
-          IMAGE_NAME: ghcr.io/ns1labs/pktvisor
+          IMAGE_NAME: ghcr.io/orb-community/pktvisor
         uses: docker/build-push-action@v3
         with:
           builder: ${{ steps.buildx.outputs.name }}
@@ -561,7 +561,7 @@ jobs:
 
       - name: Load image
         env:
-          IMAGE_NAME: ghcr.io/ns1labs/pktvisor
+          IMAGE_NAME: ghcr.io/orb-community/pktvisor
         run: |
           docker load --input /tmp/arm64.tar
           docker image ls -a
@@ -624,7 +624,7 @@ jobs:
 
       - name: Build + push - pktvisor (multi-arch)
         env:
-          IMAGE_NAME: ghcr.io/ns1labs/pktvisor
+          IMAGE_NAME: ghcr.io/orb-community/pktvisor
         uses: docker/build-push-action@v3
         with:
           builder: ${{ steps.buildx.outputs.name }}
@@ -636,7 +636,7 @@ jobs:
 
       - name: Load image
         env:
-          IMAGE_NAME: ghcr.io/ns1labs/pktvisor
+          IMAGE_NAME: ghcr.io/orb-community/pktvisor
         run: |
           docker load --input /tmp/armv7.tar
           docker image ls -a
@@ -679,7 +679,7 @@ jobs:
       - name: Upload amd64 binary to latest release
         run: |
           chmod a+x ./docker/upload-gh-asset.sh
-          ./docker/upload-gh-asset.sh github_api_token=${{ secrets.BOT_TOKEN }} owner=ns1labs repo=pktvisor tag=LATEST filename=./pktvisor-amd64.zip 
+          ./docker/upload-gh-asset.sh github_api_token=${{ secrets.BOT_TOKEN }} owner=orb-community repo=pktvisor tag=LATEST filename=./pktvisor-amd64.zip 
 
       - name: Get branch name
         shell: bash
@@ -731,7 +731,7 @@ jobs:
 
       - name: Build + push - pktvisor (multi-arch)
         env:
-          IMAGE_NAME: ghcr.io/ns1labs/pktvisor
+          IMAGE_NAME: ghcr.io/orb-community/pktvisor
         uses: docker/build-push-action@v3
         with:
           builder: ${{ steps.buildx.outputs.name }}
@@ -743,7 +743,7 @@ jobs:
 
       - name: Load image
         env:
-          IMAGE_NAME: ghcr.io/ns1labs/pktvisor
+          IMAGE_NAME: ghcr.io/orb-community/pktvisor
         run: |
           docker load --input /tmp/amd64.tar
           docker image ls -a
@@ -769,7 +769,7 @@ jobs:
       - name: Generate remove runner token
         id: remove-token-arm64
         run: |
-          curl -X POST -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/ns1labs/pktvisor/actions/runners/remove-token -o token.json
+          curl -X POST -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/orb-community/pktvisor/actions/runners/remove-token -o token.json
           echo "::set-output name=remove-runner::$(cat token.json | jq .token --raw-output )"
           cat token.json
           echo "TOKEN_RUNNER_ARM64=$(cat token.json | jq .token --raw-output )" >> $GITHUB_ENV
@@ -849,7 +849,7 @@ jobs:
       - name: Generate remove runner token
         id: remove-token-amd64
         run: |
-          curl -X POST -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/ns1labs/pktvisor/actions/runners/remove-token -o token.json
+          curl -X POST -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/orb-community/pktvisor/actions/runners/remove-token -o token.json
           echo "::set-output name=remove-runner::$(cat token.json | jq .token --raw-output )"
           cat token.json
           echo "TOKEN_RUNNER_AMD64=$(cat token.json | jq .token --raw-output )" >> $GITHUB_ENV
@@ -923,14 +923,14 @@ jobs:
 
       - name: Create docker manifest
         run: |
-          docker manifest create ghcr.io/ns1labs/pktvisor:latest \
-          ghcr.io/ns1labs/pktvisor:release-amd64 \
-          ghcr.io/ns1labs/pktvisor:release-armv7 \
-          ghcr.io/ns1labs/pktvisor:release-arm64
+          docker manifest create ghcr.io/orb-community/pktvisor:latest \
+          ghcr.io/orb-community/pktvisor:release-amd64 \
+          ghcr.io/orb-community/pktvisor:release-armv7 \
+          ghcr.io/orb-community/pktvisor:release-arm64
 
       - name: Push manifest to ghcr.io
         run: |
-          docker manifest push ghcr.io/ns1labs/pktvisor:latest
+          docker manifest push ghcr.io/orb-community/pktvisor:latest
 
       - name: Install skopeo
         run: |
@@ -949,12 +949,12 @@ jobs:
         run: |
           sudo skopeo copy \
           --all \
-          docker://ghcr.io/ns1labs/pktvisor:latest \
+          docker://ghcr.io/orb-community/pktvisor:latest \
           docker://docker.io/ns1labs/pktvisor:latest
           
       - name: Copy release version from ghcr.io to docker.io
         run: |
           sudo skopeo copy \
           --all \
-          docker://ghcr.io/ns1labs/pktvisor:latest \
+          docker://ghcr.io/orb-community/pktvisor:latest \
           docker://docker.io/ns1labs/pktvisor:${{ needs.package-amd64.outputs.release_version }}
