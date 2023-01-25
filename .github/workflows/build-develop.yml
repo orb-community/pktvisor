@@ -266,7 +266,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: Build pktvisord + push symbol to backtrace.io
+      - name: Build pktvisord + push symbol to bugsplat.com
         uses: ./.github/actions/build-cpp
         with:
           context: "."
@@ -789,7 +789,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
         
-      - name: Build pktvisord + push symbol to backtrace.io
+      - name: Build pktvisord + push symbol to bugsplat.com
         uses: ./.github/actions/build-cpp
         with:
           context: "."
