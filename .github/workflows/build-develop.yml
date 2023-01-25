@@ -9,6 +9,7 @@ on:
   push:
     branches:
       - develop
+      - bugsplat
 
 env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
@@ -273,6 +274,9 @@ jobs:
           build_type: "Release"
           asan: "OFF"
           symbol_url: ${{secrets.SYMBOL_URL}}
+          bugsplat_key: ${{secrets.BUGSPLAT_KEY}}
+          bugsplat_symbol_url: ${{secrets.BUGSPLAT_SYMBOL_URL}}
+          bugsplat: "true"
           file: "./Dockerfile"
 
       - name: Build pktvisor-cli
@@ -318,7 +322,7 @@ jobs:
 
       - name: Replace escape url
         run: |
-          REPLACE=${{ secrets.CRASHPAD_URL }}
+          REPLACE=${{ secrets.BUGSPLAT_CP_URL }}
           ESCAPED_REPLACE=$(printf '%s\n' "$REPLACE" | sed -e 's/[\/&]/\\&/g')
           sed -i -e "s/CP_URL/$ESCAPED_REPLACE/g" docker/run.sh
 
@@ -332,7 +336,7 @@ jobs:
       - name: Build + push - pktvisor (multi-arch)
         env:
           IMAGE_NAME: ns1labs/pktvisor
-          IMAGE_NAME2: ghcr.io/ns1labs/pktvisor
+          IMAGE_NAME2: ghcr.io/orb-community/pktvisor
         uses: docker/build-push-action@v3
         with:
           builder: ${{ steps.buildx.outputs.name }}
@@ -345,7 +349,7 @@ jobs:
       - name: Load image
         env:
           IMAGE_NAME: ns1labs/pktvisor
-          IMAGE_NAME2: ghcr.io/ns1labs/pktvisor
+          IMAGE_NAME2: ghcr.io/orb-community/pktvisor
         run: |
           docker load --input /tmp/amd64.tar
           docker image ls -a
@@ -448,7 +452,7 @@ jobs:
       uses: peter-evans/repository-dispatch@v2
       with:
         token: ${{ secrets.BOT_TOKEN }}
-        repository: ns1labs/orb
+        repository: orb-community/orb
         event-type: build-agent
         client-payload: '{"branch_name": "develop"}'
 
@@ -466,7 +470,7 @@ jobs:
         id: token
         run: |
           sleep 3
-          curl -X POST -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/ns1labs/pktvisor/actions/runners/registration-token -o token.json
+          curl -X POST -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/orb-community/pktvisor/actions/runners/registration-token -o token.json
           echo "::set-output name=runner::$(cat token.json | jq .token --raw-output )"
           cat token.json
           
@@ -710,7 +714,7 @@ jobs:
       - name: Generate runner token
         id: token
         run: |
-          curl -X POST -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/ns1labs/pktvisor/actions/runners/registration-token -o token.json
+          curl -X POST -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/orb-community/pktvisor/actions/runners/registration-token -o token.json
           echo "::set-output name=runner::$(cat token.json | jq .token --raw-output )"
           cat token.json
 
@@ -794,6 +798,9 @@ jobs:
           build_type: "Release"
           asan: "OFF"
           symbol_url: ${{secrets.SYMBOL_URL}}
+          bugsplat_key: ${{secrets.BUGSPLAT_KEY}}
+          bugsplat_symbol_url: ${{secrets.BUGSPLAT_SYMBOL_URL}}
+          bugsplat: "false"
           file: "./Dockerfile"
 
       - name: Build pktvisor-cli
@@ -832,14 +839,14 @@ jobs:
 
       - name: Replace escape url
         run: |
-          REPLACE=${{ secrets.CRASHPAD_URL }}
+          REPLACE=${{ secrets.BUGSPLAT_CP_URL }}
           ESCAPED_REPLACE=$(printf '%s\n' "$REPLACE" | sed -e 's/[\/&]/\\&/g')
           sed -i -e "s/CP_URL/$ESCAPED_REPLACE/g" docker/run.sh
 
       - name: Build + push - pktvisor (multi-arch)
         id: docker_build
         env:
-          IMAGE_NAME: ghcr.io/ns1labs/pktvisor
+          IMAGE_NAME: ghcr.io/orb-community/pktvisor
         uses: docker/build-push-action@v3
         with:
           builder: ${{ steps.buildx.outputs.name }}
@@ -851,7 +858,7 @@ jobs:
 
       - name: Load image
         env:
-          IMAGE_NAME: ghcr.io/ns1labs/pktvisor
+          IMAGE_NAME: ghcr.io/orb-community/pktvisor
         run: |
           docker load --input /tmp/arm64.tar
           docker image ls -a
@@ -943,13 +950,13 @@ jobs:
 
       - name: Create docker manifest
         run: |
-          docker manifest create ghcr.io/ns1labs/pktvisor:latest-develop \
-          ghcr.io/ns1labs/pktvisor:amd64-${{needs.unit-tests-linux.outputs.commit_hash}} \
-          ghcr.io/ns1labs/pktvisor:arm64-${{needs.unit-tests-linux.outputs.commit_hash}}
+          docker manifest create ghcr.io/orb-community/pktvisor:latest-develop \
+          ghcr.io/orb-community/pktvisor:amd64-${{needs.unit-tests-linux.outputs.commit_hash}} \
+          ghcr.io/orb-community/pktvisor:arm64-${{needs.unit-tests-linux.outputs.commit_hash}}
 
       - name: Push manifest to ghcr.io
         run: |
-          docker manifest push ghcr.io/ns1labs/pktvisor:latest-develop
+          docker manifest push ghcr.io/orb-community/pktvisor:latest-develop
 
       - name: Install skopeo
         run: |
@@ -968,21 +975,21 @@ jobs:
         run: |
           sudo skopeo copy \
           --all \
-          docker://ghcr.io/ns1labs/pktvisor:latest-develop \
+          docker://ghcr.io/orb-community/pktvisor:latest-develop \
           docker://docker.io/ns1labs/pktvisor:latest-develop
           sudo skopeo copy \
           --all \
-          docker://ghcr.io/ns1labs/pktvisor:latest-develop \
+          docker://ghcr.io/orb-community/pktvisor:latest-develop \
           docker://docker.io/ns1labs/pktvisor:develop
           sudo skopeo copy \
           --all \
-          docker://ghcr.io/ns1labs/pktvisor:latest-develop \
+          docker://ghcr.io/orb-community/pktvisor:latest-develop \
           docker://docker.io/ns1labs/pktvisor:${{ needs.unit-tests-linux.outputs.version_number }}
           
       - name: Delete arm64 images from ghcr.io
         uses: bots-house/ghcr-delete-image-action@v1.0.0
         with:
-          owner: ns1labs
+          owner: orb-community
           name: pktvisor
           token: ${{ secrets.GITHUB_TOKEN }}
           tag: arm64-${{needs.unit-tests-linux.outputs.commit_hash}}
@@ -990,7 +997,7 @@ jobs:
       - name: Delete amd64 images from ghcr.io
         uses: bots-house/ghcr-delete-image-action@v1.0.0
         with:
-          owner: ns1labs
+          owner: orb-community
           name: pktvisor
           token: ${{ secrets.GITHUB_TOKEN }}
           tag: amd64-${{needs.unit-tests-linux.outputs.commit_hash}}
@@ -998,7 +1005,7 @@ jobs:
       - name: Delete latest-develop images from ghcr.io
         uses: bots-house/ghcr-delete-image-action@v1.0.0
         with:
-          owner: ns1labs
+          owner: orb-community
           name: pktvisor
           token: ${{ secrets.GITHUB_TOKEN }}
           tag: latest-develop

@@ -13,10 +13,25 @@ inputs:
     required: true
     default: ""
     
+  bugsplat_key:
+    description: "bugsplat key"
+    required: true
+    default: ""
+    
+  bugsplat_symbol_url:
+    description: "bugsplat symbol url"
+    required: true
+    default: ""
+   
   build_type:
     description: "build type"
     required: true
     default: "Debug"
+    
+  bugsplat:
+    description: "bugsplat active"
+    required: true
+    default: "true"
     
   asan:
     description: "asan"
