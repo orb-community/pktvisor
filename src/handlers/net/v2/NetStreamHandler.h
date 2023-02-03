@@ -260,6 +260,7 @@ class NetStreamHandler final : public visor::StreamMetricsHandler<NetworkMetrics
     static const inline StreamMetricsHandler::GroupDefType _group_defs = {
         {"cardinality", group::NetMetrics::Cardinality},
         {"counters", group::NetMetrics::Counters},
+        {"quantiles", group::NetMetrics::Quantiles},
         {"top_geo", group::NetMetrics::TopGeo},
         {"top_ips", group::NetMetrics::TopIps}};
 
