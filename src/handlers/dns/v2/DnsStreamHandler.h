@@ -305,6 +305,7 @@ public:
     DnsMetricsBucket()
         : _filtered(DNS_SCHEMA, {"filtered_packets"}, "Total DNS wire packets seen that did not match the configured filter(s) (if any)")
     {
+        set_event_rate_info(DNS_SCHEMA, {"rates", "observed_pps"}, "Rate of all DNS wire packets before filtering per second");
         set_num_events_info(DNS_SCHEMA, {"observed_packets"}, "Total DNS wire packets events");
         set_num_sample_info(DNS_SCHEMA, {"deep_sampled_packets"}, "Total DNS wire packets that were sampled for deep inspection");
     }
@@ -410,14 +411,13 @@ public:
     {
         // DNS transaction support
         for (auto &manager : _pair_manager) {
-            if (auto timed_out = manager.second.xact_map->purge_old_transactions(stamp); timed_out && live_bucket()->has_dir(manager.first)) {
+            if (auto timed_out = manager.second.xact_map->purge_old_transactions(stamp); timed_out) {
                 live_bucket()->dir_setup(manager.first);
                 live_bucket()->inc_xact_timed_out(timed_out, manager.first);
             }
             if (bucket(1)->has_dir(manager.first)) {
-                if (auto [xact, lock] = bucket(1)->get_xact_data_locked(manager.first); xact.get_n()) {
-                    manager.second.per_90th = xact.get_quantile(0.90);
-                }
+                auto [xact, lock] = bucket(1)->get_xact_data_locked(manager.first);
+                xact.get_n() ? manager.second.per_90th = xact.get_quantile(0.90) : float();
             }
         }
     }
