@@ -23,7 +23,7 @@ network data streams and extracting actionable insights directly from the edge w
 It is resource efficient and built from the ground up to be modular and dynamically controlled in
 real time via API and YAML policies. Input and analyzer modules may be dynamically loaded at runtime. Metric output can be used and visualized
 both on-node via command line UI (for localized, hyper real-time actions)
-as well as centrally collected into industry standard observability stacks like Prometheus and Grafana.
+as well as centrally collected into industry standard observability stacks like Prometheus and Grafana..
 
 The [input stream system](src/inputs) is designed to _tap into_ data streams. It currently supports [packet capture](https://en.wikipedia.org/wiki/Packet_analyzer),
 [dnstap](https://dnstap.info/), [sFlow](https://en.wikipedia.org/wiki/SFlow) and [Netflow](https://en.wikipedia.org/wiki/NetFlow)/[IPFIX](https://en.wikipedia.org/wiki/IP_Flow_Information_Export) and will soon support additional taps such as
