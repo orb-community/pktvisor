@@ -218,7 +218,7 @@ static std::unordered_map<std::string, uint16_t> QTypeNumbers({
 static std::unordered_map<uint16_t, std::string> RCodeNames({
     {0, "NOERROR"},
     {1, "FORMERR"},
-    {2, "SRVFAIL"},
+    {2, "SERVFAIL"},
     {3, "NXDOMAIN"},
     {4, "NOTIMP"},
     {5, "REFUSED"},
@@ -242,7 +242,7 @@ static std::unordered_map<uint16_t, std::string> RCodeNames({
 static std::unordered_map<std::string, uint16_t> RCodeNumbers({
     {"NOERROR", 0},
     {"FORMERR", 1},
-    {"SRVFAIL", 2},
+    {"SERVFAIL", 2},
     {"NXDOMAIN", 3},
     {"NOTIMP", 4},
     {"REFUSED", 5},
