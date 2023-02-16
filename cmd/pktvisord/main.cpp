@@ -321,7 +321,7 @@ void fill_cmd_options(std::map<std::string, docopt::value> args, CmdOptions &opt
     }
 
     options.otel_setup.otel_support = (config["otel"] && config["otel"].as<bool>()) || args["--otel"].asBool();
-    options.otel_setup.tls_support = (config["otel_tls"] && config["otel_tls"].as<bool>()) || args["--admin-api"].asBool();
+    options.otel_setup.tls_support = (config["otel_tls"] && config["otel_tls"].as<bool>()) || args["--otel-tls"].asBool();
 
     if (args["--otel-host"]) {
         options.otel_setup.host = args["--otel-host"].asString();
