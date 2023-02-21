@@ -168,6 +168,10 @@ jobs:
           $text = Get-Content ${{github.workspace}}\build\VERSION -Raw 
           echo "VERSION=$text" >> $env:GITHUB_ENV
 
+      - name: Remove libpcap from conanfile
+        run: |
+          sed -i -e "s/libpcap.*//g" ${{github.workspace}}/src/conanfile.txt
+
       - name: Build
         working-directory: ${{github.workspace}}\build
         shell: bash

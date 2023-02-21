@@ -16,6 +16,7 @@ protobuf/3.19.2
 sigslot/1.2.1
 spdlog/1.11.0
 uvw/2.12.1
+libpcap/1.10.1
 yaml-cpp/0.7.0
 robin-hood-hashing/3.11.5
 zlib/1.2.11
