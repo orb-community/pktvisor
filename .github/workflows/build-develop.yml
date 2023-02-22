@@ -175,13 +175,9 @@ jobs:
           echo "VERSION=$text" >> $env:GITHUB_ENV
 
       - name: Remove libpcap from conanfile
-        working-directory: ${{github.workspace}}\
         shell: bash
         run: |
-          ls
-          ls .\src
-          ls .\pktvisor\
-        #  sed -i -e "s/libpcap.*//g" ".\src\conanfile.txt"
+          sed -i -e "s/libpcap.*//g" ${{github.workspace}}\\conanfile.txt
 
       - name: Build
         working-directory: ${{github.workspace}}\build
