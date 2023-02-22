@@ -178,7 +178,10 @@ jobs:
         working-directory: ${{github.workspace}}\
         shell: bash
         run: |
-          sed -i -e "s/libpcap.*//g" ".\src\conanfile.txt"
+          ls
+          ls .\src
+          ls .\pktvisor\
+        #  sed -i -e "s/libpcap.*//g" ".\src\conanfile.txt"
 
       - name: Build
         working-directory: ${{github.workspace}}\build
