@@ -157,6 +157,11 @@ jobs:
         with:
           version: 1.59.0
 
+      - name: Remove libpcap from conanfile
+        shell: bash
+        run: |
+          sed -i -e "s/libpcap.*//g" "${{github.workspace}}\conanfile.txt"
+
       - name: Configure CMake
         # Use a bash shell so we can use the same syntax for environment variable
         # access regardless of the host operating system
@@ -173,11 +178,6 @@ jobs:
         run: |
           $text = Get-Content ${{github.workspace}}\build\VERSION -Raw 
           echo "VERSION=$text" >> $env:GITHUB_ENV
-
-      - name: Remove libpcap from conanfile
-        shell: bash
-        run: |
-          sed -i -e "s/libpcap.*//g" "${{github.workspace}}\conanfile.txt"
 
       - name: Build
         working-directory: ${{github.workspace}}\build
