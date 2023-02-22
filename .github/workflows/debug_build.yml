@@ -30,7 +30,10 @@ jobs:
       - name: Get Conan
         # You may pin to the exact commit or the version.
         # uses: turtlebrowser/get-conan@4dc7e6dd45c8b1e02e909979d7cfc5ebba6ddbe2
-        uses: turtlebrowser/get-conan@v1.0
+        id: conan
+        uses: turtlebrowser/get-conan@main
+        with:
+          version: 1.59.0
 
       - name: linux package install
         run: |
