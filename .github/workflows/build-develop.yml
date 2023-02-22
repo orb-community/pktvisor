@@ -177,7 +177,7 @@ jobs:
       - name: Remove libpcap from conanfile
         shell: bash
         run: |
-          sed -i -e "s/libpcap.*//g" ${{github.workspace}}\\conanfile.txt
+          sed -i -e "s/libpcap.*//g" "${{github.workspace}}\conanfile.txt"
 
       - name: Build
         working-directory: ${{github.workspace}}\build
