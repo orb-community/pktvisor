@@ -807,6 +807,10 @@ jobs:
     runs-on: [self-hosted, linux, ARM64]
     if: github.event_name != 'pull_request'
     steps:
+      - name: cleanup #https://github.com/actions/checkout/issues/21
+        run: |
+          sudo chown -R $USER:$USER $GITHUB_WORKSPACE
+
       - name: Checkout
         uses: actions/checkout@v3
 
