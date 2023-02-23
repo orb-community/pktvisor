@@ -39,7 +39,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ${{github.workspace}}/build/conan_home/
-          key: cache-${{ runner.os }}-${{ hashFiles('**/conanfile.txt') }}
+          key: cache-${{ runner.os }}-${{ hashFiles('conanfile.txt', '*/conanfile.txt') }}
           restore-keys: cache-${{ runner.os }}-
 
       - name: linux package install
@@ -100,7 +100,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ${{github.workspace}}/build/conan_home/
-          key: cache-${{ runner.os }}-${{ hashFiles('**/conanfile.txt') }}
+          key: cache-${{ runner.os }}-${{ hashFiles('conanfile.txt', '*/conanfile.txt') }}
           restore-keys: cache-${{ runner.os }}-
 
       - name: Build pktvisord + push symbol to backtrace.io

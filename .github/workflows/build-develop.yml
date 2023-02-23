@@ -40,7 +40,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ${{github.workspace}}/build/conan_home/
-          key: cache-${{ runner.os }}-${{ hashFiles('**/conanfile.txt') }}
+          key: cache-${{ runner.os }}-${{ hashFiles('conanfile.txt', '*/conanfile.txt') }}
           restore-keys: cache-${{ runner.os }}-
 
       - name: Configure CMake
@@ -101,7 +101,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ${{github.workspace}}/build/conan_home/
-          key: cache-${{ runner.os }}-${{ hashFiles('**/conanfile.txt') }}
+          key: cache-${{ runner.os }}-${{ hashFiles('conanfile.txt', '*/conanfile.txt') }}
           restore-keys: cache-${{ runner.os }}-
 
       - name: Configure CMake
@@ -168,7 +168,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ${{github.workspace}}/build/conan_home/
-          key: cache-${{ runner.os }}-${{ hashFiles('**/conanfile.txt') }}
+          key: cache-${{ runner.os }}-${{ hashFiles('conanfile.txt', '*/conanfile.txt') }}
           restore-keys: cache-${{ runner.os }}-
 
       - name: Configure CMake
@@ -281,7 +281,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ${{github.workspace}}/build/conan_home/
-          key: cache-${{ runner.os }}-${{ hashFiles('**/conanfile.txt') }}
+          key: cache-${{ runner.os }}-${{ hashFiles('conanfile.txt', '*/conanfile.txt') }}
           restore-keys: cache-${{ runner.os }}-
 
       - name: Build pktvisord + push symbol to bugsplat.com
@@ -721,7 +721,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       runner_token: ${{ steps.token.outputs.runner }}
-    if: github.event_name != 'pull_request'
+    if: github.event_name == 'pull_request'
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -805,7 +805,7 @@ jobs:
   package-arm64:
     needs: [ unit-tests-linux, spinup-arm64-runner ]
     runs-on: [self-hosted, linux, ARM64]
-    if: github.event_name != 'pull_request'
+    if: github.event_name == 'pull_request'
     steps:
       - name: cleanup #https://github.com/actions/checkout/issues/21
         run: |
@@ -821,7 +821,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ${{github.workspace}}/build/conan_home/
-          key: cache-${{ runner.os }}-arm64-${{ hashFiles('**/conanfile.txt') }}
+          key: cache-${{ runner.os }}-arm64-${{ hashFiles('conanfile.txt', '*/conanfile.txt') }}
           restore-keys: cache-${{ runner.os }}-arm64-
 
       - name: Build pktvisord + push symbol to bugsplat.com
@@ -900,7 +900,7 @@ jobs:
     continue-on-error: true
     needs: [ spinup-arm64-runner, package-arm64 ]
     runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request'
+    if: github.event_name == 'pull_request'
     steps:
       - name: Attach to workspace
         uses: actions/download-artifact@v2
@@ -928,7 +928,7 @@ jobs:
   remove-arm64-runner:
     needs: [ remove-github-runner-arm64 ]
     runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request'
+    if: github.event_name == 'pull_request'
     steps:
       - name: Checkout
         uses: actions/checkout@v3
