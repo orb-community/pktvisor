@@ -34,6 +34,12 @@ jobs:
         with:
           version: 1.59.0
 
+      - name: Setup Conan Cache
+        uses: actions/cache@v3
+        with:
+          path: ${{github.workspace}}/build/conan_home/
+          key: cache-${{ runner.os }}-${{ hashFiles('**/conanfile.txt') }}
+
       - name: linux package install
         if: matrix.os == 'ubuntu-latest'
         run: |
@@ -54,12 +60,6 @@ jobs:
         working-directory: ${{github.workspace}}/build
         shell: bash
         run: ctest -C $BUILD_TYPE
-
-      - name: Login to ns1labs conan
-        run: CONAN_USER_HOME=${{github.workspace}}/build/conan_home conan user -p ${{ secrets.CONAN_LABS_PASSWORD }} -r ns1labs ${{ secrets.CONAN_LABS_USERNAME }}
-
-      - name: Cache conan packages
-        run: CONAN_USER_HOME=${{github.workspace}}/build/conan_home conan upload "*" --all -r ns1labs -c
 
   prebuild-package:
     needs: [ unit-tests ]
@@ -371,6 +371,12 @@ jobs:
         run: |
           sed -i -e "s/libpcap.*//g" "${{github.workspace}}\conanfile.txt"
 
+      - name: Setup Conan Cache
+        uses: actions/cache@v3
+        with:
+          path: ${{github.workspace}}/build/conan_home/
+          key: cache-${{ runner.os }}-${{ hashFiles('**/conanfile.txt') }}
+
       - name: Configure CMake
         # Use a bash shell so we can use the same syntax for environment variable
         # access regardless of the host operating system
@@ -418,18 +424,6 @@ jobs:
             ${{github.workspace}}\build\bin\pktvisord.exe
             ${{github.workspace}}\golang\pkg\client\version.go
           retention-days: 1
-
-      - name: Login to ns1labs conan
-        shell: pwsh
-        run: |
-          $env:CONAN_USER_HOME = "${{github.workspace}}\build\conan_home"
-          conan user -p ${{ secrets.CONAN_LABS_PASSWORD }} -r ns1labs ${{ secrets.CONAN_LABS_USERNAME }}
-
-      - name: Cache conan packages
-        shell: pwsh
-        run: |
-          $env:CONAN_USER_HOME = "${{github.workspace}}\build\conan_home"
-          conan upload "*" --all -r ns1labs -c
           
   build-cli-win64:
     needs: [ build-win64 ]

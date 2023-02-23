@@ -35,6 +35,12 @@ jobs:
         with:
           version: 1.59.0
 
+      - name: Setup Conan Cache
+        uses: actions/cache@v3
+        with:
+          path: ${{github.workspace}}/build/conan_home/
+          key: cache-${{ runner.os }}-${{ hashFiles('**/conanfile.txt') }}
+
       - name: linux package install
         run: |
           sudo apt-get update
@@ -80,12 +86,6 @@ jobs:
           files: build/coverage.info
           name: pktvisor
           verbose: true
-
-      - name: Login to ns1labs conan
-        run: CONAN_USER_HOME=${{github.workspace}}/build/conan_home conan user -p ${{ secrets.CONAN_LABS_PASSWORD }} -r ns1labs ${{ secrets.CONAN_LABS_USERNAME }}
-
-      - name: Cache conan packages
-        run: CONAN_USER_HOME=${{github.workspace}}/build/conan_home conan upload "*" --all -r ns1labs -c
 
   build:
     runs-on: ubuntu-latest
