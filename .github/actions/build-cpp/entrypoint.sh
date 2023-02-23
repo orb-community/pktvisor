@@ -14,13 +14,15 @@ function build() {
   cp -rf /github/workspace/libs/ /pktvisor-src/libs/
   cp -rf /github/workspace/docker/ /pktvisor-src/docker/
   cp -rf /github/workspace/golang/ /pktvisor-src/golang/
+  cp -rf /github/workspace/build/ /pktvisor-src/build/
   cp -rf /github/workspace/integration_tests/ /pktvisor-src/integration_tests/
   cp -rf /github/workspace/cmake/ /pktvisor-src/cmake/
   cp -rf /github/workspace/CMakeLists.txt /pktvisor-src/
   cp -rf /github/workspace/conanfile.txt /pktvisor-src/
   mkdir /tmp/build
-  cp -rf /github/workspace/build/ /tmp/build/
   cd /tmp/build
+  cp -rf /pktvisor-src/build/conan_home/ .
+  ls
   conan profile new --detect default
   conan profile update settings.compiler.libcxx=libstdc++11 default
   conan config set general.revisions_enabled=1
