@@ -40,8 +40,8 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ${{github.workspace}}/build/conan_home/
-          key: cache-${{ runner.os }}-${{ hashFiles('**/conanfile.txt') }}
-          restore-keys: cache-${{ runner.os }}-
+          key: conan-${{ runner.os }}-${{ hashFiles('conanfile.txt', '*/conanfile.txt') }}
+          restore-keys: conan-${{ runner.os }}-
 
       - name: Configure CMake
         # Use a bash shell so we can use the same syntax for environment variable
@@ -101,8 +101,8 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ${{github.workspace}}/build/conan_home/
-          key: cache-${{ runner.os }}-${{ hashFiles('**/conanfile.txt') }}
-          restore-keys: cache-${{ runner.os }}-
+          key: conan-${{ runner.os }}-${{ hashFiles('conanfile.txt', '*/conanfile.txt') }}
+          restore-keys: conan-${{ runner.os }}-
 
       - name: Configure CMake
         # Use a bash shell so we can use the same syntax for environment variable
@@ -168,8 +168,8 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ${{github.workspace}}/build/conan_home/
-          key: cache-${{ runner.os }}-${{ hashFiles('**/conanfile.txt') }}
-          restore-keys: cache-${{ runner.os }}-
+          key: conan-${{ runner.os }}-${{ hashFiles('conanfile.txt', '*/conanfile.txt') }}
+          restore-keys: conan-${{ runner.os }}-
 
       - name: Configure CMake
         # Use a bash shell so we can use the same syntax for environment variable
@@ -281,8 +281,8 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ${{github.workspace}}/build/conan_home/
-          key: cache-${{ runner.os }}-${{ hashFiles('**/conanfile.txt') }}
-          restore-keys: cache-${{ runner.os }}-
+          key: conan-${{ runner.os }}-${{ hashFiles('conanfile.txt', '*/conanfile.txt') }}
+          restore-keys: conan-${{ runner.os }}-
 
       - name: Build pktvisord + push symbol to bugsplat.com
         uses: ./.github/actions/build-cpp
@@ -821,8 +821,8 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ${{github.workspace}}/build/conan_home/
-          key: cache-${{ runner.os }}-arm64-${{ hashFiles('**/conanfile.txt') }}
-          restore-keys: cache-${{ runner.os }}-arm64-
+          key: conan-${{ runner.os }}-arm64-${{ hashFiles('conanfile.txt', '*/conanfile.txt') }}
+          restore-keys: conan-${{ runner.os }}-arm64-
 
       - name: Build pktvisord + push symbol to bugsplat.com
         uses: ./.github/actions/build-cpp
@@ -843,6 +843,9 @@ jobs:
           
       - name: Debug artifacts
         run: ls -lha .
+
+      - name: Remove crashpad to avoid cache error
+        run: rm -rf "build/conan_home/.conan/data/crashpad/"
 
       - name: Generate ref tag (develop)
         if: ${{ env.BRANCH_NAME == 'develop' }}
