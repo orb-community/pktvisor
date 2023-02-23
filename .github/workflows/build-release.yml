@@ -39,6 +39,7 @@ jobs:
         with:
           path: ${{github.workspace}}/build/conan_home/
           key: cache-${{ runner.os }}-${{ hashFiles('**/conanfile.txt') }}
+          restore-keys: cache-${{ runner.os }}-
 
       - name: linux package install
         if: matrix.os == 'ubuntu-latest'
@@ -376,6 +377,7 @@ jobs:
         with:
           path: ${{github.workspace}}/build/conan_home/
           key: cache-${{ runner.os }}-${{ hashFiles('**/conanfile.txt') }}
+          restore-keys: cache-${{ runner.os }}-
 
       - name: Configure CMake
         # Use a bash shell so we can use the same syntax for environment variable
@@ -481,7 +483,17 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: workspace
-          
+
+      - name: Create Build Environment
+        run: cmake -E make_directory ${{github.workspace}}/build
+
+      - name: Setup Conan Cache
+        uses: actions/cache@v3
+        with:
+          path: ${{github.workspace}}/build/conan_home/
+          key: cache-${{ runner.os }}-arm64-${{ hashFiles('**/conanfile.txt') }}
+          restore-keys: cache-${{ runner.os }}-arm64-
+
       - name: Build pktvisord + push symbol to backtrace.io
         uses: ./.github/actions/build-cpp
         with:
@@ -666,7 +678,17 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: workspace
-          
+
+      - name: Create Build Environment
+        run: cmake -E make_directory ${{github.workspace}}/build
+
+      - name: Setup Conan Cache
+        uses: actions/cache@v3
+        with:
+          path: ${{github.workspace}}/build/conan_home/
+          key: cache-${{ runner.os }}-${{ hashFiles('**/conanfile.txt') }}
+          restore-keys: cache-${{ runner.os }}-
+
       - name: Build pktvisord + push symbol to backtrace.io
         uses: ./.github/actions/build-cpp
         with:

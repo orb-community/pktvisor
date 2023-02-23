@@ -14,12 +14,14 @@ function build() {
   cp -rf /github/workspace/libs/ /pktvisor-src/libs/
   cp -rf /github/workspace/docker/ /pktvisor-src/docker/
   cp -rf /github/workspace/golang/ /pktvisor-src/golang/
+  cp -rf /github/workspace/build/ /pktvisor-src/build/
   cp -rf /github/workspace/integration_tests/ /pktvisor-src/integration_tests/
   cp -rf /github/workspace/cmake/ /pktvisor-src/cmake/
   cp -rf /github/workspace/CMakeLists.txt /pktvisor-src/
   cp -rf /github/workspace/conanfile.txt /pktvisor-src/
   mkdir /tmp/build
   cd /tmp/build
+  cp -rf /pktvisor-src/build/conan_home/ .
   conan profile new --detect default
   conan profile update settings.compiler.libcxx=libstdc++11 default
   conan config set general.revisions_enabled=1
@@ -35,6 +37,7 @@ function move() {
   cp -rf /tmp/build/bin/crashpad_handler /github/workspace/
   cp -rf /tmp/build/bin/pktvisor-reader /github/workspace/
   cp -rf /tmp/build/VERSION /github/workspace/
+  cp -rf /tmp/build/conan_home/ /github/workspace/build/
   cp -rf /pktvisor-src/golang/pkg/client/version.go /github/workspace/version.go
   cp -rf /pktvisor-src/src/tests/fixtures/pktvisor-port-service-names.csv /github/workspace/custom-iana.csv
 }
