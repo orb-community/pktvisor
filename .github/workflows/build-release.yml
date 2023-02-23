@@ -70,7 +70,7 @@ jobs:
       branch_name: ${{ steps.branch.outputs.name }}
     if: github.event_name != 'pull_request'
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       
       - name: Remove suffix from Cmakelists.txt file
         run: |
@@ -118,7 +118,7 @@ jobs:
     if: github.event_name != 'pull_request'
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           fetch-depth: 0
           
@@ -179,7 +179,8 @@ jobs:
     if: github.event_name != 'pull_request'
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/
+        
 
       - name: Generate runner token
         id: token
