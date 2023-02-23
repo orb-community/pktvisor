@@ -38,8 +38,8 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ${{github.workspace}}/build/conan_home/
-          key: cache-${{ runner.os }}-${{ hashFiles('conanfile.txt', '*/conanfile.txt') }}
-          restore-keys: cache-${{ runner.os }}-
+          key: conan-${{ runner.os }}-${{ hashFiles('conanfile.txt', '*/conanfile.txt') }}
+          restore-keys: conan-${{ runner.os }}-
 
       - name: linux package install
         if: matrix.os == 'ubuntu-latest'
@@ -376,8 +376,8 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ${{github.workspace}}/build/conan_home/
-          key: cache-${{ runner.os }}-${{ hashFiles('conanfile.txt', '*/conanfile.txt') }}
-          restore-keys: cache-${{ runner.os }}-
+          key: conan-${{ runner.os }}-${{ hashFiles('conanfile.txt', '*/conanfile.txt') }}
+          restore-keys: conan-${{ runner.os }}-
 
       - name: Configure CMake
         # Use a bash shell so we can use the same syntax for environment variable
@@ -491,8 +491,8 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ${{github.workspace}}/build/conan_home/
-          key: cache-${{ runner.os }}-arm64-${{ hashFiles('conanfile.txt', '*/conanfile.txt') }}
-          restore-keys: cache-${{ runner.os }}-arm64-
+          key: conan-${{ runner.os }}-arm64-${{ hashFiles('conanfile.txt', '*/conanfile.txt') }}
+          restore-keys: conan-${{ runner.os }}-arm64-
 
       - name: Build pktvisord + push symbol to backtrace.io
         uses: ./.github/actions/build-cpp
@@ -510,10 +510,13 @@ jobs:
         with:
           context: "."
           file: "./Dockerfile"
-          
+
       - name: Debug artifacts
         run: ls -lha .
-        
+
+      - name: Remove crashpad to avoid cache error
+        run: rm -rf "build/conan_home/.conan/data/crashpad/"
+
       - name: compacting arm64 binary
         run: |
           zip pktvisor-arm64.zip pktvisor-cli pktvisor-reader pktvisord
@@ -686,8 +689,8 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ${{github.workspace}}/build/conan_home/
-          key: cache-${{ runner.os }}-${{ hashFiles('conanfile.txt', '*/conanfile.txt') }}
-          restore-keys: cache-${{ runner.os }}-
+          key: conan-${{ runner.os }}-${{ hashFiles('conanfile.txt', '*/conanfile.txt') }}
+          restore-keys: conan-${{ runner.os }}-
 
       - name: Build pktvisord + push symbol to backtrace.io
         uses: ./.github/actions/build-cpp
