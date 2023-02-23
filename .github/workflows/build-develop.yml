@@ -26,7 +26,7 @@ jobs:
 
     runs-on: macos-11
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Create Build Environment
         # Some projects don't allow in-source building, so create a separate build directory
@@ -77,7 +77,7 @@ jobs:
       version_number: ${{ env.VERSION }}
       commit_hash: ${{ env.COMMIT }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Create Build Environment
         # Some projects don't allow in-source building, so create a separate build directory
@@ -144,7 +144,7 @@ jobs:
     outputs:
       version_number: ${{ env.VERSION }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Create Build Environment
         # Some projects don't allow in-source building, so create a separate build directory
@@ -224,7 +224,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:    
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Attach to workspace
         uses: actions/download-artifact@v3
@@ -272,7 +272,7 @@ jobs:
     outputs:
       version_number: ${{ env.VERSION }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Create Build Environment
         run: cmake -E make_directory ${{github.workspace}}/build
@@ -378,7 +378,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       
       - name: Create Build Environment
         run: cmake -E make_directory ${{github.workspace}}/build
@@ -483,7 +483,7 @@ jobs:
     if: github.event_name != 'pull_request'
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Generate runner token
         id: token
@@ -567,7 +567,7 @@ jobs:
     if: github.event_name != 'pull_request'
     steps:
       - uses: AutoModality/action-clean@v1
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Locking pktvisor integration test state
         run: |
@@ -679,7 +679,7 @@ jobs:
     if: github.event_name != 'pull_request'
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Attach to workspace
         uses: actions/download-artifact@v2
@@ -724,7 +724,7 @@ jobs:
     if: github.event_name != 'pull_request'
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         
       - name: Get branch name
         shell: bash
@@ -808,7 +808,7 @@ jobs:
     if: github.event_name != 'pull_request'
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Create Build Environment
         run: cmake -E make_directory ${{github.workspace}}/build
@@ -927,7 +927,7 @@ jobs:
     if: github.event_name != 'pull_request'
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Attach to workspace
         uses: actions/download-artifact@v2

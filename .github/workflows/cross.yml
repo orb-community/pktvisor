@@ -107,7 +107,7 @@ jobs:
             sccache-${{matrix.arch}}-${{github.base_ref||github.event.repository.default_branch}}-
 
       - name: Checkout sources
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           path: src
       - name: Remove crashpad from conanfile
@@ -171,7 +171,7 @@ jobs:
         with:
           go-version: 1.17
       - name: Checkout sources
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           path: src
       - name: Configure

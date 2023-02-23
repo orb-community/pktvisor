@@ -23,7 +23,7 @@ jobs:
         os: [ ubuntu-latest, macos-11 ]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Create Build Environment
         run: cmake -E make_directory ${{github.workspace}}/build
@@ -70,7 +70,7 @@ jobs:
       branch_name: ${{ steps.branch.outputs.name }}
     if: github.event_name != 'pull_request'
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       
       - name: Remove suffix from Cmakelists.txt file
         run: |
@@ -118,7 +118,7 @@ jobs:
     if: github.event_name != 'pull_request'
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           fetch-depth: 0
           
@@ -179,7 +179,8 @@ jobs:
     if: github.event_name != 'pull_request'
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/
+        
 
       - name: Generate runner token
         id: token
@@ -265,7 +266,7 @@ jobs:
     if: github.event_name != 'pull_request'
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Generate runner token
         id: token
@@ -352,7 +353,7 @@ jobs:
     outputs:
       version_number: ${{ env.VERSION }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Create Build Environment
         # Some projects don't allow in-source building, so create a separate build directory
@@ -432,7 +433,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:    
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Attach to workspace
         uses: actions/download-artifact@v3
@@ -829,7 +830,7 @@ jobs:
     if: github.event_name != 'pull_request'
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Attach to workspace
         uses: actions/download-artifact@v2
@@ -909,7 +910,7 @@ jobs:
     if: github.event_name != 'pull_request'
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Attach to workspace
         uses: actions/download-artifact@v2
