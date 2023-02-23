@@ -491,8 +491,8 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ${{github.workspace}}/build/conan_home/
-          key: cache-${{ runner.os }}-${{ hashFiles('**/conanfile.txt') }}
-          restore-keys: cache-${{ runner.os }}-
+          key: cache-${{ runner.os }}-arm64-${{ hashFiles('**/conanfile.txt') }}
+          restore-keys: cache-${{ runner.os }}-arm64-
 
       - name: Build pktvisord + push symbol to backtrace.io
         uses: ./.github/actions/build-cpp

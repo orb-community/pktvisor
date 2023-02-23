@@ -268,7 +268,7 @@ jobs:
     needs: [ unit-tests-linux ]
     runs-on: ubuntu-latest
     # if this is a push into one of our main branches (rather than just a pull request), we will also package
-    if: github.event_name == 'pull_request'
+    if: github.event_name != 'pull_request'
     outputs:
       version_number: ${{ env.VERSION }}
     steps:
@@ -721,7 +721,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       runner_token: ${{ steps.token.outputs.runner }}
-    if: github.event_name == 'pull_request'
+    if: github.event_name != 'pull_request'
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -805,7 +805,7 @@ jobs:
   package-arm64:
     needs: [ unit-tests-linux, spinup-arm64-runner ]
     runs-on: [self-hosted, linux, ARM64]
-    if: github.event_name == 'pull_request'
+    if: github.event_name != 'pull_request'
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -817,8 +817,8 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ${{github.workspace}}/build/conan_home/
-          key: cache-${{ runner.os }}-${{ hashFiles('**/conanfile.txt') }}
-          restore-keys: cache-${{ runner.os }}-
+          key: cache-${{ runner.os }}-arm64-${{ hashFiles('**/conanfile.txt') }}
+          restore-keys: cache-${{ runner.os }}-arm64-
 
       - name: Build pktvisord + push symbol to bugsplat.com
         uses: ./.github/actions/build-cpp
@@ -896,7 +896,7 @@ jobs:
     continue-on-error: true
     needs: [ spinup-arm64-runner, package-arm64 ]
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+    if: github.event_name != 'pull_request'
     steps:
       - name: Attach to workspace
         uses: actions/download-artifact@v2
@@ -924,7 +924,7 @@ jobs:
   remove-arm64-runner:
     needs: [ remove-github-runner-arm64 ]
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+    if: github.event_name != 'pull_request'
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -967,7 +967,7 @@ jobs:
   pushing-manifests:
     needs: [ unit-tests-linux, remove-github-runner-arm64 ]
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+    if: github.event_name != 'pull_request'
     steps:    
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v1
