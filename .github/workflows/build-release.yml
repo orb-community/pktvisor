@@ -39,6 +39,7 @@ jobs:
         with:
           path: ${{github.workspace}}/build/conan_home/
           key: cache-${{ runner.os }}-${{ hashFiles('**/conanfile.txt') }}
+          restore-keys: cache-${{ runner.os }}-
 
       - name: linux package install
         if: matrix.os == 'ubuntu-latest'
@@ -376,6 +377,7 @@ jobs:
         with:
           path: ${{github.workspace}}/build/conan_home/
           key: cache-${{ runner.os }}-${{ hashFiles('**/conanfile.txt') }}
+          restore-keys: cache-${{ runner.os }}-
 
       - name: Configure CMake
         # Use a bash shell so we can use the same syntax for environment variable
