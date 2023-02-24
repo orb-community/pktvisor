@@ -22,6 +22,8 @@ function build() {
   mkdir /tmp/build
   cd /tmp/build
   cp -rf /pktvisor-src/build/conan_home/ .
+  chmod -R 664 /tmp/build/conan_home/
+  chmod -R a+X /tmp/build/conan_home/
   conan profile new --detect default
   conan profile update settings.compiler.libcxx=libstdc++11 default
   conan config set general.revisions_enabled=1
