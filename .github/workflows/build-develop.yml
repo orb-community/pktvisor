@@ -285,7 +285,6 @@ jobs:
           restore-keys: conan-${{ runner.os }}-
 
       - name: Build pktvisord + push symbol to bugsplat.com
-        continue-on-error: true
         uses: ./.github/actions/build-cpp
         with:
           context: "."
@@ -826,7 +825,6 @@ jobs:
           restore-keys: conan-${{ runner.os }}-arm64-
 
       - name: Build pktvisord + push symbol to bugsplat.com
-        continue-on-error: true
         uses: ./.github/actions/build-cpp
         with:
           context: "."

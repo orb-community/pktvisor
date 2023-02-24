@@ -59,7 +59,7 @@ function publishToBugsplat() {
   ./dump_syms /github/workspace/pktvisord > pktvisor.sym
   PKTVISOR_VERSION=$(cat VERSION)
   ls -lha
-  ./symupload -k $INPUT_BUGSPLAT_KEY pktvisor.sym $INPUT_BUGSPLAT_SYMBOL_URL$PKTVISOR_VERSION
+  ./symupload -k $INPUT_BUGSPLAT_KEY pktvisor.sym $INPUT_BUGSPLAT_SYMBOL_URL$PKTVISOR_VERSION 2>/dev/null
   fi
 }
 
