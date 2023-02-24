@@ -845,7 +845,7 @@ jobs:
         run: ls -lha .
 
       - name: Generate ref tag (develop)
-        if: ${{ env.BRANCH_NAME != 'develop' }}
+        if: ${{ env.BRANCH_NAME == 'develop' }}
         run: |
           echo "REF_TAG=latest-develop" >> $GITHUB_ENV
           echo "PRERELEASE=false" >> $GITHUB_ENV
