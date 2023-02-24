@@ -24,6 +24,7 @@ function build() {
   cp -rf /pktvisor-src/build/conan_home/ .
   chmod -R 664 /tmp/build/conan_home/
   chmod -R a+X /tmp/build/conan_home/
+  chmod a+x $(find /tmp/build/conan_home/ -name *.sh)
   conan profile new --detect default
   conan profile update settings.compiler.libcxx=libstdc++11 default
   conan config set general.revisions_enabled=1
@@ -41,6 +42,7 @@ function move() {
   cp -rf /tmp/build/VERSION /github/workspace/
   chmod -R 664 /tmp/build/conan_home/
   chmod -R a+X /tmp/build/conan_home/
+  chmod a+x $(find /tmp/build/conan_home/ -name *.sh)
   cp -rf /tmp/build/conan_home/ /github/workspace/build/
   cp -rf /pktvisor-src/golang/pkg/client/version.go /github/workspace/version.go
   cp -rf /pktvisor-src/src/tests/fixtures/pktvisor-port-service-names.csv /github/workspace/custom-iana.csv
