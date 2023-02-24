@@ -73,6 +73,8 @@ public:
             cpu_usage = 0.0;
         }
         return cpu_usage;
+#else
+        return 0;
 #endif
     }
 
@@ -98,6 +100,8 @@ public:
             file.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
         }
         return 0; // Nothing found
+#else
+        return 0;
 #endif
     }
 };
