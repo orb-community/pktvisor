@@ -104,6 +104,7 @@ jobs:
           restore-keys: conan-${{ runner.os }}-
 
       - name: Build pktvisord + push symbol to backtrace.io
+        continue-on-error: true
         uses: ./.github/actions/build-cpp
         with:
           context: "."
