@@ -303,9 +303,6 @@ jobs:
 
       - name: Debug artifacts
         run: ls -lha .
-
-      - name: Check user
-        run: id
         
       - name: Get VERSION
         id: build
@@ -846,9 +843,6 @@ jobs:
           
       - name: Debug artifacts
         run: ls -lha .
-
-      - name: Check user
-        run: id
 
       - name: Generate ref tag (develop)
         if: ${{ env.BRANCH_NAME == 'develop' }}
