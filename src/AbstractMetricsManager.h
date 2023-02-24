@@ -627,8 +627,6 @@ public:
             merged.merge(*m);
         }
 
-        std::string period_str = std::to_string(period) + "m";
-
         j[key]["period"]["start_ts"] = merged.start_tstamp().tv_sec;
         j[key]["period"]["length"] = merged.period_length();
 

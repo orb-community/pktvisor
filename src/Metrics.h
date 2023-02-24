@@ -515,22 +515,6 @@ private:
         return quantile.get_quantile(_percentile_threshold);
     }
 
-    auto _get_summarized_data(const std::vector<typename datasketches::frequent_items_sketch<T>::row> &items, std::function<std::string(const T &)> formatter, uint64_t threshold) const
-    {
-        std::map<std::string, uint64_t> summary;
-        for (uint64_t i = 0; i < std::min(_top_count, items.size()); i++) {
-            if (items[i].get_estimate() >= threshold) {
-                auto [removed, not_exists] = summary.emplace(formatter(items[i].get_item()), items[i].get_estimate());
-                if (!not_exists) {
-                    summary[removed->first] += items[i].get_estimate();
-                }
-            } else {
-                break;
-            }
-        }
-        return std::set<std::pair<std::string, uint64_t>, comparator>(summary.begin(), summary.end());
-    }
-
     void _set_opentelemetry_data(opentelemetry::proto::metrics::v1::NumberDataPoint *data_point, uint64_t start, uint64_t end, const Metric::LabelMap &l, uint64_t value) const
     {
         data_point->set_as_int(value);

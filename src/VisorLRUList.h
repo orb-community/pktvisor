@@ -71,7 +71,7 @@ public:
 
         if (m_MaxSize && m_CacheItemsMap.size() > m_MaxSize) {
             ListIterator lruIter = m_CacheItemsList.end();
-            lruIter--;
+            --lruIter;
 
             if (deletedValue != nullptr)
 #if __cplusplus > 199711L || _MSC_VER >= 1800

@@ -72,12 +72,10 @@ void AFPacket::flush_block(struct block_desc *pbd)
 void AFPacket::walk_block(struct block_desc *pbd)
 {
     int num_pkts = pbd->h1.num_pkts, i;
-    uint64_t bytes = 0;
     struct tpacket3_hdr *ppd;
 
     ppd = reinterpret_cast<struct tpacket3_hdr *>(reinterpret_cast<uint8_t *>(pbd) + pbd->h1.offset_to_first_pkt);
     for (i = 0; i < num_pkts; ++i) {
-        bytes += ppd->tp_snaplen;
 
         auto data_pointer = reinterpret_cast<uint8_t *>(ppd) + ppd->tp_mac;
         pcpp::RawPacket packet(data_pointer, ppd->tp_snaplen, timespec{pbd->h1.ts_last_pkt.ts_sec, pbd->h1.ts_last_pkt.ts_nsec},
