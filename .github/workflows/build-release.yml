@@ -514,9 +514,6 @@ jobs:
       - name: Debug artifacts
         run: ls -lha .
 
-      - name: Remove crashpad to avoid cache error
-        run: rm -rf "build/conan_home/.conan/data/crashpad/"
-
       - name: compacting arm64 binary
         run: |
           zip pktvisor-arm64.zip pktvisor-cli pktvisor-reader pktvisord
