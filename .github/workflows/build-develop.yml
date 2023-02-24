@@ -268,7 +268,7 @@ jobs:
     needs: [ unit-tests-linux ]
     runs-on: ubuntu-latest
     # if this is a push into one of our main branches (rather than just a pull request), we will also package
-    if: github.event_name == 'pull_request'
+    if: github.event_name != 'pull_request'
     outputs:
       version_number: ${{ env.VERSION }}
     steps:
@@ -480,7 +480,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       runner_token: ${{ steps.token.outputs.runner }}
-    if: github.event_name == 'pull_request'
+    if: github.event_name != 'pull_request'
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -648,7 +648,7 @@ jobs:
     continue-on-error: true
     needs: [ spinup-amd64-runner , upload-qa-artifact ]
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+    if: github.event_name != 'pull_request'
     steps:
       - name: Attach to workspace
         uses: actions/download-artifact@v2
@@ -676,7 +676,7 @@ jobs:
   remove-amd64-runner:
     needs: [ remove-github-runner-amd64 ]
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+    if: github.event_name != 'pull_request'
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -721,7 +721,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       runner_token: ${{ steps.token.outputs.runner }}
-    if: github.event_name == 'pull_request'
+    if: github.event_name != 'pull_request'
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -805,7 +805,7 @@ jobs:
   package-arm64:
     needs: [ unit-tests-linux, spinup-arm64-runner ]
     runs-on: [self-hosted, linux, ARM64]
-    if: github.event_name == 'pull_request'
+    if: github.event_name != 'pull_request'
     steps:
       - name: cleanup #https://github.com/actions/checkout/issues/211
         run: |
@@ -845,7 +845,7 @@ jobs:
         run: ls -lha .
 
       - name: Generate ref tag (develop)
-        if: ${{ env.BRANCH_NAME == 'develop' }}
+        if: ${{ env.BRANCH_NAME != 'develop' }}
         run: |
           echo "REF_TAG=latest-develop" >> $GITHUB_ENV
           echo "PRERELEASE=false" >> $GITHUB_ENV
@@ -900,7 +900,7 @@ jobs:
     continue-on-error: true
     needs: [ spinup-arm64-runner, package-arm64 ]
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+    if: github.event_name != 'pull_request'
     steps:
       - name: Attach to workspace
         uses: actions/download-artifact@v2
@@ -928,7 +928,7 @@ jobs:
   remove-arm64-runner:
     needs: [ remove-github-runner-arm64 ]
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+    if: github.event_name != 'pull_request'
     steps:
       - name: Checkout
         uses: actions/checkout@v3
