@@ -23,13 +23,23 @@ jobs:
         os: [ ubuntu-latest, macos-11 ]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v2
-
+      - uses: actions/checkout@v3
+      
       - name: Create Build Environment
         run: cmake -E make_directory ${{github.workspace}}/build
 
       - name: Get Conan
-        uses: turtlebrowser/get-conan@v1.0
+        id: conan
+        uses: turtlebrowser/get-conan@main
+        with:
+          version: 1.59.0
+
+      - name: Setup Conan Cache
+        uses: actions/cache@v3
+        with:
+          path: ${{github.workspace}}/build/conan_home/
+          key: conan-${{ runner.os }}-${{ hashFiles('conanfile.txt', '*/conanfile.txt') }}
+          restore-keys: conan-${{ runner.os }}-
 
       - name: linux package install
         if: matrix.os == 'ubuntu-latest'
@@ -52,12 +62,6 @@ jobs:
         shell: bash
         run: ctest -C $BUILD_TYPE
 
-      - name: Login to ns1labs conan
-        run: CONAN_USER_HOME=${{github.workspace}}/build/conan_home conan user -p ${{ secrets.CONAN_LABS_PASSWORD }} -r ns1labs ${{ secrets.CONAN_LABS_USERNAME }}
-
-      - name: Cache conan packages
-        run: CONAN_USER_HOME=${{github.workspace}}/build/conan_home conan upload "*" --all -r ns1labs -c
-
   prebuild-package:
     needs: [ unit-tests ]
     runs-on: ubuntu-latest
@@ -66,7 +70,7 @@ jobs:
       branch_name: ${{ steps.branch.outputs.name }}
     if: github.event_name != 'pull_request'
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       
       - name: Remove suffix from Cmakelists.txt file
         run: |
@@ -77,7 +81,10 @@ jobs:
         run: cmake -E make_directory ${{github.workspace}}/build
 
       - name: Get Conan
-        uses: turtlebrowser/get-conan@v1.0
+        id: conan
+        uses: turtlebrowser/get-conan@main
+        with:
+          version: 1.59.0
 
       - name: Configure CMake to generate VERSION
         shell: bash
@@ -111,7 +118,7 @@ jobs:
     if: github.event_name != 'pull_request'
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           fetch-depth: 0
           
@@ -124,7 +131,10 @@ jobs:
         run: cmake -E make_directory ${{github.workspace}}/build
 
       - name: Get Conan
-        uses: turtlebrowser/get-conan@v1.0
+        id: conan
+        uses: turtlebrowser/get-conan@main
+        with:
+          version: 1.59.0
 
       - name: Configure CMake to generate VERSION
         shell: bash
@@ -169,7 +179,7 @@ jobs:
     if: github.event_name != 'pull_request'
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3        
 
       - name: Generate runner token
         id: token
@@ -255,7 +265,7 @@ jobs:
     if: github.event_name != 'pull_request'
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Generate runner token
         id: token
@@ -342,7 +352,7 @@ jobs:
     outputs:
       version_number: ${{ env.VERSION }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Create Build Environment
         # Some projects don't allow in-source building, so create a separate build directory
@@ -352,7 +362,22 @@ jobs:
       - name: Get Conan
         # You may pin to the exact commit or the version.
         # uses: turtlebrowser/get-conan@4dc7e6dd45c8b1e02e909979d7cfc5ebba6ddbe2
-        uses: turtlebrowser/get-conan@v1.0
+        id: conan
+        uses: turtlebrowser/get-conan@main
+        with:
+          version: 1.59.0
+
+      - name: Remove libpcap from conanfile
+        shell: bash
+        run: |
+          sed -i -e "s/libpcap.*//g" "${{github.workspace}}\conanfile.txt"
+
+      - name: Setup Conan Cache
+        uses: actions/cache@v3
+        with:
+          path: ${{github.workspace}}/build/conan_home/
+          key: conan-${{ runner.os }}-${{ hashFiles('conanfile.txt', '*/conanfile.txt') }}
+          restore-keys: conan-${{ runner.os }}-
 
       - name: Configure CMake
         # Use a bash shell so we can use the same syntax for environment variable
@@ -401,25 +426,13 @@ jobs:
             ${{github.workspace}}\build\bin\pktvisord.exe
             ${{github.workspace}}\golang\pkg\client\version.go
           retention-days: 1
-
-      - name: Login to ns1labs conan
-        shell: pwsh
-        run: |
-          $env:CONAN_USER_HOME = "${{github.workspace}}\build\conan_home"
-          conan user -p ${{ secrets.CONAN_LABS_PASSWORD }} -r ns1labs ${{ secrets.CONAN_LABS_USERNAME }}
-
-      - name: Cache conan packages
-        shell: pwsh
-        run: |
-          $env:CONAN_USER_HOME = "${{github.workspace}}\build\conan_home"
-          conan upload "*" --all -r ns1labs -c
           
   build-cli-win64:
     needs: [ build-win64 ]
     runs-on: ubuntu-latest
     steps:    
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Attach to workspace
         uses: actions/download-artifact@v3
@@ -470,7 +483,17 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: workspace
-          
+
+      - name: Create Build Environment
+        run: cmake -E make_directory ${{github.workspace}}/build
+
+      - name: Setup Conan Cache
+        uses: actions/cache@v3
+        with:
+          path: ${{github.workspace}}/build/conan_home/
+          key: conan-${{ runner.os }}-arm64-${{ hashFiles('conanfile.txt', '*/conanfile.txt') }}
+          restore-keys: conan-${{ runner.os }}-arm64-
+
       - name: Build pktvisord + push symbol to backtrace.io
         uses: ./.github/actions/build-cpp
         with:
@@ -487,10 +510,13 @@ jobs:
         with:
           context: "."
           file: "./Dockerfile"
-          
+
       - name: Debug artifacts
         run: ls -lha .
-        
+
+      - name: Remove crashpad to avoid cache error
+        run: rm -rf "build/conan_home/.conan/data/crashpad/"
+
       - name: compacting arm64 binary
         run: |
           zip pktvisor-arm64.zip pktvisor-cli pktvisor-reader pktvisord
@@ -655,7 +681,17 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: workspace
-          
+
+      - name: Create Build Environment
+        run: cmake -E make_directory ${{github.workspace}}/build
+
+      - name: Setup Conan Cache
+        uses: actions/cache@v3
+        with:
+          path: ${{github.workspace}}/build/conan_home/
+          key: conan-${{ runner.os }}-${{ hashFiles('conanfile.txt', '*/conanfile.txt') }}
+          restore-keys: conan-${{ runner.os }}-
+
       - name: Build pktvisord + push symbol to backtrace.io
         uses: ./.github/actions/build-cpp
         with:
@@ -796,7 +832,7 @@ jobs:
     if: github.event_name != 'pull_request'
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Attach to workspace
         uses: actions/download-artifact@v2
@@ -876,7 +912,7 @@ jobs:
     if: github.event_name != 'pull_request'
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Attach to workspace
         uses: actions/download-artifact@v2

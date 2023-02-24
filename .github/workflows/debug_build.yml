@@ -20,7 +20,7 @@ jobs:
     outputs:
       version_number: ${{ steps.build.outputs.version }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Create Build Environment
         # Some projects don't allow in-source building, so create a separate build directory
@@ -30,7 +30,17 @@ jobs:
       - name: Get Conan
         # You may pin to the exact commit or the version.
         # uses: turtlebrowser/get-conan@4dc7e6dd45c8b1e02e909979d7cfc5ebba6ddbe2
-        uses: turtlebrowser/get-conan@v1.0
+        id: conan
+        uses: turtlebrowser/get-conan@main
+        with:
+          version: 1.59.0
+
+      - name: Setup Conan Cache
+        uses: actions/cache@v3
+        with:
+          path: ${{github.workspace}}/build/conan_home/
+          key: conan-${{ runner.os }}-${{ hashFiles('conanfile.txt', '*/conanfile.txt') }}
+          restore-keys: conan-${{ runner.os }}-
 
       - name: linux package install
         run: |
@@ -78,16 +88,20 @@ jobs:
           name: pktvisor
           verbose: true
 
-      - name: Login to ns1labs conan
-        run: CONAN_USER_HOME=${{github.workspace}}/build/conan_home conan user -p ${{ secrets.CONAN_LABS_PASSWORD }} -r ns1labs ${{ secrets.CONAN_LABS_USERNAME }}
-
-      - name: Cache conan packages
-        run: CONAN_USER_HOME=${{github.workspace}}/build/conan_home conan upload "*" --all -r ns1labs -c
-
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
+
+      - name: Create Build Environment
+        run: cmake -E make_directory ${{github.workspace}}/build
+
+      - name: Setup Conan Cache
+        uses: actions/cache@v3
+        with:
+          path: ${{github.workspace}}/build/conan_home/
+          key: conan-${{ runner.os }}-${{ hashFiles('conanfile.txt', '*/conanfile.txt') }}
+          restore-keys: conan-${{ runner.os }}-
 
       - name: Build pktvisord + push symbol to backtrace.io
         uses: ./.github/actions/build-cpp
