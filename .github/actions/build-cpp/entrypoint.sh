@@ -22,6 +22,7 @@ function build() {
   mkdir /tmp/build
   cd /tmp/build
   cp -rf /pktvisor-src/build/conan_home/ .
+  chmod -R 777 /tmp/build/conan_home/
   conan profile new --detect default
   conan profile update settings.compiler.libcxx=libstdc++11 default
   conan config set general.revisions_enabled=1
@@ -37,6 +38,7 @@ function move() {
   cp -rf /tmp/build/bin/crashpad_handler /github/workspace/
   cp -rf /tmp/build/bin/pktvisor-reader /github/workspace/
   cp -rf /tmp/build/VERSION /github/workspace/
+  chmod -R 777 /tmp/build/conan_home/
   cp -rf /tmp/build/conan_home/ /github/workspace/build/
   cp -rf /pktvisor-src/golang/pkg/client/version.go /github/workspace/version.go
   cp -rf /pktvisor-src/src/tests/fixtures/pktvisor-port-service-names.csv /github/workspace/custom-iana.csv
@@ -53,7 +55,7 @@ function publishToBugsplat() {
   ./dump_syms /github/workspace/pktvisord > pktvisor.sym
   PKTVISOR_VERSION=$(cat VERSION)
   ls -lha
-  ./symupload -k $INPUT_BUGSPLAT_KEY pktvisor.sym $INPUT_BUGSPLAT_SYMBOL_URL$PKTVISOR_VERSION
+  ./symupload -k $INPUT_BUGSPLAT_KEY pktvisor.sym $INPUT_BUGSPLAT_SYMBOL_URL$PKTVISOR_VERSION 2>/dev/null
   fi
 }
 

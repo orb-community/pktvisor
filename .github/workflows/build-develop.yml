@@ -807,7 +807,7 @@ jobs:
     runs-on: [self-hosted, linux, ARM64]
     if: github.event_name != 'pull_request'
     steps:
-      - name: cleanup #https://github.com/actions/checkout/issues/21
+      - name: cleanup #https://github.com/actions/checkout/issues/211
         run: |
           sudo chown -R $USER:$USER $GITHUB_WORKSPACE
 
@@ -843,9 +843,6 @@ jobs:
           
       - name: Debug artifacts
         run: ls -lha .
-
-      - name: Remove crashpad to avoid cache error
-        run: rm -rf "build/conan_home/.conan/data/crashpad/"
 
       - name: Generate ref tag (develop)
         if: ${{ env.BRANCH_NAME == 'develop' }}
