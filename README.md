@@ -1,8 +1,8 @@
 ![pktvisor](docs/images/pktvisor-header.png)
 
-[![Build status](https://github.com/ns1labs/pktvisor/workflows/Build/badge.svg)](https://github.com/ns1labs/pktvisor/actions)
-[![CodeQL](https://github.com/ns1labs/pktvisor/workflows/CodeQL/badge.svg)](https://github.com/ns1labs/pktvisor/security/code-scanning)
-[![CodeCov](https://codecov.io/gh/ns1labs/pktvisor/branch/develop/graph/badge.svg)](https://app.codecov.io/gh/ns1labs/pktvisor/tree/develop)
+[![Build status](https://github.com/orb-community/pktvisor/workflows/Build/badge.svg)](https://github.com/orb-community/pktvisor/actions)
+[![CodeQL](https://github.com/orb-community/pktvisor/workflows/CodeQL/badge.svg)](https://github.com/orb-community/pktvisor/security/code-scanning)
+[![CodeCov](https://codecov.io/gh/orb-community/pktvisor/branch/develop/graph/badge.svg)](https://app.codecov.io/gh/orb-community/pktvisor/tree/develop)
 
 <p align="left">
   <strong>
@@ -38,7 +38,7 @@ The [stream analyzer system](src/handlers) includes full application layer analy
 * Set Cardinality
 * GeoIP/ASN
 
-Please see the list of [current metrics](https://github.com/ns1labs/pktvisor/wiki/Current-Metrics) or the [sample metric output](https://github.com/ns1labs/pktvisor/wiki/Sample-pktvisor-Output-Data).
+Please see the list of [current metrics](https://github.com/orb-community/pktvisor/wiki/Current-Metrics) or the [sample metric output](https://github.com/orb-community/pktvisor/wiki/Sample-pktvisor-Output-Data).
 
 pktvisor has its origins in observability of critical internet infrastructure in support of DDoS protection, traffic
 engineering, and ongoing operations.
@@ -93,7 +93,7 @@ docker run -it --rm --net=host ns1labs/pktvisor pktvisor-cli
 ### Linux Static Binary (AppImage, x86_64)
 
 You may also use the Linux all-in-one binary, built with [AppImage](https://appimage.org/), which is available for
-download [on the Releases page](https://github.com/ns1labs/pktvisor/releases). It is designed to work on all modern
+download [on the Releases page](https://github.com/orb-community/pktvisor/releases). It is designed to work on all modern
 Linux distributions and does not require installation or any other dependencies.
 
 ```shell
@@ -574,10 +574,10 @@ Please [contact us](#contact-us) if you have any questions on installation, use,
 
 We are very interested in hearing about your use cases, feature requests, and other feedback!
 
-* [File an issue](https://github.com/ns1labs/pktvisor/issues/new)
-* See existing [issues](https://github.com/ns1labs/pktvisor/issues)
-* Start a [Discussion](https://github.com/ns1labs/pktvisor/discussions)
-* [Join us on Slack](https://join.slack.com/t/ns1labs/shared_invite/zt-qqsm5cb4-9fsq1xa~R3h~nX6W0sJzmA)
+* [File an issue](https://github.com/orb-community/pktvisor/issues/new)
+* See existing [issues](https://github.com/orb-community/pktvisor/issues)
+* Start a [Discussion](https://github.com/orb-community/pktvisor/discussions)
+* [Join us on Slack](https://join.slack.com/t/orb-community/shared_invite/zt-qqsm5cb4-9fsq1xa~R3h~nX6W0sJzmA)
 * Send mail to [info@pktvisor.dev](mailto:info@pktvisor.dev)
 
 ## Build
@@ -603,7 +603,7 @@ The general build steps are:
 
 ```
 # clone the repository
-git clone https://github.com/ns1labs/pktvisor.git
+git clone https://github.com/orb-community/pktvisor.git
 cd pktvisor
 mkdir build && cd build
 
@@ -618,8 +618,8 @@ bin/pktvisord --help
 ```
 
 As development environments can vary widely, please see
-the [Dockerfile](https://github.com/ns1labs/pktvisor/blob/master/docker/Dockerfile)
-and [Continuous Integration build file](https://github.com/ns1labs/pktvisor/blob/master/.github/workflows/build.yml) for
+the [Dockerfile](https://github.com/orb-community/pktvisor/blob/master/docker/Dockerfile)
+and [Continuous Integration build file](https://github.com/orb-community/pktvisor/blob/master/.github/workflows/build.yml) for
 reference.
 
 ## Contribute
