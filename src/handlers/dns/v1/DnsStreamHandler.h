@@ -36,6 +36,8 @@ namespace group {
 enum DnsMetrics : visor::MetricGroupIntType {
     Cardinality,
     Counters,
+    Quantiles,
+    Histograms,
     DnsTransactions,
     TopEcs,
     TopQnames,
@@ -65,6 +67,8 @@ protected:
 
     Quantile<uint64_t> _dnsXactFromTimeUs;
     Quantile<uint64_t> _dnsXactToTimeUs;
+    Histogram<uint64_t> _dnsXactFromHistTimeUs;
+    Histogram<uint64_t> _dnsXactToHistTimeUs;
     Quantile<double> _dnsXactRatio;
 
     Cardinality _dns_qnameCard;
@@ -140,6 +144,8 @@ public:
     DnsMetricsBucket()
         : _dnsXactFromTimeUs(DNS_SCHEMA, {"xact", "out", "quantiles_us"}, "Quantiles of transaction timing (query/reply pairs) when host is client, in microseconds")
         , _dnsXactToTimeUs(DNS_SCHEMA, {"xact", "in", "quantiles_us"}, "Quantiles of transaction timing (query/reply pairs) when host is server, in microseconds")
+        , _dnsXactFromHistTimeUs(DNS_SCHEMA, {"xact", "out", "histogram_us"}, "Histogram of transaction timing (query/reply pairs) when host is client, in microseconds")
+        , _dnsXactToHistTimeUs(DNS_SCHEMA, {"xact", "in", "histogram_us"}, "Histogram of transaction timing (query/reply pairs) when host is server, in microseconds")
         , _dnsXactRatio(DNS_SCHEMA, {"xact", "ratio", "quantiles"}, "Quantiles of ratio of packet sizes in a DNS transaction (reply/query)")
         , _dns_qnameCard(DNS_SCHEMA, {"cardinality", "qname"}, "Cardinality of unique QNAMES, both ingress and egress")
         , _dns_topGeoLocECS(DNS_SCHEMA, "geo_loc", {"top_geoLoc_ecs"}, "Top GeoIP ECS locations")
@@ -393,6 +399,8 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
     static const inline StreamMetricsHandler::GroupDefType _group_defs = {
         {"cardinality", group::DnsMetrics::Cardinality},
         {"counters", group::DnsMetrics::Counters},
+        {"quantiles", group::DnsMetrics::Quantiles},
+        {"histograms", group::DnsMetrics::Histograms},
         {"dns_transaction", group::DnsMetrics::DnsTransactions},
         {"top_ecs", group::DnsMetrics::TopEcs},
         {"top_qnames", group::DnsMetrics::TopQnames},

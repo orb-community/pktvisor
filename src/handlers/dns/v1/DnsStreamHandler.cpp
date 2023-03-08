@@ -52,6 +52,7 @@ void DnsStreamHandler::start()
     // default enabled groups
     _groups.set(group::DnsMetrics::Cardinality);
     _groups.set(group::DnsMetrics::Counters);
+    _groups.set(group::DnsMetrics::Quantiles);
     _groups.set(group::DnsMetrics::DnsTransactions);
     _groups.set(group::DnsMetrics::TopQnames);
     _groups.set(group::DnsMetrics::TopPorts);
@@ -688,9 +689,15 @@ void DnsMetricsBucket::specialized_merge(const AbstractMetricsBucket &o, Metric:
         _counters.xacts_out += other._counters.xacts_out;
         _counters.xacts_timed_out += other._counters.xacts_timed_out;
 
-        _dnsXactFromTimeUs.merge(other._dnsXactFromTimeUs, agg_operator);
-        _dnsXactToTimeUs.merge(other._dnsXactToTimeUs, agg_operator);
-        _dnsXactRatio.merge(other._dnsXactRatio, agg_operator);
+        if (group_enabled(group::DnsMetrics::Quantiles)) {
+            _dnsXactFromTimeUs.merge(other._dnsXactFromTimeUs, agg_operator);
+            _dnsXactToTimeUs.merge(other._dnsXactToTimeUs, agg_operator);
+            _dnsXactRatio.merge(other._dnsXactRatio, agg_operator);
+        }
+        if (group_enabled(group::DnsMetrics::Histograms)) {
+            _dnsXactFromHistTimeUs.merge(other._dnsXactFromHistTimeUs);
+            _dnsXactToHistTimeUs.merge(other._dnsXactToHistTimeUs);
+        }
         _dns_slowXactIn.merge(other._dns_slowXactIn);
         _dns_slowXactOut.merge(other._dns_slowXactOut);
     }
@@ -769,9 +776,16 @@ void DnsMetricsBucket::to_json(json &j) const
         _counters.xacts_in.to_json(j);
         _dns_slowXactIn.to_json(j);
 
-        _dnsXactFromTimeUs.to_json(j);
-        _dnsXactToTimeUs.to_json(j);
-        _dnsXactRatio.to_json(j);
+        if (group_enabled(group::DnsMetrics::Quantiles)) {
+            _dnsXactFromTimeUs.to_json(j);
+            _dnsXactToTimeUs.to_json(j);
+            _dnsXactRatio.to_json(j);
+        }
+
+        if (group_enabled(group::DnsMetrics::Histograms)) {
+            _dnsXactFromHistTimeUs.to_json(j);
+            _dnsXactToHistTimeUs.to_json(j);
+        }
 
         _counters.xacts_out.to_json(j);
         _dns_slowXactOut.to_json(j);
@@ -1089,13 +1103,19 @@ void DnsMetricsBucket::new_dns_transaction(bool deep, float to90th, float from90
 
     if (dir == PacketDirection::toHost) {
         ++_counters.xacts_out;
-        if (deep) {
+        if (deep && group_enabled(group::DnsMetrics::Quantiles)) {
             _dnsXactFromTimeUs.update(xactTime);
+        }
+        if (deep && group_enabled(group::DnsMetrics::Histograms)) {
+            _dnsXactFromHistTimeUs.update(xactTime);
         }
     } else if (dir == PacketDirection::fromHost) {
         ++_counters.xacts_in;
-        if (deep) {
+        if (deep && group_enabled(group::DnsMetrics::Quantiles)) {
             _dnsXactToTimeUs.update(xactTime);
+        }
+        if (deep && group_enabled(group::DnsMetrics::Histograms)) {
+            _dnsXactToHistTimeUs.update(xactTime);
         }
     }
 
@@ -1157,9 +1177,16 @@ void DnsMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap ad
         _counters.xacts_in.to_prometheus(out, add_labels);
         _dns_slowXactIn.to_prometheus(out, add_labels);
 
-        _dnsXactFromTimeUs.to_prometheus(out, add_labels);
-        _dnsXactToTimeUs.to_prometheus(out, add_labels);
-        _dnsXactRatio.to_prometheus(out, add_labels);
+        if (group_enabled(group::DnsMetrics::Quantiles)) {
+            _dnsXactFromTimeUs.to_prometheus(out, add_labels);
+            _dnsXactToTimeUs.to_prometheus(out, add_labels);
+            _dnsXactRatio.to_prometheus(out, add_labels);
+        }
+
+        if (group_enabled(group::DnsMetrics::Histograms)) {
+            _dnsXactFromHistTimeUs.to_prometheus(out, add_labels);
+            _dnsXactToHistTimeUs.to_prometheus(out, add_labels);
+        }
 
         _counters.xacts_out.to_prometheus(out, add_labels);
         _dns_slowXactOut.to_prometheus(out, add_labels);
@@ -1254,9 +1281,16 @@ void DnsMetricsBucket::to_opentelemetry(metrics::v1::ScopeMetrics &scope, Metric
         _counters.xacts_in.to_opentelemetry(scope, start_ts, end_ts, add_labels);
         _dns_slowXactIn.to_opentelemetry(scope, start_ts, end_ts, add_labels);
 
-        _dnsXactFromTimeUs.to_opentelemetry(scope, start_ts, end_ts, add_labels);
-        _dnsXactToTimeUs.to_opentelemetry(scope, start_ts, end_ts, add_labels);
-        _dnsXactRatio.to_opentelemetry(scope, start_ts, end_ts, add_labels);
+        if (group_enabled(group::DnsMetrics::Quantiles)) {
+            _dnsXactFromTimeUs.to_opentelemetry(scope, start_ts, end_ts, add_labels);
+            _dnsXactToTimeUs.to_opentelemetry(scope, start_ts, end_ts, add_labels);
+            _dnsXactRatio.to_opentelemetry(scope, start_ts, end_ts, add_labels);
+        }
+
+        if (group_enabled(group::DnsMetrics::Histograms)) {
+            _dnsXactFromHistTimeUs.to_opentelemetry(scope, start_ts, end_ts, add_labels);
+            _dnsXactToHistTimeUs.to_opentelemetry(scope, start_ts, end_ts, add_labels);
+        }
 
         _counters.xacts_out.to_opentelemetry(scope, start_ts, end_ts, add_labels);
         _dns_slowXactOut.to_opentelemetry(scope, start_ts, end_ts, add_labels);
