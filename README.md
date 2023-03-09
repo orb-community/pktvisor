@@ -591,7 +591,7 @@ pktvisor is developed and tested on Linux and OSX. A Windows port is in progress
 
 #### Dependencies
 
-* [Conan](https://conan.io/) C++ package manager
+* [Conan](https://conan.io/) 1.X C++ package manager
 * CMake >= 3.13 (`cmake`)
 * C++ compiler supporting C++17
 
