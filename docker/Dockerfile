@@ -53,6 +53,9 @@ RUN mkdir /geo-db
 RUN cd /geo-db && wget https://github.com/ns1labs/geo-asn-database/raw/main/asn.mmdb.gz
 RUN cd /geo-db && wget https://github.com/ns1labs/geo-asn-database/raw/main/city.mmdb.gz
 
+RUN mkdir /iana
+COPY --from=cppbuild /pktvisor-src/src/tests/fixtures/pktvisor-port-service-names.csv /iana/custom-iana.csv
+
 COPY --from=cppbuild /tmp/build/bin/pktvisord /usr/local/sbin/pktvisord
 COPY --from=cppbuild /tmp/build/bin/crashpad_handler /usr/local/sbin/crashpad_handler
 COPY --from=cppbuild /tmp/build/bin/pktvisor-reader /usr/local/sbin/pktvisor-reader
