@@ -908,9 +908,10 @@ TEST_CASE("DNS groups", "[pcap][dns]")
     c.config_set<uint64_t>("num_periods", 1);
     DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
 
-    SECTION("disable cardinality and counters")
+    SECTION("disable cardinality and counters and enable histograms")
     {
         dns_handler.config_set<visor::Configurable::StringList>("disable", {"cardinality", "counters"});
+        dns_handler.config_set<visor::Configurable::StringList>("enable", {"histograms"});
 
         dns_handler.start();
         stream.start();
@@ -939,6 +940,7 @@ TEST_CASE("DNS groups", "[pcap][dns]")
         CHECK(j["cardinality"]["qname"] == nullptr);
         CHECK(j["top_qname2"][0]["name"] == ".test.com");
         CHECK(j["xact"]["ratio"]["quantiles"]["p50"] != nullptr);
+        CHECK(j["xact"]["out"]["histogram_us"]["buckets"] != nullptr);
     }
 
     SECTION("disable TopQname and Dns Transactions")
@@ -976,13 +978,13 @@ TEST_CASE("DNS groups", "[pcap][dns]")
     SECTION("disable invalid dns group")
     {
         dns_handler.config_set<visor::Configurable::StringList>("disable", {"top_qnames", "dns_top_wired"});
-        REQUIRE_THROWS_WITH(dns_handler.start(), "dns_top_wired is an invalid/unsupported metric group. The valid groups are: all, cardinality, counters, dns_transaction, top_ecs, top_ports, top_qnames, top_qnames_details");
+        REQUIRE_THROWS_WITH(dns_handler.start(), "dns_top_wired is an invalid/unsupported metric group. The valid groups are: all, cardinality, counters, dns_transaction, histograms, quantiles, top_ecs, top_ports, top_qnames, top_qnames_details");
     }
 
     SECTION("enable invalid dns group")
     {
         dns_handler.config_set<visor::Configurable::StringList>("enable", {"top_qnames", "dns_top_wired"});
-        REQUIRE_THROWS_WITH(dns_handler.start(), "dns_top_wired is an invalid/unsupported metric group. The valid groups are: all, cardinality, counters, dns_transaction, top_ecs, top_ports, top_qnames, top_qnames_details");
+        REQUIRE_THROWS_WITH(dns_handler.start(), "dns_top_wired is an invalid/unsupported metric group. The valid groups are: all, cardinality, counters, dns_transaction, histograms, quantiles, top_ecs, top_ports, top_qnames, top_qnames_details");
     }
 }
 

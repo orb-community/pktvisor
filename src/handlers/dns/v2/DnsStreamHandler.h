@@ -42,6 +42,7 @@ enum DnsMetrics : visor::MetricGroupIntType {
     Cardinality,
     Counters,
     Quantiles,
+    Histograms,
     TopEcs,
     TopQtypes,
     TopRcodes,
@@ -223,6 +224,7 @@ struct DnsDirection {
     Counters counters;
 
     Quantile<uint64_t> dnsTimeUs;
+    Histogram<uint64_t> dnsHistTimeUs;
     Quantile<double> dnsRatio;
     Rate dnsRate;
 
@@ -247,6 +249,7 @@ struct DnsDirection {
     DnsDirection()
         : counters()
         , dnsTimeUs(DNS_SCHEMA, {"xact_time_us"}, "Quantiles of transaction timing (query/reply pairs) in microseconds")
+        , dnsHistTimeUs(DNS_SCHEMA, {"xact_histogram_us"}, "Histogram of transaction timing (query/reply pairs) in microseconds")
         , dnsRatio(DNS_SCHEMA, {"response_query_size_ratio"}, "Quantiles of ratio of packet sizes in a DNS transaction (reply/query)")
         , dnsRate(DNS_SCHEMA, {"xact_rates"}, "Rate of all DNS transaction (reply/query) per second")
         , qnameCard(DNS_SCHEMA, {"cardinality", "qname"}, "Cardinality of unique QNAMES, both ingress and egress")
@@ -564,6 +567,7 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
         {"cardinality", group::DnsMetrics::Cardinality},
         {"counters", group::DnsMetrics::Counters},
         {"quantiles", group::DnsMetrics::Quantiles},
+        {"histograms", group::DnsMetrics::Histograms},
         {"top_ecs", group::DnsMetrics::TopEcs},
         {"top_qtypes", group::DnsMetrics::TopQtypes},
         {"top_rcodes", group::DnsMetrics::TopRcodes},

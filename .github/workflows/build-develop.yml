@@ -34,7 +34,10 @@ jobs:
         run: cmake -E make_directory ${{github.workspace}}/build
 
       - name: Get Conan
-        run: brew install conan
+        id: conan
+        uses: turtlebrowser/get-conan@main
+        with:
+          version: 1.59.0
 
       - name: Setup Conan Cache
         uses: actions/cache@v3

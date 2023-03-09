@@ -670,6 +670,7 @@ void DnsMetricsBucket::specialized_merge(const AbstractMetricsBucket &o, Metric:
 
         if (group_enabled(group::DnsMetrics::XactTimes)) {
             _dns.at(dns.first).dnsTimeUs.merge(dns.second.dnsTimeUs, agg_operator);
+            _dns.at(dns.first).dnsHistTimeUs.merge(dns.second.dnsHistTimeUs);
             _dns.at(dns.first).topSlow.merge(dns.second.topSlow);
         }
     }
@@ -750,6 +751,7 @@ void DnsMetricsBucket::to_json(json &j) const
 
         if (group_enabled(group::DnsMetrics::XactTimes)) {
             dns.second.dnsTimeUs.to_json(j[_dir_str.at(dns.first)]);
+            dns.second.dnsHistTimeUs.to_json(j[_dir_str.at(dns.first)]);
             dns.second.topSlow.to_json(j[_dir_str.at(dns.first)]);
         }
     }
@@ -832,6 +834,7 @@ void DnsMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap ad
 
         if (group_enabled(group::DnsMetrics::XactTimes)) {
             dns.second.dnsTimeUs.to_prometheus(out, dir_labels);
+            dns.second.dnsHistTimeUs.to_prometheus(out, dir_labels);
             dns.second.topSlow.to_prometheus(out, dir_labels);
         }
     }
@@ -917,6 +920,7 @@ void DnsMetricsBucket::to_opentelemetry(metrics::v1::ScopeMetrics &scope, Metric
 
         if (group_enabled(group::DnsMetrics::XactTimes)) {
             dns.second.dnsTimeUs.to_opentelemetry(scope, start_ts, end_ts, dir_labels);
+            dns.second.dnsHistTimeUs.to_opentelemetry(scope, start_ts, end_ts, dir_labels);
             dns.second.topSlow.to_opentelemetry(scope, start_ts, end_ts, dir_labels);
         }
     }
@@ -1014,7 +1018,10 @@ void DnsMetricsBucket::new_dns_transaction(bool deep, float per90th, DnsLayer &p
         data.topUDPPort.update(port);
     }
 
-    group_enabled(group::DnsMetrics::XactTimes) ? data.dnsTimeUs.update(xactTime) : void();
+    if (group_enabled(group::DnsMetrics::XactTimes)) {
+        data.dnsTimeUs.update(xactTime);
+        data.dnsHistTimeUs.update(xactTime);
+    }
 
     auto success = payload.parseResources(true);
     if (!success) {
