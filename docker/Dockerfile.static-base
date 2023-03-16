@@ -8,7 +8,7 @@ RUN ln -s /usr/local/bin/clang /usr/local/bin/cc \
     && ln -s /usr/local/bin/clang++ /usr/local/bin/c++ \
     && ln -s /usr/local/bin/clang++ /usr/local/bin/g++ \
     && ln -s /usr/local/bin/clang-cpp /usr/local/bin/cpp \
-    && pip install conan
+    && pip install conan==1.59.0
 
 # need git for current hash for VERSION
 COPY ./.git/ /pktvisor-src/.git/
