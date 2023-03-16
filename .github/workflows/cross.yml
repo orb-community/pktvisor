@@ -74,7 +74,6 @@ jobs:
           # init config
           CONAN_V2_MODE=1 conan config init
           conan config set general.revisions_enabled=1
-          conan remote add ns1labs https://ns1labs.jfrog.io/artifactory/api/conan/ns1labs-conan
           # add custom compiler settings for libc
           python3 -c 'import yaml; p = "${{env.CONAN_USER_HOME}}/.conan/settings.yml"; d = yaml.safe_load(open(p)); d["compiler"]["gcc"]["libc"] = ["None", "glibc", "musl"]; yaml.safe_dump(d, open(p, "w"))'
       - name: Create Conan host profile
