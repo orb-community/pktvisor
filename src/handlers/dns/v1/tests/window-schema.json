@@ -107,7 +107,7 @@
         ],
         "top_refused": [],
         "top_qname_by_resp_bytes": [],
-        "top_srvfail": [],
+        "top_servfail": [],
         "top_udp_ports": [
           {
             "estimate": 302,
@@ -161,7 +161,7 @@
           "queries": 2930,
           "refused": 0,
           "replies": 2921,
-          "srvfail": 0,
+          "servfail": 0,
           "tcp": 2880,
           "total": 5851,
           "udp": 2971,
@@ -307,7 +307,7 @@
           ],
           "top_refused": [],
           "top_qname_by_resp_bytes": [],
-          "top_srvfail": [],
+          "top_servfail": [],
           "top_udp_ports": [
             {
               "estimate": 302,
@@ -361,7 +361,7 @@
             "queries": 2930,
             "refused": 0,
             "replies": 2921,
-            "srvfail": 0,
+            "servfail": 0,
             "tcp": 2880,
             "total": 5851,
             "udp": 2971
@@ -411,7 +411,7 @@
         "top_rcode",
         "top_refused",
         "top_qname_by_resp_bytes",
-        "top_srvfail",
+        "top_servfail",
         "top_udp_ports",
         "wire_packets",
         "xact"
@@ -849,10 +849,10 @@
             "$id": "#/properties/dns/properties/top_qname_by_resp_bytes/items"
           }
         },
-        "top_srvfail": {
-          "$id": "#/properties/dns/properties/top_srvfail",
+        "top_servfail": {
+          "$id": "#/properties/dns/properties/top_servfail",
           "type": "array",
-          "title": "The top_srvfail schema",
+          "title": "The top_servfail schema",
           "description": "An explanation about the purpose of this instance.",
           "default": [],
           "examples": [
@@ -860,7 +860,7 @@
           ],
           "additionalItems": true,
           "items": {
-            "$id": "#/properties/dns/properties/top_srvfail/items"
+            "$id": "#/properties/dns/properties/top_servfail/items"
           }
         },
         "top_udp_ports": {
@@ -945,7 +945,7 @@
               "queries": 2930,
               "refused": 0,
               "replies": 2921,
-              "srvfail": 0,
+              "servfail": 0,
               "tcp": 2880,
               "total": 5851,
               "udp": 2971,
@@ -963,7 +963,7 @@
             "queries",
             "refused",
             "replies",
-            "srvfail",
+            "servfail",
             "tcp",
             "total",
             "udp",
@@ -1071,10 +1071,10 @@
                 2921
               ]
             },
-            "srvfail": {
-              "$id": "#/properties/dns/properties/wire_packets/properties/srvfail",
+            "servfail": {
+              "$id": "#/properties/dns/properties/wire_packets/properties/servfail",
               "type": "integer",
-              "title": "The srvfail schema",
+              "title": "The servfail schema",
               "description": "An explanation about the purpose of this instance.",
               "default": 0,
               "examples": [
