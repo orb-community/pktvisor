@@ -20,6 +20,7 @@ COPY ./integration_tests/ /pktvisor-src/integration_tests/
 COPY ./cmake/ /pktvisor-src/cmake/
 COPY ./CMakeLists.txt /pktvisor-src/
 COPY ./conanfile.txt /pktvisor-src/
+RUN sed -i -e "s/crashpad.*//g" /pktvisor-src/conanfile.txt
 
 WORKDIR /tmp/build
 
