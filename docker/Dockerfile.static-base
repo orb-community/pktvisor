@@ -24,7 +24,7 @@ RUN sed -i -e "s/crashpad.*//g" /pktvisor-src/conanfile.txt
 
 WORKDIR /tmp/build
 
-RUN cmake -DCMAKE_BUILD_TYPE=Release /pktvisor-src \
+RUN cmake -DCMAKE_BUILD_TYPE=Release -DCRASHPAD_NOT_SUPPORTED=true /pktvisor-src \
     && make all test -j 4
 
 # after build, use this to upload conan packages to ns1labs jfrog server
