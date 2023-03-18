@@ -13,6 +13,7 @@ COPY ./.git/ /pktvisor-src/.git/
 COPY ./src/ /pktvisor-src/src/
 COPY ./cmd/ /pktvisor-src/cmd/
 COPY ./3rd/ /pktvisor-src/3rd/
+COPY ./libs/ /pktvisor-src/libs/
 COPY ./docker/ /pktvisor-src/docker/
 COPY ./golang/ /pktvisor-src/golang/
 COPY ./integration_tests/ /pktvisor-src/integration_tests/
