@@ -3,6 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 #include "FlowStreamHandler.h"
+#include "Dscp.h"
 #include "HandlerModulePlugin.h"
 #include <Corrade/Utility/Debug.h>
 #include <fmt/format.h>
@@ -356,6 +357,8 @@ void FlowStreamHandler::process_sflow_cb(const SFSample &payload, [[maybe_unused
             flow.payload_size = sample.sampledPacketSize;
         }
 
+        flow.tos = static_cast<uint8_t>(sample.dcd_ipTos);
+
         flow.src_port = sample.dcd_sport;
         flow.dst_port = sample.dcd_dport;
         flow.if_in_index = sample.inputPort;
@@ -431,6 +434,7 @@ void FlowStreamHandler::process_netflow_cb(const std::string &senderIP, const NF
 
         flow.packets = sample.flow_packets;
         flow.payload_size = sample.flow_octets;
+        flow.tos = sample.tos;
 
         flow.src_port = sample.src_port;
         flow.dst_port = sample.dst_port;
@@ -684,6 +688,9 @@ void FlowMetricsBucket::specialized_merge(const AbstractMetricsBucket &o, [[mayb
                     top_dir.second.topSrcIPPort.merge(interface.second->directionTopN.at(top_dir.first).topSrcIPPort);
                     top_dir.second.topDstIPPort.merge(interface.second->directionTopN.at(top_dir.first).topDstIPPort);
                 }
+                if (group_enabled(group::FlowMetrics::TopTos)) {
+                    top_dir.second.topTos.merge(interface.second->directionTopN.at(top_dir.first).topTos);
+                }
             }
 
             if (group_enabled(group::FlowMetrics::ByBytes)) {
@@ -823,6 +830,15 @@ void FlowMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap a
                 if (group_enabled(group::FlowMetrics::TopIPPorts)) {
                     top_dir.second.topSrcIPPort.to_prometheus(out, interface_labels);
                     top_dir.second.topDstIPPort.to_prometheus(out, interface_labels);
+                }
+                if (group_enabled(group::FlowMetrics::TopTos)) {
+                    top_dir.second.topTos.to_prometheus(out, interface_labels, [](const uint8_t &val) {
+                        if (DscpNames.find(val) != DscpNames.end()) {
+                            return DscpNames[val];
+                        } else {
+                            return std::to_string(val);
+                        }
+                    });
                 }
             }
 
@@ -979,6 +995,15 @@ void FlowMetricsBucket::to_opentelemetry(metrics::v1::ScopeMetrics &scope, Metri
                     top_dir.second.topSrcIPPort.to_opentelemetry(scope, start_ts, end_ts, interface_labels);
                     top_dir.second.topDstIPPort.to_opentelemetry(scope, start_ts, end_ts, interface_labels);
                 }
+                if (group_enabled(group::FlowMetrics::TopTos)) {
+                    top_dir.second.topTos.to_opentelemetry(scope, start_ts, end_ts, interface_labels, [](const uint8_t &val) {
+                        if (DscpNames.find(val) != DscpNames.end()) {
+                            return DscpNames[val];
+                        } else {
+                            return std::to_string(val);
+                        }
+                    });
+                }
             }
 
             if (group_enabled(group::FlowMetrics::ByBytes)) {
@@ -1127,6 +1152,15 @@ void FlowMetricsBucket::to_json(json &j) const
                 if (group_enabled(group::FlowMetrics::TopIPPorts)) {
                     top_dir.second.topSrcIPPort.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
                     top_dir.second.topDstIPPort.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
+                }
+                if (group_enabled(group::FlowMetrics::TopTos)) {
+                    top_dir.second.topTos.to_json(j["devices"][deviceId]["interfaces"][interfaceId], [](const uint8_t &val) {
+                        if (DscpNames.find(val) != DscpNames.end()) {
+                            return DscpNames[val];
+                        } else {
+                            return std::to_string(val);
+                        }
+                    });
                 }
             }
 
@@ -1301,6 +1335,9 @@ void FlowMetricsBucket::process_interface(bool deep, FlowInterface *iface, const
         if (flow.dst_port > 0) {
             iface->dstPortCard.update(flow.dst_port);
         }
+    }
+    if (group_enabled(group::FlowMetrics::TopTos)) {
+        iface->directionTopN.at(type).topTos.update(flow.tos, aggregator);
     }
 
     std::string application_src;
