@@ -46,7 +46,7 @@ struct dnshdr {
 			opcode:4,
 		/**	Query/Response flag */
 			queryOrResponse:1,
-		/** Return Code */
+		/** Response code */
 			responseCode:4,
 		/** Checking disabled flag */
 			checkingDisabled:1,
@@ -76,7 +76,7 @@ struct dnshdr {
 			authenticData:1,
 		/** Checking disabled flag */
 			checkingDisabled:1,
-		/** Return Code */
+		/** Response code */
 			responseCode:4;
 #endif
 		/** Number of DNS query records in packet */
