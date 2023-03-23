@@ -688,8 +688,8 @@ void FlowMetricsBucket::specialized_merge(const AbstractMetricsBucket &o, [[mayb
                     top_dir.second.topSrcIPPort.merge(interface.second->directionTopN.at(top_dir.first).topSrcIPPort);
                     top_dir.second.topDstIPPort.merge(interface.second->directionTopN.at(top_dir.first).topDstIPPort);
                 }
-                if (group_enabled(group::FlowMetrics::TopTos)) {
-                    top_dir.second.topTos.merge(interface.second->directionTopN.at(top_dir.first).topTos);
+                if (group_enabled(group::FlowMetrics::TopDSCP)) {
+                    top_dir.second.topDSCP.merge(interface.second->directionTopN.at(top_dir.first).topDSCP);
                 }
             }
 
@@ -831,8 +831,8 @@ void FlowMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap a
                     top_dir.second.topSrcIPPort.to_prometheus(out, interface_labels);
                     top_dir.second.topDstIPPort.to_prometheus(out, interface_labels);
                 }
-                if (group_enabled(group::FlowMetrics::TopTos)) {
-                    top_dir.second.topTos.to_prometheus(out, interface_labels, [](const uint8_t &val) {
+                if (group_enabled(group::FlowMetrics::TopDSCP)) {
+                    top_dir.second.topDSCP.to_prometheus(out, interface_labels, [](const uint8_t &val) {
                         if (DscpNames.find(val) != DscpNames.end()) {
                             return DscpNames[val];
                         } else {
@@ -995,8 +995,8 @@ void FlowMetricsBucket::to_opentelemetry(metrics::v1::ScopeMetrics &scope, Metri
                     top_dir.second.topSrcIPPort.to_opentelemetry(scope, start_ts, end_ts, interface_labels);
                     top_dir.second.topDstIPPort.to_opentelemetry(scope, start_ts, end_ts, interface_labels);
                 }
-                if (group_enabled(group::FlowMetrics::TopTos)) {
-                    top_dir.second.topTos.to_opentelemetry(scope, start_ts, end_ts, interface_labels, [](const uint8_t &val) {
+                if (group_enabled(group::FlowMetrics::TopDSCP)) {
+                    top_dir.second.topDSCP.to_opentelemetry(scope, start_ts, end_ts, interface_labels, [](const uint8_t &val) {
                         if (DscpNames.find(val) != DscpNames.end()) {
                             return DscpNames[val];
                         } else {
@@ -1153,8 +1153,8 @@ void FlowMetricsBucket::to_json(json &j) const
                     top_dir.second.topSrcIPPort.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
                     top_dir.second.topDstIPPort.to_json(j["devices"][deviceId]["interfaces"][interfaceId]);
                 }
-                if (group_enabled(group::FlowMetrics::TopTos)) {
-                    top_dir.second.topTos.to_json(j["devices"][deviceId]["interfaces"][interfaceId], [](const uint8_t &val) {
+                if (group_enabled(group::FlowMetrics::TopDSCP)) {
+                    top_dir.second.topDSCP.to_json(j["devices"][deviceId]["interfaces"][interfaceId], [](const uint8_t &val) {
                         if (DscpNames.find(val) != DscpNames.end()) {
                             return DscpNames[val];
                         } else {
@@ -1336,8 +1336,8 @@ void FlowMetricsBucket::process_interface(bool deep, FlowInterface *iface, const
             iface->dstPortCard.update(flow.dst_port);
         }
     }
-    if (group_enabled(group::FlowMetrics::TopTos)) {
-        iface->directionTopN.at(type).topTos.update(flow.tos, aggregator);
+    if (group_enabled(group::FlowMetrics::TopDSCP)) {
+        iface->directionTopN.at(type).topDSCP.update((flow.tos & DSCP_MASK), aggregator);
     }
 
     std::string application_src;

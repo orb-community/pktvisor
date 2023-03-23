@@ -7,6 +7,8 @@
 #include <unordered_map>
 namespace visor::handler::flow {
 
+static constexpr uint8_t DSCP_MASK = 0xFC;
+
 static std::unordered_map<uint8_t, std::string> DscpNames({
     {0, "CS0"},
     {8, "CS1"},

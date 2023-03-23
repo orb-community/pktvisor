@@ -17,7 +17,7 @@ TEST_CASE("Parse sflow stream", "[sflow][flow]")
     auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
     FlowStreamHandler flow_handler{"flow-test", stream_proxy, &c};
-    flow_handler.config_set<visor::Configurable::StringList>("enable", visor::Configurable::StringList({"top_tos"}));
+    flow_handler.config_set<visor::Configurable::StringList>("enable", visor::Configurable::StringList({"top_dscp"}));
 
     flow_handler.start();
     stream.start();
@@ -46,8 +46,8 @@ TEST_CASE("Parse sflow stream", "[sflow][flow]")
     CHECK(j["devices"]["192.168.0.13"]["interfaces"]["52"]["top_in_src_ports_bytes"][0]["name"] == "dynamic-client");
     CHECK(j["devices"]["192.168.0.13"]["interfaces"]["52"]["top_in_src_ip_ports_bytes"][0]["estimate"] == 108027400000);
     CHECK(j["devices"]["192.168.0.13"]["interfaces"]["52"]["top_in_src_ip_ports_bytes"][0]["name"] == "10.4.1.2:dynamic-client");
-    CHECK(j["devices"]["192.168.0.13"]["interfaces"]["52"]["top_in_tos_bytes"][0]["estimate"] == 170879120000);
-    CHECK(j["devices"]["192.168.0.13"]["interfaces"]["52"]["top_in_tos_bytes"][0]["name"] == "2");
+    CHECK(j["devices"]["192.168.0.13"]["interfaces"]["52"]["top_in_dscp_bytes"][0]["estimate"] == 170879120000);
+    CHECK(j["devices"]["192.168.0.13"]["interfaces"]["52"]["top_in_dscp_bytes"][0]["name"] == "CS0");
 }
 
 TEST_CASE("Parse sflow with enrichment", "[sflow][flow]")
@@ -406,7 +406,7 @@ TEST_CASE("Parse netflow stream", "[netflow][flow]")
     auto stream_proxy = stream.add_event_proxy(c);
     c.config_set<uint64_t>("num_periods", 1);
     FlowStreamHandler flow_handler{"flow-test", stream_proxy, &c};
-    flow_handler.config_set<visor::Configurable::StringList>("enable", visor::Configurable::StringList({"top_tos"}));
+    flow_handler.config_set<visor::Configurable::StringList>("enable", visor::Configurable::StringList({"top_dscp"}));
 
     flow_handler.start();
     stream.start();
@@ -429,8 +429,8 @@ TEST_CASE("Parse netflow stream", "[netflow][flow]")
     CHECK(j["devices"]["192.168.100.1"]["interfaces"]["800"]["cardinality"]["src_ports_in"] == 0);
     CHECK(j["devices"]["192.168.100.1"]["interfaces"]["800"]["top_in_src_ips_bytes"][0]["estimate"] == 6066232);
     CHECK(j["devices"]["192.168.100.1"]["interfaces"]["800"]["top_in_src_ips_packets"][0]["estimate"] == 7858);
-    CHECK(j["devices"]["192.168.100.1"]["interfaces"]["800"]["top_in_tos_bytes"][0]["estimate"] == 142139882);
-    CHECK(j["devices"]["192.168.100.1"]["interfaces"]["800"]["top_in_tos_bytes"][0]["name"] == "CS0");
+    CHECK(j["devices"]["192.168.100.1"]["interfaces"]["800"]["top_in_dscp_bytes"][0]["estimate"] == 142139882);
+    CHECK(j["devices"]["192.168.100.1"]["interfaces"]["800"]["top_in_dscp_bytes"][0]["name"] == "CS0");
 }
 
 TEST_CASE("Parse IPFIX stream", "[netflow][flow]")
