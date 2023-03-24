@@ -1359,7 +1359,7 @@ void FlowMetricsBucket::process_interface(bool deep, FlowInterface *iface, const
         }
     }
     if (group_enabled(group::FlowMetrics::TopTos)) {
-        iface->directionTopN.at(type).topDSCP.update((flow.tos >> 2), aggregator);
+        iface->directionTopN.at(type).topDSCP.update((flow.tos >> DSCP_SHIFT), aggregator);
         iface->directionTopN.at(type).topECN.update((flow.tos & ECN_MASK), aggregator);
     }
 
