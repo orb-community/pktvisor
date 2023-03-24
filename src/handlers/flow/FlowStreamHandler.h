@@ -32,6 +32,7 @@ enum FlowMetrics : visor::MetricGroupIntType {
     TopPorts,
     TopIPs,
     TopIPPorts,
+    TopDSCP,
     TopGeo,
     TopInterfaces
 };
@@ -80,6 +81,7 @@ struct FlowData {
     IP_PROTOCOL l4;
     size_t payload_size;
     uint32_t packets;
+    uint8_t tos;
     pcpp::IPv4Address ipv4_in;
     pcpp::IPv4Address ipv4_out;
     pcpp::IPv6Address ipv6_in;
@@ -137,6 +139,7 @@ struct FlowDirectionTopN {
     TopN<std::string> topDstPort;
     TopN<std::string> topSrcIPPort;
     TopN<std::string> topDstIPPort;
+    TopN<uint8_t> topDSCP;
 
     FlowDirectionTopN(std::string direction, std::string metric)
         : topSrcIP(FLOW_SCHEMA, "ip", {"top_" + direction + "_src_ips_" + metric}, "Top " + direction + " source IP addresses by " + metric)
@@ -145,6 +148,7 @@ struct FlowDirectionTopN {
         , topDstPort(FLOW_SCHEMA, "port", {"top_" + direction + "_dst_ports_" + metric}, "Top " + direction + " destination ports by " + metric)
         , topSrcIPPort(FLOW_SCHEMA, "ip_port", {"top_" + direction + "_src_ip_ports_" + metric}, "Top " + direction + " source IP addresses and port by " + metric)
         , topDstIPPort(FLOW_SCHEMA, "ip_port", {"top_" + direction + "_dst_ip_ports_" + metric}, "Top " + direction + " destination IP addresses and port by " + metric)
+        , topDSCP(FLOW_SCHEMA, "tos", {"top_" + direction + "_dscp_" + metric}, "Top " + direction + " IP DSCP by " + metric)
     {
     }
 
@@ -401,6 +405,7 @@ class FlowStreamHandler final : public visor::StreamMetricsHandler<FlowMetricsMa
         {"counters", group::FlowMetrics::Counters},
         {"top_ports", group::FlowMetrics::TopPorts},
         {"top_ips_ports", group::FlowMetrics::TopIPPorts},
+        {"top_dscp", group::FlowMetrics::TopDSCP},
         {"top_geo", group::FlowMetrics::TopGeo},
         {"top_interfaces", group::FlowMetrics::TopInterfaces}};
 
