@@ -7,7 +7,8 @@
 #include <unordered_map>
 namespace visor::handler::flow {
 
-static constexpr uint8_t DSCP_MASK = 0xFC;
+static constexpr uint8_t DSCP_SHIFT = 0x2;
+static constexpr uint8_t ECN_MASK = 0x3;
 
 static std::unordered_map<uint8_t, std::string> DscpNames({
     {0, "CS0"},
@@ -58,4 +59,19 @@ static std::unordered_map<std::string, uint8_t> DscpNumbers({
     {"EF", 46},
     {"VOICE-ADMIT", 43},
 });
+
+static std::unordered_map<uint8_t, std::string> EcnNames({
+    {0, "Not-ECT"},
+    {1, "ECT(1)"},
+    {2, "ECT(0)"},
+    {3, "CE"},
+});
+
+static std::unordered_map<std::string, uint8_t> EcnNumbers({
+    {"Not-ECT", 0},
+    {"ECT(1)", 1},
+    {"ECT(0)", 2},
+    {"CE ", 3},
+});
+
 }

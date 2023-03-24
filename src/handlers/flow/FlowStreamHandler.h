@@ -32,7 +32,7 @@ enum FlowMetrics : visor::MetricGroupIntType {
     TopPorts,
     TopIPs,
     TopIPPorts,
-    TopDSCP,
+    TopTos,
     TopGeo,
     TopInterfaces
 };
@@ -140,6 +140,7 @@ struct FlowDirectionTopN {
     TopN<std::string> topSrcIPPort;
     TopN<std::string> topDstIPPort;
     TopN<uint8_t> topDSCP;
+    TopN<uint8_t> topECN;
 
     FlowDirectionTopN(std::string direction, std::string metric)
         : topSrcIP(FLOW_SCHEMA, "ip", {"top_" + direction + "_src_ips_" + metric}, "Top " + direction + " source IP addresses by " + metric)
@@ -148,7 +149,8 @@ struct FlowDirectionTopN {
         , topDstPort(FLOW_SCHEMA, "port", {"top_" + direction + "_dst_ports_" + metric}, "Top " + direction + " destination ports by " + metric)
         , topSrcIPPort(FLOW_SCHEMA, "ip_port", {"top_" + direction + "_src_ip_ports_" + metric}, "Top " + direction + " source IP addresses and port by " + metric)
         , topDstIPPort(FLOW_SCHEMA, "ip_port", {"top_" + direction + "_dst_ip_ports_" + metric}, "Top " + direction + " destination IP addresses and port by " + metric)
-        , topDSCP(FLOW_SCHEMA, "tos", {"top_" + direction + "_dscp_" + metric}, "Top " + direction + " IP DSCP by " + metric)
+        , topDSCP(FLOW_SCHEMA, "dscp", {"top_" + direction + "_dscp_" + metric}, "Top " + direction + " IP DSCP by " + metric)
+        , topECN(FLOW_SCHEMA, "ecn", {"top_" + direction + "_ecn_" + metric}, "Top " + direction + " IP ECN by " + metric)
     {
     }
 
@@ -405,7 +407,7 @@ class FlowStreamHandler final : public visor::StreamMetricsHandler<FlowMetricsMa
         {"counters", group::FlowMetrics::Counters},
         {"top_ports", group::FlowMetrics::TopPorts},
         {"top_ips_ports", group::FlowMetrics::TopIPPorts},
-        {"top_dscp", group::FlowMetrics::TopDSCP},
+        {"top_tos", group::FlowMetrics::TopTos},
         {"top_geo", group::FlowMetrics::TopGeo},
         {"top_interfaces", group::FlowMetrics::TopInterfaces}};
 
