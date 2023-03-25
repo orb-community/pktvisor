@@ -53,8 +53,8 @@ struct hash_pair {
 };
 
 using NfMapID = std::pair<uint32_t, uint16_t>;
-static robin_hood::unordered_map<NfMapID, peer_nf9_template, hash_pair> nf9_template_map;
-static robin_hood::unordered_map<NfMapID, peer_nf10_template, hash_pair> nf10_template_map;
+static robin_hood::unordered_node_map<NfMapID, peer_nf9_template, hash_pair> nf9_template_map;
+static robin_hood::unordered_node_map<NfMapID, peer_nf10_template, hash_pair> nf10_template_map;
 
 static bool process_netflow_v1(NFSample *sample)
 {
