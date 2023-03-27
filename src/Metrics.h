@@ -448,6 +448,10 @@ public:
 
     void to_opentelemetry(metrics::v1::ScopeMetrics &scope, timespec &start, timespec &end, LabelMap add_labels = {}) const override
     {
+        if (_quantile.is_empty()) {
+            return;
+        }
+
         std::vector<T> quantiles;
         const double fractions[4]{0.50, 0.90, 0.95, 0.99};
         if (_quantiles_sum.empty()) {
@@ -678,11 +682,14 @@ public:
 
     void to_opentelemetry(metrics::v1::ScopeMetrics &scope, timespec &start, timespec &end, LabelMap add_labels = {}) const override
     {
+        auto items = _fi.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
+        if (!std::min(_top_count, items.size())) {
+            return;
+        }
         LabelMap l(add_labels);
         auto metric = scope.add_metrics();
         metric->set_name(base_name_snake());
         metric->set_description(_desc);
-        auto items = _fi.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
         auto threshold = _get_threshold(items);
         auto start_time = timespec_to_uint64(start);
         auto end_time = timespec_to_uint64(end);
@@ -700,11 +707,14 @@ public:
 
     void to_opentelemetry(metrics::v1::ScopeMetrics &scope, timespec &start, timespec &end, Metric::LabelMap add_labels, std::function<std::string(const T &)> formatter) const
     {
+        auto items = _fi.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
+        if (!std::min(_top_count, items.size())) {
+            return;
+        }
         LabelMap l(add_labels);
         auto metric = scope.add_metrics();
         metric->set_name(base_name_snake());
         metric->set_description(_desc);
-        auto items = _fi.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
         auto threshold = _get_threshold(items);
         auto start_time = timespec_to_uint64(start);
         auto end_time = timespec_to_uint64(end);
@@ -720,11 +730,14 @@ public:
 
     void to_opentelemetry(metrics::v1::ScopeMetrics &scope, timespec &start, timespec &end, Metric::LabelMap add_labels, std::function<void(LabelMap &, const std::string &, const T &)> formatter) const
     {
+        auto items = _fi.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
+        if (!std::min(_top_count, items.size())) {
+            return;
+        }
         LabelMap l(add_labels);
         auto metric = scope.add_metrics();
         metric->set_name(base_name_snake());
         metric->set_description(_desc);
-        auto items = _fi.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
         auto threshold = _get_threshold(items);
         auto start_time = timespec_to_uint64(start);
         auto end_time = timespec_to_uint64(end);
