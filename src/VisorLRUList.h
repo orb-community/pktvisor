@@ -27,7 +27,7 @@ class LRUList
 {
 public:
     typedef typename std::list<std::pair<T, V>>::iterator ListIterator;
-    typedef typename robin_hood::unordered_map<T, ListIterator>::iterator MapIterator;
+    typedef typename robin_hood::unordered_node_map<T, ListIterator>::iterator MapIterator;
 
     /**
      * A c'tor for this class
@@ -151,7 +151,7 @@ public:
 
 private:
     std::list<std::pair<T, V>> m_CacheItemsList;
-    robin_hood::unordered_map<T, ListIterator> m_CacheItemsMap;
+    robin_hood::unordered_node_map<T, ListIterator> m_CacheItemsMap;
     size_t m_MaxSize;
 };
 

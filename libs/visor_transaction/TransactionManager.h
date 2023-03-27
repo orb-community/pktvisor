@@ -51,7 +51,7 @@ template <typename XactID, typename TransactionType, typename Hash = hash_pair>
 class TransactionManager
 {
     static_assert(std::is_base_of<Transaction, TransactionType>::value, "TransactionType must inherit from Transaction structure");
-    typedef robin_hood::unordered_map<XactID, TransactionType, Hash> XactMap;
+    typedef robin_hood::unordered_node_map<XactID, TransactionType, Hash> XactMap;
 
     uint32_t _ttl_secs{0};
     uint32_t _ttl_ms{0};
