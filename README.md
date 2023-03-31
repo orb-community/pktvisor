@@ -55,17 +55,17 @@ the [Network](src/handlers/net) and [DNS](src/handlers/dns) stream processors, a
 ### Docker
 
 One of the easiest ways to get started with pktvisor is to use
-the [public docker image](https://hub.docker.com/r/ns1labs/pktvisor). The image contains the collector
+the [public docker image](https://hub.docker.com/r/orbcommunity/pktvisor). The image contains the collector
 agent (`pktvisord`), the command line UI (`pktvisor-cli`) and the pcap and dnstap file analyzer (`pktvisor-reader`). When running
 the container, you specify which tool to run.
 
 1. *Pull the container*
 
 ```
-docker pull ns1labs/pktvisor
+docker pull orbcommunity/pktvisor
 ``` 
 
-or use `ns1labs/pktvisor:latest-develop` to get the latest development version.
+or use `orbcommunity/pktvisor:latest-develop` to get the latest development version.
 
 2. *Start the collector agent*
 
@@ -75,7 +75,7 @@ _Note that this step requires docker host networking_ to observe traffic outside
 that [currently only Linux supports host networking](https://docs.docker.com/network/host/):
 
 ```
-docker run --net=host -d ns1labs/pktvisor pktvisord eth0
+docker run --net=host -d orbcommunity/pktvisor pktvisord eth0
 ```
 
 If the container does not stay running, check the `docker logs` output.
@@ -87,7 +87,7 @@ UI (`pktvisor-cli`) in the foreground, and exit when Ctrl-C is pressed. It conne
 the built in REST API.
 
 ```
-docker run -it --rm --net=host ns1labs/pktvisor pktvisor-cli
+docker run -it --rm --net=host orbcommunity/pktvisor pktvisor-cli
 ```
 
 ### Linux Static Binary (AppImage, x86_64)
@@ -168,7 +168,7 @@ sudo setcap cap_net_raw,cap_net_admin=eip /<full_path>/pktvisord-x86_64
 Current command line options are described with:
 
 ```
-docker run --rm ns1labs/pktvisor pktvisord --help
+docker run --rm orbcommunity/pktvisor pktvisord --help
 ```
 
 or
@@ -320,7 +320,7 @@ If running in a Docker container, you must mount the configuration file into the
 is on the host at `/local/pktvisor/agent.yaml`, you can mount it into the container and use it with this command:
 
 ```shell
-docker run -v /local/pktvisor:/usr/local/pktvisor/ --net=host ns1labs/pktvisor pktvisord --config /usr/local/pktvisor/agent.yaml --admin-api
+docker run -v /local/pktvisor:/usr/local/pktvisor/ --net=host orbcommunity/pktvisor pktvisord --config /usr/local/pktvisor/agent.yaml --admin-api
 ```
 
 
@@ -331,7 +331,7 @@ summarization, which is by default a sliding 5 minute time window. It can also c
 host.
 
 ```
-docker run --rm ns1labs/pktvisor pktvisor-cli -h
+docker run --rm orbcommunity/pktvisor pktvisor-cli -h
 ```
 
 ```shell
@@ -367,7 +367,7 @@ using a tool such as [golang-dnstap](https://github.com/dnstap/golang-dnstap).
 Both take many of the same options, and do all of the same analysis, as `pktvisord` for live capture. pcap files may include Flow capture data.
 
 ```
-docker run --rm ns1labs/pktvisor pktvisor-reader --help
+docker run --rm orbcommunity/pktvisor pktvisor-reader --help
 ```
 
 ```shell
@@ -404,7 +404,7 @@ You can use the docker container by passing in a volume referencing the director
 output will contain the JSON summarization output, which you can capture or pipe into other tools, for example:
 ```
 
-$ docker run --rm -v /pktvisor/src/tests/fixtures:/pcaps ns1labs/pktvisor pktvisor-reader /pcaps/dns_ipv4_udp.pcap | jq .
+$ docker run --rm -v /pktvisor/src/tests/fixtures:/pcaps orbcommunity/pktvisor pktvisor-reader /pcaps/dns_ipv4_udp.pcap | jq .
 
 [2021-03-11 18:45:04.572] [pktvisor] [info] Load input plugin: PcapInputModulePlugin dev.visor.module.input/1.0
 [2021-03-11 18:45:04.573] [pktvisor] [info] Load handler plugin: DnsHandler dev.visor.module.handler/1.0
@@ -524,14 +524,14 @@ You can set the `instance` label by passing `--prom-instance ID`
 
 If you are interested in centralized collection
 using [remote write](https://prometheus.io/docs/operating/integrations/#remote-endpoints-and-storage), including to
-cloud providers, there is a [docker image available](https://hub.docker.com/r/ns1labs/pktvisor-prom-write) to make this
+cloud providers, there is a [docker image available](https://hub.docker.com/r/orbcommunity/pktvisor-prom-write) to make this
 easy. See [centralized_collection/prometheus](centralized_collection/prometheus) for more.
 
 Also see [getorb.io](https://getorb.io) for information on connecting pktvisor agents to the Orb observability platform.
 
 ### REST API
 
-REST API documentation is available in [OpenAPI Format](https://app.swaggerhub.com/apis/ns1labs/pktvisor/3.0.0-oas3)
+REST API documentation is available in [OpenAPI Format](https://app.swaggerhub.com/apis/orbcommunity/pktvisor/3.0.0-oas3)
 
 Please note that the administration control plane API (`--admin-api`) is currently undergoing heavy iteration and so is
 not yet documented. If you have a use case that requires the administration API, please [contact us](#contact-us) to
@@ -545,7 +545,7 @@ ingress and egress traffic:
 ```
 docker run --rm --net=host -d \
     --mount type=bind,source=/opt/geo,target=/geo \
-    ns1labs/pktvisor pktvisord \
+    orbcommunity/pktvisor pktvisord \
     --geo-city /geo/GeoIP2-City.mmdb \
     --geo-asn /geo/GeoIP2-ISP.mmdb \
     -H 192.168.0.54/32,127.0.0.1/32 \

@@ -14,7 +14,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.BOT_TOKEN }}
         run: |
-          gh api -H "Accept: application/vnd.github.v3+json" /repos/ns1labs/pktvisor/actions/runners -q '.runners[] | {id,status,busy} | select((.busy == false) and (.status == "offline")) | {id} | .[]' --paginate | xargs -I {} gh api --method DELETE -H "Accept: application/vnd.github.v3+json" /repos/ns1labs/pktvisor/actions/runners/{}
+          gh api -H "Accept: application/vnd.github.v3+json" /repos/orb-community/pktvisor/actions/runners -q '.runners[] | {id,status,busy} | select((.busy == false) and (.status == "offline")) | {id} | .[]' --paginate | xargs -I {} gh api --method DELETE -H "Accept: application/vnd.github.v3+json" /repos/orb-community/pktvisor/actions/runners/{}
 
 #       - name: Clear cache
 #         uses: actions/github-script@v6

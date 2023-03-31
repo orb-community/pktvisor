@@ -987,7 +987,7 @@ jobs:
           sudo skopeo copy \
           --all \
           docker://ghcr.io/orb-community/pktvisor:latest \
-          docker://docker.io/ns1labs/pktvisor:latest
+          docker://docker.io/orbcommunity/pktvisor:latest
           sudo skopeo copy \
           --all \
           docker://ghcr.io/orb-community/pktvisor:latest \
@@ -998,7 +998,7 @@ jobs:
           sudo skopeo copy \
           --all \
           docker://ghcr.io/orb-community/pktvisor:latest \
-          docker://docker.io/ns1labs/pktvisor:${{ needs.package-amd64.outputs.release_version }}
+          docker://docker.io/orbcommunity/pktvisor:${{ needs.package-amd64.outputs.release_version }}
           sudo skopeo copy \
           --all \
           docker://ghcr.io/orb-community/pktvisor:latest \

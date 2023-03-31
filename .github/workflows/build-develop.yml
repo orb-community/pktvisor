@@ -354,7 +354,7 @@ jobs:
 
       - name: Build + push - pktvisor (multi-arch)
         env:
-          IMAGE_NAME: ns1labs/pktvisor
+          IMAGE_NAME: orbcommunity/pktvisor
           IMAGE_NAME1: orbcommunity/pktvisor
           IMAGE_NAME2: ghcr.io/orb-community/pktvisor
         uses: docker/build-push-action@v3
@@ -368,7 +368,7 @@ jobs:
 
       - name: Load image
         env:
-          IMAGE_NAME: ns1labs/pktvisor
+          IMAGE_NAME: orbcommunity/pktvisor
           IMAGE_NAME1: orbcommunity/pktvisor
           IMAGE_NAME2: ghcr.io/orb-community/pktvisor
         run: |
@@ -1015,15 +1015,15 @@ jobs:
           sudo skopeo copy \
           --all \
           docker://ghcr.io/orb-community/pktvisor:latest-develop \
-          docker://docker.io/ns1labs/pktvisor:latest-develop
+          docker://docker.io/orbcommunity/pktvisor:latest-develop
           sudo skopeo copy \
           --all \
           docker://ghcr.io/orb-community/pktvisor:latest-develop \
-          docker://docker.io/ns1labs/pktvisor:develop
+          docker://docker.io/orbcommunity/pktvisor:develop
           sudo skopeo copy \
           --all \
           docker://ghcr.io/orb-community/pktvisor:latest-develop \
-          docker://docker.io/ns1labs/pktvisor:${{ needs.unit-tests-linux.outputs.version_number }}
+          docker://docker.io/orbcommunity/pktvisor:${{ needs.unit-tests-linux.outputs.version_number }}
           sudo skopeo copy \
           --all \
           docker://ghcr.io/orb-community/pktvisor:latest-develop \

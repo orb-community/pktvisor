@@ -190,7 +190,7 @@ jobs:
 
       - name: Build, push debug image + crashhandler
         env:
-          IMAGE_NAME: ns1labs/pktvisor
+          IMAGE_NAME: orbcommunity/pktvisor
           IMAGE_NAME1: orbcommunity/pktvisor
         run: |
           docker build . --file docker/Dockerfile.crashhandler --tag ${{ env.IMAGE_NAME }}:${{ env.REF_TAG }} --tag ${{ env.IMAGE_NAME1 }}:${{ env.REF_TAG }}

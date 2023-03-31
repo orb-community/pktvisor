@@ -7,9 +7,9 @@ export PATH=$PATH:/usr/local/bin/:/usr/local/sbin/
 
 if [ $# -eq 0 ]; then
   echo "No arguments provided: specify either 'pktvisor-cli', 'pktvisor-reader' or 'pktvisord'. Try:"
-  echo "docker run ns1labs/pktvisor pktvisor-cli -h"
-  echo "docker run ns1labs/pktvisor pktvisor-reader --help"
-  echo "docker run ns1labs/pktvisor pktvisord --help"
+  echo "docker run orbcommunity/pktvisor pktvisor-cli -h"
+  echo "docker run orbcommunity/pktvisor pktvisor-reader --help"
+  echo "docker run orbcommunity/pktvisor pktvisord --help"
   exit 1
 fi
 
