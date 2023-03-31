@@ -8,8 +8,8 @@
 #pragma GCC diagnostic ignored "-Wpedantic"
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #endif
-#include <maxminddb.h>
 #include <fmt/format.h>
+#include <maxminddb.h>
 #ifdef __GNUC__
 #pragma GCC diagnostic pop
 #endif
@@ -19,7 +19,7 @@
 #include <ostream>
 #include <shared_mutex>
 #include <string>
-#include <variant>
+#include <tuple>
 
 #include "VisorLRUList.h"
 
@@ -33,19 +33,28 @@ struct City {
 
     bool operator==(const City &other) const
     {
-        return (location == other.location
-            && latitude == other.latitude
-            && longitude == other.longitude);
+        return std::tie(location, latitude, longitude) == std::tie(other.location, other.latitude, other.longitude);
     }
-
-    friend std::ostream &operator<<(std::ostream &os, const City &c);
+    bool operator!=(const City &other) const
+    {
+        return !(*this == other);
+    }
 };
+
+std::ostream &operator<<(std::ostream &os, const visor::geo::City &c);
 
 class MaxmindDB
 {
     static constexpr size_t DEFAULT_CACHE_SIZE = 10000;
 
 public:
+    enum class Type {
+        Asn,
+        Geo
+    };
+
+    MaxmindDB(Type type)
+        : _type(type){};
     ~MaxmindDB();
 
     void enable(const std::string &database_filename, int cache_size = DEFAULT_CACHE_SIZE);
@@ -68,9 +77,11 @@ public:
     std::string getASNString(const struct sockaddr_in6 *sa6) const;
 
 private:
+    Type _type;
     mutable MMDB_s _mmdb;
     bool _enabled = false;
-    std::unique_ptr<LRUList<std::string, std::variant<std::string, City>>> _lru_cache;
+    std::unique_ptr<LRUList<std::string, City>> _lru_geo_cache;
+    std::unique_ptr<LRUList<std::string, std::string>> _lru_asn_cache;
     mutable std::shared_mutex _cache_mutex;
 
     City _getGeoLoc(MMDB_lookup_result_s *lookup) const;
