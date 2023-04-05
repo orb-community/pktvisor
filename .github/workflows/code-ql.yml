@@ -2,11 +2,9 @@
 name: "CodeQL"
 
 on:
-  #push:
-  #  branches: [ "develop" ]
-  #pull_request:
-  #   The branches below must be a subset of the branches above
-  #  branches: [ "develop" ]
+  push:
+    branches: [ develop, ns1labs_orbcommunity ]
+
   schedule:
   #run 5 minutes after midnight daily
     - cron: '5 0 * * *'
