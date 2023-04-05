@@ -531,7 +531,7 @@ Also see [getorb.io](https://getorb.io) for information on connecting pktvisor a
 
 ### REST API
 
-REST API documentation is available in [OpenAPI Format](https://app.swaggerhub.com/apis/orbcommunity/pktvisor/3.0.0-oas3)
+REST API documentation is available in [OpenAPI Format](https://app.swaggerhub.com/apis/orb-community/pktvisor/3.0.0-oas3)
 
 Please note that the administration control plane API (`--admin-api`) is currently undergoing heavy iteration and so is
 not yet documented. If you have a use case that requires the administration API, please [contact us](#contact-us) to
