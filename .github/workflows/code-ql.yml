@@ -68,7 +68,6 @@ jobs:
         # create conan config
         CONAN_V2_MODE=1 conan config init
         conan config set general.revisions_enabled=1
-        conan remote add orbcommunity https://orbcommunity.jfrog.io/artifactory/api/conan/orbcommunity-conan
         # add custom compiler settings for libc
         python3 -c 'import yaml; p = "${{env.CONAN_USER_HOME}}/.conan/settings.yml"; d = yaml.safe_load(open(p)); d["compiler"]["gcc"]["libc"] = ["None", "glibc", "musl"]; yaml.safe_dump(d, open(p, "w"))'
         # Create Conan host profile
