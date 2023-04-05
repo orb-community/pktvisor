@@ -2,8 +2,6 @@
 name: "CodeQL"
 
 on:
-  push:
-    branches: [ develop, ns1labs_orbcommunity ]
 
   schedule:
   #run 5 minutes after midnight daily
