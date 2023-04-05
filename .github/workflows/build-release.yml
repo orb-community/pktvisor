@@ -980,7 +980,7 @@ jobs:
 
       - name: Login skopeo to dockerhub
         run: |
-          sudo skopeo login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }} docker.io
+          sudo skopeo login -u ${{ secrets.ORB_DOCKERHUB_USERNAME }} -p ${{ secrets.ORB_DOCKERHUB_TOKEN }} docker.io
 
       - name: Copy latest from ghcr.io to docker.io
         run: |
@@ -988,17 +988,9 @@ jobs:
           --all \
           docker://ghcr.io/orb-community/pktvisor:latest \
           docker://docker.io/orbcommunity/pktvisor:latest
-          sudo skopeo copy \
-          --all \
-          docker://ghcr.io/orb-community/pktvisor:latest \
-          docker://docker.io/orbcommunity/pktvisor:latest
           
       - name: Copy release version from ghcr.io to docker.io
         run: |
-          sudo skopeo copy \
-          --all \
-          docker://ghcr.io/orb-community/pktvisor:latest \
-          docker://docker.io/orbcommunity/pktvisor:${{ needs.package-amd64.outputs.release_version }}
           sudo skopeo copy \
           --all \
           docker://ghcr.io/orb-community/pktvisor:latest \
