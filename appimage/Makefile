@@ -1,4 +1,4 @@
-DEV_IMAGE ?= ns1labs/pktvisor:latest
+DEV_IMAGE ?= orbcommunity/pktvisor:latest
 
 # in dev mode we just use the latest image as the start point
 ifneq ($(strip $(DEV_MODE)),)
