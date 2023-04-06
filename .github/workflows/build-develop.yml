@@ -379,7 +379,7 @@ jobs:
   build-app-image-x64:
     needs: [ package-amd64 ]
     runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request'
+    #if: github.event_name != 'pull_request'
     steps:
       - uses: actions/checkout@v3
       
@@ -407,6 +407,8 @@ jobs:
         run: |
           echo ${{ env.VERSION }}
           echo ${{ steps.build.outputs.version }}
+          ls -lha
+          ls -lha golang/pkg/client/
 
       - name: Generate ref tag (develop)
         run: |
