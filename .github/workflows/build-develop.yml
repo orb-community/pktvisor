@@ -9,7 +9,6 @@ on:
   push:
     branches:
       - develop
-      - etaques-patch-1
 
 env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
@@ -425,7 +424,7 @@ jobs:
           context: "."
           file: "./Dockerfile"
 
-      - name: Debug artifacts
+      - name: Debug and Rename artifacts
         run: |
           ls -lha .
           mv pktvisor-cli pktvisor-cli-linux-x86_64-${{ env.VERSION }}
