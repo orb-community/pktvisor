@@ -408,36 +408,27 @@ jobs:
         run: |
           echo ${{ env.VERSION }}
           echo ${{ steps.build.outputs.version }}
-          ls -lha
-          ls -lha golang/pkg/client/
 
       - name: Generate ref tag (develop)
         run: |
           echo "REF_TAG=latest-develop" >> $GITHUB_ENV
           echo "PRERELEASE=true" >> $GITHUB_ENV
-          echo "DRAFT=false" >> $GITHUB_ENV
-         
-      - name: Login to Docker Hub
-        uses: docker/login-action@v1
+          echo "DRAFT=false" >> $GITHUB_ENV       
+
+      - name: Prepare version file
+        run: |
+          cp -rpf golang/pkg/client/version.go .
+
+      - name: Build pktvisor-cli
+        uses: ./.github/actions/build-go
         with:
-          username: ${{ secrets.ORB_DOCKERHUB_USERNAME }}
-          password: ${{ secrets.ORB_DOCKERHUB_TOKEN }}
+          context: "."
+          file: "./Dockerfile"
 
-      - name: Build + push - pktvisor-cli
-        env:
-          CLI_BINARY: pktvisor-cli
-          IMAGE_NAME: orbcommunity/pktvisor-cli
+      - name: Debug artifacts
         run: |
-          docker build . --file docker/Dockerfile.pktvisor-cli --tag ${{ env.IMAGE_NAME }}:${{ env.VERSION }} --tag ${{ env.IMAGE_NAME }}:${{ env.REF_TAG }}
-          docker push -a ${{ env.IMAGE_NAME }}
-          echo "CONT_ID=$(docker create --name ${{ env.CLI_BINARY }}-slim-tmp ${{ env.IMAGE_NAME }}:${{ env.REF_TAG }})" >> $GITHUB_ENV
-
-      - name: Extract static pktvisor-cli asset
-        env:
-          CLI_BINARY: pktvisor-cli
-          IMAGE_NAME: orbcommunity/pktvisor-cli
-        run: |
-          docker cp ${{ env.CONT_ID }}:/${{ env.CLI_BINARY }} ${{github.workspace}}/${{ env.CLI_BINARY }}-linux-x86_64-${{ env.VERSION }}
+          ls -lha .
+          mv pktvisor-cli pktvisor-cli-linux-x86_64-${{ env.VERSION }}
 
       - name: Upload pktvisor-cli artifact
         env:
