@@ -185,21 +185,32 @@ jobs:
       - name: Configure
         run: |
           VERSION_ONLY=1 cmake src
-
-      - name: Build
-        run: |
-          if [ "${{matrix.os}}" = macos ]; then
-            export GOOS=darwin
-          fi
           
-          if [ "${{matrix.arch}}" = armv7lh ]; then
-            export GOARCH=arm
-          elif [ "${{matrix.arch}}" = aarch64 ]; then
-            export GOARCH=arm64
-          fi
-
-          cd src/golang
-          go build -o ${{github.workspace}}/pktvisor-cli ./cmd/pktvisor-cli
+      - name: Build pktvisor-cli macos
+        if: ${{matrix.os}} == macos
+        uses: ./.github/actions/build-go
+        with:
+          context: "."
+          file: "./Dockerfile"
+          goos: "darwin"
+          
+      - name: Build pktvisor-cli linux armv7lh
+        if: ${{matrix.arch}} == armv7lh
+        uses: ./.github/actions/build-go
+        with:
+          context: "."
+          file: "./Dockerfile"
+          goos: "linux"
+          goarch: "arm"
+          
+      - name: Build pktvisor-cli linux aarch64
+        if: ${{matrix.arch}} == aarch64
+        uses: ./.github/actions/build-go
+        with:
+          context: "."
+          file: "./Dockerfile"
+          goos: "linux"
+          goarch: "arm64"
 
       - name: Upload pktvisor-cli
         uses: actions/upload-artifact@v2
