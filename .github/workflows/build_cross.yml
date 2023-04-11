@@ -178,8 +178,14 @@ jobs:
 
       - name: Configure CMake to generate VERSION
         shell: bash
-        working-directory: ${{github.workspace}}/build
         run: VERSION_ONLY=1  cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=Release
+        
+      - name: Debug artifacts
+        shell: bash
+        run: |
+          ls -lha
+          mv src pktvisor-src
+          cp -rpf golang/pkg/client/version.go .
           
       - name: Build pktvisor-cli macos
         if: ${{matrix.os}} == macos
