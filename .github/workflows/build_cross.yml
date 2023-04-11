@@ -173,17 +173,13 @@ jobs:
           - os: macos
             arch: armv7lh
     steps:
-      - name: Setup Go
-        uses: actions/setup-go@v2
-        with:
-          go-version: 1.17
-
       - name: Checkout sources
         uses: actions/checkout@v3
 
-      - name: Configure
-        run: |
-          VERSION_ONLY=1 cmake .
+      - name: Configure CMake to generate VERSION
+        shell: bash
+        working-directory: ${{github.workspace}}/build
+        run: VERSION_ONLY=1  cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=Release
           
       - name: Build pktvisor-cli macos
         if: ${{matrix.os}} == macos
