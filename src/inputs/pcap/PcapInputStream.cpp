@@ -589,7 +589,7 @@ void PcapInputStream::_get_hosts_from_libpcap_iface()
             if (!nmcvt) {
                 throw PcapException("couldn't parse IPv6 netmask address on device");
             }
-            uint8_t cidr =  lib::utils::get_cidr(nmcvt->s6_addr, 16);
+            uint8_t cidr = lib::utils::get_cidr(nmcvt->s6_addr, 16);
             _hostIPv6.push_back({*adrcvt, cidr, ip + "/" + std::to_string(cidr)});
         }
     }
