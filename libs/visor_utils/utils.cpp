@@ -84,7 +84,7 @@ uint8_t get_cidr(uint32_t mask)
 {
     uint8_t cidr{0};
     while (mask > 0) {
-        mask = mask >> 1;
+        mask >>= 1;
         cidr++;
     }
     return cidr;
@@ -95,8 +95,8 @@ uint8_t get_cidr(uint8_t *addr, size_t size)
     uint8_t cidr{0};
     for (size_t i = 0; i < size; i++) {
         while (addr[i]) {
-            cidr++;
             addr[i] >>= 1;
+            cidr++;
         }
     }
     return cidr;
