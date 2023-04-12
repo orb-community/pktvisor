@@ -578,8 +578,8 @@ void PcapInputStream::_get_hosts_from_libpcap_iface()
             if (!nmcvt) {
                 throw PcapException("couldn't parse IPv4 netmask address on device");
             }
-            uint8_t len = static_cast<uint8_t>(0xFFFFFFFFUL & nmcvt->s_addr);
-            _hostIPv4.push_back({*adrcvt, len, ip + "/" + std::to_string(len)});
+            uint8_t cidr = lib::utils::get_cidr(nmcvt->s_addr);
+            _hostIPv4.push_back({*adrcvt, cidr, ip + "/" + std::to_string(cidr)});
         } else if (i.addr->sa_family == AF_INET6) {
             auto adrcvt = pcpp::internal::sockaddr2in6_addr(i.addr);
             if (!adrcvt) {
@@ -589,14 +589,8 @@ void PcapInputStream::_get_hosts_from_libpcap_iface()
             if (!nmcvt) {
                 throw PcapException("couldn't parse IPv6 netmask address on device");
             }
-            uint8_t len = 0;
-            for (int i = 0; i < 16; i++) {
-                while (nmcvt->s6_addr[i]) {
-                    len++;
-                    nmcvt->s6_addr[i] >>= 1;
-                }
-            }
-            _hostIPv6.push_back({*adrcvt, len, ip + "/" + std::to_string(len)});
+            uint8_t cidr = lib::utils::get_cidr(nmcvt->s6_addr, 16);
+            _hostIPv6.push_back({*adrcvt, cidr, ip + "/" + std::to_string(cidr)});
         }
     }
 }

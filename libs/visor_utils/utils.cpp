@@ -33,8 +33,7 @@ std::optional<IPv4subnetList::const_iterator> match_subnet(IPv4subnetList &ipv4_
             if (cidr == 0) {
                 return it;
             }
-            uint32_t mask = htonl((0xFFFFFFFFu) << (32 - cidr));
-            if (!((ipv4.s_addr ^ it->addr.s_addr) & mask)) {
+            if (!get_subnet((ipv4.s_addr ^ it->addr.s_addr), cidr)) {
                 return it;
             }
         }
@@ -81,7 +80,29 @@ bool match_subnet(IPv4subnetList &ipv4_list, IPv6subnetList &ipv6_list, const st
     return false;
 }
 
-uint32_t get_subnet(const uint32_t addr, uint8_t cidr)
+uint8_t get_cidr(uint32_t mask)
+{
+    uint8_t cidr{0};
+    while (mask > 0) {
+        mask >>= 1;
+        cidr++;
+    }
+    return cidr;
+}
+
+uint8_t get_cidr(uint8_t *addr, size_t size)
+{
+    uint8_t cidr{0};
+    for (size_t i = 0; i < size; i++) {
+        while (addr[i]) {
+            addr[i] >>= 1;
+            cidr++;
+        }
+    }
+    return cidr;
+}
+
+uint32_t get_subnet(uint32_t addr, uint8_t cidr)
 {
     return addr & (htobe32((0xFFFFFFFFu) << (32 - cidr)));
 }
