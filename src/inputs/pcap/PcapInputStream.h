@@ -100,7 +100,7 @@ private:
 
     static const PcapSource DefaultPcapSource = PcapSource::libpcap;
     std::unique_ptr<LRUList<uint32_t, timeval>> _lru_list;
-    std::pair<uint32_t, timeval> *_deleted_data;
+    std::pair<uint32_t, timeval> _deleted_data;
     std::vector<uint32_t> _lru_overflow;
     lib::utils::IPv4subnetList _hostIPv4;
     lib::utils::IPv6subnetList _hostIPv6;

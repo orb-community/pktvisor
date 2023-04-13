@@ -71,7 +71,6 @@ static void _pcap_stats_update(pcpp::IPcapDevice::PcapStats &stats, void *cookie
 PcapInputStream::PcapInputStream(const std::string &name)
     : visor::InputStream(name)
     , _lru_list(std::make_unique<LRUList<uint32_t, timeval>>(DEFAULT_LRULIST_SIZE))
-    , _deleted_data(nullptr)
     , _pcapDevice(nullptr)
     , _tcp_reassembly(_tcp_message_ready_cb,
           this,
@@ -258,10 +257,8 @@ void PcapInputStream::tcp_message_ready(int8_t side, const pcpp::TcpStreamData &
     for (auto &proxy : _event_proxies) {
         dynamic_cast<PcapInputEventProxy *>(proxy.get())->tcp_message_ready_cb(side, tcpData, _packet_dir_cache);
     }
-    _deleted_data = nullptr;
-    _lru_list->put(tcpData.getConnectionData().flowKey, tcpData.getConnectionData().endTime, _deleted_data);
-    if (_deleted_data != nullptr) {
-        _lru_overflow.push_back(_deleted_data->first);
+    if (_lru_list->put(tcpData.getConnectionData().flowKey, tcpData.getConnectionData().endTime, &_deleted_data)){
+        _lru_overflow.push_back(_deleted_data.first);
     }
 }
 
@@ -271,10 +268,8 @@ void PcapInputStream::tcp_connection_start(const pcpp::ConnectionData &connectio
     for (auto &proxy : _event_proxies) {
         dynamic_cast<PcapInputEventProxy *>(proxy.get())->tcp_connection_start_cb(connectionData, _packet_dir_cache);
     }
-    _deleted_data = nullptr;
-    _lru_list->put(connectionData.flowKey, connectionData.startTime, _deleted_data);
-    if (_deleted_data != nullptr) {
-        _lru_overflow.push_back(_deleted_data->first);
+    if (_lru_list->put(connectionData.flowKey, connectionData.startTime, &_deleted_data)) {
+        _lru_overflow.push_back(_deleted_data.first);
     }
 }
 
