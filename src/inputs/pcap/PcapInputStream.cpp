@@ -70,6 +70,8 @@ static void _pcap_stats_update(pcpp::IPcapDevice::PcapStats &stats, void *cookie
 
 PcapInputStream::PcapInputStream(const std::string &name)
     : visor::InputStream(name)
+    , _lru_list(std::make_unique<LRUList<uint32_t, timeval>>(DEFAULT_LRULIST_SIZE))
+    , _deleted_data(nullptr)
     , _pcapDevice(nullptr)
     , _tcp_reassembly(_tcp_message_ready_cb,
           this,
@@ -93,6 +95,10 @@ void PcapInputStream::start()
 
     validate_configs(_config_defs);
 
+    if (config_exists("tcp_reassembly_limit")) {
+        auto limit = config_get<uint64_t>("tcp_reassembly_limit");
+        _lru_list = std::make_unique<LRUList<uint32_t, timeval>>(limit);
+    }
     if (config_exists("pcap_file")) {
         // read from pcap file. this is a special case from a command line utility
         if (!config_exists("bpf")) {
@@ -252,7 +258,11 @@ void PcapInputStream::tcp_message_ready(int8_t side, const pcpp::TcpStreamData &
     for (auto &proxy : _event_proxies) {
         dynamic_cast<PcapInputEventProxy *>(proxy.get())->tcp_message_ready_cb(side, tcpData, _packet_dir_cache);
     }
-    _lru_list.put(tcpData.getConnectionData().flowKey, tcpData.getConnectionData().endTime);
+    _deleted_data = nullptr;
+    _lru_list->put(tcpData.getConnectionData().flowKey, tcpData.getConnectionData().endTime, _deleted_data);
+    if (_deleted_data != nullptr) {
+        _lru_overflow.push_back(_deleted_data->first);
+    }
 }
 
 void PcapInputStream::tcp_connection_start(const pcpp::ConnectionData &connectionData)
@@ -261,7 +271,11 @@ void PcapInputStream::tcp_connection_start(const pcpp::ConnectionData &connectio
     for (auto &proxy : _event_proxies) {
         dynamic_cast<PcapInputEventProxy *>(proxy.get())->tcp_connection_start_cb(connectionData, _packet_dir_cache);
     }
-    _lru_list.put(connectionData.flowKey, connectionData.startTime);
+    _deleted_data = nullptr;
+    _lru_list->put(connectionData.flowKey, connectionData.startTime, _deleted_data);
+    if (_deleted_data != nullptr) {
+        _lru_overflow.push_back(_deleted_data->first);
+    }
 }
 
 void PcapInputStream::tcp_connection_end(const pcpp::ConnectionData &connectionData, pcpp::TcpReassembly::ConnectionEndReason reason)
@@ -270,7 +284,7 @@ void PcapInputStream::tcp_connection_end(const pcpp::ConnectionData &connectionD
     for (auto &proxy : _event_proxies) {
         static_cast<PcapInputEventProxy *>(proxy.get())->tcp_connection_end_cb(connectionData, reason);
     }
-    _lru_list.eraseElement(connectionData.flowKey);
+    _lru_list->eraseElement(connectionData.flowKey);
 }
 
 void PcapInputStream::process_pcap_stats(const pcpp::IPcapDevice::PcapStats &stats)
@@ -438,15 +452,21 @@ void PcapInputStream::process_raw_packet(pcpp::RawPacket *rawPacket)
         }
 
         for (uint8_t counter = 0; counter < MAX_TCP_CLEANUPS; counter++) {
-            if (_lru_list.getSize() == 0) {
+            if (_lru_list->getSize() == 0) {
                 break;
             }
-            auto connection = _lru_list.getLRUElement();
+            auto connection = _lru_list->getLRUElement();
             if (timestamp.tv_sec < connection.second.tv_sec + TCP_TIMEOUT) {
                 break;
             }
             _tcp_reassembly.closeConnection(connection.first);
-            _lru_list.eraseElement(connection.first);
+            _lru_list->eraseElement(connection.first);
+        }
+        if (_lru_overflow.size() > 0) {
+            for (const auto &fKey : _lru_overflow) {
+                _tcp_reassembly.closeConnection(fKey);
+            }
+            _lru_overflow.clear();
         }
     } else {
         // unsupported layer3 protocol

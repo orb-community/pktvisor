@@ -96,9 +96,12 @@ class PcapInputStream : public visor::InputStream
 private:
     static constexpr uint8_t TCP_TIMEOUT = 30;
     static constexpr uint8_t MAX_TCP_CLEANUPS = 100;
+    static constexpr size_t DEFAULT_LRULIST_SIZE = TCP_TIMEOUT * 10000;
 
     static const PcapSource DefaultPcapSource = PcapSource::libpcap;
-    LRUList<uint32_t, timeval> _lru_list;
+    std::unique_ptr<LRUList<uint32_t, timeval>> _lru_list;
+    std::pair<uint32_t, timeval> *_deleted_data;
+    std::vector<uint32_t> _lru_overflow;
     lib::utils::IPv4subnetList _hostIPv4;
     lib::utils::IPv6subnetList _hostIPv6;
     PacketDirection _packet_dir_cache{PacketDirection::unknown};
@@ -127,7 +130,8 @@ private:
         "debug",
         "host_spec",
         "pcap_file",
-        "pcap_source"};
+        "pcap_source",
+        "tcp_reassembly_limit"};
 
 protected:
     void _open_pcap(const std::string &fileName, const std::string &bpfFilter);
