@@ -126,6 +126,39 @@ TEST_CASE("Parse DNS TCP IPv4 tests", "[pcap][ipv4][tcp][dns]")
     CHECK(j["unknown"]["top_qname2_xacts"][0]["estimate"] == 210);
 }
 
+TEST_CASE("Parse DNS TCP tests with limit", "[pcap][ipv4][tcp][dns]")
+{
+    PcapInputStream stream{"pcap-test"};
+    stream.config_set("pcap_file", "tests/fixtures/dns_ipv4_tcp.pcap");
+    stream.config_set("bpf", "");
+    stream.config_set<uint64_t>("tcp_packet_reassembly_cache_limit", 10);
+
+    visor::Config c;
+    auto stream_proxy = stream.add_event_proxy(c);
+    c.config_set<uint64_t>("num_periods", 1);
+    DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
+
+    dns_handler.start();
+    stream.start();
+    dns_handler.stop();
+    stream.stop();
+
+    auto counters = dns_handler.metrics()->bucket(0)->counters(TransactionDirection::unknown);
+    auto event_data = dns_handler.metrics()->bucket(0)->event_data_locked();
+    json j;
+    dns_handler.metrics()->bucket(0)->to_json(j);
+
+    CHECK(event_data.num_events->value() == 140);
+    CHECK(counters.TCP.value() == 70);
+    CHECK(counters.IPv4.value() == 70);
+    CHECK(counters.IPv6.value() == 0);
+    CHECK(counters.xacts.value() == 70);
+    CHECK(counters.timeout.value() == 0);
+    CHECK(counters.orphan.value() == 0);
+    CHECK(j["unknown"]["top_qname2_xacts"][0]["name"] == ".test.com");
+    CHECK(j["unknown"]["top_qname2_xacts"][0]["estimate"] == 70);
+}
+
 TEST_CASE("Parse DNS UDP IPv6 tests", "[pcap][ipv6][udp][dns]")
 {
 
