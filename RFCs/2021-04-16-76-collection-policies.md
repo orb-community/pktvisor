@@ -39,7 +39,7 @@ visor:
         filter:
           bpf: "port 53"
         config:
-          tcp_reassembly_limit: 100000
+          tcp_packet_reassembly_cache_limit: 100000
       # stream handlers to attach to this input stream
       # these decide exactly which data to summarize and expose for collection
       handlers:

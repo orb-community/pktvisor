@@ -131,7 +131,7 @@ TEST_CASE("Parse DNS TCP tests with limit", "[pcap][ipv4][tcp][dns]")
     PcapInputStream stream{"pcap-test"};
     stream.config_set("pcap_file", "tests/fixtures/dns_ipv4_tcp.pcap");
     stream.config_set("bpf", "");
-    stream.config_set<uint64_t>("tcp_reassembly_limit", 10);
+    stream.config_set<uint64_t>("tcp_packet_reassembly_cache_limit", 10);
 
     visor::Config c;
     auto stream_proxy = stream.add_event_proxy(c);

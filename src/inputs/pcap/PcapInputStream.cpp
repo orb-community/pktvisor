@@ -94,8 +94,8 @@ void PcapInputStream::start()
 
     validate_configs(_config_defs);
 
-    if (config_exists("tcp_reassembly_limit")) {
-        auto limit = config_get<uint64_t>("tcp_reassembly_limit");
+    if (config_exists("tcp_packet_reassembly_cache_limit")) {
+        auto limit = config_get<uint64_t>("tcp_packet_reassembly_cache_limit");
         _lru_list = std::make_unique<LRUList<uint32_t, timeval>>(limit);
     }
     if (config_exists("pcap_file")) {
