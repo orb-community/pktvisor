@@ -312,7 +312,9 @@ public:
         auto metric = scope.add_metrics();
         metric->set_name(base_name_snake());
         metric->set_description(_desc);
-        auto hist_data_point = metric->mutable_histogram()->add_data_points();
+        auto m_hist = metric->mutable_histogram();
+        m_hist->set_aggregation_temporality(metrics::v1::AggregationTemporality::AGGREGATION_TEMPORALITY_CUMULATIVE);
+        auto hist_data_point = m_hist->add_data_points();
         hist_data_point->set_start_time_unix_nano(timespec_to_uint64(start));
         hist_data_point->set_time_unix_nano(timespec_to_uint64(end));
 
