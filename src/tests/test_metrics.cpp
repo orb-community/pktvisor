@@ -17,7 +17,7 @@ public:
     {
         out << "test_performed" << std::endl;
     }
-    void to_opentelemetry(metrics::v1::ScopeMetrics &scope, Metric::LabelMap) const
+    void to_opentelemetry(metrics::v1::ScopeMetrics &scope, timespec &, timespec &, Metric::LabelMap) const
     {
         scope.add_metrics()->set_name("test1");
         scope.add_metrics()->set_name("test2");

@@ -1238,11 +1238,8 @@ void DnsMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap ad
     });
 }
 
-void DnsMetricsBucket::to_opentelemetry(metrics::v1::ScopeMetrics &scope, Metric::LabelMap add_labels) const
+void DnsMetricsBucket::to_opentelemetry(metrics::v1::ScopeMetrics &scope, timespec &start_ts, timespec &end_ts, Metric::LabelMap add_labels) const
 {
-    auto start_ts = start_tstamp();
-    auto end_ts = end_tstamp();
-
     _rate_total.to_opentelemetry(scope, start_ts, end_ts, add_labels);
 
     {

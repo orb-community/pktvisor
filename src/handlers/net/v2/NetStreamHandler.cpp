@@ -382,11 +382,8 @@ void NetworkMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMa
     }
 }
 
-void NetworkMetricsBucket::to_opentelemetry(metrics::v1::ScopeMetrics &scope, Metric::LabelMap add_labels) const
+void NetworkMetricsBucket::to_opentelemetry(metrics::v1::ScopeMetrics &scope, timespec &start_ts, timespec &end_ts, Metric::LabelMap add_labels) const
 {
-    auto start_ts = start_tstamp();
-    auto end_ts = end_tstamp();
-
     if (group_enabled(group::NetMetrics::Quantiles)) {
         for (auto &net : _net) {
             auto dir_labels = add_labels;

@@ -218,7 +218,7 @@ public:
 
     virtual void to_json(json &j) const = 0;
     virtual void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const = 0;
-    virtual void to_opentelemetry(metrics::v1::ScopeMetrics &scope, Metric::LabelMap add_labels = {}) const = 0;
+    virtual void to_opentelemetry(metrics::v1::ScopeMetrics &scope, timespec &start_ts, timespec &end_ts, Metric::LabelMap add_labels = {}) const = 0;
     virtual void update_topn_metrics(size_t topn_count, uint64_t percentile_threshold) = 0;
 };
 
@@ -553,8 +553,13 @@ public:
         if (!_tap_name.empty() && add_labels.find("tap") == add_labels.end()) {
             add_labels["tap"] = _tap_name;
         }
-
-        _metric_buckets.at(period)->to_opentelemetry(scope, add_labels);
+        auto bucket = _metric_buckets.at(period).get();
+        auto start_ts = bucket->start_tstamp();
+        auto end_ts = bucket->end_tstamp();
+        if (!end_ts.tv_sec) {
+            timespec_get(&end_ts, TIME_UTC);
+        }
+        bucket->to_opentelemetry(scope, start_ts, end_ts, add_labels);
     }
 
     void window_external_opentelemetry(metrics::v1::ScopeMetrics &scope, AbstractMetricsBucket *bucket, Metric::LabelMap add_labels = {}) const
@@ -563,7 +568,13 @@ public:
             return;
         }
         // static because caller guarantees only our own bucket type
-        static_cast<MetricsBucketClass *>(bucket)->to_opentelemetry(scope, add_labels);
+        auto sbucket = static_cast<MetricsBucketClass *>(bucket);
+        auto start_ts = sbucket->start_tstamp();
+        auto end_ts = sbucket->end_tstamp();
+        if (!end_ts.tv_sec) {
+            timespec_get(&end_ts, TIME_UTC);
+        }
+        sbucket->to_opentelemetry(scope, start_ts, end_ts, add_labels);
     }
 
     void window_external_prometheus(std::stringstream &out, AbstractMetricsBucket *bucket, Metric::LabelMap add_labels = {}) const

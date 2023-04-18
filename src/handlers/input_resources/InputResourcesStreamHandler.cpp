@@ -165,11 +165,8 @@ void InputResourcesMetricsBucket::to_prometheus(std::stringstream &out, Metric::
     _handler_count.to_prometheus(out, add_labels);
 }
 
-void InputResourcesMetricsBucket::to_opentelemetry(metrics::v1::ScopeMetrics &scope, Metric::LabelMap add_labels) const
+void InputResourcesMetricsBucket::to_opentelemetry(metrics::v1::ScopeMetrics &scope, timespec &start_ts, timespec &end_ts, Metric::LabelMap add_labels) const
 {
-    auto start_ts = start_tstamp();
-    auto end_ts = end_tstamp();
-    
     {
         auto [num_events, num_samples, event_rate, event_lock] = event_data_locked(); // thread safe
 

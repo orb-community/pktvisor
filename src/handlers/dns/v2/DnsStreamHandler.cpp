@@ -840,11 +840,8 @@ void DnsMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap ad
     }
 }
 
-void DnsMetricsBucket::to_opentelemetry(metrics::v1::ScopeMetrics &scope, Metric::LabelMap add_labels) const
+void DnsMetricsBucket::to_opentelemetry(metrics::v1::ScopeMetrics &scope, timespec &start_ts, timespec &end_ts, Metric::LabelMap add_labels) const
 {
-    auto start_ts = start_tstamp();
-    auto end_ts = end_tstamp();
-
     for (auto &dns : _dns) {
         auto dir_labels = add_labels;
         dir_labels["direction"] = _dir_str.at(dns.first);
