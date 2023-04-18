@@ -186,11 +186,8 @@ void NetProbeMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelM
     }
 }
 
-void NetProbeMetricsBucket::to_opentelemetry(metrics::v1::ScopeMetrics &scope, Metric::LabelMap add_labels) const
+void NetProbeMetricsBucket::to_opentelemetry(metrics::v1::ScopeMetrics &scope, timespec &start_ts, timespec &end_ts, Metric::LabelMap add_labels) const
 {
-    auto start_ts = start_tstamp();
-    auto end_ts = end_tstamp();
-
     std::shared_lock r_lock(_mutex);
 
     for (const auto &target : _targets_metrics) {

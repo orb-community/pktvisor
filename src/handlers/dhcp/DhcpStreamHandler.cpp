@@ -150,11 +150,8 @@ void DhcpMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap a
     _dhcp_topServers.to_prometheus(out, add_labels);
 }
 
-void DhcpMetricsBucket::to_opentelemetry(metrics::v1::ScopeMetrics &scope, Metric::LabelMap add_labels) const
+void DhcpMetricsBucket::to_opentelemetry(metrics::v1::ScopeMetrics &scope, timespec &start_ts, timespec &end_ts, Metric::LabelMap add_labels) const
 {
-    auto start_ts = start_tstamp();
-    auto end_ts = end_tstamp();
-
     _rate_total.to_opentelemetry(scope, start_ts, end_ts, add_labels);
 
     {

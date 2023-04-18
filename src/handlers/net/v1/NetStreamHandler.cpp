@@ -387,11 +387,8 @@ void NetworkMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMa
     _payload_size.to_prometheus(out, add_labels);
 }
 
-void NetworkMetricsBucket::to_opentelemetry(metrics::v1::ScopeMetrics &scope, Metric::LabelMap add_labels) const
+void NetworkMetricsBucket::to_opentelemetry(metrics::v1::ScopeMetrics &scope, timespec &start_ts, timespec &end_ts, Metric::LabelMap add_labels) const
 {
-    auto start_ts = start_tstamp();
-    auto end_ts = end_tstamp();
-
     _rate_in.to_opentelemetry(scope, start_ts, end_ts, add_labels);
     _rate_out.to_opentelemetry(scope, start_ts, end_ts, add_labels);
     _rate_total.to_opentelemetry(scope, start_ts, end_ts, add_labels);
