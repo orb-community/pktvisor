@@ -19,7 +19,7 @@ void Counter::to_prometheus(std::stringstream &out, Metric::LabelMap add_labels)
     out << name_snake({}, add_labels) << ' ' << _value << std::endl;
 }
 
-void Counter::to_opentelemetry(metrics::v1::ScopeMetrics &scope, timespec &start, timespec &end, Metric::LabelMap add_labels) const
+void Counter::to_opentelemetry(metrics::v1::ScopeMetrics &scope, timespec &start, [[maybe_unused]] timespec &end, Metric::LabelMap add_labels) const
 {
     auto metric = scope.add_metrics();
     metric->set_name(base_name_snake());
@@ -27,7 +27,7 @@ void Counter::to_opentelemetry(metrics::v1::ScopeMetrics &scope, timespec &start
     auto gauge_data_point = metric->mutable_gauge()->add_data_points();
     gauge_data_point->set_as_int(_value);
     gauge_data_point->set_start_time_unix_nano(timespec_to_uint64(start));
-    gauge_data_point->set_time_unix_nano(timespec_to_uint64(end));
+    //gauge_data_point->set_time_unix_nano(timespec_to_uint64(end));
     for (const auto &label: add_labels) {
         auto attribute = gauge_data_point->add_attributes();
         attribute->set_key(label.first);
@@ -79,7 +79,7 @@ void Cardinality::to_prometheus(std::stringstream &out, Metric::LabelMap add_lab
     out << name_snake({}, add_labels) << ' ' << lround(_set.get_estimate()) << std::endl;
 }
 
-void Cardinality::to_opentelemetry(metrics::v1::ScopeMetrics &scope, timespec &start, timespec &end, Metric::LabelMap add_labels) const
+void Cardinality::to_opentelemetry(metrics::v1::ScopeMetrics &scope, timespec &start, [[maybe_unused]] timespec &end, Metric::LabelMap add_labels) const
 {
     auto metric = scope.add_metrics();
     metric->set_name(base_name_snake());
@@ -87,7 +87,7 @@ void Cardinality::to_opentelemetry(metrics::v1::ScopeMetrics &scope, timespec &s
     auto gauge_data_point = metric->mutable_gauge()->add_data_points();
     gauge_data_point->set_as_int(lround(_set.get_estimate()));
     gauge_data_point->set_start_time_unix_nano(timespec_to_uint64(start));
-    gauge_data_point->set_time_unix_nano(timespec_to_uint64(end));
+    //gauge_data_point->set_time_unix_nano(timespec_to_uint64(end));
     for (const auto &label: add_labels) {
         auto attribute = gauge_data_point->add_attributes();
         attribute->set_key(label.first);
