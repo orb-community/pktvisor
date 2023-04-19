@@ -50,9 +50,9 @@ struct comparator {
     }
 };
 
-static inline uint64_t timespec_to_uint64(const timespec &stamp)
+static inline uint64_t timespec_to_uint64(timespec &stamp)
 {
-    return (stamp.tv_sec * 1000000000ULL) + stamp.tv_nsec;
+    return stamp.tv_sec * 1000000000ULL + stamp.tv_nsec;
 }
 
 class Metric
@@ -293,7 +293,7 @@ public:
         out << name_snake({"count"}, add_labels) << ' ' << _sketch.get_n() << std::endl;
     }
 
-    void to_opentelemetry(metrics::v1::ScopeMetrics &scope, timespec &start, [[maybe_unused]] timespec &end, LabelMap add_labels = {}) const
+    void to_opentelemetry(metrics::v1::ScopeMetrics &scope, timespec &start, timespec &end, LabelMap add_labels = {}) const
     {
         if (_sketch.is_empty()) {
             return;
@@ -316,7 +316,7 @@ public:
         m_hist->set_aggregation_temporality(metrics::v1::AggregationTemporality::AGGREGATION_TEMPORALITY_CUMULATIVE);
         auto hist_data_point = m_hist->add_data_points();
         hist_data_point->set_start_time_unix_nano(timespec_to_uint64(start));
-        // hist_data_point->set_time_unix_nano(timespec_to_uint64(end));
+        hist_data_point->set_time_unix_nano(timespec_to_uint64(end));
 
         for (std::size_t i = 0; i < bins.size(); ++i) {
             hist_data_point->add_explicit_bounds(bins[i] - pace);
@@ -448,7 +448,7 @@ public:
         }
     }
 
-    void to_opentelemetry(metrics::v1::ScopeMetrics &scope, timespec &start, [[maybe_unused]] timespec &end, LabelMap add_labels = {}) const override
+    void to_opentelemetry(metrics::v1::ScopeMetrics &scope, timespec &start, timespec &end, LabelMap add_labels = {}) const override
     {
         if (_quantile.is_empty()) {
             return;
@@ -467,7 +467,7 @@ public:
         metric->set_description(_desc);
         auto summary_data_point = metric->mutable_summary()->add_data_points();
         summary_data_point->set_start_time_unix_nano(timespec_to_uint64(start));
-        // summary_data_point->set_time_unix_nano(timespec_to_uint64(end));
+        summary_data_point->set_time_unix_nano(timespec_to_uint64(end));
         for (auto it = quantiles.begin(); it != quantiles.end(); ++it) {
             auto quantile = summary_data_point->add_quantile_values();
             quantile->set_quantile(fractions[it - quantiles.begin()]);
@@ -521,11 +521,11 @@ private:
         return quantile.get_quantile(_percentile_threshold);
     }
 
-    void _set_opentelemetry_data(opentelemetry::proto::metrics::v1::NumberDataPoint *data_point, uint64_t start, [[maybe_unused]] uint64_t end, const Metric::LabelMap &l, uint64_t value) const
+    void _set_opentelemetry_data(opentelemetry::proto::metrics::v1::NumberDataPoint *data_point, uint64_t start, uint64_t end, const Metric::LabelMap &l, uint64_t value) const
     {
         data_point->set_as_int(value);
         data_point->set_start_time_unix_nano(start);
-        //data_point->set_time_unix_nano(end);
+        data_point->set_time_unix_nano(end);
         for (const auto &label : l) {
             auto attribute = data_point->add_attributes();
             attribute->set_key(label.first);
