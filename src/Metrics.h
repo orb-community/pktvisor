@@ -419,6 +419,10 @@ public:
 
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override
     {
+        if (_quantile.is_empty()) {
+            return;
+        }
+
         std::vector<T> quantiles;
         if (_quantiles_sum.empty()) {
             const double fractions[4]{0.50, 0.90, 0.95, 0.99};
@@ -614,8 +618,11 @@ public:
 
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels, std::function<std::string(const T &)> formatter) const
     {
-        LabelMap l(add_labels);
         auto items = _fi.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
+        if (!std::min(_top_count, items.size())) {
+            return;
+        }
+        LabelMap l(add_labels);
         auto threshold = _get_threshold(items);
         out << "# HELP " << base_name_snake() << ' ' << _desc << std::endl;
         out << "# TYPE " << base_name_snake() << " gauge" << std::endl;
@@ -631,8 +638,11 @@ public:
 
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels, std::function<void(LabelMap &, const std::string &, const T &)> formatter) const
     {
-        LabelMap l(add_labels);
         auto items = _fi.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
+        if (!std::min(_top_count, items.size())) {
+            return;
+        }
+        LabelMap l(add_labels);
         auto threshold = _get_threshold(items);
         out << "# HELP " << base_name_snake() << ' ' << _desc << std::endl;
         out << "# TYPE " << base_name_snake() << " gauge" << std::endl;
@@ -665,8 +675,11 @@ public:
 
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override
     {
-        LabelMap l(add_labels);
         auto items = _fi.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
+        if (!std::min(_top_count, items.size())) {
+            return;
+        }
+        LabelMap l(add_labels);
         auto threshold = _get_threshold(items);
         out << "# HELP " << base_name_snake() << ' ' << _desc << std::endl;
         out << "# TYPE " << base_name_snake() << " gauge" << std::endl;
