@@ -20,6 +20,7 @@ target_include_directories(VisorInputNetProbe
 target_link_libraries(VisorInputNetProbe
         PUBLIC
         Visor::Core
+        Visor::Lib::Tcp
         ${CONAN_LIBS_LIBUV}
         ${CONAN_LIBS_UVW}
         ${CONAN_LIBS_PCAPPLUSPLUS}

@@ -50,10 +50,10 @@ void FlowInputStream::start()
         auto flow_type = config_get<std::string>("flow_type");
         if (flow_type == "sflow") {
             _flow_type = Type::SFLOW;
-        } else if (flow_type == "netflow") {
+        } else if (flow_type == "netflow" || flow_type == "ipfix") {
             _flow_type = Type::NETFLOW;
         } else {
-            throw FlowException(fmt::format("invalid flow_type \"{}\". Supported types: \"sflow\" and \"netflow\"", flow_type));
+            throw FlowException(fmt::format("invalid flow_type \"{}\". Supported types: \"sflow\", \"netflow\" and \"ipfix\"", flow_type));
         }
     } else {
         _logger->warn("flow_type not specified, using sflow");
@@ -119,7 +119,7 @@ void FlowInputStream::_read_from_pcap_file()
                         static_cast<FlowInputEventProxy *>(proxy.get())->netflow_cb(src_ip, sample, rawPacket.getRawDataLen());
                     }
                 } else {
-                    _logger->error("invalid netflow packet");
+                    _logger->error("invalid netflow or ipfix packet");
                 }
             }
         }

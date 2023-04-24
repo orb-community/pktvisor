@@ -189,6 +189,29 @@ void BgpMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelMap ad
     _counters.filtered.to_prometheus(out, add_labels);
 }
 
+void BgpMetricsBucket::to_opentelemetry(metrics::v1::ScopeMetrics &scope, timespec &start_ts, timespec &end_ts, Metric::LabelMap add_labels) const
+{
+    _rate_total.to_opentelemetry(scope, start_ts, end_ts, add_labels);
+
+    {
+        auto [num_events, num_samples, event_rate, event_lock] = event_data_locked(); // thread safe
+
+        event_rate->to_opentelemetry(scope, start_ts, end_ts, add_labels);
+        num_events->to_opentelemetry(scope, start_ts, end_ts, add_labels);
+        num_samples->to_opentelemetry(scope, start_ts, end_ts, add_labels);
+    }
+
+    std::shared_lock r_lock(_mutex);
+
+    _counters.OPEN.to_opentelemetry(scope, start_ts, end_ts, add_labels);
+    _counters.UPDATE.to_opentelemetry(scope, start_ts, end_ts, add_labels);
+    _counters.NOTIFICATION.to_opentelemetry(scope, start_ts, end_ts, add_labels);
+    _counters.KEEPALIVE.to_opentelemetry(scope, start_ts, end_ts, add_labels);
+    _counters.ROUTEREFRESH.to_opentelemetry(scope, start_ts, end_ts, add_labels);
+    _counters.total.to_opentelemetry(scope, start_ts, end_ts, add_labels);
+    _counters.filtered.to_opentelemetry(scope, start_ts, end_ts, add_labels);
+}
+
 void BgpMetricsBucket::to_json(json &j) const
 {
 

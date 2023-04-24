@@ -1,7 +1,7 @@
 ## Scenario: Create a policy without admin permission
 
 ## Steps:
-- Provide a pktvisor instance using `docker run --net=host -d ns1labs/pktvisor pktvisord <net_interface>`
+- Provide a pktvisor instance using `docker run --net=host -d orbcommunity/pktvisor pktvisord <net_interface>`
 - Try to create a policy through a post request on the endpoint: `/api/v1/policies`
 - Make a get request to the same endpoint
 

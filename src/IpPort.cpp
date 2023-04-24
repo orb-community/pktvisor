@@ -11,6 +11,26 @@ std::ostream &operator<<(std::ostream &os, const IpPort &p)
 std::map<const uint16_t, PortData> IpPort::ports_tcp_list;
 std::map<const uint16_t, PortData> IpPort::ports_udp_list;
 
+std::string IpPort::get_service(uint16_t port, Protocol proto)
+{
+    std::map<const uint16_t, PortData>::iterator it;
+    if (proto == Protocol::TCP) {
+        it = ports_tcp_list.lower_bound(port);
+        if (it == ports_tcp_list.end()) {
+            return std::to_string(port);
+        }
+    } else if (proto == Protocol::UDP) {
+        it = ports_udp_list.lower_bound(port);
+        if (it == ports_udp_list.end()) {
+            return std::to_string(port);
+        }
+    }
+    if ((it->first == port) || (port >= it->second.lower_bound)) {
+        return it->second.name;
+    }
+    return std::to_string(port);
+}
+
 void IpPort::set_csv_iana_ports(std::string path)
 {
     io::CSVReader<3> in(path);

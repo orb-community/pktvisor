@@ -46,7 +46,7 @@ protected:
 
         counters()
             : OPEN(BGP_SCHEMA, {"wire_packets", "open"}, "Total BGP packets with message type OPEN")
-            , UPDATE(BGP_SCHEMA, {"wire_packets", "offer"}, "Total BGP packets with message type KEEPALIVE")
+            , UPDATE(BGP_SCHEMA, {"wire_packets", "update"}, "Total BGP packets with message type UPDATE")
             , NOTIFICATION(BGP_SCHEMA, {"wire_packets", "notification"}, "Total BGP packets with message type NOTIFICATION")
             , KEEPALIVE(BGP_SCHEMA, {"wire_packets", "keepalive"}, "Total BGP packets with message type KEEPALIVE")
             , ROUTEREFRESH(BGP_SCHEMA, {"wire_packets", "routerefresh"}, "Total BGP packets with message type ROUTEREFRESH")
@@ -78,6 +78,7 @@ public:
     void specialized_merge(const AbstractMetricsBucket &other, Metric::Aggregate agg_operator) override;
     void to_json(json &j) const override;
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override;
+    void to_opentelemetry(metrics::v1::ScopeMetrics &scope, timespec &start_ts, timespec &end_ts, Metric::LabelMap add_labels = {}) const override;
     void update_topn_metrics(size_t, uint64_t) override
     {
     }

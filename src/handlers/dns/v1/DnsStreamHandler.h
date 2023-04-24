@@ -36,6 +36,8 @@ namespace group {
 enum DnsMetrics : visor::MetricGroupIntType {
     Cardinality,
     Counters,
+    Quantiles,
+    Histograms,
     DnsTransactions,
     TopEcs,
     TopQnames,
@@ -65,6 +67,8 @@ protected:
 
     Quantile<uint64_t> _dnsXactFromTimeUs;
     Quantile<uint64_t> _dnsXactToTimeUs;
+    Histogram<uint64_t> _dnsXactFromHistTimeUs;
+    Histogram<uint64_t> _dnsXactToHistTimeUs;
     Quantile<double> _dnsXactRatio;
 
     Cardinality _dns_qnameCard;
@@ -121,11 +125,11 @@ protected:
             , DOH(DNS_SCHEMA, {"wire_packets", "doh"}, "Total DNS wire packets received over DNS over HTTPS")
             , IPv4(DNS_SCHEMA, {"wire_packets", "ipv4"}, "Total DNS wire packets received over IPv4 (ingress and egress)")
             , IPv6(DNS_SCHEMA, {"wire_packets", "ipv6"}, "Total DNS wire packets received over IPv6 (ingress and egress)")
-            , NX(DNS_SCHEMA, {"wire_packets", "nxdomain"}, "Total DNS wire packets flagged as reply with return code NXDOMAIN (ingress and egress)")
-            , REFUSED(DNS_SCHEMA, {"wire_packets", "refused"}, "Total DNS wire packets flagged as reply with return code REFUSED (ingress and egress)")
-            , SRVFAIL(DNS_SCHEMA, {"wire_packets", "srvfail"}, "Total DNS wire packets flagged as reply with return code SRVFAIL (ingress and egress)")
-            , RNOERROR(DNS_SCHEMA, {"wire_packets", "noerror"}, "Total DNS wire packets flagged as reply with return code NOERROR (ingress and egress)")
-            , NODATA(DNS_SCHEMA, {"wire_packets", "nodata"}, "Total DNS wire packets flagged as reply with return code NOERROR and no answer section data (ingress and egress)")
+            , NX(DNS_SCHEMA, {"wire_packets", "nxdomain"}, "Total DNS wire packets flagged as reply with response code NXDOMAIN (ingress and egress)")
+            , REFUSED(DNS_SCHEMA, {"wire_packets", "refused"}, "Total DNS wire packets flagged as reply with response code REFUSED (ingress and egress)")
+            , SRVFAIL(DNS_SCHEMA, {"wire_packets", "srvfail"}, "Total DNS wire packets flagged as reply with response code SRVFAIL (ingress and egress)")
+            , RNOERROR(DNS_SCHEMA, {"wire_packets", "noerror"}, "Total DNS wire packets flagged as reply with response code NOERROR (ingress and egress)")
+            , NODATA(DNS_SCHEMA, {"wire_packets", "nodata"}, "Total DNS wire packets flagged as reply with response code NOERROR and no answer section data (ingress and egress)")
             , total(DNS_SCHEMA, {"wire_packets", "total"}, "Total DNS wire packets matching the configured filter(s)")
             , filtered(DNS_SCHEMA, {"wire_packets", "filtered"}, "Total DNS wire packets seen that did not match the configured filter(s) (if any)")
             , queryECS(DNS_SCHEMA, {"wire_packets", "query_ecs"}, "Total queries that have EDNS Client Subnet (ECS) field set")
@@ -140,6 +144,8 @@ public:
     DnsMetricsBucket()
         : _dnsXactFromTimeUs(DNS_SCHEMA, {"xact", "out", "quantiles_us"}, "Quantiles of transaction timing (query/reply pairs) when host is client, in microseconds")
         , _dnsXactToTimeUs(DNS_SCHEMA, {"xact", "in", "quantiles_us"}, "Quantiles of transaction timing (query/reply pairs) when host is server, in microseconds")
+        , _dnsXactFromHistTimeUs(DNS_SCHEMA, {"xact", "out", "histogram_us"}, "Histogram of transaction timing (query/reply pairs) when host is client, in microseconds")
+        , _dnsXactToHistTimeUs(DNS_SCHEMA, {"xact", "in", "histogram_us"}, "Histogram of transaction timing (query/reply pairs) when host is server, in microseconds")
         , _dnsXactRatio(DNS_SCHEMA, {"xact", "ratio", "quantiles"}, "Quantiles of ratio of packet sizes in a DNS transaction (reply/query)")
         , _dns_qnameCard(DNS_SCHEMA, {"cardinality", "qname"}, "Cardinality of unique QNAMES, both ingress and egress")
         , _dns_topGeoLocECS(DNS_SCHEMA, "geo_loc", {"top_geoLoc_ecs"}, "Top GeoIP ECS locations")
@@ -193,6 +199,7 @@ public:
     void specialized_merge(const AbstractMetricsBucket &other, Metric::Aggregate agg_operator) override;
     void to_json(json &j) const override;
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override;
+    void to_opentelemetry(metrics::v1::ScopeMetrics &scope, timespec &start_ts, timespec &end_ts, Metric::LabelMap add_labels = {}) const override;
     void update_topn_metrics(size_t topn_count, uint64_t percentile_threshold) override
     {
         _dns_topGeoLocECS.set_settings(topn_count, percentile_threshold);
@@ -230,20 +237,22 @@ public:
 class DnsMetricsManager final : public visor::AbstractMetricsManager<DnsMetricsBucket>
 {
     using DnsXactID = std::pair<uint32_t, uint16_t>;
-    visor::lib::transaction::TransactionManager<DnsXactID, DnsTransaction> _qr_pair_manager;
+    typedef lib::transaction::TransactionManager<DnsXactID, DnsTransaction> DnsTransactionManager;
+    std::unique_ptr<DnsTransactionManager> _qr_pair_manager;
     float _to90th{0.0};
     float _from90th{0.0};
 
 public:
     DnsMetricsManager(const Configurable *window_config)
         : visor::AbstractMetricsManager<DnsMetricsBucket>(window_config)
+        , _qr_pair_manager(std::make_unique<DnsTransactionManager>())
     {
     }
 
     void on_period_shift(timespec stamp, [[maybe_unused]] const DnsMetricsBucket *maybe_expiring_bucket) override
     {
         // DNS transaction support
-        auto timed_out = _qr_pair_manager.purge_old_transactions(stamp);
+        auto timed_out = _qr_pair_manager->purge_old_transactions(stamp);
         if (timed_out) {
             live_bucket()->inc_xact_timed_out(timed_out);
         }
@@ -259,7 +268,12 @@ public:
 
     size_t num_open_transactions() const
     {
-        return _qr_pair_manager.open_transaction_count();
+        return _qr_pair_manager->open_transaction_count();
+    }
+
+    void set_xact_ttl(uint32_t ttl)
+    {
+        _qr_pair_manager = std::make_unique<DnsTransactionManager>(ttl);
     }
 
     void process_filtered(timespec stamp);
@@ -304,6 +318,7 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
     sigslot::connection _dnstap_connection;
 
     sigslot::connection _pkt_udp_connection;
+    sigslot::connection _pkt_tcp_reassembled_connection;
     sigslot::connection _start_tstamp_connection;
     sigslot::connection _end_tstamp_connection;
 
@@ -314,6 +329,7 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
     sigslot::connection _heartbeat_connection;
 
     void process_udp_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp);
+    void process_tcp_reassembled_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp);
     void process_dnstap_cb(const dnstap::Dnstap &, size_t);
     void tcp_message_ready_cb(int8_t side, const pcpp::TcpStreamData &tcpData, PacketDirection dir);
     void tcp_connection_start_cb(const pcpp::ConnectionData &connectionData, PacketDirection dir);
@@ -338,6 +354,7 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
         OnlyResponses,
         OnlyQtype,
         AnswerCount,
+        OnlyQName,
         OnlyQNameSuffix,
         OnlyDNSSECResponse,
         DnstapMsgType,
@@ -351,13 +368,15 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
         ConfigsMAX
     };
     std::bitset<Configs::ConfigsMAX> _c_enabled;
-    uint16_t _f_rcode{0};
+    std::vector<uint16_t> _f_rcodes;
     uint64_t _f_answer_count{0};
+    std::vector<std::string> _f_qnames_suffix;
     std::vector<std::string> _f_qnames;
     std::vector<uint16_t> _f_qtypes;
     size_t _static_suffix_size{0};
     std::bitset<DNSTAP_TYPE_SIZE> _f_dnstap_types;
     bool _using_predicate_signals{false};
+    Filters _predicate_filter_type{Filters::FiltersMAX};
 
     static const inline StreamMetricsHandler::ConfigsDefType _config_defs = {
         "exclude_noerror",
@@ -367,16 +386,21 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
         "only_dnssec_response",
         "answer_count",
         "only_qtype",
+        "only_qname",
         "only_qname_suffix",
         "geoloc_notfound",
         "asn_notfound",
         "dnstap_msg_type",
         "public_suffix_list",
-        "recorded_stream"};
+        "recorded_stream",
+        "xact_ttl_secs",
+        "xact_ttl_ms"};
 
     static const inline StreamMetricsHandler::GroupDefType _group_defs = {
         {"cardinality", group::DnsMetrics::Cardinality},
         {"counters", group::DnsMetrics::Counters},
+        {"quantiles", group::DnsMetrics::Quantiles},
+        {"histograms", group::DnsMetrics::Histograms},
         {"dns_transaction", group::DnsMetrics::DnsTransactions},
         {"top_ecs", group::DnsMetrics::TopEcs},
         {"top_qnames", group::DnsMetrics::TopQnames},

@@ -3,7 +3,7 @@
 
 using namespace visor;
 
-class TestMetricsBucket : public AbstractMetricsBucket
+class TestMetricsBucket final : public AbstractMetricsBucket
 {
 public:
     void specialized_merge([[maybe_unused]] const AbstractMetricsBucket &other, [[maybe_unused]] Metric::Aggregate agg_operator)
@@ -16,6 +16,11 @@ public:
         [[maybe_unused]] Metric::LabelMap add_labels = {}) const
     {
         out << "test_performed" << std::endl;
+    }
+    void to_opentelemetry(metrics::v1::ScopeMetrics &scope, timespec &, timespec &, Metric::LabelMap) const
+    {
+        scope.add_metrics()->set_name("test1");
+        scope.add_metrics()->set_name("test2");
     }
     void update_topn_metrics(size_t, uint64_t)
     {
@@ -34,6 +39,7 @@ TEST_CASE("Abstract metrics manager", "[metrics][abstract]")
 {
     json j;
     std::stringstream output;
+    metrics::v1::ScopeMetrics scope;
     std::string line;
     visor::Config c;
     c.config_set<uint64_t>("num_periods", 1);
@@ -62,6 +68,12 @@ TEST_CASE("Abstract metrics manager", "[metrics][abstract]")
         manager->window_single_prometheus(output, 0, {{"policy", "default"}});
         std::getline(output, line);
         CHECK(line == "test_performed");
+    }
+
+    SECTION("Abstract window single opentelemetry")
+    {
+        manager->window_single_opentelemetry(scope);
+        CHECK(scope.metrics_size() == 2);
     }
 
     SECTION("Abstract window single prometheus failed")
@@ -121,6 +133,7 @@ TEST_CASE("Counter metrics", "[metrics][counter]")
 
     json j;
     std::stringstream output;
+    metrics::v1::ScopeMetrics scope;
     std::string line;
     Counter c("root", {"test", "metric"}, "A counter test metric");
 
@@ -153,6 +166,15 @@ TEST_CASE("Counter metrics", "[metrics][counter]")
         std::getline(output, line);
         CHECK(line == R"(root_test_metric{instance="test instance",policy="default"} 1)");
     }
+
+    SECTION("Counter opentelemetry")
+    {
+        ++c;
+        timespec stamp;
+        c.to_opentelemetry(scope, stamp, stamp, {{"policy", "default"}});
+        CHECK(scope.metrics(0).name() == "root_test_metric");
+        CHECK(scope.metrics(0).has_gauge());
+    }
 }
 
 TEST_CASE("Quantile metrics", "[metrics][quantile]")
@@ -161,6 +183,7 @@ TEST_CASE("Quantile metrics", "[metrics][quantile]")
 
     json j;
     std::stringstream output;
+    metrics::v1::ScopeMetrics scope;
     std::string line;
     Quantile<int_fast32_t> q("root", {"test", "metric"}, "A quantile test metric");
 
@@ -212,6 +235,15 @@ TEST_CASE("Quantile metrics", "[metrics][quantile]")
         std::getline(output, line);
         CHECK(line == R"(root_test_metric_count{instance="test instance",policy="default"} 1)");
     }
+
+    SECTION("Quantile opentelemetry")
+    {
+        q.update(12);
+        timespec stamp;
+        q.to_opentelemetry(scope, stamp, stamp, {{"policy", "default"}});
+        CHECK(scope.metrics(0).name() == "root_test_metric");
+        CHECK(scope.metrics(0).has_summary());
+    }
 }
 
 TEST_CASE("Histogram int metrics", "[metrics][histogram]")
@@ -220,14 +252,15 @@ TEST_CASE("Histogram int metrics", "[metrics][histogram]")
 
     json j;
     std::stringstream output;
+    metrics::v1::ScopeMetrics scope;
     std::string line;
-    Histogram<int_fast32_t> h("root", {"test", "metric"}, "A histogram test metric");
+    Histogram<uint64_t> h("root", {"test", "metric"}, "A histogram test metric");
 
     SECTION("Histogram to json")
     {
         h.name_json_assign(j, 58);
         CHECK(j["test"]["metric"] == 58);
-        int_fast32_t value = 12;
+        uint64_t value = 12;
         h.update(value);
         h.update(value);
         h.update(value);
@@ -237,7 +270,6 @@ TEST_CASE("Histogram int metrics", "[metrics][histogram]")
 
         CHECK(j["top"]["test"]["metric"]["buckets"]["+Inf"] == 4.0);
         CHECK(j["top"]["test"]["metric"]["buckets"]["12"] == 4.0);
-        CHECK(j["top"]["test"]["metric"]["buckets"]["4"] == 0.0);
         CHECK(j["top"]["test"]["metric"]["buckets"]["8"] == 1.0);
     }
 
@@ -261,7 +293,7 @@ TEST_CASE("Histogram int metrics", "[metrics][histogram]")
         std::getline(output, line);
         CHECK(line == "# TYPE root_test_metric histogram");
         std::getline(output, line);
-        CHECK(line == R"(root_test_metric_bucket{instance="test instance",le="4",policy="default"} 1)");
+        CHECK(line == R"(root_test_metric_bucket{instance="test instance",le="1",policy="default"} 1)");
         std::getline(output, line);
         CHECK(line == R"(root_test_metric_bucket{instance="test instance",le="8",policy="default"} 2)");
         std::getline(output, line);
@@ -271,6 +303,19 @@ TEST_CASE("Histogram int metrics", "[metrics][histogram]")
         std::getline(output, line);
         CHECK(line == R"(root_test_metric_count{instance="test instance",policy="default"} 5)");
     }
+
+    SECTION("Histogram opentelemetry")
+    {
+        h.update(12);
+        h.update(12);
+        h.update(1);
+        h.update(8);
+        h.update(12);
+        timespec stamp;
+        h.to_opentelemetry(scope, stamp, stamp, {{"policy", "default"}});
+        CHECK(scope.metrics(0).name() == "root_test_metric");
+        CHECK(scope.metrics(0).has_histogram());
+    }
 }
 
 TEST_CASE("Histogram double metrics", "[metrics][histogram]")
@@ -279,6 +324,7 @@ TEST_CASE("Histogram double metrics", "[metrics][histogram]")
 
     json j;
     std::stringstream output;
+    metrics::v1::ScopeMetrics scope;
     std::string line;
     Histogram<double> h("root", {"test", "metric"}, "A histogram test metric");
 
@@ -290,10 +336,8 @@ TEST_CASE("Histogram double metrics", "[metrics][histogram]")
         h.update(8.000);
         h.to_json(j["top"]);
 
-        CHECK(j["top"]["test"]["metric"]["buckets"]["+Inf"] == 4.0);
-        CHECK(j["top"]["test"]["metric"]["buckets"]["12.000000"] == 4.0);
-        CHECK(j["top"]["test"]["metric"]["buckets"]["4.000000"] == 0.0);
-        CHECK(j["top"]["test"]["metric"]["buckets"]["8.000000"] == 1.0);
+        CHECK(j["top"]["test"]["metric"]["buckets"]["12.915497"] == 4.0);
+        CHECK(j["top"]["test"]["metric"]["buckets"]["8.799225"] == 1.0);
     }
 
     SECTION("Histogram get n")
@@ -316,15 +360,28 @@ TEST_CASE("Histogram double metrics", "[metrics][histogram]")
         std::getline(output, line);
         CHECK(line == "# TYPE root_test_metric histogram");
         std::getline(output, line);
-        CHECK(line == R"(root_test_metric_bucket{instance="test instance",le="4.000033",policy="default"} 1)");
+        CHECK(line == R"(root_test_metric_bucket{instance="test instance",le="1.000000",policy="default"} 1)");
         std::getline(output, line);
-        CHECK(line == R"(root_test_metric_bucket{instance="test instance",le="8.000067",policy="default"} 2)");
+        CHECK(line == R"(root_test_metric_bucket{instance="test instance",le="8.799225",policy="default"} 2)");
         std::getline(output, line);
-        CHECK(line == R"(root_test_metric_bucket{instance="test instance",le="12.000100",policy="default"} 5)");
+        CHECK(line == R"(root_test_metric_bucket{instance="test instance",le="12.915497",policy="default"} 5)");
         std::getline(output, line);
         CHECK(line == R"(root_test_metric_bucket{instance="test instance",le="+Inf",policy="default"} 5)");
         std::getline(output, line);
         CHECK(line == R"(root_test_metric_count{instance="test instance",policy="default"} 5)");
+    }
+
+    SECTION("Histogram opentelemetry")
+    {
+        h.update(12.00);
+        h.update(12.0001);
+        h.update(1);
+        h.update(8);
+        h.update(12);
+        timespec stamp;
+        h.to_opentelemetry(scope, stamp, stamp, {{"policy", "default"}});
+        CHECK(scope.metrics(0).name() == "root_test_metric");
+        CHECK(scope.metrics(0).has_histogram());
     }
 }
 
@@ -334,6 +391,7 @@ TEST_CASE("TopN metrics", "[metrics][topn]")
 
     json j;
     std::stringstream output;
+    metrics::v1::ScopeMetrics scope;
     std::string line;
     TopN<std::string> top_sting("root", "string", {"test", "metric"}, "A topn test metric");
     TopN<uint16_t> top_int("root", "integer", {"test", "metric"}, "A topn test metric");
@@ -358,24 +416,6 @@ TEST_CASE("TopN metrics", "[metrics][topn]")
         CHECK(j["top"]["test"]["metric"][0]["name"] == "123");
     }
 
-    SECTION("TopN to json summary")
-    {
-        top_sting.update("top1");
-        top_sting.update("top2");
-        top_sting.update("top3");
-        top_sting.update("none");
-        top_sting.to_json(j["top"], [](const std::string &val) {
-            if(val.find("top") != std::string::npos) {
-                return std::string("top");
-            }
-            return val;
-        }, Metric::Aggregate::SUMMARY);
-        CHECK(j["top"]["test"]["metric"][0]["estimate"] == 3);
-        CHECK(j["top"]["test"]["metric"][0]["name"] == "top");
-        CHECK(j["top"]["test"]["metric"][1]["estimate"] == 1);
-        CHECK(j["top"]["test"]["metric"][1]["name"] == "none");
-    }
-
     SECTION("TopN prometheus")
     {
         top_sting.update("top1");
@@ -390,6 +430,19 @@ TEST_CASE("TopN metrics", "[metrics][topn]")
         CHECK(line == R"(root_test_metric{instance="test instance",policy="default",string="top1"} 2)");
         std::getline(output, line);
         CHECK(line == R"(root_test_metric{instance="test instance",policy="default",string="top2"} 1)");
+    }
+
+    SECTION("TopN opentelemetry")
+    {
+        top_sting.update("top1");
+        top_sting.update("top2");
+        top_sting.update("top1");
+        timespec stamp;
+        top_sting.to_opentelemetry(scope, stamp, stamp, {{"policy", "default"}});
+        CHECK(scope.metrics(0).name() == "root_test_metric");
+        CHECK(scope.metrics(0).has_gauge());
+        CHECK(scope.metrics_size() == 1);
+        CHECK(scope.metrics(0).gauge().data_points_size() == 2);
     }
 
     SECTION("TopN prometheus formatter")
@@ -409,26 +462,18 @@ TEST_CASE("TopN metrics", "[metrics][topn]")
         CHECK(line == R"(root_test_metric{instance="test instance",integer="10",policy="default"} 1)");
     }
 
-    SECTION("TopN to prometheus summary")
+    SECTION("TopN opentelemetry formatter")
     {
-        top_sting.update("top1");
-        top_sting.update("top2");
-        top_sting.update("top3");
-        top_sting.update("none");
-        top_sting.to_prometheus(output, {{"policy", "default"}}, [](const std::string &val) {
-                if(val.find("top") != std::string::npos) {
-                    return std::string("top");
-                }
-                return val;
-            }, Metric::Aggregate::SUMMARY);
-        std::getline(output, line);
-        CHECK(line == "# HELP root_test_metric A topn test metric");
-        std::getline(output, line);
-        CHECK(line == "# TYPE root_test_metric gauge");
-        std::getline(output, line);
-        CHECK(line == R"(root_test_metric{instance="test instance",policy="default",string="top"} 3)");
-        std::getline(output, line);
-        CHECK(line == R"(root_test_metric{instance="test instance",policy="default",string="none"} 1)");
+        top_int.update(123);
+        top_int.update(10);
+        top_int.update(123);
+        timespec stamp;
+        top_int.to_opentelemetry(scope, stamp, stamp, {{"policy", "default"}},
+            [](const uint16_t &val) { return std::to_string(val); });
+        CHECK(scope.metrics(0).name() == "root_test_metric");
+        CHECK(scope.metrics(0).has_gauge());
+        CHECK(scope.metrics_size() == 1);
+        CHECK(scope.metrics(0).gauge().data_points_size() == 2);
     }
 
     SECTION("TopN get count size")
@@ -458,6 +503,7 @@ TEST_CASE("Cardinality metrics", "[metrics][cardinality]")
 
     json j;
     std::stringstream output;
+    metrics::v1::ScopeMetrics scope;
     std::string line;
     Cardinality c("root", {"test", "metric"}, "A cardinality test metric");
 
@@ -485,6 +531,16 @@ TEST_CASE("Cardinality metrics", "[metrics][cardinality]")
         std::getline(output, line);
         CHECK(line == R"(root_test_metric{instance="test instance",policy="default"} 1)");
     }
+
+    SECTION("Cardinality opentelemetry")
+    {
+        c.update("metric");
+        timespec stamp;
+        c.to_opentelemetry(scope, stamp, stamp, {{"policy", "default"}});
+        CHECK(scope.metrics(0).name() == "root_test_metric");
+        CHECK(scope.metrics(0).has_gauge());
+        CHECK(scope.metrics_size() == 1);
+    }
 }
 
 TEST_CASE("Rate metrics", "[metrics][rate]")
@@ -493,6 +549,7 @@ TEST_CASE("Rate metrics", "[metrics][rate]")
 
     json j;
     std::stringstream output;
+    metrics::v1::ScopeMetrics scope;
     std::string line;
     Rate r("root", {"test", "metric"}, "A rate test metric");
 
@@ -517,5 +574,11 @@ TEST_CASE("Rate metrics", "[metrics][rate]")
     SECTION("rate prometheus")
     {
         r.to_prometheus(output, {{"policy", "default"}});
+    }
+
+    SECTION("rate opentelemetry")
+    {
+        timespec stamp;
+        r.to_opentelemetry(scope, stamp, stamp, {{"policy", "default"}});
     }
 }

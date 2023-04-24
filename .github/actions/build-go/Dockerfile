@@ -1,7 +1,7 @@
 FROM golang:latest
 
 LABEL author="Everton Haise Taques <everton.taques@encora.com>"
-LABEL maintainer="NS1 Labs"
+LABEL maintainer="netboxlabs"
 LABEL version="1.0.0"
 
 COPY ./entrypoint.sh /entrypoint.sh
