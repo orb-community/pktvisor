@@ -4,7 +4,7 @@ info:
   version: 3.0.0-oas3
   title: pktvisor
   contact:
-    email: ns1labs@ns1.com
+    email: info@netboxlabs
   license:
     name: Apache 2.0
     url: 'http://www.apache.org/licenses/LICENSE-2.0.html'

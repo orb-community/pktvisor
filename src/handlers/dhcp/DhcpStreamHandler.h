@@ -100,6 +100,7 @@ public:
     void specialized_merge(const AbstractMetricsBucket &other, Metric::Aggregate agg_operator) override;
     void to_json(json &j) const override;
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override;
+    void to_opentelemetry(metrics::v1::ScopeMetrics &scope, timespec &start_ts, timespec &end_ts, Metric::LabelMap add_labels = {}) const override;
     void update_topn_metrics(size_t, uint64_t) override
     {
     }
@@ -118,18 +119,25 @@ public:
 
 class DhcpMetricsManager final : public visor::AbstractMetricsManager<DhcpMetricsBucket>
 {
-    TransactionManager<uint32_t, DhcpTransaction, std::hash<uint32_t>> _request_ack_manager;
+    typedef TransactionManager<uint32_t, DhcpTransaction, std::hash<uint32_t>> DhcpTransactionManager;
+    std::unique_ptr<DhcpTransactionManager> _request_ack_manager;
 
 public:
     DhcpMetricsManager(const Configurable *window_config)
         : visor::AbstractMetricsManager<DhcpMetricsBucket>(window_config)
+        , _request_ack_manager(std::make_unique<DhcpTransactionManager>())
     {
     }
 
     void on_period_shift(timespec stamp, [[maybe_unused]] const DhcpMetricsBucket *maybe_expiring_bucket) override
     {
         // Dhcp transaction support
-        _request_ack_manager.purge_old_transactions(stamp);
+        _request_ack_manager->purge_old_transactions(stamp);
+    }
+
+    void set_xact_ttl(uint32_t ttl)
+    {
+        _request_ack_manager = std::make_unique<DhcpTransactionManager>(ttl);
     }
 
     void process_filtered(timespec stamp);
@@ -149,7 +157,9 @@ class DhcpStreamHandler final : public visor::StreamMetricsHandler<DhcpMetricsMa
     sigslot::connection _heartbeat_connection;
 
     static const inline StreamMetricsHandler::ConfigsDefType _config_defs = {
-        "recorded_stream"};
+        "recorded_stream",
+        "xact_ttl_secs",
+        "xact_ttl_ms"};
 
     void process_udp_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp);
 

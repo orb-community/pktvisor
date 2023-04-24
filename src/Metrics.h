@@ -4,6 +4,7 @@
 
 #pragma once
 #include <nlohmann/json.hpp>
+#include <opentelemetry/proto/metrics/v1/metrics.pb.h>
 #include <sstream>
 #include <timer.hpp>
 #ifdef __GNUC__
@@ -20,14 +21,21 @@
 #pragma GCC diagnostic pop
 #endif
 #include <chrono>
+#include <math.h>
 #include <regex>
 #include <set>
 #include <shared_mutex>
 #include <vector>
 
+#define HIST_MIN_EXP -9
+#define HIST_MAX_EXP 18
+#define HIST_LOG_BUCK 18
+#define HIST_N_BUCKETS (HIST_LOG_BUCK * (HIST_MAX_EXP - HIST_MIN_EXP))
+
 namespace visor {
 
 using json = nlohmann::json;
+using namespace opentelemetry::proto;
 using namespace std::chrono;
 
 struct comparator {
@@ -42,6 +50,11 @@ struct comparator {
     }
 };
 
+static inline uint64_t timespec_to_uint64(timespec &stamp)
+{
+    return stamp.tv_sec * 1000000000ULL + stamp.tv_nsec;
+}
+
 class Metric
 {
 public:
@@ -49,8 +62,7 @@ public:
 
     enum class Aggregate {
         DEFAULT,
-        SUM,
-        SUMMARY
+        SUM
     };
 
 private:
@@ -89,7 +101,7 @@ public:
 
     virtual ~Metric() = default;
 
-    void set_info(std::string schema_key, std::initializer_list<std::string> names, const std::string &desc)
+    virtual void set_info(std::string schema_key, std::initializer_list<std::string> names, const std::string &desc)
     {
         _name.clear();
         _name = names;
@@ -111,6 +123,7 @@ public:
 
     virtual void to_json(json &j) const = 0;
     virtual void to_prometheus(std::stringstream &out, LabelMap add_labels = {}) const = 0;
+    virtual void to_opentelemetry(metrics::v1::ScopeMetrics &scope, timespec &start, timespec &end, LabelMap add_labels = {}) const = 0;
 };
 
 /**
@@ -156,6 +169,7 @@ public:
     // Metric
     void to_json(json &j) const override;
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override;
+    void to_opentelemetry(metrics::v1::ScopeMetrics &scope, timespec &start, timespec &end, LabelMap add_labels = {}) const override;
 };
 
 /**
@@ -167,18 +181,36 @@ template <typename T>
 class Histogram final : public Metric
 {
     static_assert(std::is_integral<T>::value || std::is_floating_point<T>::value);
-    T _pace;
+
+    static constexpr T _get_pace()
+    {
+        if constexpr (std::is_integral<T>::value) {
+            return 1;
+        } else {
+            return 0.0000001;
+        }
+    }
+
+    // calculated at compile time
+    static constexpr std::pair<std::array<T, HIST_N_BUCKETS>, size_t> _get_boundaries()
+    {
+        auto pace = _get_pace();
+        std::array<T, HIST_N_BUCKETS> boundaries{};
+        size_t index = 0;
+        for (auto exponent = HIST_MIN_EXP; exponent < HIST_MAX_EXP; exponent++) {
+            for (auto buckets = 0; buckets < HIST_LOG_BUCK; buckets++) {
+                boundaries[index++] = static_cast<T>((std::pow(10.0, static_cast<float>(buckets) / HIST_LOG_BUCK) * std::pow(10.0, exponent)) + pace);
+            }
+        }
+        auto itr = std::unique(boundaries.begin(), boundaries.end());
+        return {boundaries, std::distance(boundaries.begin(), itr)};
+    }
     datasketches::kll_sketch<T> _sketch;
 
 public:
     Histogram(std::string schema_key, std::initializer_list<std::string> names, std::string desc)
         : Metric(schema_key, names, std::move(desc))
     {
-        if constexpr (std::is_integral<T>::value) {
-            _pace = 1;
-        } else {
-            _pace = 0.0000001;
-        }
     }
 
     void update(const T &value)
@@ -217,22 +249,20 @@ public:
         if (_sketch.is_empty()) {
             return;
         }
-        std::size_t split_point_size = 1 + static_cast<std::size_t>(std::log2(_sketch.get_n())); // Sturge’s Rule
-        T step = _sketch.get_max_value() / split_point_size;
-        T split_point = step;
-        std::unique_ptr<T[]> bins = std::make_unique<T[]>(split_point_size);
-        for (std::size_t i = 0; i < split_point_size; ++i) {
-            bins[i] = split_point + _pace;
-            split_point += step;
-            if (split_point > _sketch.get_max_value()) {
-                split_point = _sketch.get_max_value();
+        auto bins_pmf = _get_boundaries();
+        auto histogram_pmf = _sketch.get_PMF(bins_pmf.first.data(), bins_pmf.second);
+        std::vector<T> bins;
+        for (size_t i = 0; i < bins_pmf.second; ++i) {
+            if (histogram_pmf[i]) {
+                bins.push_back(bins_pmf.first[i]);
             }
         }
-        auto histogram = _sketch.get_CDF(bins.get(), split_point_size);
-        for (std::size_t i = 0; i < split_point_size; ++i) {
-            name_json_assign(j, {"buckets", std::to_string(bins[i] - _pace)}, histogram[i] * _sketch.get_n());
+        auto histogram = _sketch.get_CDF(bins.data(), bins.size());
+        auto pace = _get_pace();
+        for (std::size_t i = 0; i < bins.size(); ++i) {
+            name_json_assign(j, {"buckets", std::to_string(bins[i] - pace)}, histogram[i] * _sketch.get_n());
         }
-        name_json_assign(j, {"buckets", "+Inf"}, histogram[split_point_size] * _sketch.get_n());
+        name_json_assign(j, {"buckets", "+Inf"}, histogram[bins.size()] * _sketch.get_n());
     }
 
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override
@@ -240,30 +270,65 @@ public:
         if (_sketch.is_empty()) {
             return;
         }
-        std::size_t split_point_size = 1 + static_cast<std::size_t>(std::log2(_sketch.get_n())); // Sturge’s Rule
-        T step = _sketch.get_max_value() / split_point_size;
-        T split_point = step;
-        std::unique_ptr<T[]> bins = std::make_unique<T[]>(split_point_size);
-        for (std::size_t i = 0; i < split_point_size; ++i) {
-            bins[i] = split_point + _pace;
-            split_point += step;
-            if (split_point > _sketch.get_max_value()) {
-                split_point = _sketch.get_max_value();
+        auto bins_pmf = _get_boundaries();
+        auto histogram_pmf = _sketch.get_PMF(bins_pmf.first.data(), bins_pmf.second);
+        std::vector<T> bins;
+        for (size_t i = 0; i < bins_pmf.second; ++i) {
+            if (histogram_pmf[i]) {
+                bins.push_back(bins_pmf.first[i]);
             }
         }
-        auto histogram = _sketch.get_CDF(bins.get(), split_point_size);
-
+        auto histogram = _sketch.get_CDF(bins.data(), bins.size());
+        auto pace = _get_pace();
         out << "# HELP " << base_name_snake() << ' ' << _desc << std::endl;
         out << "# TYPE " << base_name_snake() << " histogram" << std::endl;
-        for (std::size_t i = 0; i < split_point_size; ++i) {
+        for (std::size_t i = 0; i < bins.size(); ++i) {
             LabelMap le(add_labels);
-            le["le"] = std::to_string(bins[i] - _pace);
+            le["le"] = std::to_string(bins[i] - pace);
             out << name_snake({"bucket"}, le) << ' ' << histogram[i] * _sketch.get_n() << std::endl;
         }
         LabelMap le(add_labels);
         le["le"] = "+Inf";
-        out << name_snake({"bucket"}, le) << ' ' << histogram[split_point_size] * _sketch.get_n() << std::endl;
+        out << name_snake({"bucket"}, le) << ' ' << histogram[bins.size()] * _sketch.get_n() << std::endl;
         out << name_snake({"count"}, add_labels) << ' ' << _sketch.get_n() << std::endl;
+    }
+
+    void to_opentelemetry(metrics::v1::ScopeMetrics &scope, timespec &start, timespec &end, LabelMap add_labels = {}) const
+    {
+        if (_sketch.is_empty()) {
+            return;
+        }
+        auto bins_pmf = _get_boundaries();
+        auto histogram_pmf = _sketch.get_PMF(bins_pmf.first.data(), bins_pmf.second);
+        std::vector<T> bins;
+        for (size_t i = 0; i < bins_pmf.second; ++i) {
+            if (histogram_pmf[i]) {
+                bins.push_back(bins_pmf.first[i]);
+            }
+        }
+        auto histogram = _sketch.get_CDF(bins.data(), bins.size());
+        auto pace = _get_pace();
+
+        auto metric = scope.add_metrics();
+        metric->set_name(base_name_snake());
+        metric->set_description(_desc);
+        auto m_hist = metric->mutable_histogram();
+        m_hist->set_aggregation_temporality(metrics::v1::AggregationTemporality::AGGREGATION_TEMPORALITY_CUMULATIVE);
+        auto hist_data_point = m_hist->add_data_points();
+        hist_data_point->set_start_time_unix_nano(timespec_to_uint64(start));
+        hist_data_point->set_time_unix_nano(timespec_to_uint64(end));
+
+        for (std::size_t i = 0; i < bins.size(); ++i) {
+            hist_data_point->add_explicit_bounds(bins[i] - pace);
+            hist_data_point->add_bucket_counts(histogram[i] * _sketch.get_n());
+        }
+        hist_data_point->set_count(_sketch.get_n());
+
+        for (const auto &label : add_labels) {
+            auto attribute = hist_data_point->add_attributes();
+            attribute->set_key(label.first);
+            attribute->mutable_value()->set_string_value(label.second);
+        }
     }
 };
 
@@ -354,6 +419,10 @@ public:
 
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override
     {
+        if (_quantile.is_empty()) {
+            return;
+        }
+
         std::vector<T> quantiles;
         if (_quantiles_sum.empty()) {
             const double fractions[4]{0.50, 0.90, 0.95, 0.99};
@@ -380,6 +449,38 @@ public:
             out << name_snake({}, l99) << ' ' << quantiles[3] << std::endl;
             out << name_snake({"sum"}, add_labels) << ' ' << _quantile.get_max_value() << std::endl;
             out << name_snake({"count"}, add_labels) << ' ' << _quantile.get_n() << std::endl;
+        }
+    }
+
+    void to_opentelemetry(metrics::v1::ScopeMetrics &scope, timespec &start, timespec &end, LabelMap add_labels = {}) const override
+    {
+        if (_quantile.is_empty()) {
+            return;
+        }
+
+        std::vector<T> quantiles;
+        const double fractions[4]{0.50, 0.90, 0.95, 0.99};
+        if (_quantiles_sum.empty()) {
+            quantiles = _quantile.get_quantiles(fractions, 4);
+        } else {
+            quantiles = _quantiles_sum;
+        }
+
+        auto metric = scope.add_metrics();
+        metric->set_name(base_name_snake());
+        metric->set_description(_desc);
+        auto summary_data_point = metric->mutable_summary()->add_data_points();
+        summary_data_point->set_start_time_unix_nano(timespec_to_uint64(start));
+        summary_data_point->set_time_unix_nano(timespec_to_uint64(end));
+        for (auto it = quantiles.begin(); it != quantiles.end(); ++it) {
+            auto quantile = summary_data_point->add_quantile_values();
+            quantile->set_quantile(fractions[it - quantiles.begin()]);
+            quantile->set_value(*it);
+        }
+        for (const auto &label : add_labels) {
+            auto attribute = summary_data_point->add_attributes();
+            attribute->set_key(label.first);
+            attribute->mutable_value()->set_string_value(label.second);
         }
     }
 };
@@ -424,20 +525,16 @@ private:
         return quantile.get_quantile(_percentile_threshold);
     }
 
-    auto _get_summarized_data(const std::vector<typename datasketches::frequent_items_sketch<T>::row> &items, std::function<std::string(const T &)> formatter, uint64_t threshold) const
+    void _set_opentelemetry_data(opentelemetry::proto::metrics::v1::NumberDataPoint *data_point, uint64_t start, uint64_t end, const Metric::LabelMap &l, uint64_t value) const
     {
-        std::map<std::string, uint64_t> summary;
-        for (uint64_t i = 0; i < std::min(_top_count, items.size()); i++) {
-            if (items[i].get_estimate() >= threshold) {
-                auto [removed, not_exists] = summary.emplace(formatter(items[i].get_item()), items[i].get_estimate());
-                if (!not_exists) {
-                    summary[removed->first] += items[i].get_estimate();
-                }
-            } else {
-                break;
-            }
+        data_point->set_as_int(value);
+        data_point->set_start_time_unix_nano(start);
+        data_point->set_time_unix_nano(end);
+        for (const auto &label : l) {
+            auto attribute = data_point->add_attributes();
+            attribute->set_key(label.first);
+            attribute->mutable_value()->set_string_value(label.second);
         }
-        return std::set<std::pair<std::string, uint64_t>, comparator>(summary.begin(), summary.end());
     }
 
 public:
@@ -487,27 +584,17 @@ public:
      * @param j json object
      * @param formatter std::function which takes a T as input (the type store it in top table) it needs to return a std::string
      */
-    void to_json(json &j, std::function<std::string(const T &)> formatter, Aggregate op = Aggregate::DEFAULT) const
+    void to_json(json &j, std::function<std::string(const T &)> formatter) const
     {
         auto section = json::array();
         auto items = _fi.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
         auto threshold = _get_threshold(items);
-        if (op == Aggregate::DEFAULT) {
-            for (uint64_t i = 0; i < std::min(_top_count, items.size()); i++) {
-                if (items[i].get_estimate() >= threshold) {
-                    section[i]["name"] = formatter(items[i].get_item());
-                    section[i]["estimate"] = items[i].get_estimate();
-                } else {
-                    break;
-                }
-            }
-        } else if (op == Aggregate::SUMMARY) {
-            auto sorted = _get_summarized_data(items, formatter, threshold);
-            uint64_t i = 0;
-            for (const auto &data : sorted) {
-                section[i]["name"] = data.first;
-                section[i]["estimate"] = data.second;
-                i++;
+        for (uint64_t i = 0; i < std::min(_top_count, items.size()); i++) {
+            if (items[i].get_estimate() >= threshold) {
+                section[i]["name"] = formatter(items[i].get_item());
+                section[i]["estimate"] = items[i].get_estimate();
+            } else {
+                break;
             }
         }
         name_json_assign(j, section);
@@ -529,35 +616,33 @@ public:
         name_json_assign(j, section);
     }
 
-    void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels, std::function<std::string(const T &)> formatter, Aggregate op = Aggregate::DEFAULT) const
+    void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels, std::function<std::string(const T &)> formatter) const
     {
-        LabelMap l(add_labels);
         auto items = _fi.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
+        if (!std::min(_top_count, items.size())) {
+            return;
+        }
+        LabelMap l(add_labels);
         auto threshold = _get_threshold(items);
         out << "# HELP " << base_name_snake() << ' ' << _desc << std::endl;
         out << "# TYPE " << base_name_snake() << " gauge" << std::endl;
-        if (op == Aggregate::DEFAULT) {
-            for (uint64_t i = 0; i < std::min(_top_count, items.size()); i++) {
-                if (items[i].get_estimate() >= threshold) {
-                    l[_item_key] = formatter(items[i].get_item());
-                    out << name_snake({}, l) << ' ' << items[i].get_estimate() << std::endl;
-                } else {
-                    break;
-                }
-            }
-        } else if (op == Aggregate::SUMMARY) {
-            auto sorted = _get_summarized_data(items, formatter, threshold);
-            for (const auto &data : sorted) {
-                l[_item_key] = data.first;
-                out << name_snake({}, l) << ' ' << data.second << std::endl;
+        for (uint64_t i = 0; i < std::min(_top_count, items.size()); i++) {
+            if (items[i].get_estimate() >= threshold) {
+                l[_item_key] = formatter(items[i].get_item());
+                out << name_snake({}, l) << ' ' << items[i].get_estimate() << std::endl;
+            } else {
+                break;
             }
         }
     }
 
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels, std::function<void(LabelMap &, const std::string &, const T &)> formatter) const
     {
-        LabelMap l(add_labels);
         auto items = _fi.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
+        if (!std::min(_top_count, items.size())) {
+            return;
+        }
+        LabelMap l(add_labels);
         auto threshold = _get_threshold(items);
         out << "# HELP " << base_name_snake() << ' ' << _desc << std::endl;
         out << "# TYPE " << base_name_snake() << " gauge" << std::endl;
@@ -590,8 +675,11 @@ public:
 
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override
     {
-        LabelMap l(add_labels);
         auto items = _fi.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
+        if (!std::min(_top_count, items.size())) {
+            return;
+        }
+        LabelMap l(add_labels);
         auto threshold = _get_threshold(items);
         out << "# HELP " << base_name_snake() << ' ' << _desc << std::endl;
         out << "# TYPE " << base_name_snake() << " gauge" << std::endl;
@@ -601,6 +689,77 @@ public:
                 name_text << items[i].get_item();
                 l[_item_key] = name_text.str();
                 out << name_snake({}, l) << ' ' << items[i].get_estimate() << std::endl;
+            } else {
+                break;
+            }
+        }
+    }
+
+    void to_opentelemetry(metrics::v1::ScopeMetrics &scope, timespec &start, timespec &end, LabelMap add_labels = {}) const override
+    {
+        auto items = _fi.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
+        if (!std::min(_top_count, items.size())) {
+            return;
+        }
+        LabelMap l(add_labels);
+        auto metric = scope.add_metrics();
+        metric->set_name(base_name_snake());
+        metric->set_description(_desc);
+        auto threshold = _get_threshold(items);
+        auto start_time = timespec_to_uint64(start);
+        auto end_time = timespec_to_uint64(end);
+        for (uint64_t i = 0; i < std::min(_top_count, items.size()); i++) {
+            if (items[i].get_estimate() >= threshold) {
+                std::stringstream name_text;
+                name_text << items[i].get_item();
+                l[_item_key] = name_text.str();
+                _set_opentelemetry_data(metric->mutable_gauge()->add_data_points(), start_time, end_time, l, items[i].get_estimate());
+            } else {
+                break;
+            }
+        }
+    }
+
+    void to_opentelemetry(metrics::v1::ScopeMetrics &scope, timespec &start, timespec &end, Metric::LabelMap add_labels, std::function<std::string(const T &)> formatter) const
+    {
+        auto items = _fi.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
+        if (!std::min(_top_count, items.size())) {
+            return;
+        }
+        LabelMap l(add_labels);
+        auto metric = scope.add_metrics();
+        metric->set_name(base_name_snake());
+        metric->set_description(_desc);
+        auto threshold = _get_threshold(items);
+        auto start_time = timespec_to_uint64(start);
+        auto end_time = timespec_to_uint64(end);
+        for (uint64_t i = 0; i < std::min(_top_count, items.size()); i++) {
+            if (items[i].get_estimate() >= threshold) {
+                l[_item_key] = formatter(items[i].get_item());
+                _set_opentelemetry_data(metric->mutable_gauge()->add_data_points(), start_time, end_time, l, items[i].get_estimate());
+            } else {
+                break;
+            }
+        }
+    }
+
+    void to_opentelemetry(metrics::v1::ScopeMetrics &scope, timespec &start, timespec &end, Metric::LabelMap add_labels, std::function<void(LabelMap &, const std::string &, const T &)> formatter) const
+    {
+        auto items = _fi.get_frequent_items(datasketches::frequent_items_error_type::NO_FALSE_NEGATIVES);
+        if (!std::min(_top_count, items.size())) {
+            return;
+        }
+        LabelMap l(add_labels);
+        auto metric = scope.add_metrics();
+        metric->set_name(base_name_snake());
+        metric->set_description(_desc);
+        auto threshold = _get_threshold(items);
+        auto start_time = timespec_to_uint64(start);
+        auto end_time = timespec_to_uint64(end);
+        for (uint64_t i = 0; i < std::min(_top_count, items.size()); i++) {
+            if (items[i].get_estimate() >= threshold) {
+                formatter(l, _item_key, items[i].get_item());
+                _set_opentelemetry_data(metric->mutable_gauge()->add_data_points(), start_time, end_time, l, items[i].get_estimate());
             } else {
                 break;
             }
@@ -645,6 +804,7 @@ public:
     // Metric
     void to_json(json &j) const override;
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override;
+    void to_opentelemetry(metrics::v1::ScopeMetrics &scope, timespec &start, timespec &end, LabelMap add_labels = {}) const override;
 };
 
 /**
@@ -731,9 +891,20 @@ public:
 
     void to_json(json &j, bool include_live) const;
 
+    void set_info(std::string schema_key, std::initializer_list<std::string> names, const std::string &desc) override
+    {
+        _name.clear();
+        _name = names;
+        _desc = desc;
+        _schema_key = schema_key;
+        _check_names();
+        _quantile.set_info(schema_key, names, desc);
+    }
+
     // Metric
     void to_json(json &j) const override;
-    void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override;
-};
 
+    void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override;
+    void to_opentelemetry(metrics::v1::ScopeMetrics &scope, timespec &start, timespec &end, LabelMap add_labels = {}) const override;
+};
 }

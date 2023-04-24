@@ -3,6 +3,7 @@
 int import_handler_plugins()
 {
     CORRADE_PLUGIN_IMPORT(VisorHandlerNet);
+    CORRADE_PLUGIN_IMPORT(VisorHandlerNetV2);
     CORRADE_PLUGIN_IMPORT(VisorHandlerDns);
     CORRADE_PLUGIN_IMPORT(VisorHandlerDnsV2);
     CORRADE_PLUGIN_IMPORT(VisorHandlerBgp);

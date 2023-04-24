@@ -6,7 +6,7 @@ RUN \
     apt-get update && \
     apt-get upgrade --yes --force-yes && \
     apt-get install --yes --force-yes --no-install-recommends ${BUILD_DEPS} && \
-    pip3 install conan
+    pip3 install "conan==1.59.0"
 
 # need git for current hash for VERSION
 COPY ./.git/ /pktvisor-src/.git/
@@ -50,8 +50,11 @@ RUN \
     
 #create dir and download geo db
 RUN mkdir /geo-db
-RUN cd /geo-db && wget https://github.com/ns1labs/geo-asn-database/raw/main/asn.mmdb.gz
-RUN cd /geo-db && wget https://github.com/ns1labs/geo-asn-database/raw/main/city.mmdb.gz
+RUN cd /geo-db && wget https://github.com/orb-community/geo-asn-database/raw/main/asn.mmdb.gz
+RUN cd /geo-db && wget https://github.com/orb-community/geo-asn-database/raw/main/city.mmdb.gz
+
+RUN mkdir /iana
+COPY --from=cppbuild /pktvisor-src/src/tests/fixtures/pktvisor-port-service-names.csv /iana/custom-iana.csv
 
 COPY --from=cppbuild /tmp/build/bin/pktvisord /usr/local/sbin/pktvisord
 COPY --from=cppbuild /tmp/build/bin/crashpad_handler /usr/local/sbin/crashpad_handler

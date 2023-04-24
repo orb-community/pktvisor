@@ -12,11 +12,10 @@
 #pragma clang diagnostic ignored "-Wc99-extensions"
 #pragma clang diagnostic ignored "-Wrange-loop-analysis"
 #endif
-#include <DnsLayer.h>
+#include "DnsLayer.h"
 #include <Packet.h>
 #include <PcapFileDevice.h>
 #include <ProtocolType.h>
-#include <TcpLayer.h>
 #include <UdpLayer.h>
 #ifdef __GNUC__
 #pragma GCC diagnostic pop
@@ -332,7 +331,7 @@ TEST_CASE("DNS Filters: only_rcode nx", "[pcap][net]")
     REQUIRE(j["wire_packets"]["filtered"] == 0);
 }
 
-TEST_CASE("DNS Filters: only_rcode refused", "[pcap][dns]")
+TEST_CASE("DNS Filters: only_rcode nx and refused", "[pcap][dns]")
 {
 
     PcapInputStream stream{"pcap-test"};
@@ -346,7 +345,7 @@ TEST_CASE("DNS Filters: only_rcode refused", "[pcap][dns]")
     c.config_set<uint64_t>("num_periods", 1);
     DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
 
-    dns_handler.config_set<uint64_t>("only_rcode", Refused);
+    dns_handler.config_set<visor::Configurable::StringList>("only_rcode", {"nxdomain", "5"});
 
     dns_handler.start();
     stream.start();
@@ -357,7 +356,7 @@ TEST_CASE("DNS Filters: only_rcode refused", "[pcap][dns]")
     REQUIRE(counters.RNOERROR.value() == 0);
     REQUIRE(counters.SRVFAIL.value() == 0);
     REQUIRE(counters.REFUSED.value() == 1);
-    REQUIRE(counters.NX.value() == 0);
+    REQUIRE(counters.NX.value() == 1);
     REQUIRE(counters.NODATA.value() == 0);
     nlohmann::json j;
     dns_handler.metrics()->bucket(0)->to_json(j);
@@ -377,7 +376,7 @@ TEST_CASE("DNS Filters: only_qtypes AAAA and TXT", "[pcap][dns]")
     c.config_set<uint64_t>("num_periods", 1);
     DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
 
-    // notice case insensitive
+    // notice case-insensitive
     dns_handler.config_set<visor::Configurable::StringList>("only_qtype", {"AAAA", "TxT"});
     dns_handler.start();
     stream.start();
@@ -442,6 +441,45 @@ TEST_CASE("DNS TopN custom size", "[pcap][dns]")
     CHECK(j["top_qtype"][3] == nullptr);
 }
 
+TEST_CASE("DNS Filters: only_qname", "[pcap][dns]")
+{
+
+    PcapInputStream stream{"pcap-test"};
+    stream.config_set("pcap_file", "tests/fixtures/dns_udp_mixed_rcode.pcap");
+    stream.config_set("bpf", "");
+    stream.config_set("host_spec", "192.168.0.0/24");
+    stream.parse_host_spec();
+
+    visor::Config c;
+    auto stream_proxy = stream.add_event_proxy(c);
+    c.config_set<uint64_t>("num_periods", 1);
+    DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
+
+    // notice, case-insensitive
+    dns_handler.config_set<visor::Configurable::StringList>("only_qname", {"play.GooGle.com", "nonexistent.google.com"});
+    dns_handler.start();
+    stream.start();
+    stream.stop();
+    dns_handler.stop();
+
+    auto counters = dns_handler.metrics()->bucket(0)->counters();
+
+    CHECK(counters.UDP.value() == 6);
+    CHECK(counters.RNOERROR.value() == 2);
+    CHECK(counters.SRVFAIL.value() == 0);
+    CHECK(counters.REFUSED.value() == 0);
+    CHECK(counters.NX.value() == 1);
+    CHECK(counters.NODATA.value() == 2);
+    CHECK(counters.total.value() == 6);
+    CHECK(counters.filtered.value() == 0);
+
+    nlohmann::json j;
+    dns_handler.metrics()->bucket(0)->to_json(j);
+
+    CHECK(j["top_qname2"][0]["name"] == ".google.com");
+    CHECK(j["top_qname3"][0]["name"] == "play.google.com");
+}
+
 TEST_CASE("DNS Filters: only_qname_suffix", "[pcap][dns]")
 {
 
@@ -456,7 +494,7 @@ TEST_CASE("DNS Filters: only_qname_suffix", "[pcap][dns]")
     c.config_set<uint64_t>("num_periods", 1);
     DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
 
-    // notice, case insensitive
+    // notice, case-insensitive
     dns_handler.config_set<visor::Configurable::StringList>("only_qname_suffix", {"GooGle.com"});
     dns_handler.start();
     stream.start();
@@ -829,7 +867,7 @@ TEST_CASE("DNS filter exceptions", "[pcap][dns][filter]")
     SECTION("only_rcode as string")
     {
         dns_handler.config_set<std::string>("only_rcode", "1");
-        REQUIRE_THROWS_WITH(dns_handler.start(), "DnsStreamHandler: wrong value type for only_rcode filter. It should be an integer");
+        REQUIRE_THROWS_WITH(dns_handler.start(), "DnsStreamHandler: wrong value type for only_rcode filter. It should be an integer or an array");
     }
 
     SECTION("only_rcode invalid")
@@ -870,9 +908,10 @@ TEST_CASE("DNS groups", "[pcap][dns]")
     c.config_set<uint64_t>("num_periods", 1);
     DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
 
-    SECTION("disable cardinality and counters")
+    SECTION("disable cardinality and counters and enable histograms")
     {
         dns_handler.config_set<visor::Configurable::StringList>("disable", {"cardinality", "counters"});
+        dns_handler.config_set<visor::Configurable::StringList>("enable", {"histograms"});
 
         dns_handler.start();
         stream.start();
@@ -901,6 +940,7 @@ TEST_CASE("DNS groups", "[pcap][dns]")
         CHECK(j["cardinality"]["qname"] == nullptr);
         CHECK(j["top_qname2"][0]["name"] == ".test.com");
         CHECK(j["xact"]["ratio"]["quantiles"]["p50"] != nullptr);
+        CHECK(j["xact"]["out"]["histogram_us"]["buckets"] != nullptr);
     }
 
     SECTION("disable TopQname and Dns Transactions")
@@ -938,13 +978,13 @@ TEST_CASE("DNS groups", "[pcap][dns]")
     SECTION("disable invalid dns group")
     {
         dns_handler.config_set<visor::Configurable::StringList>("disable", {"top_qnames", "dns_top_wired"});
-        REQUIRE_THROWS_WITH(dns_handler.start(), "dns_top_wired is an invalid/unsupported metric group. The valid groups are: all, cardinality, counters, dns_transaction, top_ecs, top_ports, top_qnames, top_qnames_details");
+        REQUIRE_THROWS_WITH(dns_handler.start(), "dns_top_wired is an invalid/unsupported metric group. The valid groups are: all, cardinality, counters, dns_transaction, histograms, quantiles, top_ecs, top_ports, top_qnames, top_qnames_details");
     }
 
     SECTION("enable invalid dns group")
     {
         dns_handler.config_set<visor::Configurable::StringList>("enable", {"top_qnames", "dns_top_wired"});
-        REQUIRE_THROWS_WITH(dns_handler.start(), "dns_top_wired is an invalid/unsupported metric group. The valid groups are: all, cardinality, counters, dns_transaction, top_ecs, top_ports, top_qnames, top_qnames_details");
+        REQUIRE_THROWS_WITH(dns_handler.start(), "dns_top_wired is an invalid/unsupported metric group. The valid groups are: all, cardinality, counters, dns_transaction, histograms, quantiles, top_ecs, top_ports, top_qnames, top_qnames_details");
     }
 }
 
@@ -958,7 +998,20 @@ TEST_CASE("DNS invalid config", "[dns][filter][config]")
     c.config_set<uint64_t>("num_periods", 1);
     DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
     dns_handler.config_set<bool>("invalid_config", true);
-    REQUIRE_THROWS_WITH(dns_handler.start(), "invalid_config is an invalid/unsupported config or filter. The valid configs/filters are: exclude_noerror, only_rcode, only_queries, only_responses, only_dnssec_response, answer_count, only_qtype, only_qname_suffix, geoloc_notfound, asn_notfound, dnstap_msg_type, public_suffix_list, recorded_stream, deep_sample_rate, num_periods, topn_count, topn_percentile_threshold");
+    REQUIRE_THROWS_WITH(dns_handler.start(), "invalid_config is an invalid/unsupported config or filter. The valid configs/filters are: exclude_noerror, only_rcode, only_queries, only_responses, only_dnssec_response, answer_count, only_qtype, only_qname, only_qname_suffix, geoloc_notfound, asn_notfound, dnstap_msg_type, public_suffix_list, recorded_stream, xact_ttl_secs, xact_ttl_ms, deep_sample_rate, num_periods, topn_count, topn_percentile_threshold");
+}
+
+TEST_CASE("DNS config ttl", "[dns][config]")
+{
+    PcapInputStream stream{"pcap-test"};
+    stream.config_set("pcap_file", "tests/fixtures/dns_udp_tcp_random.pcap");
+
+    visor::Config c;
+    auto stream_proxy = stream.add_event_proxy(c);
+    c.config_set<uint64_t>("num_periods", 1);
+    c.config_set<uint64_t>("xact_ttl_secs", 2);
+    DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
+    REQUIRE_NOTHROW(dns_handler.start());
 }
 
 TEST_CASE("DNS Filters: only_rcode with predicate", "[pcap][dns][filter]")

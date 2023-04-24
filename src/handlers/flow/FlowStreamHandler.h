@@ -10,6 +10,7 @@
 #include "IpPort.h"
 #include "MockInputStream.h"
 #include "StreamHandler.h"
+#include "VisorLRUList.h"
 #include "utils.h"
 #include <Corrade/Utility/Debug.h>
 #include <string>
@@ -31,6 +32,7 @@ enum FlowMetrics : visor::MetricGroupIntType {
     TopPorts,
     TopIPs,
     TopIPPorts,
+    TopTos,
     TopGeo,
     TopInterfaces
 };
@@ -62,10 +64,14 @@ struct DeviceEnrich {
 
 struct SummaryData {
     IpSummary type{IpSummary::None};
+    bool exclude_unknown_asns{false};
     lib::utils::IPv4subnetList ipv4_exclude_summary;
     lib::utils::IPv6subnetList ipv6_exclude_summary;
+    std::vector<std::string> asn_exclude_summary;
     lib::utils::IPv4subnetList ipv4_summary;
     lib::utils::IPv6subnetList ipv6_summary;
+    std::optional<lib::utils::IPv4subnet> ipv4_wildcard;
+    std::optional<lib::utils::IPv6subnet> ipv6_wildcard;
 };
 
 typedef std::unordered_map<std::string, DeviceEnrich> EnrichData;
@@ -75,6 +81,7 @@ struct FlowData {
     IP_PROTOCOL l4;
     size_t payload_size;
     uint32_t packets;
+    uint8_t tos;
     pcpp::IPv4Address ipv4_in;
     pcpp::IPv4Address ipv4_out;
     pcpp::IPv6Address ipv6_in;
@@ -99,15 +106,21 @@ struct FlowPacket {
     }
 };
 
+struct FlowCache {
+    LRUList<network::IpPort, std::string> lru_port_list{2000};
+    LRUList<uint32_t, std::string> lru_ipv4_list{1000};
+    LRUList<std::string, std::string> lru_ipv6_list{1000};
+};
+
 struct FlowTopN {
     TopN<std::string> topConversations;
     TopN<visor::geo::City> topGeoLoc;
     TopN<std::string> topASN;
 
     FlowTopN(std::string metric)
-        : topConversations(FLOW_SCHEMA, "conversations", {"top_conversations_" + metric}, "Top source IP addresses and port by " + metric)
+        : topConversations(FLOW_SCHEMA, "conversation", {"top_conversations_" + metric}, "Top source IP addresses and port by " + metric)
         , topGeoLoc(FLOW_SCHEMA, "geo_loc", {"top_geo_loc_" + metric}, "Top GeoIP locations by " + metric)
-        , topASN(FLOW_SCHEMA, "asn", {"top_ASN_" + metric}, "Top ASNs by IP by " + metric)
+        , topASN(FLOW_SCHEMA, "asn", {"top_asn_" + metric}, "Top ASNs by IP by " + metric)
     {
     }
 
@@ -122,18 +135,22 @@ struct FlowTopN {
 struct FlowDirectionTopN {
     TopN<std::string> topSrcIP;
     TopN<std::string> topDstIP;
-    TopN<network::IpPort> topSrcPort;
-    TopN<network::IpPort> topDstPort;
-    TopN<std::string> topSrcIPandPort;
-    TopN<std::string> topDstIPandPort;
+    TopN<std::string> topSrcPort;
+    TopN<std::string> topDstPort;
+    TopN<std::string> topSrcIPPort;
+    TopN<std::string> topDstIPPort;
+    TopN<uint8_t> topDSCP;
+    TopN<uint8_t> topECN;
 
     FlowDirectionTopN(std::string direction, std::string metric)
         : topSrcIP(FLOW_SCHEMA, "ip", {"top_" + direction + "_src_ips_" + metric}, "Top " + direction + " source IP addresses by " + metric)
         , topDstIP(FLOW_SCHEMA, "ip", {"top_" + direction + "_dst_ips_" + metric}, "Top " + direction + " destination IP addresses by " + metric)
         , topSrcPort(FLOW_SCHEMA, "port", {"top_" + direction + "_src_ports_" + metric}, "Top " + direction + " source ports by " + metric)
         , topDstPort(FLOW_SCHEMA, "port", {"top_" + direction + "_dst_ports_" + metric}, "Top " + direction + " destination ports by " + metric)
-        , topSrcIPandPort(FLOW_SCHEMA, "ip_port", {"top_" + direction + "_src_ips_and_port_" + metric}, "Top " + direction + " source IP addresses and port by " + metric)
-        , topDstIPandPort(FLOW_SCHEMA, "ip_port", {"top_" + direction + "_dst_ips_and_port_" + metric}, "Top " + direction + " destination IP addresses and port by " + metric)
+        , topSrcIPPort(FLOW_SCHEMA, "ip_port", {"top_" + direction + "_src_ip_ports_" + metric}, "Top " + direction + " source IP addresses and port by " + metric)
+        , topDstIPPort(FLOW_SCHEMA, "ip_port", {"top_" + direction + "_dst_ip_ports_" + metric}, "Top " + direction + " destination IP addresses and port by " + metric)
+        , topDSCP(FLOW_SCHEMA, "dscp", {"top_" + direction + "_dscp_" + metric}, "Top " + direction + " IP DSCP by " + metric)
+        , topECN(FLOW_SCHEMA, "ecn", {"top_" + direction + "_ecn_" + metric}, "Top " + direction + " IP ECN by " + metric)
     {
     }
 
@@ -143,8 +160,8 @@ struct FlowDirectionTopN {
         topDstIP.set_settings(topn_count, percentile_threshold);
         topSrcPort.set_settings(topn_count, percentile_threshold);
         topDstPort.set_settings(topn_count, percentile_threshold);
-        topSrcIPandPort.set_settings(topn_count, percentile_threshold);
-        topDstIPandPort.set_settings(topn_count, percentile_threshold);
+        topSrcIPPort.set_settings(topn_count, percentile_threshold);
+        topDstIPPort.set_settings(topn_count, percentile_threshold);
     }
 };
 
@@ -258,6 +275,7 @@ public:
     void specialized_merge(const AbstractMetricsBucket &other, Metric::Aggregate agg_operator) override;
     void to_json(json &j) const override;
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override;
+    void to_opentelemetry(metrics::v1::ScopeMetrics &scope, timespec &start_ts, timespec &end_ts, Metric::LabelMap add_labels = {}) const override;
     void update_topn_metrics(size_t topn_count, uint64_t percentile_threshold) override
     {
         _topn_count = topn_count;
@@ -283,14 +301,15 @@ public:
         }
         _devices_metrics[device]->filtered += filtered;
     }
-    void process_flow(bool deep, const FlowPacket &payload);
-    void process_interface(bool deep, FlowInterface *iface, const FlowData &flow, FlowDirectionType type);
+    void process_flow(bool deep, const FlowPacket &payload, FlowCache &cache);
+    void process_interface(bool deep, FlowInterface *iface, const FlowData &flow, FlowCache &cache, FlowDirectionType type);
 };
 
 class FlowMetricsManager final : public visor::AbstractMetricsManager<FlowMetricsBucket>
 {
     EnrichData _enrich_data;
     SummaryData _summary_data;
+    FlowCache _cache;
 
 public:
     FlowMetricsManager(const Configurable *window_config)
@@ -325,6 +344,9 @@ public:
         if (!_enrich_data.empty()) {
             live_bucket()->set_enrich_data(&_enrich_data);
         }
+        if (_summary_data.type != IpSummary::None) {
+            live_bucket()->set_summary_data(&_summary_data);
+        }
     }
 };
 
@@ -353,6 +375,8 @@ class FlowStreamHandler final : public visor::StreamMetricsHandler<FlowMetricsMa
         OnlyPorts,
         GeoLocNotFound,
         AsnNotFound,
+        DisableIn,
+        DisableOut,
         FiltersMAX
     };
     std::bitset<Filters::FiltersMAX> _f_enabled;
@@ -363,10 +387,13 @@ class FlowStreamHandler final : public visor::StreamMetricsHandler<FlowMetricsMa
         "only_device_interfaces",
         "only_ips",
         "only_ports",
+        "only_directions",
         "geoloc_notfound",
         "asn_notfound",
         "summarize_ips_by_asn",
         "subnets_for_summarization",
+        "exclude_asns_from_summarization",
+        "exclude_unknown_asns_from_summarization",
         "exclude_ips_from_summarization",
         "sample_rate_scaling",
         "recorded_stream"};
@@ -380,6 +407,7 @@ class FlowStreamHandler final : public visor::StreamMetricsHandler<FlowMetricsMa
         {"counters", group::FlowMetrics::Counters},
         {"top_ports", group::FlowMetrics::TopPorts},
         {"top_ips_ports", group::FlowMetrics::TopIPPorts},
+        {"top_tos", group::FlowMetrics::TopTos},
         {"top_geo", group::FlowMetrics::TopGeo},
         {"top_interfaces", group::FlowMetrics::TopInterfaces}};
 

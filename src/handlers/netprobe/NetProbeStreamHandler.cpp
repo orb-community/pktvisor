@@ -34,6 +34,17 @@ void NetProbeStreamHandler::start()
         _metrics->set_recorded_stream();
     }
 
+    if (config_exists("xact_ttl_ms")) {
+        auto ttl = config_get<uint64_t>("xact_ttl_ms");
+        _metrics->set_xact_ttl(static_cast<uint32_t>(ttl));
+    } else if (config_exists("xact_ttl_secs")) {
+        auto ttl = config_get<uint64_t>("xact_ttl_secs");
+        _metrics->set_xact_ttl(static_cast<uint32_t>(ttl) * 1000);
+    } else if (_netprobe_proxy->config_exists("xact_ttl_ms")) {
+        auto ttl = _netprobe_proxy->config_get<uint64_t>("xact_ttl_ms");
+        _metrics->set_xact_ttl(static_cast<uint32_t>(ttl));
+    }
+
     if (_netprobe_proxy) {
         _probe_send_connection = _netprobe_proxy->probe_send_signal.connect(&NetProbeStreamHandler::probe_signal_send, this);
         _probe_recv_connection = _netprobe_proxy->probe_recv_signal.connect(&NetProbeStreamHandler::probe_signal_recv, this);
@@ -109,6 +120,7 @@ void NetProbeMetricsBucket::specialized_merge(const AbstractMetricsBucket &o, Me
             _targets_metrics[targetId]->attempts += target.second->attempts;
             _targets_metrics[targetId]->successes += target.second->successes;
             _targets_metrics[targetId]->dns_failures += target.second->dns_failures;
+            _targets_metrics[targetId]->timed_out += target.second->timed_out;
         }
         if (group_enabled(group::NetProbeMetrics::Histograms)) {
             _targets_metrics[targetId]->h_time_us.merge(target.second->h_time_us);
@@ -132,6 +144,7 @@ void NetProbeMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelM
             target.second->attempts.to_prometheus(out, target_labels);
             target.second->successes.to_prometheus(out, target_labels);
             target.second->dns_failures.to_prometheus(out, target_labels);
+            target.second->timed_out.to_prometheus(out, target_labels);
         }
 
         bool h_max_min{true};
@@ -173,6 +186,61 @@ void NetProbeMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelM
     }
 }
 
+void NetProbeMetricsBucket::to_opentelemetry(metrics::v1::ScopeMetrics &scope, timespec &start_ts, timespec &end_ts, Metric::LabelMap add_labels) const
+{
+    std::shared_lock r_lock(_mutex);
+
+    for (const auto &target : _targets_metrics) {
+        auto target_labels = add_labels;
+        auto targetId = target.first;
+        target_labels["target"] = targetId;
+
+        if (group_enabled(group::NetProbeMetrics::Counters)) {
+            target.second->attempts.to_opentelemetry(scope, start_ts, end_ts, target_labels);
+            target.second->successes.to_opentelemetry(scope, start_ts, end_ts, target_labels);
+            target.second->dns_failures.to_opentelemetry(scope, start_ts, end_ts, target_labels);
+            target.second->timed_out.to_opentelemetry(scope, start_ts, end_ts, target_labels);
+        }
+
+        bool h_max_min{true};
+        if (group_enabled(group::NetProbeMetrics::Histograms)) {
+            try {
+                target.second->minimum.clear();
+                target.second->maximum.clear();
+
+                if (group_enabled(group::NetProbeMetrics::Counters)) {
+                    target.second->minimum += target.second->h_time_us.get_min();
+                    target.second->minimum.to_opentelemetry(scope, start_ts, end_ts, target_labels);
+                    target.second->maximum += target.second->h_time_us.get_max();
+                    target.second->maximum.to_opentelemetry(scope, start_ts, end_ts, target_labels);
+                }
+
+                target.second->h_time_us.to_opentelemetry(scope, start_ts, end_ts, target_labels);
+            } catch (const std::exception &) {
+                h_max_min = false;
+            }
+        } else {
+            h_max_min = false;
+        }
+
+        if (group_enabled(group::NetProbeMetrics::Quantiles)) {
+            try {
+                if (!h_max_min && group_enabled(group::NetProbeMetrics::Counters)) {
+                    target.second->minimum.clear();
+                    target.second->maximum.clear();
+
+                    target.second->minimum += target.second->q_time_us.get_min();
+                    target.second->minimum.to_opentelemetry(scope, start_ts, end_ts, target_labels);
+                    target.second->maximum += target.second->q_time_us.get_max();
+                    target.second->maximum.to_opentelemetry(scope, start_ts, end_ts, target_labels);
+                }
+                target.second->q_time_us.to_opentelemetry(scope, start_ts, end_ts, target_labels);
+            } catch (const std::exception &) {
+            }
+        }
+    }
+}
+
 void NetProbeMetricsBucket::to_json(json &j) const
 {
 
@@ -185,6 +253,7 @@ void NetProbeMetricsBucket::to_json(json &j) const
             target.second->attempts.to_json(j["targets"][targetId]);
             target.second->successes.to_json(j["targets"][targetId]);
             target.second->dns_failures.to_json(j["targets"][targetId]);
+            target.second->timed_out.to_json(j["targets"][targetId]);
         }
 
         bool h_max_min{true};
@@ -241,6 +310,7 @@ void NetProbeMetricsBucket::process_failure(ErrorType error, const std::string &
             ++_targets_metrics[target]->dns_failures;
             break;
         case ErrorType::Timeout:
+            ++_targets_metrics[target]->timed_out;
         case ErrorType::SocketError:
         case ErrorType::InvalidIp:
         case ErrorType::ConnectionFailure:
@@ -304,14 +374,16 @@ void NetProbeMetricsManager::process_netprobe_icmp(pcpp::IcmpLayer *layer, const
 
     if (layer->getMessageType() == pcpp::ICMP_ECHO_REQUEST) {
         if (auto request = layer->getEchoRequestData(); request != nullptr) {
-            _request_reply_manager.start_transaction((static_cast<uint32_t>(request->header->id) << 16) | request->header->sequence, {{stamp, {0, 0}}, target});
+            _request_reply_manager->start_transaction((static_cast<uint32_t>(request->header->id) << 16) | request->header->sequence, {{stamp, {0, 0}}, target});
         }
         live_bucket()->process_attempts(_deep_sampling_now, target);
     } else if (layer->getMessageType() == pcpp::ICMP_ECHO_REPLY) {
         if (auto reply = layer->getEchoReplyData(); reply != nullptr) {
-            auto xact = _request_reply_manager.maybe_end_transaction((static_cast<uint32_t>(reply->header->id) << 16) | reply->header->sequence, stamp);
+            auto xact = _request_reply_manager->maybe_end_transaction((static_cast<uint32_t>(reply->header->id) << 16) | reply->header->sequence, stamp);
             if (xact.first == Result::Valid) {
                 live_bucket()->new_transaction(_deep_sampling_now, xact.second);
+            } else if (xact.first == Result::TimedOut) {
+                live_bucket()->process_failure(ErrorType::Timeout, xact.second.target);
             }
         }
     }
@@ -323,12 +395,14 @@ void NetProbeMetricsManager::process_netprobe_tcp(uint32_t port, bool send, cons
     new_event(stamp);
 
     if (send) {
-        _request_reply_manager.start_transaction(port, {{stamp, {0, 0}}, target});
+        _request_reply_manager->start_transaction(port, {{stamp, {0, 0}}, target});
         live_bucket()->process_attempts(_deep_sampling_now, target);
     } else {
-        auto xact = _request_reply_manager.maybe_end_transaction(port, stamp);
+        auto xact = _request_reply_manager->maybe_end_transaction(port, stamp);
         if (xact.first == Result::Valid) {
             live_bucket()->new_transaction(_deep_sampling_now, xact.second);
+        } else if (xact.first == Result::TimedOut) {
+            live_bucket()->process_failure(ErrorType::Timeout, xact.second.target);
         }
     }
 }

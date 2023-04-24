@@ -1,13 +1,13 @@
-#include <catch2/catch.hpp>
+#include "catch2/catch.hpp"
 
 #include "DnsStreamHandler.h"
 #include "DnstapInputStream.h"
 #include "GeoDB.h"
-#include "NetStreamHandler.h"
 #include "PcapInputStream.h"
+#include "NetStreamHandler.h"
 
-using namespace visor::handler::net;
-using namespace visor::handler::dns;
+using namespace visor::handler::net::v2;
+using namespace visor::handler::dns::v2;
 using namespace visor::input::pcap;
 
 TEST_CASE("Parse net (dns) UDP IPv4 tests", "[pcap][ipv4][udp][net]")
@@ -27,7 +27,7 @@ TEST_CASE("Parse net (dns) UDP IPv4 tests", "[pcap][ipv4][udp][net]")
     net_handler.stop();
     stream.stop();
 
-    auto counters = net_handler.metrics()->bucket(0)->counters();
+    auto counters = net_handler.metrics()->bucket(0)->counters(NetworkPacketDirection::unknown);
     auto event_data = net_handler.metrics()->bucket(0)->event_data_locked();
 
     CHECK(net_handler.metrics()->current_periods() == 1);
@@ -61,7 +61,7 @@ TEST_CASE("Parse net (dns) TCP IPv4 tests", "[pcap][ipv4][tcp][net]")
     net_handler.stop();
     stream.stop();
 
-    auto counters = net_handler.metrics()->bucket(0)->counters();
+    auto counters = net_handler.metrics()->bucket(0)->counters(NetworkPacketDirection::unknown);
     auto event_data = net_handler.metrics()->bucket(0)->event_data_locked();
 
     CHECK(net_handler.metrics()->start_tstamp().tv_sec == 1567706433);
@@ -90,7 +90,7 @@ TEST_CASE("Parse net (dns) UDP IPv6 tests", "[pcap][ipv6][udp][net]")
     stream.stop();
     net_handler.stop();
 
-    auto counters = net_handler.metrics()->bucket(0)->counters();
+    auto counters = net_handler.metrics()->bucket(0)->counters(NetworkPacketDirection::unknown);
     auto event_data = net_handler.metrics()->bucket(0)->event_data_locked();
 
     CHECK(net_handler.metrics()->start_tstamp().tv_sec == 1567706365);
@@ -118,7 +118,7 @@ TEST_CASE("Parse net (dns) TCP IPv6 tests", "[pcap][ipv6][tcp][net]")
     stream.stop();
     net_handler.stop();
 
-    auto counters = net_handler.metrics()->bucket(0)->counters();
+    auto counters = net_handler.metrics()->bucket(0)->counters(NetworkPacketDirection::unknown);
     auto event_data = net_handler.metrics()->bucket(0)->event_data_locked();
 
     CHECK(net_handler.metrics()->start_tstamp().tv_sec == 1567706308);
@@ -149,7 +149,8 @@ TEST_CASE("Parse net (dns) random UDP/TCP tests", "[pcap][net]")
     stream.stop();
     net_handler.stop();
 
-    auto counters = net_handler.metrics()->bucket(0)->counters();
+    auto counters = net_handler.metrics()->bucket(0)->counters(NetworkPacketDirection::in);
+    counters += net_handler.metrics()->bucket(0)->counters(NetworkPacketDirection::out);
     auto event_data = net_handler.metrics()->bucket(0)->event_data_locked();
 
     CHECK(net_handler.metrics()->start_tstamp().tv_sec == 1614874231);
@@ -164,18 +165,17 @@ TEST_CASE("Parse net (dns) random UDP/TCP tests", "[pcap][net]")
     CHECK(counters.IPv4.value() == 16147);
     CHECK(counters.IPv6.value() == 0);
     CHECK(counters.OtherL4.value() == 0);
-    CHECK(counters.total_in.value() == 6648);
-    CHECK(counters.total_out.value() == 9499);
-    CHECK(counters.total_unk.value() == 0);
+    CHECK(counters.total.value() == 16147);
+
 
     nlohmann::json j;
     net_handler.metrics()->bucket(0)->to_json(j);
 
-    CHECK(j["cardinality"]["dst_ips_out"] == 1);
-    CHECK(j["cardinality"]["src_ips_in"] == 1);
-    CHECK(j["top_ipv4"][0]["estimate"] == 16147);
-    CHECK(j["top_ipv4"][0]["name"] == "8.8.8.8");
-    CHECK(j["payload_size"]["p50"] == 74);
+    CHECK(j["out"]["cardinality"]["ips"] == 1);
+    CHECK(j["out"]["cardinality"]["ips"] == 1);
+    CHECK(j["out"]["top_ipv4_packets"][0]["estimate"] == 9499);
+    CHECK(j["out"]["top_ipv4_packets"][0]["name"] == "8.8.8.8");
+    CHECK(j["in"]["payload_size_bytes"]["p50"] >= 66);
 }
 
 TEST_CASE("Parse net (dns) with DNS filter only_qname_suffix", "[pcap][dns][net]")
@@ -203,25 +203,24 @@ TEST_CASE("Parse net (dns) with DNS filter only_qname_suffix", "[pcap][dns][net]
     dns_handler.stop();
     net_handler.stop();
 
-    auto dns_counters = dns_handler.metrics()->bucket(0)->counters();
-    CHECK(dns_counters.UDP.value() == 10);
-    CHECK(dns_counters.IPv4.value() == 10);
+    auto dns_counters = dns_handler.metrics()->bucket(0)->counters(TransactionDirection::out);
+    CHECK(dns_counters.UDP.value() == 4);
+    CHECK(dns_counters.IPv4.value() == 4);
 
-    auto net_counters = net_handler.metrics()->bucket(0)->counters();
+    auto net_counters = net_handler.metrics()->bucket(0)->counters(NetworkPacketDirection::in);
     auto event_data = net_handler.metrics()->bucket(0)->event_data_locked();
 
-    CHECK(event_data.num_events->value() == 10);
+    CHECK(event_data.num_events->value() == 17);
     CHECK(net_counters.TCP.value() == 0);
-    CHECK(net_counters.UDP.value() == 10);
-    CHECK(net_counters.IPv4.value() == 10);
+    CHECK(net_counters.UDP.value() == 13);
+    CHECK(net_counters.IPv4.value() == 13);
 
     nlohmann::json j;
     net_handler.metrics()->bucket(0)->to_json(j);
 
-    CHECK(j["cardinality"]["dst_ips_out"] == 3);
-    CHECK(j["cardinality"]["src_ips_in"] == 5);
-    CHECK(j["top_ipv4"][0]["estimate"] == 4);
-    CHECK(j["top_ipv4"][0]["name"] == "216.239.38.10");
+    CHECK(j["in"]["cardinality"]["ips"] == 8);
+    CHECK(j["in"]["top_ipv4_packets"][0]["estimate"] == 3);
+    CHECK(j["in"]["top_ipv4_packets"][0]["name"] == "192.168.0.54");
 }
 
 TEST_CASE("Parse DNS with NET filter geo", "[pcap][dns][net]")
@@ -251,17 +250,69 @@ TEST_CASE("Parse DNS with NET filter geo", "[pcap][dns][net]")
     net_handler.stop();
     dns_handler.stop();
 
-    auto net_counters = net_handler.metrics()->bucket(0)->counters();
+    auto net_counters = net_handler.metrics()->bucket(0)->counters(NetworkPacketDirection::in);
     auto event_data = net_handler.metrics()->bucket(0)->event_data_locked();
 
     CHECK(event_data.num_events->value() == 24);
     CHECK(net_counters.TCP.value() == 0);
-    CHECK(net_counters.UDP.value() == 24);
-    CHECK(net_counters.IPv4.value() == 24);
+    CHECK(net_counters.UDP.value() == 15);
+    CHECK(net_counters.IPv4.value() == 15);
 
-    auto dns_counters = dns_handler.metrics()->bucket(0)->counters();
-    CHECK(dns_counters.UDP.value() == 24);
-    CHECK(dns_counters.IPv4.value() == 24);
+    auto dns_counters = dns_handler.metrics()->bucket(0)->counters(TransactionDirection::out);
+    CHECK(dns_counters.UDP.value() == 9);
+    CHECK(dns_counters.IPv4.value() == 9);
+}
+
+TEST_CASE("Parse DNS TCP data with NET filter geo", "[pcap][dns][net]")
+{
+    CHECK_NOTHROW(visor::geo::GeoIP().enable("tests/fixtures/GeoIP2-City-Test.mmdb"));
+    CHECK_NOTHROW(visor::geo::GeoASN().enable("tests/fixtures/GeoIP2-ISP-Test.mmdb"));
+
+    PcapInputStream stream{"pcap-test"};
+    stream.config_set("pcap_file", "tests/fixtures/dns_ipv4_tcp.pcap");
+    stream.config_set("bpf", "");
+    stream.parse_host_spec();
+
+    visor::Config c;
+    auto stream_proxy = stream.add_event_proxy(c);
+    c.config_set<uint64_t>("num_periods", 1);
+    NetStreamHandler net_handler{"net-test", stream_proxy, &c};
+    net_handler.set_event_proxy(stream.create_event_proxy(c));
+    DnsStreamHandler dns_handler{"dns-test", net_handler.get_event_proxy(), &c};
+    dns_handler.set_event_proxy(stream.create_event_proxy(c));
+    NetStreamHandler net_handler_2{"net-test-2", dns_handler.get_event_proxy(), &c};
+    net_handler_2.set_event_proxy(stream.create_event_proxy(c));
+    DnsStreamHandler dns_handler_2{"dns-test-2", net_handler_2.get_event_proxy(), &c};
+
+    dns_handler_2.start();
+    net_handler_2.start();
+    dns_handler.start();
+    net_handler.start();
+    stream.start();
+    stream.stop();
+    net_handler.stop();
+    dns_handler.stop();
+    net_handler_2.stop();
+    dns_handler_2.stop();
+
+    auto net_counters = net_handler.metrics()->bucket(0)->counters(NetworkPacketDirection::unknown);
+    auto event_data = net_handler.metrics()->bucket(0)->event_data_locked();
+
+    CHECK(event_data.num_events->value() == 2100);
+    CHECK(net_counters.TCP.value() == 2100);
+    CHECK(net_counters.IPv4.value() == 2100);
+
+    auto dns_counters = dns_handler.metrics()->bucket(0)->counters(TransactionDirection::unknown);
+    CHECK(dns_counters.TCP.value() == 210);
+    CHECK(dns_counters.IPv4.value() == 210);
+
+    auto net_counters_2 = net_handler_2.metrics()->bucket(0)->counters(NetworkPacketDirection::unknown);
+    CHECK(net_counters_2.TCP.value() == 420);
+    CHECK(net_counters_2.IPv4.value() == 420);
+
+    auto dns_counters_2 = dns_handler_2.metrics()->bucket(0)->counters(TransactionDirection::unknown);
+    CHECK(dns_counters_2.TCP.value() == 210);
+    CHECK(dns_counters_2.IPv4.value() == 210);
 }
 
 TEST_CASE("Parse net dnstap stream", "[dnstap][net][!mayfail]")
@@ -280,7 +331,7 @@ TEST_CASE("Parse net dnstap stream", "[dnstap][net][!mayfail]")
     stream.stop();
     net_handler.stop();
 
-    auto counters = net_handler.metrics()->bucket(0)->counters();
+    auto counters = net_handler.metrics()->bucket(0)->counters(NetworkPacketDirection::in);
     auto event_data = net_handler.metrics()->bucket(0)->event_data_locked();
 
     // confirmed with wireshark
@@ -288,20 +339,18 @@ TEST_CASE("Parse net dnstap stream", "[dnstap][net][!mayfail]")
     CHECK(event_data.num_samples->value() == 153);
     CHECK(counters.TCP.value() == 0);
     CHECK(counters.TCP_SYN.value() == 0);
-    CHECK(counters.UDP.value() == 153);
-    CHECK(counters.IPv4.value() == 153);
+    CHECK(counters.UDP.value() == 79);
+    CHECK(counters.IPv4.value() == 79);
     CHECK(counters.IPv6.value() == 0);
-    CHECK(counters.total_in.value() == 79);
-    CHECK(counters.total_out.value() == 74);
+    CHECK(counters.total.value() == 79);
 
     nlohmann::json j;
     net_handler.metrics()->bucket(0)->to_json(j);
 
-    CHECK(j["cardinality"]["dst_ips_out"] == 1);
-    CHECK(j["cardinality"]["src_ips_in"] == 1);
-    CHECK(j["top_ipv4"][0]["estimate"] == 153);
-    CHECK(j["top_ipv4"][0]["name"] == "192.168.0.54");
-    CHECK(j["payload_size"]["p50"] == 100);
+    CHECK(j["in"]["cardinality"]["ips"] == 2);
+    CHECK(j["in"]["top_ipv4_packets"][0]["estimate"] == 79);
+    CHECK(j["in"]["top_ipv4_packets"][0]["name"] == "192.168.0.54");
+    CHECK(j["in"]["payload_size_bytes"]["p50"] == 89);
 }
 
 TEST_CASE("Net groups", "[pcap][net]")
@@ -327,7 +376,7 @@ TEST_CASE("Net groups", "[pcap][net]")
         stream.stop();
         net_handler.stop();
 
-        auto counters = net_handler.metrics()->bucket(0)->counters();
+        auto counters = net_handler.metrics()->bucket(0)->counters(NetworkPacketDirection::in);
         auto event_data = net_handler.metrics()->bucket(0)->event_data_locked();
 
         CHECK(net_handler.metrics()->start_tstamp().tv_sec == 1614874231);
@@ -341,16 +390,15 @@ TEST_CASE("Net groups", "[pcap][net]")
         CHECK(counters.IPv4.value() == 0);
         CHECK(counters.IPv6.value() == 0);
         CHECK(counters.OtherL4.value() == 0);
-        CHECK(counters.total_in.value() == 0);
-        CHECK(counters.total_out.value() == 0);
+        CHECK(counters.total.value() == 0);
 
         nlohmann::json j;
         net_handler.metrics()->bucket(0)->to_json(j);
 
-        CHECK(j["cardinality"]["dst_ips_out"] == nullptr);
-        CHECK(j["cardinality"]["src_ips_in"] == nullptr);
-        CHECK(j["top_ipv4"][0]["estimate"] == 16147);
-        CHECK(j["top_ipv4"][0]["name"] == "8.8.8.8");
+        CHECK(j["in"]["cardinality"]["dst_ips_out"] == nullptr);
+        CHECK(j["in"]["cardinality"]["src_ips_in"] == nullptr);
+        CHECK(j["in"]["top_ipv4_packets"][0]["estimate"] == 6648);
+        CHECK(j["in"]["top_ipv4_packets"][0]["name"] == "8.8.8.8");
     }
 
     SECTION("disable Top ips and Top geo")
@@ -362,7 +410,8 @@ TEST_CASE("Net groups", "[pcap][net]")
         stream.stop();
         net_handler.stop();
 
-        auto counters = net_handler.metrics()->bucket(0)->counters();
+        auto counters = net_handler.metrics()->bucket(0)->counters(NetworkPacketDirection::in);
+        counters += net_handler.metrics()->bucket(0)->counters(NetworkPacketDirection::out);
         auto event_data = net_handler.metrics()->bucket(0)->event_data_locked();
 
         CHECK(net_handler.metrics()->start_tstamp().tv_sec == 1614874231);
@@ -376,28 +425,26 @@ TEST_CASE("Net groups", "[pcap][net]")
         CHECK(counters.IPv4.value() == 16147);
         CHECK(counters.IPv6.value() == 0);
         CHECK(counters.OtherL4.value() == 0);
-        CHECK(counters.total_in.value() == 6648);
-        CHECK(counters.total_out.value() == 9499);
+        CHECK(counters.total.value() == 16147);
 
         nlohmann::json j;
         net_handler.metrics()->bucket(0)->to_json(j);
 
-        CHECK(j["cardinality"]["dst_ips_out"] == 1);
-        CHECK(j["cardinality"]["src_ips_in"] == 1);
-        CHECK(j["top_ipv4"][0]["estimate"] == nullptr);
-        CHECK(j["top_ipv4"][0]["name"] == nullptr);
+        CHECK(j["in"]["cardinality"]["ips"] == 1);
+        CHECK(j["in"]["top_ipv4"][0]["estimate"] == nullptr);
+        CHECK(j["in"]["top_ipv4"][0]["name"] == nullptr);
     }
 
     SECTION("disable invalid dns group")
     {
         net_handler.config_set<visor::Configurable::StringList>("disable", {"top_ips", "rates"});
-        REQUIRE_THROWS_WITH(net_handler.start(), "rates is an invalid/unsupported metric group. The valid groups are: all, cardinality, counters, top_geo, top_ips");
+        REQUIRE_THROWS_WITH(net_handler.start(), "rates is an invalid/unsupported metric group. The valid groups are: all, cardinality, counters, quantiles, top_geo, top_ips");
     }
 
     SECTION("enable invalid dns group")
     {
         net_handler.config_set<visor::Configurable::StringList>("enable", {"top_ips", "rates"});
-        REQUIRE_THROWS_WITH(net_handler.start(), "rates is an invalid/unsupported metric group. The valid groups are: all, cardinality, counters, top_geo, top_ips");
+        REQUIRE_THROWS_WITH(net_handler.start(), "rates is an invalid/unsupported metric group. The valid groups are: all, cardinality, counters, quantiles, top_geo, top_ips");
     }
 }
 
@@ -428,10 +475,10 @@ TEST_CASE("Net geolocation filtering", "[pcap][net][geo]")
 
         nlohmann::json j;
         net_handler.metrics()->bucket(0)->to_json(j);
-        CHECK(j["top_ipv4"][0]["estimate"] == 4);
-        CHECK(j["top_ipv4"][0]["name"] == "198.51.44.1");
-        CHECK(j["top_geoLoc"][0]["estimate"] == 24);
-        CHECK(j["top_geoLoc"][0]["name"] == "Unknown");
+        CHECK(j["in"]["top_ipv4_packets"][0]["estimate"] == 3);
+        CHECK(j["in"]["top_ipv4_packets"][0]["name"] == "192.168.0.54");
+        CHECK(j["in"]["top_geo_loc_packets"][0]["estimate"] == 15);
+        CHECK(j["in"]["top_geo_loc_packets"][0]["name"] == "Unknown");
     }
 
     SECTION("Enable asn not found")
@@ -445,10 +492,10 @@ TEST_CASE("Net geolocation filtering", "[pcap][net][geo]")
 
         nlohmann::json j;
         net_handler.metrics()->bucket(0)->to_json(j);
-        CHECK(j["top_ipv4"][0]["estimate"] == 4);
-        CHECK(j["top_ipv4"][0]["name"] == "198.51.44.1");
-        CHECK(j["top_ASN"][0]["estimate"] == 24);
-        CHECK(j["top_ASN"][0]["name"] == "Unknown");
+        CHECK(j["in"]["top_ipv4_packets"][0]["estimate"] == 3);
+        CHECK(j["in"]["top_ipv4_packets"][0]["name"] == "192.168.0.54");
+        CHECK(j["in"]["top_asn_packets"][0]["estimate"] == 15);
+        CHECK(j["in"]["top_asn_packets"][0]["name"] == "Unknown");
     }
 
     SECTION("Enable geoloc and asn not found")
@@ -463,12 +510,12 @@ TEST_CASE("Net geolocation filtering", "[pcap][net][geo]")
 
         nlohmann::json j;
         net_handler.metrics()->bucket(0)->to_json(j);
-        CHECK(j["top_ipv4"][0]["estimate"] == 4);
-        CHECK(j["top_ipv4"][0]["name"] == "198.51.44.1");
-        CHECK(j["top_geoLoc"][0]["estimate"] == 24);
-        CHECK(j["top_geoLoc"][0]["name"] == "Unknown");
-        CHECK(j["top_ASN"][0]["estimate"] == 24);
-        CHECK(j["top_ASN"][0]["name"] == "Unknown");
+        CHECK(j["in"]["top_ipv4_packets"][0]["estimate"] == 3);
+        CHECK(j["in"]["top_ipv4_packets"][0]["name"] == "192.168.0.54");
+        CHECK(j["in"]["top_geo_loc_packets"][0]["estimate"] == 15);
+        CHECK(j["in"]["top_geo_loc_packets"][0]["name"] == "Unknown");
+        CHECK(j["in"]["top_asn_packets"][0]["estimate"] == 15);
+        CHECK(j["in"]["top_asn_packets"][0]["name"] == "Unknown");
     }
 
     SECTION("Enable geoloc prefix")
@@ -482,8 +529,8 @@ TEST_CASE("Net geolocation filtering", "[pcap][net][geo]")
 
         nlohmann::json j;
         net_handler.metrics()->bucket(0)->to_json(j);
-        CHECK(j["filtered"] == 24);
-        CHECK(j["top_geoLoc"][0]["name"] == nullptr);
+        CHECK(j["filtered_packets"] == 24);
+        CHECK(j["top_geo_loc_packets"][0]["name"] == nullptr);
     }
 
     SECTION("Enable asn number")
@@ -497,8 +544,8 @@ TEST_CASE("Net geolocation filtering", "[pcap][net][geo]")
 
         nlohmann::json j;
         net_handler.metrics()->bucket(0)->to_json(j);
-        CHECK(j["filtered"] == 24);
-        CHECK(j["top_ASN"][0]["name"] == nullptr);
+        CHECK(j["filtered_packets"] == 24);
+        CHECK(j["top_asn_packets"][0]["name"] == nullptr);
     }
 
     SECTION("Invalid asn number")
