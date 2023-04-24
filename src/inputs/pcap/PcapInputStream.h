@@ -96,12 +96,9 @@ class PcapInputStream : public visor::InputStream
 private:
     static constexpr uint8_t TCP_TIMEOUT = 30;
     static constexpr uint8_t MAX_TCP_CLEANUPS = 100;
-    static constexpr size_t DEFAULT_LRULIST_SIZE = TCP_TIMEOUT * 10000;
 
     static const PcapSource DefaultPcapSource = PcapSource::libpcap;
-    std::unique_ptr<LRUList<uint32_t, timeval>> _lru_list;
-    std::pair<uint32_t, timeval> _deleted_data;
-    std::vector<uint32_t> _lru_overflow;
+    LRUList<uint32_t, timeval> _lru_list;
     lib::utils::IPv4subnetList _hostIPv4;
     lib::utils::IPv6subnetList _hostIPv6;
     PacketDirection _packet_dir_cache{PacketDirection::unknown};
@@ -130,8 +127,7 @@ private:
         "debug",
         "host_spec",
         "pcap_file",
-        "pcap_source",
-        "tcp_packet_reassembly_cache_limit"};
+        "pcap_source"};
 
 protected:
     void _open_pcap(const std::string &fileName, const std::string &bpfFilter);
@@ -185,7 +181,7 @@ private:
     // key example: dnsonly_rcode3
     std::unordered_map<std::string, UdpPredicateSignal> _udp_predicate_signals;
     // key: <handlerid>
-    std::map<std::string, std::vector<sigslot::connection>> _udp_predicate_connections;
+    std::map<std::string, sigslot::connection> _udp_predicate_connections;
 
     mutable std::shared_mutex _pcap_proxy_mutex;
     std::shared_ptr<spdlog::logger> _logger;
@@ -222,16 +218,14 @@ public:
         }
         // now install the given conditional signal based on the jump key
         // record the connection so we can remove it later when the handler disconnects
-        _udp_predicate_connections[handler_id].push_back(_udp_predicate_signals[predicate_jump_key].connect(callback));
+        _udp_predicate_connections[handler_id] = _udp_predicate_signals[predicate_jump_key].connect(callback);
     }
 
     void unregister_udp_predicate_signal(const std::string &handler_id)
     {
         assert(_udp_predicate_connections.find(handler_id) != _udp_predicate_connections.end());
         std::shared_lock lock(_pcap_proxy_mutex);
-        for (auto &connection : _udp_predicate_connections[handler_id]) {
-            connection.disconnect();
-        }
+        _udp_predicate_connections[handler_id].disconnect();
     }
 
     void process_udp_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp)
@@ -286,7 +280,6 @@ public:
     // note: these are mutable because consumer_count() calls slot_count() which is not const (unclear if it could/should be)
     mutable sigslot::signal<pcpp::Packet &, PacketDirection, pcpp::ProtocolType, pcpp::ProtocolType, timespec> packet_signal;
     mutable sigslot::signal<pcpp::Packet &, PacketDirection, pcpp::ProtocolType, uint32_t, timespec> udp_signal;
-    mutable sigslot::signal<pcpp::Packet &, PacketDirection, pcpp::ProtocolType, uint32_t, timespec> tcp_reassembled_signal;
     mutable sigslot::signal<timespec> start_tstamp_signal;
     mutable sigslot::signal<timespec> end_tstamp_signal;
     mutable sigslot::signal<int8_t, const pcpp::TcpStreamData &, PacketDirection> tcp_message_ready_signal;

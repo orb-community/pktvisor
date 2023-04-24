@@ -12,16 +12,6 @@ inputs:
     description: "Dockerfile used to build the image"
     required: true
     default: "./Dockerfile"
-    
-  goos:
-    description: "OS for cross-build"
-    required: false
-    default: "linux"
-    
-  goarch:
-    description: "ARCH for cross-build"
-    required: false
-    default: "amd64"
 
 runs:
     using: 'docker'

@@ -18,7 +18,7 @@
           "filtered": 0,
           "keepalive": 3,
           "notification": 0,
-          "update": 4,
+          "offer": 4,
           "open": 2,
           "routerefresh": 0,
           "total": 9
@@ -48,7 +48,7 @@
             "filtered": 0,
             "keepalive": 3,
             "notification": 0,
-            "update": 4,
+            "offer": 4,
             "open": 2,
             "routerefresh": 0,
             "total": 9
@@ -113,7 +113,7 @@
               "filtered": 0,
               "keepalive": 3,
               "notification": 0,
-              "update": 4,
+              "offer": 4,
               "open": 2,
               "routerefresh": 0,
               "total": 9
@@ -125,7 +125,7 @@
             "filtered",
             "keepalive",
             "notification",
-            "update",
+            "offer",
             "open",
             "routerefresh",
             "total"
@@ -181,10 +181,10 @@
                 0
               ]
             },
-            "update": {
-              "$id": "#/properties/bgp/properties/wire_packets/properties/update",
+            "offer": {
+              "$id": "#/properties/bgp/properties/wire_packets/properties/offer",
               "type": "integer",
-              "title": "The update schema",
+              "title": "The offer schema",
               "description": "An explanation about the purpose of this instance.",
               "default": 0,
               "examples": [

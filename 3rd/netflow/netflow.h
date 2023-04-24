@@ -268,8 +268,8 @@ struct NF10_DATA_FLOWSET_HEADER {
 
 /* A record in a NetFlow v.9 template record */
 struct peer_nf9_record {
-    uint32_t type{0};
-    uint32_t len{0};
+    uint32_t type = 0;
+    uint32_t len = 0;
 
     peer_nf9_record(uint32_t type, uint32_t len)
         : type(type)
@@ -289,8 +289,8 @@ struct peer_nf9_template {
 
 /* A record in a NetFlow v.10 template record */
 struct peer_nf10_record {
-    uint32_t type{0};
-    uint32_t len{0};
+    uint32_t type = 0;
+    uint32_t len = 0;
 
     peer_nf10_record(uint32_t type, uint32_t len)
         : type(type)

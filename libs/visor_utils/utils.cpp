@@ -1,5 +1,4 @@
 #include "utils.h"
-#include "EndianPortable.h"
 #include <IpUtils.h>
 #include <fmt/format.h>
 #include <sstream>
@@ -17,13 +16,7 @@ static void split(const std::string &s, char delim, Out result)
     }
 }
 
-static uint8_t reverse_bits(uint8_t n)
-{
-    static constexpr std::array<uint8_t, 9> bit_reverse_masks{0, 128, 192, 224, 240, 248, 252, 254, 255};
-    return bit_reverse_masks[n];
-}
-
-std::optional<IPv4subnetList::const_iterator> match_subnet(IPv4subnetList &ipv4_list, uint32_t ipv4_val)
+std::pair<bool, IPv4subnetList::const_iterator> match_subnet(IPv4subnetList &ipv4_list, uint32_t ipv4_val)
 {
     if (ipv4_val && !ipv4_list.empty()) {
         in_addr ipv4{};
@@ -31,17 +24,18 @@ std::optional<IPv4subnetList::const_iterator> match_subnet(IPv4subnetList &ipv4_
         for (IPv4subnetList::const_iterator it = ipv4_list.begin(); it != ipv4_list.end(); ++it) {
             uint8_t cidr = it->cidr;
             if (cidr == 0) {
-                return it;
+                return {true, it};
             }
-            if (!get_subnet((ipv4.s_addr ^ it->addr.s_addr), cidr)) {
-                return it;
+            uint32_t mask = htonl((0xFFFFFFFFu) << (32 - cidr));
+            if (!((ipv4.s_addr ^ it->addr.s_addr) & mask)) {
+                return {true, it};
             }
         }
     }
-    return std::nullopt;
+    return {false, IPv4subnetList::const_iterator()};
 }
 
-std::optional<IPv6subnetList::const_iterator> match_subnet(IPv6subnetList &ipv6_list, const uint8_t *ipv6_val)
+std::pair<bool, IPv6subnetList::const_iterator> match_subnet(IPv6subnetList &ipv6_list, const uint8_t *ipv6_val)
 {
     if (ipv6_val && !ipv6_list.empty()) {
         in6_addr ipv6{};
@@ -61,11 +55,11 @@ std::optional<IPv6subnetList::const_iterator> match_subnet(IPv6subnetList &ipv6_
                 result = subSubnetByte == subThisByte;
             }
             if (result) {
-                return it;
+                return {true, it};
             }
         }
     }
-    return std::nullopt;
+    return {false, IPv6subnetList::const_iterator()};
 }
 
 bool match_subnet(IPv4subnetList &ipv4_list, IPv6subnetList &ipv6_list, const std::string &ip_val)
@@ -73,56 +67,11 @@ bool match_subnet(IPv4subnetList &ipv4_list, IPv6subnetList &ipv6_list, const st
     pcpp::IPv4Address ipv4;
     pcpp::IPv6Address ipv6;
     if (ipv4 = pcpp::IPv4Address(ip_val); ipv4.isValid()) {
-        return match_subnet(ipv4_list, ipv4.toInt()).has_value();
+        return match_subnet(ipv4_list, ipv4.toInt()).first;
     } else if (ipv6 = pcpp::IPv6Address(ip_val); ipv6.isValid()) {
-        return match_subnet(ipv6_list, ipv6.toBytes()).has_value();
+        return match_subnet(ipv6_list, ipv6.toBytes()).first;
     }
     return false;
-}
-
-uint8_t get_cidr(uint32_t mask)
-{
-    uint8_t cidr{0};
-    while (mask > 0) {
-        mask >>= 1;
-        cidr++;
-    }
-    return cidr;
-}
-
-uint8_t get_cidr(uint8_t *addr, size_t size)
-{
-    uint8_t cidr{0};
-    for (size_t i = 0; i < size; i++) {
-        while (addr[i]) {
-            addr[i] >>= 1;
-            cidr++;
-        }
-    }
-    return cidr;
-}
-
-uint32_t get_subnet(uint32_t addr, uint8_t cidr)
-{
-    return addr & (htobe32((0xFFFFFFFFu) << (32 - cidr)));
-}
-
-std::array<uint8_t, 16> get_subnet(const uint8_t *addr, uint8_t cidr)
-{
-    std::array<uint8_t, 16> mask{};
-    std::memcpy(mask.data(), addr, mask.size());
-    uint8_t byte_count = cidr / 8;
-    uint8_t bit_count = cidr % 8;
-    for (uint8_t b = mask.size(); b-- > 0;) {
-        if (b > byte_count) {
-            mask[b] = 0;
-        } else if (b == byte_count && bit_count) {
-            mask[b] &= reverse_bits(bit_count);
-        } else if (b == byte_count) {
-            mask[b] = 0;
-        }
-    }
-    return mask;
 }
 
 void parse_host_specs(const std::vector<std::string> &host_list, IPv4subnetList &ipv4_list, IPv6subnetList &ipv6_list)

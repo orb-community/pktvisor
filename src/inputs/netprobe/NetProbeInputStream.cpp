@@ -270,8 +270,6 @@ void NetProbeInputStream::info_json(json &j) const
 
 std::unique_ptr<InputEventProxy> NetProbeInputStream::create_event_proxy(const Configurable &filter)
 {
-    auto custom_filter = filter;
-    custom_filter.config_set("xact_ttl_ms", _timeout_msec);
-    return std::make_unique<NetProbeInputEventProxy>(_name, custom_filter);
+    return std::make_unique<NetProbeInputEventProxy>(_name, filter);
 }
 }

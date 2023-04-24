@@ -1,15 +1,13 @@
 #include "PingProbe.h"
 
 #include "NetProbeException.h"
-#include "ThreadName.h"
 #include <Packet.h>
 #include <TimespecTimeval.h>
 #include <uvw/idle.h>
 
 namespace visor::input::netprobe {
 
-std::vector<std::pair<pcpp::Packet, timespec>> PingReceiver::recv_packets{};
-std::unique_ptr<PingReceiver> PingProbe::_receiver{nullptr};
+sigslot::signal<pcpp::Packet &, timespec> PingReceiver::recv_signal;
 thread_local std::atomic<uint32_t> PingProbe::sock_count{0};
 thread_local SOCKET PingProbe::_sock{INVALID_SOCKET};
 
@@ -19,6 +17,7 @@ PingReceiver::PingReceiver()
 }
 PingReceiver::~PingReceiver()
 {
+    recv_signal.disconnect_all();
     _poll->close();
     if (_async_h && _io_thread) {
         // we have to use AsyncHandle to stop the loop from the same thread the loop is running in
@@ -93,29 +92,17 @@ void PingReceiver::_setup_receiver()
                 timeval time;
                 TIMESPEC_TO_TIMEVAL(&time, &stamp);
                 pcpp::RawPacket raw(reinterpret_cast<uint8_t *>(_array.data()), rc, time, false, pcpp::LINKTYPE_DLT_RAW1);
-                _recv_packets.emplace_back(pcpp::Packet(&raw, pcpp::ICMP), stamp);
+                pcpp::Packet packet(&raw, pcpp::ICMP);
+                recv_signal(packet, stamp);
             }
         }
     });
-
-    _timer = _io_loop->resource<uvw::TimerHandle>();
-    _timer->on<uvw::TimerEvent>([this](const auto &, auto &) {
-        if (!_recv_packets.empty()) {
-            recv_packets = _recv_packets;
-            _recv_packets.clear();
-            for (const auto &callback : _callbacks) {
-                callback->send();
-            }
-        }
-    });
-    _timer->start(uvw::TimerHandle::Time{100}, uvw::TimerHandle::Time{100});
 
     _poll->init();
     _poll->start(uvw::PollHandle::Event::READABLE);
 
     // spawn the loop
     _io_thread = std::make_unique<std::thread>([this] {
-        thread::change_self_name("receiver", "ping");
         _io_loop->run();
     });
 }
@@ -140,10 +127,8 @@ bool PingProbe::start(std::shared_ptr<uvw::Loop> io_loop)
 
     _io_loop = io_loop;
 
-    if (!_receiver) {
-        // only once
-        _receiver = std::make_unique<PingReceiver>();
-    }
+    // execute once
+    static auto receiver = std::make_unique<PingReceiver>();
 
     _interval_timer = _io_loop->resource<uvw::TimerHandle>();
     if (!_interval_timer) {
@@ -151,6 +136,20 @@ bool PingProbe::start(std::shared_ptr<uvw::Loop> io_loop)
     }
     _interval_timer->on<uvw::TimerEvent>([this](const auto &, auto &) {
         _internal_sequence = 0;
+
+        _timeout_timer = _io_loop->resource<uvw::TimerHandle>();
+        if (!_timeout_timer) {
+            throw NetProbeException("PingProbe - unable to initialize timeout TimerHandle");
+        }
+
+        _timeout_timer->on<uvw::TimerEvent>([this](const auto &, auto &) {
+            _internal_sequence = _config.packets_per_test;
+            _fail(ErrorType::Timeout, TestType::Ping, _name);
+            if (_internal_timer) {
+                _internal_timer->stop();
+            }
+            _interval_timer->again();
+        });
 
         if (auto error = _create_socket(); error.has_value()) {
             _fail(error.value(), TestType::Ping, _name);
@@ -163,33 +162,23 @@ bool PingProbe::start(std::shared_ptr<uvw::Loop> io_loop)
         }
 
         _internal_timer = _io_loop->resource<uvw::TimerHandle>();
-        _internal_timer->on<uvw::TimerEvent>([this](const auto &, auto &handle) {
+        _internal_timer->on<uvw::TimerEvent>([this](const auto &, auto &) {
             if (_internal_sequence < static_cast<uint8_t>(_config.packets_per_test)) {
                 _internal_sequence++;
+                _timeout_timer->stop();
+                _timeout_timer->start(uvw::TimerHandle::Time{_config.timeout_msec}, uvw::TimerHandle::Time{0});
                 _send_icmp_v4(_internal_sequence);
-            } else {
-                handle.stop();
-                handle.close();
             }
         });
+
+        _recv_connection = PingReceiver::recv_signal.connect([this](pcpp::Packet &packet, timespec stamp) { _recv(packet, TestType::Ping, _name, stamp); });
 
         (_sequence == UCHAR_MAX) ? _sequence = 0 : _sequence++;
         _send_icmp_v4(_internal_sequence);
         _internal_sequence++;
+        _timeout_timer->start(uvw::TimerHandle::Time{_config.timeout_msec}, uvw::TimerHandle::Time{0});
         _internal_timer->start(uvw::TimerHandle::Time{_config.packets_interval_msec}, uvw::TimerHandle::Time{_config.packets_interval_msec});
     });
-
-    _recv_handler = _io_loop->resource<uvw::AsyncHandle>();
-    if (!_recv_handler) {
-        throw NetProbeException("PingProbe - unable to initialize AsyncHandle receiver");
-    }
-    _recv_handler->on<uvw::AsyncEvent>([this](const auto &, auto &) {
-        for (auto &[packet, stamp] : PingReceiver::recv_packets) {
-            _recv(packet, TestType::Ping, _name, stamp);
-        }
-    });
-    _receiver->register_async_callback(_recv_handler);
-    _recv_handler->init();
 
     ++sock_count;
     _interval_timer->start(uvw::TimerHandle::Time{0}, uvw::TimerHandle::Time{_config.interval_msec});
@@ -201,12 +190,8 @@ bool PingProbe::stop()
 {
     if (_interval_timer) {
         _interval_timer->stop();
-        _interval_timer->close();
     }
-    if (_recv_handler) {
-        _receiver->remove_async_callback(_recv_handler);
-        _recv_handler->close();
-    }
+    _recv_connection.disconnect();
     _close_socket();
     return true;
 }

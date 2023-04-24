@@ -106,12 +106,12 @@ struct DnsDirection {
             , DOQ(DNS_SCHEMA, {"doq_xacts"}, "Total DNS transactions (query/reply pairs) received over DNS over QUIC")
             , IPv4(DNS_SCHEMA, {"ipv4_xacts"}, "Total DNS transactions (query/reply pairs) received over IPv4")
             , IPv6(DNS_SCHEMA, {"ipv6_xacts"}, "Total DNS transactions (query/reply pairs) received over IPv6")
-            , NX(DNS_SCHEMA, {"nxdomain_xacts"}, "Total DNS transactions (query/reply pairs) flagged as reply with response code NXDOMAIN")
+            , NX(DNS_SCHEMA, {"nxdomain_xacts"}, "Total DNS transactions (query/reply pairs) flagged as reply with return code NXDOMAIN")
             , ECS(DNS_SCHEMA, {"ecs_xacts"}, "Total DNS transactions (query/reply pairs) with the EDNS Client Subnet option set")
-            , REFUSED(DNS_SCHEMA, {"refused_xacts"}, "Total DNS transactions (query/reply pairs) flagged as reply with response code REFUSED")
-            , SRVFAIL(DNS_SCHEMA, {"srvfail_xacts"}, "Total DNS transactions (query/reply pairs) flagged as reply with response code SRVFAIL")
-            , RNOERROR(DNS_SCHEMA, {"noerror_xacts"}, "Total DNS transactions (query/reply pairs) flagged as reply with response code NOERROR")
-            , NODATA(DNS_SCHEMA, {"nodata_xacts"}, "Total DNS transactions (query/reply pairs) flagged as reply with response code NOERROR but with an empty answers section")
+            , REFUSED(DNS_SCHEMA, {"refused_xacts"}, "Total DNS transactions (query/reply pairs) flagged as reply with return code REFUSED")
+            , SRVFAIL(DNS_SCHEMA, {"srvfail_xacts"}, "Total DNS transactions (query/reply pairs) flagged as reply with return code SRVFAIL")
+            , RNOERROR(DNS_SCHEMA, {"noerror_xacts"}, "Total DNS transactions (query/reply pairs) flagged as reply with return code NOERROR")
+            , NODATA(DNS_SCHEMA, {"nodata_xacts"}, "Total DNS transactions (query/reply pairs) flagged as reply with return code NOERROR but with an empty answers section")
             , authData(DNS_SCHEMA, {"authenticated_data_xacts"}, "Total DNS transactions (query/reply pairs) with the AD flag set in the response")
             , authAnswer(DNS_SCHEMA, {"authoritative_answer_xacts"}, "Total DNS transactions (query/reply pairs) with the AA flag set in the response")
             , checkDisabled(DNS_SCHEMA, {"checking_disabled_xacts"}, "Total DNS transactions (query/reply pairs) with the CD flag set in the query")
@@ -194,36 +194,10 @@ struct DnsDirection {
             timeout.to_prometheus(out, add_labels);
             orphan.to_prometheus(out, add_labels);
         }
-
-        void to_opentelemetry(metrics::v1::ScopeMetrics &scope, timespec &start, timespec &end, Metric::LabelMap add_labels) const
-        {
-            xacts.to_opentelemetry(scope, start, end, add_labels);
-            UDP.to_opentelemetry(scope, start, end, add_labels);
-            TCP.to_opentelemetry(scope, start, end, add_labels);
-            DOT.to_opentelemetry(scope, start, end, add_labels);
-            DOH.to_opentelemetry(scope, start, end, add_labels);
-            cryptUDP.to_opentelemetry(scope, start, end, add_labels);
-            cryptTCP.to_opentelemetry(scope, start, end, add_labels);
-            DOQ.to_opentelemetry(scope, start, end, add_labels);
-            IPv4.to_opentelemetry(scope, start, end, add_labels);
-            IPv6.to_opentelemetry(scope, start, end, add_labels);
-            NX.to_opentelemetry(scope, start, end, add_labels);
-            ECS.to_opentelemetry(scope, start, end, add_labels);
-            REFUSED.to_opentelemetry(scope, start, end, add_labels);
-            SRVFAIL.to_opentelemetry(scope, start, end, add_labels);
-            RNOERROR.to_opentelemetry(scope, start, end, add_labels);
-            NODATA.to_opentelemetry(scope, start, end, add_labels);
-            authData.to_opentelemetry(scope, start, end, add_labels);
-            authAnswer.to_opentelemetry(scope, start, end, add_labels);
-            checkDisabled.to_opentelemetry(scope, start, end, add_labels);
-            timeout.to_opentelemetry(scope, start, end, add_labels);
-            orphan.to_opentelemetry(scope, start, end, add_labels);
-        }
     };
     Counters counters;
 
     Quantile<uint64_t> dnsTimeUs;
-    Histogram<uint64_t> dnsHistTimeUs;
     Quantile<double> dnsRatio;
     Rate dnsRate;
 
@@ -248,13 +222,12 @@ struct DnsDirection {
     DnsDirection()
         : counters()
         , dnsTimeUs(DNS_SCHEMA, {"xact_time_us"}, "Quantiles of transaction timing (query/reply pairs) in microseconds")
-        , dnsHistTimeUs(DNS_SCHEMA, {"xact_histogram_us"}, "Histogram of transaction timing (query/reply pairs) in microseconds")
         , dnsRatio(DNS_SCHEMA, {"response_query_size_ratio"}, "Quantiles of ratio of packet sizes in a DNS transaction (reply/query)")
-        , dnsRate(DNS_SCHEMA, {"xact_rates"}, "Rate of all DNS transaction (reply/query) per second")
+        , dnsRate(DNS_SCHEMA, {"dns_xact_rates"}, "Rate of all DNS transaction (reply/query) per second")
         , qnameCard(DNS_SCHEMA, {"cardinality", "qname"}, "Cardinality of unique QNAMES, both ingress and egress")
         , topGeoLocECS(DNS_SCHEMA, "geo_loc", {"top_geo_loc_ecs_xacts"}, "Top GeoIP ECS locations")
         , topASNECS(DNS_SCHEMA, "asn", {"top_asn_ecs_xacts"}, "Top ASNs by ECS")
-        , topQueryECS(DNS_SCHEMA, "ecs", {"top_ecs_xacts"}, "Top EDNS Client Subnet (ECS) observed in DNS transaction")
+        , topQueryECS(DNS_SCHEMA, "ecs", {"top_query_ecs_xacts"}, "Top EDNS Client Subnet (ECS) observed in DNS queries")
         , topQname2(DNS_SCHEMA, "qname", {"top_qname2_xacts"}, "Top QNAMES, aggregated at a depth of two labels")
         , topQname3(DNS_SCHEMA, "qname", {"top_qname3_xacts"}, "Top QNAMES, aggregated at a depth of three labels")
         , topNX(DNS_SCHEMA, "qname", {"top_nxdomain_xacts"}, "Top QNAMES with result code NXDOMAIN")
@@ -307,7 +280,6 @@ public:
     DnsMetricsBucket()
         : _filtered(DNS_SCHEMA, {"filtered_packets"}, "Total DNS wire packets seen that did not match the configured filter(s) (if any)")
     {
-        set_event_rate_info(DNS_SCHEMA, {"rates", "observed_pps"}, "Rate of all DNS wire packets before filtering per second");
         set_num_events_info(DNS_SCHEMA, {"observed_packets"}, "Total DNS wire packets events");
         set_num_sample_info(DNS_SCHEMA, {"deep_sampled_packets"}, "Total DNS wire packets that were sampled for deep inspection");
     }
@@ -362,7 +334,6 @@ public:
     void specialized_merge(const AbstractMetricsBucket &other, Metric::Aggregate agg_operator) override;
     void to_json(json &j) const override;
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override;
-    void to_opentelemetry(metrics::v1::ScopeMetrics &scope, timespec &start_ts, timespec &end_ts, Metric::LabelMap add_labels = {}) const override;
     void update_topn_metrics(size_t topn_count, uint64_t percentile_threshold) override
     {
         _topn_count = topn_count;
@@ -384,42 +355,31 @@ public:
 class DnsMetricsManager final : public visor::AbstractMetricsManager<DnsMetricsBucket>
 {
     using DnsXactID = std::pair<uint32_t, uint16_t>;
-    typedef TransactionManager<DnsXactID, DnsTransaction> DnsTransactionManager;
     struct DirTransaction {
-        std::unique_ptr<DnsTransactionManager> xact_map;
+        TransactionManager<DnsXactID, DnsTransaction> xact_map;
         float per_90th{0.0};
-
-        DirTransaction()
-            : xact_map(std::make_unique<DnsTransactionManager>())
-        {
-        }
-        DirTransaction(uint32_t ttl)
-            : xact_map(std::make_unique<DnsTransactionManager>(ttl))
-        {
-        }
     };
-    std::map<TransactionDirection, DirTransaction> _pair_manager;
+    std::map<TransactionDirection, DirTransaction> _pair_manager = {{TransactionDirection::in, DirTransaction()},
+        {TransactionDirection::out, DirTransaction()},
+        {TransactionDirection::unknown, DirTransaction()}};
 
 public:
     DnsMetricsManager(const Configurable *window_config)
         : visor::AbstractMetricsManager<DnsMetricsBucket>(window_config)
     {
-        _pair_manager[TransactionDirection::in] = DirTransaction();
-        _pair_manager[TransactionDirection::out] = DirTransaction();
-        _pair_manager[TransactionDirection::unknown] = DirTransaction();
     }
 
     void on_period_shift(timespec stamp, [[maybe_unused]] const DnsMetricsBucket *maybe_expiring_bucket) override
     {
         // DNS transaction support
         for (auto &manager : _pair_manager) {
-            if (auto timed_out = manager.second.xact_map->purge_old_transactions(stamp); timed_out) {
-                live_bucket()->dir_setup(manager.first);
+            if (auto timed_out = manager.second.xact_map.purge_old_transactions(stamp); timed_out && live_bucket()->has_dir(manager.first)) {
                 live_bucket()->inc_xact_timed_out(timed_out, manager.first);
             }
             if (bucket(1)->has_dir(manager.first)) {
-                auto [xact, lock] = bucket(1)->get_xact_data_locked(manager.first);
-                xact.get_n() ? manager.second.per_90th = xact.get_quantile(0.90) : float();
+                if (auto [xact, lock] = bucket(1)->get_xact_data_locked(manager.first); xact.get_n()) {
+                    manager.second.per_90th = xact.get_quantile(0.90);
+                }
             }
         }
     }
@@ -428,16 +388,9 @@ public:
     {
         size_t count{0};
         for (const auto &manager : _pair_manager) {
-            count += manager.second.xact_map->open_transaction_count();
+            count += manager.second.xact_map.open_transaction_count();
         }
         return count;
-    }
-
-    void set_xact_ttl(uint32_t ttl)
-    {
-        _pair_manager[TransactionDirection::in] = DirTransaction(ttl);
-        _pair_manager[TransactionDirection::out] = DirTransaction(ttl);
-        _pair_manager[TransactionDirection::unknown] = DirTransaction(ttl);
     }
 
     void process_filtered(timespec stamp)
@@ -487,7 +440,6 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
     sigslot::connection _dnstap_connection;
 
     sigslot::connection _pkt_udp_connection;
-    sigslot::connection _pkt_tcp_reassembled_connection;
     sigslot::connection _start_tstamp_connection;
     sigslot::connection _end_tstamp_connection;
 
@@ -498,7 +450,6 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
     sigslot::connection _heartbeat_connection;
 
     void process_udp_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp);
-    void process_tcp_reassembled_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp);
     void process_dnstap_cb(const dnstap::Dnstap &, size_t);
     void tcp_message_ready_cb(int8_t side, const pcpp::TcpStreamData &tcpData, PacketDirection dir);
     void tcp_connection_start_cb(const pcpp::ConnectionData &connectionData, PacketDirection dir);
@@ -521,7 +472,6 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
         OnlyRCode,
         OnlyQtype,
         AnswerCount,
-        OnlyQName,
         OnlyQNameSuffix,
         OnlyDNSSECResponse,
         DnstapMsgType,
@@ -538,9 +488,8 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
         ConfigsMAX
     };
     std::bitset<Configs::ConfigsMAX> _c_enabled;
-    std::vector<uint16_t> _f_rcodes;
+    uint16_t _f_rcode{0};
     uint64_t _f_answer_count{0};
-    std::vector<std::string> _f_qnames_suffix;
     std::vector<std::string> _f_qnames;
     std::vector<uint16_t> _f_qtypes;
     size_t _static_suffix_size{0};
@@ -552,15 +501,12 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
         "only_dnssec_response",
         "answer_count",
         "only_qtype",
-        "only_qname",
         "only_qname_suffix",
         "geoloc_notfound",
         "asn_notfound",
         "dnstap_msg_type",
         "public_suffix_list",
-        "recorded_stream",
-        "xact_ttl_secs",
-        "xact_ttl_ms"};
+        "recorded_stream"};
 
     static const inline StreamMetricsHandler::GroupDefType _group_defs = {
         {"cardinality", group::DnsMetrics::Cardinality},

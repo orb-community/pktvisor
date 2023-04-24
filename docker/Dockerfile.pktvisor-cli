@@ -1,0 +1,32 @@
+FROM debian:bullseye-slim AS cppbuild
+
+ENV BUILD_DEPS "g++ cmake make git pkgconf jq python3-pip python3-setuptools ca-certificates"
+
+RUN \
+    apt-get update && \
+    apt-get upgrade --yes --force-yes && \
+    apt-get install --yes --force-yes --no-install-recommends ${BUILD_DEPS} && \
+    pip3 install conan
+
+# need git for current hash for VERSION
+COPY ./.git/ /pktvisor-src/.git/
+COPY ./golang/ /pktvisor-src/golang/
+COPY ./CMakeLists.txt /pktvisor-src/
+
+WORKDIR /tmp/build
+
+# ONLY run cmake configure to get version need for go build (no c++ build)
+RUN VERSION_ONLY=1 cmake /pktvisor-src
+
+FROM golang:latest AS gobuild
+COPY golang/ /src/
+WORKDIR /src/
+COPY --from=cppbuild /pktvisor-src/golang/pkg/client/version.go /src/pkg/client/version.go
+RUN CGO_ENABLED=0 go build -o pktvisor-cli cmd/pktvisor-cli/main.go
+
+FROM alpine:latest AS runtime
+
+COPY --from=gobuild /src/pktvisor-cli /pktvisor-cli
+COPY docker/entry-cli.sh /
+
+ENTRYPOINT [ "/entry-cli.sh" ]

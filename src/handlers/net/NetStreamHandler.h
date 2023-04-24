@@ -5,12 +5,12 @@
 #pragma once
 
 #include "AbstractMetricsManager.h"
-#include "Corrade/Utility/Debug.h"
 #include "DnstapInputStream.h"
 #include "GeoDB.h"
 #include "MockInputStream.h"
 #include "PcapInputStream.h"
 #include "StreamHandler.h"
+#include <Corrade/Utility/Debug.h>
 #include <string>
 
 namespace visor::handler::net {
@@ -36,17 +36,19 @@ struct NetworkPacket {
     pcpp::ProtocolType l4;
     size_t payload_size;
     bool syn_flag;
+    bool is_ipv6;
     pcpp::IPv4Address ipv4_in;
     pcpp::IPv4Address ipv4_out;
     pcpp::IPv6Address ipv6_in;
     pcpp::IPv6Address ipv6_out;
 
-    NetworkPacket(PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, size_t payload_size, bool syn_flag)
+    NetworkPacket(PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, size_t payload_size, bool syn_flag, bool is_ipv6)
         : dir(dir)
         , l3(l3)
         , l4(l4)
         , payload_size(payload_size)
         , syn_flag(syn_flag)
+        , is_ipv6(is_ipv6)
     {
     }
 };
@@ -139,7 +141,6 @@ public:
     void specialized_merge(const AbstractMetricsBucket &other, Metric::Aggregate agg_operator) override;
     void to_json(json &j) const override;
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override;
-    void to_opentelemetry(metrics::v1::ScopeMetrics &scope, timespec &start_ts, timespec &end_ts, Metric::LabelMap add_labels = {}) const override;
     void update_topn_metrics(size_t topn_count, uint64_t percentile_threshold) override
     {
         _topGeoLoc.set_settings(topn_count, percentile_threshold);
@@ -191,13 +192,10 @@ class NetStreamHandler final : public visor::StreamMetricsHandler<NetworkMetrics
     sigslot::connection _dnstap_connection;
 
     sigslot::connection _pkt_connection;
-    sigslot::connection _pkt_tcp_reassembled_connection;
     sigslot::connection _start_tstamp_connection;
     sigslot::connection _end_tstamp_connection;
 
-    sigslot::connection _tcp_start_connection;
-    sigslot::connection _tcp_end_connection;
-    sigslot::connection _tcp_message_connection;
+    sigslot::connection _pkt_udp_connection;
 
     sigslot::connection _heartbeat_connection;
 
@@ -216,10 +214,8 @@ class NetStreamHandler final : public visor::StreamMetricsHandler<NetworkMetrics
 
     void process_dnstap_cb(const dnstap::Dnstap &, size_t);
     void process_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, timespec stamp);
-    void process_tcp_reassembled_packet_cb(pcpp::Packet &payload, PacketDirection dir, pcpp::ProtocolType l3, uint32_t flowkey, timespec stamp);
     void set_start_tstamp(timespec stamp);
     void set_end_tstamp(timespec stamp);
-    bool validate_tcp_data(const pcpp::ConnectionData &connectionData, PacketDirection dir, timeval timeInterval);
 
     // Net Filters
     enum Filters {

@@ -39,7 +39,6 @@ struct IpPort {
 
     std::string get_service() const;
 
-    static std::string get_service(uint16_t port, Protocol proto);
     static void set_csv_iana_ports(std::string path);
 
     bool operator==(const IpPort &other) const
