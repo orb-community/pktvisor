@@ -6,10 +6,11 @@ on:
   pull_request:
     branches:
       - develop
-
+      #- release
   push:
     branches:
       - develop
+      #- release
 
 jobs:
   pkvisor:
@@ -46,7 +47,6 @@ jobs:
         with:
           path: bin/sccache
           key: sccache-v0.2.15
-
       - name: Install sccache
         if: steps.cache-sccache.outputs.cache-hit != 'true'
         run: |
@@ -61,7 +61,6 @@ jobs:
         with:
           path: toolchain
           key: toolchain-test-${{matrix.toolchain}}
-
       - name: Install compiler toolchain
         if: steps.cache-toolchain.outputs.cache-hit != 'true'
         run: |
@@ -69,16 +68,15 @@ jobs:
           curl -L "${{matrix.toolchain}}" | tar -C toolchain -xz --strip-components=1
 
       - name: Install Conan
-        run: pip install --no-cache-dir 'conan==1.59.0' --force-reinstall
-
+        run: pip install --no-cache-dir conan
       - name: Create Conan configuration
         run: |
           # init config
           CONAN_V2_MODE=1 conan config init
           conan config set general.revisions_enabled=1
+          conan remote add ns1labs https://ns1labs.jfrog.io/artifactory/api/conan/ns1labs-conan
           # add custom compiler settings for libc
           python3 -c 'import yaml; p = "${{env.CONAN_USER_HOME}}/.conan/settings.yml"; d = yaml.safe_load(open(p)); d["compiler"]["gcc"]["libc"] = ["None", "glibc", "musl"]; yaml.safe_dump(d, open(p, "w"))'
-
       - name: Create Conan host profile
         run: |
           cat > "${{env.CONAN_USER_HOME}}/.conan/profiles/host" << "EOF"
@@ -109,20 +107,17 @@ jobs:
             sccache-${{matrix.arch}}-${{github.base_ref||github.event.repository.default_branch}}-
 
       - name: Checkout sources
-        uses: actions/checkout@v3
+        uses: actions/checkout@v2
         with:
           path: src
-
       - name: Remove crashpad from conanfile
         run: |
           sed -i -e "s/crashpad.*//g" ${{github.workspace}}/src/conanfile.txt
-
       - name: Install dependencies
         run: |
           mkdir build
           cd build
           conan install -pr:b default -pr:h host -g virtualenv --build=missing "${{github.workspace}}/src"
-
       - name: Configure
         run: |
           cd build
@@ -137,7 +132,6 @@ jobs:
             -DProtobuf_PROTOC_EXECUTABLE=$(command -v protoc) \
             -DCORRADE_RC_PROGRAM=$(command -v corrade-rc) \
             -DCMAKE_CXX_STANDARD_LIBRARIES=-latomic
-
       - name: Build
         run: |
           cd build
@@ -172,45 +166,31 @@ jobs:
           - os: macos
             arch: armv7lh
     steps:
+      - name: Setup Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.17
       - name: Checkout sources
-        uses: actions/checkout@v3
-
-      - name: Configure CMake to generate VERSION
-        shell: bash
-        run: VERSION_ONLY=1 cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=Release
-        
-      - name: Rename folder and copy version
-        shell: bash
+        uses: actions/checkout@v2
+        with:
+          path: src
+      - name: Configure
         run: |
-          mv src pktvisor-src
-          cp -rpf golang/pkg/client/version.go .
-          
-      - name: Build pktvisor-cli macos
-        if: ${{matrix.os}} == macos
-        uses: ./.github/actions/build-go
-        with:
-          context: "."
-          file: "./Dockerfile"
-          goos: "darwin"
-          
-      - name: Build pktvisor-cli linux armv7lh
-        if: ${{matrix.arch}} == armv7lh
-        uses: ./.github/actions/build-go
-        with:
-          context: "."
-          file: "./Dockerfile"
-          goos: "linux"
-          goarch: "arm"
-          
-      - name: Build pktvisor-cli linux aarch64
-        if: ${{matrix.arch}} == aarch64
-        uses: ./.github/actions/build-go
-        with:
-          context: "."
-          file: "./Dockerfile"
-          goos: "linux"
-          goarch: "arm64"
+          VERSION_ONLY=1 cmake src
+      - name: Build
+        run: |
+          if [ "${{matrix.os}}" = macos ]; then
+            export GOOS=darwin
+          fi
 
+          if [ "${{matrix.arch}}" = armv7lh ]; then
+            export GOARCH=arm
+          elif [ "${{matrix.arch}}" = aarch64 ]; then
+            export GOARCH=arm64
+          fi
+
+          cd src/golang
+          go build -o ${{github.workspace}}/pktvisor-cli ./cmd/pktvisor-cli
       - name: Upload pktvisor-cli
         uses: actions/upload-artifact@v2
         with:

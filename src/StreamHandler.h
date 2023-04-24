@@ -6,7 +6,6 @@
 
 #include "AbstractMetricsManager.h"
 #include "AbstractModule.h"
-#include "CoreRegistry.h"
 #include "InputEventProxy.h"
 #include <ctime>
 #include <fmt/ostream.h>
@@ -30,7 +29,6 @@ class StreamHandler : public AbstractRunnableModule
 {
 protected:
     std::unique_ptr<InputEventProxy> _event_proxy;
-    std::string _version{CoreRegistry::DEFAULT_HANDLER_PLUGIN_VERSION};
 
 public:
     StreamHandler(const std::string &name)
@@ -58,22 +56,10 @@ public:
         return _event_proxy.get();
     }
 
-    void set_version(const std::string &version)
-    {
-        _version = version;
-    }
-
-    const std::string &version() const
-    {
-        return _version;
-    }
-
     virtual void window_json(json &j, uint64_t period, bool merged) = 0;
     virtual void window_json(json &j, AbstractMetricsBucket *bucket) = 0;
     virtual void window_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) = 0;
     virtual void window_prometheus(std::stringstream &out, AbstractMetricsBucket *bucket, Metric::LabelMap add_labels = {}) = 0;
-    virtual void window_opentelemetry(metrics::v1::ScopeMetrics &scope, Metric::LabelMap add_labels = {}) = 0;
-    virtual void window_opentelemetry(metrics::v1::ScopeMetrics &scope, AbstractMetricsBucket *bucket, Metric::LabelMap add_labels = {}) = 0;
     virtual std::unique_ptr<AbstractMetricsBucket> merge(AbstractMetricsBucket *bucket, uint64_t period, bool prometheus, bool merged) = 0;
 };
 
@@ -235,20 +221,6 @@ public:
     void window_prometheus(std::stringstream &out, AbstractMetricsBucket *bucket, Metric::LabelMap add_labels = {}) override
     {
         _metrics->window_external_prometheus(out, bucket, add_labels);
-    };
-
-    void window_opentelemetry(metrics::v1::ScopeMetrics &scope, Metric::LabelMap add_labels = {}) override
-    {
-        if (_metrics->current_periods() > 1) {
-            _metrics->window_single_opentelemetry(scope, 1, add_labels);
-        } else {
-            _metrics->window_single_opentelemetry(scope, 0, add_labels);
-        }
-    }
-
-    void window_opentelemetry(metrics::v1::ScopeMetrics &scope, AbstractMetricsBucket *bucket, Metric::LabelMap add_labels = {}) override
-    {
-        _metrics->window_external_opentelemetry(scope, bucket, add_labels);
     };
 
     void check_period_shift(timespec stamp)

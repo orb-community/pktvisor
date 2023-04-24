@@ -35,10 +35,8 @@ typedef int SOCKET;
 #include <memory>
 #include <mutex>
 #include <optional>
-#include <shared_mutex>
 #include <sigslot/signal.hpp>
 #include <uvw/async.h>
-#include <uvw/check.h>
 #include <uvw/poll.h>
 #include <uvw/timer.h>
 
@@ -58,26 +56,14 @@ class PingReceiver
     std::unique_ptr<std::thread> _io_thread;
     std::shared_ptr<uvw::Loop> _io_loop;
     std::shared_ptr<uvw::AsyncHandle> _async_h;
-    std::vector<std::shared_ptr<uvw::AsyncHandle>> _callbacks;
-    std::shared_ptr<uvw::TimerHandle> _timer;
-    std::vector<std::pair<pcpp::Packet, timespec>> _recv_packets;
+
     void _setup_receiver();
 
 public:
-    static std::vector<std::pair<pcpp::Packet, timespec>> recv_packets;
+    static sigslot::signal<pcpp::Packet &, timespec> recv_signal;
 
     PingReceiver();
     ~PingReceiver();
-
-    void register_async_callback(std::shared_ptr<uvw::AsyncHandle> callback)
-    {
-        _callbacks.push_back(callback);
-    }
-
-    void remove_async_callback(std::shared_ptr<uvw::AsyncHandle> callback)
-    {
-        _callbacks.erase(std::remove(_callbacks.begin(), _callbacks.end(), callback), _callbacks.end());
-    }
 };
 
 /**
@@ -89,7 +75,6 @@ public:
  */
 class PingProbe final : public NetProbe
 {
-    static std::unique_ptr<PingReceiver> _receiver;
     static thread_local SOCKET _sock;
 
     bool _init{false};
@@ -99,11 +84,12 @@ class PingProbe final : public NetProbe
     uint8_t _internal_sequence{0};
     std::shared_ptr<uvw::TimerHandle> _interval_timer;
     std::shared_ptr<uvw::TimerHandle> _internal_timer;
-    std::shared_ptr<uvw::AsyncHandle> _recv_handler;
+    std::shared_ptr<uvw::TimerHandle> _timeout_timer;
     SOCKETLEN _sin_length{0};
     std::vector<uint8_t> _payload_array;
     sockaddr_in _sa;
     sockaddr_in6 _sa6;
+    sigslot::connection _recv_connection;
 
     void _send_icmp_v4(uint8_t sequence);
     std::optional<ErrorType> _get_addr();

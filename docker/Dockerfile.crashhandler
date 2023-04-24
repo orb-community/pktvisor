@@ -18,8 +18,8 @@ COPY ./docker/run.sh /run.sh
 
 #create dir and download geo db
 RUN mkdir /geo-db
-RUN cd /geo-db && wget https://github.com/orb-community/geo-asn-database/raw/main/asn.mmdb.gz
-RUN cd /geo-db && wget https://github.com/orb-community/geo-asn-database/raw/main/city.mmdb.gz
+RUN cd /geo-db && wget https://github.com/ns1labs/geo-asn-database/raw/main/asn.mmdb.gz
+RUN cd /geo-db && wget https://github.com/ns1labs/geo-asn-database/raw/main/city.mmdb.gz
 
 #create dir and setup iana csv
 RUN mkdir /iana

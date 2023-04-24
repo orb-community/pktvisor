@@ -9,7 +9,6 @@
 #include "Configurable.h"
 #include "HandlerModulePlugin.h"
 #include "InputModulePlugin.h"
-#include "OpenTelemetry.h"
 #include "Taps.h"
 #include <map>
 #include <vector>
@@ -108,7 +107,6 @@ public:
 
     void json_metrics(json &j, uint64_t period, bool merge);
     void prometheus_metrics(std::stringstream &out);
-    void opentelemetry_metrics(metrics::v1::ScopeMetrics &scope);
 };
 
 class PolicyManager : public AbstractManager<Policy>

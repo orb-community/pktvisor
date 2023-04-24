@@ -20,13 +20,13 @@ env:
 jobs:
   unit-tests-mac:
     # The CMake configure and build commands are platform agnostic and should work equally
-    # well on Windows or Mac. You can convert this to a matrix build if you need
+    # well on Windows or Mac.  You can convert this to a matrix build if you need
     # cross-platform coverage.
     # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
 
     runs-on: macos-11
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v2
 
       - name: Create Build Environment
         # Some projects don't allow in-source building, so create a separate build directory
@@ -34,17 +34,7 @@ jobs:
         run: cmake -E make_directory ${{github.workspace}}/build
 
       - name: Get Conan
-        id: conan
-        uses: turtlebrowser/get-conan@main
-        with:
-          version: 1.59.0
-
-      - name: Setup Conan Cache
-        uses: actions/cache@v3
-        with:
-          path: ${{github.workspace}}/build/conan_home/
-          key: conan-${{ runner.os }}-${{ hashFiles('conanfile.txt', '*/conanfile.txt') }}
-          restore-keys: conan-${{ runner.os }}-
+        run: brew install conan
 
       - name: Configure CMake
         # Use a bash shell so we can use the same syntax for environment variable
@@ -68,6 +58,12 @@ jobs:
         # Execute tests defined by the CMake configuration.
         # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
         run: ctest -C $BUILD_TYPE
+
+      - name: Login to ns1labs conan
+        run: CONAN_USER_HOME=${{github.workspace}}/build/conan_home conan user -p ${{ secrets.CONAN_LABS_PASSWORD }} -r ns1labs ${{ secrets.CONAN_LABS_USERNAME }}
+
+      - name: Cache conan packages
+        run: CONAN_USER_HOME=${{github.workspace}}/build/conan_home conan upload "*" --all -r ns1labs -c
         
   unit-tests-linux:
     # The CMake configure and build commands are platform agnostic and should work equally
@@ -78,9 +74,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version_number: ${{ env.VERSION }}
-      commit_hash: ${{ env.COMMIT }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v2
 
       - name: Create Build Environment
         # Some projects don't allow in-source building, so create a separate build directory
@@ -90,23 +85,13 @@ jobs:
       - name: Get Conan
         # You may pin to the exact commit or the version.
         # uses: turtlebrowser/get-conan@4dc7e6dd45c8b1e02e909979d7cfc5ebba6ddbe2
-        id: conan
-        uses: turtlebrowser/get-conan@main
-        with:
-          version: 1.59.0
+        uses: turtlebrowser/get-conan@v1.0
 
       - name: linux package install
         run: |
           sudo apt-get update
           sudo apt-get install --yes --no-install-recommends jq
-
-      - name: Setup Conan Cache
-        uses: actions/cache@v3
-        with:
-          path: ${{github.workspace}}/build/conan_home/
-          key: conan-${{ runner.os }}-${{ hashFiles('conanfile.txt', '*/conanfile.txt') }}
-          restore-keys: conan-${{ runner.os }}-
-
+        
       - name: Configure CMake
         # Use a bash shell so we can use the same syntax for environment variable
         # access regardless of the host operating system
@@ -122,7 +107,6 @@ jobs:
         run: |
           echo "VERSION=`cat ${{github.workspace}}/build/VERSION`" >> $GITHUB_ENV
           echo "::set-output name=version::$(cat ${{github.workspace}}/build/VERSION)"
-          echo "COMMIT=`git rev-parse --short HEAD`" >> $GITHUB_ENV
 
       - name: Build
         working-directory: ${{github.workspace}}/build
@@ -137,7 +121,13 @@ jobs:
         # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
         run: ctest -C $BUILD_TYPE
 
-  build-win64:
+      - name: Login to ns1labs conan
+        run: CONAN_USER_HOME=${{github.workspace}}/build/conan_home conan user -p ${{ secrets.CONAN_LABS_PASSWORD }} -r ns1labs ${{ secrets.CONAN_LABS_USERNAME }}
+
+      - name: Cache conan packages
+        run: CONAN_USER_HOME=${{github.workspace}}/build/conan_home conan upload "*" --all -r ns1labs -c
+
+  build-windows:
     # The CMake configure and build commands are platform agnostic and should work equally
     # well on Windows or Mac.  You can convert this to a matrix build if you need
     # cross-platform coverage.
@@ -147,7 +137,7 @@ jobs:
     outputs:
       version_number: ${{ env.VERSION }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v2
 
       - name: Create Build Environment
         # Some projects don't allow in-source building, so create a separate build directory
@@ -157,22 +147,7 @@ jobs:
       - name: Get Conan
         # You may pin to the exact commit or the version.
         # uses: turtlebrowser/get-conan@4dc7e6dd45c8b1e02e909979d7cfc5ebba6ddbe2
-        id: conan
-        uses: turtlebrowser/get-conan@main
-        with:
-          version: 1.59.0
-
-      - name: Remove libpcap from conanfile
-        shell: bash
-        run: |
-          sed -i -e "s/libpcap.*//g" "${{github.workspace}}\conanfile.txt"
-
-      - name: Setup Conan Cache
-        uses: actions/cache@v3
-        with:
-          path: ${{github.workspace}}/build/conan_home/
-          key: conan-${{ runner.os }}-${{ hashFiles('conanfile.txt', '*/conanfile.txt') }}
-          restore-keys: conan-${{ runner.os }}-
+        uses: turtlebrowser/get-conan@v1.0
 
       - name: Configure CMake
         # Use a bash shell so we can use the same syntax for environment variable
@@ -204,68 +179,18 @@ jobs:
       #  # Execute tests defined by the CMake configuration.
       #  # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
       #  run: ctest -C $BUILD_TYPE
-       
-      - name: Debug artifacts
+
+      - name: Login to ns1labs conan
         shell: pwsh
         run: |
-          Get-ChildItem -Force ${{github.workspace}}
-          Get-ChildItem -Force ${{github.workspace}}\build
-          Get-ChildItem -Force ${{github.workspace}}\build\bin
-                         
-      - name: Persist to workspace
-        uses: actions/upload-artifact@v2
-        with:
-          name: windows-build
-          path: |
-            ${{github.workspace}}\build\bin\pktvisor-reader.exe
-            ${{github.workspace}}\build\bin\pktvisord.exe
-            ${{github.workspace}}\golang\pkg\client\version.go
-          retention-days: 1
-          
-  build-cli-win64:
-    needs: [ build-win64 ]
-    runs-on: ubuntu-latest
-    steps:    
-      - name: Checkout code
-        uses: actions/checkout@v3
+          $env:CONAN_USER_HOME = "${{github.workspace}}\build\conan_home"
+          conan user -p ${{ secrets.CONAN_LABS_PASSWORD }} -r ns1labs ${{ secrets.CONAN_LABS_USERNAME }}
 
-      - name: Attach to workspace
-        uses: actions/download-artifact@v3
-        with:
-          name: windows-build
-          
-      - name: Debug artifacts
-        shell: bash
+      - name: Cache conan packages
+        shell: pwsh
         run: |
-          ls -lha
-          
-      - name: Debug artifacts
-        shell: bash
-        run: |
-          ls -lha
-          mv src pktvisor-src
-          cp -rpf golang/pkg/client/version.go .
-          ls -lha
-
-      - name: Build pktvisor-cli
-        uses: ./.github/actions/build-go
-        with:
-          context: "."
-          goos: windows
-          file: "./Dockerfile"
-          
-      - name: Debug artifacts
-        shell: bash
-        run: |
-          mv ./pktvisor-cli pktvisor-cli.exe
-          mv ./build/bin/pktvisord.exe ./pktvisord.exe
-          mv ./build/bin/pktvisor-reader.exe ./pktvisor-reader.exe
-          ls -lha
-          
-      - name: compacting windows binary
-        run: |
-          zip pktvisor-win64.zip pktvisor-cli.exe pktvisor-reader.exe pktvisord.exe
-          ls -lha
+          $env:CONAN_USER_HOME = "${{github.workspace}}\build\conan_home"
+          conan upload "*" --all -r ns1labs -c
 
   package-amd64:
     needs: [ unit-tests-linux ]
@@ -275,27 +200,15 @@ jobs:
     outputs:
       version_number: ${{ env.VERSION }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v2
 
-      - name: Create Build Environment
-        run: cmake -E make_directory ${{github.workspace}}/build
-
-      - name: Setup Conan Cache
-        uses: actions/cache@v3
-        with:
-          path: ${{github.workspace}}/build/conan_home/
-          key: conan-${{ runner.os }}-${{ hashFiles('conanfile.txt', '*/conanfile.txt') }}
-          restore-keys: conan-${{ runner.os }}-
-
-      - name: Build pktvisord + push symbol to bugsplat.com
+      - name: Build pktvisord + push symbol to backtrace.io
         uses: ./.github/actions/build-cpp
         with:
           context: "."
           build_type: "Release"
           asan: "OFF"
-          bugsplat_key: ${{secrets.BUGSPLAT_KEY}}
-          bugsplat_symbol_url: ${{secrets.BUGSPLAT_SYMBOL_URL}}
-          bugsplat: "true"
+          symbol_url: ${{secrets.SYMBOL_URL}}
           file: "./Dockerfile"
 
       - name: Build pktvisor-cli
@@ -332,8 +245,8 @@ jobs:
       - name: Login to Docker Hub
         uses: docker/login-action@v1
         with:
-          username: ${{ secrets.ORB_DOCKERHUB_USERNAME }}
-          password: ${{ secrets.ORB_DOCKERHUB_TOKEN }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Replace token
         run: |
@@ -341,7 +254,7 @@ jobs:
 
       - name: Replace escape url
         run: |
-          REPLACE=${{ secrets.BUGSPLAT_CP_URL }}
+          REPLACE=${{ secrets.CRASHPAD_URL }}
           ESCAPED_REPLACE=$(printf '%s\n' "$REPLACE" | sed -e 's/[\/&]/\\&/g')
           sed -i -e "s/CP_URL/$ESCAPED_REPLACE/g" docker/run.sh
 
@@ -354,43 +267,29 @@ jobs:
 
       - name: Build + push - pktvisor (multi-arch)
         env:
-          IMAGE_NAME1: orbcommunity/pktvisor
-          IMAGE_NAME2: ghcr.io/orb-community/pktvisor
+          IMAGE_NAME: ns1labs/pktvisor
+          IMAGE_NAME2: ghcr.io/ns1labs/pktvisor
         uses: docker/build-push-action@v3
         with:
           builder: ${{ steps.buildx.outputs.name }}
           context: .
           file: ./docker/Dockerfile.crashhandler
           platforms: linux/amd64
-          tags: ${{ env.IMAGE_NAME1 }}:${{ needs.unit-tests-linux.outputs.version_number }} , ${{ env.IMAGE_NAME1 }}:${{ env.REF_TAG }} , ${{ env.IMAGE_NAME2 }}:amd64-${{needs.unit-tests-linux.outputs.commit_hash}}
-          outputs: type=docker,dest=/tmp/amd64.tar
-
-      - name: Load image
-        env:
-          IMAGE_NAME1: orbcommunity/pktvisor
-          IMAGE_NAME2: ghcr.io/orb-community/pktvisor
-        run: |
-          docker load --input /tmp/amd64.tar
-          docker image ls -a
-          docker push ${{ env.IMAGE_NAME2 }}:amd64-${{needs.unit-tests-linux.outputs.commit_hash}}
-          docker push ${{ env.IMAGE_NAME1 }}:${{ env.REF_TAG }}
-          docker push ${{ env.IMAGE_NAME1 }}:${{ needs.unit-tests-linux.outputs.version_number }}
+          push: true
+          tags: ${{ env.IMAGE_NAME }}:${{ needs.unit-tests-linux.outputs.version_number }} , ${{ env.IMAGE_NAME }}:${{ env.REF_TAG }} , ${{ env.IMAGE_NAME2 }}:amd64
 
   build-app-image-x64:
     needs: [ package-amd64 ]
     runs-on: ubuntu-latest
-    #if: github.event_name != 'pull_request'
+    if: github.event_name != 'pull_request'
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v2
       
       - name: Create Build Environment
         run: cmake -E make_directory ${{github.workspace}}/build
 
       - name: Get Conan
-        id: conan
-        uses: turtlebrowser/get-conan@main
-        with:
-          version: 1.59.0
+        uses: turtlebrowser/get-conan@v1.0
 
       - name: Configure CMake to generate VERSION
         shell: bash
@@ -412,22 +311,29 @@ jobs:
         run: |
           echo "REF_TAG=latest-develop" >> $GITHUB_ENV
           echo "PRERELEASE=true" >> $GITHUB_ENV
-          echo "DRAFT=false" >> $GITHUB_ENV       
-
-      - name: Prepare version file
-        run: |
-          cp -rpf golang/pkg/client/version.go .
-
-      - name: Build pktvisor-cli
-        uses: ./.github/actions/build-go
+          echo "DRAFT=false" >> $GITHUB_ENV
+          
+      - name: Login to Docker Hub
+        uses: docker/login-action@v1
         with:
-          context: "."
-          file: "./Dockerfile"
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Debug and Rename artifacts
+      - name: Build + push - pktvisor-cli
+        env:
+          CLI_BINARY: pktvisor-cli
+          IMAGE_NAME: ns1labs/pktvisor-cli
         run: |
-          ls -lha .
-          mv pktvisor-cli pktvisor-cli-linux-x86_64-${{ env.VERSION }}
+          docker build . --file docker/Dockerfile.pktvisor-cli --tag ${{ env.IMAGE_NAME }}:${{ env.VERSION }} --tag ${{ env.IMAGE_NAME }}:${{ env.REF_TAG }}
+          docker push -a ${{ env.IMAGE_NAME }}
+          echo "CONT_ID=$(docker create --name ${{ env.CLI_BINARY }}-slim-tmp ${{ env.IMAGE_NAME }}:${{ env.REF_TAG }})" >> $GITHUB_ENV
+
+      - name: Extract static pktvisor-cli asset
+        env:
+          CLI_BINARY: pktvisor-cli
+          IMAGE_NAME: ns1labs/pktvisor-cli
+        run: |
+          docker cp ${{ env.CONT_ID }}:/${{ env.CLI_BINARY }} ${{github.workspace}}/${{ env.CLI_BINARY }}-linux-x86_64-${{ env.VERSION }}
 
       - name: Upload pktvisor-cli artifact
         env:
@@ -436,16 +342,10 @@ jobs:
         with:
           name: ${{ env.BINARY_NAME }}
           path: ${{github.workspace}}/${{ env.BINARY_NAME }}
-          
-      - name: Login to Docker Hub
-        uses: docker/login-action@v1
-        with:
-          username: ${{ secrets.ORB_DOCKERHUB_USERNAME }}
-          password: ${{ secrets.ORB_DOCKERHUB_TOKEN }}
 
       - name: Build + push - pktvisor-prom-write
         env:
-          IMAGE_NAME: orbcommunity/pktvisor-prom-write
+          IMAGE_NAME: ns1labs/pktvisor-prom-write
         working-directory: ${{github.workspace}}/centralized_collection/prometheus/docker-grafana-agent
         run: |
           docker build . --file Dockerfile --build-arg PKTVISOR_TAG=${{ env.REF_TAG }} --tag ${{ env.IMAGE_NAME }}:${{ env.VERSION }} --tag ${{ env.IMAGE_NAME }}:${{ env.REF_TAG }}
@@ -453,7 +353,7 @@ jobs:
 
       - name: Generate AppImage
         env:
-          IMAGE_NAME: orbcommunity/pktvisor
+          IMAGE_NAME: ns1labs/pktvisor
         working-directory: ${{github.workspace}}/appimage
         run: |
           DEV_IMAGE="${{ env.IMAGE_NAME }}:${{ env.VERSION }}" DEV_MODE=t make pktvisor-x86_64.AppImage
@@ -473,7 +373,7 @@ jobs:
       uses: peter-evans/repository-dispatch@v2
       with:
         token: ${{ secrets.BOT_TOKEN }}
-        repository: orb-community/orb
+        repository: ns1labs/orb
         event-type: build-agent
         client-payload: '{"branch_name": "develop"}'
 
@@ -485,13 +385,13 @@ jobs:
     if: github.event_name != 'pull_request'
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v2
 
       - name: Generate runner token
         id: token
         run: |
           sleep 3
-          curl -X POST -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/orb-community/pktvisor/actions/runners/registration-token -o token.json
+          curl -X POST -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/ns1labs/pktvisor/actions/runners/registration-token -o token.json
           echo "::set-output name=runner::$(cat token.json | jq .token --raw-output )"
           cat token.json
           
@@ -569,7 +469,7 @@ jobs:
     if: github.event_name != 'pull_request'
     steps:
       - uses: AutoModality/action-clean@v1
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v2
 
       - name: Locking pktvisor integration test state
         run: |
@@ -647,7 +547,6 @@ jobs:
           target: "/usr/share/nginx/html/pktvisor/develop/${{ needs.integration-tests.outputs.commit_hash }}/pktvisor/python-test"
           
   remove-github-runner-amd64:
-    continue-on-error: true
     needs: [ spinup-amd64-runner , upload-qa-artifact ]
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
@@ -681,7 +580,7 @@ jobs:
     if: github.event_name != 'pull_request'
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v2
 
       - name: Attach to workspace
         uses: actions/download-artifact@v2
@@ -726,7 +625,7 @@ jobs:
     if: github.event_name != 'pull_request'
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v2
         
       - name: Get branch name
         shell: bash
@@ -735,7 +634,7 @@ jobs:
       - name: Generate runner token
         id: token
         run: |
-          curl -X POST -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/orb-community/pktvisor/actions/runners/registration-token -o token.json
+          curl -X POST -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/ns1labs/pktvisor/actions/runners/registration-token -o token.json
           echo "::set-output name=runner::$(cat token.json | jq .token --raw-output )"
           cat token.json
 
@@ -809,32 +708,16 @@ jobs:
     runs-on: [self-hosted, linux, ARM64]
     if: github.event_name != 'pull_request'
     steps:
-      - name: cleanup #https://github.com/actions/checkout/issues/211
-        run: |
-          sudo chown -R $USER:$USER $GITHUB_WORKSPACE
-
       - name: Checkout
-        uses: actions/checkout@v3
-
-      - name: Create Build Environment
-        run: cmake -E make_directory ${{github.workspace}}/build
-
-      - name: Setup Conan Cache
-        uses: actions/cache@v3
-        with:
-          path: ${{github.workspace}}/build/conan_home/
-          key: conan-${{ runner.os }}-arm64-${{ hashFiles('conanfile.txt', '*/conanfile.txt') }}
-          restore-keys: conan-${{ runner.os }}-arm64-
-
-      - name: Build pktvisord + push symbol to bugsplat.com
+        uses: actions/checkout@v2
+        
+      - name: Build pktvisord + push symbol to backtrace.io
         uses: ./.github/actions/build-cpp
         with:
           context: "."
           build_type: "Release"
           asan: "OFF"
-          bugsplat_key: ${{secrets.BUGSPLAT_KEY}}
-          bugsplat_symbol_url: ${{secrets.BUGSPLAT_SYMBOL_URL}}
-          bugsplat: "false"
+          symbol_url: ${{secrets.SYMBOL_URL}}
           file: "./Dockerfile"
 
       - name: Build pktvisor-cli
@@ -873,33 +756,25 @@ jobs:
 
       - name: Replace escape url
         run: |
-          REPLACE=${{ secrets.BUGSPLAT_CP_URL }}
+          REPLACE=${{ secrets.CRASHPAD_URL }}
           ESCAPED_REPLACE=$(printf '%s\n' "$REPLACE" | sed -e 's/[\/&]/\\&/g')
           sed -i -e "s/CP_URL/$ESCAPED_REPLACE/g" docker/run.sh
 
       - name: Build + push - pktvisor (multi-arch)
-        id: docker_build
         env:
-          IMAGE_NAME: ghcr.io/orb-community/pktvisor
+          IMAGE_NAME: ghcr.io/ns1labs/pktvisor
         uses: docker/build-push-action@v3
         with:
           builder: ${{ steps.buildx.outputs.name }}
           context: .
           file: ./docker/Dockerfile.crashhandler
           platforms: linux/arm64
-          tags: ${{ env.IMAGE_NAME }}:arm64-${{needs.unit-tests-linux.outputs.commit_hash}}
-          outputs: type=docker,dest=/tmp/arm64.tar
-
-      - name: Load image
-        env:
-          IMAGE_NAME: ghcr.io/orb-community/pktvisor
-        run: |
-          docker load --input /tmp/arm64.tar
-          docker image ls -a
-          docker push ${{ env.IMAGE_NAME }}:arm64-${{needs.unit-tests-linux.outputs.commit_hash}}
+          push: true
+          tags: ${{ env.IMAGE_NAME }}:arm64
+          build-args: |
+            ghtoken=${{ secrets.GITHUB_TOKEN }}
             
   remove-github-runner-arm64:
-    continue-on-error: true
     needs: [ spinup-arm64-runner, package-arm64 ]
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
@@ -933,7 +808,7 @@ jobs:
     if: github.event_name != 'pull_request'
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v2
 
       - name: Attach to workspace
         uses: actions/download-artifact@v2
@@ -984,13 +859,13 @@ jobs:
 
       - name: Create docker manifest
         run: |
-          docker manifest create ghcr.io/orb-community/pktvisor:latest-develop \
-          ghcr.io/orb-community/pktvisor:amd64-${{needs.unit-tests-linux.outputs.commit_hash}} \
-          ghcr.io/orb-community/pktvisor:arm64-${{needs.unit-tests-linux.outputs.commit_hash}}
+          docker manifest create ghcr.io/ns1labs/pktvisor:latest-develop \
+          ghcr.io/ns1labs/pktvisor:amd64 \
+          ghcr.io/ns1labs/pktvisor:arm64
 
       - name: Push manifest to ghcr.io
         run: |
-          docker manifest push ghcr.io/orb-community/pktvisor:latest-develop
+          docker manifest push ghcr.io/ns1labs/pktvisor:latest-develop
 
       - name: Install skopeo
         run: |
@@ -1009,38 +884,11 @@ jobs:
         run: |
           sudo skopeo copy \
           --all \
-          docker://ghcr.io/orb-community/pktvisor:latest-develop \
-          docker://docker.io/orbcommunity/pktvisor:latest-develop
+          docker://ghcr.io/ns1labs/pktvisor:latest-develop \
+          docker://docker.io/ns1labs/pktvisor:latest-develop
           sudo skopeo copy \
           --all \
-          docker://ghcr.io/orb-community/pktvisor:latest-develop \
-          docker://docker.io/orbcommunity/pktvisor:develop
-          sudo skopeo copy \
-          --all \
-          docker://ghcr.io/orb-community/pktvisor:latest-develop \
-          docker://docker.io/orbcommunity/pktvisor:${{ needs.unit-tests-linux.outputs.version_number }}
-          
-          
-      - name: Delete arm64 images from ghcr.io
-        uses: bots-house/ghcr-delete-image-action@v1.0.0
-        with:
-          owner: orb-community
-          name: pktvisor
-          token: ${{ secrets.GITHUB_TOKEN }}
-          tag: arm64-${{needs.unit-tests-linux.outputs.commit_hash}}
-          
-      - name: Delete amd64 images from ghcr.io
-        uses: bots-house/ghcr-delete-image-action@v1.0.0
-        with:
-          owner: orb-community
-          name: pktvisor
-          token: ${{ secrets.GITHUB_TOKEN }}
-          tag: amd64-${{needs.unit-tests-linux.outputs.commit_hash}}
-          
-      - name: Delete latest-develop images from ghcr.io
-        uses: bots-house/ghcr-delete-image-action@v1.0.0
-        with:
-          owner: orb-community
-          name: pktvisor
-          token: ${{ secrets.GITHUB_TOKEN }}
-          tag: latest-develop
+          docker://ghcr.io/ns1labs/pktvisor:latest-develop \
+          docker://docker.io/ns1labs/pktvisor:${{ needs.unit-tests-linux.outputs.version_number }}
+
+

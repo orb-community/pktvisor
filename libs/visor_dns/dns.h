@@ -28,7 +28,6 @@ enum RCode {
 };
 
 static std::unordered_map<uint16_t, std::string> QTypeNames({
-    {0, "Reserved (0)"},
     {1, "A"},
     {2, "NS"},
     {3, "MD"},
@@ -62,7 +61,6 @@ static std::unordered_map<uint16_t, std::string> QTypeNames({
     {31, "EID"},
     {32, "NIMLOC"},
     {33, "SRV"},
-    {34, "ATMA"},
     {35, "NAPTR"},
     {36, "KX"},
     {37, "CERT"},
@@ -110,19 +108,14 @@ static std::unordered_map<uint16_t, std::string> QTypeNames({
     {252, "AXFR"},
     {253, "MAILB"},
     {254, "MAILA"},
-    {255, "*"},
     {256, "URI"},
     {257, "CAA"},
     {258, "AVC"},
     {259, "DOA"},
     {260, "AMTRELAY"},
-    {32768, "TA"},
-    {32769, "DLV"},
-    {65535, "Reserved (65535)"},
 });
 
 static std::unordered_map<std::string, uint16_t> QTypeNumbers({
-    {"Reserved (0)", 0},
     {"A", 1},
     {"NS", 2},
     {"MD", 3},
@@ -157,7 +150,6 @@ static std::unordered_map<std::string, uint16_t> QTypeNumbers({
     {"NIMLOC", 32},
     {"SRV", 33},
     {"NAPTR", 35},
-    {"ATMA", 34},
     {"KX", 36},
     {"CERT", 37},
     {"A6", 38},
@@ -203,16 +195,12 @@ static std::unordered_map<std::string, uint16_t> QTypeNumbers({
     {"IXFR", 251},
     {"AXFR", 252},
     {"MAILB", 253},
-    {"MAILA", 254},
-    {"*", 255},
+    {"MAILA", 554},
     {"URI", 256},
     {"CAA", 257},
     {"AVC", 258},
     {"DOA", 259},
     {"AMTRELAY", 260},
-    {"TA", 32768},
-    {"DLV", 32769},
-    {"Reserved (65535)", 65535},
 });
 
 static std::unordered_map<uint16_t, std::string> RCodeNames({
@@ -226,6 +214,7 @@ static std::unordered_map<uint16_t, std::string> RCodeNames({
     {7, "YXRRSET"},
     {8, "NXRRSET"},
     {9, "NOTAUTH"},
+    {9, "NOTAUTH"},
     {10, "NOTZONE"},
     {11, "DSOTYPENI"},
     {16, "BADVERS"},
@@ -237,30 +226,6 @@ static std::unordered_map<uint16_t, std::string> RCodeNames({
     {21, "BADALG"},
     {22, "BADTRUNC"},
     {23, "BADCOOKIE"},
-});
-
-static std::unordered_map<std::string, uint16_t> RCodeNumbers({
-    {"NOERROR", 0},
-    {"FORMERR", 1},
-    {"SRVFAIL", 2},
-    {"NXDOMAIN", 3},
-    {"NOTIMP", 4},
-    {"REFUSED", 5},
-    {"YXDOMAIN", 6},
-    {"YXRRSET", 7},
-    {"NXRRSET", 8},
-    {"NOTAUTH", 9},
-    {"NOTZONE", 10},
-    {"DSOTYPENI", 11},
-    {"BADVERS", 16},
-    {"BADSIG", 16},
-    {"BADKEY", 17},
-    {"BADTIME", 18},
-    {"BADMODE", 19},
-    {"BADNAME", 20},
-    {"BADALG", 21},
-    {"BADTRUNC", 22},
-    {"BADCOOKIE", 23},
 });
 
 }

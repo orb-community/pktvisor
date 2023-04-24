@@ -16,7 +16,7 @@
 
 namespace visor {
 
-visor::CoreServer::CoreServer(CoreRegistry *r, std::shared_ptr<spdlog::logger> logger, const HttpConfig &http_config, const OtelConfig &otel_config, const PrometheusConfig &prom_config)
+visor::CoreServer::CoreServer(CoreRegistry *r, std::shared_ptr<spdlog::logger> logger, const HttpConfig &http_config, const PrometheusConfig &prom_config)
     : _svr(http_config)
     , _registry(r)
     , _logger(logger)
@@ -29,10 +29,6 @@ visor::CoreServer::CoreServer(CoreRegistry *r, std::shared_ptr<spdlog::logger> l
     }
 
     _registry->start(&_svr);
-
-    if (otel_config.enable) {
-        _otel = std::make_unique<OpenTelemetry>(otel_config);
-    }
 
     _setup_routes(prom_config);
 
@@ -442,20 +438,5 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
             res.set_content(output.str(), "text/plain");
         }
     });
-    if (_otel) {
-        _otel->OnInterval([&](metrics::v1::ResourceMetrics &resource) {
-            for (const auto &p_mname : _registry->policy_manager()->module_get_keys()) {
-                try {
-                    auto [policy, lock] = _registry->policy_manager()->module_get_locked(p_mname);
-                    auto scope = resource.add_scope_metrics();
-                    scope->mutable_scope()->set_name(p_mname);
-                    policy->opentelemetry_metrics(*scope);
-                } catch (const std::exception &) {
-                    return false;
-                }
-            }
-            return true;
-        });
-    }
 }
 }

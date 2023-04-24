@@ -15,8 +15,8 @@
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 #pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
 #endif
+#include "TcpLayerInternal.h"
 #include <IcmpLayer.h>
-#include <VisorTcpLayer.h>
 #ifdef __GNUC__
 #pragma GCC diagnostic pop
 #endif
@@ -50,7 +50,6 @@ struct Target {
     Counter minimum;
     Counter maximum;
     Counter dns_failures;
-    Counter timed_out;
 
     Target()
         : q_time_us(NET_PROBE_SCHEMA, {"response_quantiles_us"}, "Net Probe quantile in microseconds")
@@ -60,7 +59,6 @@ struct Target {
         , minimum(NET_PROBE_SCHEMA, {"response_min_us"}, "Minimum response time measured in the reporting interval")
         , maximum(NET_PROBE_SCHEMA, {"response_max_us"}, "Maximum response time measured in the reporting interval")
         , dns_failures(NET_PROBE_SCHEMA, {"dns_lookup_failures"}, "Total Net Probe failures when performed DNS lookup")
-        , timed_out(NET_PROBE_SCHEMA, {"packets_timeout"}, "Total Net Probe timeout transactions")
     {
     }
 };
@@ -81,7 +79,6 @@ public:
     void specialized_merge(const AbstractMetricsBucket &other, Metric::Aggregate agg_operator) override;
     void to_json(json &j) const override;
     void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const override;
-    void to_opentelemetry(metrics::v1::ScopeMetrics &scope, timespec &start_ts, timespec &end_ts, Metric::LabelMap add_labels = {}) const override;
     void update_topn_metrics(size_t, uint64_t) override
     {
     }
@@ -98,25 +95,18 @@ public:
 
 class NetProbeMetricsManager final : public visor::AbstractMetricsManager<NetProbeMetricsBucket>
 {
-    typedef TransactionManager<uint32_t, NetProbeTransaction, std::hash<uint32_t>> NetProbeTransactionManager;
-    std::unique_ptr<NetProbeTransactionManager> _request_reply_manager;
+    TransactionManager<uint32_t, NetProbeTransaction, std::hash<uint32_t>> _request_reply_manager;
 
 public:
     NetProbeMetricsManager(const Configurable *window_config)
         : visor::AbstractMetricsManager<NetProbeMetricsBucket>(window_config)
-        , _request_reply_manager(std::make_unique<NetProbeTransactionManager>())
     {
     }
 
-    void on_period_shift([[maybe_unused]] timespec stamp, [[maybe_unused]] const NetProbeMetricsBucket *maybe_expiring_bucket) override
+    void on_period_shift(timespec stamp, [[maybe_unused]] const NetProbeMetricsBucket *maybe_expiring_bucket) override
     {
-        // Clear all old transactions
-        _request_reply_manager->clear();
-    }
-
-    void set_xact_ttl(uint32_t ttl)
-    {
-        _request_reply_manager = std::make_unique<NetProbeTransactionManager>(ttl);
+        // NetProbe transaction support
+        _request_reply_manager.purge_old_transactions(stamp);
     }
 
     void process_filtered(timespec stamp);
@@ -136,9 +126,7 @@ class NetProbeStreamHandler final : public visor::StreamMetricsHandler<NetProbeM
     sigslot::connection _heartbeat_connection;
 
     static const inline StreamMetricsHandler::ConfigsDefType _config_defs = {
-        "recorded_stream",
-        "xact_ttl_secs",
-        "xact_ttl_ms"};
+        "recorded_stream"};
 
     static const inline NetProbeStreamHandler::GroupDefType _group_defs = {
         {"counters", group::NetProbeMetrics::Counters},

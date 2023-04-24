@@ -124,7 +124,6 @@ std::vector<Policy *> PolicyManager::load(const YAML::Node &policy_yaml, bool si
                         handler_modules.back()->set_event_proxy(input_ptr->create_event_proxy(Configurable()));
                         handler_module = handler_plugin->second->instantiate(handler_name, handler_modules.back()->get_event_proxy(), &handler_config.config, &handler_config.filter);
                     }
-                    handler_module->set_version(handler_config.version);
                     policy_ptr->add_module(handler_module.get());
                     handler_modules.emplace_back(std::move(handler_module));
                 }
@@ -398,25 +397,6 @@ void Policy::prometheus_metrics(std::stringstream &out)
     }
 }
 
-void Policy::opentelemetry_metrics(metrics::v1::ScopeMetrics &scope)
-{
-    if (_merge_like_handlers) {
-        auto bucket_map = _get_merged_buckets();
-        for (auto &[bucket, hmod] : bucket_map) {
-            hmod->window_opentelemetry(scope, bucket.get(), {{"policy", name()}, {"handler", hmod->schema_key() + "_merged"}});
-        }
-    } else {
-        for (auto &mod : modules()) {
-            auto hmod = dynamic_cast<StreamHandler *>(mod);
-            if (hmod) {
-                spdlog::stopwatch sw;
-                hmod->window_opentelemetry(scope, {{"policy", name()}, {"handler", hmod->name()}});
-                spdlog::get("visor")->debug("{} window_opentelemetry elapsed time: {}", hmod->name(), sw);
-            }
-        }
-    }
-}
-
 Policy::BucketMap Policy::_get_merged_buckets(bool prometheus, uint64_t period, bool merged)
 {
     BucketMap bucket_map;
@@ -429,8 +409,7 @@ Policy::BucketMap Policy::_get_merged_buckets(bool prometheus, uint64_t period, 
         }
         for (auto &[bucket, handler] : bucket_map) {
             bool is_last = (bucket == std::prev(bucket_map.end())->first);
-            if (!is_last && (hmod->schema_key() != handler->schema_key())
-                && (hmod->version() != handler->version())) {
+            if (hmod->schema_key() != handler->schema_key() && !is_last) {
                 continue;
             }
             auto new_bucket = hmod->merge(bucket.get(), period, prometheus, merged);

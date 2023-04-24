@@ -5,7 +5,7 @@ cmake_minimum_required(VERSION 3.13)
 #######################################################
 
 # this is the source of truth for semver version
-project(visor VERSION 4.3.0)
+project(visor VERSION 4.2.0)
 
 # for main line release, this is empty
 # for development release, this is "-develop"
@@ -73,6 +73,9 @@ if(PKTVISOR_CONAN_INIT)
     message(STATUS "Using new Conan environment")
     set(ENV{CONAN_USER_HOME} ${CMAKE_BINARY_DIR}/conan_home)
     set(ENV{CONAN_REVISIONS_ENABLED} 1)
+    conan_add_remote(NAME ns1labs INDEX 0
+            URL https://ns1labs.jfrog.io/artifactory/api/conan/ns1labs-conan
+            VERIFY_SSL True)
 endif()
 
 if(WIN32)

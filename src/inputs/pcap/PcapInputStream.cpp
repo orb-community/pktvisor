@@ -70,7 +70,6 @@ static void _pcap_stats_update(pcpp::IPcapDevice::PcapStats &stats, void *cookie
 
 PcapInputStream::PcapInputStream(const std::string &name)
     : visor::InputStream(name)
-    , _lru_list(std::make_unique<LRUList<uint32_t, timeval>>(DEFAULT_LRULIST_SIZE))
     , _pcapDevice(nullptr)
     , _tcp_reassembly(_tcp_message_ready_cb,
           this,
@@ -94,10 +93,6 @@ void PcapInputStream::start()
 
     validate_configs(_config_defs);
 
-    if (config_exists("tcp_packet_reassembly_cache_limit")) {
-        auto limit = config_get<uint64_t>("tcp_packet_reassembly_cache_limit");
-        _lru_list = std::make_unique<LRUList<uint32_t, timeval>>(limit);
-    }
     if (config_exists("pcap_file")) {
         // read from pcap file. this is a special case from a command line utility
         if (!config_exists("bpf")) {
@@ -257,9 +252,7 @@ void PcapInputStream::tcp_message_ready(int8_t side, const pcpp::TcpStreamData &
     for (auto &proxy : _event_proxies) {
         dynamic_cast<PcapInputEventProxy *>(proxy.get())->tcp_message_ready_cb(side, tcpData, _packet_dir_cache);
     }
-    if (_lru_list->put(tcpData.getConnectionData().flowKey, tcpData.getConnectionData().endTime, &_deleted_data)){
-        _lru_overflow.push_back(_deleted_data.first);
-    }
+    _lru_list.put(tcpData.getConnectionData().flowKey, tcpData.getConnectionData().endTime);
 }
 
 void PcapInputStream::tcp_connection_start(const pcpp::ConnectionData &connectionData)
@@ -268,9 +261,7 @@ void PcapInputStream::tcp_connection_start(const pcpp::ConnectionData &connectio
     for (auto &proxy : _event_proxies) {
         dynamic_cast<PcapInputEventProxy *>(proxy.get())->tcp_connection_start_cb(connectionData, _packet_dir_cache);
     }
-    if (_lru_list->put(connectionData.flowKey, connectionData.startTime, &_deleted_data)) {
-        _lru_overflow.push_back(_deleted_data.first);
-    }
+    _lru_list.put(connectionData.flowKey, connectionData.startTime);
 }
 
 void PcapInputStream::tcp_connection_end(const pcpp::ConnectionData &connectionData, pcpp::TcpReassembly::ConnectionEndReason reason)
@@ -279,7 +270,7 @@ void PcapInputStream::tcp_connection_end(const pcpp::ConnectionData &connectionD
     for (auto &proxy : _event_proxies) {
         static_cast<PcapInputEventProxy *>(proxy.get())->tcp_connection_end_cb(connectionData, reason);
     }
-    _lru_list->eraseElement(connectionData.flowKey);
+    _lru_list.eraseElement(connectionData.flowKey);
 }
 
 void PcapInputStream::process_pcap_stats(const pcpp::IPcapDevice::PcapStats &stats)
@@ -402,15 +393,15 @@ void PcapInputStream::process_raw_packet(pcpp::RawPacket *rawPacket)
     auto IP4layer = packet.getLayerOfType<pcpp::IPv4Layer>();
     auto IP6layer = packet.getLayerOfType<pcpp::IPv6Layer>();
     if (IP4layer) {
-        if (lib::utils::match_subnet(_hostIPv4, IP4layer->getDstIPv4Address().toInt()).has_value()) {
+        if (lib::utils::match_subnet(_hostIPv4, IP4layer->getDstIPv4Address().toInt()).first) {
             _packet_dir_cache = PacketDirection::toHost;
-        } else if (lib::utils::match_subnet(_hostIPv4, IP4layer->getSrcIPv4Address().toInt()).has_value()) {
+        } else if (lib::utils::match_subnet(_hostIPv4, IP4layer->getSrcIPv4Address().toInt()).first) {
             _packet_dir_cache = PacketDirection::fromHost;
         }
     } else if (IP6layer) {
-        if (lib::utils::match_subnet(_hostIPv6, IP6layer->getDstIPv6Address().toBytes()).has_value()) {
+        if (lib::utils::match_subnet(_hostIPv6, IP6layer->getDstIPv6Address().toBytes()).first) {
             _packet_dir_cache = PacketDirection::toHost;
-        } else if (lib::utils::match_subnet(_hostIPv6, IP6layer->getSrcIPv6Address().toBytes()).has_value()) {
+        } else if (lib::utils::match_subnet(_hostIPv6, IP6layer->getSrcIPv6Address().toBytes()).first) {
             _packet_dir_cache = PacketDirection::fromHost;
         }
     }
@@ -447,21 +438,15 @@ void PcapInputStream::process_raw_packet(pcpp::RawPacket *rawPacket)
         }
 
         for (uint8_t counter = 0; counter < MAX_TCP_CLEANUPS; counter++) {
-            if (_lru_list->getSize() == 0) {
+            if (_lru_list.getSize() == 0) {
                 break;
             }
-            auto connection = _lru_list->getLRUElement();
+            auto connection = _lru_list.getLRUElement();
             if (timestamp.tv_sec < connection.second.tv_sec + TCP_TIMEOUT) {
                 break;
             }
             _tcp_reassembly.closeConnection(connection.first);
-            _lru_list->eraseElement(connection.first);
-        }
-        if (_lru_overflow.size() > 0) {
-            for (const auto &fKey : _lru_overflow) {
-                _tcp_reassembly.closeConnection(fKey);
-            }
-            _lru_overflow.clear();
+            _lru_list.eraseElement(connection.first);
         }
     } else {
         // unsupported layer3 protocol
@@ -593,8 +578,8 @@ void PcapInputStream::_get_hosts_from_libpcap_iface()
             if (!nmcvt) {
                 throw PcapException("couldn't parse IPv4 netmask address on device");
             }
-            uint8_t cidr = lib::utils::get_cidr(nmcvt->s_addr);
-            _hostIPv4.push_back({*adrcvt, cidr, ip + "/" + std::to_string(cidr)});
+            uint8_t len = static_cast<uint8_t>(0xFFFFFFFFUL & nmcvt->s_addr);
+            _hostIPv4.push_back({*adrcvt, len, ip + "/" + std::to_string(len)});
         } else if (i.addr->sa_family == AF_INET6) {
             auto adrcvt = pcpp::internal::sockaddr2in6_addr(i.addr);
             if (!adrcvt) {
@@ -604,8 +589,14 @@ void PcapInputStream::_get_hosts_from_libpcap_iface()
             if (!nmcvt) {
                 throw PcapException("couldn't parse IPv6 netmask address on device");
             }
-            uint8_t cidr = lib::utils::get_cidr(nmcvt->s6_addr, 16);
-            _hostIPv6.push_back({*adrcvt, cidr, ip + "/" + std::to_string(cidr)});
+            uint8_t len = 0;
+            for (int i = 0; i < 16; i++) {
+                while (nmcvt->s6_addr[i]) {
+                    len++;
+                    nmcvt->s6_addr[i] >>= 1;
+                }
+            }
+            _hostIPv6.push_back({*adrcvt, len, ip + "/" + std::to_string(len)});
         }
     }
 }

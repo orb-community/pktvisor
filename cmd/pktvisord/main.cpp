@@ -100,15 +100,6 @@ static const char USAGE[] =
     Prometheus Options:
       --prometheus                          Ignored, Prometheus output always enabled (left for backwards compatibility)
       --prom-instance ID                    Optionally set the 'instance' label to given ID
-    OpenTelemetry Options
-      --otel                                Enable OpenTelemetry OTLP exporter over HTTP(S)
-      --otel-host HOST                      Set OTEL destination IP where the data will be pushed to (default: localhost)
-      --otel-path PATH                      Set OTEL destination URL path (default: /v1/metrics)
-      --otel-port PORT                      Set OTEL destination port number (default: 4318)
-      --otel-interval N                     The interval in seconds that exporter will periodically push data (default: 60)
-      --otel-tls                            Enable TLS when connecting to OTEL destination
-      --otel-tls-cert FILE                  Use given TLS cert. Required if --otel-tls is enabled.
-      --otel-tls-key FILE                   Use given TLS private key. Required if --otel-tls is enabled.
     Metric Enrichment Options:
       --iana-service-port-registry FILE     IANA Service Name and Transport Protocol Port Number Registry file in CSV format
       --default-service-registry FILE       Default IANA Service Name Port Number Registry CSV file to be loaded if no other is specified
@@ -158,18 +149,6 @@ struct CmdOptions {
     };
     WebServer web_server;
 
-    struct Opentelemetry {
-        bool otel_support{false};
-        bool tls_support{false};
-        std::optional<unsigned int> interval;
-        std::optional<unsigned int> port;
-        std::optional<std::string> host;
-        std::optional<std::string> path;
-        std::optional<std::string> tls_cert;
-        std::optional<std::string> tls_key;
-    };
-    Opentelemetry otel_setup;
-
     struct Crashpad {
         bool disable{false};
         std::optional<std::string> token;
@@ -203,10 +182,8 @@ void fill_cmd_options(std::map<std::string, docopt::value> args, CmdOptions &opt
                 logger->error("invalid schema in config file: {}", args["--config"].asString());
                 exit(EXIT_FAILURE);
             }
-            if (!config_file["version"]) {
-                logger->info("missing version in config file, using version \"1.0\"");
-            } else if (!config_file["version"].IsScalar() || config_file["version"].as<std::string>() != "1.0") {
-                logger->error("unsupported version in config file: {}", args["--config"].asString());
+            if (!config_file["version"] || !config_file["version"].IsScalar() || config_file["version"].as<std::string>() != "1.0") {
+                logger->error("missing or unsupported version in config file: {}", args["--config"].asString());
                 exit(EXIT_FAILURE);
             }
 
@@ -318,53 +295,6 @@ void fill_cmd_options(std::map<std::string, docopt::value> args, CmdOptions &opt
         options.web_server.tls_key = args["--tls-key"].asString();
     } else if (config["tls_key"]) {
         options.web_server.tls_key = config["tls_key"].as<std::string>();
-    }
-
-    options.otel_setup.otel_support = (config["otel"] && config["otel"].as<bool>()) || args["--otel"].asBool();
-    options.otel_setup.tls_support = (config["otel_tls"] && config["otel_tls"].as<bool>()) || args["--otel-tls"].asBool();
-
-    if (args["--otel-host"]) {
-        options.otel_setup.host = args["--otel-host"].asString();
-    } else if (config["otel_host"]) {
-        options.otel_setup.host = config["otel_host"].as<std::string>();
-    } else {
-        options.otel_setup.host = "localhost";
-    }
-
-    if (args["--otel-path"]) {
-        options.otel_setup.path = args["--otel-path"].asString();
-    } else if (config["otel_host"]) {
-        options.otel_setup.path = config["otel_path"].as<std::string>();
-    } else {
-        options.otel_setup.path = "/v1/metrics";
-    }
-
-    if (args["--otel-port"]) {
-        options.otel_setup.port = static_cast<unsigned int>(args["--otel-port"].asLong());
-    } else if (config["otel_port"]) {
-        options.otel_setup.port = config["otel_port"].as<unsigned int>();
-    } else {
-        options.otel_setup.port = 4318;
-    }
-
-    if (args["--otel-interval"]) {
-        options.otel_setup.interval = static_cast<unsigned int>(args["--otel-interval"].asLong());
-    } else if (config["otel_interval"]) {
-        options.otel_setup.interval = config["otel_interval"].as<unsigned int>();
-    } else {
-        options.otel_setup.interval = 60;
-    }
-
-    if (args["--otel-tls-cert"]) {
-        options.otel_setup.tls_cert = args["--otel-tls-cert"].asString();
-    } else if (config["otel_tls_cert"]) {
-        options.otel_setup.tls_cert = config["otel_tls_cert"].as<std::string>();
-    }
-
-    if (args["--otel-tls-key"]) {
-        options.otel_setup.tls_key = args["--otel-tls-key"].asString();
-    } else if (config["otel_tls_key"]) {
-        options.otel_setup.tls_key = config["otel_tls_key"].as<std::string>();
     }
 
     options.module.list = (config["module_list"] && config["module_list"].as<bool>()) || args["--module-list"].asBool();
@@ -616,26 +546,9 @@ int main(int argc, char *argv[])
         logger->info("Enabling TLS with cert {} and key {}", http_config.key, http_config.cert);
     }
 
-    OtelConfig otel_config;
-    if (options.otel_setup.otel_support) {
-        otel_config.enable = true;
-        if (options.otel_setup.tls_support) {
-            if (!options.otel_setup.tls_key.has_value() || !options.otel_setup.tls_cert.has_value()) {
-                logger->error("you must specify --otel-tls-key and --otel-tls-cert to use --otel-tls");
-                exit(EXIT_FAILURE);
-            }
-            otel_config.tls_key = options.otel_setup.tls_key.value();
-            otel_config.tls_cert = options.otel_setup.tls_cert.value();
-            logger->info("Enabling OTEL TLS with cert {} and key {}", otel_config.tls_key, otel_config.tls_cert);
-        }
-        otel_config.path = options.otel_setup.path.value();
-        otel_config.endpoint = options.otel_setup.host.value();
-        otel_config.port_number = options.otel_setup.port.value();
-    }
-
     std::unique_ptr<CoreServer> svr;
     try {
-        svr = std::make_unique<CoreServer>(&registry, logger, http_config, otel_config, prom_config);
+        svr = std::make_unique<CoreServer>(&registry, logger, http_config, prom_config);
     } catch (const std::exception &e) {
         logger->error(e.what());
         logger->info("exit with failure");

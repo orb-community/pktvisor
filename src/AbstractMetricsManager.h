@@ -218,7 +218,6 @@ public:
 
     virtual void to_json(json &j) const = 0;
     virtual void to_prometheus(std::stringstream &out, Metric::LabelMap add_labels = {}) const = 0;
-    virtual void to_opentelemetry(metrics::v1::ScopeMetrics &scope, timespec &start_ts, timespec &end_ts, Metric::LabelMap add_labels = {}) const = 0;
     virtual void update_topn_metrics(size_t topn_count, uint64_t percentile_threshold) = 0;
 };
 
@@ -530,53 +529,6 @@ public:
         _metric_buckets.at(period)->to_prometheus(out, add_labels);
     }
 
-    void window_single_opentelemetry(metrics::v1::ScopeMetrics &scope, uint64_t period = 0, Metric::LabelMap add_labels = {}) const
-    {
-        std::shared_lock rl(_base_mutex);
-        std::shared_lock rbl(_bucket_mutex);
-
-        if (period >= _num_periods) {
-            std::stringstream err;
-            err << "invalid metrics period, specify [0, " << _num_periods - 1 << "]";
-            throw PeriodException(err.str());
-        }
-        if (period >= _metric_buckets.size()) {
-            std::stringstream err;
-            err << "requested metrics period has not yet accumulated, current range is [0, " << _metric_buckets.size() - 1 << "]";
-            throw PeriodException(err.str());
-        }
-
-        if (_groups && _groups->none()) {
-            return;
-        }
-
-        if (!_tap_name.empty() && add_labels.find("tap") == add_labels.end()) {
-            add_labels["tap"] = _tap_name;
-        }
-        auto bucket = _metric_buckets.at(period).get();
-        auto start_ts = bucket->start_tstamp();
-        auto end_ts = bucket->end_tstamp();
-        if (!end_ts.tv_sec) {
-            timespec_get(&end_ts, TIME_UTC);
-        }
-        bucket->to_opentelemetry(scope, start_ts, end_ts, add_labels);
-    }
-
-    void window_external_opentelemetry(metrics::v1::ScopeMetrics &scope, AbstractMetricsBucket *bucket, Metric::LabelMap add_labels = {}) const
-    {
-        if (_groups && _groups->none()) {
-            return;
-        }
-        // static because caller guarantees only our own bucket type
-        auto sbucket = static_cast<MetricsBucketClass *>(bucket);
-        auto start_ts = sbucket->start_tstamp();
-        auto end_ts = sbucket->end_tstamp();
-        if (!end_ts.tv_sec) {
-            timespec_get(&end_ts, TIME_UTC);
-        }
-        sbucket->to_opentelemetry(scope, start_ts, end_ts, add_labels);
-    }
-
     void window_external_prometheus(std::stringstream &out, AbstractMetricsBucket *bucket, Metric::LabelMap add_labels = {}) const
     {
         if (_groups && _groups->none()) {
@@ -637,6 +589,8 @@ public:
             }
             merged.merge(*m);
         }
+
+        std::string period_str = std::to_string(period) + "m";
 
         j[key]["period"]["start_ts"] = merged.start_tstamp().tv_sec;
         j[key]["period"]["length"] = merged.period_length();

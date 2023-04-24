@@ -12,10 +12,11 @@
 #pragma clang diagnostic ignored "-Wc99-extensions"
 #pragma clang diagnostic ignored "-Wrange-loop-analysis"
 #endif
-#include "DnsLayer.h"
+#include <DnsLayer.h>
 #include <Packet.h>
 #include <PcapFileDevice.h>
 #include <ProtocolType.h>
+#include <TcpLayer.h>
 #include <UdpLayer.h>
 #ifdef __GNUC__
 #pragma GCC diagnostic pop
@@ -124,39 +125,6 @@ TEST_CASE("Parse DNS TCP IPv4 tests", "[pcap][ipv4][tcp][dns]")
     CHECK(counters.orphan.value() == 0);
     CHECK(j["unknown"]["top_qname2_xacts"][0]["name"] == ".test.com");
     CHECK(j["unknown"]["top_qname2_xacts"][0]["estimate"] == 210);
-}
-
-TEST_CASE("Parse DNS TCP tests with limit", "[pcap][ipv4][tcp][dns]")
-{
-    PcapInputStream stream{"pcap-test"};
-    stream.config_set("pcap_file", "tests/fixtures/dns_ipv4_tcp.pcap");
-    stream.config_set("bpf", "");
-    stream.config_set<uint64_t>("tcp_packet_reassembly_cache_limit", 10);
-
-    visor::Config c;
-    auto stream_proxy = stream.add_event_proxy(c);
-    c.config_set<uint64_t>("num_periods", 1);
-    DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
-
-    dns_handler.start();
-    stream.start();
-    dns_handler.stop();
-    stream.stop();
-
-    auto counters = dns_handler.metrics()->bucket(0)->counters(TransactionDirection::unknown);
-    auto event_data = dns_handler.metrics()->bucket(0)->event_data_locked();
-    json j;
-    dns_handler.metrics()->bucket(0)->to_json(j);
-
-    CHECK(event_data.num_events->value() == 140);
-    CHECK(counters.TCP.value() == 70);
-    CHECK(counters.IPv4.value() == 70);
-    CHECK(counters.IPv6.value() == 0);
-    CHECK(counters.xacts.value() == 70);
-    CHECK(counters.timeout.value() == 0);
-    CHECK(counters.orphan.value() == 0);
-    CHECK(j["unknown"]["top_qname2_xacts"][0]["name"] == ".test.com");
-    CHECK(j["unknown"]["top_qname2_xacts"][0]["estimate"] == 70);
 }
 
 TEST_CASE("Parse DNS UDP IPv6 tests", "[pcap][ipv6][udp][dns]")
@@ -363,7 +331,7 @@ TEST_CASE("DNS Filters: only_rcode nx", "[pcap][net]")
     REQUIRE(j["filtered_packets"] == 19);
 }
 
-TEST_CASE("DNS Filters: only_rcode refused and nx", "[pcap][dns]")
+TEST_CASE("DNS Filters: only_rcode refused", "[pcap][dns]")
 {
 
     PcapInputStream stream{"pcap-test"};
@@ -377,7 +345,7 @@ TEST_CASE("DNS Filters: only_rcode refused and nx", "[pcap][dns]")
     c.config_set<uint64_t>("num_periods", 1);
     DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
 
-    dns_handler.config_set<visor::Configurable::StringList>("only_rcode", {"nxdomain", "5"});
+    dns_handler.config_set<uint64_t>("only_rcode", Refused);
 
     dns_handler.start();
     stream.start();
@@ -388,11 +356,11 @@ TEST_CASE("DNS Filters: only_rcode refused and nx", "[pcap][dns]")
     REQUIRE(counters.RNOERROR.value() == 0);
     REQUIRE(counters.SRVFAIL.value() == 0);
     REQUIRE(counters.REFUSED.value() == 1);
-    REQUIRE(counters.NX.value() == 1);
+    REQUIRE(counters.NX.value() == 0);
     REQUIRE(counters.NODATA.value() == 0);
     nlohmann::json j;
     dns_handler.metrics()->bucket(0)->to_json(j);
-    REQUIRE(j["filtered_packets"] == 17);
+    REQUIRE(j["filtered_packets"] == 19);
 }
 TEST_CASE("DNS Filters: only_qtypes AAAA and TXT", "[pcap][dns]")
 {
@@ -408,7 +376,7 @@ TEST_CASE("DNS Filters: only_qtypes AAAA and TXT", "[pcap][dns]")
     c.config_set<uint64_t>("num_periods", 1);
     DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
 
-    // notice case-insensitive
+    // notice case insensitive
     dns_handler.config_set<visor::Configurable::StringList>("only_qtype", {"AAAA", "TxT"});
     dns_handler.start();
     stream.start();
@@ -474,46 +442,6 @@ TEST_CASE("DNS TopN custom size", "[pcap][dns]")
     CHECK(j["out"]["top_qtype_xacts"][3] == nullptr);
 }
 
-TEST_CASE("DNS Filters: only_qname", "[pcap][dns]")
-{
-
-    PcapInputStream stream{"pcap-test"};
-    stream.config_set("pcap_file", "tests/fixtures/dns_udp_mixed_rcode.pcap");
-    stream.config_set("bpf", "");
-    stream.config_set("host_spec", "192.168.0.0/24");
-    stream.parse_host_spec();
-
-    visor::Config c;
-    auto stream_proxy = stream.add_event_proxy(c);
-    c.config_set<uint64_t>("num_periods", 1);
-    DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
-
-    // notice, case-insensitive
-    dns_handler.config_set<visor::Configurable::StringList>("only_qname", {"play.GooGle.com", "nonexistent.google.com"});
-    dns_handler.start();
-    stream.start();
-    stream.stop();
-    dns_handler.stop();
-
-    auto counters = dns_handler.metrics()->bucket(0)->counters(TransactionDirection::out);
-
-    CHECK(counters.UDP.value() == 2);
-    CHECK(counters.RNOERROR.value() == 1);
-    CHECK(counters.SRVFAIL.value() == 0);
-    CHECK(counters.REFUSED.value() == 0);
-    CHECK(counters.NX.value() == 1);
-    CHECK(counters.NODATA.value() == 1);
-    CHECK(counters.xacts.value() == 2);
-    CHECK(counters.timeout.value() == 0);
-    CHECK(counters.orphan.value() == 3);
-
-    nlohmann::json j;
-    dns_handler.metrics()->bucket(0)->to_json(j);
-
-    CHECK(j["out"]["top_qname2_xacts"][0]["name"] == ".google.com");
-    CHECK(j["out"]["top_qname3_xacts"][0]["name"] != nullptr);
-}
-
 TEST_CASE("DNS Filters: only_qname_suffix", "[pcap][dns]")
 {
 
@@ -528,7 +456,7 @@ TEST_CASE("DNS Filters: only_qname_suffix", "[pcap][dns]")
     c.config_set<uint64_t>("num_periods", 1);
     DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
 
-    // notice, case-insensitive
+    // notice, case insensitive
     dns_handler.config_set<visor::Configurable::StringList>("only_qname_suffix", {"GooGle.com"});
     dns_handler.start();
     stream.start();
@@ -545,14 +473,15 @@ TEST_CASE("DNS Filters: only_qname_suffix", "[pcap][dns]")
     CHECK(counters.NODATA.value() == 1);
     CHECK(counters.xacts.value() == 4);
     CHECK(counters.timeout.value() == 0);
-    CHECK(counters.orphan.value() == 3);
+    CHECK(counters.orphan.value() == 1);
 
     nlohmann::json j;
     dns_handler.metrics()->bucket(0)->to_json(j);
 
-    REQUIRE(j["filtered_packets"] == 12);
+    REQUIRE(j["filtered_packets"] == 14);
 
     CHECK(j["out"]["top_qname2_xacts"][0]["name"].get<std::string>().find("google.com") != std::string::npos);
+    CHECK(j["out"]["top_qname3_xacts"][0]["name"] == nullptr);
 }
 
 TEST_CASE("DNS Filters: answer_count", "[pcap][dns]")
@@ -654,7 +583,7 @@ TEST_CASE("DNS Configs: public_suffix_list", "[pcap][dns]")
     c.config_set<uint64_t>("num_periods", 1);
     DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
 
-    // notice, case-insensitive
+    // notice, case insensitive
     dns_handler.config_set<bool>("public_suffix_list", true);
     dns_handler.start();
     stream.start();
@@ -719,9 +648,9 @@ TEST_CASE("Parse DNS with ECS data", "[pcap][dns][ecs]")
 
     CHECK(j["unknown"]["cardinality"]["qname"] == 8);
 
-    CHECK(j["unknown"]["top_ecs_xacts"][0]["name"] == "2001:470:1f0b:1600::"); // wireshark
-    CHECK(j["unknown"]["top_ecs_xacts"][0]["estimate"] == 2);
-    CHECK(j["unknown"]["top_ecs_xacts"][1] == nullptr);
+    CHECK(j["unknown"]["top_query_ecs_xacts"][0]["name"] == "2001:470:1f0b:1600::"); // wireshark
+    CHECK(j["unknown"]["top_query_ecs_xacts"][0]["estimate"] == 2);
+    CHECK(j["unknown"]["top_query_ecs_xacts"][1] == nullptr);
     CHECK(j["unknown"]["top_geo_loc_ecs_xacts"][0]["name"] == "Unknown");
     CHECK(j["unknown"]["top_geo_loc_ecs_xacts"][0]["estimate"] == 2);
     CHECK(j["unknown"]["top_asn_ecs_xacts"][0]["name"] == "Unknown");
@@ -761,19 +690,19 @@ TEST_CASE("DNS filter: GeoLoc not found", "[pcap][dns][ecs]")
     CHECK(counters.IPv6.value() == 2);
     CHECK(counters.xacts.value() == 2);
     CHECK(counters.timeout.value() == 0);
-    CHECK(counters.orphan.value() == 2);
+    CHECK(counters.orphan.value() == 0);
     CHECK(counters.ECS.value() == 2);
 
     nlohmann::json j;
     dns_handler.metrics()->bucket(0)->to_json(j);
 
-    CHECK(j["filtered_packets"] == 27);
+    CHECK(j["filtered_packets"] == 29);
 
     CHECK(j["unknown"]["cardinality"]["qname"] == 1);
 
-    CHECK(j["unknown"]["top_ecs_xacts"][0]["name"] == "2001:470:1f0b:1600::"); // wireshark
-    CHECK(j["unknown"]["top_ecs_xacts"][0]["estimate"] == 2);
-    CHECK(j["unknown"]["top_ecs_xacts"][1] == nullptr);
+    CHECK(j["unknown"]["top_query_ecs_xacts"][0]["name"] == "2001:470:1f0b:1600::"); // wireshark
+    CHECK(j["unknown"]["top_query_ecs_xacts"][0]["estimate"] == 2);
+    CHECK(j["unknown"]["top_query_ecs_xacts"][1] == nullptr);
     CHECK(j["unknown"]["top_geo_loc_ecs_xacts"][0]["name"] == "Unknown");
     CHECK(j["unknown"]["top_geo_loc_ecs_xacts"][0]["estimate"] == 2);
 }
@@ -811,19 +740,19 @@ TEST_CASE("DNS filter: ASN not found", "[pcap][dns][ecs]")
     CHECK(counters.IPv6.value() == 2);
     CHECK(counters.xacts.value() == 2);
     CHECK(counters.timeout.value() == 0);
-    CHECK(counters.orphan.value() == 2);
+    CHECK(counters.orphan.value() == 0);
     CHECK(counters.ECS.value() == 2);
 
     nlohmann::json j;
     dns_handler.metrics()->bucket(0)->to_json(j);
 
-    CHECK(j["filtered_packets"] == 27);
+    CHECK(j["filtered_packets"] == 29);
 
     CHECK(j["unknown"]["cardinality"]["qname"] == 1);
 
-    CHECK(j["unknown"]["top_ecs_xacts"][0]["name"] == "2001:470:1f0b:1600::"); // wireshark
-    CHECK(j["unknown"]["top_ecs_xacts"][0]["estimate"] == 2);
-    CHECK(j["unknown"]["top_ecs_xacts"][1] == nullptr);
+    CHECK(j["unknown"]["top_query_ecs_xacts"][0]["name"] == "2001:470:1f0b:1600::"); // wireshark
+    CHECK(j["unknown"]["top_query_ecs_xacts"][0]["estimate"] == 2);
+    CHECK(j["unknown"]["top_query_ecs_xacts"][1] == nullptr);
     CHECK(j["unknown"]["top_asn_ecs_xacts"][0]["name"] == "Unknown");
     CHECK(j["unknown"]["top_asn_ecs_xacts"][0]["estimate"] == 2);
 }
@@ -844,7 +773,7 @@ TEST_CASE("DNS filter exceptions", "[pcap][dns][filter]")
     SECTION("only_rcode as string")
     {
         dns_handler.config_set<std::string>("only_rcode", "1");
-        REQUIRE_THROWS_WITH(dns_handler.start(), "DnsStreamHandler: wrong value type for only_rcode filter. It should be an integer or an array");
+        REQUIRE_THROWS_WITH(dns_handler.start(), "DnsStreamHandler: wrong value type for only_rcode filter. It should be an integer");
     }
 
     SECTION("only_rcode invalid")
@@ -888,7 +817,7 @@ TEST_CASE("DNS groups", "[pcap][dns]")
     SECTION("disable cardinality and counters")
     {
         dns_handler.config_set<visor::Configurable::StringList>("disable", {"cardinality", "counters"});
-        dns_handler.config_set<visor::Configurable::StringList>("enable", {"top_size", "xact_times"});
+        dns_handler.config_set<visor::Configurable::StringList>("enable", {"top_size"});
 
         dns_handler.start();
         stream.start();
@@ -914,8 +843,6 @@ TEST_CASE("DNS groups", "[pcap][dns]")
         CHECK(j["out"]["cardinality"]["qname"] == nullptr);
         CHECK(j["out"]["top_qname2_xacts"][0]["name"] == ".test.com");
         CHECK(j["out"]["response_query_size_ratio"]["p50"] != nullptr);
-        CHECK(j["out"]["xact_time_us"]["p50"] != nullptr);
-        CHECK(j["out"]["xact_histogram_us"]["buckets"] != nullptr);
     }
 
     SECTION("disable TopQname and Dns Transactions")
@@ -970,5 +897,5 @@ TEST_CASE("DNS invalid config", "[dns][filter][config]")
     c.config_set<uint64_t>("num_periods", 1);
     DnsStreamHandler dns_handler{"dns-test", stream_proxy, &c};
     dns_handler.config_set<bool>("invalid_config", true);
-    REQUIRE_THROWS_WITH(dns_handler.start(), "invalid_config is an invalid/unsupported config or filter. The valid configs/filters are: exclude_noerror, only_rcode, only_dnssec_response, answer_count, only_qtype, only_qname, only_qname_suffix, geoloc_notfound, asn_notfound, dnstap_msg_type, public_suffix_list, recorded_stream, xact_ttl_secs, xact_ttl_ms, deep_sample_rate, num_periods, topn_count, topn_percentile_threshold");
+    REQUIRE_THROWS_WITH(dns_handler.start(), "invalid_config is an invalid/unsupported config or filter. The valid configs/filters are: exclude_noerror, only_rcode, only_dnssec_response, answer_count, only_qtype, only_qname_suffix, geoloc_notfound, asn_notfound, dnstap_msg_type, public_suffix_list, recorded_stream, deep_sample_rate, num_periods, topn_count, topn_percentile_threshold");
 }

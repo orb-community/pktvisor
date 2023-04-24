@@ -23,23 +23,13 @@ jobs:
         os: [ ubuntu-latest, macos-11 ]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v3
-      
+      - uses: actions/checkout@v2
+
       - name: Create Build Environment
         run: cmake -E make_directory ${{github.workspace}}/build
 
       - name: Get Conan
-        id: conan
-        uses: turtlebrowser/get-conan@main
-        with:
-          version: 1.59.0
-
-      - name: Setup Conan Cache
-        uses: actions/cache@v3
-        with:
-          path: ${{github.workspace}}/build/conan_home/
-          key: conan-${{ runner.os }}-${{ hashFiles('conanfile.txt', '*/conanfile.txt') }}
-          restore-keys: conan-${{ runner.os }}-
+        uses: turtlebrowser/get-conan@v1.0
 
       - name: linux package install
         if: matrix.os == 'ubuntu-latest'
@@ -62,6 +52,12 @@ jobs:
         shell: bash
         run: ctest -C $BUILD_TYPE
 
+      - name: Login to ns1labs conan
+        run: CONAN_USER_HOME=${{github.workspace}}/build/conan_home conan user -p ${{ secrets.CONAN_LABS_PASSWORD }} -r ns1labs ${{ secrets.CONAN_LABS_USERNAME }}
+
+      - name: Cache conan packages
+        run: CONAN_USER_HOME=${{github.workspace}}/build/conan_home conan upload "*" --all -r ns1labs -c
+
   prebuild-package:
     needs: [ unit-tests ]
     runs-on: ubuntu-latest
@@ -70,7 +66,7 @@ jobs:
       branch_name: ${{ steps.branch.outputs.name }}
     if: github.event_name != 'pull_request'
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v2
       
       - name: Remove suffix from Cmakelists.txt file
         run: |
@@ -81,10 +77,7 @@ jobs:
         run: cmake -E make_directory ${{github.workspace}}/build
 
       - name: Get Conan
-        id: conan
-        uses: turtlebrowser/get-conan@main
-        with:
-          version: 1.59.0
+        uses: turtlebrowser/get-conan@v1.0
 
       - name: Configure CMake to generate VERSION
         shell: bash
@@ -118,7 +111,7 @@ jobs:
     if: github.event_name != 'pull_request'
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v2
         with:
           fetch-depth: 0
           
@@ -131,10 +124,7 @@ jobs:
         run: cmake -E make_directory ${{github.workspace}}/build
 
       - name: Get Conan
-        id: conan
-        uses: turtlebrowser/get-conan@main
-        with:
-          version: 1.59.0
+        uses: turtlebrowser/get-conan@v1.0
 
       - name: Configure CMake to generate VERSION
         shell: bash
@@ -156,7 +146,7 @@ jobs:
       - name: Post pktvisor changelog in slack channel
         run: |
           curl -d "text=:mega: *Pktvisor release reporter* :mega:
-          $(cat changelog.md)" -d "channel=C041B9204CF" -H "Authorization: Bearer ${{secrets.SLACK_APP_TOKEN}}" -X POST https://slack.com/api/chat.postMessage          
+          $(cat changelog.md)" -d "channel=C02SEF78ZPT" -H "Authorization: Bearer ${{secrets.SLACK_APP_TOKEN}}" -X POST https://slack.com/api/chat.postMessage          
 
       - name: Create release
         id: create_release
@@ -170,6 +160,7 @@ jobs:
           draft: false
           prerelease: false
 
+
   spinup-arm64-runner:
     needs: [ prebuild-package ]
     runs-on: ubuntu-latest
@@ -179,12 +170,12 @@ jobs:
     if: github.event_name != 'pull_request'
     steps:
       - name: Checkout
-        uses: actions/checkout@v3        
+        uses: actions/checkout@v2
 
       - name: Generate runner token
         id: token
         run: |
-          curl -X POST -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/orb-community/pktvisor/actions/runners/registration-token -o token.json
+          curl -X POST -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/ns1labs/pktvisor/actions/runners/registration-token -o token.json
           echo "::set-output name=runner::$(cat token.json | jq .token --raw-output )"
           cat token.json
           
@@ -265,12 +256,12 @@ jobs:
     if: github.event_name != 'pull_request'
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v2
 
       - name: Generate runner token
         id: token
         run: |
-          curl -X POST -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/orb-community/pktvisor/actions/runners/registration-token -o token.json
+          curl -X POST -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/ns1labs/pktvisor/actions/runners/registration-token -o token.json
           echo "::set-output name=runner::$(cat token.json | jq .token --raw-output )"
           cat token.json
           
@@ -341,138 +332,6 @@ jobs:
           path: |
             .github/hosted-runner/amd64/terraform.tfstate
           retention-days: 1
-          
-  build-win64:
-    # The CMake configure and build commands are platform agnostic and should work equally
-    # well on Windows or Mac.  You can convert this to a matrix build if you need
-    # cross-platform coverage.
-    # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
-
-    runs-on: windows-2019
-    outputs:
-      version_number: ${{ env.VERSION }}
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Create Build Environment
-        # Some projects don't allow in-source building, so create a separate build directory
-        # We'll use this as our working directory for all subsequent commands
-        run: cmake -E make_directory ${{github.workspace}}\build
-
-      - name: Get Conan
-        # You may pin to the exact commit or the version.
-        # uses: turtlebrowser/get-conan@4dc7e6dd45c8b1e02e909979d7cfc5ebba6ddbe2
-        id: conan
-        uses: turtlebrowser/get-conan@main
-        with:
-          version: 1.59.0
-
-      - name: Remove libpcap from conanfile
-        shell: bash
-        run: |
-          sed -i -e "s/libpcap.*//g" "${{github.workspace}}\conanfile.txt"
-
-      - name: Setup Conan Cache
-        uses: actions/cache@v3
-        with:
-          path: ${{github.workspace}}/build/conan_home/
-          key: conan-${{ runner.os }}-${{ hashFiles('conanfile.txt', '*/conanfile.txt') }}
-          restore-keys: conan-${{ runner.os }}-
-
-      - name: Configure CMake
-        # Use a bash shell so we can use the same syntax for environment variable
-        # access regardless of the host operating system
-        shell: bash
-        working-directory: ${{github.workspace}}\build
-        # Note the current convention is to use the -S and -B options here to specify source
-        # and build directories, but this is only available with CMake 3.13 and higher.
-        # The CMake binaries on the Github Actions machines are (as of this writing) 3.12
-        run: PKG_CONFIG_PATH=${{github.workspace}}\local\lib\pkgconfig cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE
-
-      - name: Get VERSION
-        shell: pwsh
-        id: build
-        run: |
-          $text = Get-Content ${{github.workspace}}\build\VERSION -Raw 
-          echo "VERSION=$text" >> $env:GITHUB_ENV
-
-      - name: Build
-        working-directory: ${{github.workspace}}\build
-        shell: bash
-        # Execute the build.  You can specify a specific target with "--target <NAME>"
-        run: cmake --build . --config $BUILD_TYPE -- -m
-      
-      # TODO: Fix unit tests for windows platform
-      #- name: Test
-      #  working-directory: ${{github.workspace}}/build
-      #  shell: bash
-      #  # Execute tests defined by the CMake configuration.
-      #  # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
-      #  run: ctest -C $BUILD_TYPE
-       
-      - name: Debug artifacts
-        shell: pwsh
-        run: |
-          Get-ChildItem -Force ${{github.workspace}}
-          Get-ChildItem -Force ${{github.workspace}}\build
-          Get-ChildItem -Force ${{github.workspace}}\build\bin
-                         
-      - name: Persist to workspace
-        uses: actions/upload-artifact@v2
-        with:
-          name: windows-build
-          path: |
-            ${{github.workspace}}\build\bin\pktvisor-reader.exe
-            ${{github.workspace}}\build\bin\pktvisord.exe
-            ${{github.workspace}}\golang\pkg\client\version.go
-          retention-days: 1
-          
-  build-cli-win64:
-    needs: [ build-win64 ]
-    runs-on: ubuntu-latest
-    steps:    
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Attach to workspace
-        uses: actions/download-artifact@v3
-        with:
-          name: windows-build
-          
-      - name: Debug artifacts
-        shell: bash
-        run: |
-          ls -lha
-          
-      - name: Debug artifacts
-        shell: bash
-        run: |
-          mv src pktvisor-src
-          cp -rpf golang/pkg/client/version.go .
-
-      - name: Build pktvisor-cli
-        uses: ./.github/actions/build-go
-        with:
-          context: "."
-          goos: windows
-          file: "./Dockerfile"
-          
-      - name: Debug artifacts
-        shell: bash
-        run: |
-          mv ./pktvisor-cli pktvisor-cli.exe
-          mv ./build/bin/pktvisord.exe ./pktvisord.exe
-          mv ./build/bin/pktvisor-reader.exe ./pktvisor-reader.exe
-          
-      - name: compacting windows binary
-        run: |
-          zip pktvisor-win64.zip pktvisor-cli.exe pktvisor-reader.exe pktvisord.exe
-          
-      - name: Upload win64 binary to latest release
-        shell: bash
-        run: |
-          chmod a+x ./docker/upload-gh-asset.sh
-          ./docker/upload-gh-asset.sh github_api_token=${{ secrets.BOT_TOKEN }} owner=orb-community repo=pktvisor tag=LATEST filename=./pktvisor-win64.zip
 
   package-arm64:
     needs: [ spinup-arm64-runner ]
@@ -483,26 +342,14 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: workspace
-
-      - name: Create Build Environment
-        run: cmake -E make_directory ${{github.workspace}}/build
-
-      - name: Setup Conan Cache
-        uses: actions/cache@v3
-        with:
-          path: ${{github.workspace}}/build/conan_home/
-          key: conan-${{ runner.os }}-arm64-${{ hashFiles('conanfile.txt', '*/conanfile.txt') }}
-          restore-keys: conan-${{ runner.os }}-arm64-
-
+          
       - name: Build pktvisord + push symbol to backtrace.io
         uses: ./.github/actions/build-cpp
         with:
           context: "."
           build_type: "Release"
           asan: "OFF"
-          bugsplat_key: ${{secrets.BUGSPLAT_KEY}}
-          bugsplat_symbol_url: ${{secrets.BUGSPLAT_SYMBOL_URL}}
-          bugsplat: "false"
+          symbol_url: ${{secrets.SYMBOL_URL}}
           file: "./Dockerfile"
 
       - name: Build pktvisor-cli
@@ -510,10 +357,10 @@ jobs:
         with:
           context: "."
           file: "./Dockerfile"
-
+          
       - name: Debug artifacts
         run: ls -lha .
-
+        
       - name: compacting arm64 binary
         run: |
           zip pktvisor-arm64.zip pktvisor-cli pktvisor-reader pktvisord
@@ -521,7 +368,7 @@ jobs:
       - name: Upload arm64 binary to latest release
         run: |
           chmod a+x ./docker/upload-gh-asset.sh
-          ./docker/upload-gh-asset.sh github_api_token=${{ secrets.BOT_TOKEN }} owner=orb-community repo=pktvisor tag=LATEST filename=./pktvisor-arm64.zip  
+          ./docker/upload-gh-asset.sh github_api_token=${{ secrets.BOT_TOKEN }} owner=ns1labs repo=pktvisor tag=LATEST filename=./pktvisor-arm64.zip  
 
       - name: Get branch name
         shell: bash
@@ -567,30 +414,21 @@ jobs:
 
       - name: Replace escape url
         run: |
-          REPLACE=${{ secrets.BUGSPLAT_CP_URL }}
+          REPLACE=${{ secrets.CRASHPAD_URL }}
           ESCAPED_REPLACE=$(printf '%s\n' "$REPLACE" | sed -e 's/[\/&]/\\&/g')
           sed -i -e "s/CP_URL/$ESCAPED_REPLACE/g" docker/run.sh
 
       - name: Build + push - pktvisor (multi-arch)
-        id: docker_build
         env:
-          IMAGE_NAME: ghcr.io/orb-community/pktvisor
+          IMAGE_NAME: ghcr.io/ns1labs/pktvisor
         uses: docker/build-push-action@v3
         with:
           builder: ${{ steps.buildx.outputs.name }}
           context: .
           file: ./docker/Dockerfile.crashhandler
           platforms: linux/arm64
-          tags: ${{ env.IMAGE_NAME }}:release-arm64
-          outputs: type=docker,dest=/tmp/arm64.tar
-
-      - name: Load image
-        env:
-          IMAGE_NAME: ghcr.io/orb-community/pktvisor
-        run: |
-          docker load --input /tmp/arm64.tar
-          docker image ls -a
-          docker push ${{ env.IMAGE_NAME }}:release-arm64
+          push: true
+          tags: ${{ env.IMAGE_NAME }}:arm64
 
   package-armv7:
     needs: [ spinup-amd64-runner ]
@@ -636,7 +474,7 @@ jobs:
           sed -i -e "s/CP_TOKEN/${{ secrets.CRASHPAD_TOKEN }}/g" docker/run.sh
       - name: Replace escape url
         run: |
-          REPLACE=${{ secrets.BUGSPLAT_CP_URL }}
+          REPLACE=${{ secrets.CRASHPAD_URL }}
           ESCAPED_REPLACE=$(printf '%s\n' "$REPLACE" | sed -e 's/[\/&]/\\&/g')
           sed -i -e "s/CP_URL/$ESCAPED_REPLACE/g" docker/run.sh
 
@@ -649,55 +487,33 @@ jobs:
 
       - name: Build + push - pktvisor (multi-arch)
         env:
-          IMAGE_NAME: ghcr.io/orb-community/pktvisor
+          IMAGE_NAME: ghcr.io/ns1labs/pktvisor
         uses: docker/build-push-action@v3
         with:
           builder: ${{ steps.buildx.outputs.name }}
           context: .
           file: ./docker/Dockerfile
           platforms: linux/arm/v7
-          tags: ${{ env.IMAGE_NAME }}:release-armv7
-          outputs: type=docker,dest=/tmp/armv7.tar
-
-      - name: Load image
-        env:
-          IMAGE_NAME: ghcr.io/orb-community/pktvisor
-        run: |
-          docker load --input /tmp/armv7.tar
-          docker image ls -a
-          docker push ${{ env.IMAGE_NAME }}:release-armv7
+          push: true
+          tags: ${{ env.IMAGE_NAME }}:armv7
 
   package-amd64:
     needs: [ prebuild-package ]
     runs-on: ubuntu-latest
-    outputs:
-      release_version: ${{ env.VERSION }}
     if: github.event_name != 'pull_request'
     steps:
       - name: Attach to workspace
         uses: actions/download-artifact@v2
         with:
           name: workspace
-
-      - name: Create Build Environment
-        run: cmake -E make_directory ${{github.workspace}}/build
-
-      - name: Setup Conan Cache
-        uses: actions/cache@v3
-        with:
-          path: ${{github.workspace}}/build/conan_home/
-          key: conan-${{ runner.os }}-${{ hashFiles('conanfile.txt', '*/conanfile.txt') }}
-          restore-keys: conan-${{ runner.os }}-
-
+          
       - name: Build pktvisord + push symbol to backtrace.io
         uses: ./.github/actions/build-cpp
         with:
           context: "."
           build_type: "Release"
           asan: "OFF"
-          bugsplat_key: ${{secrets.BUGSPLAT_KEY}}
-          bugsplat_symbol_url: ${{secrets.BUGSPLAT_SYMBOL_URL}}
-          bugsplat: "true"
+          symbol_url: ${{secrets.SYMBOL_URL}}
           file: "./Dockerfile"
 
       - name: Build pktvisor-cli
@@ -716,7 +532,7 @@ jobs:
       - name: Upload amd64 binary to latest release
         run: |
           chmod a+x ./docker/upload-gh-asset.sh
-          ./docker/upload-gh-asset.sh github_api_token=${{ secrets.BOT_TOKEN }} owner=orb-community repo=pktvisor tag=LATEST filename=./pktvisor-amd64.zip 
+          ./docker/upload-gh-asset.sh github_api_token=${{ secrets.BOT_TOKEN }} owner=ns1labs repo=pktvisor tag=LATEST filename=./pktvisor-amd64.zip 
 
       - name: Get branch name
         shell: bash
@@ -762,32 +578,23 @@ jobs:
 
       - name: Replace escape url
         run: |
-          REPLACE=${{ secrets.BUGSPLAT_CP_URL }}
+          REPLACE=${{ secrets.CRASHPAD_URL }}
           ESCAPED_REPLACE=$(printf '%s\n' "$REPLACE" | sed -e 's/[\/&]/\\&/g')
           sed -i -e "s/CP_URL/$ESCAPED_REPLACE/g" docker/run.sh
 
       - name: Build + push - pktvisor (multi-arch)
         env:
-          IMAGE_NAME: ghcr.io/orb-community/pktvisor
+          IMAGE_NAME: ghcr.io/ns1labs/pktvisor
         uses: docker/build-push-action@v3
         with:
           builder: ${{ steps.buildx.outputs.name }}
           context: .
           file: ./docker/Dockerfile.crashhandler
           platforms: linux/amd64
-          tags: ${{ env.IMAGE_NAME }}:release-amd64
-          outputs: type=docker,dest=/tmp/amd64.tar
-
-      - name: Load image
-        env:
-          IMAGE_NAME: ghcr.io/orb-community/pktvisor
-        run: |
-          docker load --input /tmp/amd64.tar
-          docker image ls -a
-          docker push ${{ env.IMAGE_NAME }}:release-amd64
+          push: true
+          tags: ${{ env.IMAGE_NAME }}:amd64
 
   remove-github-runner-arm64:
-    continue-on-error: true
     needs: [ package-arm64 ]
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
@@ -806,7 +613,7 @@ jobs:
       - name: Generate remove runner token
         id: remove-token-arm64
         run: |
-          curl -X POST -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/orb-community/pktvisor/actions/runners/remove-token -o token.json
+          curl -X POST -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/ns1labs/pktvisor/actions/runners/remove-token -o token.json
           echo "::set-output name=remove-runner::$(cat token.json | jq .token --raw-output )"
           cat token.json
           echo "TOKEN_RUNNER_ARM64=$(cat token.json | jq .token --raw-output )" >> $GITHUB_ENV
@@ -829,7 +636,7 @@ jobs:
     if: github.event_name != 'pull_request'
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v2
 
       - name: Attach to workspace
         uses: actions/download-artifact@v2
@@ -867,7 +674,6 @@ jobs:
           terraform destroy -auto-approve
 
   remove-github-runner-amd64:
-    continue-on-error: true
     needs: [ package-armv7 ]
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
@@ -886,7 +692,7 @@ jobs:
       - name: Generate remove runner token
         id: remove-token-amd64
         run: |
-          curl -X POST -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/orb-community/pktvisor/actions/runners/remove-token -o token.json
+          curl -X POST -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/ns1labs/pktvisor/actions/runners/remove-token -o token.json
           echo "::set-output name=remove-runner::$(cat token.json | jq .token --raw-output )"
           cat token.json
           echo "TOKEN_RUNNER_AMD64=$(cat token.json | jq .token --raw-output )" >> $GITHUB_ENV
@@ -909,7 +715,7 @@ jobs:
     if: github.event_name != 'pull_request'
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v2
 
       - name: Attach to workspace
         uses: actions/download-artifact@v2
@@ -960,14 +766,14 @@ jobs:
 
       - name: Create docker manifest
         run: |
-          docker manifest create ghcr.io/orb-community/pktvisor:latest \
-          ghcr.io/orb-community/pktvisor:release-amd64 \
-          ghcr.io/orb-community/pktvisor:release-armv7 \
-          ghcr.io/orb-community/pktvisor:release-arm64
+          docker manifest create ghcr.io/ns1labs/pktvisor:latest \
+          ghcr.io/ns1labs/pktvisor:amd64 \
+          ghcr.io/ns1labs/pktvisor:armv7 \
+          ghcr.io/ns1labs/pktvisor:arm64
 
       - name: Push manifest to ghcr.io
         run: |
-          docker manifest push ghcr.io/orb-community/pktvisor:latest
+          docker manifest push ghcr.io/ns1labs/pktvisor:latest
 
       - name: Install skopeo
         run: |
@@ -980,18 +786,11 @@ jobs:
 
       - name: Login skopeo to dockerhub
         run: |
-          sudo skopeo login -u ${{ secrets.ORB_DOCKERHUB_USERNAME }} -p ${{ secrets.ORB_DOCKERHUB_TOKEN }} docker.io
+          sudo skopeo login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }} docker.io
 
-      - name: Copy latest from ghcr.io to docker.io
+      - name: Copy from ghcr.io to docker.io
         run: |
           sudo skopeo copy \
           --all \
-          docker://ghcr.io/orb-community/pktvisor:latest \
-          docker://docker.io/orbcommunity/pktvisor:latest
-          
-      - name: Copy release version from ghcr.io to docker.io
-        run: |
-          sudo skopeo copy \
-          --all \
-          docker://ghcr.io/orb-community/pktvisor:latest \
-          docker://docker.io/orbcommunity/pktvisor:${{ needs.package-amd64.outputs.release_version }}
+          docker://ghcr.io/ns1labs/pktvisor:latest \
+          docker://docker.io/ns1labs/pktvisor:latest

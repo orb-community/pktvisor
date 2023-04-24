@@ -18,7 +18,7 @@ namespace visor::lib::dns {
 using namespace std::literals;
 
 // ===BEGIN ICANN DOMAINS===
-static const robin_hood::unordered_node_map<std::string_view, std::vector<std::string_view>> ICANN_DOMAINS = {
+static const robin_hood::unordered_map<std::string_view, std::vector<std::string_view>> ICANN_DOMAINS = {
     {"ac"sv, {"com.ac"sv, "edu.ac"sv, "gov.ac"sv, "net.ac"sv, "mil.ac"sv, "org.ac"sv}},
     {"ad"sv, {"nom.ad"sv}},
     {"ae"sv, {"co.ae"sv, "net.ae"sv, "org.ae"sv, "sch.ae"sv, "ac.ae"sv, "gov.ae"sv, "mil.ae"sv}},
