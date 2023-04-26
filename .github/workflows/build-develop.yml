@@ -644,7 +644,7 @@ jobs:
           key: ${{ secrets.RUNNER_SSH_KEY }}
           port: 2022
           source: "./output/*"
-          target: "/usr/share/nginx/html/pktvisor/develop/${{ needs.integration-tests.outputs.commit_hash }}/pktvisor/python-test"
+          target: "/usr/share/nginx/html/test_data/pktvisor/develop/${{ needs.integration-tests.outputs.commit_hash }}/pktvisor/python-test"
           
   remove-github-runner-amd64:
     continue-on-error: true
