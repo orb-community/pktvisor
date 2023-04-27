@@ -255,92 +255,6 @@ jobs:
           path: |
             .github/hosted-runner/arm64/terraform.tfstate
           retention-days: 1
-
-  spinup-amd64-runner:
-    needs: [ prebuild-package ]
-    runs-on: ubuntu-latest
-    outputs:
-      runner_token: ${{ steps.token.outputs.runner }}
-      runner_label: ${{ env.RUNNER_LABEL }}
-    if: github.event_name != 'pull_request'
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-
-      - name: Generate runner token
-        id: token
-        run: |
-          curl -X POST -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/orb-community/pktvisor/actions/runners/registration-token -o token.json
-          echo "::set-output name=runner::$(cat token.json | jq .token --raw-output )"
-          cat token.json
-          
-      - name: Get short commit hash to a variable
-        id: commit_hash
-        run: |
-          echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
-
-      - name: Inject runner token in user_data.sh
-        run: |
-          cd .github/hosted-runner/amd64/
-          ESCAPED_REPLACE_RUNNER_TOKEN=$(printf '%s\n' "${{ steps.token.outputs.runner }}" | sed -e 's/[\/&]/\\&/g')
-          sed -i -e "s/RUNNER_TOKEN/$ESCAPED_REPLACE_RUNNER_TOKEN/g" user_data.sh
-          ESCAPED_REPLACE_RUNNER_NAME=$(printf '%s\n' "${{ steps.commit_hash.outputs.sha_short }}-amd64" | sed -e 's/[\/&]/\\&/g')
-          sed -i -e "s/AMD64_RUNNER/$ESCAPED_REPLACE_RUNNER_NAME/g" user_data.sh
-          ESCAPED_REPLACE_RUNNER_LABEL=$(printf '%s\n' "${{ steps.commit_hash.outputs.sha_short }}-amd64" | sed -e 's/[\/&]/\\&/g')
-          sed -i -e "s/RUNNER_LABEL/$ESCAPED_REPLACE_RUNNER_LABEL/g" user_data.sh
-          echo "RUNNER_LABEL=${{ steps.commit_hash.outputs.sha_short }}-amd64" >> $GITHUB_ENV
-          
-      - name: Inject AWS key
-        run: |
-          cd .github/hosted-runner/amd64/
-          ESCAPED_REPLACE_KEY_ID=$(printf '%s\n' "${{ secrets.AWS_ACCESS_KEY_ID }}" | sed -e 's/[\/&]/\\&/g')
-          sed -i -e "s/AWSID/$ESCAPED_REPLACE_KEY_ID/g" vars.tf
-          ESCAPED_REPLACE_ACCESS_KEY=$(printf '%s\n' "${{ secrets.AWS_SECRET_ACCESS_KEY }}" | sed -e 's/[\/&]/\\&/g')
-          sed -i -e "s/AWSSECRET/$ESCAPED_REPLACE_ACCESS_KEY/g" vars.tf
-          ESCAPED_REPLACE_ENVIRONMENT=$(printf '%s\n' "${{ needs.prebuild-package.outputs.branch_name }}-${{ steps.commit_hash.outputs.sha_short }}-release" | sed -e 's/[\/&]/\\&/g')
-          sed -i -e "s/ENVIRONMENT/$ESCAPED_REPLACE_ENVIRONMENT/g" vars.tf         
-
-      - name: setup terraform
-        uses: hashicorp/setup-terraform@v2
-        with:
-          terraform_version: 1.1.7
-          terraform_wrapper: false
-
-      - name: Terraform Init
-        run: |
-          cd .github/hosted-runner/amd64/
-          terraform init -input=false
-
-      - name: Terraform plan
-        run: |
-          cd .github/hosted-runner/amd64/
-          terraform plan -out=tfplan
-
-      - name: Terraform apply
-        run: |
-          cd .github/hosted-runner/amd64/
-          terraform apply -auto-approve tfplan
-
-      - name: Terraform output
-        run: |
-          cd .github/hosted-runner/amd64/
-          terraform output -raw ip > ip.txt
-          
-      - name: Persist IP to workspace
-        uses: actions/upload-artifact@v2
-        with:
-          name: ip
-          path: |
-            .github/hosted-runner/amd64/ip.txt
-          retention-days: 1
-
-      - name: Persist to workspace
-        uses: actions/upload-artifact@v2
-        with:
-          name: terraform2
-          path: |
-            .github/hosted-runner/amd64/terraform.tfstate
-          retention-days: 1
           
   build-win64:
     # The CMake configure and build commands are platform agnostic and should work equally
@@ -428,7 +342,7 @@ jobs:
           retention-days: 1
           
   build-cli-win64:
-    needs: [ build-win64 ]
+    needs: [ build-win64, release ]
     runs-on: ubuntu-latest
     steps:    
       - name: Checkout code
@@ -592,80 +506,6 @@ jobs:
           docker image ls -a
           docker push ${{ env.IMAGE_NAME }}:release-arm64
 
-  package-armv7:
-    needs: [ spinup-amd64-runner ]
-    runs-on: ${{ needs.spinup-amd64-runner.outputs.runner_label }}
-    if: github.event_name != 'pull_request'
-    steps:
-      - name: Attach to workspace
-        uses: actions/download-artifact@v2
-        with:
-          name: workspace
-          
-      - name: Get branch name
-        shell: bash
-        run: echo "BRANCH_NAME=$(echo ${GITHUB_REF#refs/heads/} | tr / -)" >> $GITHUB_ENV
-
-      - name: Debug branch name
-        run: echo ${{ env.BRANCH_NAME }}
-
-      - name: Get VERSION
-        run: |
-          echo "VERSION=`cat ${{github.workspace}}/build/VERSION`" >> $GITHUB_ENV
-      - name: Debug version
-        run: echo ${{ env.VERSION }}
-
-      - name: Generate ref tag (master)
-        if: ${{ env.BRANCH_NAME == 'master' }}
-        run: |
-          echo "REF_TAG=latest" >> $GITHUB_ENV
-          echo "PRERELEASE=false" >> $GITHUB_ENV
-          echo "DRAFT=true" >> $GITHUB_ENV
-      - name: Debug ref tag
-        run: echo ${{ env.REF_TAG }}
-
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v1
-        with:
-          registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-          
-      - name: Replace token
-        run: |
-          sed -i -e "s/CP_TOKEN/${{ secrets.CRASHPAD_TOKEN }}/g" docker/run.sh
-      - name: Replace escape url
-        run: |
-          REPLACE=${{ secrets.BUGSPLAT_CP_URL }}
-          ESCAPED_REPLACE=$(printf '%s\n' "$REPLACE" | sed -e 's/[\/&]/\\&/g')
-          sed -i -e "s/CP_URL/$ESCAPED_REPLACE/g" docker/run.sh
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v2
-
-      - name: Set up Docker Buildx
-        id: buildx
-        uses: docker/setup-buildx-action@v2
-
-      - name: Build + push - pktvisor (multi-arch)
-        env:
-          IMAGE_NAME: ghcr.io/orb-community/pktvisor
-        uses: docker/build-push-action@v3
-        with:
-          builder: ${{ steps.buildx.outputs.name }}
-          context: .
-          file: ./docker/Dockerfile
-          platforms: linux/arm/v7
-          tags: ${{ env.IMAGE_NAME }}:release-armv7
-          outputs: type=docker,dest=/tmp/armv7.tar
-
-      - name: Load image
-        env:
-          IMAGE_NAME: ghcr.io/orb-community/pktvisor
-        run: |
-          docker load --input /tmp/armv7.tar
-          docker image ls -a
-          docker push ${{ env.IMAGE_NAME }}:release-armv7
 
   package-amd64:
     needs: [ prebuild-package ]
@@ -866,88 +706,8 @@ jobs:
           cd .github/hosted-runner/arm64/
           terraform destroy -auto-approve
 
-  remove-github-runner-amd64:
-    continue-on-error: true
-    needs: [ package-armv7 ]
-    runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request'
-    steps:
-      - name: Attach to workspace
-        uses: actions/download-artifact@v2
-        with:
-          name: ip
-
-      - name: Get runner ip
-        id: address
-        run: |
-          ls -lha
-          echo "::set-output name=ip::$(cat ip.txt)"
-          
-      - name: Generate remove runner token
-        id: remove-token-amd64
-        run: |
-          curl -X POST -H "authorization: Bearer ${{ secrets.BOT_TOKEN }}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/orb-community/pktvisor/actions/runners/remove-token -o token.json
-          echo "::set-output name=remove-runner::$(cat token.json | jq .token --raw-output )"
-          cat token.json
-          echo "TOKEN_RUNNER_AMD64=$(cat token.json | jq .token --raw-output )" >> $GITHUB_ENV
-
-      - name: Executing remote ssh commands on runner
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ steps.address.outputs.ip }}
-          username: ubuntu
-          key: ${{ secrets.RUNNER_SSH_KEY }}
-          port: 22
-          script: |
-               cd /actions-runner
-               sudo chmod 777 . -R
-               ./config.sh remove --token ${{ env.TOKEN_RUNNER_AMD64 }}
-
-  remove-amd64-runner:
-    needs: [ remove-github-runner-amd64 ]
-    runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request'
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-
-      - name: Attach to workspace
-        uses: actions/download-artifact@v2
-        with:
-          name: terraform2
-          path: .github/hosted-runner/amd64/
-
-      - name: Inject AWS key
-        run: |
-          cd .github/hosted-runner/amd64/
-          ESCAPED_REPLACE_KEY_ID=$(printf '%s\n' "${{ secrets.AWS_ACCESS_KEY_ID }}" | sed -e 's/[\/&]/\\&/g')
-          sed -i -e "s/AWSID/$ESCAPED_REPLACE_KEY_ID/g" vars.tf
-          ESCAPED_REPLACE_ACCESS_KEY=$(printf '%s\n' "${{ secrets.AWS_SECRET_ACCESS_KEY }}" | sed -e 's/[\/&]/\\&/g')
-          sed -i -e "s/AWSSECRET/$ESCAPED_REPLACE_ACCESS_KEY/g" vars.tf
-
-      - name: setup terraform
-        uses: hashicorp/setup-terraform@v2
-        with:
-          terraform_version: 1.1.7
-
-      - name: Terraform Init
-        run: |
-          cd .github/hosted-runner/amd64/
-          terraform init -input=false
-
-      - name: Terraform plan destroy
-        run: |
-          cd .github/hosted-runner/amd64/
-          terraform plan -destroy
-        continue-on-error: true
-
-      - name: Terraform destroy
-        run: |
-          cd .github/hosted-runner/amd64/
-          terraform destroy -auto-approve
-
   pushing-manifests:
-    needs: [ package-amd64 , package-arm64 , package-armv7 ]
+    needs: [ package-amd64 , package-arm64 ]
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
     steps:
@@ -962,7 +722,6 @@ jobs:
         run: |
           docker manifest create ghcr.io/orb-community/pktvisor:latest \
           ghcr.io/orb-community/pktvisor:release-amd64 \
-          ghcr.io/orb-community/pktvisor:release-armv7 \
           ghcr.io/orb-community/pktvisor:release-arm64
 
       - name: Push manifest to ghcr.io
