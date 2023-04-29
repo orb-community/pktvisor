@@ -52,7 +52,7 @@ MaxmindDB::~MaxmindDB()
 City MaxmindDB::getGeoLoc(const struct sockaddr *sa) const
 {
 
-    if (!_enabled) {
+    if (!_enabled || sa == nullptr) {
         return {};
     }
 
@@ -69,7 +69,7 @@ City MaxmindDB::getGeoLoc(const struct sockaddr *sa) const
 City MaxmindDB::getGeoLoc(const struct sockaddr_in *sa4) const
 {
 
-    if (!_enabled) {
+    if (!_enabled || sa4 == nullptr) {
         return {};
     }
 
@@ -106,7 +106,7 @@ City MaxmindDB::getGeoLoc(const struct sockaddr_in *sa4) const
 City MaxmindDB::getGeoLoc(const struct sockaddr_in6 *sa6) const
 {
 
-    if (!_enabled) {
+    if (!_enabled || sa6 == nullptr) {
         return {};
     }
 
@@ -143,7 +143,7 @@ City MaxmindDB::getGeoLoc(const struct sockaddr_in6 *sa6) const
 City MaxmindDB::getGeoLoc(const char *ip_address) const
 {
 
-    if (!_enabled) {
+    if (!_enabled || ip_address == nullptr) {
         return {};
     }
 
@@ -262,7 +262,7 @@ std::string MaxmindDB::getASNString(const struct sockaddr *sa) const
 std::string MaxmindDB::getASNString(const struct sockaddr_in *sa4) const
 {
 
-    if (!_enabled) {
+    if (!_enabled || sa4 == nullptr) {
         return {};
     }
     std::string ip_address;
@@ -298,7 +298,7 @@ std::string MaxmindDB::getASNString(const struct sockaddr_in *sa4) const
 std::string MaxmindDB::getASNString(const struct sockaddr_in6 *sa6) const
 {
 
-    if (!_enabled) {
+    if (!_enabled || sa6 == nullptr) {
         return {};
     }
 
@@ -335,7 +335,7 @@ std::string MaxmindDB::getASNString(const struct sockaddr_in6 *sa6) const
 std::string MaxmindDB::getASNString(const char *ip_address) const
 {
 
-    if (!_enabled) {
+    if (!_enabled || ip_address == nullptr) {
         return {};
     }
 
