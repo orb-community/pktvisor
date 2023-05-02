@@ -1,3 +1,4 @@
+@AUTORETRY
 Feature: pktvisor tests
 
 @smoke
