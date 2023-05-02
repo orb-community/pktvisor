@@ -3,7 +3,7 @@ FROM grafana/agent:latest as agent
 
 FROM orbcommunity/pktvisor:${PKTVISOR_TAG}
 
-COPY --from=agent /bin/agent /usr/local/bin/agent
+COPY --from=agent /bin/grafana-agent /usr/local/bin/agent
 
 RUN  apt-get update \
   && apt-get install -y runit-init \
