@@ -27,7 +27,7 @@ jobs:
     runs-on: macos-12
     steps:
       - name: Install Xcode Command Line Tools
-        run: xcode-select --install --force
+        run: xcode-select --install
 
       - uses: actions/checkout@v3
 
