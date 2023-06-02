@@ -26,6 +26,9 @@ jobs:
 
     runs-on: macos-12
     steps:
+      - name: Install Xcode Command Line Tools
+        run: xcode-select --install --force
+
       - uses: actions/checkout@v3
 
       - name: Create Build Environment
