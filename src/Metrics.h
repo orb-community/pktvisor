@@ -713,7 +713,9 @@ public:
                 std::stringstream name_text;
                 name_text << items[i].get_item();
                 l[_item_key] = name_text.str();
-                _set_opentelemetry_data(metric->mutable_gauge()->add_data_points(), start_time, end_time, l, items[i].get_estimate());
+                if (!l[_item_key].empty()) {
+                    _set_opentelemetry_data(metric->mutable_gauge()->add_data_points(), start_time, end_time, l, items[i].get_estimate());
+                }
             } else {
                 break;
             }
@@ -736,7 +738,9 @@ public:
         for (uint64_t i = 0; i < std::min(_top_count, items.size()); i++) {
             if (items[i].get_estimate() >= threshold) {
                 l[_item_key] = formatter(items[i].get_item());
-                _set_opentelemetry_data(metric->mutable_gauge()->add_data_points(), start_time, end_time, l, items[i].get_estimate());
+                if (!l[_item_key].empty()) {
+                    _set_opentelemetry_data(metric->mutable_gauge()->add_data_points(), start_time, end_time, l, items[i].get_estimate());
+                }
             } else {
                 break;
             }
@@ -759,7 +763,9 @@ public:
         for (uint64_t i = 0; i < std::min(_top_count, items.size()); i++) {
             if (items[i].get_estimate() >= threshold) {
                 formatter(l, _item_key, items[i].get_item());
-                _set_opentelemetry_data(metric->mutable_gauge()->add_data_points(), start_time, end_time, l, items[i].get_estimate());
+                if (!l[_item_key].empty()) {
+                    _set_opentelemetry_data(metric->mutable_gauge()->add_data_points(), start_time, end_time, l, items[i].get_estimate());
+                }
             } else {
                 break;
             }
