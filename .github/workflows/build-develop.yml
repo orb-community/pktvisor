@@ -28,10 +28,10 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: install gcc 12.2
-        run: |   
-          brew install gcc@12.2
+        run: |  
           gcc --version
-          gcc-select 12.2
+          brew search gcc
+          brew install gcc@12
           gcc --version
       
       - name: Create Build Environment
