@@ -24,9 +24,15 @@ jobs:
     # cross-platform coverage.
     # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
 
-    runs-on: macos-13
+    runs-on: macos-11
     steps:
       - uses: actions/checkout@v3
+      - name: install gcc 12.2
+        run: |   
+          brew install gcc@12.2
+          gcc --version
+          gcc-select 12.2
+          gcc --version
       
       - name: Create Build Environment
         # Some projects don't allow in-source building, so create a separate build directory
