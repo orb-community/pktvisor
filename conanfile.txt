@@ -21,6 +21,7 @@ yaml-cpp/0.7.0
 robin-hood-hashing/3.11.5
 zlib/1.2.12
 crashpad/cci.20220219
+flex/2.6.3
 
 [build_requires]
 corrade/2020.06
