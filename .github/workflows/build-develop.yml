@@ -24,9 +24,12 @@ jobs:
     # cross-platform coverage.
     # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
 
-    runs-on: macos-11
+    runs-on: macos-12
     steps:
       - uses: actions/checkout@v3
+      
+      - name: install gcc
+        run: brew install gcc
 
       - name: Create Build Environment
         # Some projects don't allow in-source building, so create a separate build directory
@@ -39,12 +42,12 @@ jobs:
         with:
           version: 1.60.1
 
-      - name: Setup Conan Cache
-        uses: actions/cache@v3
-        with:
-          path: ${{github.workspace}}/build/conan_home/
-          key: conan-${{ runner.os }}-${{ hashFiles('conanfile.txt', '*/conanfile.txt') }}
-          restore-keys: conan-${{ runner.os }}-
+#       - name: Setup Conan Cache
+#         uses: actions/cache@v3
+#         with:
+#           path: ${{github.workspace}}/build/conan_home/
+#           key: conan-${{ runner.os }}-${{ hashFiles('conanfile.txt', '*/conanfile.txt') }}
+#           restore-keys: conan-${{ runner.os }}-
 
       - name: Configure CMake
         # Use a bash shell so we can use the same syntax for environment variable
