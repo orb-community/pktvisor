@@ -24,11 +24,8 @@ jobs:
     # cross-platform coverage.
     # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
 
-    runs-on: macos-12
+    runs-on: macos-13
     steps:
-      - name: Install Xcode Command Line Tools
-        run: xcode-select --install
-
       - uses: actions/checkout@v3
 
       - name: Create Build Environment
