@@ -19,7 +19,7 @@ uvw/2.12.1
 libpcap/1.10.1
 yaml-cpp/0.7.0
 robin-hood-hashing/3.11.5
-zlib/1.2.11
+zlib/1.2.12
 crashpad/cci.20220219
 
 [build_requires]
