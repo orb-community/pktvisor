@@ -1,5 +1,6 @@
 #include "CoreRegistry.h"
 #include "HandlerManager.h"
+#include "HandlerModulePlugin.h"
 #include "InputStream.h"
 #include "InputStreamManager.h"
 #include "Policies.h"
@@ -753,9 +754,12 @@ TEST_CASE("Policies", "[policies]")
         CHECK(policy->input_stream().back()->config_get<std::string>("bpf") == "tcp or udp"); // TODO this will move to filter member variable
         CHECK(policy->input_stream().back()->config_get<std::string>("sample") == "value");
         CHECK(policy->modules()[0]->name() == "default_view-anycast-default_net");
+        CHECK(dynamic_cast<StreamHandler *>(policy->modules()[0])->version() == "1.0");
         CHECK(policy->modules()[1]->name() == "default_view-anycast-default_dns");
+        CHECK(dynamic_cast<StreamHandler *>(policy->modules()[1])->version() == "1.0");
         CHECK(policy->modules()[1]->config_get<uint64_t>("only_rcode") == 2);
         CHECK(policy->modules()[2]->name() == "default_view-anycast-special_domain");
+        CHECK(dynamic_cast<StreamHandler *>(policy->modules()[2])->version() == "1.0");
         CHECK(policy->modules()[2]->config_get<Configurable::StringList>("only_qname_suffix")[0] == ".google.com");
         CHECK(policy->modules()[2]->config_get<uint64_t>("only_rcode") == 2);
         // TODO check window config settings made it through
