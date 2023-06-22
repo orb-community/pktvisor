@@ -56,7 +56,7 @@ add_subdirectory(handlers)
 set(VISOR_STATIC_PLUGINS ${VISOR_STATIC_PLUGINS} PARENT_SCOPE)
 
 ## TEST SUITE
-add_executable(unit-tests-vizor-core
+add_executable(unit-tests-visor-core
         tests/main.cpp
         tests/test_sketches.cpp
         tests/test_metrics.cpp
@@ -64,15 +64,16 @@ add_executable(unit-tests-vizor-core
         tests/test_ipport.cpp
         tests/test_taps.cpp
         tests/test_policies.cpp
+        tests/test_handlers.cpp
         )
 
-target_include_directories(unit-tests-vizor-core
+target_include_directories(unit-tests-visor-core
         PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
         )
 
-target_link_libraries(unit-tests-vizor-core PRIVATE Visor::Core ${VISOR_STATIC_PLUGINS})
+target_link_libraries(unit-tests-visor-core PRIVATE Visor::Core ${VISOR_STATIC_PLUGINS})
 
-add_test(NAME unit-tests-vizor-core
+add_test(NAME unit-tests-visor-core
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/src
-        COMMAND unit-tests-vizor-core
+        COMMAND unit-tests-visor-core
         )
