@@ -12,6 +12,7 @@
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 #pragma GCC diagnostic ignored "-Wunused-function"
 #pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #pragma clang diagnostic ignored "-Wrange-loop-analysis"
 #endif
 #include <cpc_sketch.hpp>
@@ -253,7 +254,7 @@ public:
         auto histogram_pmf = _sketch.get_PMF(bins_pmf.first.data(), bins_pmf.second);
         std::vector<T> bins;
         for (size_t i = 0; i < bins_pmf.second; ++i) {
-            if (histogram_pmf[i]) {
+            if (histogram_pmf[i] != 0.0) {
                 bins.push_back(bins_pmf.first[i]);
             }
         }
@@ -274,7 +275,7 @@ public:
         auto histogram_pmf = _sketch.get_PMF(bins_pmf.first.data(), bins_pmf.second);
         std::vector<T> bins;
         for (size_t i = 0; i < bins_pmf.second; ++i) {
-            if (histogram_pmf[i]) {
+            if (histogram_pmf[i] != 0.0) {
                 bins.push_back(bins_pmf.first[i]);
             }
         }
@@ -293,7 +294,7 @@ public:
         out << name_snake({"count"}, add_labels) << ' ' << _sketch.get_n() << std::endl;
     }
 
-    void to_opentelemetry(metrics::v1::ScopeMetrics &scope, timespec &start, timespec &end, LabelMap add_labels = {}) const
+    void to_opentelemetry(metrics::v1::ScopeMetrics &scope, timespec &start, timespec &end, LabelMap add_labels = {}) const override
     {
         if (_sketch.is_empty()) {
             return;
@@ -302,7 +303,7 @@ public:
         auto histogram_pmf = _sketch.get_PMF(bins_pmf.first.data(), bins_pmf.second);
         std::vector<T> bins;
         for (size_t i = 0; i < bins_pmf.second; ++i) {
-            if (histogram_pmf[i]) {
+            if (histogram_pmf[i] != 0.0) {
                 bins.push_back(bins_pmf.first[i]);
             }
         }
@@ -320,7 +321,7 @@ public:
 
         for (std::size_t i = 0; i < bins.size(); ++i) {
             hist_data_point->add_explicit_bounds(bins[i] - pace);
-            hist_data_point->add_bucket_counts(histogram[i] * _sketch.get_n());
+            hist_data_point->add_bucket_counts(static_cast<uint64_t>(histogram[i]) * _sketch.get_n());
         }
         hist_data_point->set_count(_sketch.get_n());
 
@@ -383,7 +384,7 @@ public:
         return _quantile.get_n();
     }
 
-    auto get_quantile(float p) const
+    auto get_quantile(double p) const
     {
         return _quantile.get_quantile(p);
     }
