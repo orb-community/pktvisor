@@ -387,7 +387,7 @@ class DnsMetricsManager final : public visor::AbstractMetricsManager<DnsMetricsB
     typedef TransactionManager<DnsXactID, DnsTransaction> DnsTransactionManager;
     struct DirTransaction {
         std::unique_ptr<DnsTransactionManager> xact_map;
-        float per_90th{0.0};
+        float per_90th{0.0f};
 
         DirTransaction()
             : xact_map(std::make_unique<DnsTransactionManager>())
