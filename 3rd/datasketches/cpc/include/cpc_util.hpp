@@ -89,7 +89,13 @@ static inline uint32_t warren_count_bits_set_in_matrix(const uint64_t* array, ui
 
 // This code is Figure 5-9 in "Hacker's Delight" by Henry S. Warren.
 
-#define CSA(h,l,a,b,c) {uint64_t u = a ^ b; uint64_t v = c; h = (a & b) | (u & v); l = u ^ v;}
+#define DATASKETCHES_CSA(h, l, a, b, c) \
+  {                                     \
+    uint64_t u = a ^ b;                 \
+    uint64_t v = c;                     \
+    h = (a & b) | (u & v);              \
+    l = u ^ v;                          \
+  }
 
 static inline uint32_t count_bits_set_in_matrix(const uint64_t* a, uint32_t length) {
   if ((length & 0x7) != 0) throw std::invalid_argument("the length of the array must be a multiple of 8");
@@ -98,15 +104,15 @@ static inline uint32_t count_bits_set_in_matrix(const uint64_t* a, uint32_t leng
   fours = twos = ones = 0;
 
   for (uint32_t i = 0; i <= length - 8; i += 8) {
-    CSA(twos_a, ones, ones, a[i+0], a[i+1]);
-    CSA(twos_b, ones, ones, a[i+2], a[i+3]);
-    CSA(fours_a, twos, twos, twos_a, twos_b);
+    DATASKETCHES_CSA(twos_a, ones, ones, a[i+0], a[i+1]);
+    DATASKETCHES_CSA(twos_b, ones, ones, a[i+2], a[i+3]);
+    DATASKETCHES_CSA(fours_a, twos, twos, twos_a, twos_b);
 
-    CSA(twos_a, ones, ones, a[i+4], a[i+5]);
-    CSA(twos_b, ones, ones, a[i+6], a[i+7]);
-    CSA(fours_b, twos, twos, twos_a, twos_b);
+    DATASKETCHES_CSA(twos_a, ones, ones, a[i+4], a[i+5]);
+    DATASKETCHES_CSA(twos_b, ones, ones, a[i+6], a[i+7]);
+    DATASKETCHES_CSA(fours_b, twos, twos, twos_a, twos_b);
 
-    CSA(eights, fours, fours, fours_a, fours_b);
+    DATASKETCHES_CSA(eights, fours, fours, fours_a, fours_b);
 
     total += warren_bit_count(eights);
   }
@@ -118,6 +124,8 @@ static inline uint32_t count_bits_set_in_matrix(const uint64_t* a, uint32_t leng
 
   return total;
 }
+
+#undef DATASKETCHES_CSA
 
 // Here are some timings made with quickTestMerge.c
 // for the "5 5" case:

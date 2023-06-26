@@ -359,7 +359,7 @@ void cpc_sketch_alloc<A>::refresh_kxp(const uint64_t* bit_matrix) {
 
   // for improved numerical accuracy, we separately sum the bytes of the U64's
   double byte_sums[8]; // allocating on the stack
-  std::fill(byte_sums, &byte_sums[8], 0);
+  std::fill(byte_sums, byte_sums + 8, 0);
 
   for (size_t i = 0; i < k; i++) {
     uint64_t word = bit_matrix[i];
