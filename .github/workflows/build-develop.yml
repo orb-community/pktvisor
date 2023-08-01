@@ -848,6 +848,7 @@ jobs:
         with:
           context: "."
           file: "./Dockerfile"
+          goarch: "arm64"
           
       - name: Debug artifacts
         run: ls -lha .
