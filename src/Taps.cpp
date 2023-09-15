@@ -7,7 +7,7 @@
 #include "InputStream.h"
 #include "Policies.h"
 #include <algorithm>
-#include <fmt/format.h>
+#include <fmt/core.h>
 #include <spdlog/spdlog.h>
 
 namespace visor {
