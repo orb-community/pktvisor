@@ -423,6 +423,7 @@ jobs:
         uses: ./.github/actions/build-go
         with:
           context: "."
+          goarch: arm64
           file: "./Dockerfile"
 
       - name: Debug artifacts
