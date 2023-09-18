@@ -75,7 +75,7 @@ void DnstapInputStream::_read_frame_stream_file()
             break;
         } else {
             // Abnormal end
-            _logger->warn("fstrm_reader_read() data stream ended abnormally: {}", result);
+            _logger->warn("fstrm_reader_read() data stream ended abnormally: {}", static_cast<int>(result));
             break;
         }
     }
@@ -363,13 +363,13 @@ void DnstapInputStream::_create_frame_stream_unix_socket()
         });
         // client read EOF
         client->on<uvw::EndEvent>([this](const uvw::EndEvent &, uvw::PipeHandle &c_sock) {
-            _logger->info("[{}]: dnstap client EOF {}", _name, c_sock.fd());
+            _logger->info("[{}]: dnstap client EOF {}", _name, c_sock.sock());
             c_sock.stop();
             c_sock.close();
         });
 
         _unix_server_h->accept(*client);
-        _logger->info("[{}]: dnstap client connected {}", _name, client->fd());
+        _logger->info("[{}]: dnstap client connected {}", _name, client->sock());
         _unix_sessions[client->fd()] = std::make_unique<FrameSessionData<uvw::PipeHandle>>(client, CONTENT_TYPE, on_data_frame);
         client->read();
     });

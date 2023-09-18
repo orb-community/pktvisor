@@ -1,12 +1,13 @@
 
 message(STATUS "visor-core")
 
-find_package(Corrade REQUIRED PluginManager)
-
 set_directory_properties(PROPERTIES CORRADE_USE_PEDANTIC_FLAGS ON)
 
+#generate cpp code from opentelemetry-proto
 find_package(Protobuf REQUIRED)
 set(OTELCPP_PROTO_PATH ${CONAN_OPENTELEMETRY-PROTO_ROOT}/res)
+set(BUILD_SHARED_LIBS FALSE)
+include(opentelemetry-tools)
 include(opentelemetry-proto)
 
 add_library(visor-core

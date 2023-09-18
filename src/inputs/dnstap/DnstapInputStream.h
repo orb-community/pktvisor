@@ -11,7 +11,7 @@
 #include "UnixFrameSession.h"
 #endif
 #include "InputStream.h"
-#include "dnstap.pb.h"
+#include "pb/dnstap.pb.h"
 #include "utils.h"
 #ifdef __GNUC__
 #pragma GCC diagnostic push
