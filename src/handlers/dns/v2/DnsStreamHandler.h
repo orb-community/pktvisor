@@ -11,7 +11,7 @@
 #include "StreamHandler.h"
 #include "TransactionManager.h"
 #include "dns.h"
-#include "dnstap.pb.h"
+#include "pb/dnstap.pb.h"
 #include <Corrade/Utility/Debug.h>
 #include <bitset>
 #include <limits>

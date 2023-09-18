@@ -4,6 +4,7 @@
 
 #include "GeoDB.h"
 #include <cstring>
+#include <fmt/format.h>
 #include <stdexcept>
 
 namespace visor::geo {
@@ -112,7 +113,7 @@ City MaxmindDB::getGeoLoc(const struct sockaddr_in6 *sa6) const
 
     std::string ip_address;
     if (_lru_geo_cache) {
-        ip_address = fmt::format("{}", sa6->sin6_addr.s6_addr);
+        ip_address = fmt::format("{}", fmt::join(sa6->sin6_addr.s6_addr, ""));
         std::shared_lock lock(_cache_mutex);
         if (auto geoloc = _lru_geo_cache->getValue(ip_address); geoloc.has_value()) {
             return geoloc.value();
@@ -304,7 +305,7 @@ std::string MaxmindDB::getASNString(const struct sockaddr_in6 *sa6) const
 
     std::string ip_address;
     if (_lru_asn_cache) {
-        ip_address = fmt::format("{}", sa6->sin6_addr.s6_addr);
+        ip_address = fmt::format("{}", fmt::join(sa6->sin6_addr.s6_addr, ""));
         std::shared_lock lock(_cache_mutex);
         if (auto asn = _lru_asn_cache->getValue(ip_address); asn.has_value()) {
             return asn.value();
