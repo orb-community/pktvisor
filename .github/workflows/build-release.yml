@@ -8,7 +8,6 @@ on:
   push:
     branches:
       - master
-      - etaques-patch-1
 
 env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
@@ -112,64 +111,64 @@ jobs:
           path: ./
           retention-days: 1
           
-  # release:
-  #   needs: [ unit-tests ]
-  #   runs-on: ubuntu-latest
-  #   # if this is a push into one of our main branches (rather than just a pull request), we will also package
-  #   if: github.event_name != 'pull_request'
-  #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@v3
-  #       with:
-  #         fetch-depth: 0
+  release:
+    needs: [ unit-tests ]
+    runs-on: ubuntu-latest
+    # if this is a push into one of our main branches (rather than just a pull request), we will also package
+    if: github.event_name != 'pull_request'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
           
-  #     - name: Remove suffix from Cmakelists.txt file
-  #       run: |
-  #         ESCAPED_REPLACE_RELEASE=$(printf '%s\n' 'VISOR_PRERELEASE ""' | sed -e 's/[\/&]/\\&/g')
-  #         sed -i -e "s/VISOR_PRERELEASE \"-develop\"/$ESCAPED_REPLACE_RELEASE/g" CMakeLists.txt
+      - name: Remove suffix from Cmakelists.txt file
+        run: |
+          ESCAPED_REPLACE_RELEASE=$(printf '%s\n' 'VISOR_PRERELEASE ""' | sed -e 's/[\/&]/\\&/g')
+          sed -i -e "s/VISOR_PRERELEASE \"-develop\"/$ESCAPED_REPLACE_RELEASE/g" CMakeLists.txt
 
-  #     - name: Create Build Environment
-  #       run: cmake -E make_directory ${{github.workspace}}/build
+      - name: Create Build Environment
+        run: cmake -E make_directory ${{github.workspace}}/build
 
-  #     - name: Get Conan
-  #       id: conan
-  #       uses: turtlebrowser/get-conan@main
-  #       with:
-  #         version: 1.59.0
+      - name: Get Conan
+        id: conan
+        uses: turtlebrowser/get-conan@main
+        with:
+          version: 1.59.0
 
-  #     - name: Configure CMake to generate VERSION
-  #       shell: bash
-  #       working-directory: ${{github.workspace}}/build
-  #       run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE
+      - name: Configure CMake to generate VERSION
+        shell: bash
+        working-directory: ${{github.workspace}}/build
+        run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE
         
-  #     - name: Set variables
-  #       run: |
-  #         echo "LAST_TAG=`git tag --sort=committerdate | tail -1`" >> $GITHUB_ENV
-  #         echo "TAG=v`cat ${{github.workspace}}/build/VERSION`" >> $GITHUB_ENV
-  #         echo "VERSION=`cat ${{github.workspace}}/build/VERSION`" >> $GITHUB_ENV
+      - name: Set variables
+        run: |
+          echo "LAST_TAG=`git tag --sort=committerdate | tail -1`" >> $GITHUB_ENV
+          echo "TAG=v`cat ${{github.workspace}}/build/VERSION`" >> $GITHUB_ENV
+          echo "VERSION=`cat ${{github.workspace}}/build/VERSION`" >> $GITHUB_ENV
         
-  #     - name: Generate release changelog
-  #       run: |
-  #         echo "# What's new" > changelog.md
-  #         git log ${{ env.LAST_TAG }}..HEAD --pretty=format:"$ad- %s [%an]" >> changelog.md
-  #         sed -i -e "s/- /• /g" changelog.md
+      - name: Generate release changelog
+        run: |
+          echo "# What's new" > changelog.md
+          git log ${{ env.LAST_TAG }}..HEAD --pretty=format:"$ad- %s [%an]" >> changelog.md
+          sed -i -e "s/- /• /g" changelog.md
           
-  #     - name: Post pktvisor changelog in slack channel
-  #       run: |
-  #         curl -d "text=:mega: *Pktvisor release reporter* :mega:
-  #         $(cat changelog.md)" -d "channel=C041B9204CF" -H "Authorization: Bearer ${{secrets.SLACK_APP_TOKEN}}" -X POST https://slack.com/api/chat.postMessage          
+      - name: Post pktvisor changelog in slack channel
+        run: |
+          curl -d "text=:mega: *Pktvisor release reporter* :mega:
+          $(cat changelog.md)" -d "channel=C041B9204CF" -H "Authorization: Bearer ${{secrets.SLACK_APP_TOKEN}}" -X POST https://slack.com/api/chat.postMessage          
 
-  #     - name: Create release
-  #       id: create_release
-  #       uses: actions/create-release@latest
-  #       env:
-  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
-  #       with:
-  #         tag_name: ${{ env.TAG }}
-  #         release_name: ${{ env.VERSION }}
-  #         body_path: ${{github.workspace}}/changelog.md
-  #         draft: false
-  #         prerelease: false
+      - name: Create release
+        id: create_release
+        uses: actions/create-release@latest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
+        with:
+          tag_name: ${{ env.TAG }}
+          release_name: ${{ env.VERSION }}
+          body_path: ${{github.workspace}}/changelog.md
+          draft: false
+          prerelease: false
 
   spinup-arm64-runner:
     needs: [ prebuild-package ]
