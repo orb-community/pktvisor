@@ -342,7 +342,7 @@ jobs:
           retention-days: 1
           
   build-cli-win64:
-    needs: [ build-win64 ]
+    needs: [ build-win64, release ]
     runs-on: ubuntu-latest
     steps:    
       - name: Checkout code
