@@ -24,4 +24,23 @@ target_link_libraries(VisorLibDns
         ${CONAN_LIBS_FMT}
         )
 
-add_subdirectory(tests)
+## TEST SUITE
+add_executable(unit-tests-visor-dns tests/test_dns.cpp)
+
+target_link_libraries(unit-tests-visor-dns 
+        PRIVATE
+        Visor::Lib::Dns
+        ${CONAN_LIBS_CATCH2})
+
+add_test(NAME unit-tests-visor-dns
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMAND unit-tests-visor-dns)
+
+# Benchmark
+add_executable(benchmark-visor-dns tests/benchmark_dns.cpp)
+
+target_link_libraries(benchmark-visor-dns
+        PRIVATE
+        Visor::Lib::Dns
+        ${CONAN_LIBS_BENCHMARK}
+        ${CONAN_LIBS_CATCH2})

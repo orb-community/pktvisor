@@ -4,7 +4,7 @@
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #pragma clang diagnostic ignored "-Wrange-loop-analysis"
 #endif
-#include <catch2/catch.hpp>
+#include <catch2/catch_test_macros.hpp>
 #include <cpc_sketch.hpp>
 #include <frequent_items_sketch.hpp>
 #include <kll_sketch.hpp>

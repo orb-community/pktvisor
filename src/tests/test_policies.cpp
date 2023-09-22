@@ -1,10 +1,23 @@
+#include <Corrade/PluginManager/AbstractManager.h>
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmissing-declarations"
+#endif
+#include "inputs/static_plugins.h"
+#include "handlers/static_plugins.h"
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
+
 #include "CoreRegistry.h"
 #include "HandlerManager.h"
 #include "HandlerModulePlugin.h"
 #include "InputStream.h"
 #include "InputStreamManager.h"
 #include "Policies.h"
-#include <catch2/catch.hpp>
+
+#include <catch2/catch_test_macros.hpp>
+#include <catch2/matchers/catch_matchers.hpp>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
 #include <yaml-cpp/yaml.h>
