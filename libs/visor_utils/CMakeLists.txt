@@ -25,10 +25,9 @@ add_executable(unit-tests-visor-utils test_utils.cpp)
 
 target_link_libraries(unit-tests-visor-utils
         PRIVATE
-        ${CONAN_LIBS_JSON-SCHEMA-VALIDATOR}
         Visor::Lib::Utils
         ${CONAN_LIBS_CATCH2})
 
 add_test(NAME unit-tests-visor-utils
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/libs
         COMMAND unit-tests-visor-utils)
