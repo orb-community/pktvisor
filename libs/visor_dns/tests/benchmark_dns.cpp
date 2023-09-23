@@ -1,8 +1,8 @@
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
-#include <catch2/catch_test_macros.hpp>
 #include <catch2/benchmark/catch_benchmark.hpp>
+#include <catch2/catch_test_macros.hpp>
 
 #include "dns.h"
 #ifdef __GNUC__
@@ -30,36 +30,36 @@ void BM_aggregateDomain(const std::string &domain)
 
 void BM_pcapReadNoParse()
 {
-        auto reader = pcpp::IFileReaderDevice::getReader("tests/dns_udp_tcp_random.pcap");
+    auto reader = pcpp::IFileReaderDevice::getReader("tests/dns_udp_tcp_random.pcap");
 
-        if (!reader->open()) {
-            throw std::runtime_error("Cannot open pcap/pcapng file");
-        }
+    if (!reader->open()) {
+        throw std::runtime_error("Cannot open pcap/pcapng file");
+    }
 
-        pcpp::RawPacket rawPacket;
-        while (reader->getNextPacket(rawPacket)) {
-        }
+    pcpp::RawPacket rawPacket;
+    while (reader->getNextPacket(rawPacket)) {
+    }
 
-        reader->close();
-        delete reader;
+    reader->close();
+    delete reader;
 }
 
 void BM_pcapReadParse()
 {
 
-        auto reader = pcpp::IFileReaderDevice::getReader("tests/dns_udp_tcp_random.pcap");
+    auto reader = pcpp::IFileReaderDevice::getReader("tests/dns_udp_tcp_random.pcap");
 
-        if (!reader->open()) {
-            throw std::runtime_error("Cannot open pcap/pcapng file");
-        }
+    if (!reader->open()) {
+        throw std::runtime_error("Cannot open pcap/pcapng file");
+    }
 
-        pcpp::RawPacket rawPacket;
-        while (reader->getNextPacket(rawPacket)) {
-            pcpp::Packet packet(&rawPacket, pcpp::OsiModelTransportLayer);
-        }
+    pcpp::RawPacket rawPacket;
+    while (reader->getNextPacket(rawPacket)) {
+        pcpp::Packet packet(&rawPacket, pcpp::OsiModelTransportLayer);
+    }
 
-        reader->close();
-        delete reader;
+    reader->close();
+    delete reader;
 }
 
 TEST_CASE("DNS benchmark")
@@ -79,7 +79,8 @@ TEST_CASE("DNS benchmark")
         return BM_pcapReadNoParse();
     };
 
-    BENCHMARK("Pcap Read No Parse") {
+    BENCHMARK("Pcap Read No Parse")
+    {
         return BM_pcapReadParse();
     };
 }
