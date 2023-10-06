@@ -184,7 +184,9 @@ bool PingProbe::start(std::shared_ptr<uvw::Loop> io_loop)
         throw NetProbeException("PingProbe - unable to initialize AsyncHandle receiver");
     }
     _recv_handler->on<uvw::AsyncEvent>([this](const auto &, auto &) {
-        // TODO note this processes received packets across ALL active ping probes (because of the single receiver thread)
+        // note this processes received packets across ALL active ping probes (because of the single receiver thread)
+        // the expectation is that packets which did not originate from this probe will be ignored by the handler attached to this probe,
+        // since it did not originate from it
         for (auto &[packet, stamp] : PingReceiver::recv_packets) {
             _recv(packet, TestType::Ping, _name, stamp);
         }

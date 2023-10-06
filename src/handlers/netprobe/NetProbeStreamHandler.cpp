@@ -381,14 +381,14 @@ void NetProbeMetricsManager::process_netprobe_icmp(pcpp::IcmpLayer *layer, const
 
     if (layer->getMessageType() == pcpp::ICMP_ECHO_REQUEST) {
         if (auto request = layer->getEchoRequestData(); request != nullptr) {
-            // TODO this may need more work to identify that the packet came from this probe/target
-            _request_reply_manager->start_transaction(target, {{stamp, {0, 0}}, target});
+            auto ping_id = (static_cast<uint32_t>(request->header->id) << 16) | request->header->sequence;
+            _request_reply_manager->start_transaction(std::to_string(ping_id), {{stamp, {0, 0}}, target});
         }
         live_bucket()->process_attempts(_deep_sampling_now, target);
     } else if (layer->getMessageType() == pcpp::ICMP_ECHO_REPLY) {
         if (auto reply = layer->getEchoReplyData(); reply != nullptr) {
-            // TODO this may need more work to identify that the packet came from this probe/target
-            auto xact = _request_reply_manager->maybe_end_transaction(target, stamp);
+            auto ping_id = (static_cast<uint32_t>(reply->header->id) << 16) | reply->header->sequence;
+            auto xact = _request_reply_manager->maybe_end_transaction(std::to_string(ping_id), stamp);
             if (xact.first == Result::Valid) {
                 live_bucket()->new_transaction(_deep_sampling_now, xact.second);
             } else if (xact.first == Result::TimedOut) {
