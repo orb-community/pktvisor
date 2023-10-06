@@ -79,7 +79,7 @@ void NetProbeStreamHandler::probe_signal_send(pcpp::Packet &payload, TestType ty
         }
     } else if (type == TestType::TCP) {
         if (auto tcp = payload.getLayerOfType<pcpp::TcpLayer>(); tcp != nullptr) {
-            _metrics->process_netprobe_tcp(static_cast<uint32_t>(tcp->getSrcPort()), true, name, stamp);
+            _metrics->process_netprobe_tcp(static_cast<uint32_t>(tcp->getDstPort()), true, name, stamp);
         }
     }
 }
@@ -119,6 +119,7 @@ void NetProbeMetricsBucket::specialized_merge(const AbstractMetricsBucket &o, Me
         if (group_enabled(group::NetProbeMetrics::Counters)) {
             _targets_metrics[targetId]->attempts += target.second->attempts;
             _targets_metrics[targetId]->successes += target.second->successes;
+            _targets_metrics[targetId]->connect_failures += target.second->connect_failures;
             _targets_metrics[targetId]->dns_failures += target.second->dns_failures;
             _targets_metrics[targetId]->timed_out += target.second->timed_out;
         }
@@ -143,6 +144,7 @@ void NetProbeMetricsBucket::to_prometheus(std::stringstream &out, Metric::LabelM
         if (group_enabled(group::NetProbeMetrics::Counters)) {
             target.second->attempts.to_prometheus(out, target_labels);
             target.second->successes.to_prometheus(out, target_labels);
+            target.second->connect_failures.to_prometheus(out, target_labels);
             target.second->dns_failures.to_prometheus(out, target_labels);
             target.second->timed_out.to_prometheus(out, target_labels);
         }
@@ -198,6 +200,7 @@ void NetProbeMetricsBucket::to_opentelemetry(metrics::v1::ScopeMetrics &scope, t
         if (group_enabled(group::NetProbeMetrics::Counters)) {
             target.second->attempts.to_opentelemetry(scope, start_ts, end_ts, target_labels);
             target.second->successes.to_opentelemetry(scope, start_ts, end_ts, target_labels);
+            target.second->connect_failures.to_opentelemetry(scope, start_ts, end_ts, target_labels);
             target.second->dns_failures.to_opentelemetry(scope, start_ts, end_ts, target_labels);
             target.second->timed_out.to_opentelemetry(scope, start_ts, end_ts, target_labels);
         }
@@ -252,6 +255,7 @@ void NetProbeMetricsBucket::to_json(json &j) const
         if (group_enabled(group::NetProbeMetrics::Counters)) {
             target.second->attempts.to_json(j["targets"][targetId]);
             target.second->successes.to_json(j["targets"][targetId]);
+            target.second->connect_failures.to_json(j["targets"][targetId]);
             target.second->dns_failures.to_json(j["targets"][targetId]);
             target.second->timed_out.to_json(j["targets"][targetId]);
         }
@@ -311,9 +315,12 @@ void NetProbeMetricsBucket::process_failure(ErrorType error, const std::string &
             break;
         case ErrorType::Timeout:
             ++_targets_metrics[target]->timed_out;
+            break;
         case ErrorType::SocketError:
         case ErrorType::InvalidIp:
-        case ErrorType::ConnectionFailure:
+        case ErrorType::ConnectFailure:
+            ++_targets_metrics[target]->connect_failures;
+            break;
         default:
             break;
         }

@@ -49,6 +49,7 @@ struct Target {
     Counter successes;
     Counter minimum;
     Counter maximum;
+    Counter connect_failures;
     Counter dns_failures;
     Counter timed_out;
 
@@ -59,7 +60,8 @@ struct Target {
         , successes(NET_PROBE_SCHEMA, {"successes"}, "Total Net Probe successes")
         , minimum(NET_PROBE_SCHEMA, {"response_min_us"}, "Minimum response time measured in the reporting interval")
         , maximum(NET_PROBE_SCHEMA, {"response_max_us"}, "Maximum response time measured in the reporting interval")
-        , dns_failures(NET_PROBE_SCHEMA, {"dns_lookup_failures"}, "Total Net Probe failures when performed DNS lookup")
+        , connect_failures(NET_PROBE_SCHEMA, {"connect_failures"}, "Total Net Probe failures when performing a TCP socket connection")
+        , dns_failures(NET_PROBE_SCHEMA, {"dns_lookup_failures"}, "Total Net Probe failures when performing a DNS lookup")
         , timed_out(NET_PROBE_SCHEMA, {"packets_timeout"}, "Total Net Probe timeout transactions")
     {
     }
