@@ -11,7 +11,6 @@
 #ifdef __GNUC__
 #pragma GCC diagnostic pop
 #endif
-#include <spdlog/spdlog.h>
 
 namespace visor::input::netprobe {
 bool TcpProbe::start(std::shared_ptr<uvw::Loop> io_loop)
