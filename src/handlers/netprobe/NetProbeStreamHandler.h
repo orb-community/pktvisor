@@ -100,7 +100,7 @@ public:
 
 class NetProbeMetricsManager final : public visor::AbstractMetricsManager<NetProbeMetricsBucket>
 {
-    typedef TransactionManager<uint32_t, NetProbeTransaction, std::hash<uint32_t>> NetProbeTransactionManager;
+    typedef TransactionManager<std::string, NetProbeTransaction, std::hash<std::string>> NetProbeTransactionManager;
     std::unique_ptr<NetProbeTransactionManager> _request_reply_manager;
 
 public:
@@ -124,7 +124,7 @@ public:
     void process_filtered(timespec stamp);
     void process_failure(ErrorType error, const std::string &target);
     void process_netprobe_icmp(pcpp::IcmpLayer *layer, const std::string &target, timespec stamp);
-    void process_netprobe_tcp(uint32_t port, bool send, const std::string &target, timespec stamp);
+    void process_netprobe_tcp(bool send, const std::string &target, timespec stamp);
 };
 
 class NetProbeStreamHandler final : public visor::StreamMetricsHandler<NetProbeMetricsManager>

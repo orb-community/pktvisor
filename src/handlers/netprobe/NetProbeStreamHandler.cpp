@@ -79,7 +79,7 @@ void NetProbeStreamHandler::probe_signal_send(pcpp::Packet &payload, TestType ty
         }
     } else if (type == TestType::TCP) {
         if (auto tcp = payload.getLayerOfType<pcpp::TcpLayer>(); tcp != nullptr) {
-            _metrics->process_netprobe_tcp(static_cast<uint32_t>(tcp->getDstPort()), true, name, stamp);
+            _metrics->process_netprobe_tcp(true, name, stamp);
         }
     }
 }
@@ -92,7 +92,7 @@ void NetProbeStreamHandler::probe_signal_recv(pcpp::Packet &payload, TestType ty
         }
     } else if (type == TestType::TCP) {
         if (auto tcp = payload.getLayerOfType<pcpp::TcpLayer>(); tcp != nullptr) {
-            _metrics->process_netprobe_tcp(static_cast<uint32_t>(tcp->getDstPort()), false, name, stamp);
+            _metrics->process_netprobe_tcp(false, name, stamp);
         }
     }
 }
@@ -381,12 +381,12 @@ void NetProbeMetricsManager::process_netprobe_icmp(pcpp::IcmpLayer *layer, const
 
     if (layer->getMessageType() == pcpp::ICMP_ECHO_REQUEST) {
         if (auto request = layer->getEchoRequestData(); request != nullptr) {
-            _request_reply_manager->start_transaction((static_cast<uint32_t>(request->header->id) << 16) | request->header->sequence, {{stamp, {0, 0}}, target});
+            _request_reply_manager->start_transaction(target, {{stamp, {0, 0}}, target});
         }
         live_bucket()->process_attempts(_deep_sampling_now, target);
     } else if (layer->getMessageType() == pcpp::ICMP_ECHO_REPLY) {
         if (auto reply = layer->getEchoReplyData(); reply != nullptr) {
-            auto xact = _request_reply_manager->maybe_end_transaction((static_cast<uint32_t>(reply->header->id) << 16) | reply->header->sequence, stamp);
+            auto xact = _request_reply_manager->maybe_end_transaction(target, stamp);
             if (xact.first == Result::Valid) {
                 live_bucket()->new_transaction(_deep_sampling_now, xact.second);
             } else if (xact.first == Result::TimedOut) {
@@ -396,16 +396,16 @@ void NetProbeMetricsManager::process_netprobe_icmp(pcpp::IcmpLayer *layer, const
     }
 }
 
-void NetProbeMetricsManager::process_netprobe_tcp(uint32_t port, bool send, const std::string &target, timespec stamp)
+void NetProbeMetricsManager::process_netprobe_tcp(bool send, const std::string &target, timespec stamp)
 {
     // base event
     new_event(stamp);
 
     if (send) {
-        _request_reply_manager->start_transaction(port, {{stamp, {0, 0}}, target});
+        _request_reply_manager->start_transaction(target, {{stamp, {0, 0}}, target});
         live_bucket()->process_attempts(_deep_sampling_now, target);
     } else {
-        auto xact = _request_reply_manager->maybe_end_transaction(port, stamp);
+        auto xact = _request_reply_manager->maybe_end_transaction(target, stamp);
         if (xact.first == Result::Valid) {
             live_bucket()->new_transaction(_deep_sampling_now, xact.second);
         } else if (xact.first == Result::TimedOut) {
