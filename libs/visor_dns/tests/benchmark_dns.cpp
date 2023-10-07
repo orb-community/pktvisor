@@ -1,9 +1,8 @@
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
-#include <catch2/benchmark/catch_benchmark.hpp>
-#include <catch2/catch_test_macros.hpp>
 
+#include "benchmark/benchmark.h"
 #include "dns.h"
 #ifdef __GNUC__
 #pragma GCC diagnostic push
@@ -22,65 +21,66 @@
 
 using namespace visor::lib::dns;
 
-void BM_aggregateDomain(const std::string &domain)
+static void BM_aggregateDomain(benchmark::State &state)
 {
     AggDomainResult result;
-    result = aggregateDomain(domain);
+    std::string domain{"biz.foo.bar.com"};
+    for (auto _ : state) {
+        result = aggregateDomain(domain);
+    }
 }
+BENCHMARK(BM_aggregateDomain);
 
-void BM_pcapReadNoParse()
+static void BM_aggregateDomainLong(benchmark::State &state)
 {
-    auto reader = pcpp::IFileReaderDevice::getReader("tests/dns_udp_tcp_random.pcap");
-
-    if (!reader->open()) {
-        throw std::runtime_error("Cannot open pcap/pcapng file");
+    AggDomainResult result;
+    std::string domain{"long1.long2.long3.long4.long5.long6.long7.long8.biz.foo.bar.com"};
+    for (auto _ : state) {
+        result = aggregateDomain(domain);
     }
-
-    pcpp::RawPacket rawPacket;
-    while (reader->getNextPacket(rawPacket)) {
-    }
-
-    reader->close();
-    delete reader;
 }
 
-void BM_pcapReadParse()
+BENCHMARK(BM_aggregateDomainLong);
+
+static void BM_pcapReadNoParse(benchmark::State &state)
 {
 
-    auto reader = pcpp::IFileReaderDevice::getReader("tests/dns_udp_tcp_random.pcap");
+    for (auto _ : state) {
+        auto reader = pcpp::IFileReaderDevice::getReader("fixtures/dns_udp_tcp_random.pcap");
 
-    if (!reader->open()) {
-        throw std::runtime_error("Cannot open pcap/pcapng file");
+        if (!reader->open()) {
+            throw std::runtime_error("Cannot open pcap/pcapng file");
+        }
+
+        pcpp::RawPacket rawPacket;
+        while (reader->getNextPacket(rawPacket)) {
+        }
+
+        reader->close();
+        delete reader;
     }
-
-    pcpp::RawPacket rawPacket;
-    while (reader->getNextPacket(rawPacket)) {
-        pcpp::Packet packet(&rawPacket, pcpp::OsiModelTransportLayer);
-    }
-
-    reader->close();
-    delete reader;
 }
+BENCHMARK(BM_pcapReadNoParse);
 
-TEST_CASE("DNS benchmark")
+static void BM_pcapReadParse1(benchmark::State &state)
 {
-    BENCHMARK("Aggregate Domain")
-    {
-        return BM_aggregateDomain("biz.foo.bar.com");
-    };
 
-    BENCHMARK("Aggregate Domain Long")
-    {
-        return BM_aggregateDomain("long1.long2.long3.long4.long5.long6.long7.long8.biz.foo.bar.com");
-    };
+    for (auto _ : state) {
+        auto reader = pcpp::IFileReaderDevice::getReader("fixtures/dns_udp_tcp_random.pcap");
 
-    BENCHMARK("Pcap Read No Parse")
-    {
-        return BM_pcapReadNoParse();
-    };
+        if (!reader->open()) {
+            throw std::runtime_error("Cannot open pcap/pcapng file");
+        }
 
-    BENCHMARK("Pcap Read No Parse")
-    {
-        return BM_pcapReadParse();
-    };
+        pcpp::RawPacket rawPacket;
+        while (reader->getNextPacket(rawPacket)) {
+            pcpp::Packet packet(&rawPacket, pcpp::OsiModelTransportLayer);
+        }
+
+        reader->close();
+        delete reader;
+    }
 }
+BENCHMARK(BM_pcapReadParse1);
+
+BENCHMARK_MAIN();

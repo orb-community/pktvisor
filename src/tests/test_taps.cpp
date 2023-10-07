@@ -1,19 +1,6 @@
-#include <Corrade/PluginManager/AbstractManager.h>
-#ifdef __GNUC__
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmissing-declarations"
-#endif
-#include "inputs/static_plugins.h"
-#include "handlers/static_plugins.h"
-#ifdef __GNUC__
-#pragma GCC diagnostic pop
-#endif
-
 #include "CoreRegistry.h"
 #include "Taps.h"
-
-#include <catch2/catch_test_macros.hpp>
-#include <catch2/matchers/catch_matchers.hpp>
+#include <catch2/catch.hpp>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
 #include <yaml-cpp/yaml.h>
