@@ -37,13 +37,16 @@ target_link_libraries(VisorInputDnstap
 set(VISOR_STATIC_PLUGINS ${VISOR_STATIC_PLUGINS} Visor::Input::Dnstap PARENT_SCOPE)
 
 ## TEST SUITE
-add_executable(unit-tests-input-dnstap tests/test_dnstap.cpp)
+add_executable(unit-tests-input-dnstap
+        tests/main.cpp
+        tests/test_dnstap.cpp
+        )
 
 target_link_libraries(unit-tests-input-dnstap
-        PRIVATE 
-        Visor::Input::Dnstap
-        Visor::Lib::Test)
+        PRIVATE Visor::Input::Dnstap
+        )
 
 add_test(NAME unit-tests-input-dnstap
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/src
-        COMMAND unit-tests-input-dnstap)
+        COMMAND unit-tests-input-dnstap
+        )
