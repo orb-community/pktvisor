@@ -1,4 +1,6 @@
-#include <catch2/catch.hpp>
+#include <catch2/catch_test_macros.hpp>
+#include <catch2/matchers/catch_matchers.hpp>
+#include <catch2/catch_test_visor.hpp>
 
 #include "DnsStreamHandler.h"
 #include "GeoDB.h"
