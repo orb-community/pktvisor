@@ -9,7 +9,7 @@ TEST_CASE("DNS Utilities", "[dns]")
 
     SECTION("aggregateDomain")
     {
-        AggDomainResult result;
+        std::pair<std::string, std::string> result;
         std::string domain;
 
         domain = "biz.foo.bar.com";

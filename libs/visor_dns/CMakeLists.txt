@@ -25,15 +25,15 @@ target_link_libraries(VisorLibDns
         )
 
 ## TEST SUITE
-# add_executable(unit-tests-visor-dns 
-#         tests/test_dns.cpp
-#         tests/benchmark_dns.cpp)
+add_executable(unit-tests-visor-dns
+        tests/test_dns.cpp
+        tests/benchmark_dns.cpp)
 
-# target_link_libraries(unit-tests-visor-dns 
-#         PRIVATE
-#         Visor::Lib::Dns
-#         ${CONAN_LIBS_CATCH2})
+target_link_libraries(unit-tests-visor-dns
+        PRIVATE
+        Visor::Lib::Dns
+        ${CONAN_LIBS_CATCH2})
 
-# add_test(NAME unit-tests-visor-dns
-#         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/libs/visor_dns
-#         COMMAND unit-tests-visor-dns)
+add_test(NAME unit-tests-visor-dns
+        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/libs/visor_dns
+        COMMAND unit-tests-visor-dns)
