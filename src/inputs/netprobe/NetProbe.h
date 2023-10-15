@@ -24,7 +24,7 @@ enum class ErrorType {
     SocketError,
     DnsLookupFailure,
     InvalidIp,
-    ConnectionFailure
+    ConnectFailure
 };
 
 enum class TestType {
