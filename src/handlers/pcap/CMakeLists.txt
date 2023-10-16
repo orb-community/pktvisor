@@ -21,4 +21,18 @@ target_link_libraries(VisorHandlerPcap
 
 set(VISOR_STATIC_PLUGINS ${VISOR_STATIC_PLUGINS} Visor::Handler::Pcap PARENT_SCOPE)
 
-add_subdirectory(tests)
+
+## TEST SUITE
+add_executable(unit-tests-handler-pcap
+        tests/test_pcap_layer.cpp
+        tests/test_json_schema.cpp)
+
+target_link_libraries(unit-tests-handler-pcap
+        PRIVATE
+        ${CONAN_LIBS_JSON-SCHEMA-VALIDATOR}
+        Visor::Handler::Pcap
+        Visor::Lib::Test)
+
+add_test(NAME unit-tests-handler-pcap
+        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/src
+        COMMAND unit-tests-handler-pcap)

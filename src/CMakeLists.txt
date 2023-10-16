@@ -58,7 +58,6 @@ set(VISOR_STATIC_PLUGINS ${VISOR_STATIC_PLUGINS} PARENT_SCOPE)
 
 ## TEST SUITE
 add_executable(unit-tests-visor-core
-        tests/main.cpp
         tests/test_sketches.cpp
         tests/test_metrics.cpp
         tests/test_geoip.cpp
@@ -68,13 +67,14 @@ add_executable(unit-tests-visor-core
         tests/test_handlers.cpp
         )
 
-target_include_directories(unit-tests-visor-core
-        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
-        )
+target_include_directories(unit-tests-visor-core PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
-target_link_libraries(unit-tests-visor-core PRIVATE Visor::Core ${VISOR_STATIC_PLUGINS})
+target_link_libraries(unit-tests-visor-core 
+        PRIVATE
+        Visor::Core
+        ${VISOR_STATIC_PLUGINS}
+        ${CONAN_LIBS_CATCH2})
 
 add_test(NAME unit-tests-visor-core
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/src
-        COMMAND unit-tests-visor-core
-        )
+        COMMAND unit-tests-visor-core)

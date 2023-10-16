@@ -30,16 +30,13 @@ target_link_libraries(VisorInputFlow
 set(VISOR_STATIC_PLUGINS ${VISOR_STATIC_PLUGINS} Visor::Input::Flow PARENT_SCOPE)
 
 ## TEST SUITE
-add_executable(unit-tests-input-flow
-        tests/main.cpp
-        tests/test_flow.cpp
-        )
+add_executable(unit-tests-input-flow test_flow.cpp)
 
 target_link_libraries(unit-tests-input-flow
-        PRIVATE Visor::Input::Flow
-        )
+        PRIVATE 
+        Visor::Input::Flow
+        Visor::Lib::Test)
 
 add_test(NAME unit-tests-input-flow
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/src
-        COMMAND unit-tests-input-flow
-        )
+        COMMAND unit-tests-input-flow)
