@@ -41,6 +41,9 @@ jobs:
         with:
           version: 1.61.0
 
+      - name: Select Xcode version
+        run: sudo xcode-select -s '/Applications/Xcode_15.0.app/Contents/Developer'
+
       - name: Setup Conan Cache
         uses: actions/cache@v3
         with:
