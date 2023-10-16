@@ -20,7 +20,7 @@ jobs:
   unit-tests:
     strategy:
       matrix:
-        os: [ ubuntu-latest ]
+        os: [ ubuntu-latest, macos-12 ]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
@@ -32,7 +32,7 @@ jobs:
         id: conan
         uses: turtlebrowser/get-conan@main
         with:
-          version: 1.59.0
+          version: 1.61.0
 
       - name: Setup Conan Cache
         uses: actions/cache@v3
@@ -84,7 +84,7 @@ jobs:
         id: conan
         uses: turtlebrowser/get-conan@main
         with:
-          version: 1.59.0
+          version: 1.61.0
 
       - name: Configure CMake to generate VERSION
         shell: bash
@@ -134,7 +134,7 @@ jobs:
         id: conan
         uses: turtlebrowser/get-conan@main
         with:
-          version: 1.59.0
+          version: 1.61.0
 
       - name: Configure CMake to generate VERSION
         shell: bash
@@ -279,7 +279,7 @@ jobs:
         id: conan
         uses: turtlebrowser/get-conan@main
         with:
-          version: 1.59.0
+          version: 1.61.0
 
       - name: Remove libpcap from conanfile
         shell: bash
