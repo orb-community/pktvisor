@@ -27,7 +27,7 @@ jobs:
     runs-on: macos-13
     env:
       DEVELOPER_DIR: /Applications/Xcode_15.0.app/Contents/Developer
-      LIBRARY_PATH: /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib
+
     steps:
       - uses: actions/checkout@v3
 
@@ -42,8 +42,8 @@ jobs:
         with:
           version: 1.61.0
 
-      - name: Select Xcode version
-        run: ls /usr/bin/c*
+      - name: Append LIBRARY_PATH 
+        run: echo "LIBRARY_PATH=$LIBRARY_PATH:/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib" >> $GITHUB_ENV
             
       - name: Setup Conan Cache
         uses: actions/cache@v3
