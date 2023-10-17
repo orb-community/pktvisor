@@ -2,7 +2,6 @@
 
 #include "NetProbeException.h"
 #include "ThreadName.h"
-#include "uvw/util.h"
 #include <Packet.h>
 #include <TimespecTimeval.h>
 #include <uvw/idle.h>
