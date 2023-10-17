@@ -41,7 +41,7 @@ jobs:
 
       - name: Append OSX Environment
         run: |
-             echo "LIBRARY_PATH=$LIBRARY_PATH:/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib" >> $GITHUB_ENV |
+           #  echo "LIBRARY_PATH=$LIBRARY_PATH:/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib" >> $GITHUB_ENV |
              echo "SDKROOT=$(xcrun --sdk macosx --show-sdk-path)" >> $GITHUB_ENV
          
       - name: Setup Conan Cache
@@ -60,11 +60,6 @@ jobs:
         # and build directories, but this is only available with CMake 3.13 and higher.
         # The CMake binaries on the Github Actions machines are (as of this writing) 3.12
         run: PKG_CONFIG_PATH=${{github.workspace}}/local/lib/pkgconfig cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE
-
-      - name: Archive Test Results
-        if: always()
-        shell: bash
-        run: cat /Users/runner/work/pktvisor/pktvisor/build/conan_home/.conan/data/flex/2.6.4/_/_/build/9c74366a6d65a5f05c17d4fe1d17947edff6854f/config.log
 
       - name: Build
         working-directory: ${{github.workspace}}/build
