@@ -3,9 +3,11 @@ catch2/3.4.0
 corrade/2020.06
 cpp-httplib/0.14.1
 docopt.cpp/0.6.3
+gnutls/3.7.8
 fast-cpp-csv-parser/cci.20211104
 json-schema-validator/2.2.0
 libmaxminddb/1.7.1
+libnghttp2/1.57.0
 nlohmann_json/3.11.2
 openssl/1.1.1w
 opentelemetry-proto/1.0.0
