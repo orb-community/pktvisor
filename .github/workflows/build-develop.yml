@@ -24,10 +24,7 @@ jobs:
     # cross-platform coverage.
     # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
 
-    runs-on: macos-13
-    env:
-      DEVELOPER_DIR: /Applications/Xcode_15.0.app/Contents/Developer
-
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v3
 
@@ -42,9 +39,11 @@ jobs:
         with:
           version: 1.61.0
 
-      - name: Append LIBRARY_PATH 
-        run: echo "LIBRARY_PATH=$LIBRARY_PATH:/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib" >> $GITHUB_ENV
-            
+      - name: Append OSX Environment
+        run: |
+             echo "LIBRARY_PATH=$LIBRARY_PATH:/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib" >> $GITHUB_ENV |
+             echo "SDKROOT=$(xcrun --sdk macosx --show-sdk-path)" >> $GITHUB_ENV
+         
       - name: Setup Conan Cache
         uses: actions/cache@v3
         with:
