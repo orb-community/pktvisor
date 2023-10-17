@@ -42,8 +42,10 @@ jobs:
           version: 1.61.0
 
       - name: Select Xcode version
-        run: xcode-select --install |
-             ls /usr/bin/g*
+        run: ls /usr/bin/c* |
+             ls -la /Applications/Xcode_15.0.app/Contents/Developer/Toolchains |
+             ls -la /Applications/Xcode_15.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain |
+             /Applications/Xcode_15.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/cc  
             
       - name: Setup Conan Cache
         uses: actions/cache@v3
@@ -61,6 +63,11 @@ jobs:
         # and build directories, but this is only available with CMake 3.13 and higher.
         # The CMake binaries on the Github Actions machines are (as of this writing) 3.12
         run: PKG_CONFIG_PATH=${{github.workspace}}/local/lib/pkgconfig cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE
+
+      - name: Archive Test Results
+        if: always()
+        shell: bash
+        run: cat /Users/runner/work/pktvisor/pktvisor/build/conan_home/.conan/data/flex/2.6.4/_/_/build/9c74366a6d65a5f05c17d4fe1d17947edff6854f/config.log
 
       - name: Build
         working-directory: ${{github.workspace}}/build
