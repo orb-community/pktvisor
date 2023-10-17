@@ -45,7 +45,7 @@ jobs:
         run: ls /usr/bin/c* |
              ls -la /Applications/Xcode_15.0.app/Contents/Developer/Toolchains |
              ls -la /Applications/Xcode_15.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain |
-             /Applications/Xcode_15.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/cc  
+             /Applications/Xcode_15.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/cc --version
             
       - name: Setup Conan Cache
         uses: actions/cache@v3
