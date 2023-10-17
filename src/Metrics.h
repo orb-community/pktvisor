@@ -4,7 +4,6 @@
 
 #pragma once
 #include <nlohmann/json.hpp>
-#include <opentelemetry/proto/metrics/v1/metrics.pb.h>
 #include <sstream>
 #include <timer.hpp>
 #ifdef __GNUC__
@@ -17,6 +16,7 @@
 #include <cpc_sketch.hpp>
 #include <frequent_items_sketch.hpp>
 #include <kll_sketch.hpp>
+#include <opentelemetry/proto/metrics/v1/metrics.pb.h>
 #ifdef __GNUC__
 #pragma GCC diagnostic pop
 #endif

@@ -60,7 +60,7 @@ AFPacket::~AFPacket()
         fd = -1;
     }
     if (map != nullptr) {
-        munmap(map,  static_cast<size_t>(block_size) * num_blocks);
+        munmap(map, static_cast<size_t>(block_size) * num_blocks);
     }
 }
 
@@ -274,16 +274,25 @@ void filter_try_compile(const std::string &filter, struct sock_fprog *bpf, int l
         link_type = 1;
     }
 
-    ret = pcap_compile_nopcap(65535, link_type, &prog, filter.c_str(), 1, 0xffffffff);
+    pcap_t *handle = pcap_open_dead(link_type, 65535);
+    if (handle == nullptr) {
+        throw PcapException("Failed to open pcap handle");
+    }
+
+    ret = pcap_compile(handle, &prog, filter.c_str(), 1, 0xffffffff);
     if (ret < 0) {
+        pcap_close(handle);
         throw PcapException("Failed to parse bpf filter: " + filter);
     }
 
     bpf->len = prog.bf_len;
     bpf->filter = reinterpret_cast<struct sock_filter *>(malloc(bpf->len * sizeof(struct sock_filter)));
     if (bpf->filter == nullptr) {
+        pcap_close(handle);
         throw PcapException("Failed to generating bpf filter: Out of memory");
     }
+
+    pcap_close(handle);
 
     for (i = 0, ins = prog.bf_insns, out = bpf->filter; i < bpf->len;
          ++i, ++ins, ++out) {
