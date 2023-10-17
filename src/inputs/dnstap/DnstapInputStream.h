@@ -30,11 +30,11 @@
 #include <uv.h>
 
 namespace uvw {
-class Loop;
-class AsyncHandle;
-class PipeHandle;
-class TCPHandle;
-class TimerHandle;
+class loop;
+class async_handle;
+class pipe_handle;
+class tcp_handle;
+class timer_handle;
 }
 
 struct fstrm_reader;
@@ -48,15 +48,15 @@ class DnstapInputStream : public visor::InputStream
     std::shared_ptr<spdlog::logger> _logger;
 
     std::unique_ptr<std::thread> _io_thread;
-    std::shared_ptr<uvw::Loop> _io_loop;
-    std::shared_ptr<uvw::AsyncHandle> _async_h;
-    std::shared_ptr<uvw::TimerHandle> _timer;
+    std::shared_ptr<uvw::loop> _io_loop;
+    std::shared_ptr<uvw::async_handle> _async_h;
+    std::shared_ptr<uvw::timer_handle> _timer;
 
-    std::shared_ptr<uvw::PipeHandle> _unix_server_h;
-    std::unordered_map<uv_os_fd_t, std::unique_ptr<FrameSessionData<uvw::PipeHandle>>> _unix_sessions;
+    std::shared_ptr<uvw::pipe_handle> _unix_server_h;
+    std::unordered_map<uv_os_fd_t, std::unique_ptr<FrameSessionData<uvw::pipe_handle>>> _unix_sessions;
 
-    std::shared_ptr<uvw::TCPHandle> _tcp_server_h;
-    std::unordered_map<uv_os_fd_t, std::unique_ptr<FrameSessionData<uvw::TCPHandle>>> _tcp_sessions;
+    std::shared_ptr<uvw::tcp_handle> _tcp_server_h;
+    std::unordered_map<uv_os_fd_t, std::unique_ptr<FrameSessionData<uvw::tcp_handle>>> _tcp_sessions;
 
     static const inline ConfigsDefType _config_defs = {
         "tcp",

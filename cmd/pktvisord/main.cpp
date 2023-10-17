@@ -593,7 +593,7 @@ int main(int argc, char *argv[])
     // if we are demonized, change to root directory now that (potentially) logs are open
     if (options.daemon) {
 #if __has_include(<unistd.h>)
-        chdir("/");
+        [[maybe_unused]] int result = chdir("/");
 #endif
     }
 
