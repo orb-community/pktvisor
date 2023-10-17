@@ -64,7 +64,7 @@ void DnsStreamHandler::start()
         _f_rcodes.push_back(NoError);
     } else if (config_exists("only_rcode")) {
         std::vector<std::string> rcodes;
-        uint64_t want_code;
+        uint64_t want_code{0};
         try {
             want_code = config_get<uint64_t>("only_rcode");
         } catch (const std::exception &e) {

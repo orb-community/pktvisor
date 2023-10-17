@@ -4,6 +4,13 @@ set_directory_properties(PROPERTIES CORRADE_USE_PEDANTIC_FLAGS ON)
 
 protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS pb/dnstap.proto)
 
+if(NOT WIN32)
+    # Suppress the warning for the generated files
+    set_source_files_properties(${PROTO_SRCS} ${PROTO_HDRS}
+        PROPERTIES COMPILE_FLAGS "-Wno-missing-declarations -Wno-unused-parameter"
+    )
+endif()
+
 corrade_add_static_plugin(VisorInputDnstap ${CMAKE_CURRENT_BINARY_DIR}
         Dnstap.conf
         DnstapInputModulePlugin.cpp

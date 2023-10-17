@@ -7,15 +7,16 @@
 #ifdef __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wold-style-cast"
+#pragma GCC diagnostic ignored "-Wunused-parameter"
 #pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
 #endif
 #include <IpAddress.h>
 #include <Packet.h>
+#include <uvw/loop.h>
+#include <uvw/dns.h>
 #ifdef __GNUC__
 #pragma GCC diagnostic pop
 #endif
-#include <uvw/dns.h>
-#include <uvw/loop.h>
 
 namespace visor::input::netprobe {
 
@@ -55,15 +56,15 @@ protected:
     std::string _name;
     pcpp::IPAddress _ip;
     std::string _dns;
-    std::shared_ptr<uvw::Loop> _io_loop;
+    std::shared_ptr<uvw::loop> _io_loop;
     RecvCallback _recv;
     SendCallback _send;
     FailCallback _fail;
 
     std::pair<std::string, bool> _resolve_dns(bool first_match = true, bool ipv4 = false)
     {
-        auto request = _io_loop->resource<uvw::GetAddrInfoReq>();
-        auto response = request->nodeAddrInfoSync(_dns);
+        auto request = _io_loop->resource<uvw::get_addr_info_req>();
+        auto response = request->node_addr_info_sync(_dns);
         if (!response.first) {
             return {std::string(), false};
         }
@@ -109,7 +110,7 @@ public:
         _fail = fail;
     }
 
-    virtual bool start(std::shared_ptr<uvw::Loop> io_loop) = 0;
+    virtual bool start(std::shared_ptr<uvw::loop> io_loop) = 0;
     virtual bool stop() = 0;
 };
 }

@@ -17,9 +17,9 @@ class TcpProbe final : public NetProbe
     bool _init{false};
     bool _is_ipv4{false};
     std::string _ip_str;
-    std::shared_ptr<uvw::TimerHandle> _interval_timer;
+    std::shared_ptr<uvw::timer_handle> _interval_timer;
 
-    std::shared_ptr<uvw::TCPHandle> _client;
+    std::shared_ptr<uvw::tcp_handle> _client;
 
     void _perform_tcp_process();
 
@@ -28,7 +28,7 @@ public:
         : NetProbe(id, name, ip, dns)
         , _dst_port(port) {};
     ~TcpProbe() = default;
-    bool start(std::shared_ptr<uvw::Loop> io_loop) override;
+    bool start(std::shared_ptr<uvw::loop> io_loop) override;
     bool stop() override;
 };
 }
