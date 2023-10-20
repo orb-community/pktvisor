@@ -1,21 +1,26 @@
 #pragma once
 
 #include <unordered_map>
+#include <vector>
 
 #include <nghttp2/nghttp2.h>
 #include <openssl/err.h>
 #include <openssl/ssl.h>
 
 #include "base64.h"
-#include "target.h"
 #include "tcpsession.h"
 #include "url_parser.h"
+
+struct Target {
+    http_parser_url *parsed;
+    std::string address;
+    std::string uri;
+};
 
 enum class HTTPMethod {
     POST,
     GET,
 };
-
 
 struct http2_stream_data {
     http2_stream_data(std::string _scheme, std::string _authority, std::string _path, int32_t _id, std::string _data)
@@ -71,11 +76,11 @@ public:
 
     int session_receive();
 
-    virtual void close();
+    void close() override;
 
-    virtual void receive_data(const char data[], size_t len);
+    void receive_data(const char data[], size_t len) override;
 
-    virtual void write(std::unique_ptr<char[]> data, size_t len);
+    void write(std::unique_ptr<char[]> data, size_t len) override;
 
     void process_receive(const uint8_t *data, size_t len);
 

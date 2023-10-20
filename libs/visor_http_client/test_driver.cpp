@@ -13,7 +13,6 @@
 #endif
 
 #include "httpssession.h"
-#include "target.h"
 
 void connect_tcp_events(std::shared_ptr<uvw::tcp_handle> tcp_handle, std::shared_ptr<TCPSession> tcp_session)
 {
