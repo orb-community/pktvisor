@@ -119,7 +119,7 @@ TEST_CASE("HTTP Client", "[http]")
     auto tcp_handle = loop->resource<uvw::tcp_handle>(family);
 
     auto malformed_data = [tcp_handle]() {
-        std::cout << "malformed_data" << std::endl;
+        std::cout << "malformed_data or handshake error" << std::endl;
         tcp_handle->close();
     };
     auto got_dns_message = []([[maybe_unused]] std::unique_ptr<const char[]> data,

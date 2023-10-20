@@ -73,16 +73,6 @@ void HTTPSSession::destroy_session()
 
 void HTTPSSession::process_receive(const uint8_t *data, size_t len)
 {
-    // dnsheader is 12, at least one byte for the minimum name,
-    // two bytes for the qtype and another two for the qclass
-    const size_t MIN_DNS_RESPONSE_SIZE = 17;
-    // 512 over UDP without EDNS, but 65535 over TCP
-    const size_t MAX_DNS_RESPONSE_SIZE = 65535;
-    if (len < MIN_DNS_RESPONSE_SIZE || len > MAX_DNS_RESPONSE_SIZE) {
-        std::cerr << "malformed data" << std::endl;
-        _malformed_data();
-        return;
-    }
     auto buf = std::make_unique<char[]>(len);
     memcpy(buf.get(), (const char *)data, len);
     _got_dns_msg(std::move(buf), len);
@@ -355,6 +345,7 @@ void HTTPSSession::do_handshake()
         int error = SSL_get_error(_ssl_session, err);
         if (error == SSL_ERROR_SSL || error == SSL_ERROR_SYSCALL) {
             std::cerr << "Handshake failed: SSL or syscall error" << std::endl;
+            ERR_print_errors_fp(stderr);
             _handshake_error();
         } else if (error == SSL_ERROR_WANT_READ || error == SSL_ERROR_WANT_WRITE) {
             // Non-fatal error. OpenSSL wants to either read or write.
