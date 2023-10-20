@@ -354,7 +354,7 @@ void HTTPSSession::do_handshake()
     } else {
         int error = SSL_get_error(_ssl_session, err);
         if (error == SSL_ERROR_SSL || error == SSL_ERROR_SYSCALL) {
-            std::cerr << "Handshake failed: " << ERR_reason_error_string(error) << std::endl;
+            std::cerr << "Handshake failed: SSL or syscall error" << std::endl;
             _handshake_error();
         } else if (error == SSL_ERROR_WANT_READ || error == SSL_ERROR_WANT_WRITE) {
             // Non-fatal error. OpenSSL wants to either read or write.

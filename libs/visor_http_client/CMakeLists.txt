@@ -10,6 +10,7 @@ add_library(Visor::Lib::HttpClient ALIAS VisorLibHttpClient)
 target_include_directories(VisorLibHttpClient
         PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+        ${CONAN_LIBS_LIBNGHTTP2}
         )
 
 target_link_libraries(VisorLibHttpClient
