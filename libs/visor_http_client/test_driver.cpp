@@ -20,34 +20,30 @@ void connect_tcp_events(std::shared_ptr<uvw::tcp_handle> tcp_handle, std::shared
     /** SOCKET CALLBACKS **/
 
     // SOCKET: local socket was closed, cleanup resources and possibly restart another connection
-    tcp_handle->on<uvw::close_event>([&tcp_handle, &tcp_session](uvw::close_event &, uvw::tcp_handle &) {
-        if (tcp_handle) {
-            tcp_handle->stop();
-        }
-        tcp_session.reset();
-        tcp_handle.reset();
+    tcp_handle->on<uvw::close_event>([](uvw::close_event &, uvw::tcp_handle &handle) {
+        handle.stop();
     });
 
     // SOCKET: socket error
-    tcp_handle->on<uvw::error_event>([&tcp_handle, &tcp_session](uvw::error_event &event, uvw::tcp_handle &) {
-        std::cout << "error_event: " << tcp_handle->sock().ip << ":" << tcp_handle->sock().port << " - " << event.what() << std::endl;
-        tcp_handle->close();
+    tcp_handle->on<uvw::error_event>([](uvw::error_event &event, uvw::tcp_handle &handle) {
+        std::cout << "error_event: " << handle.sock().ip << ":" << handle.sock().port << " - " << event.what() << std::endl;
+        handle.close();
     });
 
     // INCOMING: remote peer closed connection, EOF
-    tcp_handle->on<uvw::end_event>([&tcp_session](uvw::end_event &, uvw::tcp_handle &) {
+    tcp_handle->on<uvw::end_event>([tcp_session](uvw::end_event &, uvw::tcp_handle &) {
         std::cout << "end_event" << std::endl;
         tcp_session->on_end_event();
     });
 
     // OUTGOING: we've finished writing all our data and are shutting down
-    tcp_handle->on<uvw::shutdown_event>([&tcp_session](uvw::shutdown_event &, uvw::tcp_handle &) {
+    tcp_handle->on<uvw::shutdown_event>([tcp_session](uvw::shutdown_event &, uvw::tcp_handle &) {
         std::cout << "shutdown_event" << std::endl;
         tcp_session->on_shutdown_event();
     });
 
     // INCOMING: remote peer sends data, pass to session
-    tcp_handle->on<uvw::data_event>([&tcp_session](uvw::data_event &event, uvw::tcp_handle &) {
+    tcp_handle->on<uvw::data_event>([tcp_session](uvw::data_event &event, uvw::tcp_handle &) {
         std::cout << "data_event" << std::endl;
         tcp_session->receive_data(event.data.get(), event.length);
     });
@@ -58,12 +54,12 @@ void connect_tcp_events(std::shared_ptr<uvw::tcp_handle> tcp_handle, std::shared
     });
 
     // SOCKET: on connect
-    tcp_handle->on<uvw::connect_event>([&tcp_handle, &tcp_session](uvw::connect_event &, uvw::tcp_handle &) {
+    tcp_handle->on<uvw::connect_event>([tcp_session](uvw::connect_event &, uvw::tcp_handle &handle) {
         std::cout << "ConnectEvent" << std::endl;
         tcp_session->on_connect_event();
 
         // start reading from incoming stream, fires data_event when receiving
-        tcp_handle->read();
+        handle.read();
     });
 }
 

@@ -168,9 +168,8 @@ bool HTTPSSession::setup()
         return false;
     }
 
-    // Set ALPN to negotiate HTTP/2 ("h2")
-    const char *alpn_protos = "h2";
-    if (SSL_CTX_set_alpn_protos(_ssl_context, (const unsigned char *)alpn_protos, 2) != 0) {
+    const unsigned char alpn_protos[] = {2, 'h', '2'}; // 2 is the length of 'h2'
+    if (SSL_CTX_set_alpn_protos(_ssl_context, alpn_protos, sizeof(alpn_protos))) {
         std::cerr << "OpenSSL failed to set ALPN." << std::endl;
         return false;
     }
