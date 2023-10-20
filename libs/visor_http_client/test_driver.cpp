@@ -1,4 +1,3 @@
-#include "uvw/util.h"
 #include <catch2/catch_test_macros.hpp>
 
 #include <iostream>
@@ -156,7 +155,7 @@ TEST_CASE("HTTP Client", "[http]")
     tcp_handle->connect(target_list[0].address, 443);
 
     // ----
-    loop->run();
+    CHECK(loop->run() == 0);
     loop = nullptr;
 
     std::cout << "Hello, World!" << std::endl;

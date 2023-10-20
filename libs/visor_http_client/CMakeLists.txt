@@ -7,7 +7,6 @@ add_library(VisorLibHttpClient
         )
 add_library(Visor::Lib::HttpClient ALIAS VisorLibHttpClient)
 
-
 target_include_directories(VisorLibHttpClient
         PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
@@ -18,14 +17,7 @@ target_link_libraries(VisorLibHttpClient
         ${CONAN_LIBS_LIBNGHTTP2}
         ${CONAN_LIBS_LIBUV}
         ${CONAN_LIBS_UVW}
-
-        ${CONAN_LIBS_NETTLE}
-        ${CONAN_LIBS_GMP}
-        ${CONAN_LIBS_LIBICONV}
-        ${CONAN_LIBS_ZLIB}
-        ${CONAN_LIBS_ZSTD}
-        ${CONAN_LIBS_BROTLI}
-        ${CONAN_LIBS_GNUTLS}
+        ${CONAN_LIBS_OPENSSL}
         )
 
 ## TEST SUITE
@@ -35,3 +27,7 @@ target_link_libraries(unit-tests-visor-http-client
         PRIVATE
         Visor::Lib::HttpClient
         ${CONAN_LIBS_CATCH2})
+
+add_test(NAME unit-tests-visor-http-client
+        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/libs/visor_http_client
+        COMMAND unit-tests-visor-http-client)

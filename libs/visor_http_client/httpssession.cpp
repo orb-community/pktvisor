@@ -4,18 +4,6 @@
 
 #include "httpssession.h"
 
-static ssize_t gnutls_pull_trampoline(gnutls_transport_ptr_t h, void *buf, size_t len)
-{
-    auto session = static_cast<HTTPSSession *>(h);
-    return session->gnutls_pull(buf, len);
-}
-
-static ssize_t gnutls_push_trampoline(gnutls_transport_ptr_t h, const void *buf, size_t len)
-{
-    auto session = static_cast<HTTPSSession *>(h);
-    return session->gnutls_push(buf, len);
-}
-
 HTTPSSession::HTTPSSession(std::shared_ptr<uvw::tcp_handle> handle,
     TCPSession::malformed_data_cb malformed_data_handler,
     TCPSession::got_dns_msg_cb got_dns_msg_handler,
@@ -38,9 +26,7 @@ HTTPSSession::HTTPSSession(std::shared_ptr<uvw::tcp_handle> handle,
 
 HTTPSSession::~HTTPSSession()
 {
-    gnutls_certificate_free_credentials(_gnutls_cert_credentials);
-    gnutls_deinit(_gnutls_session);
-    nghttp2_session_del(_current_session);
+    destroy_session();
 }
 
 std::unique_ptr<http2_stream_data> HTTPSSession::create_http2_stream_data(std::unique_ptr<char[]> data, size_t len)
@@ -71,8 +57,17 @@ static ssize_t send_callback([[maybe_unused]] nghttp2_session *session, const ui
 
 void HTTPSSession::destroy_session()
 {
-    gnutls_certificate_free_credentials(_gnutls_cert_credentials);
-    gnutls_deinit(_gnutls_session);
+    // Free the SSL session
+    if (_ssl_session) {
+        SSL_free(_ssl_session);
+        _ssl_session = nullptr;
+    }
+    // Free the SSL context
+    if (_ssl_context) {
+        SSL_CTX_free(_ssl_context);
+        _ssl_context = nullptr;
+    }
+    // Clean up nghttp2 session
     nghttp2_session_del(_current_session);
 }
 
@@ -155,55 +150,40 @@ void HTTPSSession::init_nghttp2()
 
 bool HTTPSSession::setup()
 {
-    int ret;
+    // Initialize OpenSSL
+    SSL_library_init();
+    OpenSSL_add_all_algorithms();
+    SSL_load_error_strings();
 
-    ret = gnutls_init(&_gnutls_session, GNUTLS_CLIENT | GNUTLS_NONBLOCK);
-    if (ret != GNUTLS_E_SUCCESS) {
-        std::cerr << "GNUTLS init failed: " << gnutls_strerror(ret) << std::endl;
+    // Create a new SSL_CTX object as a framework for TLS/SSL enabled functions
+    _ssl_context = SSL_CTX_new(TLS_client_method());
+    if (!_ssl_context) {
+        std::cerr << "OpenSSL failed to create SSL_CTX object." << std::endl;
         return false;
     }
 
-    ret = gnutls_set_default_priority(_gnutls_session);
-    if (ret != GNUTLS_E_SUCCESS) {
-        std::cerr << "GNUTLS failed to set default priority: " << gnutls_strerror(ret) << std::endl;
+    // Load the system's default certificates for verification purposes
+    if (!SSL_CTX_set_default_verify_paths(_ssl_context)) {
+        std::cerr << "OpenSSL failed to set default verify paths." << std::endl;
         return false;
     }
 
-    ret = gnutls_certificate_allocate_credentials(&_gnutls_cert_credentials);
-    if (ret < 0) {
-        std::cerr << "GNUTLS failed to allocate credentials: " << gnutls_strerror(ret) << std::endl;
+    // Set ALPN to negotiate HTTP/2 ("h2")
+    const char *alpn_protos = "h2";
+    if (SSL_CTX_set_alpn_protos(_ssl_context, (const unsigned char *)alpn_protos, 2) != 0) {
+        std::cerr << "OpenSSL failed to set ALPN." << std::endl;
         return false;
     }
 
-    ret = gnutls_certificate_set_x509_system_trust(_gnutls_cert_credentials);
-    if (ret < 0) {
-        std::cerr << "GNUTLS failed to set system trust: " << gnutls_strerror(ret) << std::endl;
+    // Create SSL session
+    _ssl_session = SSL_new(_ssl_context);
+    if (!_ssl_session) {
+        std::cerr << "OpenSSL failed to create SSL session." << std::endl;
         return false;
     }
 
-    ret = gnutls_credentials_set(_gnutls_session, GNUTLS_CRD_CERTIFICATE,
-        _gnutls_cert_credentials);
-    if (ret < 0) {
-        std::cerr << "GNUTLS failed to set system credentials" << gnutls_strerror(ret) << std::endl;
-        return false;
-    }
-
-    gnutls_datum_t alpn;
-    alpn.data = (unsigned char *)"h2";
-    alpn.size = 2;
-    ret = gnutls_alpn_set_protocols(_gnutls_session, &alpn, 1, GNUTLS_ALPN_MANDATORY);
-    if (ret != GNUTLS_E_SUCCESS) {
-        std::cerr << "GNUTLS failed to set ALPN: " << gnutls_strerror(ret) << std::endl;
-        return false;
-    }
-
-    gnutls_transport_set_pull_function(_gnutls_session, gnutls_pull_trampoline);
-    gnutls_transport_set_push_function(_gnutls_session, gnutls_push_trampoline);
-    gnutls_handshake_set_timeout(_gnutls_session, GNUTLS_DEFAULT_HANDSHAKE_TIMEOUT);
-    gnutls_transport_set_ptr(_gnutls_session, this);
     return true;
 }
-
 void HTTPSSession::send_settings()
 {
     nghttp2_settings_entry settings[1] = {{NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS, (1U << 31) - 1}};
@@ -252,7 +232,11 @@ void HTTPSSession::on_connect_event()
 void HTTPSSession::close()
 {
     _tls_state = LinkState::CLOSE;
-    gnutls_bye(_gnutls_session, GNUTLS_SHUT_WR);
+    // Shutdown the SSL/TLS session gracefully
+    SSL_shutdown(_ssl_session);
+    // Free up the SSL session
+    SSL_free(_ssl_session);
+    _ssl_session = nullptr;
     TCPSession::close();
 }
 
@@ -314,20 +298,25 @@ void HTTPSSession::receive_data(const char data[], size_t _len)
     case LinkState::DATA:
         char buf[16384];
         for (;;) {
-            ssize_t len = gnutls_record_recv(_gnutls_session, buf, sizeof(buf));
+            int len = SSL_read(_ssl_session, buf, sizeof(buf));
             if (len > 0) {
                 receive_response(buf, len);
             } else {
-                if (len == GNUTLS_E_AGAIN) {
-                    // Check if we don't have any data left to read
+                int error = SSL_get_error(_ssl_session, len);
+                if (error == SSL_ERROR_WANT_READ) {
+                    // OpenSSL wants to read more data. Check if we don't have any data left to read.
                     if (_pull_buffer.empty()) {
                         break;
                     }
                     continue;
-                } else if (len == GNUTLS_E_INTERRUPTED) {
+                } else if (error == SSL_ERROR_WANT_WRITE) {
+                    // OpenSSL wants to write data (e.g., for renegotiation). Continue processing.
                     continue;
+                } else {
+                    // Some other error occurred. Handle as necessary.
+                    std::cerr << "OpenSSL error while reading data: " << ERR_reason_error_string(error) << std::endl;
+                    break;
                 }
-                break;
             }
         }
         break;
@@ -338,23 +327,24 @@ void HTTPSSession::receive_data(const char data[], size_t _len)
 
 void HTTPSSession::send_tls(void *data, size_t len)
 {
-    ssize_t sent = gnutls_record_send(_gnutls_session, data, len);
+    int sent = SSL_write(_ssl_session, data, len);
     if (sent <= 0) {
-        std::cerr << "HTTP2 failed in sending data" << std::endl;
+        int error = SSL_get_error(_ssl_session, sent);
+        std::cerr << "OpenSSL error while sending data: " << ERR_reason_error_string(error) << std::endl;
     }
 }
 
 void HTTPSSession::do_handshake()
 {
-    int err = gnutls_handshake(_gnutls_session);
-    if (err == GNUTLS_E_SUCCESS) {
-        gnutls_datum_t alpn;
-        alpn.data = (unsigned char *)"h2";
-        alpn.size = 2;
-        int ret = gnutls_alpn_get_selected_protocol(_gnutls_session, &alpn);
-        if (ret != GNUTLS_E_SUCCESS) {
-            std::cerr << "Cannot get alpn" << std::endl;
+    int err = SSL_connect(_ssl_session); // Assuming client-side. Use SSL_accept for server-side.
+    if (err == 1) {                      // Successful handshake
+        const unsigned char *alpn = NULL;
+        unsigned int alpnlen = 0;
+        SSL_get0_alpn_selected(_ssl_session, &alpn, &alpnlen);
+        if (!alpn || alpnlen != 2 || memcmp(alpn, "h2", 2) != 0) {
+            std::cerr << "Cannot get ALPN or ALPN is not 'h2'." << std::endl;
             close();
+            return;
         }
         init_nghttp2();
         send_settings();
@@ -362,30 +352,16 @@ void HTTPSSession::do_handshake()
             std::cerr << "Cannot submit settings frame" << std::endl;
         }
         _tls_state = LinkState::DATA;
-    } else if (err < 0 && gnutls_error_is_fatal(err)) {
-        std::cerr << "Handshake failed: " << gnutls_strerror(err) << std::endl;
-        _handshake_error();
-    } else if (err != GNUTLS_E_AGAIN && err != GNUTLS_E_INTERRUPTED) {
-        std::cout << "Handshake " << gnutls_strerror(err) << std::endl;
+    } else {
+        int error = SSL_get_error(_ssl_session, err);
+        if (error == SSL_ERROR_SSL || error == SSL_ERROR_SYSCALL) {
+            std::cerr << "Handshake failed: " << ERR_reason_error_string(error) << std::endl;
+            _handshake_error();
+        } else if (error == SSL_ERROR_WANT_READ || error == SSL_ERROR_WANT_WRITE) {
+            // Non-fatal error. OpenSSL wants to either read or write.
+            std::cout << "Handshake needs more processing. Continue calling do_handshake()." << std::endl;
+        } else {
+            std::cerr << "Unknown handshake error." << std::endl;
+        }
     }
-}
-
-int HTTPSSession::gnutls_pull(void *buf, size_t len)
-{
-    if (!_pull_buffer.empty()) {
-        len = std::min(len, _pull_buffer.size());
-        std::memcpy(buf, _pull_buffer.data(), len);
-        _pull_buffer.erase(0, len);
-        return len;
-    }
-    errno = EAGAIN;
-    return -1;
-}
-
-int HTTPSSession::gnutls_push(const void *buf, size_t len)
-{
-    auto data = std::make_unique<char[]>(len);
-    memcpy(data.get(), const_cast<char *>(reinterpret_cast<const char *>(buf)), len);
-    TCPSession::write(std::move(data), len);
-    return len;
 }

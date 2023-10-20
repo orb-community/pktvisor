@@ -2,14 +2,20 @@
 
 #include <unordered_map>
 
-#include <gnutls/gnutls.h>
 #include <nghttp2/nghttp2.h>
+#include <openssl/err.h>
+#include <openssl/ssl.h>
 
 #include "base64.h"
-#include "http.h"
 #include "target.h"
 #include "tcpsession.h"
 #include "url_parser.h"
+
+enum class HTTPMethod {
+    POST,
+    GET,
+};
+
 
 struct http2_stream_data {
     http2_stream_data(std::string _scheme, std::string _authority, std::string _path, int32_t _id, std::string _data)
@@ -73,10 +79,6 @@ public:
 
     void process_receive(const uint8_t *data, size_t len);
 
-    int gnutls_pull(void *buf, size_t len);
-
-    int gnutls_push(const void *buf, size_t len);
-
     std::unique_ptr<http2_stream_data> create_http2_stream_data(std::unique_ptr<char[]> data, size_t len);
 
     void add_stream(http2_stream_data *stream_data);
@@ -111,6 +113,6 @@ private:
     nghttp2_session *_current_session;
     std::string _pull_buffer;
 
-    gnutls_session_t _gnutls_session;
-    gnutls_certificate_credentials_t _gnutls_cert_credentials;
+    SSL *_ssl_session;
+    SSL_CTX *_ssl_context;
 };
