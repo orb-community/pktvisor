@@ -19,7 +19,7 @@
 #include "IPv6Layer.h"
 #include "PacketUtils.h"
 #include "TimespecTimeval.h"
-#include "VisorTcpLayer.h"
+#include <TcpLayer.h>
 #ifdef __GNUC__
 #pragma GCC diagnostic pop
 #endif

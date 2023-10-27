@@ -378,7 +378,7 @@ public:
     }
 
     void process_filtered();
-    void new_dns_transaction(bool deep, float per90th, DnsLayer &dns, TransactionDirection dir, DnsTransaction xact, pcpp::ProtocolType l3, Protocol l4, uint16_t port, size_t suffix_size = 0);
+    void new_dns_transaction(bool deep, float per90th, pcpp::DnsLayer &dns, TransactionDirection dir, DnsTransaction xact, pcpp::ProtocolType l3, Protocol l4, uint16_t port, size_t suffix_size = 0);
 };
 
 class DnsMetricsManager final : public visor::AbstractMetricsManager<DnsMetricsBucket>
@@ -445,8 +445,8 @@ public:
         new_event(stamp, false);
         live_bucket()->process_filtered();
     }
-    void process_filtered(timespec stamp, DnsLayer &payload, PacketDirection dir, uint32_t flowkey);
-    void process_dns_layer(DnsLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowkey, uint16_t port, size_t suffix_size, timespec stamp);
+    void process_filtered(timespec stamp, pcpp::DnsLayer &payload, PacketDirection dir, uint32_t flowkey);
+    void process_dns_layer(pcpp::DnsLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowkey, uint16_t port, size_t suffix_size, timespec stamp);
     void process_dnstap(const dnstap::Dnstap &payload, bool filtered);
 };
 
@@ -472,7 +472,7 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
     struct DnsCacheData {
         uint32_t flowKey = 0;
         timespec timestamp = timespec();
-        std::unique_ptr<DnsLayer> dnsLayer;
+        std::unique_ptr<pcpp::DnsLayer> dnsLayer;
     };
     static thread_local DnsCacheData _cached_dns_layer;
 
@@ -574,8 +574,8 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
         {"top_ports", group::DnsMetrics::TopPorts},
         {"xact_times", group::DnsMetrics::XactTimes}};
 
-    bool _filtering(DnsLayer &payload, PacketDirection dir, uint32_t flowkey, timespec stamp);
-    bool _configs(DnsLayer &payload);
+    bool _filtering(pcpp::DnsLayer &payload, PacketDirection dir, uint32_t flowkey, timespec stamp);
+    bool _configs(pcpp::DnsLayer &payload);
 
 public:
     DnsStreamHandler(const std::string &name, InputEventProxy *proxy, const Configurable *window_config);

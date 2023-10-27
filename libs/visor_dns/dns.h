@@ -4,14 +4,35 @@
 
 #pragma once
 
-#include "DnsLayer.h"
-#include "DnsResource.h"
-#include "DnsResourceData.h"
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
+#pragma GCC diagnostic ignored "-Wold-style-cast"
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma clang diagnostic ignored "-Wc99-extensions"
+#endif
+#include <DnsLayer.h>
+#include <TcpLayer.h>
+#include <UdpLayer.h>
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
+#include <memory>
 #include <string>
 #include <string_view>
 #include <unordered_map>
 
 namespace visor::lib::dns {
+
+inline std::unique_ptr<pcpp::DnsLayer> createDnsOverTcp(pcpp::TcpLayer *tcpLayer, pcpp::Packet *packet)
+{
+    return std::make_unique<pcpp::DnsLayer>(tcpLayer->getData() + sizeof(pcpp::tcphdr), tcpLayer->getDataLen() - sizeof(pcpp::tcphdr), tcpLayer, packet);
+}
+
+inline std::unique_ptr<pcpp::DnsLayer> createDnsOverUdp(pcpp::UdpLayer *udpLayer, pcpp::Packet *packet)
+{
+    return std::make_unique<pcpp::DnsLayer>(udpLayer->getData() + sizeof(pcpp::udphdr), udpLayer->getDataLen() - sizeof(pcpp::udphdr), udpLayer, packet);
+}
 
 typedef std::pair<std::string_view, std::string_view> AggDomainResult;
 AggDomainResult aggregateDomain(const std::string &domain, size_t suffix_size = 0);
