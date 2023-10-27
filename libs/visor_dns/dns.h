@@ -24,6 +24,11 @@
 
 namespace visor::lib::dns {
 
+inline bool isDnsPort(uint16_t port)
+{
+    return pcpp::DnsLayer::isDnsPort(port) || port == 53000;
+}
+
 inline std::unique_ptr<pcpp::DnsLayer> createDnsOverTcp(pcpp::TcpLayer *tcpLayer, pcpp::Packet *packet)
 {
     return std::make_unique<pcpp::DnsLayer>(tcpLayer->getData() + sizeof(pcpp::tcphdr), tcpLayer->getDataLen() - sizeof(pcpp::tcphdr), tcpLayer, packet);

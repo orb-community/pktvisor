@@ -279,9 +279,9 @@ void DnsStreamHandler::process_udp_packet_cb(pcpp::Packet &payload, PacketDirect
     auto src_port = udpLayer->getSrcPort();
     // note we want to capture metrics only when one of the ports is dns,
     // but metrics on the port which is _not_ the dns port
-    if (pcpp::DnsLayer::isDnsPort(dst_port)) {
+    if (isDnsPort(dst_port)) {
         metric_port = src_port;
-    } else if (pcpp::DnsLayer::isDnsPort(src_port)) {
+    } else if (isDnsPort(src_port)) {
         metric_port = dst_port;
     }
     if (metric_port) {
@@ -313,9 +313,9 @@ void DnsStreamHandler::process_tcp_reassembled_packet_cb(pcpp::Packet &payload, 
     auto src_port = tcpLayer->getSrcPort();
     // note we want to capture metrics only when one of the ports is dns,
     // but metrics on the port which is _not_ the dns port
-    if (pcpp::DnsLayer::isDnsPort(dst_port)) {
+    if (isDnsPort(dst_port)) {
         metric_port = src_port;
-    } else if (pcpp::DnsLayer::isDnsPort(src_port)) {
+    } else if (isDnsPort(src_port)) {
         metric_port = dst_port;
     }
     if (metric_port) {
@@ -385,9 +385,9 @@ void DnsStreamHandler::tcp_message_ready_cb(int8_t side, const pcpp::TcpStreamDa
         // note we want to capture metrics only when one of the ports is dns,
         // but metrics on the port which is _not_ the dns port
         uint16_t metric_port{0};
-        if (pcpp::DnsLayer::isDnsPort(tcpData.getConnectionData().dstPort)) {
+        if (isDnsPort(tcpData.getConnectionData().dstPort)) {
             metric_port = tcpData.getConnectionData().srcPort;
-        } else if (pcpp::DnsLayer::isDnsPort(tcpData.getConnectionData().srcPort)) {
+        } else if (isDnsPort(tcpData.getConnectionData().srcPort)) {
             metric_port = tcpData.getConnectionData().dstPort;
         }
         if (metric_port) {
@@ -445,9 +445,9 @@ void DnsStreamHandler::tcp_connection_start_cb(const pcpp::ConnectionData &conne
     // note we want to capture metrics only when one of the ports is dns,
     // but metrics on the port which is _not_ the dns port
     uint16_t metric_port{0};
-    if (pcpp::DnsLayer::isDnsPort(connectionData.dstPort)) {
+    if (isDnsPort(connectionData.dstPort)) {
         metric_port = connectionData.srcPort;
-    } else if (pcpp::DnsLayer::isDnsPort(connectionData.srcPort)) {
+    } else if (isDnsPort(connectionData.srcPort)) {
         metric_port = connectionData.dstPort;
     }
     if (iter == _tcp_connections.end() && metric_port) {
@@ -497,7 +497,6 @@ inline void DnsStreamHandler::_register_predicate_filter(Filters filter, std::st
                 cache.flowKey = flowkey;
                 cache.timestamp = stamp;
                 cache.dnsLayer = createDnsOverUdp(udpLayer, &payload);
-                ;
             }
             auto dnsLayer = cache.dnsLayer.get();
             // return the 'jump key' for pcap to make O(1) call to appropriate signals
@@ -515,7 +514,6 @@ inline void DnsStreamHandler::_register_predicate_filter(Filters filter, std::st
                 cache.flowKey = flowkey;
                 cache.timestamp = stamp;
                 cache.dnsLayer = createDnsOverUdp(udpLayer, &payload);
-                ;
             }
             auto dnsLayer = cache.dnsLayer.get();
             // return the 'jump key' for pcap to make O(1) call to appropriate signals
