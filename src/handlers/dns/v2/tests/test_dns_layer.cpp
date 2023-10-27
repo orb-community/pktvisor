@@ -1,6 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/matchers/catch_matchers.hpp>
 #include <catch2/catch_test_visor.hpp>
+#include <catch2/matchers/catch_matchers.hpp>
 
 #include "DnsStreamHandler.h"
 #include "GeoDB.h"
@@ -14,11 +14,9 @@
 #pragma clang diagnostic ignored "-Wc99-extensions"
 #pragma clang diagnostic ignored "-Wrange-loop-analysis"
 #endif
-#include "DnsLayer.h"
 #include <Packet.h>
 #include <PcapFileDevice.h>
 #include <ProtocolType.h>
-#include <UdpLayer.h>
 #ifdef __GNUC__
 #pragma GCC diagnostic pop
 #pragma GCC diagnostic ignored "-Wold-style-cast"

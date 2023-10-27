@@ -17,6 +17,7 @@
 #endif
 #include <IPv4Layer.h>
 #include <IPv6Layer.h>
+#include <TcpLayer.h>
 #include <TimespecTimeval.h>
 #ifdef __GNUC__
 #pragma GCC diagnostic pop
@@ -278,16 +279,16 @@ void DnsStreamHandler::process_udp_packet_cb(pcpp::Packet &payload, PacketDirect
     auto src_port = udpLayer->getSrcPort();
     // note we want to capture metrics only when one of the ports is dns,
     // but metrics on the port which is _not_ the dns port
-    if (DnsLayer::isDnsPort(dst_port)) {
+    if (isDnsPort(dst_port)) {
         metric_port = src_port;
-    } else if (DnsLayer::isDnsPort(src_port)) {
+    } else if (isDnsPort(src_port)) {
         metric_port = dst_port;
     }
     if (metric_port) {
         if (flowkey != _cached_dns_layer.flowKey || stamp.tv_sec != _cached_dns_layer.timestamp.tv_sec || stamp.tv_nsec != _cached_dns_layer.timestamp.tv_nsec) {
             _cached_dns_layer.flowKey = flowkey;
             _cached_dns_layer.timestamp = stamp;
-            _cached_dns_layer.dnsLayer = std::make_unique<DnsLayer>(udpLayer, &payload);
+            _cached_dns_layer.dnsLayer = createDnsOverUdp(udpLayer, &payload);
         }
         auto dnsLayer = _cached_dns_layer.dnsLayer.get();
         if (!_filtering(*dnsLayer, dir, l3, pcpp::UDP, metric_port, stamp) && _configs(*dnsLayer)) {
@@ -312,16 +313,16 @@ void DnsStreamHandler::process_tcp_reassembled_packet_cb(pcpp::Packet &payload, 
     auto src_port = tcpLayer->getSrcPort();
     // note we want to capture metrics only when one of the ports is dns,
     // but metrics on the port which is _not_ the dns port
-    if (DnsLayer::isDnsPort(dst_port)) {
+    if (isDnsPort(dst_port)) {
         metric_port = src_port;
-    } else if (DnsLayer::isDnsPort(src_port)) {
+    } else if (isDnsPort(src_port)) {
         metric_port = dst_port;
     }
     if (metric_port) {
         if (flowkey != _cached_dns_layer.flowKey || stamp.tv_sec != _cached_dns_layer.timestamp.tv_sec || stamp.tv_nsec != _cached_dns_layer.timestamp.tv_nsec) {
             _cached_dns_layer.flowKey = flowkey;
             _cached_dns_layer.timestamp = stamp;
-            _cached_dns_layer.dnsLayer = std::make_unique<DnsLayer>(tcpLayer, &payload);
+            _cached_dns_layer.dnsLayer = createDnsOverTcp(tcpLayer, &payload);
         }
         auto dnsLayer = _cached_dns_layer.dnsLayer.get();
         if (!_filtering(*dnsLayer, dir, l3, pcpp::TCP, metric_port, stamp) && _configs(*dnsLayer)) {
@@ -384,9 +385,9 @@ void DnsStreamHandler::tcp_message_ready_cb(int8_t side, const pcpp::TcpStreamDa
         // note we want to capture metrics only when one of the ports is dns,
         // but metrics on the port which is _not_ the dns port
         uint16_t metric_port{0};
-        if (DnsLayer::isDnsPort(tcpData.getConnectionData().dstPort)) {
+        if (isDnsPort(tcpData.getConnectionData().dstPort)) {
             metric_port = tcpData.getConnectionData().srcPort;
-        } else if (DnsLayer::isDnsPort(tcpData.getConnectionData().srcPort)) {
+        } else if (isDnsPort(tcpData.getConnectionData().srcPort)) {
             metric_port = tcpData.getConnectionData().dstPort;
         }
         if (metric_port) {
@@ -405,10 +406,10 @@ void DnsStreamHandler::tcp_message_ready_cb(int8_t side, const pcpp::TcpStreamDa
     TIMEVAL_TO_TIMESPEC(&tcpData.getConnectionData().endTime, &stamp);
 
     auto got_dns_message = [this, &conn = tcpData.getConnectionData(), port, dir, l3Type, flowKey, stamp](std::unique_ptr<uint8_t[]> data, size_t size) {
-        // this dummy packet prevents DnsLayer from owning and trying to free the data. it is otherwise unused by the DNS layer,
+        // this dummy packet prevents pcpp::DnsLayer from owning and trying to free the data. it is otherwise unused by the DNS layer,
         // instead using the packet meta data we pass in
         pcpp::Packet dummy_packet;
-        auto dnsLayer = new DnsLayer(data.release(), size, nullptr, nullptr);
+        auto dnsLayer = new pcpp::DnsLayer(data.release(), size, nullptr, nullptr);
         dummy_packet.addLayer(dnsLayer, true);
         if (!_filtering(*dnsLayer, dir, l3Type, pcpp::TCP, port, stamp) && _configs(*dnsLayer)) {
             _metrics->process_dns_layer(*dnsLayer, dir, l3Type, pcpp::TCP, flowKey, port, _static_suffix_size, stamp);
@@ -444,9 +445,9 @@ void DnsStreamHandler::tcp_connection_start_cb(const pcpp::ConnectionData &conne
     // note we want to capture metrics only when one of the ports is dns,
     // but metrics on the port which is _not_ the dns port
     uint16_t metric_port{0};
-    if (DnsLayer::isDnsPort(connectionData.dstPort)) {
+    if (isDnsPort(connectionData.dstPort)) {
         metric_port = connectionData.srcPort;
-    } else if (DnsLayer::isDnsPort(connectionData.srcPort)) {
+    } else if (isDnsPort(connectionData.srcPort)) {
         metric_port = connectionData.dstPort;
     }
     if (iter == _tcp_connections.end() && metric_port) {
@@ -495,7 +496,7 @@ inline void DnsStreamHandler::_register_predicate_filter(Filters filter, std::st
             if (flowkey != cache.flowKey || stamp.tv_sec != cache.timestamp.tv_sec || stamp.tv_nsec != cache.timestamp.tv_nsec) {
                 cache.flowKey = flowkey;
                 cache.timestamp = stamp;
-                cache.dnsLayer = std::make_unique<DnsLayer>(udpLayer, &payload);
+                cache.dnsLayer = createDnsOverUdp(udpLayer, &payload);
             }
             auto dnsLayer = cache.dnsLayer.get();
             // return the 'jump key' for pcap to make O(1) call to appropriate signals
@@ -512,14 +513,17 @@ inline void DnsStreamHandler::_register_predicate_filter(Filters filter, std::st
             if (flowkey != cache.flowKey || stamp.tv_sec != cache.timestamp.tv_sec || stamp.tv_nsec != cache.timestamp.tv_nsec) {
                 cache.flowKey = flowkey;
                 cache.timestamp = stamp;
-                cache.dnsLayer = std::make_unique<DnsLayer>(udpLayer, &payload);
+                cache.dnsLayer = createDnsOverUdp(udpLayer, &payload);
             }
             auto dnsLayer = cache.dnsLayer.get();
             // return the 'jump key' for pcap to make O(1) call to appropriate signals
-            if (!dnsLayer->parseResources(true) || dnsLayer->getFirstQuery() == nullptr) {
+            if (dnsLayer->getFirstQuery() == nullptr) {
                 return std::string(DNS_SCHEMA) + "only_qname"; // invalid qname
             }
-            return std::string(DNS_SCHEMA) + "only_qname" + dnsLayer->getFirstQuery()->getNameLower();
+            auto name = dnsLayer->getFirstQuery()->getName();
+            std::transform(name.begin(), name.end(), name.begin(),
+                [](unsigned char c) { return std::tolower(c); });
+            return std::string(DNS_SCHEMA) + "only_qname" + name;
         };
         predicate = udp_qname_predicate;
     }
@@ -536,7 +540,7 @@ inline void DnsStreamHandler::_register_predicate_filter(Filters filter, std::st
         _using_predicate_signals = true;
     }
 }
-inline bool DnsStreamHandler::_filtering(DnsLayer &payload, [[maybe_unused]] PacketDirection dir, [[maybe_unused]] pcpp::ProtocolType l3, [[maybe_unused]] pcpp::ProtocolType l4, [[maybe_unused]] uint16_t port, timespec stamp)
+inline bool DnsStreamHandler::_filtering(pcpp::DnsLayer &payload, [[maybe_unused]] PacketDirection dir, [[maybe_unused]] pcpp::ProtocolType l3, [[maybe_unused]] pcpp::ProtocolType l4, [[maybe_unused]] uint16_t port, timespec stamp)
 {
     if (_f_enabled[Filters::ExcludingRCode]) {
         auto rcode = payload.getDnsHeader()->responseCode;
@@ -563,7 +567,7 @@ inline bool DnsStreamHandler::_filtering(DnsLayer &payload, [[maybe_unused]] Pac
         if ((payload.getDnsHeader()->queryOrResponse != QR::response) || !payload.getAnswerCount()) {
             goto will_filter;
         }
-        if (!payload.parseResources(false, true, true) || payload.getFirstAnswer() == nullptr) {
+        if (payload.getFirstAnswer() == nullptr) {
             goto will_filter;
         }
         bool has_ssig{false};
@@ -572,7 +576,7 @@ inline bool DnsStreamHandler::_filtering(DnsLayer &payload, [[maybe_unused]] Pac
             if (!dns_answer) {
                 break;
             }
-            if (dns_answer->getDnsType() == DNS_TYPE_RRSIG) {
+            if (dns_answer->getDnsType() == pcpp::DNS_TYPE_RRSIG) {
                 has_ssig = true;
                 break;
             }
@@ -583,7 +587,7 @@ inline bool DnsStreamHandler::_filtering(DnsLayer &payload, [[maybe_unused]] Pac
         }
     }
     if (_f_enabled[Filters::OnlyQtype]) {
-        if (!payload.parseResources(true) || payload.getFirstQuery() == nullptr) {
+        if (payload.getFirstQuery() == nullptr) {
             goto will_filter;
         }
         auto qtype = payload.getFirstQuery()->getDnsType();
@@ -592,20 +596,24 @@ inline bool DnsStreamHandler::_filtering(DnsLayer &payload, [[maybe_unused]] Pac
         }
     }
     if (_f_enabled[Filters::OnlyQName] && _predicate_filter_type != Filters::OnlyQName) {
-        if (!payload.parseResources(true) || payload.getFirstQuery() == nullptr) {
+        if (payload.getFirstQuery() == nullptr) {
             goto will_filter;
         }
-        std::string_view qname_ci = payload.getFirstQuery()->getNameLower();
+        auto qname_ci = payload.getFirstQuery()->getName();
+        std::transform(qname_ci.begin(), qname_ci.end(), qname_ci.begin(),
+            [](unsigned char c) { return std::tolower(c); });
         if (std::none_of(_f_qnames.begin(), _f_qnames.end(), [&qname_ci](std::string fqn) { return qname_ci == fqn; })) {
             // checked the whole list and none of them matched: filter
             goto will_filter;
         }
     }
     if (_f_enabled[Filters::OnlyQNameSuffix]) {
-        if (!payload.parseResources(true) || payload.getFirstQuery() == nullptr) {
+        if (payload.getFirstQuery() == nullptr) {
             goto will_filter;
         }
-        std::string_view qname_ci = payload.getFirstQuery()->getNameLower();
+        auto qname_ci = payload.getFirstQuery()->getName();
+        std::transform(qname_ci.begin(), qname_ci.end(), qname_ci.begin(),
+            [](unsigned char c) { return std::tolower(c); });
         if (std::none_of(_f_qnames_suffix.begin(), _f_qnames_suffix.end(), [this, &qname_ci](std::string fqn) {
                 if (ends_with(qname_ci, fqn)) {
                     _static_suffix_size = fqn.size();
@@ -621,7 +629,7 @@ inline bool DnsStreamHandler::_filtering(DnsLayer &payload, [[maybe_unused]] Pac
         if (!HandlerModulePlugin::city->enabled() || (payload.getDnsHeader()->queryOrResponse != QR::query) || !payload.getAdditionalRecordCount()) {
             goto will_filter;
         }
-        if (!payload.parseResources(false, true, true) || payload.getFirstAdditionalRecord() == nullptr) {
+        if (payload.getFirstAdditionalRecord() == nullptr) {
             goto will_filter;
         }
         auto ecs = parse_additional_records_ecs(payload.getFirstAdditionalRecord());
@@ -633,7 +641,7 @@ inline bool DnsStreamHandler::_filtering(DnsLayer &payload, [[maybe_unused]] Pac
         if (!HandlerModulePlugin::asn->enabled() || (payload.getDnsHeader()->queryOrResponse != QR::query) || !payload.getAdditionalRecordCount()) {
             goto will_filter;
         }
-        if (!payload.parseResources(false, true, true) || payload.getFirstAdditionalRecord() == nullptr) {
+        if (payload.getFirstAdditionalRecord() == nullptr) {
             goto will_filter;
         }
         auto ecs = parse_additional_records_ecs(payload.getFirstAdditionalRecord());
@@ -647,11 +655,14 @@ will_filter:
     _metrics->process_filtered(stamp);
     return true;
 }
-inline bool DnsStreamHandler::_configs(DnsLayer &payload)
+inline bool DnsStreamHandler::_configs(pcpp::DnsLayer &payload)
 {
     // should only work if OnlyQNameSuffix is not enabled
-    if (_c_enabled[Configs::PublicSuffixList] && !_f_enabled[Filters::OnlyQNameSuffix] && payload.parseResources(true) && payload.getFirstQuery() != nullptr) {
-        _static_suffix_size = match_public_suffix(payload.getFirstQuery()->getNameLower());
+    if (_c_enabled[Configs::PublicSuffixList] && !_f_enabled[Filters::OnlyQNameSuffix] && payload.getFirstQuery() != nullptr) {
+        auto lower_name = payload.getFirstQuery()->getName();
+        std::transform(lower_name.begin(), lower_name.end(), lower_name.begin(),
+            [](unsigned char c) { return std::tolower(c); });
+        _static_suffix_size = match_public_suffix(lower_name);
     }
 
     return true;
@@ -894,21 +905,21 @@ void DnsMetricsBucket::process_dnstap(bool deep, const dnstap::Dnstap &payload)
         auto query = payload.message().query_message();
         uint8_t *buf = new uint8_t[query.size()];
         std::memcpy(buf, query.c_str(), query.size());
-        // DnsLayer takes ownership of buf
-        DnsLayer dpayload(buf, query.size(), nullptr, nullptr);
+        // pcpp::DnsLayer takes ownership of buf
+        pcpp::DnsLayer dpayload(buf, query.size(), nullptr, nullptr);
         lock.unlock();
         process_dns_layer(deep, dpayload, l3, l4, port);
     } else if (side == QR::response && payload.message().has_response_message()) {
         auto query = payload.message().response_message();
         uint8_t *buf = new uint8_t[query.size()];
         std::memcpy(buf, query.c_str(), query.size());
-        // DnsLayer takes ownership of buf
-        DnsLayer dpayload(buf, query.size(), nullptr, nullptr);
+        // pcpp::DnsLayer takes ownership of buf
+        pcpp::DnsLayer dpayload(buf, query.size(), nullptr, nullptr);
         lock.unlock();
         process_dns_layer(deep, dpayload, l3, l4, port);
     }
 }
-void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, pcpp::ProtocolType l3, Protocol l4, uint16_t port, size_t suffix_size)
+void DnsMetricsBucket::process_dns_layer(bool deep, pcpp::DnsLayer &payload, pcpp::ProtocolType l3, Protocol l4, uint16_t port, size_t suffix_size)
 {
     std::unique_lock lock(_mutex);
 
@@ -974,11 +985,6 @@ void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, pcpp::Pro
         _dns_topUDPPort.update(port);
     }
 
-    auto success = payload.parseResources(true);
-    if (!success) {
-        return;
-    }
-
     if (payload.getDnsHeader()->queryOrResponse == response) {
         _dns_topRCode.update(payload.getDnsHeader()->responseCode);
     }
@@ -986,7 +992,9 @@ void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, pcpp::Pro
     auto query = payload.getFirstQuery();
     if (query) {
 
-        auto name = query->getNameLower();
+        auto name = query->getName();
+        std::transform(name.begin(), name.end(), name.begin(),
+            [](unsigned char c) { return std::tolower(c); });
 
         if (group_enabled(group::DnsMetrics::Cardinality)) {
             _dns_qnameCard.update(name);
@@ -1028,7 +1036,6 @@ void DnsMetricsBucket::process_dns_layer(bool deep, DnsLayer &payload, pcpp::Pro
         if (payload.getDnsHeader()->queryOrResponse == QR::query && payload.getAdditionalRecordCount()) {
             auto additional = payload.getFirstAdditionalRecord();
             if (!additional) {
-                payload.parseResources(false, true, true);
                 additional = payload.getFirstAdditionalRecord();
             }
 
@@ -1091,7 +1098,7 @@ void DnsMetricsBucket::process_dns_layer(pcpp::ProtocolType l3, Protocol l4, QR 
     }
 }
 
-void DnsMetricsBucket::new_dns_transaction(bool deep, float to90th, float from90th, DnsLayer &dns, PacketDirection dir, DnsTransaction xact)
+void DnsMetricsBucket::new_dns_transaction(bool deep, float to90th, float from90th, pcpp::DnsLayer &dns, PacketDirection dir, DnsTransaction xact)
 {
 
     uint64_t xactTime = ((xact.totalTS.tv_sec * 1'000'000'000L) + xact.totalTS.tv_nsec) / 1'000; // nanoseconds to microseconds
@@ -1348,7 +1355,7 @@ void DnsMetricsBucket::process_filtered()
 }
 
 // the general metrics manager entry point (both UDP and TCP)
-void DnsMetricsManager::process_dns_layer(DnsLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowkey, uint16_t port, size_t suffix_size, timespec stamp)
+void DnsMetricsManager::process_dns_layer(pcpp::DnsLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowkey, uint16_t port, size_t suffix_size, timespec stamp)
 {
     // base event
     new_event(stamp);

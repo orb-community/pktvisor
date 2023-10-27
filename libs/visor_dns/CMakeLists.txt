@@ -2,9 +2,6 @@ message(STATUS "Visor Lib DNS Helper")
 
 add_library(VisorLibDns
         dns.cpp
-        DnsLayer.cpp
-        DnsResource.cpp
-        DnsResourceData.cpp
         )
 add_library(Visor::Lib::Dns ALIAS VisorLibDns)
 
@@ -15,7 +12,6 @@ target_include_directories(VisorLibDns
 
 target_link_libraries(VisorLibDns
         PUBLIC
-        Visor::Lib::Tcp
         ${CONAN_LIBS_PCAPPLUSPLUS}
         ${CONAN_LIBS_PTHREADS4W}
         ${CONAN_LIBS_LIBPCAP}

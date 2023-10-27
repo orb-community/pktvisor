@@ -227,11 +227,11 @@ public:
     }
 
     void process_filtered();
-    void process_dns_layer(bool deep, DnsLayer &payload, pcpp::ProtocolType l3, Protocol l4, uint16_t port, size_t suffix_size = 0);
+    void process_dns_layer(bool deep, pcpp::DnsLayer &payload, pcpp::ProtocolType l3, Protocol l4, uint16_t port, size_t suffix_size = 0);
     void process_dns_layer(pcpp::ProtocolType l3, Protocol l4, QR side);
     void process_dnstap(bool deep, const dnstap::Dnstap &payload);
 
-    void new_dns_transaction(bool deep, float to90th, float from90th, DnsLayer &dns, PacketDirection dir, DnsTransaction xact);
+    void new_dns_transaction(bool deep, float to90th, float from90th, pcpp::DnsLayer &dns, PacketDirection dir, DnsTransaction xact);
 };
 
 class DnsMetricsManager final : public visor::AbstractMetricsManager<DnsMetricsBucket>
@@ -277,7 +277,7 @@ public:
     }
 
     void process_filtered(timespec stamp);
-    void process_dns_layer(DnsLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowkey, uint16_t port, size_t suffix_size, timespec stamp);
+    void process_dns_layer(pcpp::DnsLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint32_t flowkey, uint16_t port, size_t suffix_size, timespec stamp);
     void process_dnstap(const dnstap::Dnstap &payload, bool filtered);
 };
 
@@ -303,7 +303,7 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
     struct DnsCacheData {
         uint32_t flowKey = 0;
         timespec timestamp = timespec();
-        std::unique_ptr<DnsLayer> dnsLayer;
+        std::unique_ptr<pcpp::DnsLayer> dnsLayer;
     };
     static thread_local DnsCacheData _cached_dns_layer;
 
@@ -407,8 +407,8 @@ class DnsStreamHandler final : public visor::StreamMetricsHandler<DnsMetricsMana
         {"top_qnames_details", group::DnsMetrics::TopQnamesDetails},
         {"top_ports", group::DnsMetrics::TopPorts}};
 
-    bool _filtering(DnsLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint16_t port, timespec stamp);
-    bool _configs(DnsLayer &payload);
+    bool _filtering(pcpp::DnsLayer &payload, PacketDirection dir, pcpp::ProtocolType l3, pcpp::ProtocolType l4, uint16_t port, timespec stamp);
+    bool _configs(pcpp::DnsLayer &payload);
     void _register_predicate_filter(Filters filter, std::string f_key, std::string f_value);
 
 public:

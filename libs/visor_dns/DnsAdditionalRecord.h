@@ -9,8 +9,7 @@
 #else
 #include <arpa/inet.h>
 #endif
-#include "DnsResource.h"
-#include "EndianPortable.h"
+#include <DnsResource.h>
 #include <algorithm>
 #include <array>
 
@@ -46,10 +45,10 @@ struct DnsAdditionalEcs {
     std::string client_subnet;
 };
 
-static std::unique_ptr<DnsAdditionalEcs> parse_additional_records_ecs(DnsResource *additional)
+static std::unique_ptr<DnsAdditionalEcs> parse_additional_records_ecs(pcpp::DnsResource *additional)
 {
 
-    if (!additional || additional->getDnsType() != DnsType::DNS_TYPE_OPT || additional->getDataLength() == 0) {
+    if (!additional || additional->getDnsType() != pcpp::DnsType::DNS_TYPE_OPT || additional->getDataLength() == 0) {
         return nullptr;
     }
 
