@@ -26,8 +26,8 @@ typedef int SOCKET;
 #pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
 #pragma clang diagnostic ignored "-Wc99-extensions"
 #endif
-#include <IcmpLayer.h>
-#include <IpAddress.h>
+#include <pcapplusplus/IcmpLayer.h>
+#include <pcapplusplus/IpAddress.h>
 #ifdef __GNUC__
 #pragma GCC diagnostic pop
 #endif

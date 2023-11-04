@@ -12,10 +12,10 @@
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
 #endif
-#include "DhcpLayer.h"
-#include "DhcpV6Layer.h"
-#include "EthLayer.h"
-#include "IPv6Layer.h"
+#include <pcapplusplus/DhcpLayer.h>
+#include <pcapplusplus/DhcpV6Layer.h>
+#include <pcapplusplus/EthLayer.h>
+#include <pcapplusplus/IPv6Layer.h>
 #ifdef __GNUC__
 #pragma GCC diagnostic pop
 #endif
