@@ -2,8 +2,8 @@
 
 #include "NetProbeException.h"
 #include "ThreadName.h"
-#include <Packet.h>
-#include <TimespecTimeval.h>
+#include <pcapplusplus/Packet.h>
+#include <pcapplusplus/TimespecTimeval.h>
 #include <uvw/idle.h>
 
 namespace visor::input::netprobe {

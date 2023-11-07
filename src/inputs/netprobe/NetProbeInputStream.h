@@ -6,7 +6,7 @@
 
 #include "InputStream.h"
 #include "NetProbe.h"
-#include <Packet.h>
+#include <pcapplusplus/Packet.h>
 #include <spdlog/spdlog.h>
 
 namespace uvw {
