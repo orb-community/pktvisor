@@ -14,11 +14,11 @@
 #pragma clang diagnostic ignored "-Wc99-extensions"
 #pragma clang diagnostic ignored "-Wrange-loop-analysis"
 #endif
-#include "DnsLayer.h"
-#include <Packet.h>
-#include <PcapFileDevice.h>
-#include <ProtocolType.h>
-#include <UdpLayer.h>
+#include <pcapplusplus/DnsLayer.h>
+#include <pcapplusplus/Packet.h>
+#include <pcapplusplus/PcapFileDevice.h>
+#include <pcapplusplus/ProtocolType.h>
+#include <pcapplusplus/UdpLayer.h>
 #ifdef __GNUC__
 #pragma GCC diagnostic pop
 #pragma GCC diagnostic ignored "-Wold-style-cast"

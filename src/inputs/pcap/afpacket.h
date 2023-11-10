@@ -10,7 +10,7 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 #endif
-#include <PcapLiveDevice.h>
+#include <pcapplusplus/PcapLiveDevice.h>
 #ifdef __GNUC__
 #pragma GCC diagnostic pop
 #endif

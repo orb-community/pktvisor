@@ -10,8 +10,8 @@
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
 #endif
-#include <IpAddress.h>
-#include <Packet.h>
+#include <pcapplusplus/IpAddress.h>
+#include <pcapplusplus/Packet.h>
 #include <uvw/loop.h>
 #include <uvw/dns.h>
 #ifdef __GNUC__

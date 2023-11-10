@@ -33,6 +33,11 @@ jobs:
         # We'll use this as our working directory for all subsequent commands
         run: cmake -E make_directory ${{github.workspace}}/build
 
+      - name: Python Setup
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
       - name: Get Conan
         id: conan
         uses: turtlebrowser/get-conan@main

@@ -14,11 +14,11 @@
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
 #endif
-#include <IPv4Layer.h>
-#include <IPv6Layer.h>
-#include <Packet.h>
-#include <PcapFileDevice.h>
-#include <UdpLayer.h>
+#include <pcapplusplus/IPv4Layer.h>
+#include <pcapplusplus/IPv6Layer.h>
+#include <pcapplusplus/Packet.h>
+#include <pcapplusplus/PcapFileDevice.h>
+#include <pcapplusplus/UdpLayer.h>
 #ifdef __GNUC__
 #pragma GCC diagnostic pop
 #endif

@@ -3,7 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 #include "BgpStreamHandler.h"
-#include <TimespecTimeval.h>
+#include <pcapplusplus/TimespecTimeval.h>
 
 namespace visor::handler::bgp {
 

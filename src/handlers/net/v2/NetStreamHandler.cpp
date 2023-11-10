@@ -15,10 +15,10 @@
 #pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
 #pragma clang diagnostic ignored "-Wc99-extensions"
 #endif
-#include "IPv4Layer.h"
-#include "IPv6Layer.h"
-#include "PacketUtils.h"
-#include "TimespecTimeval.h"
+#include <pcapplusplus/IPv4Layer.h>
+#include <pcapplusplus/IPv6Layer.h>
+#include <pcapplusplus/PacketUtils.h>
+#include <pcapplusplus/TimespecTimeval.h>
 #include "VisorTcpLayer.h"
 #ifdef __GNUC__
 #pragma GCC diagnostic pop
