@@ -15,6 +15,7 @@ struct Target {
     http_parser_url *parsed;
     std::string address;
     std::string uri;
+    std::string port;
 };
 
 enum class HTTPMethod {
