@@ -164,16 +164,14 @@ TEST_CASE("HTTP Client", "[http]")
         // tcp_session->write(std::move(std::get<0>(qt)), std::get<1>(qt));
     };
 
-    tcp_session = std::make_shared<HTTPSSession>(tcp_handle, malformed_data, got_dns_message, connection_ready,
-        malformed_data, target_list[0], HTTPMethod::GET);
-    connect_tcp_events(tcp_handle, tcp_session);
-    auto client = std::make_shared<HTTPSSession>(tcp_handle,
-        nullptr,
-        nullptr,
-        nullptr,
-        nullptr,
+    tcp_session = std::make_shared<HTTPSSession>(tcp_handle,
+        malformed_data,
+        got_dns_message,
+        connection_ready,
+        malformed_data,
         target_list[0],
         HTTPMethod::GET);
+    connect_tcp_events(tcp_handle, tcp_session);
     if (!tcp_session->setup()) {
         std::cerr << "setup failed" << std::endl;
     }

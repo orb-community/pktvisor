@@ -343,8 +343,12 @@ void HTTPSSession::do_handshake()
         _tls_state = LinkState::DATA;
     } else {
         int error = SSL_get_error(_ssl_session, err);
-        if (error == SSL_ERROR_SSL || error == SSL_ERROR_SYSCALL) {
-            std::cerr << "Handshake failed: SSL or syscall error" << std::endl;
+        if (error == SSL_ERROR_SSL) {
+            std::cerr << "Handshake failed: SSL error" << std::endl;
+            ERR_print_errors_fp(stderr);
+            _handshake_error();
+        } else if (error == SSL_ERROR_SYSCALL) {
+            std::cerr << "Handshake failed: syscall error" << std::endl;
             ERR_print_errors_fp(stderr);
             _handshake_error();
         } else if (error == SSL_ERROR_WANT_READ || error == SSL_ERROR_WANT_WRITE) {
