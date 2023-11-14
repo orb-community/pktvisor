@@ -15,20 +15,20 @@
 #pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
 #pragma clang diagnostic ignored "-Wc99-extensions"
 #endif
-#include <DnsLayer.h> // used only for mock generator
-#include <EthLayer.h>
-#include <IPv4Layer.h>
-#include <IPv6Layer.h>
-#include <Logger.h>
-#include <PacketUtils.h>
-#include <PcapFileDevice.h>
-#include <SystemUtils.h>
+#include <pcapplusplus/DnsLayer.h> // used only for mock generator
+#include <pcapplusplus/EthLayer.h>
+#include <pcapplusplus/IPv4Layer.h>
+#include <pcapplusplus/IPv6Layer.h>
+#include <pcapplusplus/Logger.h>
+#include <pcapplusplus/PacketUtils.h>
+#include <pcapplusplus/PcapFileDevice.h>
+#include <pcapplusplus/SystemUtils.h>
 #ifdef __GNUC__
 #pragma GCC diagnostic pop
 #endif
-#include <IpUtils.h>
 #include <assert.h>
 #include <cstdint>
+#include <pcapplusplus/IpUtils.h>
 #include <sstream>
 
 using namespace std::chrono;
@@ -76,7 +76,7 @@ PcapInputStream::PcapInputStream(const std::string &name)
           this,
           _tcp_connection_start_cb,
           _tcp_connection_end_cb,
-          {true, 1, 1000, 50})
+          pcpp::TcpReassemblyConfiguration(true, 1, 1000, 50))
 {
     pcpp::Logger::getInstance().suppressLogs();
 }
@@ -111,7 +111,7 @@ void PcapInputStream::start()
     }
 
     if (config_exists("debug") && config_get<bool>("debug")) {
-        pcpp::Logger::getInstance().setAllModlesToLogLevel(pcpp::Logger::LogLevel::Debug);
+        pcpp::Logger::getInstance().setAllModulesToLogLevel(pcpp::Logger::LogLevel::Debug);
     }
 
     _cur_pcap_source = PcapInputStream::DefaultPcapSource;
@@ -257,7 +257,7 @@ void PcapInputStream::tcp_message_ready(int8_t side, const pcpp::TcpStreamData &
     for (auto &proxy : _event_proxies) {
         dynamic_cast<PcapInputEventProxy *>(proxy.get())->tcp_message_ready_cb(side, tcpData, _packet_dir_cache);
     }
-    if (_lru_list->put(tcpData.getConnectionData().flowKey, tcpData.getConnectionData().endTime, &_deleted_data)){
+    if (_lru_list->put(tcpData.getConnectionData().flowKey, tcpData.getConnectionData().endTime, &_deleted_data)) {
         _lru_overflow.push_back(_deleted_data.first);
     }
 }

@@ -19,7 +19,7 @@
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
 #endif
-#include <DnsLayer.h>
+#include <pcapplusplus/DnsLayer.h>
 #ifdef __GNUC__
 #pragma GCC diagnostic pop
 #endif

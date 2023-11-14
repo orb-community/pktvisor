@@ -6,7 +6,7 @@
 #include "afpacket.h"
 
 #include "utils.h"
-#include <Packet.h>
+#include <pcapplusplus/Packet.h>
 #include <arpa/inet.h>
 #include <cerrno>
 #include <cstring>
