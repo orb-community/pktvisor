@@ -3,7 +3,9 @@
 #include <unordered_map>
 #include <vector>
 
+using ssize_t = std::make_signed_t<size_t>; //Windows fix required
 #include <nghttp2/nghttp2.h>
+
 #include <openssl/err.h>
 #include <openssl/ssl.h>
 
