@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <cstring>
 #include <iostream>
+#include <uvw/tcp.h>
 
 #include "httpssession.h"
 
@@ -47,7 +48,7 @@ std::unique_ptr<http2_stream_data> HTTPSSession::create_http2_stream_data(std::u
 }
 #define ARRLEN(x) (sizeof(x) / sizeof(x[0]))
 
-static ssize_t send_callback([[maybe_unused]] nghttp2_session *session, const uint8_t *data,
+static ssize_t ng2_send_callback([[maybe_unused]] nghttp2_session *session, const uint8_t *data,
     size_t length, [[maybe_unused]] int flags, void *user_data)
 {
     auto class_session = static_cast<HTTPSSession *>(user_data);
@@ -78,7 +79,7 @@ void HTTPSSession::process_receive(const uint8_t *data, size_t len)
     _got_dns_msg(std::move(buf), len);
 }
 
-static int on_data_chunk_recv_callback(nghttp2_session *session, [[maybe_unused]] uint8_t flags,
+static int ng2_on_data_chunk_recv_callback(nghttp2_session *session, [[maybe_unused]] uint8_t flags,
     int32_t stream_id, const uint8_t *data,
     size_t len, void *user_data)
 {
@@ -97,7 +98,7 @@ static int on_data_chunk_recv_callback(nghttp2_session *session, [[maybe_unused]
     return 0;
 }
 
-static int on_stream_close_callback(nghttp2_session *session, int32_t stream_id, [[maybe_unused]] uint32_t error_code,
+static int ng2_on_stream_close_callback(nghttp2_session *session, int32_t stream_id, [[maybe_unused]] uint32_t error_code,
     [[maybe_unused]] void *user_data)
 {
     auto stream_data = static_cast<http2_stream_data *>(nghttp2_session_get_stream_user_data(session, stream_id));
@@ -109,7 +110,7 @@ static int on_stream_close_callback(nghttp2_session *session, int32_t stream_id,
     return 0;
 }
 
-int on_frame_recv_callback([[maybe_unused]] nghttp2_session *session,
+int ng2_on_frame_recv_callback([[maybe_unused]] nghttp2_session *session,
     const nghttp2_frame *frame, void *user_data)
 {
     auto class_session = static_cast<HTTPSSession *>(user_data);
@@ -130,12 +131,47 @@ void HTTPSSession::init_nghttp2()
 {
     nghttp2_session_callbacks *callbacks;
     nghttp2_session_callbacks_new(&callbacks);
-    nghttp2_session_callbacks_set_send_callback(callbacks, send_callback);
-    nghttp2_session_callbacks_set_on_data_chunk_recv_callback(callbacks, on_data_chunk_recv_callback);
-    nghttp2_session_callbacks_set_on_stream_close_callback(callbacks, on_stream_close_callback);
-    nghttp2_session_callbacks_set_on_frame_recv_callback(callbacks, on_frame_recv_callback);
+    nghttp2_session_callbacks_set_send_callback(callbacks, ng2_send_callback);
+    nghttp2_session_callbacks_set_on_data_chunk_recv_callback(callbacks, ng2_on_data_chunk_recv_callback);
+    nghttp2_session_callbacks_set_on_stream_close_callback(callbacks, ng2_on_stream_close_callback);
+    nghttp2_session_callbacks_set_on_frame_recv_callback(callbacks, ng2_on_frame_recv_callback);
     nghttp2_session_client_new(&_current_session, callbacks, this);
     nghttp2_session_callbacks_del(callbacks);
+}
+#define WHERE_INFO(ssl, w, flag, msg) { \
+    if(w & flag) { \
+      printf("\t"); \
+      printf(msg); \
+      printf(" - %s ", SSL_state_string(ssl)); \
+      printf(" - %s ", SSL_state_string_long(ssl)); \
+      printf("\n"); \
+    }\
+ }
+
+// INFO CALLBACK
+void dummy_ssl_info_callback(const SSL* ssl, int where, int ret) {
+    if(ret == 0) {
+        printf("dummy_ssl_info_callback, error occured.\n");
+        return;
+    }
+    WHERE_INFO(ssl, where, SSL_CB_LOOP, "LOOP");
+    WHERE_INFO(ssl, where, SSL_CB_EXIT, "EXIT");
+    WHERE_INFO(ssl, where, SSL_CB_READ, "READ");
+    WHERE_INFO(ssl, where, SSL_CB_WRITE, "WRITE");
+    WHERE_INFO(ssl, where, SSL_CB_ALERT, "ALERT");
+    WHERE_INFO(ssl, where, SSL_CB_HANDSHAKE_DONE, "HANDSHAKE DONE");
+}
+void dummy_ssl_msg_callback(
+    int writep
+    ,int version
+    ,int contentType
+    ,const void* buf
+    ,size_t len
+    ,SSL* ssl
+    ,void *arg
+)
+{
+    printf("\tMessage callback with length: %zu\n", len);
 }
 
 bool HTTPSSession::setup()
@@ -170,7 +206,12 @@ bool HTTPSSession::setup()
         std::cerr << "OpenSSL failed to create SSL session." << std::endl;
         return false;
     }
-
+    SSL_CTX_set_info_callback(_ssl_context, dummy_ssl_info_callback);
+    SSL_CTX_set_msg_callback(_ssl_context, dummy_ssl_msg_callback);
+    _read_bio = BIO_new(BIO_s_mem());
+    _write_bio = BIO_new(BIO_s_mem());
+    SSL_set_bio(_ssl_session, _read_bio, _write_bio);
+    SSL_set_connect_state(_ssl_session);
     return true;
 }
 void HTTPSSession::send_settings()
@@ -276,10 +317,20 @@ void HTTPSSession::write(std::unique_ptr<char[]> data, size_t len)
         std::cerr << "HTTP2 failed to send" << std::endl;
     }
 }
-
+void HTTPSSession::flush_read_bio() {
+    char buf[1024*16];
+    int bytes_read = 0;
+    while((bytes_read = BIO_read(_write_bio, buf, sizeof(buf))) > 0) {
+        std::cerr << "flush_read_bio: " << buf << std::endl;
+        // WRITE TO STREAM
+        _handle->write(buf, bytes_read);
+    }
+}
 void HTTPSSession::receive_data(const char data[], size_t _len)
 {
-    _pull_buffer.append(data, _len);
+    std::cerr << "receive_data: " << data << std::endl;
+    int written = BIO_write(_read_bio, data, _len);
+//    _pull_buffer.append(data, _len);
     switch (_tls_state) {
     case LinkState::HANDSHAKE:
         do_handshake();
@@ -294,9 +345,9 @@ void HTTPSSession::receive_data(const char data[], size_t _len)
                 int error = SSL_get_error(_ssl_session, len);
                 if (error == SSL_ERROR_WANT_READ) {
                     // OpenSSL wants to read more data. Check if we don't have any data left to read.
-                    if (_pull_buffer.empty()) {
-                        break;
-                    }
+//                    if (_pull_buffer.empty()) {
+//                        break;
+//                    }
                     continue;
                 } else if (error == SSL_ERROR_WANT_WRITE) {
                     // OpenSSL wants to write data (e.g., for renegotiation). Continue processing.
@@ -325,16 +376,16 @@ void HTTPSSession::send_tls(void *data, size_t len)
 
 void HTTPSSession::do_handshake()
 {
-    int err = SSL_connect(_ssl_session); // Assuming client-side. Use SSL_accept for server-side.
+    int err = SSL_connect(_ssl_session); // client-side
     if (err == 1) {                      // Successful handshake
-        const unsigned char *alpn = NULL;
-        unsigned int alpnlen = 0;
-        SSL_get0_alpn_selected(_ssl_session, &alpn, &alpnlen);
-        if (!alpn || alpnlen != 2 || memcmp(alpn, "h2", 2) != 0) {
-            std::cerr << "Cannot get ALPN or ALPN is not 'h2'." << std::endl;
-            close();
-            return;
-        }
+//        const unsigned char *alpn = NULL;
+//        unsigned int alpnlen = 0;
+//        SSL_get0_alpn_selected(_ssl_session, &alpn, &alpnlen);
+//        if (!alpn || alpnlen != 2 || memcmp(alpn, "h2", 2) != 0) {
+//            std::cerr << "Cannot get ALPN or ALPN is not 'h2'." << std::endl;
+//            close();
+//            return;
+//        }
         init_nghttp2();
         send_settings();
         if (session_send() != 0) {
@@ -351,9 +402,11 @@ void HTTPSSession::do_handshake()
             std::cerr << "Handshake failed: syscall error" << std::endl;
             ERR_print_errors_fp(stderr);
             _handshake_error();
-        } else if (error == SSL_ERROR_WANT_READ || error == SSL_ERROR_WANT_WRITE) {
-            // Non-fatal error. OpenSSL wants to either read or write.
-            std::cout << "Handshake needs more processing. Continue calling do_handshake()." << std::endl;
+        } else if (error == SSL_ERROR_WANT_READ) {
+            std::cout << "Handshake needs READ" << std::endl;
+            flush_read_bio();
+        } else if (error == SSL_ERROR_WANT_WRITE) {
+            std::cout << "Handshake needs WRITE" << std::endl;
         } else {
             std::cerr << "Unknown handshake error." << std::endl;
         }

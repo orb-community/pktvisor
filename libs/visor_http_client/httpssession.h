@@ -119,8 +119,11 @@ private:
     HTTPMethod _method;
 
     nghttp2_session *_current_session;
-    std::string _pull_buffer;
+//    std::string _pull_buffer;
 
     SSL *_ssl_session;
     SSL_CTX *_ssl_context;
+    BIO *_read_bio;
+    BIO *_write_bio;
+    void flush_read_bio();
 };

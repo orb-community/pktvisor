@@ -22,6 +22,7 @@ void connect_tcp_events(std::shared_ptr<uvw::tcp_handle> tcp_handle, std::shared
 
     // SOCKET: local socket was closed, cleanup resources and possibly restart another connection
     tcp_handle->on<uvw::close_event>([](uvw::close_event &, uvw::tcp_handle &handle) {
+        std::cerr << "close_event" << std::endl;
         handle.stop();
     });
 
@@ -57,10 +58,10 @@ void connect_tcp_events(std::shared_ptr<uvw::tcp_handle> tcp_handle, std::shared
     // SOCKET: on connect
     tcp_handle->on<uvw::connect_event>([tcp_session](uvw::connect_event &, uvw::tcp_handle &handle) {
         std::cerr << "ConnectEvent" << std::endl;
-        tcp_session->on_connect_event();
-
         // start reading from incoming stream, fires data_event when receiving
         handle.read();
+        tcp_session->on_connect_event();
+
     });
 }
 
