@@ -1,7 +1,7 @@
 attrs==21.4.0
 behave==1.2.6
 behavex==1.5.11
-certifi==2022.6.15
+certifi==2023.7.22
 charset-normalizer==2.1.0
 configobj==5.0.6
 csscompressor==0.9.5
