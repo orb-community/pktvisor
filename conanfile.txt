@@ -1,11 +1,11 @@
 [requires]
-catch2/3.4.0
+catch2/3.5.0
 corrade/2020.06
-cpp-httplib/0.14.1
+cpp-httplib/0.14.3
 docopt.cpp/0.6.3
 fast-cpp-csv-parser/cci.20211104
 json-schema-validator/2.2.0
-libmaxminddb/1.7.1
+libmaxminddb/1.8.0
 nlohmann_json/3.11.2
 openssl/1.1.1w
 opentelemetry-proto/1.0.0
@@ -17,6 +17,7 @@ uvw/3.2.0
 libpcap/1.10.4
 yaml-cpp/0.8.0
 robin-hood-hashing/3.11.5
+libcurl/8.5.0
 crashpad/cci.20220219
 zlib/[>=1.2.10 <1.3]
 
