@@ -24,56 +24,58 @@ jobs:
     # cross-platform coverage.
     # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
 
-    runs-on: macos-11
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v3
-      - name: install gcc 12.2
-        run: |  
-          gcc --version
-          brew search gcc
-          brew install gcc@12
-          gcc --version
-      
+
       - name: Create Build Environment
         # Some projects don't allow in-source building, so create a separate build directory
         # We'll use this as our working directory for all subsequent commands
         run: cmake -E make_directory ${{github.workspace}}/build
 
+      - name: Python Setup
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
       - name: Get Conan
         id: conan
         uses: turtlebrowser/get-conan@main
         with:
-          version: 1.59.0
+          version: 1.61.0
 
-#       - name: Setup Conan Cache
-#         uses: actions/cache@v3
-#         with:
-#           path: ${{github.workspace}}/build/conan_home/
-#           key: conan-${{ runner.os }}-${{ hashFiles('conanfile.txt', '*/conanfile.txt') }}
-#           restore-keys: conan-${{ runner.os }}-
+      - name: Setup OSX Environment
+        run: echo "SDKROOT=$(xcrun --sdk macosx --show-sdk-path)" >> $GITHUB_ENV
+         
+      - name: Setup Conan Cache
+        uses: actions/cache@v3
+        with:
+          path: ${{github.workspace}}/build/conan_home/
+          key: conan-${{ runner.os }}-${{ hashFiles('conanfile.txt', '*/conanfile.txt') }}
+          restore-keys: conan-${{ runner.os }}-
 
-#       - name: Configure CMake
-#         # Use a bash shell so we can use the same syntax for environment variable
-#         # access regardless of the host operating system
-#         shell: bash
-#         working-directory: ${{github.workspace}}/build
-#         # Note the current convention is to use the -S and -B options here to specify source
-#         # and build directories, but this is only available with CMake 3.13 and higher.
-#         # The CMake binaries on the Github Actions machines are (as of this writing) 3.12
-#         run: PKG_CONFIG_PATH=${{github.workspace}}/local/lib/pkgconfig cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE
+      - name: Configure CMake
+        # Use a bash shell so we can use the same syntax for environment variable
+        # access regardless of the host operating system
+        shell: bash
+        working-directory: ${{github.workspace}}/build
+        # Note the current convention is to use the -S and -B options here to specify source
+        # and build directories, but this is only available with CMake 3.13 and higher.
+        # The CMake binaries on the Github Actions machines are (as of this writing) 3.12
+        run: PKG_CONFIG_PATH=${{github.workspace}}/local/lib/pkgconfig cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE
 
-#       - name: Build
-#         working-directory: ${{github.workspace}}/build
-#         shell: bash
-#         # Execute the build.  You can specify a specific target with "--target <NAME>"
-#         run: cmake --build . --config $BUILD_TYPE -- -j 2
+      - name: Build
+        working-directory: ${{github.workspace}}/build
+        shell: bash
+        # Execute the build.  You can specify a specific target with "--target <NAME>"
+        run: cmake --build . --config $BUILD_TYPE -- -j 2
 
-#       - name: Test
-#         working-directory: ${{github.workspace}}/build
-#         shell: bash
-#         # Execute tests defined by the CMake configuration.
-#         # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
-#         run: ctest -C $BUILD_TYPE
+      - name: Test
+        working-directory: ${{github.workspace}}/build
+        shell: bash
+        # Execute tests defined by the CMake configuration.
+        # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
+        run: ctest -C $BUILD_TYPE
         
   unit-tests-linux:
     # The CMake configure and build commands are platform agnostic and should work equally
@@ -99,7 +101,7 @@ jobs:
         id: conan
         uses: turtlebrowser/get-conan@main
         with:
-          version: 1.59.0
+          version: 1.61.0
 
       - name: linux package install
         run: |
@@ -166,7 +168,7 @@ jobs:
         id: conan
         uses: turtlebrowser/get-conan@main
         with:
-          version: 1.59.0
+          version: 1.61.0
 
       - name: Remove libpcap from conanfile
         shell: bash
@@ -396,7 +398,7 @@ jobs:
         id: conan
         uses: turtlebrowser/get-conan@main
         with:
-          version: 1.59.0
+          version: 1.61.0
 
       - name: Configure CMake to generate VERSION
         shell: bash
@@ -848,6 +850,7 @@ jobs:
         with:
           context: "."
           file: "./Dockerfile"
+          goarch: "arm64"
           
       - name: Debug artifacts
         run: ls -lha .

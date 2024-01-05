@@ -26,8 +26,8 @@ typedef int SOCKET;
 #pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
 #pragma clang diagnostic ignored "-Wc99-extensions"
 #endif
-#include <IcmpLayer.h>
-#include <IpAddress.h>
+#include <pcapplusplus/IcmpLayer.h>
+#include <pcapplusplus/IpAddress.h>
 #ifdef __GNUC__
 #pragma GCC diagnostic pop
 #endif
@@ -54,12 +54,12 @@ class PingReceiver
 {
     std::array<char, sizeof(pcpp::icmphdr) + 65507> _array;
     SOCKET _sock{INVALID_SOCKET};
-    std::shared_ptr<uvw::PollHandle> _poll;
+    std::shared_ptr<uvw::poll_handle> _poll;
     std::unique_ptr<std::thread> _io_thread;
-    std::shared_ptr<uvw::Loop> _io_loop;
-    std::shared_ptr<uvw::AsyncHandle> _async_h;
-    std::vector<std::shared_ptr<uvw::AsyncHandle>> _callbacks;
-    std::shared_ptr<uvw::TimerHandle> _timer;
+    std::shared_ptr<uvw::loop> _io_loop;
+    std::shared_ptr<uvw::async_handle> _async_h;
+    std::vector<std::shared_ptr<uvw::async_handle>> _callbacks;
+    std::shared_ptr<uvw::timer_handle> _timer;
     std::vector<std::pair<pcpp::Packet, timespec>> _recv_packets;
     void _setup_receiver();
 
@@ -69,12 +69,12 @@ public:
     PingReceiver();
     ~PingReceiver();
 
-    void register_async_callback(std::shared_ptr<uvw::AsyncHandle> callback)
+    void register_async_callback(std::shared_ptr<uvw::async_handle> callback)
     {
         _callbacks.push_back(callback);
     }
 
-    void remove_async_callback(std::shared_ptr<uvw::AsyncHandle> callback)
+    void remove_async_callback(std::shared_ptr<uvw::async_handle> callback)
     {
         _callbacks.erase(std::remove(_callbacks.begin(), _callbacks.end(), callback), _callbacks.end());
     }
@@ -97,9 +97,9 @@ class PingProbe final : public NetProbe
     bool _ip_set{false};
     uint8_t _sequence{0};
     uint8_t _internal_sequence{0};
-    std::shared_ptr<uvw::TimerHandle> _interval_timer;
-    std::shared_ptr<uvw::TimerHandle> _internal_timer;
-    std::shared_ptr<uvw::AsyncHandle> _recv_handler;
+    std::shared_ptr<uvw::timer_handle> _interval_timer;
+    std::shared_ptr<uvw::timer_handle> _internal_timer;
+    std::shared_ptr<uvw::async_handle> _recv_handler;
     SOCKETLEN _sin_length{0};
     std::vector<uint8_t> _payload_array;
     sockaddr_in _sa;
@@ -116,7 +116,7 @@ public:
     PingProbe(uint16_t id, const std::string &name, const pcpp::IPAddress &ip, const std::string &dns)
         : NetProbe(id, name, ip, dns){};
     ~PingProbe() = default;
-    bool start(std::shared_ptr<uvw::Loop> io_loop) override;
+    bool start(std::shared_ptr<uvw::loop> io_loop) override;
     bool stop() override;
 };
 }

@@ -6,6 +6,7 @@
 
 #ifdef __GNUC__
 #pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstringop-truncation"
 #pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
 #endif
 #include <csv.h>

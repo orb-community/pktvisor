@@ -23,46 +23,49 @@
 #include <cstring>
 #include <limits>
 #include <sstream>
+#include <stdexcept>
 
 #include "memory_operations.hpp"
 
 namespace datasketches {
 
 // clang++ seems to require this declaration for CMAKE_BUILD_TYPE='Debug"
-template<typename T, typename W, typename H, typename E, typename S, typename A>
-const uint8_t frequent_items_sketch<T, W, H, E, S, A>::LG_MIN_MAP_SIZE;
+template<typename T, typename W, typename H, typename E, typename A>
+const uint8_t frequent_items_sketch<T, W, H, E, A>::LG_MIN_MAP_SIZE;
 
-template<typename T, typename W, typename H, typename E, typename S, typename A>
-frequent_items_sketch<T, W, H, E, S, A>::frequent_items_sketch(uint8_t lg_max_map_size, uint8_t lg_start_map_size, const A& allocator):
+template<typename T, typename W, typename H, typename E, typename A>
+frequent_items_sketch<T, W, H, E, A>::frequent_items_sketch(uint8_t lg_max_map_size, uint8_t lg_start_map_size,
+    const E& equal, const A& allocator):
 total_weight(0),
 offset(0),
 map(
   std::max(lg_start_map_size, frequent_items_sketch::LG_MIN_MAP_SIZE),
   std::max(lg_max_map_size, frequent_items_sketch::LG_MIN_MAP_SIZE),
+  equal,
   allocator
 )
 {
   if (lg_start_map_size > lg_max_map_size) throw std::invalid_argument("starting size must not be greater than maximum size");
 }
 
-template<typename T, typename W, typename H, typename E, typename S, typename A>
-void frequent_items_sketch<T, W, H, E, S, A>::update(const T& item, W weight) {
+template<typename T, typename W, typename H, typename E, typename A>
+void frequent_items_sketch<T, W, H, E, A>::update(const T& item, W weight) {
   check_weight(weight);
   if (weight == 0) return;
   total_weight += weight;
   offset += map.adjust_or_insert(item, weight);
 }
 
-template<typename T, typename W, typename H, typename E, typename S, typename A>
-void frequent_items_sketch<T, W, H, E, S, A>::update(T&& item, W weight) {
+template<typename T, typename W, typename H, typename E, typename A>
+void frequent_items_sketch<T, W, H, E, A>::update(T&& item, W weight) {
   check_weight(weight);
   if (weight == 0) return;
   total_weight += weight;
   offset += map.adjust_or_insert(std::move(item), weight);
 }
 
-template<typename T, typename W, typename H, typename E, typename S, typename A>
-void frequent_items_sketch<T, W, H, E, S, A>::merge(const frequent_items_sketch& other) {
+template<typename T, typename W, typename H, typename E, typename A>
+void frequent_items_sketch<T, W, H, E, A>::merge(const frequent_items_sketch& other) {
   if (other.is_empty()) return;
   const W merged_total_weight = total_weight + other.get_total_weight(); // for correction at the end
   for (auto it: other.map) {
@@ -72,8 +75,8 @@ void frequent_items_sketch<T, W, H, E, S, A>::merge(const frequent_items_sketch&
   total_weight = merged_total_weight;
 }
 
-template<typename T, typename W, typename H, typename E, typename S, typename A>
-void frequent_items_sketch<T, W, H, E, S, A>::merge(frequent_items_sketch&& other) {
+template<typename T, typename W, typename H, typename E, typename A>
+void frequent_items_sketch<T, W, H, E, A>::merge(frequent_items_sketch&& other) {
   if (other.is_empty()) return;
   const W merged_total_weight = total_weight + other.get_total_weight(); // for correction at the end
   for (auto it: other.map) {
@@ -83,69 +86,67 @@ void frequent_items_sketch<T, W, H, E, S, A>::merge(frequent_items_sketch&& othe
   total_weight = merged_total_weight;
 }
 
-template<typename T, typename W, typename H, typename E, typename S, typename A>
-bool frequent_items_sketch<T, W, H, E, S, A>::is_empty() const {
+template<typename T, typename W, typename H, typename E, typename A>
+bool frequent_items_sketch<T, W, H, E, A>::is_empty() const {
   return map.get_num_active() == 0;
 }
 
-template<typename T, typename W, typename H, typename E, typename S, typename A>
-uint32_t frequent_items_sketch<T, W, H, E, S, A>::get_num_active_items() const {
+template<typename T, typename W, typename H, typename E, typename A>
+uint32_t frequent_items_sketch<T, W, H, E, A>::get_num_active_items() const {
   return map.get_num_active();
 }
 
-template<typename T, typename W, typename H, typename E, typename S, typename A>
-W frequent_items_sketch<T, W, H, E, S, A>::get_total_weight() const {
+template<typename T, typename W, typename H, typename E, typename A>
+W frequent_items_sketch<T, W, H, E, A>::get_total_weight() const {
   return total_weight;
 }
 
-template<typename T, typename W, typename H, typename E, typename S, typename A>
-W frequent_items_sketch<T, W, H, E, S, A>::get_estimate(const T& item) const {
+template<typename T, typename W, typename H, typename E, typename A>
+W frequent_items_sketch<T, W, H, E, A>::get_estimate(const T& item) const {
   // if item is tracked estimate = weight + offset, otherwise 0
   const W weight = map.get(item);
   if (weight > 0) return weight + offset;
   return 0;
 }
 
-template<typename T, typename W, typename H, typename E, typename S, typename A>
-W frequent_items_sketch<T, W, H, E, S, A>::get_lower_bound(const T& item) const {
+template<typename T, typename W, typename H, typename E, typename A>
+W frequent_items_sketch<T, W, H, E, A>::get_lower_bound(const T& item) const {
   return map.get(item);
 }
 
-template<typename T, typename W, typename H, typename E, typename S, typename A>
-W frequent_items_sketch<T, W, H, E, S, A>::get_upper_bound(const T& item) const {
+template<typename T, typename W, typename H, typename E, typename A>
+W frequent_items_sketch<T, W, H, E, A>::get_upper_bound(const T& item) const {
   return map.get(item) + offset;
 }
 
-template<typename T, typename W, typename H, typename E, typename S, typename A>
-W frequent_items_sketch<T, W, H, E, S, A>::get_maximum_error() const {
+template<typename T, typename W, typename H, typename E, typename A>
+W frequent_items_sketch<T, W, H, E, A>::get_maximum_error() const {
   return offset;
 }
 
-template<typename T, typename W, typename H, typename E, typename S, typename A>
-double frequent_items_sketch<T, W, H, E, S, A>::get_epsilon() const {
+template<typename T, typename W, typename H, typename E, typename A>
+double frequent_items_sketch<T, W, H, E, A>::get_epsilon() const {
   return EPSILON_FACTOR / (1 << map.get_lg_max_size());
 }
 
-template<typename T, typename W, typename H, typename E, typename S, typename A>
-double frequent_items_sketch<T, W, H, E, S, A>::get_epsilon(uint8_t lg_max_map_size) {
+template<typename T, typename W, typename H, typename E, typename A>
+double frequent_items_sketch<T, W, H, E, A>::get_epsilon(uint8_t lg_max_map_size) {
   return EPSILON_FACTOR / (1 << lg_max_map_size);
 }
 
-template<typename T, typename W, typename H, typename E, typename S, typename A>
-double frequent_items_sketch<T, W, H, E, S, A>::get_apriori_error(uint8_t lg_max_map_size, W estimated_total_weight) {
+template<typename T, typename W, typename H, typename E, typename A>
+double frequent_items_sketch<T, W, H, E, A>::get_apriori_error(uint8_t lg_max_map_size, W estimated_total_weight) {
   return get_epsilon(lg_max_map_size) * estimated_total_weight;
 }
 
 
-template<typename T, typename W, typename H, typename E, typename S, typename A>
-typename frequent_items_sketch<T, W, H, E, S, A>::vector_row
-frequent_items_sketch<T, W, H, E, S, A>::get_frequent_items(frequent_items_error_type err_type) const {
+template<typename T, typename W, typename H, typename E, typename A>
+auto frequent_items_sketch<T, W, H, E, A>::get_frequent_items(frequent_items_error_type err_type) const -> vector_row {
   return get_frequent_items(err_type, get_maximum_error());
 }
 
-template<typename T, typename W, typename H, typename E, typename S, typename A>
-typename frequent_items_sketch<T, W, H, E, S, A>::vector_row
-frequent_items_sketch<T, W, H, E, S, A>::get_frequent_items(frequent_items_error_type err_type, W threshold) const {
+template<typename T, typename W, typename H, typename E, typename A>
+auto frequent_items_sketch<T, W, H, E, A>::get_frequent_items(frequent_items_error_type err_type, W threshold) const -> vector_row {
   vector_row items(map.get_allocator());
   for (auto it: map) {
     const W lb = it.second;
@@ -159,8 +160,9 @@ frequent_items_sketch<T, W, H, E, S, A>::get_frequent_items(frequent_items_error
   return items;
 }
 
-template<typename T, typename W, typename H, typename E, typename S, typename A>
-void frequent_items_sketch<T, W, H, E, S, A>::serialize(std::ostream& os) const {
+template<typename T, typename W, typename H, typename E, typename A>
+template<typename SerDe>
+void frequent_items_sketch<T, W, H, E, A>::serialize(std::ostream& os, const SerDe& sd) const {
   const uint8_t preamble_longs = is_empty() ? PREAMBLE_LONGS_EMPTY : PREAMBLE_LONGS_NONEMPTY;
   write(os, preamble_longs);
   const uint8_t serial_version = SERIAL_VERSION;
@@ -198,23 +200,25 @@ void frequent_items_sketch<T, W, H, E, S, A>::serialize(std::ostream& os) const 
     }
     write(os, weights, sizeof(W) * num_items);
     aw.deallocate(weights, num_items);
-    S().serialize(os, items, num_items);
+    sd.serialize(os, items, num_items);
     for (i = 0; i < num_items; i++) items[i].~T();
     alloc.deallocate(items, num_items);
   }
 }
 
-template<typename T, typename W, typename H, typename E, typename S, typename A>
-size_t frequent_items_sketch<T, W, H, E, S, A>::get_serialized_size_bytes() const {
+template<typename T, typename W, typename H, typename E, typename A>
+template<typename SerDe>
+size_t frequent_items_sketch<T, W, H, E, A>::get_serialized_size_bytes(const SerDe& sd) const {
   if (is_empty()) return PREAMBLE_LONGS_EMPTY * sizeof(uint64_t);
   size_t size = PREAMBLE_LONGS_NONEMPTY * sizeof(uint64_t) + map.get_num_active() * sizeof(W);
-  for (auto it: map) size += S().size_of_item(it.first);
+  for (auto it: map) size += sd.size_of_item(it.first);
   return size;
 }
 
-template<typename T, typename W, typename H, typename E, typename S, typename A>
-auto frequent_items_sketch<T, W, H, E, S, A>::serialize(unsigned header_size_bytes) const -> vector_bytes {
-  const size_t size = header_size_bytes + get_serialized_size_bytes();
+template<typename T, typename W, typename H, typename E, typename A>
+template<typename SerDe>
+auto frequent_items_sketch<T, W, H, E, A>::serialize(unsigned header_size_bytes, const SerDe& sd) const -> vector_bytes {
+  const size_t size = header_size_bytes + get_serialized_size_bytes(sd);
   vector_bytes bytes(size, 0, map.get_allocator());
   uint8_t* ptr = bytes.data() + header_size_bytes;
   uint8_t* end_ptr = ptr + size;
@@ -255,15 +259,15 @@ auto frequent_items_sketch<T, W, H, E, S, A>::serialize(unsigned header_size_byt
     ptr += copy_to_mem(weights, ptr, sizeof(W) * num_items);
     aw.deallocate(weights, num_items);
     const size_t bytes_remaining = end_ptr - ptr;
-    ptr += S().serialize(ptr, bytes_remaining, items, num_items);
+    ptr += sd.serialize(ptr, bytes_remaining, items, num_items);
     for (i = 0; i < num_items; i++) items[i].~T();
     alloc.deallocate(items, num_items);
   }
   return bytes;
 }
 
-template<typename T, typename W, typename H, typename E, typename S, typename A>
-class frequent_items_sketch<T, W, H, E, S, A>::items_deleter {
+template<typename T, typename W, typename H, typename E, typename A>
+class frequent_items_sketch<T, W, H, E, A>::items_deleter {
 public:
   items_deleter(uint32_t num, bool destroy, const A& allocator):
     allocator_(allocator), num_(num), destroy_(destroy) {}
@@ -282,8 +286,10 @@ private:
   bool destroy_;
 };
 
-template<typename T, typename W, typename H, typename E, typename S, typename A>
-frequent_items_sketch<T, W, H, E, S, A> frequent_items_sketch<T, W, H, E, S, A>::deserialize(std::istream& is, const A& allocator) {
+template<typename T, typename W, typename H, typename E, typename A>
+template<typename SerDe>
+frequent_items_sketch<T, W, H, E, A> frequent_items_sketch<T, W, H, E, A>::deserialize(std::istream& is,
+    const SerDe& sd, const E& equal, const A& allocator) {
   const auto preamble_longs = read<uint8_t>(is);
   const auto serial_version = read<uint8_t>(is);
   const auto family_id = read<uint8_t>(is);
@@ -299,7 +305,7 @@ frequent_items_sketch<T, W, H, E, S, A> frequent_items_sketch<T, W, H, E, S, A>:
   check_family_id(family_id);
   check_size(lg_cur_size, lg_max_size);
 
-  frequent_items_sketch<T, W, H, E, S, A> sketch(lg_max_size, lg_cur_size, allocator);
+  frequent_items_sketch sketch(lg_max_size, lg_cur_size, equal, allocator);
   if (!is_empty) {
     const auto num_items = read<uint32_t>(is);
     read<uint32_t>(is); // unused
@@ -312,7 +318,7 @@ frequent_items_sketch<T, W, H, E, S, A> frequent_items_sketch<T, W, H, E, S, A>:
     read(is, weights.data(), sizeof(W) * num_items);
     A alloc(allocator);
     std::unique_ptr<T, items_deleter> items(alloc.allocate(num_items), items_deleter(num_items, false, alloc));
-    S().deserialize(is, items.get(), num_items);
+    sd.deserialize(is, items.get(), num_items);
     items.get_deleter().set_destroy(true); // serde did not throw, so the items must be constructed
     for (uint32_t i = 0; i < num_items; i++) {
       sketch.update(std::move(items.get()[i]), weights[i]);
@@ -325,8 +331,10 @@ frequent_items_sketch<T, W, H, E, S, A> frequent_items_sketch<T, W, H, E, S, A>:
   return sketch;
 }
 
-template<typename T, typename W, typename H, typename E, typename S, typename A>
-frequent_items_sketch<T, W, H, E, S, A> frequent_items_sketch<T, W, H, E, S, A>::deserialize(const void* bytes, size_t size, const A& allocator) {
+template<typename T, typename W, typename H, typename E, typename A>
+template<typename SerDe>
+frequent_items_sketch<T, W, H, E, A> frequent_items_sketch<T, W, H, E, A>::deserialize(const void* bytes, size_t size,
+    const SerDe& sd, const E& equal, const A& allocator) {
   ensure_minimum_memory(size, 8);
   const char* ptr = static_cast<const char*>(bytes);
   const char* base = static_cast<const char*>(bytes);
@@ -352,7 +360,7 @@ frequent_items_sketch<T, W, H, E, S, A> frequent_items_sketch<T, W, H, E, S, A>:
   check_size(lg_cur_size, lg_max_size);
   ensure_minimum_memory(size, preamble_longs * sizeof(uint64_t));
 
-  frequent_items_sketch<T, W, H, E, S, A> sketch(lg_max_size, lg_cur_size, allocator);
+  frequent_items_sketch sketch(lg_max_size, lg_cur_size, equal, allocator);
   if (!is_empty) {
     uint32_t num_items;
     ptr += copy_from_mem(ptr, num_items);
@@ -370,7 +378,7 @@ frequent_items_sketch<T, W, H, E, S, A> frequent_items_sketch<T, W, H, E, S, A>:
     A alloc(allocator);
     std::unique_ptr<T, items_deleter> items(alloc.allocate(num_items), items_deleter(num_items, false, alloc));
     const size_t bytes_remaining = size - (ptr - base);
-    ptr += S().deserialize(ptr, bytes_remaining, items.get(), num_items);
+    ptr += sd.deserialize(ptr, bytes_remaining, items.get(), num_items);
     items.get_deleter().set_destroy(true); // serde did not throw, so the items must be constructed
     for (uint32_t i = 0; i < num_items; i++) {
       sketch.update(std::move(items.get()[i]), weights[i]);
@@ -382,8 +390,8 @@ frequent_items_sketch<T, W, H, E, S, A> frequent_items_sketch<T, W, H, E, S, A>:
   return sketch;
 }
 
-template<typename T, typename W, typename H, typename E, typename S, typename A>
-void frequent_items_sketch<T, W, H, E, S, A>::check_preamble_longs(uint8_t preamble_longs, bool is_empty) {
+template<typename T, typename W, typename H, typename E, typename A>
+void frequent_items_sketch<T, W, H, E, A>::check_preamble_longs(uint8_t preamble_longs, bool is_empty) {
   if (is_empty) {
     if (preamble_longs != PREAMBLE_LONGS_EMPTY) {
       throw std::invalid_argument("Possible corruption: preamble longs of an empty sketch must be " + std::to_string(PREAMBLE_LONGS_EMPTY) + ": " + std::to_string(preamble_longs));
@@ -395,22 +403,22 @@ void frequent_items_sketch<T, W, H, E, S, A>::check_preamble_longs(uint8_t pream
   }
 }
 
-template<typename T, typename W, typename H, typename E, typename S, typename A>
-void frequent_items_sketch<T, W, H, E, S, A>::check_serial_version(uint8_t serial_version) {
+template<typename T, typename W, typename H, typename E, typename A>
+void frequent_items_sketch<T, W, H, E, A>::check_serial_version(uint8_t serial_version) {
   if (serial_version != SERIAL_VERSION) {
     throw std::invalid_argument("Possible corruption: serial version must be " + std::to_string(SERIAL_VERSION) + ": " + std::to_string(serial_version));
   }
 }
 
-template<typename T, typename W, typename H, typename E, typename S, typename A>
-void frequent_items_sketch<T, W, H, E, S, A>::check_family_id(uint8_t family_id) {
+template<typename T, typename W, typename H, typename E, typename A>
+void frequent_items_sketch<T, W, H, E, A>::check_family_id(uint8_t family_id) {
   if (family_id != FAMILY_ID) {
     throw std::invalid_argument("Possible corruption: family ID must be " + std::to_string(FAMILY_ID) + ": " + std::to_string(family_id));
   }
 }
 
-template<typename T, typename W, typename H, typename E, typename S, typename A>
-void frequent_items_sketch<T, W, H, E, S, A>::check_size(uint8_t lg_cur_size, uint8_t lg_max_size) {
+template<typename T, typename W, typename H, typename E, typename A>
+void frequent_items_sketch<T, W, H, E, A>::check_size(uint8_t lg_cur_size, uint8_t lg_max_size) {
   if (lg_cur_size > lg_max_size) {
     throw std::invalid_argument("Possible corruption: expected lg_cur_size <= lg_max_size: " + std::to_string(lg_cur_size) + " <= " + std::to_string(lg_max_size));
   }
@@ -419,8 +427,8 @@ void frequent_items_sketch<T, W, H, E, S, A>::check_size(uint8_t lg_cur_size, ui
   }
 }
 
-template<typename T, typename W, typename H, typename E, typename S, typename A>
-string<A> frequent_items_sketch<T, W, H, E, S, A>::to_string(bool print_items) const {
+template<typename T, typename W, typename H, typename E, typename A>
+string<A> frequent_items_sketch<T, W, H, E, A>::to_string(bool print_items) const {
   // Using a temporary stream for implementation here does not comply with AllocatorAwareContainer requirements.
   // The stream does not support passing an allocator instance, and alternatives are complicated.
   std::ostringstream os;
@@ -450,23 +458,23 @@ string<A> frequent_items_sketch<T, W, H, E, S, A>::to_string(bool print_items) c
 }
 
 // version for integral signed type
-template<typename T, typename W, typename H, typename E, typename S, typename A>
+template<typename T, typename W, typename H, typename E, typename A>
 template<typename WW, typename std::enable_if<std::is_integral<WW>::value && std::is_signed<WW>::value, int>::type>
-void frequent_items_sketch<T, W, H, E, S, A>::check_weight(WW weight) {
+void frequent_items_sketch<T, W, H, E, A>::check_weight(WW weight) {
   if (weight < 0) {
     throw std::invalid_argument("weight must be non-negative");
   }
 }
 
 // version for integral unsigned type - no-op
-template<typename T, typename W, typename H, typename E, typename S, typename A>
+template<typename T, typename W, typename H, typename E, typename A>
 template<typename WW, typename std::enable_if<std::is_integral<WW>::value && std::is_unsigned<WW>::value, int>::type>
-void frequent_items_sketch<T, W, H, E, S, A>::check_weight(WW) {}
+void frequent_items_sketch<T, W, H, E, A>::check_weight(WW) {}
 
 // version for floating point type
-template<typename T, typename W, typename H, typename E, typename S, typename A>
+template<typename T, typename W, typename H, typename E, typename A>
 template<typename WW, typename std::enable_if<std::is_floating_point<WW>::value, int>::type>
-void frequent_items_sketch<T, W, H, E, S, A>::check_weight(WW weight) {
+void frequent_items_sketch<T, W, H, E, A>::check_weight(WW weight) {
   if (weight < 0) {
     throw std::invalid_argument("weight must be non-negative");
   }

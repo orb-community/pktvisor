@@ -26,4 +26,17 @@ target_link_libraries(VisorHandlerDnsV2
 
 set(VISOR_STATIC_PLUGINS ${VISOR_STATIC_PLUGINS} Visor::Handler::Dns::V2 PARENT_SCOPE)
 
-add_subdirectory(tests)
+## TEST SUITE
+add_executable(unit-tests-handler-dns-v2
+        tests/test_dns_layer.cpp
+        tests/test_dnstap.cpp)
+
+target_link_libraries(unit-tests-handler-dns-v2
+        PRIVATE
+        ${CONAN_LIBS_JSON-SCHEMA-VALIDATOR}
+        Visor::Handler::Dns::V2
+        Visor::Lib::Test)
+
+add_test(NAME unit-tests-handler-dns-v2
+        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/src
+        COMMAND unit-tests-handler-dns-v2)

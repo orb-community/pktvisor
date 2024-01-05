@@ -1,6 +1,6 @@
 #pragma once
 
-int import_handler_plugins()
+static int import_handler_plugins()
 {
     CORRADE_PLUGIN_IMPORT(VisorHandlerNet);
     CORRADE_PLUGIN_IMPORT(VisorHandlerNetV2);

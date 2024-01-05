@@ -7,7 +7,7 @@
 #pragma GCC diagnostic push
 #pragma clang diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"
 #endif
-#include <Logger.h>
+#include <pcapplusplus/Logger.h>
 #ifdef __GNUC__
 #pragma GCC diagnostic pop
 #endif

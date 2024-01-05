@@ -15,7 +15,7 @@
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 #pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
 #endif
-#include <IcmpLayer.h>
+#include <pcapplusplus/IcmpLayer.h>
 #include <VisorTcpLayer.h>
 #ifdef __GNUC__
 #pragma GCC diagnostic pop
@@ -49,6 +49,7 @@ struct Target {
     Counter successes;
     Counter minimum;
     Counter maximum;
+    Counter connect_failures;
     Counter dns_failures;
     Counter timed_out;
 
@@ -59,7 +60,8 @@ struct Target {
         , successes(NET_PROBE_SCHEMA, {"successes"}, "Total Net Probe successes")
         , minimum(NET_PROBE_SCHEMA, {"response_min_us"}, "Minimum response time measured in the reporting interval")
         , maximum(NET_PROBE_SCHEMA, {"response_max_us"}, "Maximum response time measured in the reporting interval")
-        , dns_failures(NET_PROBE_SCHEMA, {"dns_lookup_failures"}, "Total Net Probe failures when performed DNS lookup")
+        , connect_failures(NET_PROBE_SCHEMA, {"connect_failures"}, "Total Net Probe failures when performing a TCP socket connection")
+        , dns_failures(NET_PROBE_SCHEMA, {"dns_lookup_failures"}, "Total Net Probe failures when performing a DNS lookup")
         , timed_out(NET_PROBE_SCHEMA, {"packets_timeout"}, "Total Net Probe timeout transactions")
     {
     }
@@ -98,7 +100,7 @@ public:
 
 class NetProbeMetricsManager final : public visor::AbstractMetricsManager<NetProbeMetricsBucket>
 {
-    typedef TransactionManager<uint32_t, NetProbeTransaction, std::hash<uint32_t>> NetProbeTransactionManager;
+    typedef TransactionManager<std::string, NetProbeTransaction, std::hash<std::string>> NetProbeTransactionManager;
     std::unique_ptr<NetProbeTransactionManager> _request_reply_manager;
 
 public:
@@ -122,7 +124,7 @@ public:
     void process_filtered(timespec stamp);
     void process_failure(ErrorType error, const std::string &target);
     void process_netprobe_icmp(pcpp::IcmpLayer *layer, const std::string &target, timespec stamp);
-    void process_netprobe_tcp(uint32_t port, bool send, const std::string &target, timespec stamp);
+    void process_netprobe_tcp(bool send, const std::string &target, timespec stamp);
 };
 
 class NetProbeStreamHandler final : public visor::StreamMetricsHandler<NetProbeMetricsManager>

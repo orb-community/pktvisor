@@ -22,6 +22,8 @@
 
 #include "count_zeros.hpp"
 
+#include <stdexcept>
+
 namespace datasketches {
 
 template<typename A>
