@@ -75,7 +75,7 @@ double quantiles_sorted_view<T, C, A>::get_rank(const T& item, bool inclusive) c
 template<typename T, typename C, typename A>
 auto quantiles_sorted_view<T, C, A>::get_quantile(double rank, bool inclusive) const -> quantile_return_type {
   if (entries_.empty()) throw std::runtime_error("operation is undefined for an empty sketch");
-  uint64_t weight = inclusive ? std::ceil(rank * total_weight_) : rank * total_weight_;
+  uint64_t weight = static_cast<uint64_t>(inclusive ? std::ceil(rank * total_weight_) : rank * total_weight_);
   auto it = inclusive ?
       std::lower_bound(entries_.begin(), entries_.end(), make_dummy_entry<T>(weight), compare_pairs_by_second())
     : std::upper_bound(entries_.begin(), entries_.end(), make_dummy_entry<T>(weight), compare_pairs_by_second());
