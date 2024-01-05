@@ -23,13 +23,14 @@
 #define CPC_CONFIDENCE_HPP_
 
 #include <cmath>
+#include <stdexcept>
 
 #include "cpc_sketch.hpp"
 
 namespace datasketches {
 
 // ln 2.0
-static const double ICON_ERROT_CONSTANT = 0.693147180559945286;
+static const double ICON_ERROR_CONSTANT = 0.693147180559945286;
 
 //  1,    2,    3, // kappa
 static const int16_t ICON_LOW_SIDE_DATA [33] = {   // Empirically measured at N = 1000 * K.
@@ -101,7 +102,7 @@ double get_icon_confidence_lb(const cpc_sketch_alloc<A>& sketch, int kappa) {
   const long k = 1 << lg_k;
   if (lg_k < 4) throw std::logic_error("lgk < 4");
   if (kappa < 1 || kappa > 3) throw std::invalid_argument("kappa must be between 1 and 3");
-  double x = ICON_ERROT_CONSTANT;
+  double x = ICON_ERROR_CONSTANT;
   if (lg_k <= 14) x = ((double) ICON_HIGH_SIDE_DATA[3 * (lg_k - 4) + (kappa - 1)]) / 10000.0;
   const double rel = x / sqrt(k);
   const double eps = kappa * rel;
@@ -119,7 +120,7 @@ double get_icon_confidence_ub(const cpc_sketch_alloc<A>& sketch, int kappa) {
   const long k = 1 << lg_k;
   if (lg_k < 4) throw std::logic_error("lgk < 4");
   if (kappa < 1 || kappa > 3) throw std::invalid_argument("kappa must be between 1 and 3");
-  double x = ICON_ERROT_CONSTANT;
+  double x = ICON_ERROR_CONSTANT;
   if (lg_k <= 14) x = ((double) ICON_LOW_SIDE_DATA[3 * (lg_k - 4) + (kappa - 1)]) / 10000.0;
   const double rel = x / sqrt(k);
   const double eps = kappa * rel;

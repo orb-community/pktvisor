@@ -5,11 +5,11 @@
 #pragma clang diagnostic ignored "-Wc99-extensions"
 #pragma clang diagnostic ignored "-Wrange-loop-analysis"
 #endif
-#include <Packet.h>
-#include <PcapFileDevice.h>
-#include <ProtocolType.h>
-#include <UdpLayer.h>
-#include <catch2/catch.hpp>
+#include <pcapplusplus/Packet.h>
+#include <pcapplusplus/PcapFileDevice.h>
+#include <pcapplusplus/ProtocolType.h>
+#include <pcapplusplus/UdpLayer.h>
+#include <catch2/catch_test_macros.hpp>
 #include <frequent_items_sketch.hpp>
 #ifdef __GNUC__
 #pragma GCC diagnostic pop

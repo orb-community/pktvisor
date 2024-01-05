@@ -6,7 +6,7 @@
 
 #include "InputStream.h"
 #include "NetProbe.h"
-#include <Packet.h>
+#include <pcapplusplus/Packet.h>
 #include <spdlog/spdlog.h>
 
 namespace uvw {
@@ -32,9 +32,9 @@ class NetProbeInputStream : public visor::InputStream
     std::shared_ptr<spdlog::logger> _logger;
 
     std::unique_ptr<std::thread> _io_thread;
-    std::shared_ptr<uvw::Loop> _io_loop;
-    std::shared_ptr<uvw::AsyncHandle> _async_h;
-    std::shared_ptr<uvw::TimerHandle> _timer;
+    std::shared_ptr<uvw::loop> _io_loop;
+    std::shared_ptr<uvw::async_handle> _async_h;
+    std::shared_ptr<uvw::timer_handle> _timer;
 
     std::vector<std::unique_ptr<NetProbe>> _probes;
 

@@ -4,7 +4,6 @@
 
 #pragma once
 #include <nlohmann/json.hpp>
-#include <opentelemetry/proto/metrics/v1/metrics.pb.h>
 #include <sstream>
 #include <timer.hpp>
 #ifdef __GNUC__
@@ -17,6 +16,7 @@
 #include <cpc_sketch.hpp>
 #include <frequent_items_sketch.hpp>
 #include <kll_sketch.hpp>
+#include <opentelemetry/proto/metrics/v1/metrics.pb.h>
 #ifdef __GNUC__
 #pragma GCC diagnostic pop
 #endif
@@ -180,26 +180,14 @@ public:
 template <typename T>
 class Histogram final : public Metric
 {
-    static_assert(std::is_integral<T>::value || std::is_floating_point<T>::value);
-
-    static constexpr T _get_pace()
-    {
-        if constexpr (std::is_integral<T>::value) {
-            return 1;
-        } else {
-            return 0.0000001;
-        }
-    }
-
     // calculated at compile time
     static constexpr std::pair<std::array<T, HIST_N_BUCKETS>, size_t> _get_boundaries()
     {
-        auto pace = _get_pace();
         std::array<T, HIST_N_BUCKETS> boundaries{};
         size_t index = 0;
         for (auto exponent = HIST_MIN_EXP; exponent < HIST_MAX_EXP; exponent++) {
             for (auto buckets = 0; buckets < HIST_LOG_BUCK; buckets++) {
-                boundaries[index++] = static_cast<T>((std::pow(10.0, static_cast<float>(buckets) / HIST_LOG_BUCK) * std::pow(10.0, exponent)) + pace);
+                boundaries[index++] = static_cast<T>((std::pow(10.0, static_cast<float>(buckets) / HIST_LOG_BUCK) * std::pow(10.0, exponent)));
             }
         }
         auto itr = std::unique(boundaries.begin(), boundaries.end());
@@ -235,12 +223,12 @@ public:
 
     auto get_min() const
     {
-        return _sketch.get_min_value();
+        return _sketch.get_min_item();
     }
 
     auto get_max() const
     {
-        return _sketch.get_max_value();
+        return _sketch.get_max_item();
     }
 
     // Metric
@@ -253,14 +241,13 @@ public:
         auto histogram_pmf = _sketch.get_PMF(bins_pmf.first.data(), bins_pmf.second);
         std::vector<T> bins;
         for (size_t i = 0; i < bins_pmf.second; ++i) {
-            if (histogram_pmf[i]) {
+            if (histogram_pmf[i] != 0.0) {
                 bins.push_back(bins_pmf.first[i]);
             }
         }
         auto histogram = _sketch.get_CDF(bins.data(), bins.size());
-        auto pace = _get_pace();
         for (std::size_t i = 0; i < bins.size(); ++i) {
-            name_json_assign(j, {"buckets", std::to_string(bins[i] - pace)}, histogram[i] * _sketch.get_n());
+            name_json_assign(j, {"buckets", std::to_string(bins[i])}, histogram[i] * _sketch.get_n());
         }
         name_json_assign(j, {"buckets", "+Inf"}, histogram[bins.size()] * _sketch.get_n());
     }
@@ -274,17 +261,16 @@ public:
         auto histogram_pmf = _sketch.get_PMF(bins_pmf.first.data(), bins_pmf.second);
         std::vector<T> bins;
         for (size_t i = 0; i < bins_pmf.second; ++i) {
-            if (histogram_pmf[i]) {
+            if (histogram_pmf[i] != 0.0) {
                 bins.push_back(bins_pmf.first[i]);
             }
         }
         auto histogram = _sketch.get_CDF(bins.data(), bins.size());
-        auto pace = _get_pace();
         out << "# HELP " << base_name_snake() << ' ' << _desc << std::endl;
         out << "# TYPE " << base_name_snake() << " histogram" << std::endl;
         for (std::size_t i = 0; i < bins.size(); ++i) {
             LabelMap le(add_labels);
-            le["le"] = std::to_string(bins[i] - pace);
+            le["le"] = std::to_string(bins[i]);
             out << name_snake({"bucket"}, le) << ' ' << histogram[i] * _sketch.get_n() << std::endl;
         }
         LabelMap le(add_labels);
@@ -293,7 +279,7 @@ public:
         out << name_snake({"count"}, add_labels) << ' ' << _sketch.get_n() << std::endl;
     }
 
-    void to_opentelemetry(metrics::v1::ScopeMetrics &scope, timespec &start, timespec &end, LabelMap add_labels = {}) const
+    void to_opentelemetry(metrics::v1::ScopeMetrics &scope, timespec &start, timespec &end, LabelMap add_labels = {}) const override
     {
         if (_sketch.is_empty()) {
             return;
@@ -302,12 +288,11 @@ public:
         auto histogram_pmf = _sketch.get_PMF(bins_pmf.first.data(), bins_pmf.second);
         std::vector<T> bins;
         for (size_t i = 0; i < bins_pmf.second; ++i) {
-            if (histogram_pmf[i]) {
+            if (histogram_pmf[i] != 0.0) {
                 bins.push_back(bins_pmf.first[i]);
             }
         }
         auto histogram = _sketch.get_CDF(bins.data(), bins.size());
-        auto pace = _get_pace();
 
         auto metric = scope.add_metrics();
         metric->set_name(base_name_snake());
@@ -319,8 +304,8 @@ public:
         hist_data_point->set_time_unix_nano(timespec_to_uint64(end));
 
         for (std::size_t i = 0; i < bins.size(); ++i) {
-            hist_data_point->add_explicit_bounds(bins[i] - pace);
-            hist_data_point->add_bucket_counts(histogram[i] * _sketch.get_n());
+            hist_data_point->add_explicit_bounds(bins[i]);
+            hist_data_point->add_bucket_counts(static_cast<uint64_t>(histogram[i]) * _sketch.get_n());
         }
         hist_data_point->set_count(_sketch.get_n());
 
@@ -383,24 +368,28 @@ public:
         return _quantile.get_n();
     }
 
-    auto get_quantile(float p) const
+    auto get_quantile(double p) const
     {
         return _quantile.get_quantile(p);
     }
 
     auto get_min() const
     {
-        return _quantile.get_min_value();
+        return _quantile.get_min_item();
     }
 
     auto get_max() const
     {
-        return _quantile.get_max_value();
+        return _quantile.get_max_item();
     }
 
     // Metric
     void to_json(json &j) const override
     {
+        if (_quantile.is_empty()) {
+            return;
+        }
+
         std::vector<T> quantiles;
         if (_quantiles_sum.empty()) {
             const double fractions[4]{0.50, 0.90, 0.95, 0.99};
@@ -447,7 +436,7 @@ public:
             out << name_snake({}, l9) << ' ' << quantiles[1] << std::endl;
             out << name_snake({}, l95) << ' ' << quantiles[2] << std::endl;
             out << name_snake({}, l99) << ' ' << quantiles[3] << std::endl;
-            out << name_snake({"sum"}, add_labels) << ' ' << _quantile.get_max_value() << std::endl;
+            out << name_snake({"sum"}, add_labels) << ' ' << _quantile.get_max_item() << std::endl;
             out << name_snake({"count"}, add_labels) << ' ' << _quantile.get_n() << std::endl;
         }
     }

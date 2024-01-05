@@ -21,6 +21,9 @@
 #define KLL_HELPER_IMPL_HPP_
 
 #include <algorithm>
+#include <stdexcept>
+
+#include "common_defs.hpp"
 
 namespace datasketches {
 
@@ -227,7 +230,7 @@ kll_helper::compress_result kll_helper::general_compress(uint16_t k, uint8_t m, 
       // move level over as is
       // make sure we are not moving data upwards
       if (raw_beg < out_levels[current_level]) throw std::logic_error("wrong move");
-      std::move(&items[raw_beg], &items[raw_lim], &items[out_levels[current_level]]);
+      std::move(items + raw_beg, items + raw_lim, items + out_levels[current_level]);
       out_levels[current_level + 1] = out_levels[current_level] + raw_pop;
     } else {
       // The sketch is too full AND this level is too full, so we compact it
@@ -248,7 +251,7 @@ kll_helper::compress_result kll_helper::general_compress(uint16_t k, uint8_t m, 
 
       // level zero might not be sorted, so we must sort it if we wish to compact it
       if ((current_level == 0) && !is_level_zero_sorted) {
-        std::sort(&items[adj_beg], &items[adj_beg + adj_pop], C());
+        std::sort(items + adj_beg, items + adj_beg + adj_pop, C());
       }
 
       if (pop_above == 0) { // Level above is empty, so halve up

@@ -6,12 +6,19 @@
 #include "DnstapException.h"
 #include "ThreadName.h"
 #include <filesystem>
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#endif
 #include <uvw/async.h>
 #include <uvw/loop.h>
 #include <uvw/pipe.h>
 #include <uvw/stream.h>
 #include <uvw/tcp.h>
 #include <uvw/timer.h>
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
 
 namespace visor::input::dnstap {
 
@@ -75,7 +82,7 @@ void DnstapInputStream::_read_frame_stream_file()
             break;
         } else {
             // Abnormal end
-            _logger->warn("fstrm_reader_read() data stream ended abnormally: {}", result);
+            _logger->warn("fstrm_reader_read() data stream ended abnormally: {}", static_cast<int>(result));
             break;
         }
     }
@@ -129,16 +136,16 @@ void DnstapInputStream::_create_frame_stream_tcp_socket()
     }
 
     // main io loop, run in its own thread
-    _io_loop = uvw::Loop::create();
+    _io_loop = uvw::loop::create();
     if (!_io_loop) {
         throw DnstapException("unable to create io loop");
     }
     // AsyncHandle lets us stop the loop from its own thread
-    _async_h = _io_loop->resource<uvw::AsyncHandle>();
+    _async_h = _io_loop->resource<uvw::async_handle>();
     if (!_async_h) {
         throw DnstapException("unable to initialize AsyncHandle");
     }
-    _async_h->once<uvw::AsyncEvent>([this](const auto &, auto &handle) {
+    _async_h->on<uvw::async_event>([this](const auto &, auto &handle) {
         _timer->stop();
         _timer->close();
         _tcp_server_h->stop();
@@ -147,16 +154,16 @@ void DnstapInputStream::_create_frame_stream_tcp_socket()
         _io_loop->close();
         handle.close();
     });
-    _async_h->on<uvw::ErrorEvent>([this](const auto &err, auto &handle) {
+    _async_h->on<uvw::error_event>([this](const auto &err, auto &handle) {
         _logger->error("[{}] AsyncEvent error: {}", _name, err.what());
         handle.close();
     });
 
-    _timer = _io_loop->resource<uvw::TimerHandle>();
+    _timer = _io_loop->resource<uvw::timer_handle>();
     if (!_timer) {
         throw DnstapException("unable to initialize TimerHandle");
     }
-    _timer->on<uvw::TimerEvent>([this](const auto &, auto &) {
+    _timer->on<uvw::timer_event>([this](const auto &, auto &) {
         timespec stamp;
         // use now()
         std::timespec_get(&stamp, TIME_UTC);
@@ -165,25 +172,25 @@ void DnstapInputStream::_create_frame_stream_tcp_socket()
             static_cast<DnstapInputEventProxy *>(proxy.get())->heartbeat_cb(stamp);
         }
     });
-    _timer->on<uvw::ErrorEvent>([this](const auto &err, auto &handle) {
+    _timer->on<uvw::error_event>([this](const auto &err, auto &handle) {
         _logger->error("[{}] TimerEvent error: {}", _name, err.what());
         handle.close();
     });
 
     // setup server socket
-    _tcp_server_h = _io_loop->resource<uvw::TCPHandle>();
+    _tcp_server_h = _io_loop->resource<uvw::tcp_handle>();
     if (!_tcp_server_h) {
-        throw DnstapException("unable to initialize server PipeHandle");
+        throw DnstapException("unable to initialize server pipe_handle");
     }
 
-    _tcp_server_h->on<uvw::ErrorEvent>([this](const auto &err, auto &) {
+    _tcp_server_h->on<uvw::error_event>([this](const auto &err, auto &) {
         _logger->error("[{}] socket error: {}", _name, err.what());
         throw DnstapException(err.what());
     });
 
-    // ListenEvent happens on client connection
-    _tcp_server_h->on<uvw::ListenEvent>([this](const uvw::ListenEvent &, uvw::TCPHandle &) {
-        auto client = _io_loop->resource<uvw::TCPHandle>();
+    // listen_event happens on client connection
+    _tcp_server_h->on<uvw::listen_event>([this](const uvw::listen_event &, uvw::tcp_handle &) {
+        auto client = _io_loop->resource<uvw::tcp_handle>();
         if (!client) {
             throw DnstapException("unable to initialize connected client TCPHandle");
         }
@@ -209,14 +216,14 @@ void DnstapInputStream::_create_frame_stream_tcp_socket()
             }
         };
 
-        client->on<uvw::ErrorEvent>([this](const uvw::ErrorEvent &err, uvw::TCPHandle &c_sock) {
+        client->on<uvw::error_event>([this](const uvw::error_event &err, uvw::tcp_handle &c_sock) {
             _logger->error("[{}]: dnstap client socket error: {}", _name, err.what());
             c_sock.stop();
             c_sock.close();
         });
 
         // client sent data
-        client->on<uvw::DataEvent>([this](const uvw::DataEvent &data, uvw::TCPHandle &c_sock) {
+        client->on<uvw::data_event>([this](const uvw::data_event &data, uvw::tcp_handle &c_sock) {
             assert(_tcp_sessions[c_sock.fd()]);
             try {
                 _tcp_sessions[c_sock.fd()]->receive_socket_data(reinterpret_cast<uint8_t *>(data.data.get()), data.length);
@@ -227,12 +234,12 @@ void DnstapInputStream::_create_frame_stream_tcp_socket()
             }
         });
         // client was closed
-        client->on<uvw::CloseEvent>([this](const uvw::CloseEvent &, uvw::TCPHandle &c_sock) {
+        client->on<uvw::close_event>([this](const uvw::close_event &, uvw::tcp_handle &c_sock) {
             _logger->info("[{}]: dnstap client disconnected", _name);
             _tcp_sessions.erase(c_sock.fd());
         });
         // client read EOF
-        client->on<uvw::EndEvent>([this](const uvw::EndEvent &, uvw::TCPHandle &c_sock) {
+        client->on<uvw::end_event>([this](const uvw::end_event &, uvw::tcp_handle &c_sock) {
             _logger->info("[{}]: dnstap client EOF {}", _name, c_sock.peer().ip);
             c_sock.stop();
             c_sock.close();
@@ -240,7 +247,7 @@ void DnstapInputStream::_create_frame_stream_tcp_socket()
 
         _tcp_server_h->accept(*client);
         _logger->info("[{}]: dnstap client connected {}", _name, client->peer().ip);
-        _tcp_sessions[client->fd()] = std::make_unique<FrameSessionData<uvw::TCPHandle>>(client, CONTENT_TYPE, on_data_frame);
+        _tcp_sessions[client->fd()] = std::make_unique<FrameSessionData<uvw::tcp_handle>>(client, CONTENT_TYPE, on_data_frame);
         client->read();
     });
 
@@ -250,7 +257,7 @@ void DnstapInputStream::_create_frame_stream_tcp_socket()
 
     // spawn the loop
     _io_thread = std::make_unique<std::thread>([this] {
-        _timer->start(uvw::TimerHandle::Time{1000}, uvw::TimerHandle::Time{HEARTBEAT_INTERVAL * 1000});
+        _timer->start(uvw::timer_handle::time{1000}, uvw::timer_handle::time{HEARTBEAT_INTERVAL * 1000});
         thread::change_self_name(schema_key(), name());
         _io_loop->run();
     });
@@ -260,16 +267,16 @@ void DnstapInputStream::_create_frame_stream_unix_socket()
     assert(config_exists("socket"));
 
     // main io loop, run in its own thread
-    _io_loop = uvw::Loop::create();
+    _io_loop = uvw::loop::create();
     if (!_io_loop) {
         throw DnstapException("unable to create io loop");
     }
     // AsyncHandle lets us stop the loop from its own thread
-    _async_h = _io_loop->resource<uvw::AsyncHandle>();
+    _async_h = _io_loop->resource<uvw::async_handle>();
     if (!_async_h) {
         throw DnstapException("unable to initialize AsyncHandle");
     }
-    _async_h->once<uvw::AsyncEvent>([this](const auto &, auto &handle) {
+    _async_h->on<uvw::async_event>([this](const auto &, auto &handle) {
         _timer->stop();
         _timer->close();
         _unix_server_h->stop();
@@ -278,16 +285,16 @@ void DnstapInputStream::_create_frame_stream_unix_socket()
         _io_loop->close();
         handle.close();
     });
-    _async_h->on<uvw::ErrorEvent>([this](const auto &err, auto &handle) {
+    _async_h->on<uvw::error_event>([this](const auto &err, auto &handle) {
         _logger->error("[{}] AsyncEvent error: {}", _name, err.what());
         handle.close();
     });
 
-    _timer = _io_loop->resource<uvw::TimerHandle>();
+    _timer = _io_loop->resource<uvw::timer_handle>();
     if (!_timer) {
         throw DnstapException("unable to initialize TimerHandle");
     }
-    _timer->on<uvw::TimerEvent>([this](const auto &, auto &) {
+    _timer->on<uvw::timer_event>([this](const auto &, auto &) {
         timespec stamp;
         // use now()
         std::timespec_get(&stamp, TIME_UTC);
@@ -296,27 +303,27 @@ void DnstapInputStream::_create_frame_stream_unix_socket()
             static_cast<DnstapInputEventProxy *>(proxy.get())->heartbeat_cb(stamp);
         }
     });
-    _timer->on<uvw::ErrorEvent>([this](const auto &err, auto &handle) {
+    _timer->on<uvw::error_event>([this](const auto &err, auto &handle) {
         _logger->error("[{}] TimerEvent error: {}", _name, err.what());
         handle.close();
     });
 
     // setup server socket
-    _unix_server_h = _io_loop->resource<uvw::PipeHandle>();
+    _unix_server_h = _io_loop->resource<uvw::pipe_handle>();
     if (!_unix_server_h) {
-        throw DnstapException("unable to initialize server PipeHandle");
+        throw DnstapException("unable to initialize server pipe_handle");
     }
 
-    _unix_server_h->on<uvw::ErrorEvent>([this](const auto &err, auto &) {
+    _unix_server_h->on<uvw::error_event>([this](const auto &err, auto &) {
         _logger->error("[{}] socket error: {}", _name, err.what());
         throw DnstapException(err.what());
     });
 
-    // ListenEvent happens on client connection
-    _unix_server_h->on<uvw::ListenEvent>([this](const uvw::ListenEvent &, uvw::PipeHandle &) {
-        auto client = _io_loop->resource<uvw::PipeHandle>();
+    // listen_event happens on client connection
+    _unix_server_h->on<uvw::listen_event>([this](const uvw::listen_event &, uvw::pipe_handle &) {
+        auto client = _io_loop->resource<uvw::pipe_handle>();
         if (!client) {
-            throw DnstapException("unable to initialize connected client PipeHandle");
+            throw DnstapException("unable to initialize connected client pipe_handle");
         }
 
         auto on_data_frame = [this](const void *data, std::size_t len_data) {
@@ -339,14 +346,14 @@ void DnstapInputStream::_create_frame_stream_unix_socket()
             }
         };
 
-        client->on<uvw::ErrorEvent>([this](const uvw::ErrorEvent &err, uvw::PipeHandle &c_sock) {
+        client->on<uvw::error_event>([this](const uvw::error_event &err, uvw::pipe_handle &c_sock) {
             _logger->error("[{}]: dnstap client socket error: {}", _name, err.what());
             c_sock.stop();
             c_sock.close();
         });
 
         // client sent data
-        client->on<uvw::DataEvent>([this](const uvw::DataEvent &data, uvw::PipeHandle &c_sock) {
+        client->on<uvw::data_event>([this](const uvw::data_event &data, uvw::pipe_handle &c_sock) {
             assert(_unix_sessions[c_sock.fd()]);
             try {
                 _unix_sessions[c_sock.fd()]->receive_socket_data(reinterpret_cast<uint8_t *>(data.data.get()), data.length);
@@ -357,20 +364,20 @@ void DnstapInputStream::_create_frame_stream_unix_socket()
             }
         });
         // client was closed
-        client->on<uvw::CloseEvent>([this](const uvw::CloseEvent &, uvw::PipeHandle &c_sock) {
+        client->on<uvw::close_event>([this](const uvw::close_event &, uvw::pipe_handle &c_sock) {
             _logger->info("[{}]: dnstap client disconnected", _name);
             _unix_sessions.erase(c_sock.fd());
         });
         // client read EOF
-        client->on<uvw::EndEvent>([this](const uvw::EndEvent &, uvw::PipeHandle &c_sock) {
-            _logger->info("[{}]: dnstap client EOF {}", _name, c_sock.fd());
+        client->on<uvw::end_event>([this](const uvw::end_event &, uvw::pipe_handle &c_sock) {
+            _logger->info("[{}]: dnstap client EOF {}", _name, c_sock.sock());
             c_sock.stop();
             c_sock.close();
         });
 
         _unix_server_h->accept(*client);
-        _logger->info("[{}]: dnstap client connected {}", _name, client->fd());
-        _unix_sessions[client->fd()] = std::make_unique<FrameSessionData<uvw::PipeHandle>>(client, CONTENT_TYPE, on_data_frame);
+        _logger->info("[{}]: dnstap client connected {}", _name, client->sock());
+        _unix_sessions[client->fd()] = std::make_unique<FrameSessionData<uvw::pipe_handle>>(client, CONTENT_TYPE, on_data_frame);
         client->read();
     });
 
@@ -383,7 +390,7 @@ void DnstapInputStream::_create_frame_stream_unix_socket()
 
     // spawn the loop
     _io_thread = std::make_unique<std::thread>([this] {
-        _timer->start(uvw::TimerHandle::Time{1000}, uvw::TimerHandle::Time{HEARTBEAT_INTERVAL * 1000});
+        _timer->start(uvw::timer_handle::time{1000}, uvw::timer_handle::time{HEARTBEAT_INTERVAL * 1000});
         thread::change_self_name(schema_key(), name());
         _io_loop->run();
     });

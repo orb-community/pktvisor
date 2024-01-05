@@ -448,7 +448,10 @@ void CoreServer::_setup_routes(const PrometheusConfig &prom_config)
                 try {
                     auto [policy, lock] = _registry->policy_manager()->module_get_locked(p_mname);
                     auto scope = resource.add_scope_metrics();
-                    scope->mutable_scope()->set_name(p_mname);
+                    scope->mutable_scope()->set_name("pktvisor/" + p_mname);
+                    auto attr = scope->mutable_scope()->add_attributes();
+                    attr->set_key("policy_name");
+                    attr->mutable_value()->set_string_value(p_mname);
                     policy->opentelemetry_metrics(*scope);
                 } catch (const std::exception &) {
                     return false;

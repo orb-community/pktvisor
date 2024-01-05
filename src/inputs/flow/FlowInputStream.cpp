@@ -12,19 +12,18 @@
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
 #endif
-#include <IPv4Layer.h>
-#include <IPv6Layer.h>
-#include <Packet.h>
-#include <PcapFileDevice.h>
-#include <UdpLayer.h>
-#ifdef __GNUC__
-#pragma GCC diagnostic pop
-#endif
-
+#include <pcapplusplus/IPv4Layer.h>
+#include <pcapplusplus/IPv6Layer.h>
+#include <pcapplusplus/Packet.h>
+#include <pcapplusplus/PcapFileDevice.h>
+#include <pcapplusplus/UdpLayer.h>
 #include <uvw/async.h>
 #include <uvw/loop.h>
 #include <uvw/timer.h>
 #include <uvw/udp.h>
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
 
 namespace visor::input::flow {
 
@@ -134,16 +133,16 @@ void FlowInputStream::_create_frame_stream_udp_socket()
     auto bind = config_get<std::string>("bind");
     auto port = config_get<uint64_t>("port");
     // main io loop, run in its own thread
-    _io_loop = uvw::Loop::create();
+    _io_loop = uvw::loop::create();
     if (!_io_loop) {
         throw FlowException("unable to create io loop");
     }
     // AsyncHandle lets us stop the loop from its own thread
-    _async_h = _io_loop->resource<uvw::AsyncHandle>();
+    _async_h = _io_loop->resource<uvw::async_handle>();
     if (!_async_h) {
         throw FlowException("unable to initialize AsyncHandle");
     }
-    _async_h->once<uvw::AsyncEvent>([this](const auto &, auto &handle) {
+    _async_h->on<uvw::async_event>([this](const auto &, auto &handle) {
         _timer->stop();
         _timer->close();
         _udp_server_h->stop();
@@ -152,16 +151,16 @@ void FlowInputStream::_create_frame_stream_udp_socket()
         _io_loop->close();
         handle.close();
     });
-    _async_h->on<uvw::ErrorEvent>([this](const auto &err, auto &handle) {
+    _async_h->on<uvw::error_event>([this](const auto &err, auto &handle) {
         _logger->error("[{}] AsyncEvent error: {}", _name, err.what());
         handle.close();
     });
 
-    _timer = _io_loop->resource<uvw::TimerHandle>();
+    _timer = _io_loop->resource<uvw::timer_handle>();
     if (!_timer) {
         throw FlowException("unable to initialize TimerHandle");
     }
-    _timer->on<uvw::TimerEvent>([this](const auto &, auto &) {
+    _timer->on<uvw::timer_event>([this](const auto &, auto &) {
         timespec stamp;
         // use now()
         std::timespec_get(&stamp, TIME_UTC);
@@ -170,25 +169,25 @@ void FlowInputStream::_create_frame_stream_udp_socket()
             static_cast<FlowInputEventProxy *>(proxy.get())->heartbeat_cb(stamp);
         }
     });
-    _timer->on<uvw::ErrorEvent>([this](const auto &err, auto &handle) {
+    _timer->on<uvw::error_event>([this](const auto &err, auto &handle) {
         _logger->error("[{}] TimerEvent error: {}", _name, err.what());
         handle.close();
     });
 
     // setup server socket
-    _udp_server_h = _io_loop->resource<uvw::UDPHandle>();
+    _udp_server_h = _io_loop->resource<uvw::udp_handle>();
     if (!_udp_server_h) {
-        throw FlowException("unable to initialize server PipeHandle");
+        throw FlowException("unable to initialize server pipe_handle");
     }
 
-    _udp_server_h->on<uvw::ErrorEvent>([this](const auto &err, auto &) {
+    _udp_server_h->on<uvw::error_event>([this](const auto &err, auto &) {
         _logger->error("[{}] socket error: {}", _name, err.what());
         throw FlowException(err.what());
     });
 
-    // ListenEvent happens on client connection
+    // listen_event happens on client connection
     if (_flow_type == Type::SFLOW) {
-        _udp_server_h->on<uvw::UDPDataEvent>([this](const uvw::UDPDataEvent &event, uvw::UDPHandle &) {
+        _udp_server_h->on<uvw::udp_data_event>([this](const uvw::udp_data_event &event, uvw::udp_handle &) {
             SFSample sample;
             sample.rawSample = reinterpret_cast<uint8_t *>(event.data.get());
             sample.rawSampleLen = event.length;
@@ -207,7 +206,7 @@ void FlowInputStream::_create_frame_stream_udp_socket()
             }
         });
     } else if (_flow_type == Type::NETFLOW) {
-        _udp_server_h->on<uvw::UDPDataEvent>([this](const uvw::UDPDataEvent &event, uvw::UDPHandle &) {
+        _udp_server_h->on<uvw::udp_data_event>([this](const uvw::udp_data_event &event, uvw::udp_handle &) {
             NFSample sample;
             sample.raw_sample = reinterpret_cast<uint8_t *>(event.data.get());
             sample.raw_sample_len = event.length;
@@ -228,7 +227,7 @@ void FlowInputStream::_create_frame_stream_udp_socket()
 
     // spawn the loop
     _io_thread = std::make_unique<std::thread>([this] {
-        _timer->start(uvw::TimerHandle::Time{1000}, uvw::TimerHandle::Time{HEARTBEAT_INTERVAL * 1000});
+        _timer->start(uvw::timer_handle::time{1000}, uvw::timer_handle::time{HEARTBEAT_INTERVAL * 1000});
         thread::change_self_name(schema_key(), name());
         _io_loop->run();
     });

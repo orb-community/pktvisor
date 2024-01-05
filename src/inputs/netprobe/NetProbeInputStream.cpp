@@ -14,11 +14,11 @@
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
 #endif
-#include <IPv4Layer.h>
-#include <IPv6Layer.h>
-#include <Packet.h>
-#include <PcapFileDevice.h>
-#include <UdpLayer.h>
+#include <pcapplusplus/IPv4Layer.h>
+#include <pcapplusplus/IPv6Layer.h>
+#include <pcapplusplus/Packet.h>
+#include <pcapplusplus/PcapFileDevice.h>
+#include <pcapplusplus/UdpLayer.h>
 #ifdef __GNUC__
 #pragma GCC diagnostic pop
 #endif
@@ -154,32 +154,32 @@ void NetProbeInputStream::_fail_cb(ErrorType error, TestType type, const std::st
 void NetProbeInputStream::_create_netprobe_loop()
 {
     // main io loop, run in its own thread
-    _io_loop = uvw::Loop::create();
+    _io_loop = uvw::loop::create();
     if (!_io_loop) {
         throw NetProbeException("unable to create io loop");
     }
     // AsyncHandle lets us stop the loop from its own thread
-    _async_h = _io_loop->resource<uvw::AsyncHandle>();
+    _async_h = _io_loop->resource<uvw::async_handle>();
     if (!_async_h) {
         throw NetProbeException("unable to initialize AsyncHandle");
     }
-    _async_h->once<uvw::AsyncEvent>([this](const auto &, auto &handle) {
+    _async_h->on<uvw::async_event>([this](const auto &, auto &handle) {
         _timer->stop();
         _timer->close();
         _io_loop->stop();
         _io_loop->close();
         handle.close();
     });
-    _async_h->on<uvw::ErrorEvent>([this](const auto &err, auto &handle) {
+    _async_h->on<uvw::error_event>([this](const auto &err, auto &handle) {
         _logger->error("[{}] AsyncEvent error: {}", _name, err.what());
         handle.close();
     });
 
-    _timer = _io_loop->resource<uvw::TimerHandle>();
+    _timer = _io_loop->resource<uvw::timer_handle>();
     if (!_timer) {
         throw NetProbeException("unable to initialize TimerHandle");
     }
-    _timer->on<uvw::TimerEvent>([this](const auto &, auto &) {
+    _timer->on<uvw::timer_event>([this](const auto &, auto &) {
         timespec stamp;
         // use now()
         std::timespec_get(&stamp, TIME_UTC);
@@ -188,7 +188,7 @@ void NetProbeInputStream::_create_netprobe_loop()
             proxy->heartbeat_cb(stamp);
         }
     });
-    _timer->on<uvw::ErrorEvent>([this](const auto &err, auto &handle) {
+    _timer->on<uvw::error_event>([this](const auto &err, auto &handle) {
         _logger->error("[{}] TimerEvent error: {}", _name, err.what());
         handle.close();
     });
@@ -231,7 +231,7 @@ void NetProbeInputStream::_create_netprobe_loop()
 
     // spawn the loop
     _io_thread = std::make_unique<std::thread>([this] {
-        _timer->start(uvw::TimerHandle::Time{1000}, uvw::TimerHandle::Time{HEARTBEAT_INTERVAL * 1000});
+        _timer->start(uvw::timer_handle::time{1000}, uvw::timer_handle::time{HEARTBEAT_INTERVAL * 1000});
         thread::change_self_name(schema_key(), name());
         _io_loop->run();
     });

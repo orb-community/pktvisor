@@ -11,7 +11,7 @@
 #include "StreamHandler.h"
 #include "TransactionManager.h"
 #include "dns.h"
-#include "dnstap.pb.h"
+#include "pb/dnstap.pb.h"
 #include <Corrade/Utility/Debug.h>
 #include <bitset>
 #include <limits>
@@ -239,8 +239,8 @@ class DnsMetricsManager final : public visor::AbstractMetricsManager<DnsMetricsB
     using DnsXactID = std::pair<uint32_t, uint16_t>;
     typedef lib::transaction::TransactionManager<DnsXactID, DnsTransaction> DnsTransactionManager;
     std::unique_ptr<DnsTransactionManager> _qr_pair_manager;
-    float _to90th{0.0};
-    float _from90th{0.0};
+    float _to90th{0.0f};
+    float _from90th{0.0f};
 
 public:
     DnsMetricsManager(const Configurable *window_config)
