@@ -1,4 +1,4 @@
-FROM golang:bullseye
+FROM golang:latest
 
 LABEL author="Everton Haise Taques <everton.taques@encora.com>"
 LABEL maintainer="netboxlabs"

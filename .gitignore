@@ -10,6 +10,3 @@ docs/internals/html
 appimage/*.AppImage
 /test-config*.yaml
 localconfig/
-.cache/
-.vscode/
-build/

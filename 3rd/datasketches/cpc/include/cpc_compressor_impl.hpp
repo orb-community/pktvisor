@@ -23,7 +23,6 @@
 #define CPC_COMPRESSOR_IMPL_HPP_
 
 #include <memory>
-#include <stdexcept>
 
 #include "compression_data.hpp"
 #include "cpc_util.hpp"
@@ -297,7 +296,6 @@ void cpc_compressor<A>::compress_sliding_flavor(const cpc_sketch_alloc<A>& sourc
     // changes the implied ordering of the pairs, so we must do it before sorting.
 
     const uint8_t pseudo_phase = determine_pseudo_phase(source.get_lg_k(), source.get_num_coupons());
-    if (pseudo_phase >= 16) throw std::logic_error("unexpected pseudo phase for sliding flavor");
     const uint8_t* permutation = column_permutations_for_encoding[pseudo_phase];
 
     const uint8_t offset = source.window_offset;
@@ -334,7 +332,7 @@ void cpc_compressor<A>::uncompress_sliding_flavor(const compressed_state<A>& sou
         lg_k, source.table_data.get_allocator());
 
     const uint8_t pseudo_phase = determine_pseudo_phase(lg_k, num_coupons);
-    if (pseudo_phase >= 16) throw std::logic_error("unexpected pseudo phase for sliding flavor");
+    if (pseudo_phase >= 16) throw std::logic_error("pseudo phase >= 16");
     const uint8_t* permutation = column_permutations_for_decoding[pseudo_phase];
 
     uint8_t offset = cpc_sketch_alloc<A>::determine_correct_offset(lg_k, num_coupons);
@@ -449,7 +447,7 @@ uint8_t cpc_compressor<A>::determine_pseudo_phase(uint8_t lg_k, uint32_t c) {
     if (lg_k < 4) throw std::logic_error("lgK < 4");
     const size_t tmp = c >> (lg_k - 4);
     const uint8_t phase = tmp & 15;
-    if (phase >= 16) throw std::out_of_range("wrong phase");
+    if (phase < 0 || phase >= 16) throw std::out_of_range("wrong phase");
     return phase;
   }
 }

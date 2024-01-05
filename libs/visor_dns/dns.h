@@ -8,7 +8,6 @@
 #include "DnsResource.h"
 #include "DnsResourceData.h"
 #include <string>
-#include <string_view>
 #include <unordered_map>
 
 namespace visor::lib::dns {

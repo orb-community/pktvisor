@@ -23,15 +23,4 @@ target_link_libraries(VisorHandlerNetProbe
 
 set(VISOR_STATIC_PLUGINS ${VISOR_STATIC_PLUGINS} Visor::Handler::NetProbe PARENT_SCOPE)
 
-
-## TEST SUITE
-add_executable(unit-tests-handler-netprobe test_net_probe.cpp)
-
-target_link_libraries(unit-tests-handler-netprobe
-        PRIVATE
-        Visor::Handler::NetProbe
-        Visor::Lib::Test)
-
-add_test(NAME unit-tests-handler-netprobe
-        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/src
-        COMMAND unit-tests-handler-netprobe)
+add_subdirectory(tests)

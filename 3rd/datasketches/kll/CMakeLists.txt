@@ -33,6 +33,10 @@ list(APPEND kll_HEADERS "include/kll_sketch.hpp")
 list(APPEND kll_HEADERS "include/kll_sketch_impl.hpp")
 list(APPEND kll_HEADERS "include/kll_helper.hpp")
 list(APPEND kll_HEADERS "include/kll_helper_impl.hpp")
+list(APPEND kll_HEADERS "include/kll_quantile_calculator.hpp")
+list(APPEND kll_HEADERS "include/kll_quantile_calculator_impl.hpp")
+list(APPEND kll_HEADERS "include/kolmogorov_smirnov.hpp")
+list(APPEND kll_HEADERS "include/kolmogorov_smirnov_impl.hpp")
 
 install(TARGETS kll
 		EXPORT ${PROJECT_NAME}
@@ -47,4 +51,8 @@ target_sources(kll
 		${CMAKE_CURRENT_SOURCE_DIR}/include/kll_helper_impl.hpp
 		${CMAKE_CURRENT_SOURCE_DIR}/include/kll_sketch.hpp
 		${CMAKE_CURRENT_SOURCE_DIR}/include/kll_sketch_impl.hpp
+		${CMAKE_CURRENT_SOURCE_DIR}/include/kll_quantile_calculator.hpp
+		${CMAKE_CURRENT_SOURCE_DIR}/include/kll_quantile_calculator_impl.hpp
+		${CMAKE_CURRENT_SOURCE_DIR}/include/kolmogorov_smirnov.hpp
+		${CMAKE_CURRENT_SOURCE_DIR}/include/kolmogorov_smirnov_impl.hpp
 		)

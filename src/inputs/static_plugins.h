@@ -1,6 +1,6 @@
 #pragma once
 
-static int import_input_plugins()
+int import_input_plugins()
 {
     CORRADE_PLUGIN_IMPORT(VisorInputMock);
     CORRADE_PLUGIN_IMPORT(VisorInputPcap);

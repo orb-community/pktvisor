@@ -11,7 +11,7 @@
 #include "StreamHandler.h"
 #include "TransactionManager.h"
 #include "dns.h"
-#include "pb/dnstap.pb.h"
+#include "dnstap.pb.h"
 #include <Corrade/Utility/Debug.h>
 #include <bitset>
 #include <limits>
@@ -387,7 +387,7 @@ class DnsMetricsManager final : public visor::AbstractMetricsManager<DnsMetricsB
     typedef TransactionManager<DnsXactID, DnsTransaction> DnsTransactionManager;
     struct DirTransaction {
         std::unique_ptr<DnsTransactionManager> xact_map;
-        float per_90th{0.0f};
+        float per_90th{0.0};
 
         DirTransaction()
             : xact_map(std::make_unique<DnsTransactionManager>())

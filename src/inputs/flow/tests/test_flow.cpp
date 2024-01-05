@@ -1,18 +1,8 @@
 #include "FlowInputStream.h"
+#include <catch2/catch.hpp>
 
-#include <catch2/catch_test_macros.hpp>
-#include <catch2/matchers/catch_matchers.hpp>
-#include <catch2/catch_test_visor.hpp>
-
-#ifdef __GNUC__
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-parameter"
-#endif
 #include <uvw/loop.h>
 #include <uvw/udp.h>
-#ifdef __GNUC__
-#pragma GCC diagnostic pop
-#endif
 
 using namespace visor::input::flow;
 
@@ -66,13 +56,13 @@ TEST_CASE("sflow udp socket", "[sflow][udp]")
 
     CHECK_NOTHROW(stream.start());
 
-    auto loop = uvw::loop::get_default();
-    auto client = loop->resource<uvw::udp_handle>();
-    client->on<uvw::send_event>([](const uvw::send_event &, uvw::udp_handle &handle) {
+    auto loop = uvw::Loop::getDefault();
+    auto client = loop->resource<uvw::UDPHandle>();
+    client->once<uvw::SendEvent>([](const uvw::SendEvent &, uvw::UDPHandle &handle) {
         handle.close();
     });
     auto dataSend = std::unique_ptr<char[]>(new char[2]{'b', 'c'});
-    client->send(uvw::socket_address{bind, static_cast<unsigned int>(port)}, dataSend.get(), 2);
+    client->send(uvw::Addr{bind, static_cast<unsigned int>(port)}, dataSend.get(), 2);
     client->send(bind, port, nullptr, 0);
 
     uv_sleep(100);
@@ -97,13 +87,13 @@ TEST_CASE("netflow udp socket", "[netflow][udp]")
 
     CHECK_NOTHROW(stream.start());
 
-    auto loop = uvw::loop::get_default();
-    auto client = loop->resource<uvw::udp_handle>();
-    client->on<uvw::send_event>([](const uvw::send_event &, uvw::udp_handle &handle) {
+    auto loop = uvw::Loop::getDefault();
+    auto client = loop->resource<uvw::UDPHandle>();
+    client->once<uvw::SendEvent>([](const uvw::SendEvent &, uvw::UDPHandle &handle) {
         handle.close();
     });
     auto dataSend = std::unique_ptr<char[]>(new char[2]{'b', 'c'});
-    client->send(uvw::socket_address{bind, static_cast<unsigned int>(port)}, dataSend.get(), 2);
+    client->send(uvw::Addr{bind, static_cast<unsigned int>(port)}, dataSend.get(), 2);
     client->send(bind, port, nullptr, 0);
 
     uv_sleep(100);

@@ -16,7 +16,7 @@ add_library(fstrm
         libmy/my_queue_mutex.c
         )
 add_library(fstrm::fstrm ALIAS fstrm)
-target_compile_options(fstrm PRIVATE -Wno-pedantic -Wno-unused-variable -Wno-unused-but-set-variable)
+target_compile_options(fstrm PRIVATE -Wno-pedantic -Wno-unused-variable)
 
 target_include_directories(fstrm
         PUBLIC

@@ -183,15 +183,15 @@ bool Tap::tags_match_selector_yaml(const YAML::Node &tag_yaml, bool all)
         }
 
         const auto it_module = it->begin();
-        const auto &key = it_module->first.as<std::string>();
 
         if (!it_module->first.IsScalar()) {
-            throw TapException(fmt::format("tag key '{}' have be scalar", key));
+            throw TapException(fmt::format("tag key '{}' have be scalar", it_module->first));
         }
         if (!it_module->second.IsScalar()) {
-            throw TapException(fmt::format("tag key '{}' must have scalar value", key));
+            throw TapException(fmt::format("tag key '{}' must have scalar value", it_module->first));
         }
 
+        auto key = it_module->first.as<std::string>();
         if (!_tags->config_exists(key)) {
             if (all) {
                 return false;

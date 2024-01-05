@@ -20,12 +20,13 @@
 #ifndef KLL_SKETCH_HPP_
 #define KLL_SKETCH_HPP_
 
+#include <functional>
 #include <memory>
 #include <vector>
 
+#include "kll_quantile_calculator.hpp"
 #include "common_defs.hpp"
 #include "serde.hpp"
-#include "quantiles_sorted_view.hpp"
 
 namespace datasketches {
 
@@ -34,10 +35,10 @@ namespace datasketches {
  * and nearly optimal accuracy per retained item.
  * See <a href="https://arxiv.org/abs/1603.05346v2">Optimal Quantile Approximation in Streams</a>.
  *
- * <p>This is a stochastic streaming sketch that enables near real-time analysis of the
- * approximate distribution of items from a very large stream in a single pass, requiring only
- * that the items are comparable.
- * The analysis is obtained using <i>get_quantile()</i> function or the
+ * <p>This is a stochastic streaming sketch that enables near-real time analysis of the
+ * approximate distribution of values from a very large stream in a single pass, requiring only
+ * that the values are comparable.
+ * The analysis is obtained using <i>get_quantile()</i> or <i>get_quantiles()</i> functions or the
  * inverse functions get_rank(), get_PMF() (Probability Mass Function), and get_CDF()
  * (Cumulative Distribution Function).
  *
@@ -45,15 +46,14 @@ namespace datasketches {
  * with the equivalent Java implementation only when template parameter T = float
  * (32-bit single precision values).
  * 
- * <p>Given an input stream of <i>N</i> items, the <i>natural rank</i> of any specific
- * item is defined as its index <i>(1 to N)</i> in inclusive mode
- * or <i>(0 to N-1)</i> in exclusive mode
- * in the hypothetical sorted stream of all <i>N</i> input items.
+ * <p>Given an input stream of <i>N</i> numeric values, the <i>absolute rank</i> of any specific
+ * value is defined as its index <i>(0 to N-1)</i> in the hypothetical sorted stream of all
+ * <i>N</i> input values.
  *
- * <p>The <i>normalized rank</i> (<i>rank</i>) of any specific item is defined as its
- * <i>natural rank</i> divided by <i>N</i>.
- * Thus, the <i>normalized rank</i> is between zero and one.
- * In the documentation for this sketch <i>natural rank</i> is never used so any
+ * <p>The <i>normalized rank</i> (<i>rank</i>) of any specific value is defined as its
+ * <i>absolute rank</i> divided by <i>N</i>.
+ * Thus, the <i>normalized rank</i> is a value between zero and one.
+ * In the documentation for this sketch <i>absolute rank</i> is never used so any
  * reference to just <i>rank</i> should be interpreted to mean <i>normalized rank</i>.
  *
  * <p>This sketch is configured with a parameter <i>k</i>, which affects the size of the sketch
@@ -62,18 +62,18 @@ namespace datasketches {
  * <p>The estimation error is commonly called <i>epsilon</i> (or <i>eps</i>) and is a fraction
  * between zero and one. Larger values of <i>k</i> result in smaller values of epsilon.
  * Epsilon is always with respect to the rank and cannot be applied to the
- * corresponding items.
+ * corresponding values.
  *
- * <p>The relationship between the normalized rank and the corresponding items can be viewed
+ * <p>The relationship between the normalized rank and the corresponding values can be viewed
  * as a two dimensional monotonic plot with the normalized rank on one axis and the
- * corresponding items on the other axis. If the y-axis is specified as the item-axis and
+ * corresponding values on the other axis. If the y-axis is specified as the value-axis and
  * the x-axis as the normalized rank, then <i>y = get_quantile(x)</i> is a monotonically
  * increasing function.
  *
- * <p>The function <i>get_quantile(rank)</i> translates ranks into
- * corresponding quantiles. The functions <i>get_rank(item),
+ * <p>The functions <i>get_quantile(rank)</i> and get_quantiles(...) translate ranks into
+ * corresponding values. The functions <i>get_rank(value),
  * get_CDF(...) (Cumulative Distribution Function), and get_PMF(...)
- * (Probability Mass Function)</i> perform the opposite operation and translate items into ranks.
+ * (Probability Mass Function)</i> perform the opposite operation and translate values into ranks.
  *
  * <p>The <i>getPMF(...)</i> function has about 13 to 47% worse rank error (depending
  * on <i>k</i>) than the other queries because the mass of each "bin" of the PMF has
@@ -85,60 +85,60 @@ namespace datasketches {
  *
  * <p>A <i>get_quantile(rank)</i> query has the following guarantees:
  * <ul>
- * <li>Let <i>q = get_quantile(r)</i> where <i>r</i> is the rank between zero and one.</li>
- * <li>The quantile <i>q</i> will be an item from the input stream.</li>
- * <li>Let <i>trueRank</i> be the true rank of <i>q</i> derived from the hypothetical sorted
- * stream of all <i>N</i> items.</li>
+ * <li>Let <i>v = get_quantile(r)</i> where <i>r</i> is the rank between zero and one.</li>
+ * <li>The value <i>v</i> will be a value from the input stream.</li>
+ * <li>Let <i>trueRank</i> be the true rank of <i>v</i> derived from the hypothetical sorted
+ * stream of all <i>N</i> values.</li>
  * <li>Let <i>eps = get_normalized_rank_error(false)</i>.</li>
  * <li>Then <i>r - eps &le; trueRank &le; r + eps</i> with a confidence of 99%. Note that the
- * error is on the rank, not the quantile.</li>
+ * error is on the rank, not the value.</li>
  * </ul>
  *
- * <p>A <i>get_rank(item)</i> query has the following guarantees:
+ * <p>A <i>get_rank(value)</i> query has the following guarantees:
  * <ul>
- * <li>Let <i>r = get_rank(i)</i> where <i>i</i> is an item between the min and max items of
+ * <li>Let <i>r = get_rank(v)</i> where <i>v</i> is a value between the min and max values of
  * the input stream.</li>
- * <li>Let <i>true_rank</i> be the true rank of <i>i</i> derived from the hypothetical sorted
- * stream of all <i>N</i> items.</li>
+ * <li>Let <i>true_rank</i> be the true rank of <i>v</i> derived from the hypothetical sorted
+ * stream of all <i>N</i> values.</li>
  * <li>Let <i>eps = get_normalized_rank_error(false)</i>.</li>
  * <li>Then <i>r - eps &le; trueRank &le; r + eps</i> with a confidence of 99%.</li>
  * </ul>
  *
  * <p>A <i>get_PMF()</i> query has the following guarantees:
  * <ul>
- * <li>Let <i>{r1, r2, ..., r(m+1)} = get_PMF(s1, s2, ..., sm)</i> where <i>s1, s2</i> are
- * split points (items from the input domain) between the min and max items of the input stream.
- * <li>Let <i>mass<sub>i</sub> = estimated mass between s<sub>i</sub> and s<sub>i+1</sub></i>.</li>
- * <li>Let <i>trueMass</i> be the true mass between the items of <i>s<sub>i</sub>,
- * s<sub>i+1</sub></i> derived from the hypothetical sorted stream of all <i>N</i> items.</li>
+ * <li>Let <i>{r1, r2, ..., r(m+1)} = get_PMF(v1, v2, ..., vm)</i> where <i>v1, v2</i> are values
+ * between the min and max values of the input stream.
+ * <li>Let <i>mass<sub>i</sub> = estimated mass between v<sub>i</sub> and v<sub>i+1</sub></i>.</li>
+ * <li>Let <i>trueMass</i> be the true mass between the values of <i>v<sub>i</sub>,
+ * v<sub>i+1</sub></i> derived from the hypothetical sorted stream of all <i>N</i> values.</li>
  * <li>Let <i>eps = get_normalized_rank_error(true)</i>.</li>
  * <li>then <i>mass - eps &le; trueMass &le; mass + eps</i> with a confidence of 99%.</li>
- * <li>r(m+1) includes the mass of all points larger than sm.</li>
+ * <li>r(m+1) includes the mass of all points larger than vm.</li>
  * </ul>
  *
  * <p>A <i>get_CDF(...)</i> query has the following guarantees;
  * <ul>
- * <li>Let <i>{r1, r2, ..., r(m+1)} = get_CDF(s1, s2, ..., sm)</i> where <i>s1, s2, ...</i> are
- * split points (items from the input domain) between the min and max items of the input stream.
+ * <li>Let <i>{r1, r2, ..., r(m+1)} = get_CDF(v1, v2, ..., vm)</i> where <i>v1, v2</i> are values
+ * between the min and max values of the input stream.
  * <li>Let <i>mass<sub>i</sub> = r<sub>i+1</sub> - r<sub>i</sub></i>.</li>
- * <li>Let <i>trueMass</i> be the true mass between the true ranks of <i>s<sub>i</sub>,
- * s<sub>i+1</sub></i> derived from the hypothetical sorted stream of all <i>N</i> items.</li>
+ * <li>Let <i>trueMass</i> be the true mass between the true ranks of <i>v<sub>i</sub>,
+ * v<sub>i+1</sub></i> derived from the hypothetical sorted stream of all <i>N</i> values.</li>
  * <li>Let <i>eps = get_normalized_rank_error(true)</i>.</li>
  * <li>then <i>mass - eps &le; trueMass &le; mass + eps</i> with a confidence of 99%.</li>
- * <li>1 - r(m+1) includes the mass of all points larger than sm.</li>
+ * <li>1 - r(m+1) includes the mass of all points larger than vm.</li>
  * </ul>
  *
  * <p>From the above, it might seem like we could make some estimates to bound the
- * <em>item</em> returned from a call to <em>get_quantile()</em>. The sketch, however, does not
- * let us derive error bounds or confidences around items. Because errors are independent, we
+ * <em>value</em> returned from a call to <em>get_quantile()</em>. The sketch, however, does not
+ * let us derive error bounds or confidences around values. Because errors are independent, we
  * can approximately bracket a value as shown below, but there are no error estimates available.
  * Additionally, the interval may be quite large for certain distributions.
  * <ul>
- * <li>Let <i>q = get_quantile(r)</i>, the estimated quantile of rank <i>r</i>.</li>
+ * <li>Let <i>v = get_quantile(r)</i>, the estimated quantile value of rank <i>r</i>.</li>
  * <li>Let <i>eps = get_normalized_rank_error(false)</i>.</li>
- * <li>Let <i>q<sub>lo</sub></i> = estimated quantile of rank <i>(r - eps)</i>.</li>
- * <li>Let <i>q<sub>hi</sub></i> = estimated quantile of rank <i>(r + eps)</i>.</li>
- * <li>Then <i>q<sub>lo</sub> &le; q &le; q<sub>hi</sub></i>, with 99% confidence.</li>
+ * <li>Let <i>v<sub>lo</sub></i> = estimated quantile value of rank <i>(r - eps)</i>.</li>
+ * <li>Let <i>v<sub>hi</sub></i> = estimated quantile value of rank <i>(r + eps)</i>.</li>
+ * <li>Then <i>v<sub>lo</sub> &le; v &le; v<sub>hi</sub></i>, with 99% confidence.</li>
  * </ul>
  *
  * author Kevin Lang
@@ -146,54 +146,63 @@ namespace datasketches {
  * author Lee Rhodes
  */
 
+template<typename A> using AllocU8 = typename std::allocator_traits<A>::template rebind_alloc<uint8_t>;
+template<typename A> using vector_u8 = std::vector<uint8_t, AllocU8<A>>;
+template<typename A> using AllocU32 = typename std::allocator_traits<A>::template rebind_alloc<uint32_t>;
+template<typename A> using vector_u32 = std::vector<uint32_t, AllocU32<A>>;
+template<typename A> using AllocD = typename std::allocator_traits<A>::template rebind_alloc<double>;
+template<typename A> using vector_d = std::vector<double, AllocD<A>>;
+
 namespace kll_constants {
   const uint16_t DEFAULT_K = 200;
 }
 
-template <
-  typename T,
-  typename C = std::less<T>, // strict weak ordering function (see C++ named requirements: Compare)
-  typename A = std::allocator<T>
->
+template <typename T, typename C = std::less<T>, typename S = serde<T>, typename A = std::allocator<T>>
 class kll_sketch {
   public:
     using value_type = T;
     using comparator = C;
-    using vector_u32 = std::vector<uint32_t, typename std::allocator_traits<A>::template rebind_alloc<uint32_t>>;
 
     static const uint8_t DEFAULT_M = 8;
+    // TODO: Redundant and deprecated. Will be remove din next major version.
+    static const uint16_t DEFAULT_K = kll_constants::DEFAULT_K;
     static const uint16_t MIN_K = DEFAULT_M;
     static const uint16_t MAX_K = (1 << 16) - 1;
 
-    explicit kll_sketch(uint16_t k = kll_constants::DEFAULT_K, const C& comparator = C(), const A& allocator = A());
+    explicit kll_sketch(uint16_t k = kll_constants::DEFAULT_K, const A& allocator = A());
     kll_sketch(const kll_sketch& other);
     kll_sketch(kll_sketch&& other) noexcept;
     ~kll_sketch();
     kll_sketch& operator=(const kll_sketch& other);
     kll_sketch& operator=(kll_sketch&& other);
 
-    /*
-     * Type converting constructor.
-     * @param other sketch of a different type
-     * @param comparator instance of a Comparator
-     * @param allocator instance of an Allocator
+    /**
+     * Updates this sketch with the given data item.
+     * This method takes lvalue.
+     * @param value an item from a stream of items
      */
-    template<typename TT, typename CC, typename AA>
-    explicit kll_sketch(const kll_sketch<TT, CC, AA>& other, const C& comparator = C(), const A& allocator = A());
+    void update(const T& value);
 
     /**
      * Updates this sketch with the given data item.
-     * @param item from a stream of items
+     * This method takes rvalue.
+     * @param value an item from a stream of items
      */
-    template<typename FwdT>
-    void update(FwdT&& item);
+    void update(T&& value);
 
     /**
      * Merges another sketch into this one.
+     * This method takes lvalue.
      * @param other sketch to merge into this one
      */
-    template<typename FwdSk>
-    void merge(FwdSk&& other);
+    void merge(const kll_sketch& other);
+
+    /**
+     * Merges another sketch into this one.
+     * This method takes rvalue.
+     * @param other sketch to merge into this one
+     */
+    void merge(kll_sketch&& other);
 
     /**
      * Returns true if this sketch is empty.
@@ -226,148 +235,136 @@ class kll_sketch {
     bool is_estimation_mode() const;
 
     /**
-     * Returns the min item of the stream.
-     * If the sketch is empty this throws std::runtime_error.
-     * @return the min item of the stream
+     * Returns the min value of the stream.
+     * For floating point types: if the sketch is empty this returns NaN.
+     * For other types: if the sketch is empty this throws runtime_error.
+     * @return the min value of the stream
      */
-    T get_min_item() const;
+    T get_min_value() const;
 
     /**
-     * Returns the max item of the stream.
-     * If the sketch is empty this throws std::runtime_error.
-     * @return the max item of the stream
+     * Returns the max value of the stream.
+     * For floating point types: if the sketch is empty this returns NaN.
+     * For other types: if the sketch is empty this throws runtime_error.
+     * @return the max value of the stream
      */
-    T get_max_item() const;
+    T get_max_value() const;
 
     /**
-     * Returns an instance of the comparator for this sketch.
-     * @return comparator
-     */
-    C get_comparator() const;
-
-    /**
-     * Returns an instance of the allocator for this sketch.
-     * @return allocator
-     */
-    A get_allocator() const;
-
-    /**
-     * Returns an item from the sketch that is the best approximation to an item
-     * from the original stream with the given rank.
+     * Returns an approximation to the value of the data item
+     * that would be preceded by the given fraction of a hypothetical sorted
+     * version of the input stream so far.
+     * <p>
+     * Note that this method has a fairly large overhead (microseconds instead of nanoseconds)
+     * so it should not be called multiple times to get different quantiles from the same
+     * sketch. Instead use get_quantiles(), which pays the overhead only once.
+     * <p>
+     * For floating point types: if the sketch is empty this returns NaN.
+     * For other types: if the sketch is empty this throws runtime_error.
      *
-     * <p>If the sketch is empty this throws std::runtime_error.
+     * @param fraction the specified fractional position in the hypothetical sorted stream.
+     * These are also called normalized ranks or fractional ranks.
+     * If fraction = 0.0, the true minimum value of the stream is returned.
+     * If fraction = 1.0, the true maximum value of the stream is returned.
      *
-     * @param rank of an item in the hypothetical sorted stream.
-     * @param inclusive if true, the given rank is considered inclusive (includes weight of an item)
-     *
-     * @return approximate quantile associated with the given rank
+     * @return the approximation to the value at the given fraction
      */
-    using quantile_return_type = typename quantiles_sorted_view<T, C, A>::quantile_return_type;
-    quantile_return_type get_quantile(double rank, bool inclusive = true) const;
+    T get_quantile(double fraction) const;
 
     /**
+     * This is a more efficient multiple-query version of get_quantile().
+     * <p>
      * This returns an array that could have been generated by using get_quantile() for each
-     * rank separately.
+     * fractional rank separately, but would be very inefficient.
+     * This method incurs the internal set-up overhead once and obtains multiple quantile values in
+     * a single query. It is strongly recommend that this method be used instead of multiple calls
+     * to get_quantile().
      *
-     * <p>If the sketch is empty this throws std::runtime_error.
+     * <p>If the sketch is empty this returns an empty vector.
      *
-     * @param ranks given array of ranks in the hypothetical sorted stream.
-     * These ranks must be in the interval [0.0, 1.0].
-     * @param size the number of ranks in the array
-     * @param inclusive if true, the given ranks are considered inclusive (include weights of items)
+     * @param fractions given array of fractional positions in the hypothetical sorted stream.
+     * These are also called normalized ranks or fractional ranks.
+     * These fractions must be in the interval [0.0, 1.0], inclusive.
      *
-     * @return array of approximate quantiles corresponding to the given ranks in the same order.
-     *
-     * Deprecated. Will be removed in the next major version. Use get_quantile() instead.
+     * @return array of approximations to the given fractions in the same order as given fractions
+     * in the input array.
      */
-    std::vector<T, A> get_quantiles(const double* ranks, uint32_t size, bool inclusive = true) const;
+    std::vector<T, A> get_quantiles(const double* fractions, uint32_t size) const;
 
     /**
      * This is a multiple-query version of get_quantile() that allows the caller to
-     * specify the number of evenly-spaced ranks.
+     * specify the number of evenly-spaced fractional ranks.
      *
-     * <p>If the sketch is empty this throws std::runtime_error.
+     * <p>If the sketch is empty this returns an empty vector.
      *
-     * @param num an integer that specifies the number of evenly-spaced ranks.
-     * This must be an integer greater than 0. A value of 1 will return the quantile of rank 0.
-     * A value of 2 will return quantiles of ranks 0 and 1. A value of 3 will return quantiles of ranks 0,
-     * 0.5 (median) and 1, etc.
-     * @param inclusive if true, the ranks are considered inclusive (include weights of items)
+     * @param num an integer that specifies the number of evenly-spaced fractional ranks.
+     * This must be an integer greater than 0. A value of 1 will return the min value.
+     * A value of 2 will return the min and the max value. A value of 3 will return the min,
+     * the median and the max value, etc.
      *
-     * @return array of approximate quantiles corresponding to the given number of evenly-spaced ranks.
-     *
-     * Deprecated. Will be removed in the next major version. Use get_quantile() instead.
+     * @return array of approximations to the given number of evenly-spaced fractional ranks.
      */
-    std::vector<T, A> get_quantiles(uint32_t num, bool inclusive = true) const;
+    std::vector<T, A> get_quantiles(uint32_t num) const;
 
     /**
-     * Returns an approximation to the normalized rank of the given item from 0 to 1, inclusive.
+     * Returns an approximation to the normalized (fractional) rank of the given value from 0 to 1,
+     * inclusive.
      *
      * <p>The resulting approximation has a probabilistic guarantee that can be obtained from the
      * get_normalized_rank_error(false) function.
      *
-     * <p>If the sketch is empty this throws std::runtime_error.
+     * <p>If the sketch is empty this returns NaN.
      *
-     * @param item to be ranked.
-     * @param inclusive if true the weight of the given item is included into the rank.
-     * Otherwise the rank equals the sum of the weights of all items that are less than the given item
-     * according to the comparator C.
-     *
-     * @return an approximate rank of the given item
+     * @param value to be ranked
+     * @return an approximate rank of the given value
      */
-    double get_rank(const T& item, bool inclusive = true) const;
+    double get_rank(const T& value) const;
 
     /**
      * Returns an approximation to the Probability Mass Function (PMF) of the input stream
-     * given a set of split points (items).
+     * given a set of split points (values).
      *
      * <p>The resulting approximations have a probabilistic guarantee that can be obtained from the
      * get_normalized_rank_error(true) function.
      *
-     * <p>If the sketch is empty this throws std::runtime_error.
+     * <p>If the sketch is empty this returns an empty vector.
      *
-     * @param split_points an array of <i>m</i> unique, monotonically increasing items
-     * that divide the input domain into <i>m+1</i> consecutive disjoint intervals (bins).
-     *
-     * @param size the number of split points in the array
-     *
-     * @param inclusive if true the rank of an item includes its own weight, and therefore
-     * if the sketch contains items equal to a slit point, then in PMF such items are
-     * included into the interval to the left of split point. Otherwise they are included into the interval
-     * to the right of split point.
+     * @param split_points an array of <i>m</i> unique, monotonically increasing values
+     * that divide the input domain into <i>m+1</i> consecutive disjoint intervals.
+     * The definition of an "interval" is inclusive of the left split point (or minimum value) and
+     * exclusive of the right split point, with the exception that the last interval will include
+     * the maximum value.
+     * It is not necessary to include either the min or max values in these split points.
      *
      * @return an array of m+1 doubles each of which is an approximation
-     * to the fraction of the input stream items (the mass) that fall into one of those intervals.
+     * to the fraction of the input stream values (the mass) that fall into one of those intervals.
+     * The definition of an "interval" is inclusive of the left split point and exclusive of the right
+     * split point, with the exception that the last interval will include maximum value.
      */
-    using vector_double = typename quantiles_sorted_view<T, C, A>::vector_double;
-    vector_double get_PMF(const T* split_points, uint32_t size, bool inclusive = true) const;
+    vector_d<A> get_PMF(const T* split_points, uint32_t size) const;
 
     /**
      * Returns an approximation to the Cumulative Distribution Function (CDF), which is the
-     * cumulative analog of the PMF, of the input stream given a set of split points (items).
+     * cumulative analog of the PMF, of the input stream given a set of split points (values).
      *
      * <p>The resulting approximations have a probabilistic guarantee that can be obtained from the
      * get_normalized_rank_error(false) function.
      *
-     * <p>If the sketch is empty this throws std::runtime_error.
+     * <p>If the sketch is empty this returns an empty vector.
      *
-     * @param split_points an array of <i>m</i> unique, monotonically increasing items
+     * @param split_points an array of <i>m</i> unique, monotonically increasing values
      * that divide the input domain into <i>m+1</i> consecutive disjoint intervals.
+     * The definition of an "interval" is inclusive of the left split point (or minimum value) and
+     * exclusive of the right split point, with the exception that the last interval will include
+     * the maximum value.
+     * It is not necessary to include either the min or max values in these split points.
      *
-     * @param size the number of split points in the array
-     *
-     * @param inclusive if true the rank of an item includes its own weight, and therefore
-     * if the sketch contains items equal to a slit point, then in CDF such items are
-     * included into the interval to the left of split point. Otherwise they are included into
-     * the interval to the right of split point.
-     *
-     * @return an array of m+1 doubles, which are a consecutive approximation to the CDF
+     * @return an array of m+1 double values, which are a consecutive approximation to the CDF
      * of the input stream given the split_points. The value at array position j of the returned
      * CDF array is the sum of the returned values in positions 0 through j of the returned PMF
-     * array. This can be viewed as array of ranks of the given split points plus one more value
-     * that is always 1.
+     * array.
      */
-    vector_double get_CDF(const T* split_points, uint32_t size, bool inclusive = true) const;
+    vector_d<A> get_CDF(const T* split_points, uint32_t size) const;
 
     /**
      * Gets the approximate rank error of this sketch normalized as a fraction between zero and one.
@@ -381,20 +378,18 @@ class kll_sketch {
     /**
      * Computes size needed to serialize the current state of the sketch.
      * This version is for fixed-size arithmetic types (integral and floating point).
-     * @param sd instance of a SerDe
      * @return size in bytes needed to serialize this sketch
      */
-    template<typename TT = T, typename SerDe = serde<T>, typename std::enable_if<std::is_arithmetic<TT>::value, int>::type = 0>
-    size_t get_serialized_size_bytes(const SerDe& sd = SerDe()) const;
+    template<typename TT = T, typename std::enable_if<std::is_arithmetic<TT>::value, int>::type = 0>
+    size_t get_serialized_size_bytes() const;
 
     /**
      * Computes size needed to serialize the current state of the sketch.
      * This version is for all other types and can be expensive since every item needs to be looked at.
-     * @param sd instance of a SerDe
      * @return size in bytes needed to serialize this sketch
      */
-    template<typename TT = T, typename SerDe = serde<T>, typename std::enable_if<!std::is_arithmetic<TT>::value, int>::type = 0>
-    size_t get_serialized_size_bytes(const SerDe& sd = SerDe()) const;
+    template<typename TT = T, typename std::enable_if<!std::is_arithmetic<TT>::value, int>::type = 0>
+    size_t get_serialized_size_bytes() const;
 
     /**
      * Returns upper bound on the serialized size of a sketch given a parameter <em>k</em> and stream
@@ -426,14 +421,12 @@ class kll_sketch {
     /**
      * This method serializes the sketch into a given stream in a binary form
      * @param os output stream
-     * @param sd instance of a SerDe
      */
-    template<typename SerDe = serde<T>>
-    void serialize(std::ostream& os, const SerDe& sd = SerDe()) const;
+    void serialize(std::ostream& os) const;
 
     // This is a convenience alias for users
     // The type returned by the following serialize method
-    using vector_bytes = std::vector<uint8_t, typename std::allocator_traits<A>::template rebind_alloc<uint8_t>>;
+    using vector_bytes = vector_u8<A>;
 
     /**
      * This method serializes the sketch as a vector of bytes.
@@ -441,36 +434,23 @@ class kll_sketch {
      * It is a blank space of a given size.
      * This header is used in Datasketches PostgreSQL extension.
      * @param header_size_bytes space to reserve in front of the sketch
-     * @param sd instance of a SerDe
-     * @return serialized sketch as a vector of bytes
      */
-    template<typename SerDe = serde<T>>
-    vector_bytes serialize(unsigned header_size_bytes = 0, const SerDe& sd = SerDe()) const;
+    vector_bytes serialize(unsigned header_size_bytes = 0) const;
 
     /**
      * This method deserializes a sketch from a given stream.
      * @param is input stream
-     * @param sd instance of a SerDe
-     * @param comparator instance of a Comparator
-     * @param allocator instance of an Allocator
      * @return an instance of a sketch
      */
-    template<typename SerDe = serde<T>>
-    static kll_sketch deserialize(std::istream& is, const SerDe& sd = SerDe(),
-        const C& comparator = C(), const A& allocator = A());
+    static kll_sketch<T, C, S, A> deserialize(std::istream& is, const A& allocator = A());
 
     /**
      * This method deserializes a sketch from a given array of bytes.
      * @param bytes pointer to the array of bytes
      * @param size the size of the array
-     * @param sd instance of a SerDe
-     * @param comparator instance of a Comparator
-     * @param allocator instance of an Allocator
      * @return an instance of a sketch
      */
-    template<typename SerDe = serde<T>>
-    static kll_sketch deserialize(const void* bytes, size_t size, const SerDe& sd = SerDe(),
-        const C& comparator = C(), const A& allocator = A());
+    static kll_sketch<T, C, S, A> deserialize(const void* bytes, size_t size, const A& allocator = A());
 
     /*
      * Gets the normalized rank error given k and pmf.
@@ -492,11 +472,15 @@ class kll_sketch {
     const_iterator begin() const;
     const_iterator end() const;
 
-    quantiles_sorted_view<T, C, A> get_sorted_view() const;
+    #ifdef KLL_VALIDATION
+    uint8_t get_num_levels() { return num_levels_; }
+    uint32_t* get_levels() { return levels_; }
+    T* get_items() { return items_; }
+    #endif
 
   private:
     /* Serialized sketch layout:
-     *  Addr:
+     *  Adr:
      *      ||    7    |   6   |    5   |    4   |    3   |    2    |    1   |      0       |
      *  0   || unused  |   M   |--------K--------|  Flags |  FamID  | SerVer | PreambleInts |
      *      ||   15    |   14  |   13   |   12   |   11   |   10    |    9   |      8       |
@@ -518,30 +502,30 @@ class kll_sketch {
     static const uint8_t PREAMBLE_INTS_SHORT = 2; // for empty and single item
     static const uint8_t PREAMBLE_INTS_FULL = 5;
 
-    C comparator_;
     A allocator_;
     uint16_t k_;
     uint8_t m_; // minimum buffer "width"
     uint16_t min_k_; // for error estimation after merging with different k
-    uint8_t num_levels_;
-    bool is_level_zero_sorted_;
     uint64_t n_;
-    vector_u32 levels_;
+    uint8_t num_levels_;
+    vector_u32<A> levels_;
     T* items_;
     uint32_t items_size_;
-    T* min_item_;
-    T* max_item_;
-    mutable quantiles_sorted_view<T, C, A>* sorted_view_;
+    T* min_value_;
+    T* max_value_;
+    bool is_level_zero_sorted_;
+
+    friend class kll_quantile_calculator<T, C, A>;
 
     // for deserialization
     class item_deleter;
     class items_deleter;
-    kll_sketch(uint16_t k, uint16_t min_k, uint64_t n, uint8_t num_levels, vector_u32&& levels,
-        std::unique_ptr<T, items_deleter> items, uint32_t items_size, std::unique_ptr<T, item_deleter> min_item,
-        std::unique_ptr<T, item_deleter> max_item, bool is_level_zero_sorted, const C& comparator);
+    kll_sketch(uint16_t k, uint16_t min_k, uint64_t n, uint8_t num_levels, vector_u32<A>&& levels,
+        std::unique_ptr<T, items_deleter> items, uint32_t items_size, std::unique_ptr<T, item_deleter> min_value,
+        std::unique_ptr<T, item_deleter> max_value, bool is_level_zero_sorted);
 
     // common update code
-    inline void update_min_max(const T& item);
+    inline void update_min_max(const T& value);
     inline uint32_t internal_update();
 
     // The following code is only valid in the special case of exactly reaching capacity while updating.
@@ -551,12 +535,15 @@ class kll_sketch {
     uint8_t find_level_to_compact() const;
     void add_empty_top_level_to_completely_full_sketch();
     void sort_level_zero();
-
+    std::unique_ptr<kll_quantile_calculator<T, C, A>, std::function<void(kll_quantile_calculator<T, C, A>*)>> get_quantile_calculator();
+    vector_d<A> get_PMF_or_CDF(const T* split_points, uint32_t size, bool is_CDF) const;
+    void increment_buckets_unsorted_level(uint32_t from_index, uint32_t to_index, uint64_t weight,
+        const T* split_points, uint32_t size, double* buckets) const;
+    void increment_buckets_sorted_level(uint32_t from_index, uint32_t to_index, uint64_t weight,
+        const T* split_points, uint32_t size, double* buckets) const;
     template<typename O> void merge_higher_levels(O&& other, uint64_t final_n);
-
-    template<typename FwdSk>
-    void populate_work_arrays(FwdSk&& other, T* workbuf, uint32_t* worklevels, uint8_t provisional_num_levels);
-
+    void populate_work_arrays(const kll_sketch& other, T* workbuf, uint32_t* worklevels, uint8_t provisional_num_levels);
+    void populate_work_arrays(kll_sketch&& other, T* workbuf, uint32_t* worklevels, uint8_t provisional_num_levels);
     void assert_correct_total_weight() const;
     uint32_t safe_level_size(uint8_t level) const;
     uint32_t get_num_retained_above_level_zero() const;
@@ -566,41 +553,39 @@ class kll_sketch {
     static void check_serial_version(uint8_t serial_version);
     static void check_family_id(uint8_t family_id);
 
-    void check_sorting() const;
+    // implementations for floating point types
+    template<typename TT = T, typename std::enable_if<std::is_floating_point<TT>::value, int>::type = 0>
+    static TT get_invalid_value() {
+      return std::numeric_limits<TT>::quiet_NaN();
+    }
 
     template<typename TT = T, typename std::enable_if<std::is_floating_point<TT>::value, int>::type = 0>
-    static inline bool check_update_item(TT item) {
-      return !std::isnan(item);
+    static inline bool check_update_value(TT value) {
+      return !std::isnan(value);
+    }
+
+    // implementations for all other types
+    template<typename TT = T, typename std::enable_if<!std::is_floating_point<TT>::value, int>::type = 0>
+    static TT get_invalid_value() {
+      throw std::runtime_error("getting quantiles from empty sketch is not supported for this type of values");
     }
 
     template<typename TT = T, typename std::enable_if<!std::is_floating_point<TT>::value, int>::type = 0>
-    static inline bool check_update_item(TT) {
+    static inline bool check_update_value(TT) {
       return true;
     }
 
-    // for type converting constructor
-    template<typename TT, typename CC, typename AA> friend class kll_sketch;
-
-    void setup_sorted_view() const; // modifies mutable state
-    void reset_sorted_view();
 };
 
-template<typename T, typename C, typename A>
-class kll_sketch<T, C, A>::const_iterator {
+template<typename T, typename C, typename S, typename A>
+class kll_sketch<T, C, S, A>::const_iterator: public std::iterator<std::input_iterator_tag, T> {
 public:
-  using iterator_category = std::input_iterator_tag;
-  using value_type = std::pair<const T&, const uint64_t>;
-  using difference_type = void;
-  using pointer = const return_value_holder<value_type>;
-  using reference = const value_type;
-
-  friend class kll_sketch<T, C, A>;
+  friend class kll_sketch<T, C, S, A>;
   const_iterator& operator++();
   const_iterator& operator++(int);
   bool operator==(const const_iterator& other) const;
   bool operator!=(const const_iterator& other) const;
-  reference operator*() const;
-  pointer operator->() const;
+  const std::pair<const T&, const uint64_t> operator*() const;
 private:
   const T* items;
   const uint32_t* levels;

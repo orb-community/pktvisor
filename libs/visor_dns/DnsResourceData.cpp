@@ -2,14 +2,14 @@
 
 #include "DnsResourceData.h"
 #include "EndianPortable.h"
-#include <pcapplusplus/GeneralUtils.h>
+#include <GeneralUtils.h>
 #include <sstream>
 #include <string.h>
 #ifdef __GNUC__
 #pragma GCC diagnostic push
 #pragma clang diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"
 #endif
-#include <pcapplusplus/Logger.h>
+#include <Logger.h>
 #ifdef __GNUC__
 #pragma GCC diagnostic pop
 #pragma GCC diagnostic ignored "-Wunused-parameter"

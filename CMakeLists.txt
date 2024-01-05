@@ -5,7 +5,7 @@ cmake_minimum_required(VERSION 3.13)
 #######################################################
 
 # this is the source of truth for semver version
-project(visor VERSION 4.5.0)
+project(visor VERSION 4.4.0)
 
 # for main line release, this is empty
 # for development release, this is "-develop"
@@ -47,8 +47,7 @@ configure_file(golang/pkg/client/version.go.in ${PROJECT_SOURCE_DIR}/golang/pkg/
 
 if(NOT DEFINED ENV{VERSION_ONLY})
 
-list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake" ${CMAKE_BINARY_DIR})
-list(APPEND CMAKE_PREFIX_PATH ${CMAKE_BINARY_DIR})
+list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
