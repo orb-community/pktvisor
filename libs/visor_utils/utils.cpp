@@ -1,6 +1,6 @@
 #include "utils.h"
 #include "EndianPortable.h"
-#include <pcapplusplus/IpUtils.h>
+#include <IpUtils.h>
 #include <fmt/format.h>
 #include <sstream>
 

@@ -16,10 +16,10 @@
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 #pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
 #endif
-#include <pcapplusplus/IpAddress.h>
-#include <pcapplusplus/PcapLiveDeviceList.h>
-#include <pcapplusplus/TcpReassembly.h>
-#include <pcapplusplus/UdpLayer.h>
+#include <IpAddress.h>
+#include <PcapLiveDeviceList.h>
+#include <TcpReassembly.h>
+#include <UdpLayer.h>
 #include <algorithm>
 #include <spdlog/spdlog.h>
 #ifdef __GNUC__

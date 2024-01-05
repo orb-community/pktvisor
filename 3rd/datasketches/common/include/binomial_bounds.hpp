@@ -22,7 +22,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <stdexcept>
 
 /*
  * This class enables the estimation of error bounds given a sample set size, the sampling

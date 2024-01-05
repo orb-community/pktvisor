@@ -26,14 +26,4 @@ target_link_libraries(VisorHandlerInputResources
 
 set(VISOR_STATIC_PLUGINS ${VISOR_STATIC_PLUGINS} Visor::Handler::InputResources PARENT_SCOPE)
 
-## TEST SUITE
-add_executable(unit-tests-handler-input-resources test_resources_layer.cpp)
-
-target_link_libraries(unit-tests-handler-input-resources
-        PRIVATE
-        Visor::Handler::InputResources
-        Visor::Lib::Test)
-
-add_test(NAME unit-tests-handler-input-resources
-        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/src
-        COMMAND unit-tests-handler-input-resources)
+add_subdirectory(tests)

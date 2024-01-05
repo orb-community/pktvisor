@@ -1,13 +1,12 @@
 
 message(STATUS "visor-core")
 
+find_package(Corrade REQUIRED PluginManager)
+
 set_directory_properties(PROPERTIES CORRADE_USE_PEDANTIC_FLAGS ON)
 
-#generate cpp code from opentelemetry-proto
 find_package(Protobuf REQUIRED)
 set(OTELCPP_PROTO_PATH ${CONAN_OPENTELEMETRY-PROTO_ROOT}/res)
-set(BUILD_SHARED_LIBS FALSE)
-include(opentelemetry-tools)
 include(opentelemetry-proto)
 
 add_library(visor-core
@@ -57,24 +56,23 @@ add_subdirectory(handlers)
 set(VISOR_STATIC_PLUGINS ${VISOR_STATIC_PLUGINS} PARENT_SCOPE)
 
 ## TEST SUITE
-add_executable(unit-tests-visor-core
+add_executable(unit-tests-vizor-core
+        tests/main.cpp
         tests/test_sketches.cpp
         tests/test_metrics.cpp
         tests/test_geoip.cpp
         tests/test_ipport.cpp
         tests/test_taps.cpp
         tests/test_policies.cpp
-        tests/test_handlers.cpp
         )
 
-target_include_directories(unit-tests-visor-core PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(unit-tests-vizor-core
+        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+        )
 
-target_link_libraries(unit-tests-visor-core 
-        PRIVATE
-        Visor::Core
-        ${VISOR_STATIC_PLUGINS}
-        ${CONAN_LIBS_CATCH2})
+target_link_libraries(unit-tests-vizor-core PRIVATE Visor::Core ${VISOR_STATIC_PLUGINS})
 
-add_test(NAME unit-tests-visor-core
+add_test(NAME unit-tests-vizor-core
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/src
-        COMMAND unit-tests-visor-core)
+        COMMAND unit-tests-vizor-core
+        )

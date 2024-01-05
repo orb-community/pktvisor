@@ -15,7 +15,7 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 #endif
-#include <pcapplusplus/IpAddress.h>
+#include <IpAddress.h>
 #ifdef __GNUC__
 #pragma GCC diagnostic pop
 #endif

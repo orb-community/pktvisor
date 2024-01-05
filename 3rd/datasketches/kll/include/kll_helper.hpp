@@ -20,9 +20,14 @@
 #ifndef KLL_HELPER_HPP_
 #define KLL_HELPER_HPP_
 
+#include <random>
 #include <stdexcept>
+#include <chrono>
 
 namespace datasketches {
+
+static std::independent_bits_engine<std::mt19937, 1, uint32_t>
+  random_bit(static_cast<uint32_t>(std::chrono::system_clock::now().time_since_epoch().count()));
 
 #ifdef KLL_VALIDATION
 extern uint32_t kll_next_offset;
@@ -46,6 +51,38 @@ class kll_helper {
     static inline uint16_t int_cap_aux(uint16_t k, uint8_t depth);
     static inline uint16_t int_cap_aux_aux(uint16_t k, uint8_t depth);
     static inline uint64_t sum_the_sample_weights(uint8_t num_levels, const uint32_t* levels);
+
+    /*
+     * This version is for floating point types
+     * Checks the sequential validity of the given array of values.
+     * They must be unique, monotonically increasing and not NaN.
+     */
+    template <typename T, typename C>
+    static typename std::enable_if<std::is_floating_point<T>::value, void>::type
+    validate_values(const T* values, uint32_t size) {
+      for (uint32_t i = 0; i < size ; i++) {
+        if (std::isnan(values[i])) {
+          throw std::invalid_argument("Values must not be NaN");
+        }
+        if ((i < (size - 1)) && !(C()(values[i], values[i + 1]))) {
+          throw std::invalid_argument("Values must be unique and monotonically increasing");
+        }
+      }
+    }
+    /*
+     * This version is for non-floating point types
+     * Checks the sequential validity of the given array of values.
+     * They must be unique and monotonically increasing.
+     */
+    template <typename T, typename C>
+    static typename std::enable_if<!std::is_floating_point<T>::value, void>::type
+    validate_values(const T* values, uint32_t size) {
+      for (uint32_t i = 0; i < size ; i++) {
+        if ((i < (size - 1)) && !(C()(values[i], values[i + 1]))) {
+          throw std::invalid_argument("Values must be unique and monotonically increasing");
+        }
+      }
+    }
 
     template <typename T>
     static void randomly_halve_down(T* buf, uint32_t start, uint32_t length);

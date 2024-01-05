@@ -34,9 +34,7 @@ template<typename K, typename V, typename H, typename E, typename A>
 constexpr uint32_t reverse_purge_hash_map<K, V, H, E, A>::MAX_SAMPLE_SIZE;
 
 template<typename K, typename V, typename H, typename E, typename A>
-reverse_purge_hash_map<K, V, H, E, A>::reverse_purge_hash_map(uint8_t lg_cur_size, uint8_t lg_max_size,
-    const E& equal, const A& allocator):
-equal_(equal),
+reverse_purge_hash_map<K, V, H, E, A>::reverse_purge_hash_map(uint8_t lg_cur_size, uint8_t lg_max_size, const A& allocator):
 allocator_(allocator),
 lg_cur_size_(lg_cur_size),
 lg_max_size_(lg_max_size),
@@ -54,7 +52,6 @@ states_(nullptr)
 
 template<typename K, typename V, typename H, typename E, typename A>
 reverse_purge_hash_map<K, V, H, E, A>::reverse_purge_hash_map(const reverse_purge_hash_map<K, V, H, E, A>& other):
-equal_(other.equal_),
 allocator_(other.allocator_),
 lg_cur_size_(other.lg_cur_size_),
 lg_max_size_(other.lg_max_size_),
@@ -74,8 +71,8 @@ states_(nullptr)
       if (other.states_[i] > 0) {
         new (&keys_[i]) K(other.keys_[i]);
         values_[i] = other.values_[i];
-         if (--num == 0) break;
       }
+      if (--num == 0) break;
     }
   }
   std::copy(other.states_, other.states_ + size, states_);
@@ -83,7 +80,6 @@ states_(nullptr)
 
 template<typename K, typename V, typename H, typename E, typename A>
 reverse_purge_hash_map<K, V, H, E, A>::reverse_purge_hash_map(reverse_purge_hash_map<K, V, H, E, A>&& other) noexcept:
-equal_(std::move(other.equal_)),
 allocator_(std::move(other.allocator_)),
 lg_cur_size_(other.lg_cur_size_),
 lg_max_size_(other.lg_max_size_),
@@ -123,22 +119,19 @@ reverse_purge_hash_map<K, V, H, E, A>::~reverse_purge_hash_map() {
 }
 
 template<typename K, typename V, typename H, typename E, typename A>
-reverse_purge_hash_map<K, V, H, E, A>& reverse_purge_hash_map<K, V, H, E, A>::operator=(const reverse_purge_hash_map<K, V, H, E, A>& other) {
-  reverse_purge_hash_map copy(other);
-  std::swap(equal_, copy.equal_);
-  std::swap(allocator_, copy.allocator_);
-  std::swap(lg_cur_size_, copy.lg_cur_size_);
-  std::swap(lg_max_size_, copy.lg_max_size_);
-  std::swap(num_active_, copy.num_active_);
-  std::swap(keys_, copy.keys_);
-  std::swap(values_, copy.values_);
-  std::swap(states_, copy.states_);
+reverse_purge_hash_map<K, V, H, E, A>& reverse_purge_hash_map<K, V, H, E, A>::operator=(reverse_purge_hash_map<K, V, H, E, A> other) {
+  std::swap(allocator_, other.allocator_);
+  std::swap(lg_cur_size_, other.lg_cur_size_);
+  std::swap(lg_max_size_, other.lg_max_size_);
+  std::swap(num_active_, other.num_active_);
+  std::swap(keys_, other.keys_);
+  std::swap(values_, other.values_);
+  std::swap(states_, other.states_);
   return *this;
 }
 
 template<typename K, typename V, typename H, typename E, typename A>
 reverse_purge_hash_map<K, V, H, E, A>& reverse_purge_hash_map<K, V, H, E, A>::operator=(reverse_purge_hash_map<K, V, H, E, A>&& other) {
-  std::swap(equal_, other.equal_);
   std::swap(allocator_, other.allocator_);
   std::swap(lg_cur_size_, other.lg_cur_size_);
   std::swap(lg_max_size_, other.lg_max_size_);

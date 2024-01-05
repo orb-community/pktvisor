@@ -21,10 +21,10 @@
 #include <spdlog/spdlog.h>
 
 namespace uvw {
-class loop;
-class async_handle;
-class udp_handle;
-class timer_handle;
+class Loop;
+class AsyncHandle;
+class UDPHandle;
+class TimerHandle;
 }
 
 namespace visor::input::flow {
@@ -41,11 +41,11 @@ class FlowInputStream : public visor::InputStream
     std::shared_ptr<spdlog::logger> _logger;
 
     std::unique_ptr<std::thread> _io_thread;
-    std::shared_ptr<uvw::loop> _io_loop;
-    std::shared_ptr<uvw::async_handle> _async_h;
-    std::shared_ptr<uvw::timer_handle> _timer;
+    std::shared_ptr<uvw::Loop> _io_loop;
+    std::shared_ptr<uvw::AsyncHandle> _async_h;
+    std::shared_ptr<uvw::TimerHandle> _timer;
 
-    std::shared_ptr<uvw::udp_handle> _udp_server_h;
+    std::shared_ptr<uvw::UDPHandle> _udp_server_h;
 
     static const inline ConfigsDefType _config_defs = {
         "flow_type",

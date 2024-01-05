@@ -18,7 +18,7 @@
 #ifdef TCPOPT_CCECHO
 #undef TCPOPT_CCECHO
 #endif // TCPOPT_CCECHO
-#include <pcapplusplus/TcpLayer.h>
+#include <TcpLayer.h>
 #ifdef __GNUC__
 #pragma GCC diagnostic pop
 #endif

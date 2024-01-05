@@ -24,9 +24,6 @@
 #include <string>
 #include <memory>
 #include <iostream>
-#include <random>
-#include <chrono>
-#include <thread>
 
 namespace datasketches {
 
@@ -36,19 +33,6 @@ enum resize_factor { X1 = 0, X2, X4, X8 };
 
 template<typename A> using AllocChar = typename std::allocator_traits<A>::template rebind_alloc<char>;
 template<typename A> using string = std::basic_string<char, std::char_traits<char>, AllocChar<A>>;
-
-// thread-safe random bit
-static thread_local std::independent_bits_engine<std::mt19937, 1, uint32_t>
-  random_bit(static_cast<uint32_t>(std::chrono::system_clock::now().time_since_epoch().count() 
-    + std::hash<std::thread::id>{}(std::this_thread::get_id())));
-
-// common random declarations
-namespace random_utils {
-  static std::random_device rd; // possibly unsafe in MinGW with GCC < 9.2
-  static thread_local std::mt19937_64 rand(rd());
-  static thread_local std::uniform_real_distribution<> next_double(0.0, 1.0);
-}
-
 
 // utility function to hide unused compiler warning
 // usually has no additional cost
@@ -79,7 +63,7 @@ static inline void read(std::istream& is, T* ptr, size_t size_bytes) {
 }
 
 template<typename T>
-static inline void write(std::ostream& os, T value) {
+static inline void write(std::ostream& os, T& value) {
   os.write(reinterpret_cast<const char*>(&value), sizeof(T));
 }
 
@@ -87,16 +71,6 @@ template<typename T>
 static inline void write(std::ostream& os, const T* ptr, size_t size_bytes) {
   os.write(reinterpret_cast<const char*>(ptr), size_bytes);
 }
-
-// wrapper for iterators to implement operator-> returning temporary value
-template<typename T>
-class return_value_holder {
-public:
-  return_value_holder(T value): value_(value) {}
-  const T* operator->() const { return std::addressof(value_); }
-private:
-  T value_;
-};
 
 } // namespace
 

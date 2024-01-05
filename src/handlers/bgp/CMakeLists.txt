@@ -11,25 +11,14 @@ add_library(Visor::Handler::Bgp ALIAS VisorHandlerBgp)
 
 target_include_directories(VisorHandlerBgp
         INTERFACE
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>)
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+        )
 
 target_link_libraries(VisorHandlerBgp
         PUBLIC
-        Visor::Input::Pcap)
+        Visor::Input::Pcap
+        )
 
 set(VISOR_STATIC_PLUGINS ${VISOR_STATIC_PLUGINS} Visor::Handler::Bgp PARENT_SCOPE)
 
-## TEST SUITE
-add_executable(unit-tests-handler-bgp
-        tests/test_bgp_layer.cpp
-        tests/test_json_schema.cpp)
-
-target_link_libraries(unit-tests-handler-bgp
-        PRIVATE
-        ${CONAN_LIBS_JSON-SCHEMA-VALIDATOR}
-        Visor::Handler::Bgp
-        Visor::Lib::Test)
-
-add_test(NAME unit-tests-handler-bgp
-        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/src
-        COMMAND unit-tests-handler-bgp)
+add_subdirectory(tests)

@@ -2,7 +2,7 @@
 #define PV_PACKETPP_DNS_RESOURCE_DATA
 
 #include "DnsResource.h"
-#include <pcapplusplus/IpAddress.h>
+#include <IpAddress.h>
 #include <memory>
 #include <string>
 #include <stdint.h>

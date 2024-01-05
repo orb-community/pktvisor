@@ -2,14 +2,8 @@ message(STATUS "Input Module: Dnstap")
 
 set_directory_properties(PROPERTIES CORRADE_USE_PEDANTIC_FLAGS ON)
 
+find_package(Protobuf REQUIRED)
 protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS pb/dnstap.proto)
-
-if(NOT WIN32)
-    # Suppress the warning for the generated files
-    set_source_files_properties(${PROTO_SRCS} ${PROTO_HDRS}
-        PROPERTIES COMPILE_FLAGS "-Wno-missing-declarations -Wno-unused-parameter"
-    )
-endif()
 
 corrade_add_static_plugin(VisorInputDnstap ${CMAKE_CURRENT_BINARY_DIR}
         Dnstap.conf
@@ -44,13 +38,16 @@ target_link_libraries(VisorInputDnstap
 set(VISOR_STATIC_PLUGINS ${VISOR_STATIC_PLUGINS} Visor::Input::Dnstap PARENT_SCOPE)
 
 ## TEST SUITE
-add_executable(unit-tests-input-dnstap tests/test_dnstap.cpp)
+add_executable(unit-tests-input-dnstap
+        tests/main.cpp
+        tests/test_dnstap.cpp
+        )
 
 target_link_libraries(unit-tests-input-dnstap
-        PRIVATE 
-        Visor::Input::Dnstap
-        Visor::Lib::Test)
+        PRIVATE Visor::Input::Dnstap
+        )
 
 add_test(NAME unit-tests-input-dnstap
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/src
-        COMMAND unit-tests-input-dnstap)
+        COMMAND unit-tests-input-dnstap
+        )

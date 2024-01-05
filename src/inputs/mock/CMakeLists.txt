@@ -22,13 +22,16 @@ target_link_libraries(VisorInputMock
 set(VISOR_STATIC_PLUGINS ${VISOR_STATIC_PLUGINS} Visor::Input::Mock PARENT_SCOPE)
 
 ## TEST SUITE
-add_executable(unit-tests-input-mock test_mock.cpp)
+add_executable(unit-tests-input-mock
+        tests/main.cpp
+        tests/test_mock.cpp
+        )
 
 target_link_libraries(unit-tests-input-mock
-        PRIVATE
-        Visor::Input::Mock
-        ${CONAN_LIBS_CATCH2})
+        PRIVATE Visor::Input::Mock
+        )
 
 add_test(NAME unit-tests-input-mock
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/src
-        COMMAND unit-tests-input-mock)
+        COMMAND unit-tests-input-mock
+        )
