@@ -103,6 +103,9 @@ jobs:
         with:
           version: 1.61.0
 
+      - name: Conan version
+        run: echo "${{ steps.conan.outputs.version }}"
+
       - name: linux package install
         run: |
           sudo apt-get update
