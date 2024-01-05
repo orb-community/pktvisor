@@ -10,7 +10,7 @@
 #include "DnsLayerEnums.h"
 #include "DnsResource.h"
 #include "DnsResourceData.h"
-#include <UdpLayer.h>
+#include <pcapplusplus/UdpLayer.h>
 #include <VisorTcpLayer.h>
 #ifdef __GNUC__
 #pragma GCC diagnostic pop

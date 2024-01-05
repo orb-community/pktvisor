@@ -23,4 +23,14 @@ target_link_libraries(VisorHandlerFlow
 
 set(VISOR_STATIC_PLUGINS ${VISOR_STATIC_PLUGINS} Visor::Handler::Flow PARENT_SCOPE)
 
-add_subdirectory(tests)
+## TEST SUITE
+add_executable(unit-tests-handler-flow test_flows.cpp)
+
+target_link_libraries(unit-tests-handler-flow
+        PRIVATE
+        Visor::Handler::Flow
+        Visor::Lib::Test)
+
+add_test(NAME unit-tests-handler-flow
+        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/src
+        COMMAND unit-tests-handler-flow)

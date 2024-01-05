@@ -34,7 +34,7 @@ namespace datasketches {
 
 /*
  * Based on Java implementation here:
- * https://github.com/DataSketches/sketches-core/blob/master/src/main/java/com/yahoo/sketches/frequencies/ItemsSketch.java
+ * https://github.com/apache/datasketches-java/blob/master/src/main/java/org/apache/datasketches/frequencies/ItemsSketch.java
  * author Alexander Saydakov
  */
 
@@ -46,7 +46,6 @@ template<
   typename W = uint64_t,
   typename H = std::hash<T>,
   typename E = std::equal_to<T>,
-  typename S = serde<T>,
   typename A = std::allocator<T>
 >
 class frequent_items_sketch {
@@ -60,11 +59,13 @@ public:
    * @param lg_max_map_size Log2 of the physical size of the internal hash map managed by this
    * sketch. The maximum capacity of this internal hash map is 0.75 times 2^lg_max_map_size.
    * Both the ultimate accuracy and size of this sketch are functions of lg_max_map_size.
-   *
    * @param lg_start_map_size Log2 of the starting physical size of the internal hash
    * map managed by this sketch.
+   * @param equal instance of Equality operator
+   * @param allocator instance of an Allocator
    */
-  explicit frequent_items_sketch(uint8_t lg_max_map_size, uint8_t lg_start_map_size = LG_MIN_MAP_SIZE, const A& allocator = A());
+  explicit frequent_items_sketch(uint8_t lg_max_map_size, uint8_t lg_start_map_size = LG_MIN_MAP_SIZE,
+      const E& equal = E(), const A& allocator = A());
 
   /**
    * Update this sketch with an item and a positive weight (frequency count).
@@ -158,7 +159,7 @@ public:
   /**
    * Returns epsilon used to compute <i>a priori</i> error.
    * This is just the value <i>3.5 / maxMapSize</i>.
-   * @param maxMapSize the planned map size to be used when constructing this sketch.
+   * @param lg_max_map_size the planned map size to be used when constructing this sketch.
    * @return epsilon used to compute <i>a priori</i> error.
    */
   static double get_epsilon(uint8_t lg_max_map_size);
@@ -167,13 +168,13 @@ public:
    * Returns the estimated <i>a priori</i> error given the max_map_size for the sketch and the
    * estimated_total_stream_weight.
    * @param lg_max_map_size the planned map size to be used when constructing this sketch.
-   * @param estimated_total_stream_weight the estimated total stream weight.
+   * @param estimated_total_weight the estimated total stream weight.
    * @return the estimated <i>a priori</i> error.
    */
   static double get_apriori_error(uint8_t lg_max_map_size, W estimated_total_weight);
 
   class row;
-  typedef typename std::vector<row, typename std::allocator_traits<A>::template rebind_alloc<row>> vector_row; // alias for users
+  using vector_row = typename std::vector<row, typename std::allocator_traits<A>::template rebind_alloc<row>>;
 
   /**
    * Returns an array of rows that include frequent items, estimates, upper and lower bounds
@@ -225,20 +226,23 @@ public:
   /**
    * Computes size needed to serialize the current state of the sketch.
    * This can be expensive since every item needs to be looked at.
+   * @param sd instance of a SerDe
    * @return size in bytes needed to serialize this sketch
    */
-  size_t get_serialized_size_bytes() const;
+  template<typename SerDe = serde<T>>
+  size_t get_serialized_size_bytes(const SerDe& sd = SerDe()) const;
 
   /**
    * This method serializes the sketch into a given stream in a binary form
    * @param os output stream
+   * @param sd instance of a SerDe
    */
-  void serialize(std::ostream& os) const;
+  template<typename SerDe = serde<T>>
+  void serialize(std::ostream& os, const SerDe& sd = SerDe()) const;
 
   // This is a convenience alias for users
   // The type returned by the following serialize method
   using vector_bytes = std::vector<uint8_t, typename std::allocator_traits<A>::template rebind_alloc<uint8_t>>;
-
 
   /**
    * This method serializes the sketch as a vector of bytes.
@@ -246,24 +250,36 @@ public:
    * It is a blank space of a given size.
    * This header is used in Datasketches PostgreSQL extension.
    * @param header_size_bytes space to reserve in front of the sketch
+   * @param sd instance of a SerDe
    * @return serialized sketch as a vector of bytes
    */
-  vector_bytes serialize(unsigned header_size_bytes = 0) const;
+  template<typename SerDe = serde<T>>
+  vector_bytes serialize(unsigned header_size_bytes = 0, const SerDe& sd = SerDe()) const;
 
   /**
    * This method deserializes a sketch from a given stream.
    * @param is input stream
+   * @param sd instance of a SerDe
+   * @param equal instance of Equality operator
+   * @param allocator instance of an Allocator
    * @return an instance of the sketch
    */
-  static frequent_items_sketch deserialize(std::istream& is, const A& allocator = A());
+  template<typename SerDe = serde<T>>
+  static frequent_items_sketch deserialize(std::istream& is, const SerDe& sd = SerDe(),
+      const E& equal = E(), const A& allocator = A());
 
   /**
    * This method deserializes a sketch from a given array of bytes.
    * @param bytes pointer to the array of bytes
    * @param size the size of the array
+   * @param sd instance of a SerDe
+   * @param equal instance of Equality operator
+   * @param allocator instance of an Allocator
    * @return an instance of the sketch
    */
-  static frequent_items_sketch deserialize(const void* bytes, size_t size, const A& allocator = A());
+  template<typename SerDe = serde<T>>
+  static frequent_items_sketch deserialize(const void* bytes, size_t size, const SerDe& sd = SerDe(),
+      const E& equal = E(), const A& allocator = A());
 
   /**
    * Returns a human readable summary of this sketch
@@ -302,8 +318,8 @@ private:
   class items_deleter;
 };
 
-template<typename T, typename W, typename H, typename E, typename S, typename A>
-class frequent_items_sketch<T, W, H, E, S, A>::row {
+template<typename T, typename W, typename H, typename E, typename A>
+class frequent_items_sketch<T, W, H, E, A>::row {
 public:
   row(const T* item, W weight, W offset):
     item(item), weight(weight), offset(offset) {}

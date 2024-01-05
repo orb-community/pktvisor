@@ -1,9 +1,23 @@
+#include <Corrade/PluginManager/AbstractManager.h>
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmissing-declarations"
+#endif
+#include "inputs/static_plugins.h"
+#include "handlers/static_plugins.h"
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
+
 #include "CoreRegistry.h"
 #include "HandlerManager.h"
+#include "HandlerModulePlugin.h"
 #include "InputStream.h"
 #include "InputStreamManager.h"
 #include "Policies.h"
-#include <catch2/catch.hpp>
+
+#include <catch2/catch_test_macros.hpp>
+#include <catch2/matchers/catch_matchers.hpp>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
 #include <yaml-cpp/yaml.h>
@@ -60,6 +74,38 @@ visor:
                 - ".google.com"
                 - ".ns1.com"
                 - "slack.com"
+)";
+
+auto policies_config_merge = R"(
+visor:
+  taps:
+    anycast_merge:
+      input_type: mock
+      config:
+        iface: eth0
+  policies:
+   default_merge:
+     config:
+        merge_like_handlers: true
+     kind: collection
+     input:
+       tap: anycast_merge
+       input_type: mock
+       config:
+         sample: value
+     handlers:
+        window_config:
+          num_periods: 5
+          deep_sample_rate: 100
+        modules:
+          default_dns_1:
+            type: dns
+          default_dns_2:
+            type: dns
+          default_net_1:
+            type: net
+          default_net_2:
+            type: net
 )";
 
 auto policies_config_hseq = R"(
@@ -200,6 +246,13 @@ visor:
             type: net
 )";
 
+auto policies_config_bad0 = R"(
+version: "1.0"
+
+visor:
+  no_policies:
+)";
+
 auto policies_config_bad1 = R"(
 version: "2.0"
 
@@ -250,8 +303,6 @@ visor:
 )";
 
 auto policies_config_bad4 = R"(
-version: "1.0"
-
 visor:
   taps:
     anycast:
@@ -481,6 +532,28 @@ visor:
       only_rcode: 2
   policies:
     default_view:
+      kind: collection
+      input:
+        tap: anycast
+        input_type: mock
+      handlers:
+        modules:
+           default_net:
+            type: net
+)";
+
+auto policies_config_bad14 = R"(
+version: "1.0"
+
+visor:
+  taps:
+    anycast:
+      input_type: mock
+      config:
+        iface: eth0
+  policies:
+    default_view:
+      config: not_a_map
       kind: collection
       input:
         tap: anycast
@@ -753,9 +826,12 @@ TEST_CASE("Policies", "[policies]")
         CHECK(policy->input_stream().back()->config_get<std::string>("bpf") == "tcp or udp"); // TODO this will move to filter member variable
         CHECK(policy->input_stream().back()->config_get<std::string>("sample") == "value");
         CHECK(policy->modules()[0]->name() == "default_view-anycast-default_net");
+        CHECK(dynamic_cast<StreamHandler *>(policy->modules()[0])->version() == "1.0");
         CHECK(policy->modules()[1]->name() == "default_view-anycast-default_dns");
+        CHECK(dynamic_cast<StreamHandler *>(policy->modules()[1])->version() == "1.0");
         CHECK(policy->modules()[1]->config_get<uint64_t>("only_rcode") == 2);
         CHECK(policy->modules()[2]->name() == "default_view-anycast-special_domain");
+        CHECK(dynamic_cast<StreamHandler *>(policy->modules()[2])->version() == "1.0");
         CHECK(policy->modules()[2]->config_get<Configurable::StringList>("only_qname_suffix")[0] == ".google.com");
         CHECK(policy->modules()[2]->config_get<uint64_t>("only_rcode") == 2);
         // TODO check window config settings made it through
@@ -763,6 +839,35 @@ TEST_CASE("Policies", "[policies]")
         CHECK(policy->modules()[0]->running());
         CHECK(policy->modules()[1]->running());
         CHECK(policy->modules()[2]->running());
+
+        json j;
+        REQUIRE_NOTHROW(policy->info_json(j));
+        CHECK(j["input"] != nullptr);
+        CHECK(j["modules"]["default_view-anycast-default_net"] != nullptr);
+        CHECK(j["taps"]["anycast"]["config"]["iface"] == "eth0");
+    }
+
+    SECTION("Good Config merge like handlers")
+    {
+        CoreRegistry registry;
+        registry.start(nullptr);
+        YAML::Node config_file = YAML::Load(policies_config_merge);
+        CHECK(config_file["visor"]["policies"]);
+        CHECK(config_file["visor"]["policies"].IsMap());
+        REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"]));
+        REQUIRE_NOTHROW(registry.policy_manager()->load(config_file["visor"]["policies"]));
+
+        REQUIRE(registry.policy_manager()->module_exists("default_merge"));
+        auto [policy, lock] = registry.policy_manager()->module_get_locked("default_merge");
+        CHECK(policy->name() == "default_merge");
+        CHECK(policy->input_stream().back()->name().find("anycast_merge-") != std::string::npos);
+        CHECK(policy->modules()[0]->name() == "default_merge-anycast_merge-default_dns_1");
+        CHECK(policy->modules()[1]->name() == "default_merge-anycast_merge-default_dns_2");
+        CHECK(policy->modules()[2]->name() == "default_merge-anycast_merge-default_net_1");
+        CHECK(policy->modules()[3]->name() == "default_merge-anycast_merge-default_net_2");
+        CHECK(policy->input_stream().back()->running());
+        CHECK(policy->modules()[0]->running());
+        CHECK(policy->modules()[1]->running());
     }
 
     SECTION("Good Config sequence modules")
@@ -830,7 +935,13 @@ TEST_CASE("Policies", "[policies]")
         REQUIRE(registry.policy_manager()->module_exists("default_view"));
     }
 
-    SECTION("Bad Config")
+    SECTION("Bad Config: no policies schema")
+    {
+        CoreRegistry registry;
+        REQUIRE_THROWS_WITH(registry.policy_manager()->load_from_str(policies_config_bad0), "no policies found in schema");
+    }
+
+    SECTION("Bad Config: no policies map config")
     {
         CoreRegistry registry;
         YAML::Node config_file = YAML::Load(policies_config_bad1);
@@ -971,6 +1082,16 @@ TEST_CASE("Policies", "[policies]")
 
         REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
         REQUIRE_THROWS_WITH(registry.handler_manager()->set_default_handler_config(config_file["visor"]["global_handler_config"]), "expecting global_handler_config configuration map");
+    }
+
+    SECTION("Bad Config: policy config not a map")
+    {
+        CoreRegistry registry;
+        registry.start(nullptr);
+        YAML::Node config_file = YAML::Load(policies_config_bad14);
+
+        REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"], true));
+        REQUIRE_THROWS_WITH(registry.policy_manager()->load(config_file["visor"]["policies"]), "policy configuration is not a map");
     }
 
     SECTION("Bad Config: invalid handler modules YAML type")
@@ -1194,5 +1315,71 @@ TEST_CASE("Policies", "[policies]")
         CHECK(policy2->name() == "same_input");
         CHECK(policy2->input_stream().back()->name() == policy->input_stream().back()->name());
         lock2.unlock();
+    }
+}
+
+TEST_CASE("Policies and Metrics", "[policies][metrics]")
+{
+    CoreRegistry registry;
+    registry.start(nullptr);
+    YAML::Node config_file = YAML::Load(policies_config);
+    CHECK(config_file["visor"]["policies"]);
+    CHECK(config_file["visor"]["policies"].IsMap());
+    REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"]));
+    REQUIRE_NOTHROW(registry.policy_manager()->load(config_file["visor"]["policies"]));
+    REQUIRE(registry.policy_manager()->module_exists("default_view"));
+
+    SECTION("JSON")
+    {
+        auto [policy, lock] = registry.policy_manager()->module_get_locked("default_view");
+        json j;
+        policy->json_metrics(j, 0, false);
+        CHECK(j["default_view"]["default_view-anycast-default_dns"] != nullptr);
+        CHECK(j["default_view"]["default_view-anycast-default_net"] != nullptr);
+    }
+
+    SECTION("Prometheus")
+    {
+        auto [policy, lock] = registry.policy_manager()->module_get_locked("default_view");
+        std::stringstream out;
+        REQUIRE_NOTHROW(policy->prometheus_metrics(out));
+    }
+
+    SECTION("Opentelemetry")
+    {
+        auto [policy, lock] = registry.policy_manager()->module_get_locked("default_view");
+        metrics::v1::ScopeMetrics scope;
+        REQUIRE_NOTHROW(policy->opentelemetry_metrics(scope));
+    }
+
+    config_file = YAML::Load(policies_config_merge);
+    CHECK(config_file["visor"]["policies"]);
+    CHECK(config_file["visor"]["policies"].IsMap());
+    REQUIRE_NOTHROW(registry.tap_manager()->load(config_file["visor"]["taps"]));
+    REQUIRE_NOTHROW(registry.policy_manager()->load(config_file["visor"]["policies"]));
+    REQUIRE(registry.policy_manager()->module_exists("default_merge"));
+
+    SECTION("JSON merge_like_handlers")
+    {
+        auto [policy, lock] = registry.policy_manager()->module_get_locked("default_merge");
+        json j;
+        policy->json_metrics(j, 0, false);
+        std::cout << j.dump();
+        CHECK(j["default_merge"]["dns_merged"] != nullptr);
+        CHECK(j["default_merge"]["packets_merged"] != nullptr);
+    }
+
+    SECTION("Prometheus merge_like_handlers")
+    {
+        auto [policy, lock] = registry.policy_manager()->module_get_locked("default_merge");
+        std::stringstream out;
+        REQUIRE_NOTHROW(policy->prometheus_metrics(out));
+    }
+
+    SECTION("Opentelemetry merge_like_handlers")
+    {
+        auto [policy, lock] = registry.policy_manager()->module_get_locked("default_merge");
+        metrics::v1::ScopeMetrics scope;
+        REQUIRE_NOTHROW(policy->opentelemetry_metrics(scope));
     }
 }

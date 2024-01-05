@@ -1,5 +1,7 @@
 #include "AbstractMetricsManager.h"
-#include <catch2/catch.hpp>
+
+#include <catch2/catch_test_macros.hpp>
+#include <catch2/matchers/catch_matchers.hpp>
 
 using namespace visor;
 

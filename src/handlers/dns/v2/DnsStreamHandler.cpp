@@ -15,9 +15,9 @@
 #pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
 #pragma clang diagnostic ignored "-Wc99-extensions"
 #endif
-#include <IPv4Layer.h>
-#include <IPv6Layer.h>
-#include <TimespecTimeval.h>
+#include <pcapplusplus/IPv4Layer.h>
+#include <pcapplusplus/IPv6Layer.h>
+#include <pcapplusplus/TimespecTimeval.h>
 #ifdef __GNUC__
 #pragma GCC diagnostic pop
 #endif
@@ -64,7 +64,7 @@ void DnsStreamHandler::start()
         _f_rcodes.push_back(NoError);
     } else if (config_exists("only_rcode")) {
         std::vector<std::string> rcodes;
-        uint64_t want_code;
+        uint64_t want_code{0};
         try {
             want_code = config_get<uint64_t>("only_rcode");
         } catch (const std::exception &e) {
