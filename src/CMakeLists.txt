@@ -4,8 +4,13 @@ message(STATUS "visor-core")
 set_directory_properties(PROPERTIES CORRADE_USE_PEDANTIC_FLAGS ON)
 
 #generate cpp code from opentelemetry-proto
+if(NOT CMAKE_CROSSCOMPILING)
+  message("eitaa")
+  set(PROTOC_PROGRAM ${CONAN_BIN_DIRS_PROTOBUF}/protoc)
+endif()
 find_package(Protobuf REQUIRED)
 set(OTELCPP_PROTO_PATH ${CONAN_OPENTELEMETRY-PROTO_ROOT}/res)
+#set(PROTOBUF_PROTOC_EXECUTABLE ${CONAN_BIN_DIRS_PROTOBUF}/protoc)
 set(BUILD_SHARED_LIBS FALSE)
 include(opentelemetry-tools)
 include(opentelemetry-proto)
