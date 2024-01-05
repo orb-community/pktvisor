@@ -4,9 +4,9 @@ corrade/2020.06
 cpp-httplib/0.14.3
 docopt.cpp/0.6.3
 fast-cpp-csv-parser/cci.20211104
-json-schema-validator/2.2.0
+json-schema-validator/2.3.0
 libmaxminddb/1.8.0
-nlohmann_json/3.11.2
+nlohmann_json/3.11.3
 openssl/1.1.1w
 opentelemetry-proto/1.0.0
 pcapplusplus/23.09
