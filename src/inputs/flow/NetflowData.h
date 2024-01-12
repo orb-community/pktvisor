@@ -70,9 +70,9 @@ static bool process_netflow_v1(NFSample *sample)
         return false;
     }
 
-    sample->uptime_ms = nf1_hdr->uptime_ms;
-    sample->time_sec = nf1_hdr->time_sec;
-    sample->time_nanosec = nf1_hdr->time_nanosec;
+    sample->uptime_ms = be32toh(nf1_hdr->uptime_ms);
+    sample->time_sec = be32toh(nf1_hdr->time_sec);
+    sample->time_nanosec = be32toh(nf1_hdr->time_nanosec);
 
     for (uint16_t flow = 0; flow < sample->nflows; flow++) {
         offset = NF1_PACKET_SIZE(flow);
@@ -118,10 +118,10 @@ static bool process_netflow_v5(NFSample *sample)
         return false;
     }
 
-    sample->uptime_ms = nf5_hdr->uptime_ms;
-    sample->time_sec = nf5_hdr->time_sec;
-    sample->time_nanosec = nf5_hdr->time_nanosec;
-    sample->flow_sequence = nf5_hdr->flow_sequence;
+    sample->uptime_ms = be32toh(nf5_hdr->uptime_ms);
+    sample->time_sec = be32toh(nf5_hdr->time_sec);
+    sample->time_nanosec = be32toh(nf5_hdr->time_nanosec);
+    sample->flow_sequence = be32toh(nf5_hdr->flow_sequence);
 
     for (uint16_t flow = 0; flow < sample->nflows; flow++) {
         offset = NF5_PACKET_SIZE(flow);
@@ -172,10 +172,10 @@ static bool process_netflow_v7(NFSample *sample)
         return false;
     }
 
-    sample->uptime_ms = nf7_hdr->uptime_ms;
-    sample->time_sec = nf7_hdr->time_sec;
-    sample->time_nanosec = nf7_hdr->time_nanosec;
-    sample->flow_sequence = nf7_hdr->flow_sequence;
+    sample->uptime_ms = be32toh(nf7_hdr->uptime_ms);
+    sample->time_sec = be32toh(nf7_hdr->time_sec);
+    sample->time_nanosec = be32toh(nf7_hdr->time_nanosec);
+    sample->flow_sequence = be32toh(nf7_hdr->flow_sequence);
 
     for (uint16_t flow = 0; flow < sample->nflows; flow++) {
         offset = NF7_PACKET_SIZE(flow);
@@ -395,8 +395,8 @@ static bool process_netflow_v9(NFSample *sample)
     uint32_t i, flowset_id, flowset_len, flowset_flows;
     uint32_t offset, total_flows;
 
-    sample->uptime_ms = nf9_hdr->uptime_ms;
-    sample->time_sec = nf9_hdr->time_sec;
+    sample->uptime_ms = be32toh(nf9_hdr->uptime_ms);
+    sample->time_sec = be32toh(nf9_hdr->time_sec);
     sample->flow_sequence = be32toh(nf9_hdr->package_sequence);
     sample->source_id = be32toh(nf9_hdr->source_id);
 
@@ -618,7 +618,7 @@ static bool process_netflow_v10(NFSample *sample)
     uint32_t i, flowset_id, flowset_len, flowset_flows;
     uint32_t offset, total_flows;
 
-    sample->time_sec = nf10_hdr->time_sec;
+    sample->time_sec = be32toh(nf10_hdr->time_sec);
     sample->flow_sequence = be32toh(nf10_hdr->package_sequence);
     sample->source_id = be32toh(nf10_hdr->source_id);
 
