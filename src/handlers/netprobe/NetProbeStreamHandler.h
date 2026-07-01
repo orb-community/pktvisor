@@ -92,6 +92,14 @@ class NetProbeMetricsBucket final : public visor::AbstractMetricsBucket
 protected:
     mutable std::shared_mutex _mutex;
     std::map<std::string, std::unique_ptr<Target>> _targets_metrics;
+    // Top-N settings (from topn_count / topn_percentile_threshold) applied to each target's TopN
+    // metrics at creation — see get_or_create_target()/update_topn_metrics().
+    size_t _topn_count{10};
+    uint64_t _topn_percentile_threshold{0};
+
+    // Return the metrics for `target`, creating it (with the current top-N settings applied to its
+    // TopN metrics) if it doesn't exist yet. Callers must already hold _mutex.
+    Target &get_or_create_target(const std::string &target);
 
 public:
     NetProbeMetricsBucket()
@@ -103,8 +111,17 @@ public:
     void to_json(json &j) const override;
     void to_prometheus(PrometheusSerializer &ser, Metric::LabelMap add_labels = {}) const override;
     void to_opentelemetry(metrics::v1::ScopeMetrics &scope, timespec &start_ts, timespec &end_ts, Metric::LabelMap add_labels = {}) const override;
-    void update_topn_metrics(size_t, uint64_t) override
+    void update_topn_metrics(size_t count, uint64_t percentile_threshold) override
     {
+        // Called on a fresh bucket at period-shift (before any targets exist), so store the
+        // settings and apply them per target at creation (get_or_create_target). Also apply to
+        // any targets already present, to be safe.
+        _topn_count = count;
+        _topn_percentile_threshold = percentile_threshold;
+        for (auto &[name, t] : _targets_metrics) {
+            t->top_status_codes.set_settings(count, percentile_threshold);
+            t->top_rcodes.set_settings(count, percentile_threshold);
+        }
     }
 
     void on_set_read_only() override

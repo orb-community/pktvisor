@@ -235,6 +235,22 @@ TEST_CASE("NetProbe DoH config: qtype is normalized to uppercase", "[netprobe][c
     CHECK_THROWS_WITH(stream.start(), "netprobe: unknown qtype 'ZZZ'");
 }
 
+TEST_CASE("NetProbe DoH config: qname exceeding DNS label limit rejected", "[netprobe][config][doh]")
+{
+    // A label longer than 63 chars is outside DNS limits and must be rejected at config time
+    // (before it reaches DnsLayer::addQuery()).
+    NetProbeInputStream stream{"net-probe-test-doh-badqname"};
+    stream.config_set("test_type", "doh");
+    std::string long_label(64, 'a'); // 64 > 63
+    stream.config_set("qname", long_label + ".example.com");
+    auto targets = std::make_shared<visor::Configurable>();
+    auto target = std::make_shared<visor::Configurable>();
+    target->config_set("target", "https://1.1.1.1/dns-query");
+    targets->config_set<std::shared_ptr<visor::Configurable>>("cf_doh", target);
+    stream.config_set<std::shared_ptr<visor::Configurable>>("targets", targets);
+    CHECK_THROWS_WITH(stream.start(), "netprobe: qname '" + long_label + ".example.com' has a DNS label longer than 63 characters");
+}
+
 TEST_CASE("NetProbe http/doh config: invalid target URL rejected", "[netprobe][config]")
 {
     // A target whose URL has a non-http(s) scheme must be rejected at config time with a clear error.

@@ -101,10 +101,14 @@ bool DohProbe::start(std::shared_ptr<uvw::loop> io_loop)
     if (_init || _url.empty()) {
         return false;
     }
-    // Build the DNS query once (qname/qtype are stream-fixed).
+    // Build the DNS query once (qname/qtype are stream-fixed). qname/qtype were validated at config
+    // time, but guard addQuery()'s nullable return so a bad name can never yield a zero-question
+    // probe or use a half-built buffer.
     pcpp::DnsLayer q;
     _qtype_code = visor::lib::dns::QTypeNumbers.at(_qtype);
-    q.addQuery(_qname, static_cast<pcpp::DnsType>(_qtype_code), pcpp::DNS_CLASS_IN);
+    if (!q.addQuery(_qname, static_cast<pcpp::DnsType>(_qtype_code), pcpp::DNS_CLASS_IN)) {
+        throw NetProbeException("netprobe doh: failed to build DNS query for qname '" + _qname + "'");
+    }
     q.getDnsHeader()->recursionDesired = 1;
     q.getDnsHeader()->transactionID = 0; // RFC 8484 §4.1
     _query_wire.assign(reinterpret_cast<const char *>(q.getData()), q.getDataLen());

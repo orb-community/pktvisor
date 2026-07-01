@@ -642,6 +642,33 @@ TEST_CASE("NetProbe DoH http_response_phases group: quantiles present when enabl
     handler->stop();
 }
 
+TEST_CASE("NetProbe DoH top_rcodes honors topn_count", "[netprobe][doh][unit]")
+{
+    visor::Config c;
+    c.config_set<uint64_t>("num_periods", 1);
+    c.config_set<uint64_t>("topn_count", 2); // cap TopN output at 2 entries
+    NetProbeInputStream stream{"netprobe-doh-topn"};
+    auto *proxy = stream.add_event_proxy(c);
+    auto handler = std::make_unique<NetProbeStreamHandler>("netprobe-doh-topn", proxy, &c);
+    handler->start();
+
+    auto *mgr = const_cast<NetProbeMetricsManager *>(handler->metrics());
+    timespec stamp{7000, 0};
+    auto timings = visor::http::HttpTimings{1000, 0, 0, 0, 0};
+    // Feed 3 distinct rcodes; with topn_count=2 the settings must be applied to the per-target
+    // TopN, so top_rcodes emits at most 2 entries (without the fix it would emit all 3).
+    mgr->process_netprobe_doh_result(200, 0, true, timings, "t1", stamp); // NOERROR
+    mgr->process_netprobe_doh_result(200, 2, true, timings, "t1", stamp); // SRVFAIL
+    mgr->process_netprobe_doh_result(200, 3, true, timings, "t1", stamp); // NXDOMAIN
+
+    json j;
+    mgr->bucket(0)->to_json(j);
+    REQUIRE(j["targets"]["t1"].contains("top_rcodes"));
+    CHECK(j["targets"]["t1"]["top_rcodes"].size() <= 2);
+
+    handler->stop();
+}
+
 TEST_CASE("NetProbe DoH http_response_phases group: quantiles absent when not enabled", "[netprobe][doh][unit]")
 {
     // Default fixture has Counters + Histograms enabled, NOT HttpResponsePhases

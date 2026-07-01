@@ -138,9 +138,7 @@ void NetProbeMetricsBucket::specialized_merge(const AbstractMetricsBucket &o, Me
 
     for (const auto &target : other._targets_metrics) {
         const auto &targetId = target.first;
-        if (!_targets_metrics.count(targetId)) {
-            _targets_metrics[targetId] = std::make_unique<Target>();
-        }
+        get_or_create_target(targetId);
 
         if (group_enabled(group::NetProbeMetrics::Counters)) {
             _targets_metrics[targetId]->attempts += target.second->attempts;
@@ -381,12 +379,23 @@ void NetProbeMetricsBucket::process_filtered()
 {
 }
 
+Target &NetProbeMetricsBucket::get_or_create_target(const std::string &target)
+{
+    auto it = _targets_metrics.find(target);
+    if (it == _targets_metrics.end()) {
+        auto t = std::make_unique<Target>();
+        // Honor topn_count / topn_percentile_threshold on the per-target TopN metrics.
+        t->top_status_codes.set_settings(_topn_count, _topn_percentile_threshold);
+        t->top_rcodes.set_settings(_topn_count, _topn_percentile_threshold);
+        it = _targets_metrics.emplace(target, std::move(t)).first;
+    }
+    return *it->second;
+}
+
 void NetProbeMetricsBucket::process_failure(ErrorType error, const std::string &target)
 {
     std::unique_lock lock(_mutex);
-    if (!_targets_metrics.count(target)) {
-        _targets_metrics[target] = std::make_unique<Target>();
-    }
+    get_or_create_target(target);
     if (group_enabled(group::NetProbeMetrics::Counters)) {
         switch (error) {
         case ErrorType::DnsLookupFailure:
@@ -415,9 +424,7 @@ bool NetProbeStreamHandler::_filtering([[maybe_unused]] pcpp::Packet *payload)
 void NetProbeMetricsBucket::process_attempts([[maybe_unused]] bool deep, const std::string &target)
 {
     std::unique_lock lock(_mutex);
-    if (!_targets_metrics.count(target)) {
-        _targets_metrics[target] = std::make_unique<Target>();
-    }
+    get_or_create_target(target);
     if (group_enabled(group::NetProbeMetrics::Counters)) {
         ++_targets_metrics[target]->attempts;
     }
@@ -427,9 +434,7 @@ void NetProbeMetricsBucket::new_transaction(bool deep, NetProbeTransaction xact)
 {
     std::unique_lock lock(_mutex);
 
-    if (!_targets_metrics.count(xact.target)) {
-        _targets_metrics[xact.target] = std::make_unique<Target>();
-    }
+    get_or_create_target(xact.target);
     if (group_enabled(group::NetProbeMetrics::Counters)) {
         ++_targets_metrics[xact.target]->successes;
     }
@@ -531,10 +536,7 @@ void NetProbeMetricsBucket::process_netprobe_http(bool deep, uint16_t status, co
     // their callers always invoke them sequentially — never while this lock is held.
     std::unique_lock lock(_mutex);
 
-    if (!_targets_metrics.count(target)) {
-        _targets_metrics[target] = std::make_unique<Target>();
-    }
-    auto &t = *_targets_metrics[target];
+    auto &t = get_or_create_target(target);
 
     // Counters (status outcome) are always recorded when the group is on —
     // like new_transaction's successes++ (not gated on `deep`).
@@ -583,10 +585,7 @@ void NetProbeMetricsBucket::process_netprobe_doh(bool deep, uint16_t http_status
 {
     std::unique_lock lock(_mutex);
 
-    if (!_targets_metrics.count(target)) {
-        _targets_metrics[target] = std::make_unique<Target>();
-    }
-    auto &t = *_targets_metrics[target];
+    auto &t = get_or_create_target(target);
 
     if (group_enabled(group::NetProbeMetrics::Counters)) {
         // DoH responses are HTTP responses too: record the HTTP status breakdown (like the HTTP
