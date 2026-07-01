@@ -776,3 +776,57 @@ TEST_CASE("NetProbe DoH e2e: response declaring more answers than present is a D
     CHECK(tgt["successes"].get<int>() == 0);
     CHECK(tgt["dns_response_failures"].get<int>() >= 1);
 }
+
+TEST_CASE("NetProbe DoH e2e: root qname (dot) probe succeeds", "[netprobe][doh][e2e]")
+{
+    // End-to-end root probe: qname "." must build a valid root query and match the echoed root
+    // question in the response (both encode/decode as the empty name in pcpp).
+    httplib::Server svr;
+    // Canned NOERROR response echoing a ROOT question of type A (the probe's default qtype).
+    pcpp::DnsLayer resp;
+    resp.getDnsHeader()->queryOrResponse = 1;
+    resp.getDnsHeader()->responseCode = 0; // NOERROR
+    REQUIRE(resp.addQuery("", pcpp::DNS_TYPE_A, pcpp::DNS_CLASS_IN) != nullptr);
+    const std::string body(reinterpret_cast<const char *>(resp.getData()), resp.getDataLen());
+    svr.Post("/dns-query", [&](const httplib::Request &, httplib::Response &res) {
+        res.set_content(body, "application/dns-message");
+    });
+    svr.Get("/dns-query", [&](const httplib::Request &, httplib::Response &res) {
+        res.set_content(body, "application/dns-message");
+    });
+    int port = svr.bind_to_any_port("127.0.0.1");
+    REQUIRE(port > 0);
+    std::thread server_thread([&svr] { svr.listen_after_bind(); });
+    ServerGuard guard{svr, server_thread};
+    svr.wait_until_ready();
+
+    std::string url = "http://127.0.0.1:" + std::to_string(port) + "/dns-query";
+    NetProbeInputStream stream{"netprobe-doh-e2e-root"};
+    stream.config_set("test_type", "doh");
+    stream.config_set("qname", std::string("."));
+    stream.config_set<uint64_t>("interval_msec", 200);
+    stream.config_set<uint64_t>("timeout_msec", 150);
+    auto targets = std::make_shared<visor::Configurable>();
+    auto target = std::make_shared<visor::Configurable>();
+    target->config_set("target", url);
+    targets->config_set<std::shared_ptr<visor::Configurable>>("doh_target", target);
+    stream.config_set<std::shared_ptr<visor::Configurable>>("targets", targets);
+
+    visor::Config c;
+    c.config_set<uint64_t>("num_periods", 1);
+    auto *proxy = stream.add_event_proxy(c);
+    NetProbeStreamHandler handler{"netprobe-doh-e2e-root", proxy, &c};
+
+    handler.start();
+    stream.start();
+    std::this_thread::sleep_for(750ms);
+    stream.stop();
+    handler.stop();
+
+    json j;
+    handler.metrics()->bucket(0)->to_json(j);
+    REQUIRE(j["targets"].contains("doh_target"));
+    auto &tgt = j["targets"]["doh_target"];
+    CHECK(tgt["attempts"].get<int>() >= 1);
+    CHECK(tgt["successes"].get<int>() >= 1);
+}

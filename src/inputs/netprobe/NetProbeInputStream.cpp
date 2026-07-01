@@ -198,19 +198,23 @@ void NetProbeInputStream::start()
         if (_doh_qname.size() > 253) {
             throw NetProbeException(fmt::format("netprobe: qname '{}' exceeds the 253-character DNS name limit", _doh_qname));
         }
-        size_t label_len = 0;
-        for (char ch : _doh_qname) {
-            if (ch == '.') {
-                if (label_len == 0) {
-                    throw NetProbeException(fmt::format("netprobe: qname '{}' has an empty DNS label", _doh_qname));
+        // "." is the DNS root — a valid name with no labels (e.g. probing the root NS set). Skip the
+        // per-label checks for it; DohProbe builds the root query from an empty name.
+        if (_doh_qname != ".") {
+            size_t label_len = 0;
+            for (char ch : _doh_qname) {
+                if (ch == '.') {
+                    if (label_len == 0) {
+                        throw NetProbeException(fmt::format("netprobe: qname '{}' has an empty DNS label", _doh_qname));
+                    }
+                    label_len = 0;
+                } else if (++label_len > 63) {
+                    throw NetProbeException(fmt::format("netprobe: qname '{}' has a DNS label longer than 63 characters", _doh_qname));
                 }
-                label_len = 0;
-            } else if (++label_len > 63) {
-                throw NetProbeException(fmt::format("netprobe: qname '{}' has a DNS label longer than 63 characters", _doh_qname));
             }
-        }
-        if (label_len == 0) {
-            throw NetProbeException(fmt::format("netprobe: qname '{}' has an empty DNS label", _doh_qname));
+            if (label_len == 0) {
+                throw NetProbeException(fmt::format("netprobe: qname '{}' has an empty DNS label", _doh_qname));
+            }
         }
         if (visor::lib::dns::QTypeNumbers.find(_doh_qtype) == visor::lib::dns::QTypeNumbers.end()) {
             throw NetProbeException(fmt::format("netprobe: unknown qtype '{}'", _doh_qtype));

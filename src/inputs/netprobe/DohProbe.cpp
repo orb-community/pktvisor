@@ -106,7 +106,10 @@ bool DohProbe::start(std::shared_ptr<uvw::loop> io_loop)
     // probe or use a half-built buffer.
     pcpp::DnsLayer q;
     _qtype_code = visor::lib::dns::QTypeNumbers.at(_qtype);
-    if (!q.addQuery(_qname, static_cast<pcpp::DnsType>(_qtype_code), pcpp::DNS_CLASS_IN)) {
+    // pcpp encodes/decodes the DNS root as an empty name (a single 0x00), not "." — so build the
+    // query (and later compare the echoed question) using "" for the root.
+    _wire_qname = (_qname == ".") ? std::string() : _qname;
+    if (!q.addQuery(_wire_qname, static_cast<pcpp::DnsType>(_qtype_code), pcpp::DNS_CLASS_IN)) {
         throw NetProbeException("netprobe doh: failed to build DNS query for qname '" + _qname + "'");
     }
     q.getDnsHeader()->recursionDesired = 1;
@@ -138,7 +141,7 @@ bool DohProbe::start(std::shared_ptr<uvw::loop> io_loop)
             req.headers = {"Content-Type: application/dns-message", "Accept: application/dns-message"};
         }
         const std::string name = _name;
-        const std::string qname = _qname;
+        const std::string qname = _wire_qname; // "" for the root; matches what pcpp getName() returns
         const uint16_t qtype_code = _qtype_code;
         auto doh_result = _doh_result;
         auto fail = _fail;

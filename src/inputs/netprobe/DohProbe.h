@@ -25,6 +25,7 @@ class DohProbe final : public NetProbe
     std::string _query_wire; // pre-built DNS query (wire format), built in start()
     std::string _get_url;    // pre-built URL with ?dns=<base64url> for GET
     uint16_t _qtype_code{0}; // numeric DNS qtype (from QTypeNumbers), for response question validation
+    std::string _wire_qname; // qname as pcpp encodes/decodes it: "" for the root ("."), else _qname
     bool _init{false};
 
 public:
