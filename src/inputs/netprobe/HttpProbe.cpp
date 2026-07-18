@@ -28,18 +28,47 @@ bool HttpProbe::start(std::shared_ptr<uvw::loop> io_loop)
         req.url = _url;
         req.method = _method;
         req.timeout_ms = _config.timeout_msec;
+        req.body = _opts.request_body;
+        req.headers = _headers;
+        req.proxy = _opts.proxy;
+        req.ca_file = _opts.ca_file;
+        req.cert_file = _opts.cert_file;
+        req.key_file = _opts.key_file;
+        req.user_agent = _opts.user_agent;
+        req.verify_tls = _opts.tls_verify;
+        req.collect_cert_info = true;
+        req.capture_response = _opts.body_check.configured();
         const std::string name = _name;
         auto http_result = _http_result;
         auto fail = _fail;
-        _client->request(req, [http_result, fail, name](const visor::http::HttpResult &r) {
+        auto opts = _opts; // copyable (regex copies are fine at probe frequency); no `this` in completion lambda
+        auto cert_cache = _cert_cache;
+        _client->request(req, [http_result, fail, name, opts, cert_cache](const visor::http::HttpResult &r) {
             timespec stamp;
             std::timespec_get(&stamp, TIME_UTC);
             if (r.transport_ok) {
                 visor::http::HttpSample s;
                 s.status = static_cast<uint16_t>(r.status_code);
-                s.status_ok = (s.status >= 200 && s.status < 400); // v1 default; Task 4 replaces with checks
+                bool status_ok;
+                if (opts.failure_status.matches(s.status)) {
+                    status_ok = false;
+                } else if (!opts.expected_status.empty()) {
+                    status_ok = opts.expected_status.matches(s.status);
+                } else {
+                    status_ok = (s.status >= 200 && s.status < 400);
+                }
+                s.status_ok = status_ok;
                 s.content_check = 0;
-                s.cert_expiry_epoch = r.cert_expiry_epoch;
+                if (status_ok && opts.body_check.configured()) {
+                    s.content_check = opts.body_check.matches(r.response_body) ? 1 : 2;
+                }
+                // CERTINFO is only filled on transfers that performed a TLS handshake; reused
+                // pooled connections report nothing. Cache the last known expiry per target so
+                // EVERY sample carries it and the metric doesn't flap with connection reuse.
+                if (r.cert_expiry_epoch != 0) {
+                    *cert_cache = r.cert_expiry_epoch;
+                }
+                s.cert_expiry_epoch = (r.cert_expiry_epoch != 0) ? r.cert_expiry_epoch : *cert_cache;
                 s.response_size = r.response_size;
                 s.timings = r.timings;
                 http_result(s, name, stamp);

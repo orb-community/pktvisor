@@ -4,7 +4,9 @@
 
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers.hpp>
+#include <catch2/matchers/catch_matchers_string.hpp>
 #include <catch2/catch_test_visor.hpp>
+#include <algorithm>
 #include <httplib.h>
 #include <nlohmann/json.hpp>
 #include <thread>
@@ -124,7 +126,7 @@ TEST_CASE("Netprobe invalid config", "[netprobe][config]")
     NetProbeInputStream stream{"net-probe-test"};
     stream.config_set("invalid_config", true);
 
-    CHECK_THROWS_WITH(stream.start(), "invalid_config is an invalid/unsupported config or filter. The valid configs/filters are: test_type, interval_msec, timeout_msec, packets_per_test, packets_interval_msec, packet_payload_size, targets, http_method, qname, qtype");
+    CHECK_THROWS_WITH(stream.start(), "invalid_config is an invalid/unsupported config or filter. The valid configs/filters are: test_type, interval_msec, timeout_msec, packets_per_test, packets_interval_msec, packet_payload_size, targets, http_method, qname, qtype, expected_status, failure_status, expected_body, expected_body_regex, body, proxy, tls");
 }
 
 TEST_CASE("NetProbe ip_version config", "[netprobe][config][ipv6]")
@@ -159,7 +161,7 @@ TEST_CASE("NetProbe ip_version config", "[netprobe][config][ipv6]")
     SECTION("top-level valid-keys string unchanged") {
         NetProbeInputStream s{"net-probe-test"};
         s.config_set("invalid_config", true);
-        CHECK_THROWS_WITH(s.start(), "invalid_config is an invalid/unsupported config or filter. The valid configs/filters are: test_type, interval_msec, timeout_msec, packets_per_test, packets_interval_msec, packet_payload_size, targets, http_method, qname, qtype");
+        CHECK_THROWS_WITH(s.start(), "invalid_config is an invalid/unsupported config or filter. The valid configs/filters are: test_type, interval_msec, timeout_msec, packets_per_test, packets_interval_msec, packet_payload_size, targets, http_method, qname, qtype, expected_status, failure_status, expected_body, expected_body_regex, body, proxy, tls");
     }
 }
 
@@ -264,6 +266,189 @@ TEST_CASE("NetProbe http/doh config: invalid target URL rejected", "[netprobe][c
     CHECK_THROWS_WITH(stream.start(), "target 'bad' is not a valid http(s) URL: 'ftp://example.com/x'");
 }
 
+TEST_CASE("NetProbe v2 config: expected_status grammar errors bubble the bad entry", "[netprobe][config][http]")
+{
+    NetProbeInputStream stream{"net-probe-test-status-bad"};
+    stream.config_set("test_type", "http");
+    stream.config_set<visor::Configurable::StringList>("expected_status", {"2x"});
+    auto targets = std::make_shared<visor::Configurable>();
+    auto target = std::make_shared<visor::Configurable>();
+    target->config_set("target", std::string("https://example.com/"));
+    targets->config_set<std::shared_ptr<visor::Configurable>>("t", target);
+    stream.config_set<std::shared_ptr<visor::Configurable>>("targets", targets);
+    CHECK_THROWS_WITH(stream.start(), Catch::Matchers::ContainsSubstring("invalid status entry '2x'"));
+}
+
+TEST_CASE("NetProbe v2 config: proxy with an embedded control character is rejected without leaking the value", "[netprobe][config][http]")
+{
+    NetProbeInputStream stream{"net-probe-test-proxy-bad"};
+    stream.config_set("test_type", "http");
+    stream.config_set("proxy", std::string("bad\nvalue"));
+    auto targets = std::make_shared<visor::Configurable>();
+    auto target = std::make_shared<visor::Configurable>();
+    target->config_set("target", std::string("https://example.com/"));
+    targets->config_set<std::shared_ptr<visor::Configurable>>("t", target);
+    stream.config_set<std::shared_ptr<visor::Configurable>>("targets", targets);
+    CHECK_THROWS_WITH(stream.start(), "netprobe: 'proxy' value is invalid");
+    // A second, independent check that the raw value never appears in the exception message.
+    try {
+        stream.start();
+        FAIL("expected NetProbeException");
+    } catch (const std::exception &e) {
+        CHECK_THAT(std::string(e.what()), !Catch::Matchers::ContainsSubstring("bad\nvalue"));
+    }
+}
+
+TEST_CASE("NetProbe v2 config: unclosed expected_body_regex is rejected without quoting the pattern", "[netprobe][config][http]")
+{
+    NetProbeInputStream stream{"net-probe-test-regex-bad"};
+    stream.config_set("test_type", "http");
+    stream.config_set("expected_body_regex", std::string("(unclosed"));
+    auto targets = std::make_shared<visor::Configurable>();
+    auto target = std::make_shared<visor::Configurable>();
+    target->config_set("target", std::string("https://example.com/"));
+    targets->config_set<std::shared_ptr<visor::Configurable>>("t", target);
+    stream.config_set<std::shared_ptr<visor::Configurable>>("targets", targets);
+    CHECK_THROWS_WITH(stream.start(),
+        Catch::Matchers::ContainsSubstring("expected_body_regex") && !Catch::Matchers::ContainsSubstring("(unclosed"));
+}
+
+TEST_CASE("NetProbe v2 config: body requires a method that carries one", "[netprobe][config][http]")
+{
+    NetProbeInputStream stream{"net-probe-test-body-get"};
+    stream.config_set("test_type", "http");
+    stream.config_set("http_method", std::string("GET"));
+    stream.config_set("body", std::string("payload"));
+    auto targets = std::make_shared<visor::Configurable>();
+    auto target = std::make_shared<visor::Configurable>();
+    target->config_set("target", std::string("https://example.com/"));
+    targets->config_set<std::shared_ptr<visor::Configurable>>("t", target);
+    stream.config_set<std::shared_ptr<visor::Configurable>>("targets", targets);
+    CHECK_THROWS_WITH(stream.start(), "'body' requires http_method POST, PUT, or PATCH");
+}
+
+TEST_CASE("NetProbe v2 config: http-only keys are rejected on a doh stream", "[netprobe][config][doh]")
+{
+    auto make_doh_stream = [](const std::string &name) {
+        auto s = std::make_unique<NetProbeInputStream>(name);
+        s->config_set("test_type", "doh");
+        s->config_set("qname", std::string("example.com"));
+        auto targets = std::make_shared<visor::Configurable>();
+        auto target = std::make_shared<visor::Configurable>();
+        target->config_set("target", std::string("https://1.1.1.1/dns-query"));
+        targets->config_set<std::shared_ptr<visor::Configurable>>("t", target);
+        s->config_set<std::shared_ptr<visor::Configurable>>("targets", targets);
+        return s;
+    };
+
+    SECTION("expected_body")
+    {
+        auto s = make_doh_stream("doh-expected-body");
+        s->config_set("expected_body", std::string("x"));
+        CHECK_THROWS_WITH(s->start(), "'expected_body' is not supported for test_type 'doh'");
+    }
+    SECTION("expected_body_regex")
+    {
+        auto s = make_doh_stream("doh-expected-body-regex");
+        s->config_set("expected_body_regex", std::string("x"));
+        CHECK_THROWS_WITH(s->start(), "'expected_body_regex' is not supported for test_type 'doh'");
+    }
+    SECTION("body")
+    {
+        auto s = make_doh_stream("doh-body");
+        s->config_set("body", std::string("x"));
+        CHECK_THROWS_WITH(s->start(), "'body' is not supported for test_type 'doh'");
+    }
+    SECTION("expected_status")
+    {
+        auto s = make_doh_stream("doh-expected-status");
+        s->config_set<visor::Configurable::StringList>("expected_status", {"200"});
+        CHECK_THROWS_WITH(s->start(), "'expected_status' is not supported for test_type 'doh'");
+    }
+    SECTION("failure_status")
+    {
+        auto s = make_doh_stream("doh-failure-status");
+        s->config_set<visor::Configurable::StringList>("failure_status", {"500"});
+        CHECK_THROWS_WITH(s->start(), "'failure_status' is not supported for test_type 'doh'");
+    }
+}
+
+TEST_CASE("NetProbe v2 config: per-target headers are not supported for doh", "[netprobe][config][doh]")
+{
+    NetProbeInputStream stream{"net-probe-test-doh-headers"};
+    stream.config_set("test_type", "doh");
+    stream.config_set("qname", std::string("example.com"));
+    auto targets = std::make_shared<visor::Configurable>();
+    auto target = std::make_shared<visor::Configurable>();
+    target->config_set("target", std::string("https://1.1.1.1/dns-query"));
+    auto headers = std::make_shared<visor::Configurable>();
+    headers->config_set("Authorization", std::string("Bearer secret"));
+    target->config_set<std::shared_ptr<visor::Configurable>>("headers", headers);
+    targets->config_set<std::shared_ptr<visor::Configurable>>("t", target);
+    stream.config_set<std::shared_ptr<visor::Configurable>>("targets", targets);
+    CHECK_THROWS_WITH(stream.start(), "per-target 'headers' is not supported for test_type 'doh'");
+}
+
+TEST_CASE("NetProbe v2 config: tls.cert_file requires tls.key_file", "[netprobe][config][http]")
+{
+    NetProbeInputStream stream{"net-probe-test-tls-xor"};
+    stream.config_set("test_type", "http");
+    auto targets = std::make_shared<visor::Configurable>();
+    auto target = std::make_shared<visor::Configurable>();
+    target->config_set("target", std::string("https://example.com/"));
+    targets->config_set<std::shared_ptr<visor::Configurable>>("t", target);
+    stream.config_set<std::shared_ptr<visor::Configurable>>("targets", targets);
+    auto tls = std::make_shared<visor::Configurable>();
+    tls->config_set("cert_file", std::string("/tmp/does_not_matter.pem"));
+    stream.config_set<std::shared_ptr<visor::Configurable>>("tls", tls);
+    CHECK_THROWS_WITH(stream.start(), "tls.cert_file and tls.key_file must be set together");
+}
+
+TEST_CASE("NetProbe v2 config: tls.ca_file must exist", "[netprobe][config][http]")
+{
+    NetProbeInputStream stream{"net-probe-test-tls-ca-missing"};
+    stream.config_set("test_type", "http");
+    auto targets = std::make_shared<visor::Configurable>();
+    auto target = std::make_shared<visor::Configurable>();
+    target->config_set("target", std::string("https://example.com/"));
+    targets->config_set<std::shared_ptr<visor::Configurable>>("t", target);
+    stream.config_set<std::shared_ptr<visor::Configurable>>("targets", targets);
+    auto tls = std::make_shared<visor::Configurable>();
+    tls->config_set("ca_file", std::string("/nonexistent/ca.pem"));
+    stream.config_set<std::shared_ptr<visor::Configurable>>("tls", tls);
+    CHECK_THROWS_WITH(stream.start(), Catch::Matchers::ContainsSubstring("/nonexistent/ca.pem"));
+}
+
+TEST_CASE("NetProbe v2 config: proxy and tls are not supported for tcp", "[netprobe][config][tcp]")
+{
+    auto make_tcp_stream = [](const std::string &name) {
+        auto s = std::make_unique<NetProbeInputStream>(name);
+        s->config_set("test_type", "tcp");
+        auto targets = std::make_shared<visor::Configurable>();
+        auto target = std::make_shared<visor::Configurable>();
+        target->config_set("target", std::string("example.com"));
+        target->config_set<uint64_t>("port", 80);
+        targets->config_set<std::shared_ptr<visor::Configurable>>("t", target);
+        s->config_set<std::shared_ptr<visor::Configurable>>("targets", targets);
+        return s;
+    };
+
+    SECTION("proxy")
+    {
+        auto s = make_tcp_stream("tcp-proxy");
+        s->config_set("proxy", std::string("http://x"));
+        CHECK_THROWS_WITH(s->start(), "'proxy' is only supported for test_type 'http' or 'doh'");
+    }
+    SECTION("tls")
+    {
+        auto s = make_tcp_stream("tcp-tls");
+        auto tls = std::make_shared<visor::Configurable>();
+        tls->config_set("verify", false);
+        s->config_set<std::shared_ptr<visor::Configurable>>("tls", tls);
+        CHECK_THROWS_WITH(s->start(), "'tls' is only supported for test_type 'http' or 'doh'");
+    }
+}
+
 TEST_CASE("ICMPv6 reply carrier survives the fan-out Packet deep-copy", "[netprobe][ipv6]")
 {
     // Wire bytes of an ICMPv6 echo REPLY: type=129, code=0, checksum=0, id=0xBEEF, seq=0x0102 (network order).
@@ -366,6 +551,73 @@ TEST_CASE("NetProbe HTTP e2e: success path records attempt, success, and 200 in 
         }
     }
     CHECK(found_200);
+}
+
+TEST_CASE("NetProbe v2 info_json: proxy/body/expected_body(_regex)/header values are scrubbed", "[netprobe][http][config]")
+{
+    // common_info_json() echoes the raw module config verbatim; without scrubbing this would leak
+    // the Authorization header, the numeric header, the proxy URL, and both body-check patterns.
+    httplib::Server svr;
+    svr.Post("/submit", [](const httplib::Request &, httplib::Response &res) {
+        res.set_content("ok", "text/plain");
+    });
+    int port = svr.bind_to_any_port("127.0.0.1");
+    REQUIRE(port > 0);
+    std::thread server_thread([&svr] { svr.listen_after_bind(); });
+    ServerGuard guard{svr, server_thread};
+    svr.wait_until_ready();
+
+    std::string url = "http://127.0.0.1:" + std::to_string(port) + "/submit";
+
+    NetProbeInputStream stream{"netprobe-http-redact"};
+    stream.config_set("test_type", "http");
+    stream.config_set("http_method", std::string("POST"));
+    stream.config_set<uint64_t>("interval_msec", 500);
+    stream.config_set<uint64_t>("timeout_msec", 400);
+    stream.config_set("body", std::string("super-secret-payload"));
+    stream.config_set("expected_body", std::string("super-secret-expected"));
+    stream.config_set("expected_body_regex", std::string("^ok-[0-9]+$"));
+    stream.config_set("proxy", std::string("http://proxy.invalid.example:3128"));
+
+    auto targets = std::make_shared<visor::Configurable>();
+    auto target = std::make_shared<visor::Configurable>();
+    target->config_set("target", url);
+    auto headers = std::make_shared<visor::Configurable>();
+    headers->config_set("Authorization", std::string("Bearer super-secret-token"));
+    headers->config_set<uint64_t>("X-Request-Id", 424242);
+    target->config_set<std::shared_ptr<visor::Configurable>>("headers", headers);
+    targets->config_set<std::shared_ptr<visor::Configurable>>("t", target);
+    stream.config_set<std::shared_ptr<visor::Configurable>>("targets", targets);
+
+    stream.start();
+    std::this_thread::sleep_for(50ms);
+    stream.stop();
+
+    nlohmann::json j;
+    stream.info_json(j);
+    auto &cfg = j["module"]["config"];
+
+    CHECK(cfg["proxy"] == "<redacted>");
+    CHECK(cfg["body"] == "<redacted>");
+    CHECK(cfg["expected_body"] == "<redacted>");
+    CHECK(cfg["expected_body_regex"] == "<redacted>");
+    REQUIRE(cfg["targets"]["t"].contains("headers"));
+    CHECK(cfg["targets"]["t"]["headers"]["Authorization"] == "<redacted>");
+    CHECK(cfg["targets"]["t"]["headers"]["X-Request-Id"] == "<redacted>");
+    REQUIRE(cfg["targets"]["t"].contains("header_names"));
+    auto names = cfg["targets"]["t"]["header_names"].get<std::vector<std::string>>();
+    CHECK(std::find(names.begin(), names.end(), "Authorization") != names.end());
+    CHECK(std::find(names.begin(), names.end(), "X-Request-Id") != names.end());
+
+    // Belt-and-suspenders: none of the secret literals may survive anywhere in the serialized JSON.
+    std::string dump = j.dump();
+    CHECK(dump.find("super-secret-token") == std::string::npos);
+    CHECK(dump.find("super-secret-payload") == std::string::npos);
+    CHECK(dump.find("super-secret-expected") == std::string::npos);
+    CHECK(dump.find("proxy.invalid.example") == std::string::npos);
+    CHECK(dump.find("424242") == std::string::npos);
+    CHECK(dump.find("^ok-[0-9]+$") == std::string::npos);
+    CHECK(dump.find("<redacted>") != std::string::npos);
 }
 
 TEST_CASE("NetProbe HTTP e2e: stop while request in flight does not crash or hang", "[netprobe][http][e2e]")

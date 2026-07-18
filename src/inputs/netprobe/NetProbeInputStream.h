@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "HttpProbeOptions.h"
 #include "HttpTypes.h"
 #include "InputStream.h"
 #include "NetProbe.h"
@@ -39,6 +40,11 @@ class NetProbeInputStream : public visor::InputStream
     std::map<std::string, DnsEntry> _dns_list;
     std::map<std::string, std::string> _http_targets;
     std::string _http_method{"GET"};
+    // per-target "Key: Value" header entries, keyed like _http_targets; keep header VALUES
+    // (used to build the actual request) separate from just the NAMES (safe to echo in info_json).
+    std::map<std::string, std::vector<std::string>> _http_target_headers;
+    std::map<std::string, std::vector<std::string>> _http_target_header_names;
+    HttpProbeOptions _http_opts;
     std::map<std::string, std::string> _doh_targets;
     std::string _doh_qname;
     std::string _doh_qtype{"A"};
@@ -70,7 +76,14 @@ class NetProbeInputStream : public visor::InputStream
         "targets",
         "http_method",
         "qname",
-        "qtype"};
+        "qtype",
+        "expected_status",
+        "failure_status",
+        "expected_body",
+        "expected_body_regex",
+        "body",
+        "proxy",
+        "tls"};
 
     void _create_netprobe_loop();
     void _send_cb(pcpp::Packet &, TestType, const std::string &, timespec);
