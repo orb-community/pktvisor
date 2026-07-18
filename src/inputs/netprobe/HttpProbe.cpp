@@ -35,7 +35,14 @@ bool HttpProbe::start(std::shared_ptr<uvw::loop> io_loop)
             timespec stamp;
             std::timespec_get(&stamp, TIME_UTC);
             if (r.transport_ok) {
-                http_result(static_cast<uint16_t>(r.status_code), r.timings, name, stamp);
+                visor::http::HttpSample s;
+                s.status = static_cast<uint16_t>(r.status_code);
+                s.status_ok = (s.status >= 200 && s.status < 400); // v1 default; Task 4 replaces with checks
+                s.content_check = 0;
+                s.cert_expiry_epoch = r.cert_expiry_epoch;
+                s.response_size = r.response_size;
+                s.timings = r.timings;
+                http_result(s, name, stamp);
             } else {
                 if (auto logger = spdlog::get("visor")) {
                     logger->debug("netprobe http[{}]: transport error: {} (curl code {})", name, r.error_msg, r.curl_code);

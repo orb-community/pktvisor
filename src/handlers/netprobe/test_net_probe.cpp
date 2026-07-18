@@ -425,8 +425,16 @@ TEST_CASE("NetProbe HTTP status-aware metrics: counters and top_status_codes", "
     auto timings = visor::http::HttpTimings{/*total_us*/ 1234, /*dns_us*/ 100, /*connect_us*/ 200, /*tls_us*/ 300, /*ttfb_us*/ 400};
 
     // 200 → success; 404 → http_status_failures; ConnectFailure → connect_failures
-    fx.manager()->process_netprobe_http_result(200, timings, "t1", stamp);
-    fx.manager()->process_netprobe_http_result(404, timings, "t1", stamp);
+    visor::http::HttpSample s200;
+    s200.status = 200;
+    s200.status_ok = (s200.status >= 200 && s200.status < 400);
+    s200.timings = timings;
+    visor::http::HttpSample s404;
+    s404.status = 404;
+    s404.status_ok = (s404.status >= 200 && s404.status < 400);
+    s404.timings = timings;
+    fx.manager()->process_netprobe_http_result(s200, "t1", stamp);
+    fx.manager()->process_netprobe_http_result(s404, "t1", stamp);
     fx.manager()->process_netprobe_http_failure(ErrorType::ConnectFailure, "t1");
 
     json j;
@@ -465,10 +473,17 @@ TEST_CASE("NetProbe HTTP status boundary: 3xx is success, 1xx and 0 are failures
     timespec stamp{2000, 0};
     auto timings = visor::http::HttpTimings{500, 50, 100, 0, 200};
 
-    fx.manager()->process_netprobe_http_result(301, timings, "redir", stamp);  // 3xx → success
-    fx.manager()->process_netprobe_http_result(500, timings, "redir", stamp);  // 5xx → http_status_failures
-    fx.manager()->process_netprobe_http_result(100, timings, "redir", stamp);  // 1xx → http_status_failures
-    fx.manager()->process_netprobe_http_result(0,   timings, "redir", stamp);  // 0   → http_status_failures
+    auto make_sample = [&timings](uint16_t status) {
+        visor::http::HttpSample s;
+        s.status = status;
+        s.status_ok = (status >= 200 && status < 400);
+        s.timings = timings;
+        return s;
+    };
+    fx.manager()->process_netprobe_http_result(make_sample(301), "redir", stamp);  // 3xx → success
+    fx.manager()->process_netprobe_http_result(make_sample(500), "redir", stamp);  // 5xx → http_status_failures
+    fx.manager()->process_netprobe_http_result(make_sample(100), "redir", stamp);  // 1xx → http_status_failures
+    fx.manager()->process_netprobe_http_result(make_sample(0),   "redir", stamp);  // 0   → http_status_failures
 
     json j;
     fx.manager()->bucket(0)->to_json(j);
@@ -493,7 +508,11 @@ TEST_CASE("NetProbe HTTP http_response_phases group: quantiles present when enab
 
     timespec stamp{3000, 0};
     auto timings = visor::http::HttpTimings{2000, 150, 300, 400, 600};
-    mgr->process_netprobe_http_result(200, timings, "phases-tgt", stamp);
+    visor::http::HttpSample sample;
+    sample.status = 200;
+    sample.status_ok = (sample.status >= 200 && sample.status < 400);
+    sample.timings = timings;
+    mgr->process_netprobe_http_result(sample, "phases-tgt", stamp);
 
     json j;
     mgr->bucket(0)->to_json(j);
@@ -514,7 +533,11 @@ TEST_CASE("NetProbe HTTP http_response_phases group: quantiles absent when not e
 
     timespec stamp{4000, 0};
     auto timings = visor::http::HttpTimings{2000, 150, 300, 400, 600};
-    fx.manager()->process_netprobe_http_result(200, timings, "no-phases", stamp);
+    visor::http::HttpSample sample;
+    sample.status = 200;
+    sample.status_ok = (sample.status >= 200 && sample.status < 400);
+    sample.timings = timings;
+    fx.manager()->process_netprobe_http_result(sample, "no-phases", stamp);
 
     json j;
     fx.manager()->bucket(0)->to_json(j);
@@ -533,9 +556,16 @@ TEST_CASE("NetProbe HTTP metrics merge across buckets", "[netprobe][http][unit]"
     timespec stamp{5000, 0};
     auto timings = visor::http::HttpTimings{1000, 50, 100, 0, 300};
 
-    fx_a.manager()->process_netprobe_http_result(200, timings, "shared", stamp);
-    fx_a.manager()->process_netprobe_http_result(404, timings, "shared", stamp);
-    fx_b.manager()->process_netprobe_http_result(500, timings, "shared", stamp);
+    auto make_sample = [&timings](uint16_t status) {
+        visor::http::HttpSample s;
+        s.status = status;
+        s.status_ok = (status >= 200 && status < 400);
+        s.timings = timings;
+        return s;
+    };
+    fx_a.manager()->process_netprobe_http_result(make_sample(200), "shared", stamp);
+    fx_a.manager()->process_netprobe_http_result(make_sample(404), "shared", stamp);
+    fx_b.manager()->process_netprobe_http_result(make_sample(500), "shared", stamp);
 
     UnitFixture fx_merged(2);
     auto *merged = const_cast<NetProbeMetricsBucket *>(fx_merged.manager()->bucket(0));
@@ -560,13 +590,13 @@ TEST_CASE("NetProbe DoH DNS-aware metrics: counters and top_rcodes", "[netprobe]
     auto timings = visor::http::HttpTimings{/*total_us*/ 1234, /*dns_us*/ 100, /*connect_us*/ 200, /*tls_us*/ 300, /*ttfb_us*/ 400};
 
     // 200 + rcode 0 + parse_ok=true  → success
-    fx.manager()->process_netprobe_doh_result(200, 0, true, timings, "t1", stamp);
+    fx.manager()->process_netprobe_doh_result(200, 0, true, 0, timings, "t1", stamp);
     // 200 + rcode 2 + parse_ok=true  → dns_response_failures (SRVFAIL)
-    fx.manager()->process_netprobe_doh_result(200, 2, true, timings, "t1", stamp);
+    fx.manager()->process_netprobe_doh_result(200, 2, true, 0, timings, "t1", stamp);
     // 200 + rcode 0 + parse_ok=false → dns_response_failures (PARSE_ERROR)
-    fx.manager()->process_netprobe_doh_result(200, 0, false, timings, "t1", stamp);
+    fx.manager()->process_netprobe_doh_result(200, 0, false, 0, timings, "t1", stamp);
     // 503 + parse_ok=false           → http_status_failures
-    fx.manager()->process_netprobe_doh_result(503, 0, false, timings, "t1", stamp);
+    fx.manager()->process_netprobe_doh_result(503, 0, false, 0, timings, "t1", stamp);
     // transport failure              → connect_failures
     fx.manager()->process_netprobe_doh_failure(ErrorType::ConnectFailure, "t1");
 
@@ -625,7 +655,7 @@ TEST_CASE("NetProbe DoH http_response_phases group: quantiles present when enabl
 
     timespec stamp{7000, 0};
     auto timings = visor::http::HttpTimings{2000, 150, 300, 400, 600};
-    mgr->process_netprobe_doh_result(200, 0, true, timings, "doh-phases-tgt", stamp);
+    mgr->process_netprobe_doh_result(200, 0, true, 0, timings, "doh-phases-tgt", stamp);
 
     json j;
     mgr->bucket(0)->to_json(j);
@@ -657,9 +687,9 @@ TEST_CASE("NetProbe DoH top_rcodes honors topn_count", "[netprobe][doh][unit]")
     auto timings = visor::http::HttpTimings{1000, 0, 0, 0, 0};
     // Feed 3 distinct rcodes; with topn_count=2 the settings must be applied to the per-target
     // TopN, so top_rcodes emits at most 2 entries (without the fix it would emit all 3).
-    mgr->process_netprobe_doh_result(200, 0, true, timings, "t1", stamp); // NOERROR
-    mgr->process_netprobe_doh_result(200, 2, true, timings, "t1", stamp); // SRVFAIL
-    mgr->process_netprobe_doh_result(200, 3, true, timings, "t1", stamp); // NXDOMAIN
+    mgr->process_netprobe_doh_result(200, 0, true, 0, timings, "t1", stamp); // NOERROR
+    mgr->process_netprobe_doh_result(200, 2, true, 0, timings, "t1", stamp); // SRVFAIL
+    mgr->process_netprobe_doh_result(200, 3, true, 0, timings, "t1", stamp); // NXDOMAIN
 
     json j;
     mgr->bucket(0)->to_json(j);
@@ -676,7 +706,7 @@ TEST_CASE("NetProbe DoH http_response_phases group: quantiles absent when not en
 
     timespec stamp{8000, 0};
     auto timings = visor::http::HttpTimings{2000, 150, 300, 400, 600};
-    fx.manager()->process_netprobe_doh_result(200, 0, true, timings, "doh-no-phases", stamp);
+    fx.manager()->process_netprobe_doh_result(200, 0, true, 0, timings, "doh-no-phases", stamp);
 
     json j;
     fx.manager()->bucket(0)->to_json(j);

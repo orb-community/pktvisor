@@ -118,14 +118,14 @@ void NetProbeStreamHandler::probe_signal_fail(ErrorType error, TestType type, co
     }
 }
 
-void NetProbeStreamHandler::probe_signal_http_result(uint16_t status, visor::http::HttpTimings timings, const std::string &name, timespec stamp)
+void NetProbeStreamHandler::probe_signal_http_result(visor::http::HttpSample sample, const std::string &name, timespec stamp)
 {
-    _metrics->process_netprobe_http_result(status, timings, name, stamp);
+    _metrics->process_netprobe_http_result(sample, name, stamp);
 }
 
-void NetProbeStreamHandler::probe_signal_doh_result(uint16_t http_status, uint8_t rcode, bool parse_ok, visor::http::HttpTimings timings, const std::string &name, timespec stamp)
+void NetProbeStreamHandler::probe_signal_doh_result(uint16_t http_status, uint8_t rcode, bool parse_ok, uint64_t cert_expiry_epoch, visor::http::HttpTimings timings, const std::string &name, timespec stamp)
 {
-    _metrics->process_netprobe_doh_result(http_status, rcode, parse_ok, timings, name, stamp);
+    _metrics->process_netprobe_doh_result(http_status, rcode, parse_ok, cert_expiry_epoch, timings, name, stamp);
 }
 
 void NetProbeMetricsBucket::specialized_merge(const AbstractMetricsBucket &o, Metric::Aggregate agg_operator)
@@ -528,7 +528,7 @@ void NetProbeMetricsManager::process_filtered(timespec stamp)
     live_bucket()->process_filtered();
 }
 
-void NetProbeMetricsBucket::process_netprobe_http(bool deep, uint16_t status, const visor::http::HttpTimings &timings, const std::string &target)
+void NetProbeMetricsBucket::process_netprobe_http(bool deep, const visor::http::HttpSample &sample, const std::string &target)
 {
     // Take _mutex like new_transaction — both mutate q_time_us/h_time_us sketches
     // and the TopN which the scrape thread reads under shared_lock.
@@ -541,8 +541,8 @@ void NetProbeMetricsBucket::process_netprobe_http(bool deep, uint16_t status, co
     // Counters (status outcome) are always recorded when the group is on —
     // like new_transaction's successes++ (not gated on `deep`).
     if (group_enabled(group::NetProbeMetrics::Counters)) {
-        t.top_status_codes.update(std::to_string(status));
-        if (status >= 200 && status < 400) {
+        t.top_status_codes.update(std::to_string(sample.status));
+        if (sample.status_ok) {
             ++t.successes;
         } else {
             ++t.http_status_failures;
@@ -552,24 +552,24 @@ void NetProbeMetricsBucket::process_netprobe_http(bool deep, uint16_t status, co
     // Sketches are gated on `deep` (deep sampling) exactly like new_transaction.
     // Histograms is default-ON and drives response_min_us/max_us via h_time_us.
     if (deep && group_enabled(group::NetProbeMetrics::Histograms)) {
-        t.h_time_us.update(timings.total_us);
+        t.h_time_us.update(sample.timings.total_us);
     }
     if (deep && group_enabled(group::NetProbeMetrics::Quantiles)) {
-        t.q_time_us.update(timings.total_us);
+        t.q_time_us.update(sample.timings.total_us);
     }
     if (deep && group_enabled(group::NetProbeMetrics::HttpResponsePhases)) {
-        t.q_dns_us.update(timings.dns_us);
-        t.q_connect_us.update(timings.connect_us);
-        t.q_tls_us.update(timings.tls_us);
-        t.q_ttfb_us.update(timings.ttfb_us);
+        t.q_dns_us.update(sample.timings.dns_us);
+        t.q_connect_us.update(sample.timings.connect_us);
+        t.q_tls_us.update(sample.timings.tls_us);
+        t.q_ttfb_us.update(sample.timings.ttfb_us);
     }
 }
 
-void NetProbeMetricsManager::process_netprobe_http_result(uint16_t status, const visor::http::HttpTimings &timings, const std::string &target, timespec stamp)
+void NetProbeMetricsManager::process_netprobe_http_result(const visor::http::HttpSample &sample, const std::string &target, timespec stamp)
 {
     new_event(stamp);
     live_bucket()->process_attempts(_deep_sampling_now, target);
-    live_bucket()->process_netprobe_http(_deep_sampling_now, status, timings, target);
+    live_bucket()->process_netprobe_http(_deep_sampling_now, sample, target);
 }
 
 void NetProbeMetricsManager::process_netprobe_http_failure(ErrorType error, const std::string &target)
@@ -581,7 +581,7 @@ void NetProbeMetricsManager::process_netprobe_http_failure(ErrorType error, cons
     live_bucket()->process_failure(error, target);
 }
 
-void NetProbeMetricsBucket::process_netprobe_doh(bool deep, uint16_t http_status, uint8_t rcode, bool parse_ok, const visor::http::HttpTimings &timings, const std::string &target)
+void NetProbeMetricsBucket::process_netprobe_doh(bool deep, uint16_t http_status, uint8_t rcode, bool parse_ok, [[maybe_unused]] uint64_t cert_expiry_epoch, const visor::http::HttpTimings &timings, const std::string &target)
 {
     std::unique_lock lock(_mutex);
 
@@ -624,11 +624,11 @@ void NetProbeMetricsBucket::process_netprobe_doh(bool deep, uint16_t http_status
     }
 }
 
-void NetProbeMetricsManager::process_netprobe_doh_result(uint16_t http_status, uint8_t rcode, bool parse_ok, const visor::http::HttpTimings &timings, const std::string &target, timespec stamp)
+void NetProbeMetricsManager::process_netprobe_doh_result(uint16_t http_status, uint8_t rcode, bool parse_ok, uint64_t cert_expiry_epoch, const visor::http::HttpTimings &timings, const std::string &target, timespec stamp)
 {
     new_event(stamp);
     live_bucket()->process_attempts(_deep_sampling_now, target);
-    live_bucket()->process_netprobe_doh(_deep_sampling_now, http_status, rcode, parse_ok, timings, target);
+    live_bucket()->process_netprobe_doh(_deep_sampling_now, http_status, rcode, parse_ok, cert_expiry_epoch, timings, target);
 }
 
 void NetProbeMetricsManager::process_netprobe_doh_failure(ErrorType error, const std::string &target)

@@ -199,7 +199,7 @@ bool DohProbe::start(std::shared_ptr<uvw::loop> io_loop)
                 } else if (logger) {
                     logger->debug("netprobe doh[{}]: response too short for a DNS message ({} bytes)", name, r.response_body.size());
                 }
-                doh_result(static_cast<uint16_t>(r.status_code), rcode, parse_ok, r.timings, name, stamp);
+                doh_result(static_cast<uint16_t>(r.status_code), rcode, parse_ok, r.cert_expiry_epoch, r.timings, name, stamp);
             } else {
                 if (logger) {
                     logger->debug("netprobe doh[{}]: transport error: {} (curl code {})", name, r.error_msg, r.curl_code);

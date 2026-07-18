@@ -132,8 +132,8 @@ public:
     void process_failure(ErrorType error, const std::string &target);
     void process_attempts(bool deep, const std::string &target);
     void new_transaction(bool deep, NetProbeTransaction xact);
-    void process_netprobe_http(bool deep, uint16_t status, const visor::http::HttpTimings &timings, const std::string &target);
-    void process_netprobe_doh(bool deep, uint16_t http_status, uint8_t rcode, bool parse_ok, const visor::http::HttpTimings &timings, const std::string &target);
+    void process_netprobe_http(bool deep, const visor::http::HttpSample &sample, const std::string &target);
+    void process_netprobe_doh(bool deep, uint16_t http_status, uint8_t rcode, bool parse_ok, uint64_t cert_expiry_epoch, const visor::http::HttpTimings &timings, const std::string &target);
 };
 
 class NetProbeMetricsManager final : public visor::AbstractMetricsManager<NetProbeMetricsBucket>
@@ -164,9 +164,9 @@ public:
     void process_netprobe_icmp(pcpp::IcmpLayer *layer, const std::string &target, timespec stamp);
     void process_netprobe_icmpv6(pcpp::ICMPv6EchoLayer *layer, const std::string &target, timespec stamp);
     void process_netprobe_tcp(bool send, const std::string &target, timespec stamp);
-    void process_netprobe_http_result(uint16_t status, const visor::http::HttpTimings &timings, const std::string &target, timespec stamp);
+    void process_netprobe_http_result(const visor::http::HttpSample &sample, const std::string &target, timespec stamp);
     void process_netprobe_http_failure(ErrorType error, const std::string &target);
-    void process_netprobe_doh_result(uint16_t http_status, uint8_t rcode, bool parse_ok, const visor::http::HttpTimings &timings, const std::string &target, timespec stamp);
+    void process_netprobe_doh_result(uint16_t http_status, uint8_t rcode, bool parse_ok, uint64_t cert_expiry_epoch, const visor::http::HttpTimings &timings, const std::string &target, timespec stamp);
     void process_netprobe_doh_failure(ErrorType error, const std::string &target);
 };
 
@@ -196,8 +196,8 @@ class NetProbeStreamHandler final : public visor::StreamMetricsHandler<NetProbeM
     void probe_signal_send(pcpp::Packet &, TestType, const std::string &, timespec);
     void probe_signal_recv(pcpp::Packet &, TestType, const std::string &, timespec);
     void probe_signal_fail(ErrorType, TestType, const std::string &);
-    void probe_signal_http_result(uint16_t, visor::http::HttpTimings, const std::string &, timespec);
-    void probe_signal_doh_result(uint16_t, uint8_t, bool, visor::http::HttpTimings, const std::string &, timespec);
+    void probe_signal_http_result(visor::http::HttpSample, const std::string &, timespec);
+    void probe_signal_doh_result(uint16_t, uint8_t, bool, uint64_t, visor::http::HttpTimings, const std::string &, timespec);
 
     bool _filtering(pcpp::Packet *payload);
 

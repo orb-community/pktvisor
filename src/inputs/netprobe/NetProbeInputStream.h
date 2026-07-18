@@ -76,8 +76,8 @@ class NetProbeInputStream : public visor::InputStream
     void _send_cb(pcpp::Packet &, TestType, const std::string &, timespec);
     void _recv_cb(pcpp::Packet &, TestType, const std::string &, timespec);
     void _fail_cb(ErrorType, TestType, const std::string &);
-    void _http_result_cb(uint16_t status, visor::http::HttpTimings t, const std::string &name, timespec stamp);
-    void _doh_result_cb(uint16_t http_status, uint8_t rcode, bool parse_ok, visor::http::HttpTimings t, const std::string &name, timespec stamp);
+    void _http_result_cb(visor::http::HttpSample sample, const std::string &name, timespec stamp);
+    void _doh_result_cb(uint16_t http_status, uint8_t rcode, bool parse_ok, uint64_t cert_expiry_epoch, visor::http::HttpTimings t, const std::string &name, timespec stamp);
 
 public:
     NetProbeInputStream(const std::string &name);
@@ -124,14 +124,14 @@ public:
         probe_fail_signal(e, t, n);
     }
 
-    void probe_http_result_cb(uint16_t status, visor::http::HttpTimings t, const std::string &n, timespec s)
+    void probe_http_result_cb(visor::http::HttpSample sample, const std::string &n, timespec s)
     {
-        probe_http_result_signal(status, t, n, s);
+        probe_http_result_signal(sample, n, s);
     }
 
-    void probe_doh_result_cb(uint16_t http_status, uint8_t rcode, bool parse_ok, visor::http::HttpTimings t, const std::string &n, timespec s)
+    void probe_doh_result_cb(uint16_t http_status, uint8_t rcode, bool parse_ok, uint64_t cert_expiry_epoch, visor::http::HttpTimings t, const std::string &n, timespec s)
     {
-        probe_doh_result_signal(http_status, rcode, parse_ok, t, n, s);
+        probe_doh_result_signal(http_status, rcode, parse_ok, cert_expiry_epoch, t, n, s);
     }
 
     // handler functionality
@@ -140,8 +140,8 @@ public:
     mutable sigslot::signal<pcpp::Packet &, TestType, const std::string &, timespec> probe_send_signal;
     mutable sigslot::signal<pcpp::Packet &, TestType, const std::string &, timespec> probe_recv_signal;
     mutable sigslot::signal<ErrorType, TestType, const std::string &> probe_fail_signal;
-    mutable sigslot::signal<uint16_t, visor::http::HttpTimings, const std::string &, timespec> probe_http_result_signal;
-    mutable sigslot::signal<uint16_t, uint8_t, bool, visor::http::HttpTimings, const std::string &, timespec> probe_doh_result_signal;
+    mutable sigslot::signal<visor::http::HttpSample, const std::string &, timespec> probe_http_result_signal;
+    mutable sigslot::signal<uint16_t, uint8_t, bool, uint64_t, visor::http::HttpTimings, const std::string &, timespec> probe_doh_result_signal;
 };
 
 }

@@ -39,4 +39,12 @@ struct HttpResult {
     uint64_t cert_expiry_epoch{0};      // earliest "Expire date:" across the TLS chain when HttpRequest.collect_cert_info; 0 for plain http or on parse failure
     uint64_t response_size{0};          // CURLINFO_SIZE_DOWNLOAD_T; populated on every transport_ok, independent of capture_response
 };
+struct HttpSample {
+    uint16_t status{0};
+    bool status_ok{false};        // check evaluation happens in the PROBE
+    uint8_t content_check{0};     // 0 = NotChecked, 1 = Match, 2 = Mismatch
+    uint64_t cert_expiry_epoch{0};
+    uint64_t response_size{0};
+    HttpTimings timings;
+};
 }

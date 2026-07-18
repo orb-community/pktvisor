@@ -10,8 +10,8 @@
 
 namespace visor::input::netprobe {
 
-// http_status, rcode, parse_ok, timings, name, stamp
-using DohResultCallback = std::function<void(uint16_t, uint8_t, bool, visor::http::HttpTimings, const std::string &, timespec)>;
+// http_status, rcode, parse_ok, cert_expiry_epoch, timings, name, stamp
+using DohResultCallback = std::function<void(uint16_t, uint8_t, bool, uint64_t, visor::http::HttpTimings, const std::string &, timespec)>;
 
 class DohProbe final : public NetProbe
 {

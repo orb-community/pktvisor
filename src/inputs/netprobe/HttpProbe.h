@@ -10,7 +10,7 @@
 
 namespace visor::input::netprobe {
 
-using HttpResultCallback = std::function<void(uint16_t status, visor::http::HttpTimings, const std::string &, timespec)>;
+using HttpResultCallback = std::function<void(visor::http::HttpSample, const std::string &, timespec)>;
 
 class HttpProbe final : public NetProbe
 {

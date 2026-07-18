@@ -250,19 +250,19 @@ void NetProbeInputStream::_fail_cb(ErrorType error, TestType type, const std::st
     }
 }
 
-void NetProbeInputStream::_http_result_cb(uint16_t status, visor::http::HttpTimings t, const std::string &name, timespec stamp)
+void NetProbeInputStream::_http_result_cb(visor::http::HttpSample sample, const std::string &name, timespec stamp)
 {
     std::shared_lock lock(_input_mutex);
     for (auto &proxy : _event_proxies) {
-        static_cast<NetProbeInputEventProxy *>(proxy.get())->probe_http_result_cb(status, t, name, stamp);
+        static_cast<NetProbeInputEventProxy *>(proxy.get())->probe_http_result_cb(sample, name, stamp);
     }
 }
 
-void NetProbeInputStream::_doh_result_cb(uint16_t http_status, uint8_t rcode, bool parse_ok, visor::http::HttpTimings t, const std::string &name, timespec stamp)
+void NetProbeInputStream::_doh_result_cb(uint16_t http_status, uint8_t rcode, bool parse_ok, uint64_t cert_expiry_epoch, visor::http::HttpTimings t, const std::string &name, timespec stamp)
 {
     std::shared_lock lock(_input_mutex);
     for (auto &proxy : _event_proxies) {
-        static_cast<NetProbeInputEventProxy *>(proxy.get())->probe_doh_result_cb(http_status, rcode, parse_ok, t, name, stamp);
+        static_cast<NetProbeInputEventProxy *>(proxy.get())->probe_doh_result_cb(http_status, rcode, parse_ok, cert_expiry_epoch, t, name, stamp);
     }
 }
 
@@ -364,7 +364,7 @@ void NetProbeInputStream::_create_netprobe_loop()
 
     for (const auto &[key, url] : _http_targets) {
         auto probe = std::make_unique<HttpProbe>(_id, key, url, _http_method, _http_client,
-            [this](uint16_t status, visor::http::HttpTimings t, const std::string &name, timespec stamp) { _http_result_cb(status, t, name, stamp); });
+            [this](visor::http::HttpSample sample, const std::string &name, timespec stamp) { _http_result_cb(sample, name, stamp); });
         ++_id;
         probe->set_configs(_interval_msec, _timeout_msec, _packets_per_test, _packets_interval_msec, _packet_payload_size);
         probe->set_callbacks([this](pcpp::Packet &payload, TestType type, const std::string &name, timespec stamp) { _send_cb(payload, type, name, stamp); },
@@ -376,8 +376,8 @@ void NetProbeInputStream::_create_netprobe_loop()
 
     for (const auto &[key, url] : _doh_targets) {
         auto probe = std::make_unique<DohProbe>(_id, key, url, _doh_method, _doh_qname, _doh_qtype, _http_client,
-            [this](uint16_t http_status, uint8_t rcode, bool parse_ok, visor::http::HttpTimings t, const std::string &name, timespec stamp) {
-                _doh_result_cb(http_status, rcode, parse_ok, t, name, stamp);
+            [this](uint16_t http_status, uint8_t rcode, bool parse_ok, uint64_t cert_expiry_epoch, visor::http::HttpTimings t, const std::string &name, timespec stamp) {
+                _doh_result_cb(http_status, rcode, parse_ok, cert_expiry_epoch, t, name, stamp);
             });
         ++_id;
         probe->set_configs(_interval_msec, _timeout_msec, _packets_per_test, _packets_interval_msec, _packet_payload_size);
