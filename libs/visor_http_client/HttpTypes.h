@@ -21,6 +21,12 @@ struct HttpRequest {
     std::string body;                   // request body bytes (empty => no body)
     std::vector<std::string> headers;   // extra request headers, each "Key: Value"
     bool capture_response{false};       // when true, capture the response body
+    bool collect_cert_info{false};      // when true, request CURLOPT_CERTINFO and populate HttpResult.cert_expiry_epoch
+    std::string proxy;                  // CURLOPT_PROXY value (empty => no proxy)
+    std::string ca_file;                // CURLOPT_CAINFO (empty => curl default CA bundle)
+    std::string cert_file;              // CURLOPT_SSLCERT (client cert, empty => none)
+    std::string key_file;               // CURLOPT_SSLKEY (client key, empty => none)
+    std::string user_agent;             // CURLOPT_USERAGENT (empty => curl default)
 };
 struct HttpResult {
     bool transport_ok{false};
@@ -30,5 +36,7 @@ struct HttpResult {
     std::string response_body;          // populated only when HttpRequest.capture_response
     std::string content_type;           // raw response Content-Type header when transport_ok (compare case-insensitively)
     std::string error_msg;              // human-readable curl error detail when !transport_ok
+    uint64_t cert_expiry_epoch{0};      // earliest "Expire date:" across the TLS chain when HttpRequest.collect_cert_info; 0 for plain http or on parse failure
+    uint64_t response_size{0};          // CURLINFO_SIZE_DOWNLOAD_T; populated on every transport_ok, independent of capture_response
 };
 }

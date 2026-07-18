@@ -19,6 +19,9 @@ static int start_test_server(httplib::Server &svr, std::thread &t)
     svr.Post("/echo", [](const httplib::Request &req, httplib::Response &res) {
         res.set_content(req.body, "application/octet-stream");
     });
+    svr.Get("/ua", [](const httplib::Request &req, httplib::Response &res) {
+        res.set_content(req.get_header_value("User-Agent"), "text/plain");
+    });
     int port = svr.bind_to_any_port("127.0.0.1");
     REQUIRE(port > 0);
     t = std::thread([&svr] { svr.listen_after_bind(); });
@@ -55,6 +58,18 @@ static void disarm_watchdog(std::shared_ptr<uvw::loop> loop, std::shared_ptr<uvw
         loop->run();
     }
 }
+
+// Small local RAII helper for a second (proxy) httplib server's thread lifetime; the
+// richer ServerGuard in test_netprobe.cpp isn't shared with this file.
+struct ServerGuard {
+    httplib::Server &svr;
+    std::thread &t;
+    ~ServerGuard()
+    {
+        svr.stop();
+        if (t.joinable()) t.join();
+    }
+};
 
 TEST_CASE("HttpClient basic results", "[http][client]")
 {
@@ -226,6 +241,100 @@ TEST_CASE("HttpClient request() issued from within a completion callback is safe
     REQUIRE(statuses.size() == 2);
     CHECK(statuses[0] == 200);
     CHECK(statuses[1] == 404);
+
+    client.close();
+    loop->run();
+    svr.stop();
+    if (server_thread.joinable()) server_thread.join();
+}
+
+TEST_CASE("HttpClient v2 transport fields", "[http][client]")
+{
+    httplib::Server svr;
+    std::thread server_thread;
+    int port = start_test_server(svr, server_thread);
+    auto loop = uvw::loop::create();
+    HttpClient client(loop);
+    std::string base = "http://127.0.0.1:" + std::to_string(port);
+    std::vector<HttpResult> results;
+    auto on_done = [&](const HttpResult &r) { results.push_back(r); };
+
+    SECTION("user_agent is sent; response_size populated")
+    {
+        HttpRequest req;
+        req.url = base + "/ua";
+        req.user_agent = "pktvisor-test/1.0";
+        req.capture_response = true;
+        req.timeout_ms = 2000;
+        client.request(req, on_done);
+        auto wd = arm_watchdog(loop, 5000);
+        loop->run();
+        disarm_watchdog(loop, wd);
+        REQUIRE(results.size() == 1);
+        CHECK(results[0].response_body == "pktvisor-test/1.0");
+        CHECK(results[0].response_size == results[0].response_body.size());
+    }
+    SECTION("plain http => cert_expiry_epoch stays 0 even when requested")
+    {
+        HttpRequest req;
+        req.url = base + "/ok";
+        req.collect_cert_info = true;
+        req.timeout_ms = 2000;
+        client.request(req, on_done);
+        auto wd = arm_watchdog(loop, 5000);
+        loop->run();
+        disarm_watchdog(loop, wd);
+        REQUIRE(results.size() == 1);
+        CHECK(results[0].cert_expiry_epoch == 0);
+    }
+    SECTION("tls option wiring: ca/cert/key fields on a plain-http request are harmless")
+    {
+        // Wiring smoke: the setopts are applied without crashing and don't affect a plain-http
+        // transfer (TLS options are simply unused). Real TLS validation is a manual smoke (README).
+        HttpRequest req;
+        req.url = base + "/ok";
+        req.ca_file = "/nonexistent/ca.pem";   // paths need not exist for a plain-http transfer
+        req.cert_file = "/nonexistent/c.pem";
+        req.key_file = "/nonexistent/k.pem";
+        req.timeout_ms = 2000;
+        client.request(req, on_done);
+        auto wd = arm_watchdog(loop, 5000);
+        loop->run();
+        disarm_watchdog(loop, wd);
+        REQUIRE(results.size() == 1);
+        CHECK(results[0].transport_ok);
+        CHECK(results[0].status_code == 200);
+    }
+    SECTION("proxy: request goes THROUGH the forward proxy (absolute-form URI)")
+    {
+        httplib::Server proxy_srv;
+        std::string seen_path;
+        // A plain-http forward proxy receives the absolute-form request target; a regex
+        // catch-all lets httplib serve it and prove the request really went via the proxy.
+        proxy_srv.Get(R"((.*))", [&](const httplib::Request &preq, httplib::Response &pres) {
+            seen_path = preq.path;
+            pres.set_content("via-proxy", "text/plain");
+        });
+        int pport = proxy_srv.bind_to_any_port("127.0.0.1");
+        REQUIRE(pport > 0);
+        std::thread pthread([&proxy_srv] { proxy_srv.listen_after_bind(); });
+        ServerGuard pguard{proxy_srv, pthread};
+        proxy_srv.wait_until_ready();
+
+        HttpRequest req;
+        req.url = "http://192.0.2.1/unreachable-without-proxy"; // TEST-NET, unroutable directly
+        req.proxy = "http://127.0.0.1:" + std::to_string(pport);
+        req.capture_response = true;
+        req.timeout_ms = 2000;
+        client.request(req, on_done);
+        auto wd = arm_watchdog(loop, 5000);
+        loop->run();
+        disarm_watchdog(loop, wd);
+        REQUIRE(results.size() == 1);
+        CHECK(results[0].transport_ok);
+        CHECK(results[0].response_body == "via-proxy");
+        CHECK(seen_path.find("http://192.0.2.1") == 0); // absolute-form proves proxying
+    }
 
     client.close();
     loop->run();

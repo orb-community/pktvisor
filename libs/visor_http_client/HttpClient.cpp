@@ -1,4 +1,6 @@
 #include "HttpClient.h"
+#include "HttpCheck.h"
+#include <cstring>
 #include <mutex>
 #include <stdexcept>
 #include <utility>
@@ -174,6 +176,24 @@ void HttpClient::request(const HttpRequest &req, ResultCallback on_done)
     // We run on the netprobe io thread, not the main thread; CURLOPT_NOSIGNAL stops curl from
     // using signals (e.g. SIGALRM with the standard name resolver), which is unsafe off-main-thread.
     curl_easy_setopt(easy, CURLOPT_NOSIGNAL, 1L);
+    if (!req.user_agent.empty()) {
+        curl_easy_setopt(easy, CURLOPT_USERAGENT, req.user_agent.c_str());
+    }
+    if (!req.proxy.empty()) {
+        curl_easy_setopt(easy, CURLOPT_PROXY, req.proxy.c_str());
+    }
+    if (!req.ca_file.empty()) {
+        curl_easy_setopt(easy, CURLOPT_CAINFO, req.ca_file.c_str());
+    }
+    if (!req.cert_file.empty()) {
+        curl_easy_setopt(easy, CURLOPT_SSLCERT, req.cert_file.c_str());
+    }
+    if (!req.key_file.empty()) {
+        curl_easy_setopt(easy, CURLOPT_SSLKEY, req.key_file.c_str());
+    }
+    if (req.collect_cert_info) {
+        curl_easy_setopt(easy, CURLOPT_CERTINFO, 1L);
+    }
     if (!req.body.empty()) {
         // COPYPOSTFIELDS copies the bytes (curl owns them); size set first => binary-safe.
         curl_easy_setopt(easy, CURLOPT_POSTFIELDSIZE, static_cast<long>(req.body.size()));
@@ -353,6 +373,26 @@ void HttpClient::check_multi_info()
             result.timings.connect_us = conn > dns ? static_cast<uint64_t>(conn - dns) : 0;
             result.timings.tls_us = app > conn ? static_cast<uint64_t>(app - conn) : 0;
             result.timings.ttfb_us = ttfb > (app ? app : conn) ? static_cast<uint64_t>(ttfb - (app ? app : conn)) : 0;
+            curl_off_t dl_size = 0;
+            curl_easy_getinfo(easy, CURLINFO_SIZE_DOWNLOAD_T, &dl_size);
+            result.response_size = dl_size > 0 ? static_cast<uint64_t>(dl_size) : 0;
+            struct curl_certinfo *ci = nullptr;
+            if (curl_easy_getinfo(easy, CURLINFO_CERTINFO, &ci) == CURLE_OK && ci) {
+                // earliest notAfter across the presented chain (blackbox_exporter semantics)
+                uint64_t earliest = 0;
+                for (int i = 0; i < ci->num_of_certs; ++i) {
+                    for (auto *sl = ci->certinfo[i]; sl; sl = sl->next) {
+                        constexpr char kPrefix[] = "Expire date:";
+                        if (sl->data && std::strncmp(sl->data, kPrefix, sizeof(kPrefix) - 1) == 0) {
+                            uint64_t e = parse_cert_expire_date(std::string(sl->data + sizeof(kPrefix) - 1));
+                            if (e && (earliest == 0 || e < earliest)) {
+                                earliest = e;
+                            }
+                        }
+                    }
+                }
+                result.cert_expiry_epoch = earliest;
+            }
             if (it != _easy.end() && it->second->capture) {
                 result.response_body = std::move(it->second->response);
             }
