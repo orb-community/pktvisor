@@ -30,12 +30,15 @@ bool HttpProbe::start(std::shared_ptr<uvw::loop> io_loop)
         req.timeout_ms = _config.timeout_msec;
         req.body = _opts.request_body;
         req.headers = _headers;
-        // libcurl re-sends custom request headers on followed redirects (it only strips a few
-        // built-ins like Authorization/Cookie), so a 30x to another host would leak an operator's
-        // secret header (e.g. X-Api-Key). curl has no per-host scoping for arbitrary headers, so
-        // when this probe carries custom headers we do NOT follow redirects — the 30x is reported
-        // as the result instead. (DoH's fixed non-secret headers are unaffected.)
-        req.follow_redirects = _headers.empty();
+        // Do NOT follow redirects when the probe carries potentially-secret payload:
+        //  - custom request headers: libcurl re-sends them on followed redirects (it only strips a
+        //    few built-ins like Authorization/Cookie) with no per-host scoping, so a 30x to another
+        //    host would leak an operator's secret header (e.g. X-Api-Key);
+        //  - a request body: a 307/308 preserves the method and body, re-sending the (redacted,
+        //    potentially secret) payload to the redirect target.
+        // In either case the 30x is reported as the result instead. (DoH is unaffected — its only
+        // headers are the fixed, non-secret Content-Type/Accept, and it sends no operator body.)
+        req.follow_redirects = _headers.empty() && _opts.request_body.empty();
         req.proxy = _opts.proxy;
         req.ca_file = _opts.ca_file;
         req.cert_file = _opts.cert_file;
