@@ -555,6 +555,39 @@ TEST_CASE("NetProbe HTTP e2e: success path records attempt, success, and 200 in 
     CHECK(found_200);
 }
 
+TEST_CASE("NetProbe v2 scrub helper: redacts a raw tap-style config echo", "[netprobe][http][config]")
+{
+    // Tap::info_json echoes the tap's raw config (exposed via GET /api/v1/taps and
+    // Policy::info_json) and calls the input plugin's redact hook, which uses this helper.
+    // Feed it a tap-shaped config JSON and prove every secret-bearing value is masked.
+    json cfg;
+    cfg["proxy"] = "http://user:pass@myproxy:3128";
+    cfg["body"] = "{\"token\":\"tap-body-sekrit\"}";
+    cfg["expected_body"] = "tap-expected-sekrit";
+    cfg["expected_body_regex"] = "tap-regex-sekrit";
+    cfg["interval_msec"] = 200; // non-secret keys must survive untouched
+    cfg["targets"]["api"]["target"] = "https://api.example.com/health";
+    cfg["targets"]["api"]["headers"]["Authorization"] = "Bearer tap-header-sekrit";
+    cfg["targets"]["api"]["headers"]["X-Num"] = 12345;
+
+    visor::input::netprobe::scrub_netprobe_config_json(cfg);
+
+    auto dumped = cfg.dump();
+    CHECK(dumped.find("tap-header-sekrit") == std::string::npos);
+    CHECK(dumped.find("tap-body-sekrit") == std::string::npos);
+    CHECK(dumped.find("tap-expected-sekrit") == std::string::npos);
+    CHECK(dumped.find("tap-regex-sekrit") == std::string::npos);
+    CHECK(dumped.find("user:pass") == std::string::npos);
+    CHECK(dumped.find("12345") == std::string::npos);
+    // Names and non-secret values survive.
+    CHECK(dumped.find("Authorization") != std::string::npos);
+    CHECK(dumped.find("X-Num") != std::string::npos);
+    CHECK(cfg["interval_msec"] == 200);
+    CHECK(cfg["targets"]["api"]["target"] == "https://api.example.com/health");
+    CHECK(cfg["proxy"] == "<redacted>");
+    CHECK(cfg["targets"]["api"]["headers"]["Authorization"] == "<redacted>");
+}
+
 TEST_CASE("NetProbe v2 info_json: proxy/body/expected_body(_regex)/header values are scrubbed", "[netprobe][http][config]")
 {
     // common_info_json() echoes the raw module config verbatim; without scrubbing this would leak

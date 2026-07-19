@@ -52,25 +52,32 @@ std::string test_type_name(TestType t)
     return "unknown";
 }
 
-// Join a per-target "headers" sub-Configurable entry into its "name: value" string. The YAML
-// loader stores scalars typed (uint64_t/bool/string), so a header value like `12345` or `true`
-// is NOT a std::string in the Configurable and config_get<std::string>() throws on it. Configurable
+// Read a scalar config value as a string regardless of how the YAML loader typed it. The loader
+// stores scalars typed (uint64_t/bool/string), so a value like `12345` or `true` is NOT a
+// std::string in the Configurable and config_get<std::string>() throws on it. Configurable
 // exposes no cheaper type-dispatch accessor, so fall back through the scalar types it can hold.
-std::string header_value_to_string(const visor::Configurable &headers, const std::string &name)
+// `what` names the key in the error (never the value — it may carry a secret).
+std::string scalar_config_to_string(const visor::Configurable &cfg, const std::string &key, const char *what)
 {
     try {
-        return headers.config_get<std::string>(name);
+        return cfg.config_get<std::string>(key);
     } catch (const visor::ConfigException &) {
     }
     try {
-        return std::to_string(headers.config_get<uint64_t>(name));
+        return std::to_string(cfg.config_get<uint64_t>(key));
     } catch (const visor::ConfigException &) {
     }
     try {
-        return headers.config_get<bool>(name) ? "true" : "false";
+        return cfg.config_get<bool>(key) ? "true" : "false";
     } catch (const visor::ConfigException &) {
     }
-    throw NetProbeException(fmt::format("netprobe: header '{}' has an unsupported value type", name));
+    throw NetProbeException(fmt::format("netprobe: {} '{}' has an unsupported value type", what, key));
+}
+
+// Join a per-target "headers" sub-Configurable entry into its "name: value" string.
+std::string header_value_to_string(const visor::Configurable &headers, const std::string &name)
+{
+    return scalar_config_to_string(headers, name, "header");
 }
 
 // Trim leading/trailing ASCII whitespace.
@@ -201,8 +208,10 @@ void NetProbeInputStream::start()
         }
     }
     {
-        std::string sub = config_exists("expected_body") ? config_get<std::string>("expected_body") : "";
-        std::string rx = config_exists("expected_body_regex") ? config_get<std::string>("expected_body_regex") : "";
+        // Tolerant reads: an all-digit YAML value (e.g. body: 12345) is stored typed, and a plain
+        // config_get<std::string> would throw a confusing type error.
+        std::string sub = config_exists("expected_body") ? scalar_config_to_string(*this, "expected_body", "config") : "";
+        std::string rx = config_exists("expected_body_regex") ? scalar_config_to_string(*this, "expected_body_regex", "config") : "";
         try {
             _http_opts.body_check = visor::http::BodyCheck::compile(sub, rx);
         } catch (const std::invalid_argument &e) {
@@ -210,10 +219,10 @@ void NetProbeInputStream::start()
         }
     }
     if (config_exists("body")) {
-        _http_opts.request_body = config_get<std::string>("body");
+        _http_opts.request_body = scalar_config_to_string(*this, "body", "config");
     }
     if (config_exists("proxy")) {
-        _http_opts.proxy = config_get<std::string>("proxy");
+        _http_opts.proxy = scalar_config_to_string(*this, "proxy", "config");
     }
     if (config_exists("tls")) {
         auto tls = config_get<std::shared_ptr<Configurable>>("tls");
@@ -608,30 +617,40 @@ void NetProbeInputStream::stop()
     _running = false;
 }
 
+void scrub_netprobe_config_json(json &cfg)
+{
+    // Scrub every config value that can carry a secret from a raw config echo: proxy URLs can
+    // embed credentials, and header/body/expected_body(_regex) values can be anything the operator
+    // configured (Authorization headers, tokens in a probe body, etc.). Values must NEVER appear
+    // in any serialized config — only header/target NAMES are safe. Used by BOTH the input
+    // stream's info_json (module config echo) and the netprobe input plugin's redact hook (tap
+    // config echo via Tap::info_json — GET /api/v1/taps and Policy::info_json).
+    for (const char *key : {"proxy", "body", "expected_body", "expected_body_regex"}) {
+        if (cfg.contains(key)) {
+            cfg[key] = "<redacted>";
+        }
+    }
+    if (cfg.contains("targets") && cfg["targets"].is_object()) {
+        for (auto &el : cfg["targets"].items()) {
+            auto &tgt_val = el.value();
+            if (tgt_val.is_object() && tgt_val.contains("headers") && tgt_val["headers"].is_object()) {
+                for (auto &hel : tgt_val["headers"].items()) {
+                    hel.value() = "<redacted>";
+                }
+            }
+        }
+    }
+}
+
 void NetProbeInputStream::info_json(json &j) const
 {
     common_info_json(j);
     // common_info_json() echoes the module's RAW config verbatim at j["module"]["config"] (via
-    // Configurable::config_json). Scrub every value that can carry a secret before this JSON goes
-    // anywhere: proxy URLs can embed credentials, and header/body/expected_body(_regex) values can
-    // be anything the operator configured (Authorization headers, tokens in a probe body, etc.).
-    // Header/proxy/body values must NEVER appear in info_json — only header/target NAMES are safe.
+    // Configurable::config_json) — scrub the secret-bearing values before this JSON goes anywhere.
     if (j.contains("module") && j["module"].contains("config")) {
         auto &cfg = j["module"]["config"];
-        for (const char *key : {"proxy", "body", "expected_body", "expected_body_regex"}) {
-            if (cfg.contains(key)) {
-                cfg[key] = "<redacted>";
-            }
-        }
+        scrub_netprobe_config_json(cfg);
         if (cfg.contains("targets") && cfg["targets"].is_object()) {
-            for (auto &el : cfg["targets"].items()) {
-                auto &tgt_val = el.value();
-                if (tgt_val.is_object() && tgt_val.contains("headers") && tgt_val["headers"].is_object()) {
-                    for (auto &hel : tgt_val["headers"].items()) {
-                        hel.value() = "<redacted>";
-                    }
-                }
-            }
             // Per-target header NAMES (never values) are safe to surface and useful for debugging.
             for (const auto &[tgt_name, names] : _http_target_header_names) {
                 if (cfg["targets"].contains(tgt_name)) {

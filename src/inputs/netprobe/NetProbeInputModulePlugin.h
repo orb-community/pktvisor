@@ -23,6 +23,13 @@ public:
     std::unique_ptr<InputStream> instantiate(const std::string name, const Configurable *config, const Configurable *filter) override;
 
     std::string generate_input_name(std::string prefix, const Configurable &config, const Configurable &filter) override;
+
+    void redact_config_json(nlohmann::json &cfg) const override
+    {
+        // Netprobe config can carry secrets (auth headers, proxy credentials, request bodies);
+        // scrub them from any raw config echo (e.g. the tap echo on the admin API).
+        scrub_netprobe_config_json(cfg);
+    }
 };
 
 }

@@ -59,6 +59,10 @@ public:
         j["input_type"] = _input_plugin->plugin();
         j["interface"] = _input_plugin->pluginInterface();
         config_json(j["config"]);
+        // The tap config is a raw echo of operator config and may hold input-type-specific
+        // secrets (e.g. netprobe auth headers/proxy/body). Let the input plugin redact them
+        // before this JSON reaches the admin API (GET /api/v1/taps, Policy::info_json).
+        _input_plugin->redact_config_json(j["config"]);
         _tags->config_json(j["tags"]);
     }
 

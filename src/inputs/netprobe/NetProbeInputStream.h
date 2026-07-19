@@ -24,6 +24,11 @@ class HttpClient;
 
 namespace visor::input::netprobe {
 
+// Redact every netprobe config value that can carry a secret (proxy, body, expected_body,
+// expected_body_regex, and all targets.*.headers values) from a raw config-echo JSON node.
+// Shared by NetProbeInputStream::info_json and the input plugin's tap-config redact hook.
+void scrub_netprobe_config_json(json &cfg);
+
 class NetProbeInputStream : public visor::InputStream
 {
     static const inline uint64_t MAX_PAYLOAD_SIZE = 65500;

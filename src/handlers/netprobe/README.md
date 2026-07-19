@@ -169,7 +169,7 @@ All metrics are per-target (keyed by the name given in the `targets` config map)
 | Metric | Description |
 |--------|-------------|
 | `response_quantiles_us` | Quantiles of total response times in microseconds |
-| `response_size_bytes` | Quantiles of HTTP/DoH response body size in bytes |
+| `response_size_bytes` | Quantiles of HTTP response body size in bytes (`http` test type only) |
 
 ### HTTP response phases (group: `http_response_phases`, opt-in)
 
