@@ -151,9 +151,12 @@ void NetProbeMetricsBucket::specialized_merge(const AbstractMetricsBucket &o, Me
             _targets_metrics[targetId]->top_status_codes.merge(target.second->top_status_codes);
             _targets_metrics[targetId]->dns_response_failures += target.second->dns_response_failures;
             _targets_metrics[targetId]->top_rcodes.merge(target.second->top_rcodes);
-            // Merged windows lose per-sample ordering, so "latest wins" is meaningless here;
-            // take the max instead, which biases toward the most-recently-renewed certificate.
-            if (target.second->tls_cert_expiry_epoch > _targets_metrics[targetId]->tls_cert_expiry_epoch) {
+            // Keep the NEWEST window's cert expiry. Buckets merge newest-first (window_merged_json /
+            // multiple_merge iterate _metric_buckets, whose front is the live/newest bucket, into a
+            // fresh accumulator), so the first non-zero value seen is the current certificate. Do NOT
+            // take the max: a reissue or rollback to a shorter-lived cert must LOWER the reported
+            // expiry — maxing would keep the old cert's later date and suppress expiry alerts.
+            if (_targets_metrics[targetId]->tls_cert_expiry_epoch == 0) {
                 _targets_metrics[targetId]->tls_cert_expiry_epoch = target.second->tls_cert_expiry_epoch;
             }
         }

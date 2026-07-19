@@ -715,7 +715,7 @@ TEST_CASE("NetProbe HTTP response_size_bytes: absent when quantiles group not en
     CHECK(!j["targets"]["no-respsize"].contains("response_size_bytes"));
 }
 
-TEST_CASE("NetProbe HTTP merge: content_failures sums, tls_cert_expiry_epoch_sec takes max, q_response_size survives merge", "[netprobe][http][unit]")
+TEST_CASE("NetProbe HTTP merge: content_failures sums, tls_cert_expiry_epoch_sec keeps the newest window (not max), q_response_size survives merge", "[netprobe][http][unit]")
 {
     QuantilesFixture fx_a("netprobe-http-merge-a", 2);
     QuantilesFixture fx_b("netprobe-http-merge-b", 2);
@@ -732,6 +732,10 @@ TEST_CASE("NetProbe HTTP merge: content_failures sums, tls_cert_expiry_epoch_sec
         return s;
     };
 
+    // fx_a is merged first (it stands in for the NEWEST window) and carries the SHORTER-lived cert
+    // (1700000000); fx_b (older) carries a LATER date (1800000000). Newest must win, so the merged
+    // value is fx_a's — proving we do NOT take the max, which would keep the stale later date and
+    // suppress expiry alerts after a cert reissue/rollback to a shorter-lived cert.
     fx_a.manager()->process_netprobe_http_result(make_sample(true, 2, 1700000000, 256), "shared", stamp);
     fx_a.manager()->process_netprobe_http_result(make_sample(true, 2, 0, 512), "shared", stamp);
     fx_b.manager()->process_netprobe_http_result(make_sample(true, 2, 1800000000, 1024), "shared", stamp);
@@ -745,7 +749,7 @@ TEST_CASE("NetProbe HTTP merge: content_failures sums, tls_cert_expiry_epoch_sec
     merged->to_json(j);
 
     CHECK(j["targets"]["shared"]["content_failures"] == 3);
-    CHECK(j["targets"]["shared"]["tls_cert_expiry_epoch_sec"] == 1800000000);
+    CHECK(j["targets"]["shared"]["tls_cert_expiry_epoch_sec"] == 1700000000);
     REQUIRE(j["targets"]["shared"].contains("response_size_bytes"));
 }
 
