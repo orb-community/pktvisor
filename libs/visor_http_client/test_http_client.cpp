@@ -341,3 +341,61 @@ TEST_CASE("HttpClient v2 transport fields", "[http][client]")
     svr.stop();
     if (server_thread.joinable()) server_thread.join();
 }
+
+TEST_CASE("HttpClient body capture cap + truncation flag", "[http][client]")
+{
+    httplib::Server svr;
+    std::string big(200 * 1024, 'a'); // 200 KB
+    svr.Get("/big", [&](const httplib::Request &, httplib::Response &res) {
+        res.set_content(big, "text/plain");
+    });
+    int port = svr.bind_to_any_port("127.0.0.1");
+    REQUIRE(port > 0);
+    std::thread server_thread([&svr] { svr.listen_after_bind(); });
+    ServerGuard guard{svr, server_thread};
+    svr.wait_until_ready();
+
+    auto loop = uvw::loop::create();
+    HttpClient client(loop);
+    std::string base = "http://127.0.0.1:" + std::to_string(port);
+    std::vector<HttpResult> results;
+    auto on_done = [&](const HttpResult &r) { results.push_back(r); };
+
+    SECTION("body over the cap is truncated to the cap and flagged")
+    {
+        HttpRequest req;
+        req.url = base + "/big";
+        req.capture_response = true;
+        req.capture_max_bytes = 1024;
+        req.timeout_ms = 3000;
+        client.request(req, on_done);
+        auto wd = arm_watchdog(loop, 6000);
+        loop->run();
+        disarm_watchdog(loop, wd);
+        REQUIRE(results.size() == 1);
+        CHECK(results[0].transport_ok);
+        CHECK(results[0].body_truncated);
+        CHECK(results[0].response_body.size() == 1024);
+    }
+    SECTION("body under the cap is complete and not flagged")
+    {
+        HttpRequest req;
+        req.url = base + "/big";
+        req.capture_response = true;
+        req.capture_max_bytes = 1024 * 1024; // 1 MB > 200 KB
+        req.timeout_ms = 3000;
+        client.request(req, on_done);
+        auto wd = arm_watchdog(loop, 6000);
+        loop->run();
+        disarm_watchdog(loop, wd);
+        REQUIRE(results.size() == 1);
+        CHECK(results[0].transport_ok);
+        CHECK_FALSE(results[0].body_truncated);
+        CHECK(results[0].response_body.size() == 200 * 1024);
+    }
+
+    client.close();
+    loop->run();
+    svr.stop();
+    if (server_thread.joinable()) server_thread.join();
+}

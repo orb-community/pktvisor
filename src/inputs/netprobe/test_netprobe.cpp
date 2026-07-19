@@ -128,7 +128,7 @@ TEST_CASE("Netprobe invalid config", "[netprobe][config]")
     NetProbeInputStream stream{"net-probe-test"};
     stream.config_set("invalid_config", true);
 
-    CHECK_THROWS_WITH(stream.start(), "invalid_config is an invalid/unsupported config or filter. The valid configs/filters are: test_type, interval_msec, timeout_msec, packets_per_test, packets_interval_msec, packet_payload_size, targets, http_method, qname, qtype, expected_status, failure_status, expected_body, expected_body_regex, body, proxy, tls");
+    CHECK_THROWS_WITH(stream.start(), "invalid_config is an invalid/unsupported config or filter. The valid configs/filters are: test_type, interval_msec, timeout_msec, packets_per_test, packets_interval_msec, packet_payload_size, targets, http_method, qname, qtype, expected_status, failure_status, expected_body, expected_body_regex, body, body_check_max_bytes, proxy, tls");
 }
 
 TEST_CASE("NetProbe ip_version config", "[netprobe][config][ipv6]")
@@ -163,7 +163,7 @@ TEST_CASE("NetProbe ip_version config", "[netprobe][config][ipv6]")
     SECTION("top-level valid-keys string unchanged") {
         NetProbeInputStream s{"net-probe-test"};
         s.config_set("invalid_config", true);
-        CHECK_THROWS_WITH(s.start(), "invalid_config is an invalid/unsupported config or filter. The valid configs/filters are: test_type, interval_msec, timeout_msec, packets_per_test, packets_interval_msec, packet_payload_size, targets, http_method, qname, qtype, expected_status, failure_status, expected_body, expected_body_regex, body, proxy, tls");
+        CHECK_THROWS_WITH(s.start(), "invalid_config is an invalid/unsupported config or filter. The valid configs/filters are: test_type, interval_msec, timeout_msec, packets_per_test, packets_interval_msec, packet_payload_size, targets, http_method, qname, qtype, expected_status, failure_status, expected_body, expected_body_regex, body, body_check_max_bytes, proxy, tls");
     }
 }
 
@@ -1383,6 +1383,58 @@ TEST_CASE("NetProbe HTTP e2e v2: expected_body mismatch -> content_failures, nev
     // Bulletproof invariant: successes must be exactly zero when the body check fails.
     CHECK(tgt["successes"].get<int>() == 0);
     CHECK(tgt["content_failures"].get<int>() >= 1);
+}
+
+TEST_CASE("NetProbe HTTP e2e v2: body match past the capture cap is not a false content_failure", "[netprobe][http][e2e]")
+{
+    // The match text lives after a large padding prefix; with a small body_check_max_bytes the
+    // captured body is truncated before the marker. The check must NOT be reported as a
+    // content_failure on a partial body — the sample is classified on status alone (success).
+    httplib::Server svr;
+    std::string body = std::string(64 * 1024, 'x') + "MARKER_AT_END";
+    svr.Get("/health", [&](const httplib::Request &, httplib::Response &res) {
+        res.set_content(body, "text/plain");
+    });
+    int port = svr.bind_to_any_port("127.0.0.1");
+    REQUIRE(port > 0);
+    std::thread server_thread([&svr] { svr.listen_after_bind(); });
+    ServerGuard guard{svr, server_thread};
+    svr.wait_until_ready();
+
+    std::string url = "http://127.0.0.1:" + std::to_string(port) + "/health";
+
+    NetProbeInputStream stream{"netprobe-http-e2e-body-truncated"};
+    stream.config_set("test_type", "http");
+    stream.config_set<uint64_t>("interval_msec", 200);
+    stream.config_set<uint64_t>("timeout_msec", 150);
+    stream.config_set("expected_body", std::string("MARKER_AT_END"));
+    stream.config_set<uint64_t>("body_check_max_bytes", 1024); // marker is well beyond this
+    auto targets = std::make_shared<visor::Configurable>();
+    auto target = std::make_shared<visor::Configurable>();
+    target->config_set("target", url);
+    targets->config_set<std::shared_ptr<visor::Configurable>>("health_target", target);
+    stream.config_set<std::shared_ptr<visor::Configurable>>("targets", targets);
+
+    visor::Config c;
+    c.config_set<uint64_t>("num_periods", 1);
+    auto *proxy = stream.add_event_proxy(c);
+    NetProbeStreamHandler handler{"netprobe-http-e2e-body-truncated", proxy, &c};
+
+    handler.start();
+    stream.start();
+    std::this_thread::sleep_for(750ms);
+    stream.stop();
+    handler.stop();
+
+    json j;
+    handler.metrics()->bucket(0)->to_json(j);
+
+    REQUIRE(j["targets"].contains("health_target"));
+    auto &tgt = j["targets"]["health_target"];
+    CHECK(tgt["attempts"].get<int>() >= 1);
+    // Truncated body => body check skipped, classified on status (200) => success, NOT content_failures.
+    CHECK(tgt["successes"].get<int>() >= 1);
+    CHECK(tgt["content_failures"].get<int>() == 0);
 }
 
 TEST_CASE("NetProbe HTTP e2e v2: POST body is delivered to the server", "[netprobe][http][e2e]")

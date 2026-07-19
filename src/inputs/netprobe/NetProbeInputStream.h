@@ -87,6 +87,7 @@ class NetProbeInputStream : public visor::InputStream
         "expected_body",
         "expected_body_regex",
         "body",
+        "body_check_max_bytes",
         "proxy",
         "tls"};
 

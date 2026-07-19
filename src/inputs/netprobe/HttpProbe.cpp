@@ -38,6 +38,7 @@ bool HttpProbe::start(std::shared_ptr<uvw::loop> io_loop)
         req.verify_tls = _opts.tls_verify;
         req.collect_cert_info = true;
         req.capture_response = _opts.body_check.configured();
+        req.capture_max_bytes = _opts.body_check_max_bytes;
         const std::string name = _name;
         auto http_result = _http_result;
         auto fail = _fail;
@@ -60,7 +61,17 @@ bool HttpProbe::start(std::shared_ptr<uvw::loop> io_loop)
                 s.status_ok = status_ok;
                 s.content_check = 0;
                 if (status_ok && opts.body_check.configured()) {
-                    s.content_check = opts.body_check.matches(r.response_body) ? 1 : 2;
+                    if (r.body_truncated) {
+                        // The captured body is only a prefix (it exceeded body_check_max_bytes): a
+                        // match beyond the cap would be missed, and an anchored regex could match the
+                        // artificial truncation boundary. We can't authoritatively evaluate the body,
+                        // so classify on status alone (content_check stays NotChecked) and warn.
+                        if (auto logger = spdlog::get("visor")) {
+                            logger->warn("netprobe http[{}]: response body exceeded the {}-byte capture limit; body check skipped (raise body_check_max_bytes)", name, opts.body_check_max_bytes);
+                        }
+                    } else {
+                        s.content_check = opts.body_check.matches(r.response_body) ? 1 : 2;
+                    }
                 }
                 // CERTINFO is only filled on transfers that performed a TLS handshake; reused
                 // pooled connections report nothing. Cache the last known expiry per target so

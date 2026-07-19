@@ -15,6 +15,7 @@ struct HttpProbeOptions {
     visor::http::StatusMatcher expected_status; // empty => default 2xx/3xx
     visor::http::StatusMatcher failure_status;  // empty => none
     visor::http::BodyCheck body_check;          // http only
+    size_t body_check_max_bytes{512 * 1024};    // http only: cap on captured body for body checks; beyond it the check is skipped
     std::string request_body;                   // http only
     std::string proxy;
     bool tls_verify{true};

@@ -221,6 +221,13 @@ void NetProbeInputStream::start()
     if (config_exists("body")) {
         _http_opts.request_body = scalar_config_to_string(*this, "body", "config");
     }
+    if (config_exists("body_check_max_bytes")) {
+        auto n = config_get<uint64_t>("body_check_max_bytes");
+        if (n == 0) {
+            throw NetProbeException("netprobe: body_check_max_bytes must be greater than 0");
+        }
+        _http_opts.body_check_max_bytes = static_cast<size_t>(n);
+    }
     if (config_exists("proxy")) {
         _http_opts.proxy = scalar_config_to_string(*this, "proxy", "config");
     }
@@ -352,7 +359,7 @@ void NetProbeInputStream::start()
     // http-only keys: check each individually so the thrown message names the offending key.
     {
         static const std::vector<std::string> http_only_keys = {
-            "expected_status", "failure_status", "expected_body", "expected_body_regex", "body"};
+            "expected_status", "failure_status", "expected_body", "expected_body_regex", "body", "body_check_max_bytes"};
         if (_type != TestType::HTTP) {
             for (const auto &key : http_only_keys) {
                 if (config_exists(key)) {

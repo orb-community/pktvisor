@@ -131,9 +131,14 @@ size_t HttpClient::write_capture(char *ptr, size_t size, size_t nmemb, void *use
     size_t n = size * nmemb;
     auto *ctx = static_cast<EasyContext *>(userdata);
     if (ctx) {
-        constexpr size_t kMaxBody = 64 * 1024; // a DNS-over-HTTPS message is well under 64 KB
-        if (ctx->response.size() < kMaxBody) {
-            ctx->response.append(ptr, (n < kMaxBody - ctx->response.size()) ? n : (kMaxBody - ctx->response.size()));
+        if (ctx->response.size() + n > ctx->capture_max) {
+            // Body exceeds the cap: keep the prefix that fits and flag truncation so the caller
+            // knows the captured body is partial (a content check can't be evaluated definitively).
+            size_t room = ctx->capture_max > ctx->response.size() ? ctx->capture_max - ctx->response.size() : 0;
+            ctx->response.append(ptr, room);
+            ctx->truncated = true;
+        } else {
+            ctx->response.append(ptr, n);
         }
     }
     return n; // always consume so curl doesn't abort the transfer
@@ -219,6 +224,7 @@ void HttpClient::request(const HttpRequest &req, ResultCallback on_done)
         curl_easy_setopt(easy, CURLOPT_HTTPHEADER, ctx->headers);
     }
     ctx->capture = req.capture_response;
+    ctx->capture_max = req.capture_max_bytes;
     curl_easy_setopt(easy, CURLOPT_WRITEFUNCTION, ctx->capture ? &HttpClient::write_capture : &HttpClient::write_discard);
     curl_easy_setopt(easy, CURLOPT_WRITEDATA, ctx.get());
     curl_easy_setopt(easy, CURLOPT_PRIVATE, ctx.get());
@@ -395,6 +401,7 @@ void HttpClient::check_multi_info()
             }
             if (it != _easy.end() && it->second->capture) {
                 result.response_body = std::move(it->second->response);
+                result.body_truncated = it->second->truncated;
             }
             char *ct = nullptr;
             curl_easy_getinfo(easy, CURLINFO_CONTENT_TYPE, &ct); // may be null (no Content-Type)
