@@ -7,7 +7,9 @@
 #include <catch2/matchers/catch_matchers_string.hpp>
 #include <catch2/catch_test_visor.hpp>
 #include <algorithm>
+#include <atomic>
 #include <httplib.h>
+#include <mutex>
 #include <nlohmann/json.hpp>
 #include <thread>
 #ifdef __GNUC__
@@ -1081,4 +1083,329 @@ TEST_CASE("NetProbe DoH e2e: root qname (dot) probe succeeds", "[netprobe][doh][
     auto &tgt = j["targets"]["doh_target"];
     CHECK(tgt["attempts"].get<int>() >= 1);
     CHECK(tgt["successes"].get<int>() >= 1);
+}
+
+// ---------------------------------------------------------------------------
+// End-to-end v2 tests: real NetProbeInputStream + NetProbeStreamHandler proving
+// the evaluation precedence (failure_status > expected_status > default 2xx/3xx,
+// then body checks) through a LIVE probe, not just unit-level HttpSample fixtures.
+// Mirrors the http/doh e2e scaffolding above: ServerGuard, wait_until_ready(),
+// ephemeral ports, 200ms interval / 150ms timeout / ~750ms sleep.
+// ---------------------------------------------------------------------------
+
+TEST_CASE("NetProbe HTTP e2e v2: per-target headers determine per-target auth outcome", "[netprobe][http][e2e]")
+{
+    // /auth returns 200 iff Authorization == "Bearer sekrit", else 401 — proves per-target headers
+    // are actually threaded through to the outbound request, not just accepted by config validation.
+    httplib::Server svr;
+    svr.Get("/auth", [](const httplib::Request &req, httplib::Response &res) {
+        if (req.get_header_value("Authorization") == "Bearer sekrit") {
+            res.status = 200;
+            res.set_content("ok", "text/plain");
+        } else {
+            res.status = 401;
+            res.set_content("nope", "text/plain");
+        }
+    });
+    int port = svr.bind_to_any_port("127.0.0.1");
+    REQUIRE(port > 0);
+    std::thread server_thread([&svr] { svr.listen_after_bind(); });
+    ServerGuard guard{svr, server_thread};
+    svr.wait_until_ready();
+
+    std::string url = "http://127.0.0.1:" + std::to_string(port) + "/auth";
+
+    NetProbeInputStream stream{"netprobe-http-e2e-headers"};
+    stream.config_set("test_type", "http");
+    stream.config_set<uint64_t>("interval_msec", 200);
+    stream.config_set<uint64_t>("timeout_msec", 150);
+    auto targets = std::make_shared<visor::Configurable>();
+
+    // Target A carries the correct Authorization header.
+    auto target_a = std::make_shared<visor::Configurable>();
+    target_a->config_set("target", url);
+    auto headers = std::make_shared<visor::Configurable>();
+    headers->config_set("Authorization", std::string("Bearer sekrit"));
+    target_a->config_set<std::shared_ptr<visor::Configurable>>("headers", headers);
+    targets->config_set<std::shared_ptr<visor::Configurable>>("with_auth", target_a);
+
+    // Target B hits the same URL with no headers at all.
+    auto target_b = std::make_shared<visor::Configurable>();
+    target_b->config_set("target", url);
+    targets->config_set<std::shared_ptr<visor::Configurable>>("no_auth", target_b);
+
+    stream.config_set<std::shared_ptr<visor::Configurable>>("targets", targets);
+
+    visor::Config c;
+    c.config_set<uint64_t>("num_periods", 1);
+    auto *proxy = stream.add_event_proxy(c);
+    NetProbeStreamHandler handler{"netprobe-http-e2e-headers", proxy, &c};
+
+    handler.start();
+    stream.start();
+    std::this_thread::sleep_for(750ms);
+    stream.stop();
+    handler.stop();
+
+    json j;
+    handler.metrics()->bucket(0)->to_json(j);
+
+    REQUIRE(j["targets"].contains("with_auth"));
+    CHECK(j["targets"]["with_auth"]["successes"].get<int>() >= 1);
+
+    REQUIRE(j["targets"].contains("no_auth"));
+    auto &no_auth = j["targets"]["no_auth"];
+    CHECK(no_auth["http_status_failures"].get<int>() >= 1);
+    REQUIRE(no_auth.contains("top_status_codes"));
+    bool found_401 = false;
+    for (const auto &entry : no_auth["top_status_codes"]) {
+        if (entry.contains("name") && entry["name"] == "401") {
+            found_401 = true;
+        }
+    }
+    CHECK(found_401);
+}
+
+TEST_CASE("NetProbe HTTP e2e v2: expected_status flips a 401 endpoint into a success", "[netprobe][http][e2e]")
+{
+    httplib::Server svr;
+    svr.Get("/unauth", [](const httplib::Request &, httplib::Response &res) {
+        res.status = 401;
+        res.set_content("nope", "text/plain");
+    });
+    int port = svr.bind_to_any_port("127.0.0.1");
+    REQUIRE(port > 0);
+    std::thread server_thread([&svr] { svr.listen_after_bind(); });
+    ServerGuard guard{svr, server_thread};
+    svr.wait_until_ready();
+
+    std::string url = "http://127.0.0.1:" + std::to_string(port) + "/unauth";
+
+    NetProbeInputStream stream{"netprobe-http-e2e-expected-status"};
+    stream.config_set("test_type", "http");
+    stream.config_set<uint64_t>("interval_msec", 200);
+    stream.config_set<uint64_t>("timeout_msec", 150);
+    stream.config_set<visor::Configurable::StringList>("expected_status", {"401"});
+    auto targets = std::make_shared<visor::Configurable>();
+    auto target = std::make_shared<visor::Configurable>();
+    target->config_set("target", url);
+    targets->config_set<std::shared_ptr<visor::Configurable>>("unauth_target", target);
+    stream.config_set<std::shared_ptr<visor::Configurable>>("targets", targets);
+
+    visor::Config c;
+    c.config_set<uint64_t>("num_periods", 1);
+    auto *proxy = stream.add_event_proxy(c);
+    NetProbeStreamHandler handler{"netprobe-http-e2e-expected-status", proxy, &c};
+
+    handler.start();
+    stream.start();
+    std::this_thread::sleep_for(750ms);
+    stream.stop();
+    handler.stop();
+
+    json j;
+    handler.metrics()->bucket(0)->to_json(j);
+
+    REQUIRE(j["targets"].contains("unauth_target"));
+    auto &tgt = j["targets"]["unauth_target"];
+    CHECK(tgt["successes"].get<int>() >= 1);
+    CHECK(tgt["http_status_failures"].get<int>() == 0);
+}
+
+TEST_CASE("NetProbe HTTP e2e v2: failure_status wins over expected_status", "[netprobe][http][e2e]")
+{
+    // expected_status accepts the whole 2xx class, but failure_status carves 200 back out of it.
+    // failure_status must win: a 200 response must be counted as a failure, never a success.
+    httplib::Server svr;
+    svr.Get("/ok", [](const httplib::Request &, httplib::Response &res) {
+        res.set_content("ok", "text/plain");
+    });
+    int port = svr.bind_to_any_port("127.0.0.1");
+    REQUIRE(port > 0);
+    std::thread server_thread([&svr] { svr.listen_after_bind(); });
+    ServerGuard guard{svr, server_thread};
+    svr.wait_until_ready();
+
+    std::string url = "http://127.0.0.1:" + std::to_string(port) + "/ok";
+
+    NetProbeInputStream stream{"netprobe-http-e2e-failure-wins"};
+    stream.config_set("test_type", "http");
+    stream.config_set<uint64_t>("interval_msec", 200);
+    stream.config_set<uint64_t>("timeout_msec", 150);
+    stream.config_set<visor::Configurable::StringList>("expected_status", {"2xx"});
+    stream.config_set<visor::Configurable::StringList>("failure_status", {"200"});
+    auto targets = std::make_shared<visor::Configurable>();
+    auto target = std::make_shared<visor::Configurable>();
+    target->config_set("target", url);
+    targets->config_set<std::shared_ptr<visor::Configurable>>("ok_target", target);
+    stream.config_set<std::shared_ptr<visor::Configurable>>("targets", targets);
+
+    visor::Config c;
+    c.config_set<uint64_t>("num_periods", 1);
+    auto *proxy = stream.add_event_proxy(c);
+    NetProbeStreamHandler handler{"netprobe-http-e2e-failure-wins", proxy, &c};
+
+    handler.start();
+    stream.start();
+    std::this_thread::sleep_for(750ms);
+    stream.stop();
+    handler.stop();
+
+    json j;
+    handler.metrics()->bucket(0)->to_json(j);
+
+    REQUIRE(j["targets"].contains("ok_target"));
+    auto &tgt = j["targets"]["ok_target"];
+    CHECK(tgt["http_status_failures"].get<int>() >= 1);
+    CHECK(tgt["successes"].get<int>() == 0);
+}
+
+TEST_CASE("NetProbe HTTP e2e v2: expected_body + expected_body_regex both match -> success", "[netprobe][http][e2e]")
+{
+    httplib::Server svr;
+    svr.Get("/health", [](const httplib::Request &, httplib::Response &res) {
+        res.set_content(R"({"status":"ok","state":"up"})", "application/json");
+    });
+    int port = svr.bind_to_any_port("127.0.0.1");
+    REQUIRE(port > 0);
+    std::thread server_thread([&svr] { svr.listen_after_bind(); });
+    ServerGuard guard{svr, server_thread};
+    svr.wait_until_ready();
+
+    std::string url = "http://127.0.0.1:" + std::to_string(port) + "/health";
+
+    NetProbeInputStream stream{"netprobe-http-e2e-body-match"};
+    stream.config_set("test_type", "http");
+    stream.config_set<uint64_t>("interval_msec", 200);
+    stream.config_set<uint64_t>("timeout_msec", 150);
+    stream.config_set("expected_body", std::string("\"status\":\"ok\""));
+    stream.config_set("expected_body_regex", std::string("up|healthy"));
+    auto targets = std::make_shared<visor::Configurable>();
+    auto target = std::make_shared<visor::Configurable>();
+    target->config_set("target", url);
+    targets->config_set<std::shared_ptr<visor::Configurable>>("health_target", target);
+    stream.config_set<std::shared_ptr<visor::Configurable>>("targets", targets);
+
+    visor::Config c;
+    c.config_set<uint64_t>("num_periods", 1);
+    auto *proxy = stream.add_event_proxy(c);
+    NetProbeStreamHandler handler{"netprobe-http-e2e-body-match", proxy, &c};
+
+    handler.start();
+    stream.start();
+    std::this_thread::sleep_for(750ms);
+    stream.stop();
+    handler.stop();
+
+    json j;
+    handler.metrics()->bucket(0)->to_json(j);
+
+    REQUIRE(j["targets"].contains("health_target"));
+    auto &tgt = j["targets"]["health_target"];
+    CHECK(tgt["successes"].get<int>() >= 1);
+    CHECK(tgt["content_failures"].get<int>() == 0);
+}
+
+TEST_CASE("NetProbe HTTP e2e v2: expected_body mismatch -> content_failures, never successes", "[netprobe][http][e2e]")
+{
+    httplib::Server svr;
+    svr.Get("/health", [](const httplib::Request &, httplib::Response &res) {
+        res.set_content(R"({"status":"ok","state":"up"})", "application/json");
+    });
+    int port = svr.bind_to_any_port("127.0.0.1");
+    REQUIRE(port > 0);
+    std::thread server_thread([&svr] { svr.listen_after_bind(); });
+    ServerGuard guard{svr, server_thread};
+    svr.wait_until_ready();
+
+    std::string url = "http://127.0.0.1:" + std::to_string(port) + "/health";
+
+    NetProbeInputStream stream{"netprobe-http-e2e-body-mismatch"};
+    stream.config_set("test_type", "http");
+    stream.config_set<uint64_t>("interval_msec", 200);
+    stream.config_set<uint64_t>("timeout_msec", 150);
+    stream.config_set("expected_body", std::string("nope"));
+    auto targets = std::make_shared<visor::Configurable>();
+    auto target = std::make_shared<visor::Configurable>();
+    target->config_set("target", url);
+    targets->config_set<std::shared_ptr<visor::Configurable>>("health_target", target);
+    stream.config_set<std::shared_ptr<visor::Configurable>>("targets", targets);
+
+    visor::Config c;
+    c.config_set<uint64_t>("num_periods", 1);
+    auto *proxy = stream.add_event_proxy(c);
+    NetProbeStreamHandler handler{"netprobe-http-e2e-body-mismatch", proxy, &c};
+
+    handler.start();
+    stream.start();
+    std::this_thread::sleep_for(750ms);
+    stream.stop();
+    handler.stop();
+
+    json j;
+    handler.metrics()->bucket(0)->to_json(j);
+
+    REQUIRE(j["targets"].contains("health_target"));
+    auto &tgt = j["targets"]["health_target"];
+    // Bulletproof invariant: successes must be exactly zero when the body check fails.
+    CHECK(tgt["successes"].get<int>() == 0);
+    CHECK(tgt["content_failures"].get<int>() >= 1);
+}
+
+TEST_CASE("NetProbe HTTP e2e v2: POST body is delivered to the server", "[netprobe][http][e2e]")
+{
+    std::atomic<bool> body_seen{false};
+    std::mutex body_mutex;
+    std::string seen_body;
+
+    httplib::Server svr;
+    svr.Post("/echo-len", [&](const httplib::Request &req, httplib::Response &res) {
+        {
+            std::lock_guard<std::mutex> lock(body_mutex);
+            seen_body = req.body;
+        }
+        body_seen = true;
+        res.set_content("ok", "text/plain");
+    });
+    int port = svr.bind_to_any_port("127.0.0.1");
+    REQUIRE(port > 0);
+    std::thread server_thread([&svr] { svr.listen_after_bind(); });
+    ServerGuard guard{svr, server_thread};
+    svr.wait_until_ready();
+
+    std::string url = "http://127.0.0.1:" + std::to_string(port) + "/echo-len";
+
+    NetProbeInputStream stream{"netprobe-http-e2e-post-body"};
+    stream.config_set("test_type", "http");
+    stream.config_set<uint64_t>("interval_msec", 200);
+    stream.config_set<uint64_t>("timeout_msec", 150);
+    stream.config_set("http_method", std::string("POST"));
+    stream.config_set("body", std::string(R"({"ping":true})"));
+    auto targets = std::make_shared<visor::Configurable>();
+    auto target = std::make_shared<visor::Configurable>();
+    target->config_set("target", url);
+    targets->config_set<std::shared_ptr<visor::Configurable>>("echo_target", target);
+    stream.config_set<std::shared_ptr<visor::Configurable>>("targets", targets);
+
+    visor::Config c;
+    c.config_set<uint64_t>("num_periods", 1);
+    auto *proxy = stream.add_event_proxy(c);
+    NetProbeStreamHandler handler{"netprobe-http-e2e-post-body", proxy, &c};
+
+    handler.start();
+    stream.start();
+    std::this_thread::sleep_for(750ms);
+    stream.stop();
+    handler.stop();
+
+    REQUIRE(body_seen.load());
+    {
+        std::lock_guard<std::mutex> lock(body_mutex);
+        CHECK(seen_body == R"({"ping":true})");
+    }
+
+    json j;
+    handler.metrics()->bucket(0)->to_json(j);
+    REQUIRE(j["targets"].contains("echo_target"));
+    CHECK(j["targets"]["echo_target"]["successes"].get<int>() >= 1);
 }

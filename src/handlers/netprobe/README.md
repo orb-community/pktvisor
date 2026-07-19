@@ -32,15 +32,31 @@ Unlike ping/tcp, HTTP targets are specified as full URLs.
 | `targets.<name>.target` | string | — | Full URL to probe, e.g. `http://example.com/health` |
 | `interval_msec` | uint64 | 5000 | How often to issue a probe, in milliseconds |
 | `timeout_msec` | uint64 | 2000 | Per-request timeout in milliseconds (must not exceed `interval_msec`). `0` disables the per-request timeout — not recommended for HTTP, where a slow/stalled server could leave a transfer pending; keep the default. |
-| `http_method` | string | `"GET"` | HTTP method to use for all targets (`GET`, `HEAD`, `POST`, …) |
+| `http_method` | string | `"GET"` | HTTP method to use for all targets (`GET`, `HEAD`, `POST`, `PUT`, `PATCH`, …) |
+| `expected_status` | list of strings | *(unset)* | Status codes/classes that count as a **success**. Entries: exact code (`"200"`), a class shorthand (`"2xx"`), or a range (`"200-299"`). When unset, the default is any `2xx`/`3xx` status. Overridden per-response by `failure_status` (see below). |
+| `failure_status` | list of strings | *(unset)* | Status codes/classes that **always** count as a failure (`http_status_failures`), even if they also match `expected_status` or the default 2xx/3xx range. Same grammar as `expected_status`. Evaluation order per response: `failure_status` is checked first; if it matches, the response fails regardless of anything else. |
+| `expected_body` | string | *(unset)* | Substring that must appear in the response body for the probe to succeed. Only evaluated when the HTTP status already passed (`expected_status`/`failure_status`/default). Combines with `expected_body_regex` using **AND** — both must match if both are set. A body-check failure on an otherwise-successful status is counted as `content_failures`, not `http_status_failures`. |
+| `expected_body_regex` | string | *(unset)* | Regex (ECMAScript syntax) that must match somewhere in the response body. Same AND semantics and `content_failures` accounting as `expected_body`. |
+| `body` | string | *(unset)* | Request body to send. Only valid when `http_method` is `POST`, `PUT`, or `PATCH` — set on any other method throws a config error at start. |
+| `targets.<name>.headers` | map | *(unset)* | Per-target HTTP headers (name → value), e.g. `Authorization: Bearer <token>`. Sent only on requests to that target. **Redaction note:** header *values* are never echoed back by `info_json`/status output — they're replaced with `<redacted>`. Header *names* (e.g. `Authorization`) are still surfaced (as `header_names`) since they're useful for debugging and carry no secret. |
+| `proxy` | string | *(unset)* | HTTP/HTTPS proxy URL for all targets, e.g. `http://user:pass@proxy.example:3128`. Applies to `http` and `doh` only (not `tcp`/`ping`). Like headers, the configured value is fully redacted (`<redacted>`) wherever config is echoed back — even the host/port, since the whole string can carry embedded credentials. |
+| `tls.verify` | bool | `true` | Whether to verify the target's TLS certificate/hostname. Set `false` only for testing against self-signed endpoints. |
+| `tls.ca_file` | string | *(unset)* | Path to a CA bundle to trust in addition to (or instead of) the system store. Must exist at start time or the stream fails to start. |
+| `tls.cert_file` / `tls.key_file` | string | *(unset)* | Client certificate + private key for mutual TLS (mTLS). Must be set together — setting one without the other is a config error. |
 
 #### Success semantics
 
-HTTP probes classify results by status code:
+HTTP probes classify results, per response, in this order:
 
-- **2xx / 3xx** → counted as a `success`
-- **4xx / 5xx** (or any other non-2xx/3xx status including `0` / `1xx`) → counted as an `http_status_failures`
-- Transport errors (DNS resolution failure, TCP connect failure, timeout) → counted in the corresponding existing failure counter (`dns_lookup_failures`, `connect_failures`, `packets_timeout`)
+1. **`failure_status` match** → always `http_status_failures`, regardless of anything else below.
+2. Otherwise, **status check**: `expected_status` if configured, else the default (**2xx**/**3xx** → pass, anything else → `http_status_failures`).
+3. If the status check passed and `expected_body`/`expected_body_regex` are configured: body check failure → `content_failures`; body check pass (or no body check configured) → `successes`.
+
+So the precedence is: `failure_status` wins over `expected_status`/default, and body checks are only ever evaluated on an already-passing status.
+
+Transport errors (DNS resolution failure, TCP connect failure, timeout) are counted in the corresponding existing failure counter (`dns_lookup_failures`, `connect_failures`, `packets_timeout`) and never reach status/body evaluation.
+
+**Default User-Agent:** unless a request otherwise sets its own, probes send `User-Agent: pktvisor/<version>`.
 
 ### doh
 
@@ -58,6 +74,10 @@ Like `http`, targets are specified as full URLs (e.g. `https://1.1.1.1/dns-query
 | `interval_msec` | uint64 | 5000 | How often to issue a probe, in milliseconds |
 | `timeout_msec` | uint64 | 2000 | Per-request timeout in milliseconds (must not exceed `interval_msec`) |
 | `http_method` | string | `"POST"` | HTTP method to use for the DoH wire-format query (`POST` or `GET`) |
+| `proxy` | string | *(unset)* | Same as the `http` test type — see above. |
+| `tls.verify` / `tls.ca_file` / `tls.cert_file` / `tls.key_file` | — | *(unset)* | Same as the `http` test type — see above. |
+
+`expected_status`, `failure_status`, `expected_body`, `expected_body_regex`, `body`, and per-target `headers` are **HTTP-only** and are rejected at config time for `test_type: doh` (a DoH response's "content" is the DNS answer, evaluated via `qname`/`qtype`/rcode instead — see below).
 
 #### Success semantics
 
@@ -127,10 +147,14 @@ All metrics are per-target (keyed by the name given in the `targets` config map)
 | `connect_failures` | TCP/socket connection failures |
 | `dns_lookup_failures` | DNS resolution failures |
 | `packets_timeout` | Probes that timed out |
-| `http_status_failures` | HTTP/DoH responses with any HTTP status outside 2xx/3xx (e.g. 4xx/5xx, and also 1xx or 0) |
+| `http_status_failures` | HTTP/DoH responses whose HTTP status failed the configured status checks (default: any status outside 2xx/3xx). See [Success semantics](#success-semantics) above for the full `failure_status`/`expected_status` precedence — this counter fires whenever that evaluation lands on "fail," whether by the default 2xx/3xx rule, an `expected_status` miss, or a `failure_status` hit. |
+| `content_failures` | HTTP responses whose status passed the status check but the configured `expected_body`/`expected_body_regex` check(s) did not match. Never incremented together with `successes` or `http_status_failures` for the same response — HTTP-only (not applicable to `doh`, which has no body-check config). |
 | `top_status_codes` | Top HTTP status codes observed (e.g. `"200"`, `"404"`, `"503"`) |
 | `dns_response_failures` | DoH responses with HTTP 2xx/3xx but a non-NOERROR or unparseable DNS rcode |
 | `top_rcodes` | Top DNS response codes observed in DoH probes (e.g. `"NOERROR"`, `"NXDOMAIN"`, `"SRVFAIL"`, `"PARSE_ERROR"`) |
+| `tls_cert_expiry_epoch_sec` | Unix timestamp (seconds) of the earliest `notAfter` in the target's presented TLS certificate chain. Only present once at least one sample has carried cert info (absent entirely for plain-HTTP targets). On merge/rollup, the **latest non-zero value wins** (last-known-good, not max-of-window) — see the keep-alive note below for why this matters. Example alerting expression: fire a warning when `tls_cert_expiry_epoch_sec - time() < 14 * 86400` (certificate expires within 14 days). |
+
+**Keep-alive / cert-cache note:** each netprobe input stream shares one libcurl multi-handle (connection pool) across all its `http`/`doh` targets, so TCP+TLS connections are reused (keep-alive) across probe intervals whenever the server allows it. libcurl's `CERTINFO` is only populated on transfers that actually perform a fresh TLS handshake — a request served over a reused pooled connection reports no cert info at all. To keep `tls_cert_expiry_epoch_sec` from flapping to "absent" every time a connection is reused, the probe caches the last known expiry per target and reports it on every sample until a fresh handshake supersedes it.
 
 ### Histograms (group: `histograms`, default ON)
 
@@ -145,6 +169,7 @@ All metrics are per-target (keyed by the name given in the `targets` config map)
 | Metric | Description |
 |--------|-------------|
 | `response_quantiles_us` | Quantiles of total response times in microseconds |
+| `response_size_bytes` | Quantiles of HTTP/DoH response body size in bytes |
 
 ### HTTP response phases (group: `http_response_phases`, opt-in)
 
@@ -193,3 +218,14 @@ handlers:
         enable:
           - http_response_phases
 ```
+
+---
+
+## Testing notes
+
+Automated test coverage (`test_netprobe.cpp`) exercises the `tls.*` config-validation paths
+(`tls.cert_file`/`tls.key_file` pairing, `tls.ca_file` existence, `tls`/`proxy` rejected for `tcp`), but does
+**not** stand up a real TLS server or perform a live mTLS handshake — CI has no fixture for issuing/validating
+certificates over the wire. If you change the mTLS wiring (`tls.cert_file`/`tls.key_file`/`tls.ca_file`/`tls.verify`
+plumbing into libcurl), do a manual smoke test against a real mTLS-enabled endpoint (e.g. a local nginx/envoy with
+`ssl_verify_client on`) before merging.
