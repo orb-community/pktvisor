@@ -56,13 +56,17 @@ struct Target {
     Counter dns_failures;
     Counter timed_out;
     Counter http_status_failures;
+    Counter content_failures;
     TopN<std::string> top_status_codes;
     Counter dns_response_failures;
     TopN<std::string> top_rcodes;
+    uint64_t tls_cert_expiry_epoch{0};
+    Counter tls_cert_expiry;
     Quantile<uint64_t> q_dns_us;
     Quantile<uint64_t> q_connect_us;
     Quantile<uint64_t> q_tls_us;
     Quantile<uint64_t> q_ttfb_us;
+    Quantile<uint64_t> q_response_size;
 
     Target()
         : q_time_us(NET_PROBE_SCHEMA, {"response_quantiles_us"}, "Net Probe quantile in microseconds")
@@ -74,14 +78,17 @@ struct Target {
         , connect_failures(NET_PROBE_SCHEMA, {"connect_failures"}, "Total Net Probe failures when performing a TCP socket connection")
         , dns_failures(NET_PROBE_SCHEMA, {"dns_lookup_failures"}, "Total Net Probe failures when performing a DNS lookup")
         , timed_out(NET_PROBE_SCHEMA, {"packets_timeout"}, "Total Net Probe timeout transactions")
-        , http_status_failures(NET_PROBE_SCHEMA, {"http_status_failures"}, "Total HTTP/DoH responses with a non-success status (any HTTP status outside 2xx/3xx, e.g. 4xx/5xx)")
+        , http_status_failures(NET_PROBE_SCHEMA, {"http_status_failures"}, "Total HTTP/DoH responses whose HTTP status failed the configured status checks (default: any status outside 2xx/3xx)")
+        , content_failures(NET_PROBE_SCHEMA, {"content_failures"}, "Total HTTP responses whose status passed but response-body checks failed")
         , top_status_codes(NET_PROBE_SCHEMA, "status_code", {"top_status_codes"}, "Top HTTP status codes")
         , dns_response_failures(NET_PROBE_SCHEMA, {"dns_response_failures"}, "Total DoH responses with a success HTTP status (2xx/3xx) but a non-NOERROR or unparseable DNS response")
         , top_rcodes(NET_PROBE_SCHEMA, "rcode", {"top_rcodes"}, "Top DNS response codes observed")
+        , tls_cert_expiry(NET_PROBE_SCHEMA, {"tls_cert_expiry_epoch_sec"}, "Unix timestamp (seconds) of the earliest notAfter in the target's presented TLS certificate chain")
         , q_dns_us(NET_PROBE_SCHEMA, {"response_dns_us"}, "DNS resolution time quantiles in microseconds")
         , q_connect_us(NET_PROBE_SCHEMA, {"response_connect_us"}, "TCP connect time quantiles in microseconds")
         , q_tls_us(NET_PROBE_SCHEMA, {"response_tls_us"}, "TLS handshake time quantiles in microseconds")
         , q_ttfb_us(NET_PROBE_SCHEMA, {"response_ttfb_us"}, "Time-to-first-byte quantiles in microseconds")
+        , q_response_size(NET_PROBE_SCHEMA, {"response_size_bytes"}, "Response size quantiles in bytes")
     {
     }
 };

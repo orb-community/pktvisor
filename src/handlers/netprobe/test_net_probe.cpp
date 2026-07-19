@@ -52,6 +52,32 @@ struct UnitFixture {
     NetProbeMetricsManager *manager() { return const_cast<NetProbeMetricsManager *>(handler->metrics()); }
 };
 
+// Same as UnitFixture but enables the "quantiles" group (needed for response_size_bytes,
+// which is fed under group::NetProbeMetrics::Quantiles).
+struct QuantilesFixture {
+    visor::Config c;
+    NetProbeInputStream stream;
+    visor::InputEventProxy *proxy;
+    std::unique_ptr<NetProbeStreamHandler> handler;
+
+    explicit QuantilesFixture(const std::string &name, uint64_t num_periods = 1)
+        : stream(name)
+    {
+        c.config_set<uint64_t>("num_periods", num_periods);
+        proxy = stream.add_event_proxy(c);
+        handler = std::make_unique<NetProbeStreamHandler>(name, proxy, &c);
+        handler->config_set<visor::Configurable::StringList>("enable", {"quantiles"});
+        handler->start();
+    }
+
+    ~QuantilesFixture()
+    {
+        handler->stop();
+    }
+
+    NetProbeMetricsManager *manager() { return const_cast<NetProbeMetricsManager *>(handler->metrics()); }
+};
+
 }
 
 TEST_CASE("Net Probe ping tests", "[netprobe][ping]")
@@ -582,6 +608,147 @@ TEST_CASE("NetProbe HTTP metrics merge across buckets", "[netprobe][http][unit]"
     REQUIRE(j["targets"]["shared"].contains("top_status_codes"));
 }
 
+TEST_CASE("NetProbe HTTP classification: content_failures vs successes vs http_status_failures", "[netprobe][http][unit]")
+{
+    UnitFixture fx;
+
+    timespec stamp{9000, 0};
+    auto timings = visor::http::HttpTimings{100, 10, 20, 0, 40};
+
+    auto make_sample = [&timings](bool status_ok, uint8_t content_check) {
+        visor::http::HttpSample s;
+        s.status = status_ok ? 200 : 500;
+        s.status_ok = status_ok;
+        s.content_check = content_check;
+        s.timings = timings;
+        return s;
+    };
+
+    fx.manager()->process_netprobe_http_result(make_sample(true, 0), "t1", stamp);  // NotChecked  → successes
+    fx.manager()->process_netprobe_http_result(make_sample(true, 1), "t1", stamp);  // Match       → successes
+    fx.manager()->process_netprobe_http_result(make_sample(true, 2), "t1", stamp);  // Mismatch    → content_failures, NOT successes
+    fx.manager()->process_netprobe_http_result(make_sample(false, 2), "t1", stamp); // bad status  → http_status_failures (content ignored)
+
+    json j;
+    fx.manager()->bucket(0)->to_json(j);
+
+    CHECK(j["targets"]["t1"]["successes"] == 2);
+    CHECK(j["targets"]["t1"]["content_failures"] == 1);
+    CHECK(j["targets"]["t1"]["http_status_failures"] == 1);
+}
+
+TEST_CASE("NetProbe HTTP tls_cert_expiry_epoch_sec: latest non-zero wins, zero sample leaves unchanged, absent when never set", "[netprobe][http][unit]")
+{
+    UnitFixture fx;
+
+    timespec stamp{9100, 0};
+    auto timings = visor::http::HttpTimings{100, 10, 20, 0, 40};
+
+    auto make_sample = [&timings](uint64_t cert_expiry_epoch) {
+        visor::http::HttpSample s;
+        s.status = 200;
+        s.status_ok = true;
+        s.cert_expiry_epoch = cert_expiry_epoch;
+        s.timings = timings;
+        return s;
+    };
+
+    // absent when never set (cert_expiry_epoch == 0 on every sample for this target)
+    fx.manager()->process_netprobe_http_result(make_sample(0), "no-cert", stamp);
+    json j0;
+    fx.manager()->bucket(0)->to_json(j0);
+    CHECK(!j0["targets"]["no-cert"].contains("tls_cert_expiry_epoch_sec"));
+
+    fx.manager()->process_netprobe_http_result(make_sample(1786795200), "t1", stamp);
+    json j1;
+    fx.manager()->bucket(0)->to_json(j1);
+    CHECK(j1["targets"]["t1"]["tls_cert_expiry_epoch_sec"] == 1786795200);
+
+    // a later sample with a SMALLER non-zero value REPLACES it (latest-wins, not max)
+    fx.manager()->process_netprobe_http_result(make_sample(1700000000), "t1", stamp);
+    json j2;
+    fx.manager()->bucket(0)->to_json(j2);
+    CHECK(j2["targets"]["t1"]["tls_cert_expiry_epoch_sec"] == 1700000000);
+
+    // a zero sample leaves the prior non-zero value unchanged
+    fx.manager()->process_netprobe_http_result(make_sample(0), "t1", stamp);
+    json j3;
+    fx.manager()->bucket(0)->to_json(j3);
+    CHECK(j3["targets"]["t1"]["tls_cert_expiry_epoch_sec"] == 1700000000);
+}
+
+TEST_CASE("NetProbe HTTP response_size_bytes: quantiles present when enabled", "[netprobe][http][unit]")
+{
+    QuantilesFixture fx("netprobe-http-respsize");
+
+    timespec stamp{9200, 0};
+    visor::http::HttpSample sample;
+    sample.status = 200;
+    sample.status_ok = true;
+    sample.response_size = 512;
+    sample.timings = visor::http::HttpTimings{100, 10, 20, 0, 40};
+    fx.manager()->process_netprobe_http_result(sample, "respsize-tgt", stamp);
+
+    json j;
+    fx.manager()->bucket(0)->to_json(j);
+
+    REQUIRE(j["targets"]["respsize-tgt"].contains("response_size_bytes"));
+    CHECK(j["targets"]["respsize-tgt"]["response_size_bytes"]["p50"] == 512);
+}
+
+TEST_CASE("NetProbe HTTP response_size_bytes: absent when quantiles group not enabled", "[netprobe][http][unit]")
+{
+    // Default fixture has Counters + Histograms enabled, NOT Quantiles
+    UnitFixture fx;
+
+    timespec stamp{9300, 0};
+    visor::http::HttpSample sample;
+    sample.status = 200;
+    sample.status_ok = true;
+    sample.response_size = 512;
+    sample.timings = visor::http::HttpTimings{100, 10, 20, 0, 40};
+    fx.manager()->process_netprobe_http_result(sample, "no-respsize", stamp);
+
+    json j;
+    fx.manager()->bucket(0)->to_json(j);
+
+    CHECK(!j["targets"]["no-respsize"].contains("response_size_bytes"));
+}
+
+TEST_CASE("NetProbe HTTP merge: content_failures sums, tls_cert_expiry_epoch_sec takes max, q_response_size survives merge", "[netprobe][http][unit]")
+{
+    QuantilesFixture fx_a("netprobe-http-merge-a", 2);
+    QuantilesFixture fx_b("netprobe-http-merge-b", 2);
+
+    timespec stamp{9400, 0};
+    auto make_sample = [](bool status_ok, uint8_t content_check, uint64_t cert_expiry_epoch, uint64_t response_size) {
+        visor::http::HttpSample s;
+        s.status = status_ok ? 200 : 500;
+        s.status_ok = status_ok;
+        s.content_check = content_check;
+        s.cert_expiry_epoch = cert_expiry_epoch;
+        s.response_size = response_size;
+        s.timings = visor::http::HttpTimings{100, 10, 20, 0, 40};
+        return s;
+    };
+
+    fx_a.manager()->process_netprobe_http_result(make_sample(true, 2, 1700000000, 256), "shared", stamp);
+    fx_a.manager()->process_netprobe_http_result(make_sample(true, 2, 0, 512), "shared", stamp);
+    fx_b.manager()->process_netprobe_http_result(make_sample(true, 2, 1800000000, 1024), "shared", stamp);
+
+    QuantilesFixture fx_merged("netprobe-http-merge-out", 2);
+    auto *merged = const_cast<NetProbeMetricsBucket *>(fx_merged.manager()->bucket(0));
+    merged->specialized_merge(*fx_a.manager()->bucket(0), visor::Metric::Aggregate::DEFAULT);
+    merged->specialized_merge(*fx_b.manager()->bucket(0), visor::Metric::Aggregate::DEFAULT);
+
+    json j;
+    merged->to_json(j);
+
+    CHECK(j["targets"]["shared"]["content_failures"] == 3);
+    CHECK(j["targets"]["shared"]["tls_cert_expiry_epoch_sec"] == 1800000000);
+    REQUIRE(j["targets"]["shared"].contains("response_size_bytes"));
+}
+
 TEST_CASE("NetProbe DoH DNS-aware metrics: counters and top_rcodes", "[netprobe][doh][unit]")
 {
     UnitFixture fx;
@@ -639,6 +806,20 @@ TEST_CASE("NetProbe DoH DNS-aware metrics: counters and top_rcodes", "[netprobe]
     // Histograms is default-ON so response_min_us and response_max_us should appear
     CHECK(j["targets"]["t1"].contains("response_min_us"));
     CHECK(j["targets"]["t1"].contains("response_max_us"));
+}
+
+TEST_CASE("NetProbe DoH populates tls_cert_expiry_epoch_sec", "[netprobe][doh][unit]")
+{
+    UnitFixture fx;
+
+    timespec stamp{9500, 0};
+    auto timings = visor::http::HttpTimings{100, 10, 20, 30, 40};
+    fx.manager()->process_netprobe_doh_result(200, 0, true, 1786795200, timings, "t1", stamp);
+
+    json j;
+    fx.manager()->bucket(0)->to_json(j);
+
+    CHECK(j["targets"]["t1"]["tls_cert_expiry_epoch_sec"] == 1786795200);
 }
 
 TEST_CASE("NetProbe DoH http_response_phases group: quantiles present when enabled", "[netprobe][doh][unit]")

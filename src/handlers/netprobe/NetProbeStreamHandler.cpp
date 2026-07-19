@@ -147,15 +147,22 @@ void NetProbeMetricsBucket::specialized_merge(const AbstractMetricsBucket &o, Me
             _targets_metrics[targetId]->dns_failures += target.second->dns_failures;
             _targets_metrics[targetId]->timed_out += target.second->timed_out;
             _targets_metrics[targetId]->http_status_failures += target.second->http_status_failures;
+            _targets_metrics[targetId]->content_failures += target.second->content_failures;
             _targets_metrics[targetId]->top_status_codes.merge(target.second->top_status_codes);
             _targets_metrics[targetId]->dns_response_failures += target.second->dns_response_failures;
             _targets_metrics[targetId]->top_rcodes.merge(target.second->top_rcodes);
+            // Merged windows lose per-sample ordering, so "latest wins" is meaningless here;
+            // take the max instead, which biases toward the most-recently-renewed certificate.
+            if (target.second->tls_cert_expiry_epoch > _targets_metrics[targetId]->tls_cert_expiry_epoch) {
+                _targets_metrics[targetId]->tls_cert_expiry_epoch = target.second->tls_cert_expiry_epoch;
+            }
         }
         if (group_enabled(group::NetProbeMetrics::Histograms)) {
             _targets_metrics[targetId]->h_time_us.merge(target.second->h_time_us);
         }
         if (group_enabled(group::NetProbeMetrics::Quantiles)) {
             _targets_metrics[targetId]->q_time_us.merge(target.second->q_time_us, agg_operator);
+            _targets_metrics[targetId]->q_response_size.merge(target.second->q_response_size, agg_operator);
         }
         if (group_enabled(group::NetProbeMetrics::HttpResponsePhases)) {
             _targets_metrics[targetId]->q_dns_us.merge(target.second->q_dns_us, agg_operator);
@@ -182,9 +189,15 @@ void NetProbeMetricsBucket::to_prometheus(PrometheusSerializer &ser, Metric::Lab
             target.second->dns_failures.to_prometheus(ser, target_labels);
             target.second->timed_out.to_prometheus(ser, target_labels);
             target.second->http_status_failures.to_prometheus(ser, target_labels);
+            target.second->content_failures.to_prometheus(ser, target_labels);
             target.second->top_status_codes.to_prometheus(ser, target_labels);
             target.second->dns_response_failures.to_prometheus(ser, target_labels);
             target.second->top_rcodes.to_prometheus(ser, target_labels);
+            if (target.second->tls_cert_expiry_epoch != 0) {
+                target.second->tls_cert_expiry.clear();
+                target.second->tls_cert_expiry += target.second->tls_cert_expiry_epoch;
+                target.second->tls_cert_expiry.to_prometheus(ser, target_labels);
+            }
         }
 
         bool h_max_min{true};
@@ -220,6 +233,7 @@ void NetProbeMetricsBucket::to_prometheus(PrometheusSerializer &ser, Metric::Lab
                     target.second->maximum.to_prometheus(ser, target_labels);
                 }
                 target.second->q_time_us.to_prometheus(ser, target_labels);
+                target.second->q_response_size.to_prometheus(ser, target_labels);
             } catch (const std::exception &) {
             }
         }
@@ -252,9 +266,15 @@ void NetProbeMetricsBucket::to_opentelemetry(metrics::v1::ScopeMetrics &scope, t
             target.second->dns_failures.to_opentelemetry(scope, start_ts, end_ts, target_labels);
             target.second->timed_out.to_opentelemetry(scope, start_ts, end_ts, target_labels);
             target.second->http_status_failures.to_opentelemetry(scope, start_ts, end_ts, target_labels);
+            target.second->content_failures.to_opentelemetry(scope, start_ts, end_ts, target_labels);
             target.second->top_status_codes.to_opentelemetry(scope, start_ts, end_ts, target_labels);
             target.second->dns_response_failures.to_opentelemetry(scope, start_ts, end_ts, target_labels);
             target.second->top_rcodes.to_opentelemetry(scope, start_ts, end_ts, target_labels);
+            if (target.second->tls_cert_expiry_epoch != 0) {
+                target.second->tls_cert_expiry.clear();
+                target.second->tls_cert_expiry += target.second->tls_cert_expiry_epoch;
+                target.second->tls_cert_expiry.to_opentelemetry(scope, start_ts, end_ts, target_labels);
+            }
         }
 
         bool h_max_min{true};
@@ -290,6 +310,7 @@ void NetProbeMetricsBucket::to_opentelemetry(metrics::v1::ScopeMetrics &scope, t
                     target.second->maximum.to_opentelemetry(scope, start_ts, end_ts, target_labels);
                 }
                 target.second->q_time_us.to_opentelemetry(scope, start_ts, end_ts, target_labels);
+                target.second->q_response_size.to_opentelemetry(scope, start_ts, end_ts, target_labels);
             } catch (const std::exception &) {
             }
         }
@@ -321,9 +342,15 @@ void NetProbeMetricsBucket::to_json(json &j) const
             target.second->dns_failures.to_json(j["targets"][targetId]);
             target.second->timed_out.to_json(j["targets"][targetId]);
             target.second->http_status_failures.to_json(j["targets"][targetId]);
+            target.second->content_failures.to_json(j["targets"][targetId]);
             target.second->top_status_codes.to_json(j["targets"][targetId]);
             target.second->dns_response_failures.to_json(j["targets"][targetId]);
             target.second->top_rcodes.to_json(j["targets"][targetId]);
+            if (target.second->tls_cert_expiry_epoch != 0) {
+                target.second->tls_cert_expiry.clear();
+                target.second->tls_cert_expiry += target.second->tls_cert_expiry_epoch;
+                target.second->tls_cert_expiry.to_json(j["targets"][targetId]);
+            }
         }
 
         bool h_max_min{true};
@@ -359,6 +386,7 @@ void NetProbeMetricsBucket::to_json(json &j) const
                     target.second->maximum.to_json(j["targets"][targetId]);
                 }
                 target.second->q_time_us.to_json(j["targets"][targetId]);
+                target.second->q_response_size.to_json(j["targets"][targetId]);
             } catch (const std::exception &) {
             }
         }
@@ -542,10 +570,15 @@ void NetProbeMetricsBucket::process_netprobe_http(bool deep, const visor::http::
     // like new_transaction's successes++ (not gated on `deep`).
     if (group_enabled(group::NetProbeMetrics::Counters)) {
         t.top_status_codes.update(std::to_string(sample.status));
-        if (sample.status_ok) {
-            ++t.successes;
-        } else {
+        if (!sample.status_ok) {
             ++t.http_status_failures;
+        } else if (sample.content_check == 2) {
+            ++t.content_failures;
+        } else {
+            ++t.successes;
+        }
+        if (sample.cert_expiry_epoch != 0) {
+            t.tls_cert_expiry_epoch = sample.cert_expiry_epoch; // latest non-zero wins
         }
     }
 
@@ -556,6 +589,7 @@ void NetProbeMetricsBucket::process_netprobe_http(bool deep, const visor::http::
     }
     if (deep && group_enabled(group::NetProbeMetrics::Quantiles)) {
         t.q_time_us.update(sample.timings.total_us);
+        t.q_response_size.update(sample.response_size);
     }
     if (deep && group_enabled(group::NetProbeMetrics::HttpResponsePhases)) {
         t.q_dns_us.update(sample.timings.dns_us);
@@ -581,7 +615,7 @@ void NetProbeMetricsManager::process_netprobe_http_failure(ErrorType error, cons
     live_bucket()->process_failure(error, target);
 }
 
-void NetProbeMetricsBucket::process_netprobe_doh(bool deep, uint16_t http_status, uint8_t rcode, bool parse_ok, [[maybe_unused]] uint64_t cert_expiry_epoch, const visor::http::HttpTimings &timings, const std::string &target)
+void NetProbeMetricsBucket::process_netprobe_doh(bool deep, uint16_t http_status, uint8_t rcode, bool parse_ok, uint64_t cert_expiry_epoch, const visor::http::HttpTimings &timings, const std::string &target)
 {
     std::unique_lock lock(_mutex);
 
@@ -591,6 +625,9 @@ void NetProbeMetricsBucket::process_netprobe_doh(bool deep, uint16_t http_status
         // DoH responses are HTTP responses too: record the HTTP status breakdown (like the HTTP
         // probe) in addition to the DNS rcode breakdown below.
         t.top_status_codes.update(std::to_string(http_status));
+        if (cert_expiry_epoch != 0) {
+            t.tls_cert_expiry_epoch = cert_expiry_epoch;
+        }
         if (http_status >= 200 && http_status < 400) {
             std::string rname;
             if (!parse_ok) {
