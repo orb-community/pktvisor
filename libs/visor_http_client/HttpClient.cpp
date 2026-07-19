@@ -25,6 +25,36 @@ static void ensure_curl_global_init()
     std::call_once(flag, [] { curl_global_init(CURL_GLOBAL_DEFAULT); });
 }
 
+// Replace every occurrence of `secret` in `s` with a placeholder (no-op if secret is empty).
+static void redact_secret(std::string &s, const std::string &secret)
+{
+    if (secret.empty()) {
+        return;
+    }
+    static const std::string rep = "<redacted>";
+    for (size_t pos = s.find(secret); pos != std::string::npos; pos = s.find(secret, pos + rep.size())) {
+        s.replace(pos, secret.size(), rep);
+    }
+}
+
+// Extract the "user:pass" userinfo from a proxy URL string, or "" if none. Userinfo is the span
+// between an optional "scheme://" and the "@" that terminates the authority's userinfo.
+static std::string proxy_userinfo(const std::string &proxy)
+{
+    size_t start = 0;
+    if (auto scheme = proxy.find("://"); scheme != std::string::npos) {
+        start = scheme + 3;
+    }
+    auto at = proxy.find('@', start);
+    if (at == std::string::npos) {
+        return "";
+    }
+    if (auto slash = proxy.find('/', start); slash != std::string::npos && slash < at) {
+        return ""; // '@' is past the authority (e.g. in a path) — not userinfo
+    }
+    return proxy.substr(start, at - start);
+}
+
 std::optional<std::string> validate_http_url(const std::string &url)
 {
     // This may be the FIRST libcurl call (config validation runs before any HttpClient is
@@ -186,6 +216,7 @@ void HttpClient::request(const HttpRequest &req, ResultCallback on_done)
     }
     if (!req.proxy.empty()) {
         curl_easy_setopt(easy, CURLOPT_PROXY, req.proxy.c_str());
+        ctx->proxy = req.proxy; // retained only to redact it (and any embedded credentials) from error_msg
     }
     if (!req.ca_file.empty()) {
         curl_easy_setopt(easy, CURLOPT_CAINFO, req.ca_file.c_str());
@@ -417,6 +448,13 @@ void HttpClient::check_multi_info()
                 result.error_msg = it->second->errbuf;
             } else {
                 result.error_msg = curl_easy_strerror(msg->data.result);
+            }
+            // curl error text can echo the proxy URL verbatim (e.g. a malformed proxy) or its
+            // credentials; the probes log error_msg, so scrub the proxy value + userinfo here — the
+            // single choke point — to uphold the "proxy value never appears in output" guarantee.
+            if (it != _easy.end() && !it->second->proxy.empty()) {
+                redact_secret(result.error_msg, it->second->proxy);
+                redact_secret(result.error_msg, proxy_userinfo(it->second->proxy));
             }
         }
         curl_multi_remove_handle(_multi, easy);

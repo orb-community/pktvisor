@@ -45,6 +45,7 @@ private:
         char errbuf[CURL_ERROR_SIZE]{};
         curl_slist *headers{nullptr};   // owned; freed in dtor (after curl_easy_cleanup)
         bool capture{false};
+        std::string proxy;              // configured proxy (may embed credentials); used only to REDACT it from error_msg
         size_t capture_max{64 * 1024};  // cap on captured body bytes (from HttpRequest.capture_max_bytes)
         bool truncated{false};          // set by write_capture when the body exceeds capture_max
         std::string response;           // captured body (bounded to capture_max)

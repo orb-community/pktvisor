@@ -399,3 +399,31 @@ TEST_CASE("HttpClient body capture cap + truncation flag", "[http][client]")
     svr.stop();
     if (server_thread.joinable()) server_thread.join();
 }
+
+TEST_CASE("HttpClient redacts proxy credentials from transport error_msg", "[http][client]")
+{
+    auto loop = uvw::loop::create();
+    HttpClient client(loop);
+    std::vector<HttpResult> results;
+    auto on_done = [&](const HttpResult &r) { results.push_back(r); };
+
+    HttpRequest req;
+    req.url = "http://example.invalid/";
+    // Malformed proxy (space in host) carrying credentials: curl fails and its error text can echo
+    // the proxy string verbatim. The credential (and the whole proxy value) must not survive into
+    // error_msg, which the probes log on transport failure.
+    req.proxy = "http://user:sekrit@bad host:3128";
+    req.timeout_ms = 2000;
+    client.request(req, on_done);
+    auto wd = arm_watchdog(loop, 5000);
+    loop->run();
+    disarm_watchdog(loop, wd);
+
+    REQUIRE(results.size() == 1);
+    CHECK_FALSE(results[0].transport_ok);
+    CHECK(results[0].error_msg.find("sekrit") == std::string::npos);
+    CHECK(results[0].error_msg.find("user:sekrit") == std::string::npos);
+
+    client.close();
+    loop->run();
+}
