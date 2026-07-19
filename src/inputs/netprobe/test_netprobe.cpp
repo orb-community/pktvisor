@@ -1437,6 +1437,70 @@ TEST_CASE("NetProbe HTTP e2e v2: body match past the capture cap is not a false 
     CHECK(tgt["content_failures"].get<int>() == 0);
 }
 
+TEST_CASE("NetProbe HTTP e2e v2: custom headers are not forwarded across redirects", "[netprobe][http][e2e]")
+{
+    // Server A redirects to server B; B records whether it ever received the secret header. With a
+    // custom per-target header configured, the probe must NOT follow the 302, so B is never hit and
+    // the secret never leaves A (libcurl would otherwise re-send custom headers to the new host).
+    std::atomic<bool> b_saw_header{false};
+    std::atomic<int> b_hits{0};
+    httplib::Server svr_b;
+    svr_b.Get("/leak", [&](const httplib::Request &req, httplib::Response &res) {
+        ++b_hits;
+        if (req.has_header("X-Api-Key")) {
+            b_saw_header = true;
+        }
+        res.set_content("leaked", "text/plain");
+    });
+    int port_b = svr_b.bind_to_any_port("127.0.0.1");
+    REQUIRE(port_b > 0);
+    std::thread thread_b([&svr_b] { svr_b.listen_after_bind(); });
+    ServerGuard guard_b{svr_b, thread_b};
+    svr_b.wait_until_ready();
+
+    httplib::Server svr_a;
+    std::string loc = "http://127.0.0.1:" + std::to_string(port_b) + "/leak";
+    svr_a.Get("/redirect", [&](const httplib::Request &, httplib::Response &res) {
+        res.status = 302;
+        res.set_header("Location", loc);
+    });
+    int port_a = svr_a.bind_to_any_port("127.0.0.1");
+    REQUIRE(port_a > 0);
+    std::thread thread_a([&svr_a] { svr_a.listen_after_bind(); });
+    ServerGuard guard_a{svr_a, thread_a};
+    svr_a.wait_until_ready();
+
+    std::string url = "http://127.0.0.1:" + std::to_string(port_a) + "/redirect";
+    NetProbeInputStream stream{"netprobe-http-e2e-redirect-headers"};
+    stream.config_set("test_type", "http");
+    stream.config_set<uint64_t>("interval_msec", 200);
+    stream.config_set<uint64_t>("timeout_msec", 150);
+    auto targets = std::make_shared<visor::Configurable>();
+    auto target = std::make_shared<visor::Configurable>();
+    target->config_set("target", url);
+    auto headers = std::make_shared<visor::Configurable>();
+    headers->config_set("X-Api-Key", std::string("sekrit"));
+    target->config_set<std::shared_ptr<visor::Configurable>>("headers", headers);
+    targets->config_set<std::shared_ptr<visor::Configurable>>("redir_target", target);
+    stream.config_set<std::shared_ptr<visor::Configurable>>("targets", targets);
+
+    visor::Config c;
+    c.config_set<uint64_t>("num_periods", 1);
+    auto *proxy = stream.add_event_proxy(c);
+    NetProbeStreamHandler handler{"netprobe-http-e2e-redirect-headers", proxy, &c};
+
+    handler.start();
+    stream.start();
+    std::this_thread::sleep_for(750ms);
+    stream.stop();
+    handler.stop();
+
+    // The redirect must not have been followed: server B was never contacted, so the secret header
+    // never left server A.
+    CHECK(b_hits.load() == 0);
+    CHECK(b_saw_header.load() == false);
+}
+
 TEST_CASE("NetProbe HTTP e2e v2: POST body is delivered to the server", "[netprobe][http][e2e]")
 {
     std::atomic<bool> body_seen{false};
