@@ -14,6 +14,25 @@ static void set_range(std::vector<bool> &codes, unsigned lo, unsigned hi, const 
     }
 }
 
+// Parse a decimal status code from `s`, requiring the whole string to be consumed and the value
+// to be a plausible HTTP status (<= 599). Validating the unsigned-long result BEFORE narrowing to
+// unsigned is essential: a value that fits in unsigned long but exceeds unsigned (e.g. 4294967496
+// on LP64) would otherwise wrap to a small in-range code and be accepted. `entry` names the
+// offending token in the error.
+static unsigned parse_status_code(const std::string &s, const std::string &entry)
+{
+    try {
+        size_t pos{};
+        unsigned long v = std::stoul(s, &pos);
+        if (pos != s.size() || v > 599) {
+            throw std::invalid_argument(entry);
+        }
+        return static_cast<unsigned>(v);
+    } catch (const std::exception &) {
+        throw std::invalid_argument("invalid status entry '" + entry + "'");
+    }
+}
+
 StatusMatcher StatusMatcher::parse(const std::vector<std::string> &entries)
 {
     StatusMatcher m;
@@ -22,29 +41,11 @@ StatusMatcher StatusMatcher::parse(const std::vector<std::string> &entries)
             unsigned cls = static_cast<unsigned>(e[0] - '0');
             set_range(m._codes, cls * 100, cls * 100 + 99, e);
         } else if (auto dash = e.find('-'); dash != std::string::npos && dash > 0 && dash < e.size() - 1) {
-            unsigned lo{}, hi{};
-            try {
-                size_t p1{}, p2{};
-                lo = static_cast<unsigned>(std::stoul(e.substr(0, dash), &p1));
-                hi = static_cast<unsigned>(std::stoul(e.substr(dash + 1), &p2));
-                if (p1 != dash || p2 != e.size() - dash - 1) {
-                    throw std::invalid_argument(e);
-                }
-            } catch (const std::exception &) {
-                throw std::invalid_argument("invalid status entry '" + e + "'");
-            }
+            unsigned lo = parse_status_code(e.substr(0, dash), e);
+            unsigned hi = parse_status_code(e.substr(dash + 1), e);
             set_range(m._codes, lo, hi, e);
         } else {
-            unsigned code{};
-            try {
-                size_t pos{};
-                code = static_cast<unsigned>(std::stoul(e, &pos));
-                if (pos != e.size()) {
-                    throw std::invalid_argument(e);
-                }
-            } catch (const std::exception &) {
-                throw std::invalid_argument("invalid status entry '" + e + "'");
-            }
+            unsigned code = parse_status_code(e, e);
             set_range(m._codes, code, code, e);
         }
         m._empty = false;

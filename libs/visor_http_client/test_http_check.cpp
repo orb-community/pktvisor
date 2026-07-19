@@ -25,6 +25,10 @@ TEST_CASE("StatusMatcher grammar", "[http][check]")
     CHECK_THROWS_AS(StatusMatcher::parse({"300-200"}), std::invalid_argument);
     CHECK_THROWS_AS(StatusMatcher::parse({"6xx"}), std::invalid_argument);
     CHECK_THROWS_AS(StatusMatcher::parse({""}), std::invalid_argument);
+    // Oversized values that wrap on a narrowing cast (fit in unsigned long, exceed unsigned) must
+    // be rejected, not silently accepted as the wrapped-down code (4294967496 mod 2^32 == 200).
+    CHECK_THROWS_AS(StatusMatcher::parse({"4294967496"}), std::invalid_argument);
+    CHECK_THROWS_AS(StatusMatcher::parse({"200-4294967496"}), std::invalid_argument);
     // the error message names the offending entry
     CHECK_THROWS_WITH(StatusMatcher::parse({"2x"}), Catch::Matchers::ContainsSubstring("2x"));
 }
