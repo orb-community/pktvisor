@@ -28,14 +28,70 @@ bool HttpProbe::start(std::shared_ptr<uvw::loop> io_loop)
         req.url = _url;
         req.method = _method;
         req.timeout_ms = _config.timeout_msec;
+        req.body = _opts.request_body;
+        req.headers = _headers;
+        // Do NOT follow redirects when the probe carries potentially-secret payload:
+        //  - custom request headers: libcurl re-sends them on followed redirects (it only strips a
+        //    few built-ins like Authorization/Cookie) with no per-host scoping, so a 30x to another
+        //    host would leak an operator's secret header (e.g. X-Api-Key);
+        //  - a request body: a 307/308 preserves the method and body, re-sending the (redacted,
+        //    potentially secret) payload to the redirect target.
+        // In either case the 30x is reported as the result instead. (DoH is unaffected — its only
+        // headers are the fixed, non-secret Content-Type/Accept, and it sends no operator body.)
+        req.follow_redirects = _headers.empty() && _opts.request_body.empty();
+        req.proxy = _opts.proxy;
+        req.ca_file = _opts.ca_file;
+        req.cert_file = _opts.cert_file;
+        req.key_file = _opts.key_file;
+        req.user_agent = _opts.user_agent;
+        req.verify_tls = _opts.tls_verify;
+        req.collect_cert_info = true;
+        req.capture_response = _opts.body_check.configured();
+        req.capture_max_bytes = _opts.body_check_max_bytes;
         const std::string name = _name;
         auto http_result = _http_result;
         auto fail = _fail;
-        _client->request(req, [http_result, fail, name](const visor::http::HttpResult &r) {
+        auto opts = _opts; // copyable (regex copies are fine at probe frequency); no `this` in completion lambda
+        auto cert_cache = _cert_cache;
+        _client->request(req, [http_result, fail, name, opts, cert_cache](const visor::http::HttpResult &r) {
             timespec stamp;
             std::timespec_get(&stamp, TIME_UTC);
             if (r.transport_ok) {
-                http_result(static_cast<uint16_t>(r.status_code), r.timings, name, stamp);
+                visor::http::HttpSample s;
+                s.status = static_cast<uint16_t>(r.status_code);
+                bool status_ok;
+                if (opts.failure_status.matches(s.status)) {
+                    status_ok = false;
+                } else if (!opts.expected_status.empty()) {
+                    status_ok = opts.expected_status.matches(s.status);
+                } else {
+                    status_ok = (s.status >= 200 && s.status < 400);
+                }
+                s.status_ok = status_ok;
+                s.content_check = 0;
+                if (status_ok && opts.body_check.configured()) {
+                    if (r.body_truncated) {
+                        // The captured body is only a prefix (it exceeded body_check_max_bytes): a
+                        // match beyond the cap would be missed, and an anchored regex could match the
+                        // artificial truncation boundary. We can't authoritatively evaluate the body,
+                        // so classify on status alone (content_check stays NotChecked) and warn.
+                        if (auto logger = spdlog::get("visor")) {
+                            logger->warn("netprobe http[{}]: response body exceeded the {}-byte capture limit; body check skipped (raise body_check_max_bytes)", name, opts.body_check_max_bytes);
+                        }
+                    } else {
+                        s.content_check = opts.body_check.matches(r.response_body) ? 1 : 2;
+                    }
+                }
+                // CERTINFO is only filled on transfers that performed a TLS handshake; reused
+                // pooled connections report nothing. Cache the last known expiry per target so
+                // EVERY sample carries it and the metric doesn't flap with connection reuse.
+                if (r.cert_expiry_epoch != 0) {
+                    *cert_cache = r.cert_expiry_epoch;
+                }
+                s.cert_expiry_epoch = (r.cert_expiry_epoch != 0) ? r.cert_expiry_epoch : *cert_cache;
+                s.response_size = r.response_size;
+                s.timings = r.timings;
+                http_result(s, name, stamp);
             } else {
                 if (auto logger = spdlog::get("visor")) {
                     logger->debug("netprobe http[{}]: transport error: {} (curl code {})", name, r.error_msg, r.curl_code);

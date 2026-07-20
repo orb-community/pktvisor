@@ -140,12 +140,20 @@ bool DohProbe::start(std::shared_ptr<uvw::loop> io_loop)
             req.body = _query_wire;
             req.headers = {"Content-Type: application/dns-message", "Accept: application/dns-message"};
         }
+        req.proxy = _opts.proxy;
+        req.ca_file = _opts.ca_file;
+        req.cert_file = _opts.cert_file;
+        req.key_file = _opts.key_file;
+        req.user_agent = _opts.user_agent;
+        req.verify_tls = _opts.tls_verify;
+        req.collect_cert_info = true;
         const std::string name = _name;
         const std::string qname = _wire_qname; // "" for the root; matches what pcpp getName() returns
         const uint16_t qtype_code = _qtype_code;
         auto doh_result = _doh_result;
         auto fail = _fail;
-        _client->request(req, [doh_result, fail, name, qname, qtype_code](const visor::http::HttpResult &r) {
+        auto cert_cache = _cert_cache;
+        _client->request(req, [doh_result, fail, name, qname, qtype_code, cert_cache](const visor::http::HttpResult &r) {
             timespec stamp;
             std::timespec_get(&stamp, TIME_UTC);
             auto logger = spdlog::get("visor");
@@ -199,7 +207,14 @@ bool DohProbe::start(std::shared_ptr<uvw::loop> io_loop)
                 } else if (logger) {
                     logger->debug("netprobe doh[{}]: response too short for a DNS message ({} bytes)", name, r.response_body.size());
                 }
-                doh_result(static_cast<uint16_t>(r.status_code), rcode, parse_ok, r.timings, name, stamp);
+                // Same cert-expiry cache contract as HttpProbe: CERTINFO is only populated on
+                // transfers that perform a TLS handshake, so cache the last known expiry per
+                // target and have every sample carry it.
+                if (r.cert_expiry_epoch != 0) {
+                    *cert_cache = r.cert_expiry_epoch;
+                }
+                uint64_t cert_expiry_epoch = (r.cert_expiry_epoch != 0) ? r.cert_expiry_epoch : *cert_cache;
+                doh_result(static_cast<uint16_t>(r.status_code), rcode, parse_ok, cert_expiry_epoch, r.timings, name, stamp);
             } else {
                 if (logger) {
                     logger->debug("netprobe doh[{}]: transport error: {} (curl code {})", name, r.error_msg, r.curl_code);

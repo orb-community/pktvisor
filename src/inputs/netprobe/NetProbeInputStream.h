@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "HttpProbeOptions.h"
 #include "HttpTypes.h"
 #include "InputStream.h"
 #include "NetProbe.h"
@@ -23,6 +24,11 @@ class HttpClient;
 
 namespace visor::input::netprobe {
 
+// Redact every netprobe config value that can carry a secret (proxy, body, expected_body,
+// expected_body_regex, and all targets.*.headers values) from a raw config-echo JSON node.
+// Shared by NetProbeInputStream::info_json and the input plugin's tap-config redact hook.
+void scrub_netprobe_config_json(json &cfg);
+
 class NetProbeInputStream : public visor::InputStream
 {
     static const inline uint64_t MAX_PAYLOAD_SIZE = 65500;
@@ -39,6 +45,11 @@ class NetProbeInputStream : public visor::InputStream
     std::map<std::string, DnsEntry> _dns_list;
     std::map<std::string, std::string> _http_targets;
     std::string _http_method{"GET"};
+    // per-target "Key: Value" header entries, keyed like _http_targets; keep header VALUES
+    // (used to build the actual request) separate from just the NAMES (safe to echo in info_json).
+    std::map<std::string, std::vector<std::string>> _http_target_headers;
+    std::map<std::string, std::vector<std::string>> _http_target_header_names;
+    HttpProbeOptions _http_opts;
     std::map<std::string, std::string> _doh_targets;
     std::string _doh_qname;
     std::string _doh_qtype{"A"};
@@ -70,14 +81,22 @@ class NetProbeInputStream : public visor::InputStream
         "targets",
         "http_method",
         "qname",
-        "qtype"};
+        "qtype",
+        "expected_status",
+        "failure_status",
+        "expected_body",
+        "expected_body_regex",
+        "body",
+        "body_check_max_bytes",
+        "proxy",
+        "tls"};
 
     void _create_netprobe_loop();
     void _send_cb(pcpp::Packet &, TestType, const std::string &, timespec);
     void _recv_cb(pcpp::Packet &, TestType, const std::string &, timespec);
     void _fail_cb(ErrorType, TestType, const std::string &);
-    void _http_result_cb(uint16_t status, visor::http::HttpTimings t, const std::string &name, timespec stamp);
-    void _doh_result_cb(uint16_t http_status, uint8_t rcode, bool parse_ok, visor::http::HttpTimings t, const std::string &name, timespec stamp);
+    void _http_result_cb(visor::http::HttpSample sample, const std::string &name, timespec stamp);
+    void _doh_result_cb(uint16_t http_status, uint8_t rcode, bool parse_ok, uint64_t cert_expiry_epoch, visor::http::HttpTimings t, const std::string &name, timespec stamp);
 
 public:
     NetProbeInputStream(const std::string &name);
@@ -124,14 +143,14 @@ public:
         probe_fail_signal(e, t, n);
     }
 
-    void probe_http_result_cb(uint16_t status, visor::http::HttpTimings t, const std::string &n, timespec s)
+    void probe_http_result_cb(visor::http::HttpSample sample, const std::string &n, timespec s)
     {
-        probe_http_result_signal(status, t, n, s);
+        probe_http_result_signal(sample, n, s);
     }
 
-    void probe_doh_result_cb(uint16_t http_status, uint8_t rcode, bool parse_ok, visor::http::HttpTimings t, const std::string &n, timespec s)
+    void probe_doh_result_cb(uint16_t http_status, uint8_t rcode, bool parse_ok, uint64_t cert_expiry_epoch, visor::http::HttpTimings t, const std::string &n, timespec s)
     {
-        probe_doh_result_signal(http_status, rcode, parse_ok, t, n, s);
+        probe_doh_result_signal(http_status, rcode, parse_ok, cert_expiry_epoch, t, n, s);
     }
 
     // handler functionality
@@ -140,8 +159,8 @@ public:
     mutable sigslot::signal<pcpp::Packet &, TestType, const std::string &, timespec> probe_send_signal;
     mutable sigslot::signal<pcpp::Packet &, TestType, const std::string &, timespec> probe_recv_signal;
     mutable sigslot::signal<ErrorType, TestType, const std::string &> probe_fail_signal;
-    mutable sigslot::signal<uint16_t, visor::http::HttpTimings, const std::string &, timespec> probe_http_result_signal;
-    mutable sigslot::signal<uint16_t, uint8_t, bool, visor::http::HttpTimings, const std::string &, timespec> probe_doh_result_signal;
+    mutable sigslot::signal<visor::http::HttpSample, const std::string &, timespec> probe_http_result_signal;
+    mutable sigslot::signal<uint16_t, uint8_t, bool, uint64_t, visor::http::HttpTimings, const std::string &, timespec> probe_doh_result_signal;
 };
 
 }

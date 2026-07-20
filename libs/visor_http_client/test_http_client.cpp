@@ -19,6 +19,9 @@ static int start_test_server(httplib::Server &svr, std::thread &t)
     svr.Post("/echo", [](const httplib::Request &req, httplib::Response &res) {
         res.set_content(req.body, "application/octet-stream");
     });
+    svr.Get("/ua", [](const httplib::Request &req, httplib::Response &res) {
+        res.set_content(req.get_header_value("User-Agent"), "text/plain");
+    });
     int port = svr.bind_to_any_port("127.0.0.1");
     REQUIRE(port > 0);
     t = std::thread([&svr] { svr.listen_after_bind(); });
@@ -55,6 +58,18 @@ static void disarm_watchdog(std::shared_ptr<uvw::loop> loop, std::shared_ptr<uvw
         loop->run();
     }
 }
+
+// Small local RAII helper for a second (proxy) httplib server's thread lifetime; the
+// richer ServerGuard in test_netprobe.cpp isn't shared with this file.
+struct ServerGuard {
+    httplib::Server &svr;
+    std::thread &t;
+    ~ServerGuard()
+    {
+        svr.stop();
+        if (t.joinable()) t.join();
+    }
+};
 
 TEST_CASE("HttpClient basic results", "[http][client]")
 {
@@ -231,4 +246,184 @@ TEST_CASE("HttpClient request() issued from within a completion callback is safe
     loop->run();
     svr.stop();
     if (server_thread.joinable()) server_thread.join();
+}
+
+TEST_CASE("HttpClient v2 transport fields", "[http][client]")
+{
+    httplib::Server svr;
+    std::thread server_thread;
+    int port = start_test_server(svr, server_thread);
+    auto loop = uvw::loop::create();
+    HttpClient client(loop);
+    std::string base = "http://127.0.0.1:" + std::to_string(port);
+    std::vector<HttpResult> results;
+    auto on_done = [&](const HttpResult &r) { results.push_back(r); };
+
+    SECTION("user_agent is sent; response_size populated")
+    {
+        HttpRequest req;
+        req.url = base + "/ua";
+        req.user_agent = "pktvisor-test/1.0";
+        req.capture_response = true;
+        req.timeout_ms = 2000;
+        client.request(req, on_done);
+        auto wd = arm_watchdog(loop, 5000);
+        loop->run();
+        disarm_watchdog(loop, wd);
+        REQUIRE(results.size() == 1);
+        CHECK(results[0].response_body == "pktvisor-test/1.0");
+        CHECK(results[0].response_size == results[0].response_body.size());
+    }
+    SECTION("plain http => cert_expiry_epoch stays 0 even when requested")
+    {
+        HttpRequest req;
+        req.url = base + "/ok";
+        req.collect_cert_info = true;
+        req.timeout_ms = 2000;
+        client.request(req, on_done);
+        auto wd = arm_watchdog(loop, 5000);
+        loop->run();
+        disarm_watchdog(loop, wd);
+        REQUIRE(results.size() == 1);
+        CHECK(results[0].cert_expiry_epoch == 0);
+    }
+    SECTION("tls option wiring: ca/cert/key fields on a plain-http request are harmless")
+    {
+        // Wiring smoke: the setopts are applied without crashing and don't affect a plain-http
+        // transfer (TLS options are simply unused). Real TLS validation is a manual smoke (README).
+        HttpRequest req;
+        req.url = base + "/ok";
+        req.ca_file = "/nonexistent/ca.pem";   // paths need not exist for a plain-http transfer
+        req.cert_file = "/nonexistent/c.pem";
+        req.key_file = "/nonexistent/k.pem";
+        req.timeout_ms = 2000;
+        client.request(req, on_done);
+        auto wd = arm_watchdog(loop, 5000);
+        loop->run();
+        disarm_watchdog(loop, wd);
+        REQUIRE(results.size() == 1);
+        CHECK(results[0].transport_ok);
+        CHECK(results[0].status_code == 200);
+    }
+    SECTION("proxy: request goes THROUGH the forward proxy (absolute-form URI)")
+    {
+        httplib::Server proxy_srv;
+        std::string seen_path;
+        // A plain-http forward proxy receives the absolute-form request target; a regex
+        // catch-all lets httplib serve it and prove the request really went via the proxy.
+        proxy_srv.Get(R"((.*))", [&](const httplib::Request &preq, httplib::Response &pres) {
+            seen_path = preq.path;
+            pres.set_content("via-proxy", "text/plain");
+        });
+        int pport = proxy_srv.bind_to_any_port("127.0.0.1");
+        REQUIRE(pport > 0);
+        std::thread pthread([&proxy_srv] { proxy_srv.listen_after_bind(); });
+        ServerGuard pguard{proxy_srv, pthread};
+        proxy_srv.wait_until_ready();
+
+        HttpRequest req;
+        req.url = "http://192.0.2.1/unreachable-without-proxy"; // TEST-NET, unroutable directly
+        req.proxy = "http://127.0.0.1:" + std::to_string(pport);
+        req.capture_response = true;
+        req.timeout_ms = 2000;
+        client.request(req, on_done);
+        auto wd = arm_watchdog(loop, 5000);
+        loop->run();
+        disarm_watchdog(loop, wd);
+        REQUIRE(results.size() == 1);
+        CHECK(results[0].transport_ok);
+        CHECK(results[0].response_body == "via-proxy");
+        CHECK(seen_path.find("http://192.0.2.1") == 0); // absolute-form proves proxying
+    }
+
+    client.close();
+    loop->run();
+    svr.stop();
+    if (server_thread.joinable()) server_thread.join();
+}
+
+TEST_CASE("HttpClient body capture cap + truncation flag", "[http][client]")
+{
+    httplib::Server svr;
+    std::string big(200 * 1024, 'a'); // 200 KB
+    svr.Get("/big", [&](const httplib::Request &, httplib::Response &res) {
+        res.set_content(big, "text/plain");
+    });
+    int port = svr.bind_to_any_port("127.0.0.1");
+    REQUIRE(port > 0);
+    std::thread server_thread([&svr] { svr.listen_after_bind(); });
+    ServerGuard guard{svr, server_thread};
+    svr.wait_until_ready();
+
+    auto loop = uvw::loop::create();
+    HttpClient client(loop);
+    std::string base = "http://127.0.0.1:" + std::to_string(port);
+    std::vector<HttpResult> results;
+    auto on_done = [&](const HttpResult &r) { results.push_back(r); };
+
+    SECTION("body over the cap is truncated to the cap and flagged")
+    {
+        HttpRequest req;
+        req.url = base + "/big";
+        req.capture_response = true;
+        req.capture_max_bytes = 1024;
+        req.timeout_ms = 3000;
+        client.request(req, on_done);
+        auto wd = arm_watchdog(loop, 6000);
+        loop->run();
+        disarm_watchdog(loop, wd);
+        REQUIRE(results.size() == 1);
+        CHECK(results[0].transport_ok);
+        CHECK(results[0].body_truncated);
+        CHECK(results[0].response_body.size() == 1024);
+    }
+    SECTION("body under the cap is complete and not flagged")
+    {
+        HttpRequest req;
+        req.url = base + "/big";
+        req.capture_response = true;
+        req.capture_max_bytes = 1024 * 1024; // 1 MB > 200 KB
+        req.timeout_ms = 3000;
+        client.request(req, on_done);
+        auto wd = arm_watchdog(loop, 6000);
+        loop->run();
+        disarm_watchdog(loop, wd);
+        REQUIRE(results.size() == 1);
+        CHECK(results[0].transport_ok);
+        CHECK_FALSE(results[0].body_truncated);
+        CHECK(results[0].response_body.size() == 200 * 1024);
+    }
+
+    client.close();
+    loop->run();
+    svr.stop();
+    if (server_thread.joinable()) server_thread.join();
+}
+
+TEST_CASE("HttpClient redacts proxy credentials from transport error_msg", "[http][client]")
+{
+    auto loop = uvw::loop::create();
+    HttpClient client(loop);
+    std::vector<HttpResult> results;
+    auto on_done = [&](const HttpResult &r) { results.push_back(r); };
+
+    HttpRequest req;
+    req.url = "http://example.invalid/";
+    // Malformed proxy (space in host) carrying credentials: curl fails and its error text can echo
+    // the proxy string verbatim. The credential (and the whole proxy value) must not survive into
+    // error_msg, which the probes log on transport failure.
+    req.proxy = "http://user:sekrit@bad host:3128";
+    req.timeout_ms = 2000;
+    client.request(req, on_done);
+    auto wd = arm_watchdog(loop, 5000);
+    loop->run();
+    disarm_watchdog(loop, wd);
+
+    REQUIRE(results.size() == 1);
+    CHECK_FALSE(results[0].transport_ok);
+    CHECK(results[0].error_msg.find("sekrit") == std::string::npos);
+    CHECK(results[0].error_msg.find("user:sekrit") == std::string::npos);
+
+    client.close();
+    loop->run();
 }

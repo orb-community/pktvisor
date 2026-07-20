@@ -1,4 +1,6 @@
 #include "HttpClient.h"
+#include "HttpCheck.h"
+#include <cstring>
 #include <mutex>
 #include <stdexcept>
 #include <utility>
@@ -21,6 +23,36 @@ static void ensure_curl_global_init()
 {
     static std::once_flag flag;
     std::call_once(flag, [] { curl_global_init(CURL_GLOBAL_DEFAULT); });
+}
+
+// Replace every occurrence of `secret` in `s` with a placeholder (no-op if secret is empty).
+static void redact_secret(std::string &s, const std::string &secret)
+{
+    if (secret.empty()) {
+        return;
+    }
+    static const std::string rep = "<redacted>";
+    for (size_t pos = s.find(secret); pos != std::string::npos; pos = s.find(secret, pos + rep.size())) {
+        s.replace(pos, secret.size(), rep);
+    }
+}
+
+// Extract the "user:pass" userinfo from a proxy URL string, or "" if none. Userinfo is the span
+// between an optional "scheme://" and the "@" that terminates the authority's userinfo.
+static std::string proxy_userinfo(const std::string &proxy)
+{
+    size_t start = 0;
+    if (auto scheme = proxy.find("://"); scheme != std::string::npos) {
+        start = scheme + 3;
+    }
+    auto at = proxy.find('@', start);
+    if (at == std::string::npos) {
+        return "";
+    }
+    if (auto slash = proxy.find('/', start); slash != std::string::npos && slash < at) {
+        return ""; // '@' is past the authority (e.g. in a path) — not userinfo
+    }
+    return proxy.substr(start, at - start);
 }
 
 std::optional<std::string> validate_http_url(const std::string &url)
@@ -129,9 +161,14 @@ size_t HttpClient::write_capture(char *ptr, size_t size, size_t nmemb, void *use
     size_t n = size * nmemb;
     auto *ctx = static_cast<EasyContext *>(userdata);
     if (ctx) {
-        constexpr size_t kMaxBody = 64 * 1024; // a DNS-over-HTTPS message is well under 64 KB
-        if (ctx->response.size() < kMaxBody) {
-            ctx->response.append(ptr, (n < kMaxBody - ctx->response.size()) ? n : (kMaxBody - ctx->response.size()));
+        if (ctx->response.size() + n > ctx->capture_max) {
+            // Body exceeds the cap: keep the prefix that fits and flag truncation so the caller
+            // knows the captured body is partial (a content check can't be evaluated definitively).
+            size_t room = ctx->capture_max > ctx->response.size() ? ctx->capture_max - ctx->response.size() : 0;
+            ctx->response.append(ptr, room);
+            ctx->truncated = true;
+        } else {
+            ctx->response.append(ptr, n);
         }
     }
     return n; // always consume so curl doesn't abort the transfer
@@ -174,6 +211,25 @@ void HttpClient::request(const HttpRequest &req, ResultCallback on_done)
     // We run on the netprobe io thread, not the main thread; CURLOPT_NOSIGNAL stops curl from
     // using signals (e.g. SIGALRM with the standard name resolver), which is unsafe off-main-thread.
     curl_easy_setopt(easy, CURLOPT_NOSIGNAL, 1L);
+    if (!req.user_agent.empty()) {
+        curl_easy_setopt(easy, CURLOPT_USERAGENT, req.user_agent.c_str());
+    }
+    if (!req.proxy.empty()) {
+        curl_easy_setopt(easy, CURLOPT_PROXY, req.proxy.c_str());
+        ctx->proxy = req.proxy; // retained only to redact it (and any embedded credentials) from error_msg
+    }
+    if (!req.ca_file.empty()) {
+        curl_easy_setopt(easy, CURLOPT_CAINFO, req.ca_file.c_str());
+    }
+    if (!req.cert_file.empty()) {
+        curl_easy_setopt(easy, CURLOPT_SSLCERT, req.cert_file.c_str());
+    }
+    if (!req.key_file.empty()) {
+        curl_easy_setopt(easy, CURLOPT_SSLKEY, req.key_file.c_str());
+    }
+    if (req.collect_cert_info) {
+        curl_easy_setopt(easy, CURLOPT_CERTINFO, 1L);
+    }
     if (!req.body.empty()) {
         // COPYPOSTFIELDS copies the bytes (curl owns them); size set first => binary-safe.
         curl_easy_setopt(easy, CURLOPT_POSTFIELDSIZE, static_cast<long>(req.body.size()));
@@ -199,6 +255,7 @@ void HttpClient::request(const HttpRequest &req, ResultCallback on_done)
         curl_easy_setopt(easy, CURLOPT_HTTPHEADER, ctx->headers);
     }
     ctx->capture = req.capture_response;
+    ctx->capture_max = req.capture_max_bytes;
     curl_easy_setopt(easy, CURLOPT_WRITEFUNCTION, ctx->capture ? &HttpClient::write_capture : &HttpClient::write_discard);
     curl_easy_setopt(easy, CURLOPT_WRITEDATA, ctx.get());
     curl_easy_setopt(easy, CURLOPT_PRIVATE, ctx.get());
@@ -353,8 +410,29 @@ void HttpClient::check_multi_info()
             result.timings.connect_us = conn > dns ? static_cast<uint64_t>(conn - dns) : 0;
             result.timings.tls_us = app > conn ? static_cast<uint64_t>(app - conn) : 0;
             result.timings.ttfb_us = ttfb > (app ? app : conn) ? static_cast<uint64_t>(ttfb - (app ? app : conn)) : 0;
+            curl_off_t dl_size = 0;
+            curl_easy_getinfo(easy, CURLINFO_SIZE_DOWNLOAD_T, &dl_size);
+            result.response_size = dl_size > 0 ? static_cast<uint64_t>(dl_size) : 0;
+            struct curl_certinfo *ci = nullptr;
+            if (curl_easy_getinfo(easy, CURLINFO_CERTINFO, &ci) == CURLE_OK && ci) {
+                // earliest notAfter across the presented chain (blackbox_exporter semantics)
+                uint64_t earliest = 0;
+                for (int i = 0; i < ci->num_of_certs; ++i) {
+                    for (auto *sl = ci->certinfo[i]; sl; sl = sl->next) {
+                        constexpr char kPrefix[] = "Expire date:";
+                        if (sl->data && std::strncmp(sl->data, kPrefix, sizeof(kPrefix) - 1) == 0) {
+                            uint64_t e = parse_cert_expire_date(std::string(sl->data + sizeof(kPrefix) - 1));
+                            if (e && (earliest == 0 || e < earliest)) {
+                                earliest = e;
+                            }
+                        }
+                    }
+                }
+                result.cert_expiry_epoch = earliest;
+            }
             if (it != _easy.end() && it->second->capture) {
                 result.response_body = std::move(it->second->response);
+                result.body_truncated = it->second->truncated;
             }
             char *ct = nullptr;
             curl_easy_getinfo(easy, CURLINFO_CONTENT_TYPE, &ct); // may be null (no Content-Type)
@@ -370,6 +448,13 @@ void HttpClient::check_multi_info()
                 result.error_msg = it->second->errbuf;
             } else {
                 result.error_msg = curl_easy_strerror(msg->data.result);
+            }
+            // curl error text can echo the proxy URL verbatim (e.g. a malformed proxy) or its
+            // credentials; the probes log error_msg, so scrub the proxy value + userinfo here — the
+            // single choke point — to uphold the "proxy value never appears in output" guarantee.
+            if (it != _easy.end() && !it->second->proxy.empty()) {
+                redact_secret(result.error_msg, it->second->proxy);
+                redact_secret(result.error_msg, proxy_userinfo(it->second->proxy));
             }
         }
         curl_multi_remove_handle(_multi, easy);

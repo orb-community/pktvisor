@@ -11,6 +11,9 @@
 #include "TcpProbe.h"
 #include "ThreadName.h"
 #include "dns.h"
+#include "visor_config.h"
+#include <cctype>
+#include <filesystem>
 #include <fmt/ranges.h>
 #ifdef __GNUC__
 #pragma GCC diagnostic push
@@ -29,6 +32,66 @@
 #endif
 
 namespace visor::input::netprobe {
+
+namespace {
+
+std::string test_type_name(TestType t)
+{
+    switch (t) {
+    case TestType::Ping:
+        return "ping";
+    case TestType::HTTP:
+        return "http";
+    case TestType::UDP:
+        return "udp";
+    case TestType::TCP:
+        return "tcp";
+    case TestType::DOH:
+        return "doh";
+    }
+    return "unknown";
+}
+
+// Read a scalar config value as a string regardless of how the YAML loader typed it. The loader
+// stores scalars typed (uint64_t/bool/string), so a value like `12345` or `true` is NOT a
+// std::string in the Configurable and config_get<std::string>() throws on it. Configurable
+// exposes no cheaper type-dispatch accessor, so fall back through the scalar types it can hold.
+// `what` names the key in the error (never the value — it may carry a secret).
+std::string scalar_config_to_string(const visor::Configurable &cfg, const std::string &key, const char *what)
+{
+    try {
+        return cfg.config_get<std::string>(key);
+    } catch (const visor::ConfigException &) {
+    }
+    try {
+        return std::to_string(cfg.config_get<uint64_t>(key));
+    } catch (const visor::ConfigException &) {
+    }
+    try {
+        return cfg.config_get<bool>(key) ? "true" : "false";
+    } catch (const visor::ConfigException &) {
+    }
+    throw NetProbeException(fmt::format("netprobe: {} '{}' has an unsupported value type", what, key));
+}
+
+// Join a per-target "headers" sub-Configurable entry into its "name: value" string.
+std::string header_value_to_string(const visor::Configurable &headers, const std::string &name)
+{
+    return scalar_config_to_string(headers, name, "header");
+}
+
+// Trim leading/trailing ASCII whitespace.
+std::string trim(const std::string &s)
+{
+    auto first = s.find_first_not_of(" \t\r\n");
+    if (first == std::string::npos) {
+        return {};
+    }
+    auto last = s.find_last_not_of(" \t\r\n");
+    return s.substr(first, last - first + 1);
+}
+
+}
 
 uint16_t NetProbeInputStream::_id = 1;
 
@@ -129,6 +192,62 @@ void NetProbeInputStream::start()
         }
     }
 
+    // ---- v2: checks (http only) ----
+    if (config_exists("expected_status")) {
+        try {
+            _http_opts.expected_status = visor::http::StatusMatcher::parse(config_get<StringList>("expected_status"));
+        } catch (const std::invalid_argument &e) {
+            throw NetProbeException(fmt::format("netprobe: expected_status: {}", e.what()));
+        }
+    }
+    if (config_exists("failure_status")) {
+        try {
+            _http_opts.failure_status = visor::http::StatusMatcher::parse(config_get<StringList>("failure_status"));
+        } catch (const std::invalid_argument &e) {
+            throw NetProbeException(fmt::format("netprobe: failure_status: {}", e.what()));
+        }
+    }
+    {
+        // Tolerant reads: an all-digit YAML value (e.g. body: 12345) is stored typed, and a plain
+        // config_get<std::string> would throw a confusing type error.
+        std::string sub = config_exists("expected_body") ? scalar_config_to_string(*this, "expected_body", "config") : "";
+        std::string rx = config_exists("expected_body_regex") ? scalar_config_to_string(*this, "expected_body_regex", "config") : "";
+        try {
+            _http_opts.body_check = visor::http::BodyCheck::compile(sub, rx);
+        } catch (const std::invalid_argument &e) {
+            throw NetProbeException(fmt::format("netprobe: {}", e.what()));
+        }
+    }
+    if (config_exists("body")) {
+        _http_opts.request_body = scalar_config_to_string(*this, "body", "config");
+    }
+    if (config_exists("body_check_max_bytes")) {
+        auto n = config_get<uint64_t>("body_check_max_bytes");
+        if (n == 0) {
+            throw NetProbeException("netprobe: body_check_max_bytes must be greater than 0");
+        }
+        _http_opts.body_check_max_bytes = static_cast<size_t>(n);
+    }
+    if (config_exists("proxy")) {
+        _http_opts.proxy = scalar_config_to_string(*this, "proxy", "config");
+    }
+    if (config_exists("tls")) {
+        auto tls = config_get<std::shared_ptr<Configurable>>("tls");
+        if (tls->config_exists("verify")) {
+            _http_opts.tls_verify = tls->config_get<bool>("verify");
+        }
+        if (tls->config_exists("ca_file")) {
+            _http_opts.ca_file = tls->config_get<std::string>("ca_file");
+        }
+        if (tls->config_exists("cert_file")) {
+            _http_opts.cert_file = tls->config_get<std::string>("cert_file");
+        }
+        if (tls->config_exists("key_file")) {
+            _http_opts.key_file = tls->config_get<std::string>("key_file");
+        }
+    }
+    _http_opts.user_agent = std::string("pktvisor/") + VISOR_VERSION_NUM;
+
     if (!config_exists("targets")) {
         throw NetProbeException("no targets specified");
     } else {
@@ -145,12 +264,27 @@ void NetProbeInputStream::start()
                     throw NetProbeException(fmt::format("target '{}' {}", key, *err));
                 }
                 _http_targets[key] = url;
+                if (config->config_exists("headers")) {
+                    auto headers = config->config_get<std::shared_ptr<Configurable>>("headers");
+                    auto hkeys = headers->get_all_keys();
+                    std::vector<std::string> joined;
+                    std::vector<std::string> names;
+                    for (const auto &hkey : hkeys) {
+                        joined.push_back(fmt::format("{}: {}", hkey, header_value_to_string(*headers, hkey)));
+                        names.push_back(hkey);
+                    }
+                    _http_target_headers[key] = std::move(joined);
+                    _http_target_header_names[key] = std::move(names);
+                }
                 continue;
             }
             if (_type == TestType::DOH) {
                 auto url = config->config_get<std::string>("target");
                 if (auto err = visor::http::validate_http_url(url)) {
                     throw NetProbeException(fmt::format("target '{}' {}", key, *err));
+                }
+                if (config->config_exists("headers")) {
+                    throw NetProbeException("per-target 'headers' is not supported for test_type 'doh'");
                 }
                 _doh_targets[key] = url;
                 continue;
@@ -221,6 +355,66 @@ void NetProbeInputStream::start()
         }
     }
 
+    // ---- v2: scope/consistency validation ----
+    // http-only keys: check each individually so the thrown message names the offending key.
+    {
+        static const std::vector<std::string> http_only_keys = {
+            "expected_status", "failure_status", "expected_body", "expected_body_regex", "body", "body_check_max_bytes"};
+        if (_type != TestType::HTTP) {
+            for (const auto &key : http_only_keys) {
+                if (config_exists(key)) {
+                    throw NetProbeException(fmt::format("'{}' is not supported for test_type '{}'", key, test_type_name(_type)));
+                }
+            }
+        }
+    }
+    // proxy/tls are shared http+doh transport options; not meaningful for ping/tcp/udp.
+    if (_type != TestType::HTTP && _type != TestType::DOH) {
+        if (config_exists("proxy")) {
+            throw NetProbeException("'proxy' is only supported for test_type 'http' or 'doh'");
+        }
+        if (config_exists("tls")) {
+            throw NetProbeException("'tls' is only supported for test_type 'http' or 'doh'");
+        }
+    }
+    // request body only makes sense paired with a method that carries one.
+    if (_type == TestType::HTTP && !_http_opts.request_body.empty()) {
+        if (_http_method != "POST" && _http_method != "PUT" && _http_method != "PATCH") {
+            throw NetProbeException("'body' requires http_method POST, PUT, or PATCH");
+        }
+    }
+    // client cert + key must be configured together (curl requires both or neither).
+    if (_http_opts.cert_file.empty() != _http_opts.key_file.empty()) {
+        throw NetProbeException("tls.cert_file and tls.key_file must be set together");
+    }
+    // configured TLS files must exist. std::filesystem (not access()/<unistd.h>) so this stays
+    // portable to the MSVC/win64 netprobe build.
+    for (const auto &[label, path] : std::vector<std::pair<std::string, std::string>>{
+             {"ca_file", _http_opts.ca_file}, {"cert_file", _http_opts.cert_file}, {"key_file", _http_opts.key_file}}) {
+        if (path.empty()) {
+            continue;
+        }
+        std::error_code ec;
+        if (!std::filesystem::exists(path, ec)) {
+            throw NetProbeException(fmt::format("netprobe: tls.{} '{}' does not exist", label, path));
+        }
+    }
+    // proxy, when set, must be a usable value: non-empty after trim and free of control characters
+    // (which could otherwise smuggle protocol-confusing bytes). curl remains the authoritative
+    // validator of the proxy URL itself at probe time. Never echo the value — it can embed credentials.
+    if (!_http_opts.proxy.empty()) {
+        bool has_cntrl = false;
+        for (unsigned char ch : _http_opts.proxy) {
+            if (std::iscntrl(ch)) {
+                has_cntrl = true;
+                break;
+            }
+        }
+        if (has_cntrl || trim(_http_opts.proxy).empty()) {
+            throw NetProbeException("netprobe: 'proxy' value is invalid");
+        }
+    }
+
     _create_netprobe_loop();
 
     _running = true;
@@ -250,19 +444,19 @@ void NetProbeInputStream::_fail_cb(ErrorType error, TestType type, const std::st
     }
 }
 
-void NetProbeInputStream::_http_result_cb(uint16_t status, visor::http::HttpTimings t, const std::string &name, timespec stamp)
+void NetProbeInputStream::_http_result_cb(visor::http::HttpSample sample, const std::string &name, timespec stamp)
 {
     std::shared_lock lock(_input_mutex);
     for (auto &proxy : _event_proxies) {
-        static_cast<NetProbeInputEventProxy *>(proxy.get())->probe_http_result_cb(status, t, name, stamp);
+        static_cast<NetProbeInputEventProxy *>(proxy.get())->probe_http_result_cb(sample, name, stamp);
     }
 }
 
-void NetProbeInputStream::_doh_result_cb(uint16_t http_status, uint8_t rcode, bool parse_ok, visor::http::HttpTimings t, const std::string &name, timespec stamp)
+void NetProbeInputStream::_doh_result_cb(uint16_t http_status, uint8_t rcode, bool parse_ok, uint64_t cert_expiry_epoch, visor::http::HttpTimings t, const std::string &name, timespec stamp)
 {
     std::shared_lock lock(_input_mutex);
     for (auto &proxy : _event_proxies) {
-        static_cast<NetProbeInputEventProxy *>(proxy.get())->probe_doh_result_cb(http_status, rcode, parse_ok, t, name, stamp);
+        static_cast<NetProbeInputEventProxy *>(proxy.get())->probe_doh_result_cb(http_status, rcode, parse_ok, cert_expiry_epoch, t, name, stamp);
     }
 }
 
@@ -363,8 +557,12 @@ void NetProbeInputStream::_create_netprobe_loop()
     }
 
     for (const auto &[key, url] : _http_targets) {
-        auto probe = std::make_unique<HttpProbe>(_id, key, url, _http_method, _http_client,
-            [this](uint16_t status, visor::http::HttpTimings t, const std::string &name, timespec stamp) { _http_result_cb(status, t, name, stamp); });
+        std::vector<std::string> headers;
+        if (auto it = _http_target_headers.find(key); it != _http_target_headers.end()) {
+            headers = it->second;
+        }
+        auto probe = std::make_unique<HttpProbe>(_id, key, url, _http_method, _http_client, _http_opts, headers,
+            [this](visor::http::HttpSample sample, const std::string &name, timespec stamp) { _http_result_cb(sample, name, stamp); });
         ++_id;
         probe->set_configs(_interval_msec, _timeout_msec, _packets_per_test, _packets_interval_msec, _packet_payload_size);
         probe->set_callbacks([this](pcpp::Packet &payload, TestType type, const std::string &name, timespec stamp) { _send_cb(payload, type, name, stamp); },
@@ -375,9 +573,9 @@ void NetProbeInputStream::_create_netprobe_loop()
     }
 
     for (const auto &[key, url] : _doh_targets) {
-        auto probe = std::make_unique<DohProbe>(_id, key, url, _doh_method, _doh_qname, _doh_qtype, _http_client,
-            [this](uint16_t http_status, uint8_t rcode, bool parse_ok, visor::http::HttpTimings t, const std::string &name, timespec stamp) {
-                _doh_result_cb(http_status, rcode, parse_ok, t, name, stamp);
+        auto probe = std::make_unique<DohProbe>(_id, key, url, _doh_method, _doh_qname, _doh_qtype, _http_client, _http_opts,
+            [this](uint16_t http_status, uint8_t rcode, bool parse_ok, uint64_t cert_expiry_epoch, visor::http::HttpTimings t, const std::string &name, timespec stamp) {
+                _doh_result_cb(http_status, rcode, parse_ok, cert_expiry_epoch, t, name, stamp);
             });
         ++_id;
         probe->set_configs(_interval_msec, _timeout_msec, _packets_per_test, _packets_interval_msec, _packet_payload_size);
@@ -426,9 +624,48 @@ void NetProbeInputStream::stop()
     _running = false;
 }
 
+void scrub_netprobe_config_json(json &cfg)
+{
+    // Scrub every config value that can carry a secret from a raw config echo: proxy URLs can
+    // embed credentials, and header/body/expected_body(_regex) values can be anything the operator
+    // configured (Authorization headers, tokens in a probe body, etc.). Values must NEVER appear
+    // in any serialized config — only header/target NAMES are safe. Used by BOTH the input
+    // stream's info_json (module config echo) and the netprobe input plugin's redact hook (tap
+    // config echo via Tap::info_json — GET /api/v1/taps and Policy::info_json).
+    for (const char *key : {"proxy", "body", "expected_body", "expected_body_regex"}) {
+        if (cfg.contains(key)) {
+            cfg[key] = "<redacted>";
+        }
+    }
+    if (cfg.contains("targets") && cfg["targets"].is_object()) {
+        for (auto &el : cfg["targets"].items()) {
+            auto &tgt_val = el.value();
+            if (tgt_val.is_object() && tgt_val.contains("headers") && tgt_val["headers"].is_object()) {
+                for (auto &hel : tgt_val["headers"].items()) {
+                    hel.value() = "<redacted>";
+                }
+            }
+        }
+    }
+}
+
 void NetProbeInputStream::info_json(json &j) const
 {
     common_info_json(j);
+    // common_info_json() echoes the module's RAW config verbatim at j["module"]["config"] (via
+    // Configurable::config_json) — scrub the secret-bearing values before this JSON goes anywhere.
+    if (j.contains("module") && j["module"].contains("config")) {
+        auto &cfg = j["module"]["config"];
+        scrub_netprobe_config_json(cfg);
+        if (cfg.contains("targets") && cfg["targets"].is_object()) {
+            // Per-target header NAMES (never values) are safe to surface and useful for debugging.
+            for (const auto &[tgt_name, names] : _http_target_header_names) {
+                if (cfg["targets"].contains(tgt_name)) {
+                    cfg["targets"][tgt_name]["header_names"] = names;
+                }
+            }
+        }
+    }
     j[schema_key()]["current_targets_total"] = _dns_list.size() + _ip_list.size() + _http_targets.size() + _doh_targets.size();
     // Report ping socket usage only for ping streams. Derive the probe count from _probes — a stable
     // per-stream member after start() — rather than a thread_local counter, which info_json (invoked

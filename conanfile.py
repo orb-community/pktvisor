@@ -27,8 +27,8 @@ class Pktvisor(ConanFile):
         self.requires("uvw/3.4.0")
         self.requires("yaml-cpp/0.9.0")
         self.requires("robin-hood-hashing/3.11.5")
-        self.requires("libcurl/8.20.0")
-        self.requires("libnghttp2/1.61.0")
+        self.requires("libcurl/8.21.0")
+        self.requires("libnghttp2/1.68.1")
         if (
             "libc" not in self.settings.compiler.fields
             or self.settings.compiler.libc != "musl"
