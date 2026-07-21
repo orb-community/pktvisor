@@ -1,5 +1,8 @@
 #include "HttpCheck.h"
-#include <curl/curl.h> // curl_getdate (cpp only — the header stays curl-free)
+#include <algorithm>
+#include <cctype>
+#include <curl/curl.h> // curl_getdate, CURL_HTTP_VERSION_* (cpp only — the header stays curl-free)
+#include <nlohmann/json.hpp> // JSON pointer parsing (cpp only — the header stays nlohmann-free)
 #include <stdexcept>
 
 namespace visor::http {
@@ -99,5 +102,162 @@ uint64_t parse_cert_expire_date(const std::string &date_str)
     }
     time_t t = curl_getdate(date_str.c_str(), nullptr);
     return t > 0 ? static_cast<uint64_t>(t) : 0;
+}
+
+JsonPointerCheck JsonPointerCheck::compile(const std::string &ptr, const std::string &equals, bool equals_set)
+{
+    JsonPointerCheck c;
+    try {
+        (void)nlohmann::json::json_pointer(ptr); // validate RFC 6901 syntax
+    } catch (const std::exception &) {
+        throw std::invalid_argument("json_path is not a valid JSON Pointer (RFC 6901): '" + ptr + "'");
+    }
+    c._pointer = ptr;
+    c._has_expected = equals_set;
+    c._expected = equals;
+    c._configured = true;
+    return c;
+}
+
+bool JsonPointerCheck::configured() const
+{
+    return _configured;
+}
+
+bool JsonPointerCheck::matches(const std::string &body) const
+{
+    nlohmann::json doc = nlohmann::json::parse(body, nullptr, false); // no exceptions
+    if (doc.is_discarded()) {
+        return false; // not valid JSON
+    }
+    nlohmann::json::json_pointer p(_pointer);
+    try {
+        if (!doc.contains(p)) {
+            return false; // pointer does not resolve
+        }
+        if (!_has_expected) {
+            return true; // presence-only
+        }
+        const nlohmann::json &v = doc.at(p);
+        std::string actual = v.is_string() ? v.get<std::string>() : v.dump(); // compact text for non-strings
+        return actual == _expected;
+    } catch (const nlohmann::json::exception &) {
+        // defensive: nlohmann 3.12's contains()/at() did not throw on a deeply-missing parent in
+        // observed testing, but guard against it anyway since it is not guaranteed by the API.
+        return false;
+    }
+}
+
+BodyNegativeCheck BodyNegativeCheck::compile(const std::string &not_substr, const std::string &not_regex_pattern)
+{
+    BodyNegativeCheck c;
+    c.not_substring = not_substr;
+    if (!not_regex_pattern.empty()) {
+        try {
+            c.not_regex.emplace(not_regex_pattern, std::regex::ECMAScript);
+        } catch (const std::regex_error &) {
+            // never quote the pattern — it can embed secrets
+            throw std::invalid_argument("body_not_matches_regex is not a valid ECMAScript regular expression");
+        }
+    }
+    return c;
+}
+
+bool BodyNegativeCheck::matches(const std::string &body) const
+{
+    if (!not_substring.empty() && body.find(not_substring) != std::string::npos) {
+        return false;
+    }
+    if (not_regex.has_value() && std::regex_search(body, *not_regex)) {
+        return false;
+    }
+    return true;
+}
+
+bool iequals_ascii(const std::string &a, const std::string &b)
+{
+    if (a.size() != b.size()) {
+        return false;
+    }
+    for (size_t i = 0; i < a.size(); ++i) {
+        if (std::tolower(static_cast<unsigned char>(a[i])) != std::tolower(static_cast<unsigned char>(b[i]))) {
+            return false;
+        }
+    }
+    return true;
+}
+
+HeaderMatchers HeaderMatchers::compile(const std::vector<std::pair<std::string, std::string>> &fail_if_matches,
+    const std::vector<std::pair<std::string, std::string>> &fail_if_not_matches)
+{
+    HeaderMatchers m;
+    auto build = [](const std::vector<std::pair<std::string, std::string>> &src, std::vector<HeaderMatcher> &dst) {
+        for (const auto &[name, pat] : src) {
+            try {
+                dst.push_back(HeaderMatcher{name, std::regex(pat, std::regex::ECMAScript)});
+            } catch (const std::regex_error &) {
+                // never quote the pattern — it can embed secrets; name the header instead
+                throw std::invalid_argument("header value_regex is not a valid ECMAScript regular expression (header '" + name + "')");
+            }
+        }
+    };
+    build(fail_if_matches, m._fail_if_matches);
+    build(fail_if_not_matches, m._fail_if_not_matches);
+    m._configured = !m._fail_if_matches.empty() || !m._fail_if_not_matches.empty();
+    return m;
+}
+
+bool HeaderMatchers::configured() const
+{
+    return _configured;
+}
+
+bool HeaderMatchers::matches(const std::vector<std::pair<std::string, std::string>> &headers) const
+{
+    for (const auto &hm : _fail_if_matches) {
+        for (const auto &[hn, hv] : headers) {
+            if (iequals_ascii(hn, hm.name) && std::regex_search(hv, hm.value_regex)) {
+                return false; // a forbidden header matched
+            }
+        }
+    }
+    for (const auto &hm : _fail_if_not_matches) {
+        bool any = false;
+        for (const auto &[hn, hv] : headers) {
+            if (iequals_ascii(hn, hm.name) && std::regex_search(hv, hm.value_regex)) {
+                any = true;
+                break;
+            }
+        }
+        if (!any) {
+            return false; // required header/value not present
+        }
+    }
+    return true;
+}
+
+uint64_t parse_http_date(const std::string &date_str)
+{
+    if (date_str.empty()) {
+        return 0;
+    }
+    time_t t = curl_getdate(date_str.c_str(), nullptr);
+    return t > 0 ? static_cast<uint64_t>(t) : 0;
+}
+
+std::string http_version_name(long v)
+{
+    switch (v) {
+    case CURL_HTTP_VERSION_1_0:
+        return "1.0";
+    case CURL_HTTP_VERSION_1_1:
+        return "1.1";
+    case CURL_HTTP_VERSION_2_0:
+        return "2";
+    case CURL_HTTP_VERSION_3:
+        return "3";
+    default:
+        return "";
+    }
 }
 }
