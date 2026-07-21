@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace visor::http {
@@ -28,6 +29,9 @@ struct HttpRequest {
     std::string cert_file;              // CURLOPT_SSLCERT (client cert, empty => none)
     std::string key_file;               // CURLOPT_SSLKEY (client key, empty => none)
     std::string user_agent;             // CURLOPT_USERAGENT (empty => curl default)
+    bool collect_headers{false};        // when true, capture the FINAL response's headers into HttpResult.headers
+    long ip_resolve{0};                 // CURLOPT_IPRESOLVE (0 => curl default/whatever; e.g. CURL_IPRESOLVE_V4/V6)
+    std::vector<std::string> resolve;   // CURLOPT_RESOLVE entries, each "host:port:address"
 };
 struct HttpResult {
     bool transport_ok{false};
@@ -40,6 +44,8 @@ struct HttpResult {
     std::string error_msg;              // human-readable curl error detail when !transport_ok
     uint64_t cert_expiry_epoch{0};      // earliest "Expire date:" across the TLS chain when HttpRequest.collect_cert_info; 0 for plain http or on parse failure
     uint64_t response_size{0};          // CURLINFO_SIZE_DOWNLOAD_T; populated on every transport_ok, independent of capture_response
+    std::vector<std::pair<std::string, std::string>> headers; // FINAL response's headers when HttpRequest.collect_headers (redirect/proxy-CONNECT hops excluded)
+    long http_version{0};               // CURLINFO_HTTP_VERSION (e.g. CURL_HTTP_VERSION_1_1/2_0); populated on every transport_ok
 };
 struct HttpSample {
     uint16_t status{0};

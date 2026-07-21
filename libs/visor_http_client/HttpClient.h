@@ -49,7 +49,15 @@ private:
         size_t capture_max{64 * 1024};  // cap on captured body bytes (from HttpRequest.capture_max_bytes)
         bool truncated{false};          // set by write_capture when the body exceeds capture_max
         std::string response;           // captured body (bounded to capture_max)
-        ~EasyContext() { if (headers) curl_slist_free_all(headers); }
+        bool collect_headers{false};
+        std::vector<std::pair<std::string, std::string>> resp_headers;
+        size_t resp_headers_bytes{0};
+        curl_slist *resolve_list{nullptr}; // owned; freed in dtor after curl_easy_cleanup
+        ~EasyContext()
+        {
+            if (headers) curl_slist_free_all(headers);
+            if (resolve_list) curl_slist_free_all(resolve_list);
+        }
     };
     // per-socket context: a uvw poll handle curl watches (owned in _sockets below)
     struct SocketContext {
@@ -61,6 +69,7 @@ private:
     static int timer_cb(CURLM *multi, long timeout_ms, void *userp);
     static size_t write_discard(char *ptr, size_t size, size_t nmemb, void *userdata);
     static size_t write_capture(char *ptr, size_t size, size_t nmemb, void *userdata);
+    static size_t header_capture(char *buffer, size_t size, size_t nitems, void *userdata);
     void on_socket_event(curl_socket_t sockfd, int events);
     void on_timeout();
     void check_multi_info();

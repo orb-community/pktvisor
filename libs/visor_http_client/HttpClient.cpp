@@ -174,6 +174,44 @@ size_t HttpClient::write_capture(char *ptr, size_t size, size_t nmemb, void *use
     return n; // always consume so curl doesn't abort the transfer
 }
 
+size_t HttpClient::header_capture(char *buffer, size_t size, size_t nitems, void *userdata)
+{
+    size_t n = size * nitems;
+    auto *ctx = static_cast<EasyContext *>(userdata);
+    if (ctx && ctx->collect_headers) {
+        constexpr size_t kMaxHeaderBytes = 64 * 1024;
+        constexpr size_t kMaxHeaders = 100;
+        std::string line(buffer, n);
+        // curl fires this callback for EVERY response in the transfer (each redirect hop, and any
+        // proxy CONNECT response). A new response begins with a status line "HTTP/..." (no colon).
+        // Reset so only the FINAL response's headers survive — header/Last-Modified assertions must
+        // evaluate the final response, matching blackbox/cloudprober semantics.
+        if (line.rfind("HTTP/", 0) == 0) {
+            ctx->resp_headers.clear();
+            ctx->resp_headers_bytes = 0;
+            return n;
+        }
+        auto colon = line.find(':');
+        if (colon != std::string::npos && ctx->resp_headers.size() < kMaxHeaders
+            && ctx->resp_headers_bytes + n <= kMaxHeaderBytes) {
+            std::string name = line.substr(0, colon);
+            std::string value = line.substr(colon + 1);
+            auto trim = [](std::string &s) {
+                size_t b = s.find_first_not_of(" \t\r\n");
+                size_t e = s.find_last_not_of(" \t\r\n");
+                s = (b == std::string::npos) ? std::string() : s.substr(b, e - b + 1);
+            };
+            trim(name);
+            trim(value);
+            if (!name.empty()) {
+                ctx->resp_headers.emplace_back(std::move(name), std::move(value));
+                ctx->resp_headers_bytes += n;
+            }
+        }
+    }
+    return n; // always consume
+}
+
 void HttpClient::request(const HttpRequest &req, ResultCallback on_done)
 {
     if (_closed || !_multi) {
@@ -229,6 +267,23 @@ void HttpClient::request(const HttpRequest &req, ResultCallback on_done)
     }
     if (req.collect_cert_info) {
         curl_easy_setopt(easy, CURLOPT_CERTINFO, 1L);
+    }
+    ctx->collect_headers = req.collect_headers;
+    if (req.collect_headers) {
+        curl_easy_setopt(easy, CURLOPT_HEADERFUNCTION, &HttpClient::header_capture);
+        curl_easy_setopt(easy, CURLOPT_HEADERDATA, ctx.get());
+        curl_easy_setopt(easy, CURLOPT_SUPPRESS_CONNECT_HEADERS, 1L); // don't feed proxy CONNECT headers to the callback
+    }
+    if (req.ip_resolve) {
+        curl_easy_setopt(easy, CURLOPT_IPRESOLVE, req.ip_resolve);
+    }
+    if (!req.resolve.empty()) {
+        for (const auto &e : req.resolve) {
+            struct curl_slist *appended = curl_slist_append(ctx->resolve_list, e.c_str());
+            if (!appended) { /* OOM: leave list intact; skip (best-effort) */ break; }
+            ctx->resolve_list = appended;
+        }
+        if (ctx->resolve_list) curl_easy_setopt(easy, CURLOPT_RESOLVE, ctx->resolve_list);
     }
     if (!req.body.empty()) {
         // COPYPOSTFIELDS copies the bytes (curl owns them); size set first => binary-safe.
@@ -438,6 +493,12 @@ void HttpClient::check_multi_info()
             curl_easy_getinfo(easy, CURLINFO_CONTENT_TYPE, &ct); // may be null (no Content-Type)
             if (ct) {
                 result.content_type = ct; // raw header value; consumers compare case-insensitively
+            }
+            long http_ver = 0;
+            curl_easy_getinfo(easy, CURLINFO_HTTP_VERSION, &http_ver);
+            result.http_version = http_ver;
+            if (it != _easy.end() && it->second->collect_headers) {
+                result.headers = std::move(it->second->resp_headers);
             }
         } else {
             result.transport_ok = false;

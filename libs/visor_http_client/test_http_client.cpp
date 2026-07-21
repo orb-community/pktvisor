@@ -400,6 +400,103 @@ TEST_CASE("HttpClient body capture cap + truncation flag", "[http][client]")
     if (server_thread.joinable()) server_thread.join();
 }
 
+TEST_CASE("HttpClient captures response headers + http_version", "[http][client]")
+{
+    httplib::Server svr;
+    svr.Get("/hdrs", [](const httplib::Request &, httplib::Response &res) {
+        res.set_header("X-Cache", "HIT");
+        res.set_content("{\"ok\":true}", "application/json");
+    });
+    int port = svr.bind_to_any_port("127.0.0.1");
+    REQUIRE(port > 0);
+    std::thread server_thread([&svr] { svr.listen_after_bind(); });
+    ServerGuard guard{svr, server_thread};
+    svr.wait_until_ready();
+
+    auto loop = uvw::loop::create();
+    HttpClient client(loop);
+    std::vector<HttpResult> results;
+    auto on_done = [&](const HttpResult &r) { results.push_back(r); };
+
+    HttpRequest req;
+    req.url = "http://127.0.0.1:" + std::to_string(port) + "/hdrs";
+    req.collect_headers = true;
+    req.timeout_ms = 2000;
+    client.request(req, on_done);
+    auto wd = arm_watchdog(loop, 5000);
+    loop->run();
+    disarm_watchdog(loop, wd);
+
+    REQUIRE(results.size() == 1);
+    CHECK(results[0].transport_ok);
+    CHECK(results[0].http_version != 0);
+    bool found = false;
+    for (auto &[n, v] : results[0].headers) {
+        if (n == "X-Cache" && v == "HIT") found = true;
+    }
+    CHECK(found);
+
+    client.close();
+    loop->run();
+    svr.stop();
+    if (server_thread.joinable()) server_thread.join();
+}
+
+TEST_CASE("HttpClient response header capture resets across a redirect hop", "[http][client]")
+{
+    // Proves the adversarial-review finding: CURLOPT_HEADERFUNCTION fires for EVERY response in
+    // the transfer (each redirect hop too). The intermediate (302) response carries a header that
+    // must NOT survive into the result; only the FINAL (200) response's headers should.
+    httplib::Server svr;
+    svr.Get("/redir", [](const httplib::Request &, httplib::Response &res) {
+        res.set_header("X-Hop", "intermediate");
+        res.set_redirect("/final");
+    });
+    svr.Get("/final", [](const httplib::Request &, httplib::Response &res) {
+        res.set_header("X-Hop", "final");
+        res.set_content("done", "text/plain");
+    });
+    int port = svr.bind_to_any_port("127.0.0.1");
+    REQUIRE(port > 0);
+    std::thread server_thread([&svr] { svr.listen_after_bind(); });
+    ServerGuard guard{svr, server_thread};
+    svr.wait_until_ready();
+
+    auto loop = uvw::loop::create();
+    HttpClient client(loop);
+    std::vector<HttpResult> results;
+    auto on_done = [&](const HttpResult &r) { results.push_back(r); };
+
+    HttpRequest req;
+    req.url = "http://127.0.0.1:" + std::to_string(port) + "/redir";
+    req.collect_headers = true;
+    req.follow_redirects = true;
+    req.timeout_ms = 2000;
+    client.request(req, on_done);
+    auto wd = arm_watchdog(loop, 5000);
+    loop->run();
+    disarm_watchdog(loop, wd);
+
+    REQUIRE(results.size() == 1);
+    CHECK(results[0].transport_ok);
+    CHECK(results[0].status_code == 200); // followed through to /final
+    int hop_count = 0;
+    std::string last_hop_value;
+    for (auto &[n, v] : results[0].headers) {
+        if (n == "X-Hop") {
+            ++hop_count;
+            last_hop_value = v;
+        }
+    }
+    CHECK(hop_count == 1); // the intermediate hop's X-Hop must have been cleared, not appended
+    CHECK(last_hop_value == "final");
+
+    client.close();
+    loop->run();
+    svr.stop();
+    if (server_thread.joinable()) server_thread.join();
+}
+
 TEST_CASE("HttpClient redacts proxy credentials from transport error_msg", "[http][client]")
 {
     auto loop = uvw::loop::create();
