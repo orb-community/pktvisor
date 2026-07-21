@@ -4,7 +4,9 @@
 
 #pragma once
 #include "HttpCheck.h"
+#include <cstdint>
 #include <string>
+#include <vector>
 
 namespace visor::input::netprobe {
 
@@ -21,5 +23,15 @@ struct HttpProbeOptions {
     bool tls_verify{true};
     std::string ca_file, cert_file, key_file;
     std::string user_agent; // "pktvisor/" VISOR_VERSION_NUM
+
+    // v3: response-assertion config. Parsed/validated by NetProbeInputStream::start(); not yet
+    // evaluated by the probes (Task 5).
+    visor::http::JsonPointerCheck json_check;
+    visor::http::BodyNegativeCheck body_negative;
+    visor::http::HeaderMatchers header_matchers;
+    uint64_t min_response_size{0};      // 0 = no lower bound
+    uint64_t max_response_size{0};      // 0 = no upper bound
+    uint64_t max_last_modified_diff{0}; // seconds; 0 = not checked
+    std::vector<std::string> valid_http_versions; // empty = any
 };
 }

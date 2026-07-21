@@ -128,7 +128,7 @@ TEST_CASE("Netprobe invalid config", "[netprobe][config]")
     NetProbeInputStream stream{"net-probe-test"};
     stream.config_set("invalid_config", true);
 
-    CHECK_THROWS_WITH(stream.start(), "invalid_config is an invalid/unsupported config or filter. The valid configs/filters are: test_type, interval_msec, timeout_msec, packets_per_test, packets_interval_msec, packet_payload_size, targets, http_method, qname, qtype, expected_status, failure_status, expected_body, expected_body_regex, body, body_check_max_bytes, proxy, tls");
+    CHECK_THROWS_WITH(stream.start(), "invalid_config is an invalid/unsupported config or filter. The valid configs/filters are: test_type, interval_msec, timeout_msec, packets_per_test, packets_interval_msec, packet_payload_size, targets, http_method, qname, qtype, expected_status, failure_status, expected_body, expected_body_regex, body, body_check_max_bytes, proxy, tls, json_path, json_equals, not_contains, body_not_matches_regex, min_response_size_bytes, max_response_size_bytes, fail_if_header_matches, fail_if_header_not_matches, max_last_modified_diff_secs, valid_http_versions");
 }
 
 TEST_CASE("NetProbe ip_version config", "[netprobe][config][ipv6]")
@@ -163,7 +163,7 @@ TEST_CASE("NetProbe ip_version config", "[netprobe][config][ipv6]")
     SECTION("top-level valid-keys string unchanged") {
         NetProbeInputStream s{"net-probe-test"};
         s.config_set("invalid_config", true);
-        CHECK_THROWS_WITH(s.start(), "invalid_config is an invalid/unsupported config or filter. The valid configs/filters are: test_type, interval_msec, timeout_msec, packets_per_test, packets_interval_msec, packet_payload_size, targets, http_method, qname, qtype, expected_status, failure_status, expected_body, expected_body_regex, body, body_check_max_bytes, proxy, tls");
+        CHECK_THROWS_WITH(s.start(), "invalid_config is an invalid/unsupported config or filter. The valid configs/filters are: test_type, interval_msec, timeout_msec, packets_per_test, packets_interval_msec, packet_payload_size, targets, http_method, qname, qtype, expected_status, failure_status, expected_body, expected_body_regex, body, body_check_max_bytes, proxy, tls, json_path, json_equals, not_contains, body_not_matches_regex, min_response_size_bytes, max_response_size_bytes, fail_if_header_matches, fail_if_header_not_matches, max_last_modified_diff_secs, valid_http_versions");
     }
 }
 
@@ -449,6 +449,145 @@ TEST_CASE("NetProbe v2 config: proxy and tls are not supported for tcp", "[netpr
         s->config_set<std::shared_ptr<visor::Configurable>>("tls", tls);
         CHECK_THROWS_WITH(s->start(), "'tls' is only supported for test_type 'http' or 'doh'");
     }
+}
+
+// ---------------------------------------------------------------------------
+// v3: stream-level response-assertion config — parse + validate.
+// ---------------------------------------------------------------------------
+
+namespace {
+// Shared helper: an http-typed stream with a single valid target, ready for v3 config keys to be
+// layered on top before start() is called.
+std::unique_ptr<NetProbeInputStream> make_v3_http_stream(const std::string &name)
+{
+    auto s = std::make_unique<NetProbeInputStream>(name);
+    s->config_set("test_type", "http");
+    auto targets = std::make_shared<visor::Configurable>();
+    auto target = std::make_shared<visor::Configurable>();
+    target->config_set("target", std::string("https://example.com/"));
+    targets->config_set<std::shared_ptr<visor::Configurable>>("t", target);
+    s->config_set<std::shared_ptr<visor::Configurable>>("targets", targets);
+    return s;
+}
+}
+
+TEST_CASE("NetProbe v3 config: json_path must be a valid JSON Pointer", "[netprobe][config][http]")
+{
+    auto s = make_v3_http_stream("v3-json-path-bad");
+    s->config_set("json_path", std::string("data/status")); // missing leading '/'
+    CHECK_THROWS_WITH(s->start(), Catch::Matchers::ContainsSubstring("json_path is not a valid JSON Pointer"));
+}
+
+TEST_CASE("NetProbe v3 config: json_equals requires json_path", "[netprobe][config][http]")
+{
+    auto s = make_v3_http_stream("v3-json-equals-no-path");
+    s->config_set("json_equals", std::string("ok"));
+    CHECK_THROWS_WITH(s->start(), "netprobe: 'json_equals' requires 'json_path'");
+}
+
+TEST_CASE("NetProbe v3 config: unclosed body_not_matches_regex is rejected without quoting the pattern", "[netprobe][config][http]")
+{
+    auto s = make_v3_http_stream("v3-body-not-matches-bad");
+    s->config_set("body_not_matches_regex", std::string("(unclosed"));
+    CHECK_THROWS_WITH(s->start(),
+        Catch::Matchers::ContainsSubstring("body_not_matches_regex") && !Catch::Matchers::ContainsSubstring("(unclosed"));
+}
+
+TEST_CASE("NetProbe v3 config: fail_if_header_matches with an invalid regex names the header, not the pattern", "[netprobe][config][http]")
+{
+    auto s = make_v3_http_stream("v3-header-matcher-bad");
+    auto matchers = std::make_shared<visor::Configurable>();
+    matchers->config_set("X-Debug", std::string("(bad"));
+    s->config_set<std::shared_ptr<visor::Configurable>>("fail_if_header_matches", matchers);
+    CHECK_THROWS_WITH(s->start(),
+        Catch::Matchers::ContainsSubstring("value_regex") && Catch::Matchers::ContainsSubstring("X-Debug") && !Catch::Matchers::ContainsSubstring("(bad"));
+}
+
+TEST_CASE("NetProbe v3 config: min_response_size_bytes must not exceed max_response_size_bytes", "[netprobe][config][http]")
+{
+    auto s = make_v3_http_stream("v3-size-bounds-bad");
+    s->config_set<uint64_t>("min_response_size_bytes", 100);
+    s->config_set<uint64_t>("max_response_size_bytes", 10);
+    CHECK_THROWS_WITH(s->start(), "netprobe: min_response_size_bytes must not exceed max_response_size_bytes");
+}
+
+TEST_CASE("NetProbe v3 config: valid_http_versions rejects an unsupported entry", "[netprobe][config][http]")
+{
+    auto s = make_v3_http_stream("v3-http-version-bad");
+    s->config_set<visor::Configurable::StringList>("valid_http_versions", {"9"});
+    CHECK_THROWS_WITH(s->start(), "netprobe: invalid valid_http_versions entry '9' (use 1.0, 1.1, 2, or 3)");
+}
+
+TEST_CASE("NetProbe v3 config: json_path is not supported for test_type 'doh'", "[netprobe][config][doh]")
+{
+    auto s = std::make_unique<NetProbeInputStream>("v3-doh-json-path");
+    s->config_set("test_type", "doh");
+    s->config_set("qname", std::string("example.com"));
+    s->config_set("json_path", std::string("/status"));
+    auto targets = std::make_shared<visor::Configurable>();
+    auto target = std::make_shared<visor::Configurable>();
+    target->config_set("target", std::string("https://1.1.1.1/dns-query"));
+    targets->config_set<std::shared_ptr<visor::Configurable>>("t", target);
+    s->config_set<std::shared_ptr<visor::Configurable>>("targets", targets);
+    CHECK_THROWS_WITH(s->start(), "'json_path' is not supported for test_type 'doh'");
+}
+
+TEST_CASE("NetProbe v3 config: json_path/not_contains/size/version all parse successfully together", "[netprobe][config][http]")
+{
+    // Positive case: every v3 key is accepted and parses/validates without throwing. start()
+    // only builds the io loop and schedules probe timers — it does not perform any network I/O
+    // synchronously — so calling stop() immediately after, with no sleep, exercises the
+    // config-parse path only and never actually contacts the (non-existent) https://example.com/
+    // target.
+    auto s = make_v3_http_stream("v3-all-keys-ok");
+    s->config_set("json_path", std::string("/status"));
+    s->config_set("json_equals", std::string("ok"));
+    s->config_set("not_contains", std::string("error"));
+    s->config_set("body_not_matches_regex", std::string("fail-[0-9]+"));
+    s->config_set<uint64_t>("min_response_size_bytes", 10);
+    s->config_set<uint64_t>("max_response_size_bytes", 1000);
+    s->config_set<uint64_t>("max_last_modified_diff_secs", 3600);
+    s->config_set<visor::Configurable::StringList>("valid_http_versions", {"1.1", "2"});
+    auto fm = std::make_shared<visor::Configurable>();
+    fm->config_set("X-Error", std::string("^true$"));
+    s->config_set<std::shared_ptr<visor::Configurable>>("fail_if_header_matches", fm);
+    auto fnm = std::make_shared<visor::Configurable>();
+    fnm->config_set("X-Ok", std::string("^true$"));
+    s->config_set<std::shared_ptr<visor::Configurable>>("fail_if_header_not_matches", fnm);
+
+    CHECK_NOTHROW(s->start());
+    s->stop();
+}
+
+TEST_CASE("NetProbe v3 scrub helper: redacts not_contains/json_equals/body_not_matches_regex/header-matcher secrets", "[netprobe][http][config]")
+{
+    // Mirrors the v2 scrub-helper test: feed a tap-shaped config JSON and prove every v3
+    // secret-bearing value is masked (never quoted/echoed) while non-secret keys survive.
+    json cfg;
+    cfg["not_contains"] = "v3-not-contains-sekrit";
+    cfg["json_equals"] = "v3-json-equals-sekrit";
+    cfg["body_not_matches_regex"] = "v3-regex-sekrit";
+    cfg["json_path"] = "/status"; // not a secret; survives untouched
+    cfg["fail_if_header_matches"]["X-Debug"] = "v3-header-matcher-sekrit";
+    cfg["fail_if_header_not_matches"]["X-Ok"] = "v3-header-not-matcher-sekrit";
+
+    visor::input::netprobe::scrub_netprobe_config_json(cfg);
+
+    auto dumped = cfg.dump();
+    CHECK(dumped.find("v3-not-contains-sekrit") == std::string::npos);
+    CHECK(dumped.find("v3-json-equals-sekrit") == std::string::npos);
+    CHECK(dumped.find("v3-regex-sekrit") == std::string::npos);
+    CHECK(dumped.find("v3-header-matcher-sekrit") == std::string::npos);
+    CHECK(dumped.find("v3-header-not-matcher-sekrit") == std::string::npos);
+    // Names and non-secret values survive.
+    CHECK(dumped.find("X-Debug") != std::string::npos);
+    CHECK(dumped.find("X-Ok") != std::string::npos);
+    CHECK(cfg["json_path"] == "/status");
+    CHECK(cfg["not_contains"] == "<redacted>");
+    CHECK(cfg["json_equals"] == "<redacted>");
+    CHECK(cfg["body_not_matches_regex"] == "<redacted>");
+    CHECK(cfg["fail_if_header_matches"]["X-Debug"] == "<redacted>");
+    CHECK(cfg["fail_if_header_not_matches"]["X-Ok"] == "<redacted>");
 }
 
 TEST_CASE("ICMPv6 reply carrier survives the fan-out Packet deep-copy", "[netprobe][ipv6]")
