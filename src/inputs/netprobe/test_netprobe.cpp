@@ -590,6 +590,70 @@ TEST_CASE("NetProbe v3 scrub helper: redacts not_contains/json_equals/body_not_m
     CHECK(cfg["fail_if_header_not_matches"]["X-Ok"] == "<redacted>");
 }
 
+// ---------------------------------------------------------------------------
+// v3: per-target ip_version/resolve — parse + validate (threaded into probe ctors,
+// evaluated by libcurl itself; not asserted here).
+// ---------------------------------------------------------------------------
+
+TEST_CASE("NetProbe v3 config: per-target resolve entry must be host:port:address", "[netprobe][config][http]")
+{
+    NetProbeInputStream stream{"net-probe-test-resolve-bad"};
+    stream.config_set("test_type", "http");
+    auto targets = std::make_shared<visor::Configurable>();
+    auto target = std::make_shared<visor::Configurable>();
+    target->config_set("target", std::string("https://example.com/"));
+    target->config_set<visor::Configurable::StringList>("resolve", {"bad-no-colons"});
+    targets->config_set<std::shared_ptr<visor::Configurable>>("t", target);
+    stream.config_set<std::shared_ptr<visor::Configurable>>("targets", targets);
+    CHECK_THROWS_WITH(stream.start(), "netprobe: target 't' has an invalid resolve entry 'bad-no-colons' (expected host:port:address)");
+}
+
+TEST_CASE("NetProbe v3 config: per-target ip_version must be 4 or 6", "[netprobe][config][http]")
+{
+    NetProbeInputStream stream{"net-probe-test-ipver-bad"};
+    stream.config_set("test_type", "http");
+    auto targets = std::make_shared<visor::Configurable>();
+    auto target = std::make_shared<visor::Configurable>();
+    target->config_set("target", std::string("https://example.com/"));
+    target->config_set<uint64_t>("ip_version", 5);
+    targets->config_set<std::shared_ptr<visor::Configurable>>("t", target);
+    stream.config_set<std::shared_ptr<visor::Configurable>>("targets", targets);
+    CHECK_THROWS_WITH(stream.start(), "ip_version must be 4 or 6");
+}
+
+TEST_CASE("NetProbe v3 config: per-target ip_version + resolve happy path reaches start", "[netprobe][config][http]")
+{
+    NetProbeInputStream stream{"net-probe-test-ipver-resolve-ok"};
+    stream.config_set("test_type", "http");
+    auto targets = std::make_shared<visor::Configurable>();
+    auto target = std::make_shared<visor::Configurable>();
+    target->config_set("target", std::string("https://example.com/"));
+    target->config_set<uint64_t>("ip_version", 4);
+    target->config_set<visor::Configurable::StringList>("resolve", {"example.com:443:127.0.0.1"});
+    targets->config_set<std::shared_ptr<visor::Configurable>>("t", target);
+    stream.config_set<std::shared_ptr<visor::Configurable>>("targets", targets);
+
+    CHECK_NOTHROW(stream.start());
+    stream.stop();
+}
+
+TEST_CASE("NetProbe v3 config: per-target ip_version + resolve also parse for doh targets", "[netprobe][config][doh]")
+{
+    NetProbeInputStream stream{"net-probe-test-doh-ipver-resolve-ok"};
+    stream.config_set("test_type", "doh");
+    stream.config_set("qname", std::string("example.com"));
+    auto targets = std::make_shared<visor::Configurable>();
+    auto target = std::make_shared<visor::Configurable>();
+    target->config_set("target", std::string("https://1.1.1.1/dns-query"));
+    target->config_set<uint64_t>("ip_version", 6);
+    target->config_set<visor::Configurable::StringList>("resolve", {"1.1.1.1:443:127.0.0.1"});
+    targets->config_set<std::shared_ptr<visor::Configurable>>("t", target);
+    stream.config_set<std::shared_ptr<visor::Configurable>>("targets", targets);
+
+    CHECK_NOTHROW(stream.start());
+    stream.stop();
+}
+
 TEST_CASE("ICMPv6 reply carrier survives the fan-out Packet deep-copy", "[netprobe][ipv6]")
 {
     // Wire bytes of an ICMPv6 echo REPLY: type=129, code=0, checksum=0, id=0xBEEF, seq=0x0102 (network order).

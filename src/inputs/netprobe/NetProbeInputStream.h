@@ -49,6 +49,10 @@ class NetProbeInputStream : public visor::InputStream
     // (used to build the actual request) separate from just the NAMES (safe to echo in info_json).
     std::map<std::string, std::vector<std::string>> _http_target_headers;
     std::map<std::string, std::vector<std::string>> _http_target_header_names;
+    // per-target ip_version/resolve overrides (CURLOPT_IPRESOLVE/CURLOPT_RESOLVE), keyed like
+    // _http_targets/_doh_targets — used for both http and doh targets.
+    std::map<std::string, long> _http_target_ipresolve;
+    std::map<std::string, std::vector<std::string>> _http_target_resolve;
     HttpProbeOptions _http_opts;
     std::map<std::string, std::string> _doh_targets;
     std::string _doh_qname;

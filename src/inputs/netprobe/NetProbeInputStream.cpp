@@ -13,6 +13,7 @@
 #include "dns.h"
 #include "visor_config.h"
 #include <cctype>
+#include <curl/curl.h>
 #include <filesystem>
 #include <fmt/ranges.h>
 #ifdef __GNUC__
@@ -316,6 +317,37 @@ void NetProbeInputStream::start()
 
     _http_opts.user_agent = std::string("pktvisor/") + VISOR_VERSION_NUM;
 
+    // Per-target ip_version/resolve overrides (CURLOPT_IPRESOLVE/CURLOPT_RESOLVE), used for both
+    // http and doh targets. Mirrors the ping/tcp ip_version handling above, but scoped to a single
+    // target rather than the whole stream, and stored by target name for the http/doh build loop.
+    auto parse_target_ip_resolve = [this](const std::shared_ptr<Configurable> &config, const std::string &key) {
+        if (config->config_exists("ip_version")) {
+            auto v = config->config_get<uint64_t>("ip_version");
+            if (v != 4 && v != 6) {
+                throw NetProbeException("ip_version must be 4 or 6");
+            }
+            _http_target_ipresolve[key] = (v == 6) ? CURL_IPRESOLVE_V6 : CURL_IPRESOLVE_V4;
+        }
+        if (config->config_exists("resolve")) {
+            std::vector<std::string> entries;
+            for (const auto &e : config->config_get<Configurable::StringList>("resolve")) {
+                // host:port:address — require at least two ':' and a numeric port
+                auto c1 = e.find(':');
+                auto c2 = (c1 == std::string::npos) ? std::string::npos : e.find(':', c1 + 1);
+                bool ok = c1 != std::string::npos && c2 != std::string::npos && c1 > 0 && c2 > c1 + 1 && c2 + 1 < e.size();
+                if (ok) {
+                    std::string port = e.substr(c1 + 1, c2 - c1 - 1);
+                    ok = !port.empty() && port.find_first_not_of("0123456789") == std::string::npos;
+                }
+                if (!ok) {
+                    throw NetProbeException(fmt::format("netprobe: target '{}' has an invalid resolve entry '{}' (expected host:port:address)", key, e));
+                }
+                entries.push_back(e);
+            }
+            _http_target_resolve[key] = std::move(entries);
+        }
+    };
+
     if (!config_exists("targets")) {
         throw NetProbeException("no targets specified");
     } else {
@@ -344,6 +376,7 @@ void NetProbeInputStream::start()
                     _http_target_headers[key] = std::move(joined);
                     _http_target_header_names[key] = std::move(names);
                 }
+                parse_target_ip_resolve(config, key);
                 continue;
             }
             if (_type == TestType::DOH) {
@@ -355,6 +388,7 @@ void NetProbeInputStream::start()
                     throw NetProbeException("per-target 'headers' is not supported for test_type 'doh'");
                 }
                 _doh_targets[key] = url;
+                parse_target_ip_resolve(config, key);
                 continue;
             }
             uint32_t port{0};
@@ -633,7 +667,15 @@ void NetProbeInputStream::_create_netprobe_loop()
         if (auto it = _http_target_headers.find(key); it != _http_target_headers.end()) {
             headers = it->second;
         }
-        auto probe = std::make_unique<HttpProbe>(_id, key, url, _http_method, _http_client, _http_opts, headers,
+        long ip_resolve = 0;
+        if (auto it = _http_target_ipresolve.find(key); it != _http_target_ipresolve.end()) {
+            ip_resolve = it->second;
+        }
+        std::vector<std::string> resolve;
+        if (auto it = _http_target_resolve.find(key); it != _http_target_resolve.end()) {
+            resolve = it->second;
+        }
+        auto probe = std::make_unique<HttpProbe>(_id, key, url, _http_method, _http_client, _http_opts, headers, ip_resolve, resolve,
             [this](visor::http::HttpSample sample, const std::string &name, timespec stamp) { _http_result_cb(sample, name, stamp); });
         ++_id;
         probe->set_configs(_interval_msec, _timeout_msec, _packets_per_test, _packets_interval_msec, _packet_payload_size);
@@ -645,7 +687,15 @@ void NetProbeInputStream::_create_netprobe_loop()
     }
 
     for (const auto &[key, url] : _doh_targets) {
-        auto probe = std::make_unique<DohProbe>(_id, key, url, _doh_method, _doh_qname, _doh_qtype, _http_client, _http_opts,
+        long ip_resolve = 0;
+        if (auto it = _http_target_ipresolve.find(key); it != _http_target_ipresolve.end()) {
+            ip_resolve = it->second;
+        }
+        std::vector<std::string> resolve;
+        if (auto it = _http_target_resolve.find(key); it != _http_target_resolve.end()) {
+            resolve = it->second;
+        }
+        auto probe = std::make_unique<DohProbe>(_id, key, url, _doh_method, _doh_qname, _doh_qtype, _http_client, _http_opts, ip_resolve, resolve,
             [this](uint16_t http_status, uint8_t rcode, bool parse_ok, uint64_t cert_expiry_epoch, visor::http::HttpTimings t, const std::string &name, timespec stamp) {
                 _doh_result_cb(http_status, rcode, parse_ok, cert_expiry_epoch, t, name, stamp);
             });

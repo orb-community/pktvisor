@@ -48,6 +48,8 @@ bool HttpProbe::start(std::shared_ptr<uvw::loop> io_loop)
         req.collect_cert_info = true;
         req.capture_response = _opts.body_check.configured();
         req.capture_max_bytes = _opts.body_check_max_bytes;
+        req.ip_resolve = _ip_resolve;
+        req.resolve = _resolve;
         const std::string name = _name;
         auto http_result = _http_result;
         auto fail = _fail;

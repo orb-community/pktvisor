@@ -23,6 +23,8 @@ class DohProbe final : public NetProbe
     std::string _qtype;      // e.g. "A"
     std::shared_ptr<visor::http::HttpClient> _client;
     HttpProbeOptions _opts;  // uses only proxy/tls/user_agent + collect_cert_info
+    long _ip_resolve{0};              // CURLOPT_IPRESOLVE override (0 => curl default); per-target ip_version
+    std::vector<std::string> _resolve; // CURLOPT_RESOLVE entries, each "host:port:address"; per-target resolve
     DohResultCallback _doh_result;
     std::shared_ptr<uvw::timer_handle> _interval_timer;
     std::string _query_wire; // pre-built DNS query (wire format), built in start()
@@ -36,7 +38,8 @@ class DohProbe final : public NetProbe
 public:
     DohProbe(uint16_t id, const std::string &name, std::string url, std::string method,
         std::string qname, std::string qtype,
-        std::shared_ptr<visor::http::HttpClient> client, HttpProbeOptions opts, DohResultCallback doh_result)
+        std::shared_ptr<visor::http::HttpClient> client, HttpProbeOptions opts,
+        long ip_resolve, std::vector<std::string> resolve, DohResultCallback doh_result)
         : NetProbe(id, name, pcpp::IPAddress(), std::string())
         , _url(std::move(url))
         , _method(std::move(method))
@@ -44,6 +47,8 @@ public:
         , _qtype(std::move(qtype))
         , _client(std::move(client))
         , _opts(std::move(opts))
+        , _ip_resolve(ip_resolve)
+        , _resolve(std::move(resolve))
         , _doh_result(std::move(doh_result)) {}
     ~DohProbe() = default;
     bool start(std::shared_ptr<uvw::loop> io_loop) override;
