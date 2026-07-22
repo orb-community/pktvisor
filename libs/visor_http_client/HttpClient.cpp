@@ -81,6 +81,25 @@ std::optional<std::string> validate_http_url(const std::string &url)
     return std::nullopt;
 }
 
+std::string build_connect_to_entry(const std::string &resolve_entry)
+{
+    // Parse "host:port:address" (address may itself contain ':' when IPv6, so the address is
+    // everything after the SECOND colon — the two leading colons delimit host and port).
+    auto c1 = resolve_entry.find(':');
+    auto c2 = (c1 == std::string::npos) ? std::string::npos : resolve_entry.find(':', c1 + 1);
+    if (c1 == std::string::npos || c2 == std::string::npos || c1 == 0 || c2 == c1 + 1 || c2 + 1 >= resolve_entry.size()) {
+        return {}; // malformed: missing a colon or an empty host/port/address field
+    }
+    std::string host = resolve_entry.substr(0, c1);
+    std::string port = resolve_entry.substr(c1 + 1, c2 - c1 - 1);
+    std::string address = resolve_entry.substr(c2 + 1);
+    // curl's --connect-to HOST2 needs an IPv6 literal bracketed; bracket it if the operator didn't.
+    if (address.front() != '[' && address.find(':') != std::string::npos) {
+        address = "[" + address + "]";
+    }
+    return host + ":" + port + ":" + address + ":" + port;
+}
+
 HttpClient::HttpClient(std::shared_ptr<uvw::loop> loop)
     : _loop(std::move(loop))
 {
@@ -186,8 +205,11 @@ size_t HttpClient::header_capture(char *buffer, size_t size, size_t nitems, void
         // Reset so only the FINAL response's headers survive — header/Last-Modified assertions must
         // evaluate the final response, matching blackbox/cloudprober semantics.
         if (line.rfind("HTTP/", 0) == 0) {
+            // Reset ALL per-response capture state (including the truncation flag) so a redirect hop
+            // with oversized headers does not fail the assertion on a small FINAL response.
             ctx->resp_headers.clear();
             ctx->resp_headers_bytes = 0;
+            ctx->headers_truncated = false;
             return n;
         }
         auto colon = line.find(':');
@@ -289,12 +311,11 @@ void HttpClient::request(const HttpRequest &req, ResultCallback on_done)
         // targets. CONNECT_TO is scoped to this easy handle and never touches the DNS cache.
         // Each configured entry "host:port:address" becomes CONNECT_TO "host:port:address:port"
         // (connect-to-port = the original port; SNI/Host/cert verification keep the original host).
+        // build_connect_to_entry brackets IPv6 literals and drops malformed entries.
         for (const auto &e : req.resolve) {
-            std::string connect_to = e;
-            auto c1 = e.find(':');
-            auto c2 = (c1 == std::string::npos) ? std::string::npos : e.find(':', c1 + 1);
-            if (c1 != std::string::npos && c2 != std::string::npos) {
-                connect_to += ":" + e.substr(c1 + 1, c2 - c1 - 1); // append the original port
+            std::string connect_to = build_connect_to_entry(e);
+            if (connect_to.empty()) {
+                continue; // malformed (validated upstream in the netprobe input; defensive here)
             }
             struct curl_slist *appended = curl_slist_append(ctx->connect_to_list, connect_to.c_str());
             if (!appended) { /* OOM: leave list intact; skip (best-effort) */ break; }

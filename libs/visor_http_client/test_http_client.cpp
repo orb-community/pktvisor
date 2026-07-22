@@ -538,6 +538,115 @@ TEST_CASE("HttpClient response header capture resets across a redirect hop", "[h
     if (server_thread.joinable()) server_thread.join();
 }
 
+TEST_CASE("HttpClient clears header-truncation flag across a redirect hop", "[http][client]")
+{
+    // A redirect hop with oversized headers must NOT leave headers_truncated set when the FINAL
+    // response's headers fit under the cap — otherwise a header assertion that should pass on the
+    // final response is failed conservatively by the probe.
+    httplib::Server svr;
+    svr.Get("/redir", [](const httplib::Request &, httplib::Response &res) {
+        for (int i = 0; i < 1400; ++i) { // oversized intermediate headers => past the 64 KB cap
+            res.set_header("X-Pad-" + std::to_string(i), std::string(48, 'z'));
+        }
+        res.set_redirect("/final");
+    });
+    svr.Get("/final", [](const httplib::Request &, httplib::Response &res) {
+        res.set_header("X-Cache", "HIT"); // small final headers, comfortably under the cap
+        res.set_content("done", "text/plain");
+    });
+    int port = svr.bind_to_any_port("127.0.0.1");
+    REQUIRE(port > 0);
+    std::thread server_thread([&svr] { svr.listen_after_bind(); });
+    ServerGuard guard{svr, server_thread};
+    svr.wait_until_ready();
+
+    auto loop = uvw::loop::create();
+    HttpClient client(loop);
+    std::vector<HttpResult> results;
+    auto on_done = [&](const HttpResult &r) { results.push_back(r); };
+
+    HttpRequest req;
+    req.url = "http://127.0.0.1:" + std::to_string(port) + "/redir";
+    req.collect_headers = true;
+    req.follow_redirects = true;
+    req.timeout_ms = 3000;
+    client.request(req, on_done);
+    auto wd = arm_watchdog(loop, 6000);
+    loop->run();
+    disarm_watchdog(loop, wd);
+
+    REQUIRE(results.size() == 1);
+    CHECK(results[0].transport_ok);
+    CHECK(results[0].status_code == 200);
+    CHECK_FALSE(results[0].headers_truncated); // the flag from the oversized hop must have reset
+    bool found = false;
+    for (auto &[n, v] : results[0].headers) {
+        if (n == "X-Cache" && v == "HIT") found = true;
+    }
+    CHECK(found);
+
+    client.close();
+    loop->run();
+    svr.stop();
+    if (server_thread.joinable()) server_thread.join();
+}
+
+TEST_CASE("build_connect_to_entry brackets IPv6 and reuses the original port", "[http][client]")
+{
+    // IPv4: address is copied verbatim; the original port is appended as PORT2.
+    CHECK(build_connect_to_entry("example.com:443:1.2.3.4") == "example.com:443:1.2.3.4:443");
+    // Unbracketed IPv6: the address must be bracketed for curl's HOST2 field.
+    CHECK(build_connect_to_entry("example.com:443:2001:db8::1") == "example.com:443:[2001:db8::1]:443");
+    // Already-bracketed IPv6: left as-is (no double brackets).
+    CHECK(build_connect_to_entry("example.com:443:[2001:db8::1]") == "example.com:443:[2001:db8::1]:443");
+    // IPv6 loopback (address begins immediately after the port colon).
+    CHECK(build_connect_to_entry("h:80:::1") == "h:80:[::1]:80");
+    // Malformed entries yield "" so the caller skips them.
+    CHECK(build_connect_to_entry("host:443").empty());        // only one colon
+    CHECK(build_connect_to_entry("host:443:").empty());       // empty address
+    CHECK(build_connect_to_entry(":443:1.2.3.4").empty());    // empty host
+    CHECK(build_connect_to_entry("host::1.2.3.4").empty());   // empty port
+}
+
+TEST_CASE("HttpClient CONNECT_TO override reaches an IPv6-loopback server", "[http][client]")
+{
+    // Bind on IPv6 loopback; skip where the environment has no ::1 (some CI containers).
+    httplib::Server svr;
+    svr.Get("/ok", [](const httplib::Request &, httplib::Response &res) { res.set_content("v6", "text/plain"); });
+    int port = svr.bind_to_any_port("::1");
+    if (port <= 0) {
+        SKIP("no IPv6 loopback available");
+    }
+    std::thread server_thread([&svr] { svr.listen_after_bind(); });
+    ServerGuard guard{svr, server_thread};
+    svr.wait_until_ready();
+
+    auto loop = uvw::loop::create();
+    HttpClient client(loop);
+    std::vector<HttpResult> results;
+    auto on_done = [&](const HttpResult &r) { results.push_back(r); };
+
+    HttpRequest req;
+    // The URL host never resolves; the UNBRACKETED IPv6 resolve override must pin the connection
+    // to [::1]:port. Proves build_connect_to_entry's bracketing makes curl accept the entry.
+    req.url = "http://pin.invalid:" + std::to_string(port) + "/ok";
+    req.resolve = {"pin.invalid:" + std::to_string(port) + ":::1"};
+    req.timeout_ms = 3000;
+    client.request(req, on_done);
+    auto wd = arm_watchdog(loop, 6000);
+    loop->run();
+    disarm_watchdog(loop, wd);
+
+    REQUIRE(results.size() == 1);
+    CHECK(results[0].transport_ok);
+    CHECK(results[0].status_code == 200);
+
+    client.close();
+    loop->run();
+    svr.stop();
+    if (server_thread.joinable()) server_thread.join();
+}
+
 TEST_CASE("HttpClient redacts proxy credentials from transport error_msg", "[http][client]")
 {
     auto loop = uvw::loop::create();

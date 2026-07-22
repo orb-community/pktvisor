@@ -656,6 +656,23 @@ TEST_CASE("NetProbe v3 config: per-target ip_version + resolve happy path reache
     stream.stop();
 }
 
+TEST_CASE("NetProbe v3 config: per-target resolve accepts an (unbracketed) IPv6 address", "[netprobe][config][http]")
+{
+    // The address field may itself contain colons (IPv6). Validation keys off the first two colons
+    // (host, port) and must accept the IPv6 remainder; bracketing for curl happens in the transport.
+    NetProbeInputStream stream{"net-probe-test-resolve-v6"};
+    stream.config_set("test_type", "http");
+    auto targets = std::make_shared<visor::Configurable>();
+    auto target = std::make_shared<visor::Configurable>();
+    target->config_set("target", std::string("https://example.com/"));
+    target->config_set<visor::Configurable::StringList>("resolve", {"example.com:443:2001:db8::1"});
+    targets->config_set<std::shared_ptr<visor::Configurable>>("t", target);
+    stream.config_set<std::shared_ptr<visor::Configurable>>("targets", targets);
+
+    CHECK_NOTHROW(stream.start());
+    stream.stop();
+}
+
 TEST_CASE("NetProbe v3 config: per-target ip_version + resolve also parse for doh targets", "[netprobe][config][doh]")
 {
     NetProbeInputStream stream{"net-probe-test-doh-ipver-resolve-ok"};

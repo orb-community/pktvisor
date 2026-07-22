@@ -90,4 +90,12 @@ private:
 // callers don't reach into the curl API). Returns std::nullopt when valid; otherwise a short,
 // human-readable reason (e.g. "is not a valid http(s) URL: '<url>'") the caller can surface.
 std::optional<std::string> validate_http_url(const std::string &url);
+
+// Build a CURLOPT_CONNECT_TO entry from a "host:port:address" resolve override. curl's --connect-to
+// format is HOST1:PORT1:HOST2:PORT2 and requires an IPv6 literal in HOST2 to be bracketed, so an
+// unbracketed IPv6 address is normalized to "[addr]" here. PORT2 reuses the original port (the
+// override only redirects the connection address; SNI/Host/cert verification keep the original
+// host). Returns "" when the entry is malformed (missing either of the two required colons, or an
+// empty host/port/address field) so the caller can skip it rather than emit a bad CONNECT_TO.
+std::string build_connect_to_entry(const std::string &resolve_entry);
 }
