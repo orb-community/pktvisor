@@ -278,12 +278,25 @@ void HttpClient::request(const HttpRequest &req, ResultCallback on_done)
         curl_easy_setopt(easy, CURLOPT_IPRESOLVE, req.ip_resolve);
     }
     if (!req.resolve.empty()) {
+        // Apply per-target address overrides via CURLOPT_CONNECT_TO, NOT CURLOPT_RESOLVE. RESOLVE
+        // entries (without a leading '+') are inserted PERMANENTLY into the DNS cache of the shared
+        // per-stream multi handle, so a later target for the same host:port that did NOT configure
+        // an override would still be sent to the pinned address — the override would leak across
+        // targets. CONNECT_TO is scoped to this easy handle and never touches the DNS cache.
+        // Each configured entry "host:port:address" becomes CONNECT_TO "host:port:address:port"
+        // (connect-to-port = the original port; SNI/Host/cert verification keep the original host).
         for (const auto &e : req.resolve) {
-            struct curl_slist *appended = curl_slist_append(ctx->resolve_list, e.c_str());
+            std::string connect_to = e;
+            auto c1 = e.find(':');
+            auto c2 = (c1 == std::string::npos) ? std::string::npos : e.find(':', c1 + 1);
+            if (c1 != std::string::npos && c2 != std::string::npos) {
+                connect_to += ":" + e.substr(c1 + 1, c2 - c1 - 1); // append the original port
+            }
+            struct curl_slist *appended = curl_slist_append(ctx->connect_to_list, connect_to.c_str());
             if (!appended) { /* OOM: leave list intact; skip (best-effort) */ break; }
-            ctx->resolve_list = appended;
+            ctx->connect_to_list = appended;
         }
-        if (ctx->resolve_list) curl_easy_setopt(easy, CURLOPT_RESOLVE, ctx->resolve_list);
+        if (ctx->connect_to_list) curl_easy_setopt(easy, CURLOPT_CONNECT_TO, ctx->connect_to_list);
     }
     if (!req.body.empty()) {
         // COPYPOSTFIELDS copies the bytes (curl owns them); size set first => binary-safe.

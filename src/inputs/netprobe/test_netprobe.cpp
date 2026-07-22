@@ -1984,6 +1984,52 @@ TEST_CASE("NetProbe HTTP e2e v3: per-target resolve pins a bogus host to the tes
     CHECK(j["targets"]["t"]["successes"].get<int>() >= 1);
 }
 
+TEST_CASE("NetProbe HTTP e2e v3: a per-target resolve override does not leak to another target", "[netprobe][http][e2e]")
+{
+    // Two targets for the SAME host:port on one stream (shared curl_multi). "pinned" overrides
+    // bogus.invalid -> 127.0.0.1 (the test server); "unpinned" has NO override and must NOT be
+    // silently sent to the pinned address. With CONNECT_TO (per-handle, no shared DNS cache) the
+    // unpinned target does real DNS for bogus.invalid and fails — proving the override is scoped.
+    httplib::Server svr;
+    svr.Get("/ok", [](const httplib::Request &, httplib::Response &res) { res.set_content("ok", "text/plain"); });
+    int port = svr.bind_to_any_port("127.0.0.1");
+    REQUIRE(port > 0);
+    std::thread th([&svr] { svr.listen_after_bind(); });
+    ServerGuard guard{svr, th};
+    svr.wait_until_ready();
+    std::string ps = std::to_string(port);
+
+    NetProbeInputStream stream{"v3-resolve-leak"};
+    stream.config_set("test_type", "http");
+    stream.config_set<uint64_t>("interval_msec", 200);
+    stream.config_set<uint64_t>("timeout_msec", 150);
+    auto targets = std::make_shared<visor::Configurable>();
+    auto pinned = std::make_shared<visor::Configurable>();
+    pinned->config_set("target", std::string("http://bogus.invalid:" + ps + "/ok"));
+    pinned->config_set<visor::Configurable::StringList>("resolve", {"bogus.invalid:" + ps + ":127.0.0.1"});
+    targets->config_set<std::shared_ptr<visor::Configurable>>("pinned", pinned);
+    auto unpinned = std::make_shared<visor::Configurable>();
+    unpinned->config_set("target", std::string("http://bogus.invalid:" + ps + "/ok")); // same host:port, NO resolve
+    targets->config_set<std::shared_ptr<visor::Configurable>>("unpinned", unpinned);
+    stream.config_set<std::shared_ptr<visor::Configurable>>("targets", targets);
+
+    visor::Config c;
+    c.config_set<uint64_t>("num_periods", 1);
+    auto *proxy = stream.add_event_proxy(c);
+    NetProbeStreamHandler handler{"v3-resolve-leak", proxy, &c};
+    handler.start();
+    stream.start();
+    std::this_thread::sleep_for(750ms);
+    stream.stop();
+    handler.stop();
+    json j;
+    handler.metrics()->bucket(0)->to_json(j);
+    REQUIRE(j["targets"].contains("pinned"));
+    REQUIRE(j["targets"].contains("unpinned"));
+    CHECK(j["targets"]["pinned"]["successes"].get<int>() >= 1);
+    CHECK(j["targets"]["unpinned"]["successes"].get<int>() == 0); // override must NOT have leaked
+}
+
 TEST_CASE("NetProbe HTTP e2e v2: custom headers are not forwarded across redirects", "[netprobe][http][e2e]")
 {
     // Server A redirects to server B; B records whether it ever received the secret header. With a

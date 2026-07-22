@@ -31,7 +31,7 @@ struct HttpRequest {
     std::string user_agent;             // CURLOPT_USERAGENT (empty => curl default)
     bool collect_headers{false};        // when true, capture the FINAL response's headers into HttpResult.headers
     long ip_resolve{0};                 // CURLOPT_IPRESOLVE (0 => curl default/whatever; e.g. CURL_IPRESOLVE_V4/V6)
-    std::vector<std::string> resolve;   // CURLOPT_RESOLVE entries, each "host:port:address"
+    std::vector<std::string> resolve;   // per-target address overrides, each "host:port:address"; applied via CURLOPT_CONNECT_TO (per-handle, no shared DNS-cache leak)
 };
 struct HttpResult {
     bool transport_ok{false};

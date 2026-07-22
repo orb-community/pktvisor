@@ -52,11 +52,11 @@ private:
         bool collect_headers{false};
         std::vector<std::pair<std::string, std::string>> resp_headers;
         size_t resp_headers_bytes{0};
-        curl_slist *resolve_list{nullptr}; // owned; freed in dtor after curl_easy_cleanup
+        curl_slist *connect_to_list{nullptr}; // owned; freed in dtor after curl_easy_cleanup
         ~EasyContext()
         {
             if (headers) curl_slist_free_all(headers);
-            if (resolve_list) curl_slist_free_all(resolve_list);
+            if (connect_to_list) curl_slist_free_all(connect_to_list);
         }
     };
     // per-socket context: a uvw poll handle curl watches (owned in _sockets below)
