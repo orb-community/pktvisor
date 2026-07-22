@@ -113,6 +113,12 @@ TEST_CASE("HeaderMatchers", "[http][check]")
     CHECK_FALSE(HeaderMatchers::compile({}, {{"X-Missing", ".+"}}).matches(hdrs));
     CHECK_FALSE(HeaderMatchers::compile({}, {}).configured());
     CHECK_THROWS_AS(HeaderMatchers::compile({{"X", "(bad"}}, {}), std::invalid_argument);
+    // has_forbidden_rules(): true only when a fail_if_matches rule exists (drives the probe's
+    // truncation fail-safe — a required-only config must not fail-safe on truncation).
+    CHECK(HeaderMatchers::compile({{"X-Debug", ".+"}}, {}).has_forbidden_rules());
+    CHECK(HeaderMatchers::compile({{"X-Debug", ".+"}}, {{"X-Ok", "1"}}).has_forbidden_rules());
+    CHECK_FALSE(HeaderMatchers::compile({}, {{"X-Ok", "1"}}).has_forbidden_rules());
+    CHECK_FALSE(HeaderMatchers::compile({}, {}).has_forbidden_rules());
 }
 
 TEST_CASE("parse_http_date + http_version_name", "[http][check]")

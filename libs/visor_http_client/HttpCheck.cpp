@@ -212,6 +212,11 @@ bool HeaderMatchers::configured() const
     return _configured;
 }
 
+bool HeaderMatchers::has_forbidden_rules() const
+{
+    return !_fail_if_matches.empty();
+}
+
 bool HeaderMatchers::matches(const std::vector<std::pair<std::string, std::string>> &headers) const
 {
     for (const auto &hm : _fail_if_matches) {

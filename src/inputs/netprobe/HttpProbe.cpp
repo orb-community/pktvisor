@@ -121,13 +121,16 @@ bool HttpProbe::start(std::shared_ptr<uvw::loop> io_loop)
                         checked = true;
                         if (!opts.header_matchers.matches(r.headers)) {
                             pass = false;
-                        } else if (r.headers_truncated) {
-                            // Some response headers were dropped at the capture cap, so a "pass" can't
-                            // be trusted (a forbidden header could be among the dropped ones). Fail
-                            // conservatively rather than silently succeed.
+                        } else if (r.headers_truncated && opts.header_matchers.has_forbidden_rules()) {
+                            // Headers were dropped at the capture cap. A forbidden-header (fail_if_
+                            // header_matches) PASS only means "no forbidden header was SEEN" — one
+                            // could be among the dropped headers — so it can't be trusted; fail
+                            // conservatively. A required-header (fail_if_header_not_matches) PASS is a
+                            // positive presence proof that dropped headers cannot invalidate, so it is
+                            // NOT failed here (guarded by has_forbidden_rules()).
                             pass = false;
                             if (auto logger = spdlog::get("visor")) {
-                                logger->warn("netprobe http[{}]: response headers exceeded the capture limit; header assertion failed conservatively", name);
+                                logger->warn("netprobe http[{}]: response headers exceeded the capture limit; fail_if_header_matches assertion failed conservatively", name);
                             }
                         }
                     }

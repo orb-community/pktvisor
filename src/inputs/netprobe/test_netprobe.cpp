@@ -1885,6 +1885,75 @@ TEST_CASE("NetProbe HTTP e2e v3: header matcher fails conservatively when header
     CHECK(tgt["content_failures"].get<int>() >= 1);
 }
 
+TEST_CASE("NetProbe HTTP e2e v3: required-header check passes despite header truncation", "[netprobe][http][e2e]")
+{
+    // A fail_if_header_not_matches (required-header) PASS is a positive presence proof: the required
+    // header was FOUND in the captured headers. Dropping headers past the 64 KiB cap cannot un-find
+    // it, so truncation must NOT fail this check.
+    //
+    // Robust, order-independent construction (httplib stores headers in an unordered_multimap, so
+    // iteration order is NOT alphabetical): three ~40 KiB pad headers guarantee truncation, and
+    // because any TWO of them already exceed the 64 KiB cap, at most ONE pad is ever admitted before
+    // capture stops growing — so the tiny "A-Required" line always fits with a ~24 KiB margin no
+    // matter where it lands in the header order.
+    httplib::Server svr;
+    svr.Get("/many", [](const httplib::Request &, httplib::Response &res) {
+        res.set_header("A-Required", "yes");
+        for (int i = 0; i < 3; ++i) {
+            res.set_header("X-Pad-" + std::to_string(i), std::string(40000, 'y'));
+        }
+        res.set_content("ok", "text/plain");
+    });
+    int port = svr.bind_to_any_port("127.0.0.1");
+    REQUIRE(port > 0);
+    std::thread th([&svr] { svr.listen_after_bind(); });
+    ServerGuard guard{svr, th};
+    svr.wait_until_ready();
+    std::string url = "http://127.0.0.1:" + std::to_string(port) + "/many";
+
+    auto tgt = run_v3_http_probe("v3-hdr-req-trunc", url, [](NetProbeInputStream &s) {
+        auto m = std::make_shared<visor::Configurable>();
+        m->config_set("A-Required", std::string("yes")); // present & matched pre-cap => real PASS
+        s.config_set<std::shared_ptr<visor::Configurable>>("fail_if_header_not_matches", m);
+    });
+    CHECK(tgt["successes"].get<int>() >= 1);
+    CHECK(tgt["content_failures"].get<int>() == 0);
+}
+
+TEST_CASE("NetProbe HTTP e2e v3: truncation still fails when forbidden rules coexist with required", "[netprobe][http][e2e]")
+{
+    // When BOTH a required (fail_if_header_not_matches, satisfied) and a forbidden
+    // (fail_if_header_matches, not seen) rule are configured, truncation must still fail: a forbidden
+    // header could be hiding in the dropped tail. has_forbidden_rules() keeps the fail-safe on here.
+    // Same order-independent construction as the required-only test (at most one ~40 KiB pad is
+    // admitted, so "A-Required" is always captured while truncation is still triggered).
+    httplib::Server svr;
+    svr.Get("/many", [](const httplib::Request &, httplib::Response &res) {
+        res.set_header("A-Required", "yes");
+        for (int i = 0; i < 3; ++i) {
+            res.set_header("X-Pad-" + std::to_string(i), std::string(40000, 'y'));
+        }
+        res.set_content("ok", "text/plain");
+    });
+    int port = svr.bind_to_any_port("127.0.0.1");
+    REQUIRE(port > 0);
+    std::thread th([&svr] { svr.listen_after_bind(); });
+    ServerGuard guard{svr, th};
+    svr.wait_until_ready();
+    std::string url = "http://127.0.0.1:" + std::to_string(port) + "/many";
+
+    auto tgt = run_v3_http_probe("v3-hdr-both-trunc", url, [](NetProbeInputStream &s) {
+        auto req = std::make_shared<visor::Configurable>();
+        req->config_set("A-Required", std::string("yes"));
+        s.config_set<std::shared_ptr<visor::Configurable>>("fail_if_header_not_matches", req);
+        auto forbid = std::make_shared<visor::Configurable>();
+        forbid->config_set("X-Absent", std::string(".+")); // absent from captured set => matches() PASS
+        s.config_set<std::shared_ptr<visor::Configurable>>("fail_if_header_matches", forbid);
+    });
+    CHECK(tgt["successes"].get<int>() == 0);
+    CHECK(tgt["content_failures"].get<int>() >= 1);
+}
+
 TEST_CASE("NetProbe HTTP e2e v3: valid_http_versions rejects the negotiated version", "[netprobe][http][e2e]")
 {
     httplib::Server svr; // plain httplib serves HTTP/1.1

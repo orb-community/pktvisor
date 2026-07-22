@@ -78,6 +78,11 @@ public:
     static HeaderMatchers compile(const std::vector<std::pair<std::string, std::string>> &fail_if_matches,
                                   const std::vector<std::pair<std::string, std::string>> &fail_if_not_matches);
     bool configured() const;
+    // True when any fail_if_matches (forbidden-header) rule is configured. A forbidden-header PASS is
+    // only "no match seen in the captured headers", so it cannot be trusted when capture truncated;
+    // a required-header (fail_if_not_matches) PASS is a positive presence proof that truncation
+    // cannot invalidate. The probe uses this to decide whether to fail-safe on truncation.
+    bool has_forbidden_rules() const;
     // headers: response headers as (name,value); name compared case-insensitively.
     bool matches(const std::vector<std::pair<std::string, std::string>> &headers) const; // true = PASS
 private:
