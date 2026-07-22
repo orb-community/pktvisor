@@ -44,6 +44,19 @@ Unlike ping/tcp, HTTP targets are specified as full URLs.
 | `tls.verify` | bool | `true` | Whether to verify the target's TLS certificate/hostname. Set `false` only for testing against self-signed endpoints. |
 | `tls.ca_file` | string | *(unset)* | Path to a CA bundle to trust in addition to (or instead of) the system store. Must exist at start time or the stream fails to start. |
 | `tls.cert_file` / `tls.key_file` | string | *(unset)* | Client certificate + private key for mutual TLS (mTLS). Must be set together — setting one without the other is a config error. |
+| `json_path` | string | *(unset)* | RFC 6901 JSON Pointer (e.g. `/data/status`) evaluated against the response body parsed as JSON. With `json_equals`, the value at the pointer must equal it; alone, the pointer must simply resolve. Non-JSON body, unresolved pointer, or value mismatch → `content_failures`. |
+| `json_equals` | string | *(unset)* | Expected value at `json_path`, compared as a string (numbers/bools compared against their compact JSON text, so `"200"` matches `200`). Requires `json_path`. |
+| `not_contains` | string | *(unset)* | The response body must **not** contain this substring (inverse of `expected_body`). A hit → `content_failures`. |
+| `body_not_matches_regex` | string | *(unset)* | The response body must **not** match this ECMAScript regex (inverse of `expected_body_regex`). A match → `content_failures`. |
+| `min_response_size_bytes` / `max_response_size_bytes` | uint64 | *(unset)* | Bound the response body size (true downloaded size, exact even if the captured body was truncated). Out of bounds → `content_failures`. If both set, `min ≤ max`. |
+| `fail_if_header_matches` | map | *(unset)* | Map of `header-name: value_regex`. Fail (`content_failures`) if a response header with that name (case-insensitive) has a value matching the regex. |
+| `fail_if_header_not_matches` | map | *(unset)* | Map of `header-name: value_regex`. Fail unless some response header with that name matches the regex (i.e. requires the match). |
+| `max_last_modified_diff_secs` | uint64 | *(unset)* | Fail if the response `Last-Modified` is older than this many seconds, or is absent/unparseable. |
+| `valid_http_versions` | list of strings | *(unset)* | Allowed negotiated HTTP versions (`"1.0"`, `"1.1"`, `"2"`, `"3"`). A negotiated version outside the set → `content_failures`. |
+| `targets.<name>.ip_version` | uint64 (4 or 6) | *(unset)* | Force IPv4 or IPv6 resolution for that target (`CURLOPT_IPRESOLVE`). Per-target, same key ping/tcp already accept. |
+| `targets.<name>.resolve` | list of strings | *(unset)* | Per-target `host:port:address` overrides (`CURLOPT_RESOLVE`) — pin resolution / override the connect address without changing the `Host`. |
+
+All of `json_path`/`json_equals`/`not_contains`/`body_not_matches_regex`/`min|max_response_size_bytes`/`fail_if_header_matches`/`fail_if_header_not_matches`/`max_last_modified_diff_secs`/`valid_http_versions` are **response assertions**: they run only after the status check passes, are ANDed together, and a failure of any is counted as `content_failures` (never `successes`, never `http_status_failures`). Body-reading assertions (`expected_body`/`expected_body_regex`/`not_contains`/`body_not_matches_regex`/`json_path`) are **skipped** (with a warning) when the response body exceeded `body_check_max_bytes`; size/header/version assertions are unaffected. Assertion string values (`not_contains`, `body_not_matches_regex`, `json_equals`, and the header `value_regex`s) are redacted from `info_json` like other secrets.
 
 #### Success semantics
 

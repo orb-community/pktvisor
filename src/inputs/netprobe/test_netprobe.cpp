@@ -8,6 +8,7 @@
 #include <catch2/catch_test_visor.hpp>
 #include <algorithm>
 #include <atomic>
+#include <functional>
 #include <httplib.h>
 #include <mutex>
 #include <nlohmann/json.hpp>
@@ -1693,6 +1694,245 @@ TEST_CASE("NetProbe HTTP e2e v3: truncated body still lets a size assertion fail
     // Size assertion ran despite the truncated body and failed => content_failures, NOT a false success.
     CHECK(tgt["successes"].get<int>() == 0);
     CHECK(tgt["content_failures"].get<int>() >= 1);
+}
+
+// Helper: run one http probe stream against `url` with `configure(stream)` applied, for ~750ms,
+// and return the target's metrics JSON node (target key "t").
+static json run_v3_http_probe(const std::string &name, const std::string &url,
+    const std::function<void(NetProbeInputStream &)> &configure)
+{
+    NetProbeInputStream stream{name};
+    stream.config_set("test_type", "http");
+    stream.config_set<uint64_t>("interval_msec", 200);
+    stream.config_set<uint64_t>("timeout_msec", 150);
+    configure(stream);
+    auto targets = std::make_shared<visor::Configurable>();
+    auto target = std::make_shared<visor::Configurable>();
+    target->config_set("target", url);
+    targets->config_set<std::shared_ptr<visor::Configurable>>("t", target);
+    stream.config_set<std::shared_ptr<visor::Configurable>>("targets", targets);
+
+    visor::Config c;
+    c.config_set<uint64_t>("num_periods", 1);
+    auto *proxy = stream.add_event_proxy(c);
+    NetProbeStreamHandler handler{name, proxy, &c};
+    handler.start();
+    stream.start();
+    std::this_thread::sleep_for(750ms);
+    stream.stop();
+    handler.stop();
+    json j;
+    handler.metrics()->bucket(0)->to_json(j);
+    return j["targets"].contains("t") ? j["targets"]["t"] : json::object();
+}
+
+TEST_CASE("NetProbe HTTP e2e v3: json_path pass and fail", "[netprobe][http][e2e]")
+{
+    httplib::Server svr;
+    svr.Get("/j", [](const httplib::Request &, httplib::Response &res) {
+        res.set_content(R"({"data":{"status":"ok"}})", "application/json");
+    });
+    int port = svr.bind_to_any_port("127.0.0.1");
+    REQUIRE(port > 0);
+    std::thread th([&svr] { svr.listen_after_bind(); });
+    ServerGuard guard{svr, th};
+    svr.wait_until_ready();
+    std::string url = "http://127.0.0.1:" + std::to_string(port) + "/j";
+
+    auto pass = run_v3_http_probe("v3-json-pass", url, [](NetProbeInputStream &s) {
+        s.config_set("json_path", std::string("/data/status"));
+        s.config_set("json_equals", std::string("ok"));
+    });
+    CHECK(pass["successes"].get<int>() >= 1);
+    CHECK(pass["content_failures"].get<int>() == 0);
+
+    auto fail = run_v3_http_probe("v3-json-fail", url, [](NetProbeInputStream &s) {
+        s.config_set("json_path", std::string("/data/status"));
+        s.config_set("json_equals", std::string("down"));
+    });
+    CHECK(fail["successes"].get<int>() == 0);
+    CHECK(fail["content_failures"].get<int>() >= 1);
+}
+
+TEST_CASE("NetProbe HTTP e2e v3: not_contains fail", "[netprobe][http][e2e]")
+{
+    httplib::Server svr;
+    svr.Get("/b", [](const httplib::Request &, httplib::Response &res) {
+        res.set_content("python traceback (most recent call last)", "text/plain");
+    });
+    int port = svr.bind_to_any_port("127.0.0.1");
+    REQUIRE(port > 0);
+    std::thread th([&svr] { svr.listen_after_bind(); });
+    ServerGuard guard{svr, th};
+    svr.wait_until_ready();
+    auto tgt = run_v3_http_probe("v3-not-contains", "http://127.0.0.1:" + std::to_string(port) + "/b",
+        [](NetProbeInputStream &s) { s.config_set("not_contains", std::string("traceback")); });
+    CHECK(tgt["successes"].get<int>() == 0);
+    CHECK(tgt["content_failures"].get<int>() >= 1);
+}
+
+TEST_CASE("NetProbe HTTP e2e v3: size bound fail", "[netprobe][http][e2e]")
+{
+    httplib::Server svr;
+    svr.Get("/s", [](const httplib::Request &, httplib::Response &res) {
+        res.set_content("tiny", "text/plain");
+    });
+    int port = svr.bind_to_any_port("127.0.0.1");
+    REQUIRE(port > 0);
+    std::thread th([&svr] { svr.listen_after_bind(); });
+    ServerGuard guard{svr, th};
+    svr.wait_until_ready();
+    auto tgt = run_v3_http_probe("v3-size", "http://127.0.0.1:" + std::to_string(port) + "/s",
+        [](NetProbeInputStream &s) { s.config_set<uint64_t>("min_response_size_bytes", 100000); });
+    CHECK(tgt["successes"].get<int>() == 0);
+    CHECK(tgt["content_failures"].get<int>() >= 1);
+}
+
+TEST_CASE("NetProbe HTTP e2e v3: header matchers", "[netprobe][http][e2e]")
+{
+    httplib::Server svr;
+    svr.Get("/h", [](const httplib::Request &, httplib::Response &res) {
+        res.set_header("X-Debug", "1");
+        res.set_content("{}", "application/json");
+    });
+    int port = svr.bind_to_any_port("127.0.0.1");
+    REQUIRE(port > 0);
+    std::thread th([&svr] { svr.listen_after_bind(); });
+    ServerGuard guard{svr, th};
+    svr.wait_until_ready();
+    std::string url = "http://127.0.0.1:" + std::to_string(port) + "/h";
+
+    // fail_if_header_matches: X-Debug present with any value => content failure
+    auto fm = run_v3_http_probe("v3-hdr-fail", url, [](NetProbeInputStream &s) {
+        auto m = std::make_shared<visor::Configurable>();
+        m->config_set("X-Debug", std::string(".+"));
+        s.config_set<std::shared_ptr<visor::Configurable>>("fail_if_header_matches", m);
+    });
+    CHECK(fm["successes"].get<int>() == 0);
+    CHECK(fm["content_failures"].get<int>() >= 1);
+
+    // fail_if_header_not_matches: Content-Type must match application/json (it does) => success
+    auto fnm = run_v3_http_probe("v3-hdr-pass", url, [](NetProbeInputStream &s) {
+        auto m = std::make_shared<visor::Configurable>();
+        m->config_set("Content-Type", std::string("application/json"));
+        s.config_set<std::shared_ptr<visor::Configurable>>("fail_if_header_not_matches", m);
+    });
+    CHECK(fnm["successes"].get<int>() >= 1);
+    CHECK(fnm["content_failures"].get<int>() == 0);
+}
+
+TEST_CASE("NetProbe HTTP e2e v3: valid_http_versions rejects the negotiated version", "[netprobe][http][e2e]")
+{
+    httplib::Server svr; // plain httplib serves HTTP/1.1
+    svr.Get("/v", [](const httplib::Request &, httplib::Response &res) {
+        res.set_content("ok", "text/plain");
+    });
+    int port = svr.bind_to_any_port("127.0.0.1");
+    REQUIRE(port > 0);
+    std::thread th([&svr] { svr.listen_after_bind(); });
+    ServerGuard guard{svr, th};
+    svr.wait_until_ready();
+    auto tgt = run_v3_http_probe("v3-httpver", "http://127.0.0.1:" + std::to_string(port) + "/v",
+        [](NetProbeInputStream &s) { s.config_set<visor::Configurable::StringList>("valid_http_versions", {"2"}); });
+    // Negotiated 1.1 is not in {"2"} => content failure.
+    CHECK(tgt["successes"].get<int>() == 0);
+    CHECK(tgt["content_failures"].get<int>() >= 1);
+}
+
+TEST_CASE("NetProbe HTTP e2e v3: header assertion sees only the FINAL response across a redirect", "[netprobe][http][e2e]")
+{
+    // Server A (301) carries X-Debug that WOULD trip fail_if_header_matches; server B (200) does not.
+    // No request body/custom request headers => redirects are followed. The per-response capture
+    // reset must keep only B's headers, so content_failures stays 0.
+    httplib::Server svr_b;
+    svr_b.Get("/final", [](const httplib::Request &, httplib::Response &res) {
+        res.set_content("ok", "text/plain"); // no X-Debug on the final response
+    });
+    int port_b = svr_b.bind_to_any_port("127.0.0.1");
+    REQUIRE(port_b > 0);
+    std::thread tb([&svr_b] { svr_b.listen_after_bind(); });
+    ServerGuard gb{svr_b, tb};
+    svr_b.wait_until_ready();
+
+    httplib::Server svr_a;
+    std::string loc = "http://127.0.0.1:" + std::to_string(port_b) + "/final";
+    svr_a.Get("/redirect", [&](const httplib::Request &, httplib::Response &res) {
+        res.status = 301;
+        res.set_header("X-Debug", "intermediate"); // only on the intermediate response
+        res.set_header("Location", loc);
+    });
+    int port_a = svr_a.bind_to_any_port("127.0.0.1");
+    REQUIRE(port_a > 0);
+    std::thread ta([&svr_a] { svr_a.listen_after_bind(); });
+    ServerGuard ga{svr_a, ta};
+    svr_a.wait_until_ready();
+
+    auto tgt = run_v3_http_probe("v3-redirect-hdr", "http://127.0.0.1:" + std::to_string(port_a) + "/redirect",
+        [](NetProbeInputStream &s) {
+            auto m = std::make_shared<visor::Configurable>();
+            m->config_set("X-Debug", std::string(".+"));
+            s.config_set<std::shared_ptr<visor::Configurable>>("fail_if_header_matches", m);
+        });
+    // X-Debug lived only on the 301; the final 200 is clean => no content failure.
+    CHECK(tgt["successes"].get<int>() >= 1);
+    CHECK(tgt["content_failures"].get<int>() == 0);
+}
+
+TEST_CASE("NetProbe HTTP e2e v3: stale Last-Modified fails max_last_modified_diff_secs", "[netprobe][http][e2e]")
+{
+    httplib::Server svr;
+    svr.Get("/lm", [](const httplib::Request &, httplib::Response &res) {
+        res.set_header("Last-Modified", "Wed, 21 Oct 2015 07:28:00 GMT"); // ancient => older than the diff
+        res.set_content("ok", "text/plain");
+    });
+    int port = svr.bind_to_any_port("127.0.0.1");
+    REQUIRE(port > 0);
+    std::thread th([&svr] { svr.listen_after_bind(); });
+    ServerGuard guard{svr, th};
+    svr.wait_until_ready();
+    auto tgt = run_v3_http_probe("v3-lastmod", "http://127.0.0.1:" + std::to_string(port) + "/lm",
+        [](NetProbeInputStream &s) { s.config_set<uint64_t>("max_last_modified_diff_secs", 3600); });
+    CHECK(tgt["successes"].get<int>() == 0);
+    CHECK(tgt["content_failures"].get<int>() >= 1);
+}
+
+TEST_CASE("NetProbe HTTP e2e v3: per-target resolve pins a bogus host to the test server", "[netprobe][http][e2e]")
+{
+    // Proves CURLOPT_RESOLVE is applied: the target host "bogus.invalid" would never resolve via DNS,
+    // so a recorded success can only happen if the resolve override mapped it to 127.0.0.1.
+    httplib::Server svr;
+    svr.Get("/ok", [](const httplib::Request &, httplib::Response &res) { res.set_content("ok", "text/plain"); });
+    int port = svr.bind_to_any_port("127.0.0.1");
+    REQUIRE(port > 0);
+    std::thread th([&svr] { svr.listen_after_bind(); });
+    ServerGuard guard{svr, th};
+    svr.wait_until_ready();
+
+    NetProbeInputStream stream{"v3-resolve"};
+    stream.config_set("test_type", "http");
+    stream.config_set<uint64_t>("interval_msec", 200);
+    stream.config_set<uint64_t>("timeout_msec", 150);
+    auto targets = std::make_shared<visor::Configurable>();
+    auto target = std::make_shared<visor::Configurable>();
+    target->config_set("target", std::string("http://bogus.invalid:" + std::to_string(port) + "/ok"));
+    target->config_set<visor::Configurable::StringList>("resolve",
+        {"bogus.invalid:" + std::to_string(port) + ":127.0.0.1"});
+    targets->config_set<std::shared_ptr<visor::Configurable>>("t", target);
+    stream.config_set<std::shared_ptr<visor::Configurable>>("targets", targets);
+
+    visor::Config c;
+    c.config_set<uint64_t>("num_periods", 1);
+    auto *proxy = stream.add_event_proxy(c);
+    NetProbeStreamHandler handler{"v3-resolve", proxy, &c};
+    handler.start();
+    stream.start();
+    std::this_thread::sleep_for(750ms);
+    stream.stop();
+    handler.stop();
+    json j;
+    handler.metrics()->bucket(0)->to_json(j);
+    REQUIRE(j["targets"].contains("t"));
+    CHECK(j["targets"]["t"]["successes"].get<int>() >= 1);
 }
 
 TEST_CASE("NetProbe HTTP e2e v2: custom headers are not forwarded across redirects", "[netprobe][http][e2e]")

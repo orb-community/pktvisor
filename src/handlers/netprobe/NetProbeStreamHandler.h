@@ -79,7 +79,7 @@ struct Target {
         , dns_failures(NET_PROBE_SCHEMA, {"dns_lookup_failures"}, "Total Net Probe failures when performing a DNS lookup")
         , timed_out(NET_PROBE_SCHEMA, {"packets_timeout"}, "Total Net Probe timeout transactions")
         , http_status_failures(NET_PROBE_SCHEMA, {"http_status_failures"}, "Total HTTP/DoH responses whose HTTP status failed the configured status checks (default: any status outside 2xx/3xx)")
-        , content_failures(NET_PROBE_SCHEMA, {"content_failures"}, "Total HTTP responses whose status passed but response-body checks failed")
+        , content_failures(NET_PROBE_SCHEMA, {"content_failures"}, "Total HTTP responses whose status passed but a response assertion (body/json/size/header/version) failed")
         , top_status_codes(NET_PROBE_SCHEMA, "status_code", {"top_status_codes"}, "Top HTTP status codes")
         , dns_response_failures(NET_PROBE_SCHEMA, {"dns_response_failures"}, "Total DoH responses with a success HTTP status (2xx/3xx) but a non-NOERROR or unparseable DNS response")
         , top_rcodes(NET_PROBE_SCHEMA, "rcode", {"top_rcodes"}, "Top DNS response codes observed")
