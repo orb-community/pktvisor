@@ -81,6 +81,25 @@ std::optional<std::string> validate_http_url(const std::string &url)
     return std::nullopt;
 }
 
+std::string build_connect_to_entry(const std::string &resolve_entry)
+{
+    // Parse "host:port:address" (address may itself contain ':' when IPv6, so the address is
+    // everything after the SECOND colon — the two leading colons delimit host and port).
+    auto c1 = resolve_entry.find(':');
+    auto c2 = (c1 == std::string::npos) ? std::string::npos : resolve_entry.find(':', c1 + 1);
+    if (c1 == std::string::npos || c2 == std::string::npos || c1 == 0 || c2 == c1 + 1 || c2 + 1 >= resolve_entry.size()) {
+        return {}; // malformed: missing a colon or an empty host/port/address field
+    }
+    std::string host = resolve_entry.substr(0, c1);
+    std::string port = resolve_entry.substr(c1 + 1, c2 - c1 - 1);
+    std::string address = resolve_entry.substr(c2 + 1);
+    // curl's --connect-to HOST2 needs an IPv6 literal bracketed; bracket it if the operator didn't.
+    if (address.front() != '[' && address.find(':') != std::string::npos) {
+        address = "[" + address + "]";
+    }
+    return host + ":" + port + ":" + address + ":" + port;
+}
+
 HttpClient::HttpClient(std::shared_ptr<uvw::loop> loop)
     : _loop(std::move(loop))
 {
@@ -174,6 +193,51 @@ size_t HttpClient::write_capture(char *ptr, size_t size, size_t nmemb, void *use
     return n; // always consume so curl doesn't abort the transfer
 }
 
+size_t HttpClient::header_capture(char *buffer, size_t size, size_t nitems, void *userdata)
+{
+    size_t n = size * nitems;
+    auto *ctx = static_cast<EasyContext *>(userdata);
+    if (ctx && ctx->collect_headers) {
+        constexpr size_t kMaxHeaderBytes = 64 * 1024; // byte cap only (DoS guard); no header-count cap
+        std::string line(buffer, n);
+        // curl fires this callback for EVERY response in the transfer (each redirect hop, and any
+        // proxy CONNECT response). A new response begins with a status line "HTTP/..." (no colon).
+        // Reset so only the FINAL response's headers survive — header/Last-Modified assertions must
+        // evaluate the final response, matching blackbox/cloudprober semantics.
+        if (line.rfind("HTTP/", 0) == 0) {
+            // Reset ALL per-response capture state (including the truncation flag) so a redirect hop
+            // with oversized headers does not fail the assertion on a small FINAL response.
+            ctx->resp_headers.clear();
+            ctx->resp_headers_bytes = 0;
+            ctx->headers_truncated = false;
+            return n;
+        }
+        auto colon = line.find(':');
+        if (colon != std::string::npos) {
+            if (ctx->resp_headers_bytes + n > kMaxHeaderBytes) {
+                // Dropping a header line: header-based assertions can no longer be fully verified.
+                // Flag it so the caller fails conservatively rather than matching a partial set.
+                ctx->headers_truncated = true;
+            } else {
+                std::string name = line.substr(0, colon);
+                std::string value = line.substr(colon + 1);
+                auto trim = [](std::string &s) {
+                    size_t b = s.find_first_not_of(" \t\r\n");
+                    size_t e = s.find_last_not_of(" \t\r\n");
+                    s = (b == std::string::npos) ? std::string() : s.substr(b, e - b + 1);
+                };
+                trim(name);
+                trim(value);
+                if (!name.empty()) {
+                    ctx->resp_headers.emplace_back(std::move(name), std::move(value));
+                    ctx->resp_headers_bytes += n;
+                }
+            }
+        }
+    }
+    return n; // always consume
+}
+
 void HttpClient::request(const HttpRequest &req, ResultCallback on_done)
 {
     if (_closed || !_multi) {
@@ -217,6 +281,15 @@ void HttpClient::request(const HttpRequest &req, ResultCallback on_done)
     if (!req.proxy.empty()) {
         curl_easy_setopt(easy, CURLOPT_PROXY, req.proxy.c_str());
         ctx->proxy = req.proxy; // retained only to redact it (and any embedded credentials) from error_msg
+    } else {
+        // No proxy configured: explicitly disable libcurl's ambient environment proxies
+        // (http_proxy/https_proxy/all_proxy). Setting CURLOPT_PROXY to "" disables proxy use even
+        // when such an env var is set. A netprobe measures the DIRECT path to the target (or the
+        // explicitly-configured proxy); honoring an ambient proxy would make results depend on the
+        // deployment/CI environment and would defeat the per-target resolve/CONNECT_TO pin (an env
+        // proxy + CONNECT_TO switches curl to tunnel mode, asking the proxy to reach the pinned
+        // address instead of connecting locally).
+        curl_easy_setopt(easy, CURLOPT_PROXY, "");
     }
     if (!req.ca_file.empty()) {
         curl_easy_setopt(easy, CURLOPT_CAINFO, req.ca_file.c_str());
@@ -229,6 +302,35 @@ void HttpClient::request(const HttpRequest &req, ResultCallback on_done)
     }
     if (req.collect_cert_info) {
         curl_easy_setopt(easy, CURLOPT_CERTINFO, 1L);
+    }
+    ctx->collect_headers = req.collect_headers;
+    if (req.collect_headers) {
+        curl_easy_setopt(easy, CURLOPT_HEADERFUNCTION, &HttpClient::header_capture);
+        curl_easy_setopt(easy, CURLOPT_HEADERDATA, ctx.get());
+        curl_easy_setopt(easy, CURLOPT_SUPPRESS_CONNECT_HEADERS, 1L); // don't feed proxy CONNECT headers to the callback
+    }
+    if (req.ip_resolve) {
+        curl_easy_setopt(easy, CURLOPT_IPRESOLVE, req.ip_resolve);
+    }
+    if (!req.resolve.empty()) {
+        // Apply per-target address overrides via CURLOPT_CONNECT_TO, NOT CURLOPT_RESOLVE. RESOLVE
+        // entries (without a leading '+') are inserted PERMANENTLY into the DNS cache of the shared
+        // per-stream multi handle, so a later target for the same host:port that did NOT configure
+        // an override would still be sent to the pinned address — the override would leak across
+        // targets. CONNECT_TO is scoped to this easy handle and never touches the DNS cache.
+        // Each configured entry "host:port:address" becomes CONNECT_TO "host:port:address:port"
+        // (connect-to-port = the original port; SNI/Host/cert verification keep the original host).
+        // build_connect_to_entry brackets IPv6 literals and drops malformed entries.
+        for (const auto &e : req.resolve) {
+            std::string connect_to = build_connect_to_entry(e);
+            if (connect_to.empty()) {
+                continue; // malformed (validated upstream in the netprobe input; defensive here)
+            }
+            struct curl_slist *appended = curl_slist_append(ctx->connect_to_list, connect_to.c_str());
+            if (!appended) { /* OOM: leave list intact; skip (best-effort) */ break; }
+            ctx->connect_to_list = appended;
+        }
+        if (ctx->connect_to_list) curl_easy_setopt(easy, CURLOPT_CONNECT_TO, ctx->connect_to_list);
     }
     if (!req.body.empty()) {
         // COPYPOSTFIELDS copies the bytes (curl owns them); size set first => binary-safe.
@@ -438,6 +540,13 @@ void HttpClient::check_multi_info()
             curl_easy_getinfo(easy, CURLINFO_CONTENT_TYPE, &ct); // may be null (no Content-Type)
             if (ct) {
                 result.content_type = ct; // raw header value; consumers compare case-insensitively
+            }
+            long http_ver = 0;
+            curl_easy_getinfo(easy, CURLINFO_HTTP_VERSION, &http_ver);
+            result.http_version = http_ver;
+            if (it != _easy.end() && it->second->collect_headers) {
+                result.headers = std::move(it->second->resp_headers);
+                result.headers_truncated = it->second->headers_truncated;
             }
         } else {
             result.transport_ok = false;

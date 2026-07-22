@@ -8,6 +8,7 @@
 #include <catch2/catch_test_visor.hpp>
 #include <algorithm>
 #include <atomic>
+#include <functional>
 #include <httplib.h>
 #include <mutex>
 #include <nlohmann/json.hpp>
@@ -128,7 +129,7 @@ TEST_CASE("Netprobe invalid config", "[netprobe][config]")
     NetProbeInputStream stream{"net-probe-test"};
     stream.config_set("invalid_config", true);
 
-    CHECK_THROWS_WITH(stream.start(), "invalid_config is an invalid/unsupported config or filter. The valid configs/filters are: test_type, interval_msec, timeout_msec, packets_per_test, packets_interval_msec, packet_payload_size, targets, http_method, qname, qtype, expected_status, failure_status, expected_body, expected_body_regex, body, body_check_max_bytes, proxy, tls");
+    CHECK_THROWS_WITH(stream.start(), "invalid_config is an invalid/unsupported config or filter. The valid configs/filters are: test_type, interval_msec, timeout_msec, packets_per_test, packets_interval_msec, packet_payload_size, targets, http_method, qname, qtype, expected_status, failure_status, expected_body, expected_body_regex, body, body_check_max_bytes, proxy, tls, json_path, json_equals, not_contains, body_not_matches_regex, min_response_size_bytes, max_response_size_bytes, fail_if_header_matches, fail_if_header_not_matches, max_last_modified_diff_secs, valid_http_versions");
 }
 
 TEST_CASE("NetProbe ip_version config", "[netprobe][config][ipv6]")
@@ -163,7 +164,7 @@ TEST_CASE("NetProbe ip_version config", "[netprobe][config][ipv6]")
     SECTION("top-level valid-keys string unchanged") {
         NetProbeInputStream s{"net-probe-test"};
         s.config_set("invalid_config", true);
-        CHECK_THROWS_WITH(s.start(), "invalid_config is an invalid/unsupported config or filter. The valid configs/filters are: test_type, interval_msec, timeout_msec, packets_per_test, packets_interval_msec, packet_payload_size, targets, http_method, qname, qtype, expected_status, failure_status, expected_body, expected_body_regex, body, body_check_max_bytes, proxy, tls");
+        CHECK_THROWS_WITH(s.start(), "invalid_config is an invalid/unsupported config or filter. The valid configs/filters are: test_type, interval_msec, timeout_msec, packets_per_test, packets_interval_msec, packet_payload_size, targets, http_method, qname, qtype, expected_status, failure_status, expected_body, expected_body_regex, body, body_check_max_bytes, proxy, tls, json_path, json_equals, not_contains, body_not_matches_regex, min_response_size_bytes, max_response_size_bytes, fail_if_header_matches, fail_if_header_not_matches, max_last_modified_diff_secs, valid_http_versions");
     }
 }
 
@@ -449,6 +450,244 @@ TEST_CASE("NetProbe v2 config: proxy and tls are not supported for tcp", "[netpr
         s->config_set<std::shared_ptr<visor::Configurable>>("tls", tls);
         CHECK_THROWS_WITH(s->start(), "'tls' is only supported for test_type 'http' or 'doh'");
     }
+}
+
+// ---------------------------------------------------------------------------
+// v3: stream-level response-assertion config — parse + validate.
+// ---------------------------------------------------------------------------
+
+namespace {
+// Shared helper: an http-typed stream with a single valid target, ready for v3 config keys to be
+// layered on top before start() is called.
+std::unique_ptr<NetProbeInputStream> make_v3_http_stream(const std::string &name)
+{
+    auto s = std::make_unique<NetProbeInputStream>(name);
+    s->config_set("test_type", "http");
+    auto targets = std::make_shared<visor::Configurable>();
+    auto target = std::make_shared<visor::Configurable>();
+    target->config_set("target", std::string("https://example.com/"));
+    targets->config_set<std::shared_ptr<visor::Configurable>>("t", target);
+    s->config_set<std::shared_ptr<visor::Configurable>>("targets", targets);
+    return s;
+}
+}
+
+TEST_CASE("NetProbe v3 config: json_path must be a valid JSON Pointer", "[netprobe][config][http]")
+{
+    auto s = make_v3_http_stream("v3-json-path-bad");
+    s->config_set("json_path", std::string("data/status")); // missing leading '/'
+    CHECK_THROWS_WITH(s->start(), Catch::Matchers::ContainsSubstring("json_path is not a valid JSON Pointer"));
+}
+
+TEST_CASE("NetProbe v3 config: json_equals requires json_path", "[netprobe][config][http]")
+{
+    auto s = make_v3_http_stream("v3-json-equals-no-path");
+    s->config_set("json_equals", std::string("ok"));
+    CHECK_THROWS_WITH(s->start(), "netprobe: 'json_equals' requires 'json_path'");
+}
+
+TEST_CASE("NetProbe v3 config: unclosed body_not_matches_regex is rejected without quoting the pattern", "[netprobe][config][http]")
+{
+    auto s = make_v3_http_stream("v3-body-not-matches-bad");
+    s->config_set("body_not_matches_regex", std::string("(unclosed"));
+    CHECK_THROWS_WITH(s->start(),
+        Catch::Matchers::ContainsSubstring("body_not_matches_regex") && !Catch::Matchers::ContainsSubstring("(unclosed"));
+}
+
+TEST_CASE("NetProbe v3 config: fail_if_header_matches with an invalid regex names the header, not the pattern", "[netprobe][config][http]")
+{
+    auto s = make_v3_http_stream("v3-header-matcher-bad");
+    auto matchers = std::make_shared<visor::Configurable>();
+    matchers->config_set("X-Debug", std::string("(bad"));
+    s->config_set<std::shared_ptr<visor::Configurable>>("fail_if_header_matches", matchers);
+    CHECK_THROWS_WITH(s->start(),
+        Catch::Matchers::ContainsSubstring("value_regex") && Catch::Matchers::ContainsSubstring("X-Debug") && !Catch::Matchers::ContainsSubstring("(bad"));
+}
+
+TEST_CASE("NetProbe v3 config: min_response_size_bytes must not exceed max_response_size_bytes", "[netprobe][config][http]")
+{
+    auto s = make_v3_http_stream("v3-size-bounds-bad");
+    s->config_set<uint64_t>("min_response_size_bytes", 100);
+    s->config_set<uint64_t>("max_response_size_bytes", 10);
+    CHECK_THROWS_WITH(s->start(), "netprobe: min_response_size_bytes must not exceed max_response_size_bytes");
+}
+
+TEST_CASE("NetProbe v3 config: valid_http_versions rejects an unsupported entry", "[netprobe][config][http]")
+{
+    auto s = make_v3_http_stream("v3-http-version-bad");
+    s->config_set<visor::Configurable::StringList>("valid_http_versions", {"9"});
+    CHECK_THROWS_WITH(s->start(), "netprobe: invalid valid_http_versions entry '9' (use 1.0, 1.1, 2, or 3)");
+}
+
+TEST_CASE("NetProbe v3 config: json_path is not supported for test_type 'doh'", "[netprobe][config][doh]")
+{
+    auto s = std::make_unique<NetProbeInputStream>("v3-doh-json-path");
+    s->config_set("test_type", "doh");
+    s->config_set("qname", std::string("example.com"));
+    s->config_set("json_path", std::string("/status"));
+    auto targets = std::make_shared<visor::Configurable>();
+    auto target = std::make_shared<visor::Configurable>();
+    target->config_set("target", std::string("https://1.1.1.1/dns-query"));
+    targets->config_set<std::shared_ptr<visor::Configurable>>("t", target);
+    s->config_set<std::shared_ptr<visor::Configurable>>("targets", targets);
+    CHECK_THROWS_WITH(s->start(), "'json_path' is not supported for test_type 'doh'");
+}
+
+TEST_CASE("NetProbe v3 config: json_path/not_contains/size/version all parse successfully together", "[netprobe][config][http]")
+{
+    // Positive case: every v3 key is accepted and parses/validates without throwing. start()
+    // only builds the io loop and schedules probe timers — it does not perform any network I/O
+    // synchronously — so calling stop() immediately after, with no sleep, exercises the
+    // config-parse path only and never actually contacts the (non-existent) https://example.com/
+    // target.
+    auto s = make_v3_http_stream("v3-all-keys-ok");
+    s->config_set("json_path", std::string("/status"));
+    s->config_set("json_equals", std::string("ok"));
+    s->config_set("not_contains", std::string("error"));
+    s->config_set("body_not_matches_regex", std::string("fail-[0-9]+"));
+    s->config_set<uint64_t>("min_response_size_bytes", 10);
+    s->config_set<uint64_t>("max_response_size_bytes", 1000);
+    s->config_set<uint64_t>("max_last_modified_diff_secs", 3600);
+    s->config_set<visor::Configurable::StringList>("valid_http_versions", {"1.1", "2"});
+    auto fm = std::make_shared<visor::Configurable>();
+    fm->config_set("X-Error", std::string("^true$"));
+    s->config_set<std::shared_ptr<visor::Configurable>>("fail_if_header_matches", fm);
+    auto fnm = std::make_shared<visor::Configurable>();
+    fnm->config_set("X-Ok", std::string("^true$"));
+    s->config_set<std::shared_ptr<visor::Configurable>>("fail_if_header_not_matches", fnm);
+
+    CHECK_NOTHROW(s->start());
+    s->stop();
+}
+
+TEST_CASE("NetProbe v3 scrub helper: redacts not_contains/json_equals/body_not_matches_regex/header-matcher secrets", "[netprobe][http][config]")
+{
+    // Mirrors the v2 scrub-helper test: feed a tap-shaped config JSON and prove every v3
+    // secret-bearing value is masked (never quoted/echoed) while non-secret keys survive.
+    json cfg;
+    cfg["not_contains"] = "v3-not-contains-sekrit";
+    cfg["json_equals"] = "v3-json-equals-sekrit";
+    cfg["body_not_matches_regex"] = "v3-regex-sekrit";
+    cfg["json_path"] = "/status"; // not a secret; survives untouched
+    cfg["fail_if_header_matches"]["X-Debug"] = "v3-header-matcher-sekrit";
+    cfg["fail_if_header_not_matches"]["X-Ok"] = "v3-header-not-matcher-sekrit";
+
+    visor::input::netprobe::scrub_netprobe_config_json(cfg);
+
+    auto dumped = cfg.dump();
+    CHECK(dumped.find("v3-not-contains-sekrit") == std::string::npos);
+    CHECK(dumped.find("v3-json-equals-sekrit") == std::string::npos);
+    CHECK(dumped.find("v3-regex-sekrit") == std::string::npos);
+    CHECK(dumped.find("v3-header-matcher-sekrit") == std::string::npos);
+    CHECK(dumped.find("v3-header-not-matcher-sekrit") == std::string::npos);
+    // Names and non-secret values survive.
+    CHECK(dumped.find("X-Debug") != std::string::npos);
+    CHECK(dumped.find("X-Ok") != std::string::npos);
+    CHECK(cfg["json_path"] == "/status");
+    CHECK(cfg["not_contains"] == "<redacted>");
+    CHECK(cfg["json_equals"] == "<redacted>");
+    CHECK(cfg["body_not_matches_regex"] == "<redacted>");
+    CHECK(cfg["fail_if_header_matches"]["X-Debug"] == "<redacted>");
+    CHECK(cfg["fail_if_header_not_matches"]["X-Ok"] == "<redacted>");
+}
+
+TEST_CASE("NetProbe v3 scrub helper: a malformed (non-object) header-matcher value is fully redacted", "[netprobe][http][config]")
+{
+    // The header matchers are normally maps (header-name: value_regex). If a config arrives with
+    // the key set to a scalar or list instead, the value can still carry a secret — redact the
+    // whole key rather than echo the raw value.
+    json cfg;
+    cfg["fail_if_header_matches"] = "v3-scalar-matcher-sekrit";                     // malformed: scalar
+    cfg["fail_if_header_not_matches"] = json::array({"v3-list-matcher-sekrit"});    // malformed: list
+
+    visor::input::netprobe::scrub_netprobe_config_json(cfg);
+
+    auto dumped = cfg.dump();
+    CHECK(dumped.find("v3-scalar-matcher-sekrit") == std::string::npos);
+    CHECK(dumped.find("v3-list-matcher-sekrit") == std::string::npos);
+    CHECK(cfg["fail_if_header_matches"] == "<redacted>");
+    CHECK(cfg["fail_if_header_not_matches"] == "<redacted>");
+}
+
+// ---------------------------------------------------------------------------
+// v3: per-target ip_version/resolve — parse + validate (threaded into probe ctors,
+// evaluated by libcurl itself; not asserted here).
+// ---------------------------------------------------------------------------
+
+TEST_CASE("NetProbe v3 config: per-target resolve entry must be host:port:address", "[netprobe][config][http]")
+{
+    NetProbeInputStream stream{"net-probe-test-resolve-bad"};
+    stream.config_set("test_type", "http");
+    auto targets = std::make_shared<visor::Configurable>();
+    auto target = std::make_shared<visor::Configurable>();
+    target->config_set("target", std::string("https://example.com/"));
+    target->config_set<visor::Configurable::StringList>("resolve", {"bad-no-colons"});
+    targets->config_set<std::shared_ptr<visor::Configurable>>("t", target);
+    stream.config_set<std::shared_ptr<visor::Configurable>>("targets", targets);
+    CHECK_THROWS_WITH(stream.start(), "netprobe: target 't' has an invalid resolve entry 'bad-no-colons' (expected host:port:address)");
+}
+
+TEST_CASE("NetProbe v3 config: per-target ip_version must be 4 or 6", "[netprobe][config][http]")
+{
+    NetProbeInputStream stream{"net-probe-test-ipver-bad"};
+    stream.config_set("test_type", "http");
+    auto targets = std::make_shared<visor::Configurable>();
+    auto target = std::make_shared<visor::Configurable>();
+    target->config_set("target", std::string("https://example.com/"));
+    target->config_set<uint64_t>("ip_version", 5);
+    targets->config_set<std::shared_ptr<visor::Configurable>>("t", target);
+    stream.config_set<std::shared_ptr<visor::Configurable>>("targets", targets);
+    CHECK_THROWS_WITH(stream.start(), "ip_version must be 4 or 6");
+}
+
+TEST_CASE("NetProbe v3 config: per-target ip_version + resolve happy path reaches start", "[netprobe][config][http]")
+{
+    NetProbeInputStream stream{"net-probe-test-ipver-resolve-ok"};
+    stream.config_set("test_type", "http");
+    auto targets = std::make_shared<visor::Configurable>();
+    auto target = std::make_shared<visor::Configurable>();
+    target->config_set("target", std::string("https://example.com/"));
+    target->config_set<uint64_t>("ip_version", 4);
+    target->config_set<visor::Configurable::StringList>("resolve", {"example.com:443:127.0.0.1"});
+    targets->config_set<std::shared_ptr<visor::Configurable>>("t", target);
+    stream.config_set<std::shared_ptr<visor::Configurable>>("targets", targets);
+
+    CHECK_NOTHROW(stream.start());
+    stream.stop();
+}
+
+TEST_CASE("NetProbe v3 config: per-target resolve accepts an (unbracketed) IPv6 address", "[netprobe][config][http]")
+{
+    // The address field may itself contain colons (IPv6). Validation keys off the first two colons
+    // (host, port) and must accept the IPv6 remainder; bracketing for curl happens in the transport.
+    NetProbeInputStream stream{"net-probe-test-resolve-v6"};
+    stream.config_set("test_type", "http");
+    auto targets = std::make_shared<visor::Configurable>();
+    auto target = std::make_shared<visor::Configurable>();
+    target->config_set("target", std::string("https://example.com/"));
+    target->config_set<visor::Configurable::StringList>("resolve", {"example.com:443:2001:db8::1"});
+    targets->config_set<std::shared_ptr<visor::Configurable>>("t", target);
+    stream.config_set<std::shared_ptr<visor::Configurable>>("targets", targets);
+
+    CHECK_NOTHROW(stream.start());
+    stream.stop();
+}
+
+TEST_CASE("NetProbe v3 config: per-target ip_version + resolve also parse for doh targets", "[netprobe][config][doh]")
+{
+    NetProbeInputStream stream{"net-probe-test-doh-ipver-resolve-ok"};
+    stream.config_set("test_type", "doh");
+    stream.config_set("qname", std::string("example.com"));
+    auto targets = std::make_shared<visor::Configurable>();
+    auto target = std::make_shared<visor::Configurable>();
+    target->config_set("target", std::string("https://1.1.1.1/dns-query"));
+    target->config_set<uint64_t>("ip_version", 6);
+    target->config_set<visor::Configurable::StringList>("resolve", {"1.1.1.1:443:127.0.0.1"});
+    targets->config_set<std::shared_ptr<visor::Configurable>>("t", target);
+    stream.config_set<std::shared_ptr<visor::Configurable>>("targets", targets);
+
+    CHECK_NOTHROW(stream.start());
+    stream.stop();
 }
 
 TEST_CASE("ICMPv6 reply carrier survives the fan-out Packet deep-copy", "[netprobe][ipv6]")
@@ -1435,6 +1674,493 @@ TEST_CASE("NetProbe HTTP e2e v2: body match past the capture cap is not a false 
     // Truncated body => body check skipped, classified on status (200) => success, NOT content_failures.
     CHECK(tgt["successes"].get<int>() >= 1);
     CHECK(tgt["content_failures"].get<int>() == 0);
+}
+
+TEST_CASE("NetProbe HTTP e2e v3: truncated body still lets a size assertion fail", "[netprobe][http][e2e]")
+{
+    // The AND-fold's subtle case: a truncated body SKIPS body assertions, but a NON-body assertion
+    // (size, which uses the true downloaded size) must still run and can fail. Body is ~64 KB but
+    // body_check_max_bytes caps capture at 1 KB (so the body assertion is skipped); max_response_size
+    // is far below the true size, so the size check fails => content_failures, not a false success.
+    httplib::Server svr;
+    std::string body(64 * 1024, 'x');
+    svr.Get("/health", [&](const httplib::Request &, httplib::Response &res) {
+        res.set_content(body, "text/plain");
+    });
+    int port = svr.bind_to_any_port("127.0.0.1");
+    REQUIRE(port > 0);
+    std::thread server_thread([&svr] { svr.listen_after_bind(); });
+    ServerGuard guard{svr, server_thread};
+    svr.wait_until_ready();
+
+    std::string url = "http://127.0.0.1:" + std::to_string(port) + "/health";
+    NetProbeInputStream stream{"netprobe-http-e2e-trunc-size"};
+    stream.config_set("test_type", "http");
+    stream.config_set<uint64_t>("interval_msec", 200);
+    stream.config_set<uint64_t>("timeout_msec", 150);
+    stream.config_set("expected_body", std::string("never-present")); // body assertion — will be SKIPPED (truncated)
+    stream.config_set<uint64_t>("body_check_max_bytes", 1024);          // truncate the captured body to 1 KB
+    // max sits BETWEEN the capture cap (1024) and the true size (64 KB): a captured-length comparison
+    // would PASS (1024 <= 2048) but the true size (65536) FAILS — so this pins that the size check
+    // uses r.response_size (true downloaded size), not the truncated captured length.
+    stream.config_set<uint64_t>("max_response_size_bytes", 2048);
+    auto targets = std::make_shared<visor::Configurable>();
+    auto target = std::make_shared<visor::Configurable>();
+    target->config_set("target", url);
+    targets->config_set<std::shared_ptr<visor::Configurable>>("health_target", target);
+    stream.config_set<std::shared_ptr<visor::Configurable>>("targets", targets);
+
+    visor::Config c;
+    c.config_set<uint64_t>("num_periods", 1);
+    auto *proxy = stream.add_event_proxy(c);
+    NetProbeStreamHandler handler{"netprobe-http-e2e-trunc-size", proxy, &c};
+
+    handler.start();
+    stream.start();
+    std::this_thread::sleep_for(750ms);
+    stream.stop();
+    handler.stop();
+
+    json j;
+    handler.metrics()->bucket(0)->to_json(j);
+    REQUIRE(j["targets"].contains("health_target"));
+    auto &tgt = j["targets"]["health_target"];
+    CHECK(tgt["attempts"].get<int>() >= 1);
+    // Size assertion ran despite the truncated body and failed => content_failures, NOT a false success.
+    CHECK(tgt["successes"].get<int>() == 0);
+    CHECK(tgt["content_failures"].get<int>() >= 1);
+}
+
+// Helper: run one http probe stream against `url` with `configure(stream)` applied, for ~750ms,
+// and return the target's metrics JSON node (target key "t").
+static json run_v3_http_probe(const std::string &name, const std::string &url,
+    const std::function<void(NetProbeInputStream &)> &configure)
+{
+    NetProbeInputStream stream{name};
+    stream.config_set("test_type", "http");
+    stream.config_set<uint64_t>("interval_msec", 200);
+    stream.config_set<uint64_t>("timeout_msec", 150);
+    configure(stream);
+    auto targets = std::make_shared<visor::Configurable>();
+    auto target = std::make_shared<visor::Configurable>();
+    target->config_set("target", url);
+    targets->config_set<std::shared_ptr<visor::Configurable>>("t", target);
+    stream.config_set<std::shared_ptr<visor::Configurable>>("targets", targets);
+
+    visor::Config c;
+    c.config_set<uint64_t>("num_periods", 1);
+    auto *proxy = stream.add_event_proxy(c);
+    NetProbeStreamHandler handler{name, proxy, &c};
+    handler.start();
+    stream.start();
+    std::this_thread::sleep_for(750ms);
+    stream.stop();
+    handler.stop();
+    json j;
+    handler.metrics()->bucket(0)->to_json(j);
+    return j["targets"].contains("t") ? j["targets"]["t"] : json::object();
+}
+
+TEST_CASE("NetProbe HTTP e2e v3: json_path pass and fail", "[netprobe][http][e2e]")
+{
+    httplib::Server svr;
+    svr.Get("/j", [](const httplib::Request &, httplib::Response &res) {
+        res.set_content(R"({"data":{"status":"ok"}})", "application/json");
+    });
+    int port = svr.bind_to_any_port("127.0.0.1");
+    REQUIRE(port > 0);
+    std::thread th([&svr] { svr.listen_after_bind(); });
+    ServerGuard guard{svr, th};
+    svr.wait_until_ready();
+    std::string url = "http://127.0.0.1:" + std::to_string(port) + "/j";
+
+    auto pass = run_v3_http_probe("v3-json-pass", url, [](NetProbeInputStream &s) {
+        s.config_set("json_path", std::string("/data/status"));
+        s.config_set("json_equals", std::string("ok"));
+    });
+    CHECK(pass["successes"].get<int>() >= 1);
+    CHECK(pass["content_failures"].get<int>() == 0);
+
+    auto fail = run_v3_http_probe("v3-json-fail", url, [](NetProbeInputStream &s) {
+        s.config_set("json_path", std::string("/data/status"));
+        s.config_set("json_equals", std::string("down"));
+    });
+    CHECK(fail["successes"].get<int>() == 0);
+    CHECK(fail["content_failures"].get<int>() >= 1);
+}
+
+TEST_CASE("NetProbe HTTP e2e v3: not_contains fail", "[netprobe][http][e2e]")
+{
+    httplib::Server svr;
+    svr.Get("/b", [](const httplib::Request &, httplib::Response &res) {
+        res.set_content("python traceback (most recent call last)", "text/plain");
+    });
+    int port = svr.bind_to_any_port("127.0.0.1");
+    REQUIRE(port > 0);
+    std::thread th([&svr] { svr.listen_after_bind(); });
+    ServerGuard guard{svr, th};
+    svr.wait_until_ready();
+    auto tgt = run_v3_http_probe("v3-not-contains", "http://127.0.0.1:" + std::to_string(port) + "/b",
+        [](NetProbeInputStream &s) { s.config_set("not_contains", std::string("traceback")); });
+    CHECK(tgt["successes"].get<int>() == 0);
+    CHECK(tgt["content_failures"].get<int>() >= 1);
+}
+
+TEST_CASE("NetProbe HTTP e2e v3: size bound fail", "[netprobe][http][e2e]")
+{
+    httplib::Server svr;
+    svr.Get("/s", [](const httplib::Request &, httplib::Response &res) {
+        res.set_content("tiny", "text/plain");
+    });
+    int port = svr.bind_to_any_port("127.0.0.1");
+    REQUIRE(port > 0);
+    std::thread th([&svr] { svr.listen_after_bind(); });
+    ServerGuard guard{svr, th};
+    svr.wait_until_ready();
+    auto tgt = run_v3_http_probe("v3-size", "http://127.0.0.1:" + std::to_string(port) + "/s",
+        [](NetProbeInputStream &s) { s.config_set<uint64_t>("min_response_size_bytes", 100000); });
+    CHECK(tgt["successes"].get<int>() == 0);
+    CHECK(tgt["content_failures"].get<int>() >= 1);
+}
+
+TEST_CASE("NetProbe HTTP e2e v3: header matchers", "[netprobe][http][e2e]")
+{
+    httplib::Server svr;
+    svr.Get("/h", [](const httplib::Request &, httplib::Response &res) {
+        res.set_header("X-Debug", "1");
+        res.set_content("{}", "application/json");
+    });
+    int port = svr.bind_to_any_port("127.0.0.1");
+    REQUIRE(port > 0);
+    std::thread th([&svr] { svr.listen_after_bind(); });
+    ServerGuard guard{svr, th};
+    svr.wait_until_ready();
+    std::string url = "http://127.0.0.1:" + std::to_string(port) + "/h";
+
+    // fail_if_header_matches: X-Debug present with any value => content failure
+    auto fm = run_v3_http_probe("v3-hdr-fail", url, [](NetProbeInputStream &s) {
+        auto m = std::make_shared<visor::Configurable>();
+        m->config_set("X-Debug", std::string(".+"));
+        s.config_set<std::shared_ptr<visor::Configurable>>("fail_if_header_matches", m);
+    });
+    CHECK(fm["successes"].get<int>() == 0);
+    CHECK(fm["content_failures"].get<int>() >= 1);
+
+    // fail_if_header_not_matches: Content-Type must match application/json (it does) => success
+    auto fnm = run_v3_http_probe("v3-hdr-pass", url, [](NetProbeInputStream &s) {
+        auto m = std::make_shared<visor::Configurable>();
+        m->config_set("Content-Type", std::string("application/json"));
+        s.config_set<std::shared_ptr<visor::Configurable>>("fail_if_header_not_matches", m);
+    });
+    CHECK(fnm["successes"].get<int>() >= 1);
+    CHECK(fnm["content_failures"].get<int>() == 0);
+}
+
+TEST_CASE("NetProbe HTTP e2e v3: header matcher fails conservatively when header capture truncates", "[netprobe][http][e2e]")
+{
+    // The response carries so many headers that capture stops at the byte cap (headers_truncated).
+    // fail_if_header_matches targets a header that is NOT among the captured ones, so matches()
+    // alone would PASS — but because a forbidden header could be hiding in the dropped tail, the
+    // probe must fail the assertion conservatively.
+    httplib::Server svr;
+    svr.Get("/many", [](const httplib::Request &, httplib::Response &res) {
+        for (int i = 0; i < 1400; ++i) {
+            res.set_header("X-Pad-" + std::to_string(i), std::string(48, 'y'));
+        }
+        res.set_content("ok", "text/plain");
+    });
+    int port = svr.bind_to_any_port("127.0.0.1");
+    REQUIRE(port > 0);
+    std::thread th([&svr] { svr.listen_after_bind(); });
+    ServerGuard guard{svr, th};
+    svr.wait_until_ready();
+    std::string url = "http://127.0.0.1:" + std::to_string(port) + "/many";
+
+    auto tgt = run_v3_http_probe("v3-hdr-trunc", url, [](NetProbeInputStream &s) {
+        auto m = std::make_shared<visor::Configurable>();
+        m->config_set("X-Absent", std::string(".+")); // never present => matches() would pass
+        s.config_set<std::shared_ptr<visor::Configurable>>("fail_if_header_matches", m);
+    });
+    CHECK(tgt["successes"].get<int>() == 0);
+    CHECK(tgt["content_failures"].get<int>() >= 1);
+}
+
+TEST_CASE("NetProbe HTTP e2e v3: required-header check passes despite header truncation", "[netprobe][http][e2e]")
+{
+    // A fail_if_header_not_matches (required-header) PASS is a positive presence proof: the required
+    // header was FOUND in the captured headers. Dropping headers past the 64 KiB cap cannot un-find
+    // it, so truncation must NOT fail this check.
+    //
+    // Robust, order-independent construction (httplib stores headers in an unordered_multimap, so
+    // iteration order is NOT alphabetical): three ~40 KiB pad headers guarantee truncation, and
+    // because any TWO of them already exceed the 64 KiB cap, at most ONE pad is ever admitted before
+    // capture stops growing — so the tiny "A-Required" line always fits with a ~24 KiB margin no
+    // matter where it lands in the header order.
+    httplib::Server svr;
+    svr.Get("/many", [](const httplib::Request &, httplib::Response &res) {
+        res.set_header("A-Required", "yes");
+        for (int i = 0; i < 3; ++i) {
+            res.set_header("X-Pad-" + std::to_string(i), std::string(40000, 'y'));
+        }
+        res.set_content("ok", "text/plain");
+    });
+    int port = svr.bind_to_any_port("127.0.0.1");
+    REQUIRE(port > 0);
+    std::thread th([&svr] { svr.listen_after_bind(); });
+    ServerGuard guard{svr, th};
+    svr.wait_until_ready();
+    std::string url = "http://127.0.0.1:" + std::to_string(port) + "/many";
+
+    auto tgt = run_v3_http_probe("v3-hdr-req-trunc", url, [](NetProbeInputStream &s) {
+        auto m = std::make_shared<visor::Configurable>();
+        m->config_set("A-Required", std::string("yes")); // present & matched pre-cap => real PASS
+        s.config_set<std::shared_ptr<visor::Configurable>>("fail_if_header_not_matches", m);
+    });
+    CHECK(tgt["successes"].get<int>() >= 1);
+    CHECK(tgt["content_failures"].get<int>() == 0);
+}
+
+TEST_CASE("NetProbe HTTP e2e v3: truncation still fails when forbidden rules coexist with required", "[netprobe][http][e2e]")
+{
+    // When BOTH a required (fail_if_header_not_matches, satisfied) and a forbidden
+    // (fail_if_header_matches, not seen) rule are configured, truncation must still fail: a forbidden
+    // header could be hiding in the dropped tail. has_forbidden_rules() keeps the fail-safe on here.
+    // Same order-independent construction as the required-only test (at most one ~40 KiB pad is
+    // admitted, so "A-Required" is always captured while truncation is still triggered).
+    httplib::Server svr;
+    svr.Get("/many", [](const httplib::Request &, httplib::Response &res) {
+        res.set_header("A-Required", "yes");
+        for (int i = 0; i < 3; ++i) {
+            res.set_header("X-Pad-" + std::to_string(i), std::string(40000, 'y'));
+        }
+        res.set_content("ok", "text/plain");
+    });
+    int port = svr.bind_to_any_port("127.0.0.1");
+    REQUIRE(port > 0);
+    std::thread th([&svr] { svr.listen_after_bind(); });
+    ServerGuard guard{svr, th};
+    svr.wait_until_ready();
+    std::string url = "http://127.0.0.1:" + std::to_string(port) + "/many";
+
+    auto tgt = run_v3_http_probe("v3-hdr-both-trunc", url, [](NetProbeInputStream &s) {
+        auto req = std::make_shared<visor::Configurable>();
+        req->config_set("A-Required", std::string("yes"));
+        s.config_set<std::shared_ptr<visor::Configurable>>("fail_if_header_not_matches", req);
+        auto forbid = std::make_shared<visor::Configurable>();
+        forbid->config_set("X-Absent", std::string(".+")); // absent from captured set => matches() PASS
+        s.config_set<std::shared_ptr<visor::Configurable>>("fail_if_header_matches", forbid);
+    });
+    CHECK(tgt["successes"].get<int>() == 0);
+    CHECK(tgt["content_failures"].get<int>() >= 1);
+}
+
+TEST_CASE("NetProbe HTTP e2e v3: valid_http_versions rejects the negotiated version", "[netprobe][http][e2e]")
+{
+    httplib::Server svr; // plain httplib serves HTTP/1.1
+    svr.Get("/v", [](const httplib::Request &, httplib::Response &res) {
+        res.set_content("ok", "text/plain");
+    });
+    int port = svr.bind_to_any_port("127.0.0.1");
+    REQUIRE(port > 0);
+    std::thread th([&svr] { svr.listen_after_bind(); });
+    ServerGuard guard{svr, th};
+    svr.wait_until_ready();
+    auto tgt = run_v3_http_probe("v3-httpver", "http://127.0.0.1:" + std::to_string(port) + "/v",
+        [](NetProbeInputStream &s) { s.config_set<visor::Configurable::StringList>("valid_http_versions", {"2"}); });
+    // Negotiated 1.1 is not in {"2"} => content failure.
+    CHECK(tgt["successes"].get<int>() == 0);
+    CHECK(tgt["content_failures"].get<int>() >= 1);
+}
+
+TEST_CASE("NetProbe HTTP e2e v3: header assertion sees only the FINAL response across a redirect", "[netprobe][http][e2e]")
+{
+    // Server A (301) carries X-Debug that WOULD trip fail_if_header_matches; server B (200) does not.
+    // No request body/custom request headers => redirects are followed. The per-response capture
+    // reset must keep only B's headers, so content_failures stays 0.
+    httplib::Server svr_b;
+    svr_b.Get("/final", [](const httplib::Request &, httplib::Response &res) {
+        res.set_content("ok", "text/plain"); // no X-Debug on the final response
+    });
+    int port_b = svr_b.bind_to_any_port("127.0.0.1");
+    REQUIRE(port_b > 0);
+    std::thread tb([&svr_b] { svr_b.listen_after_bind(); });
+    ServerGuard gb{svr_b, tb};
+    svr_b.wait_until_ready();
+
+    httplib::Server svr_a;
+    std::string loc = "http://127.0.0.1:" + std::to_string(port_b) + "/final";
+    svr_a.Get("/redirect", [&](const httplib::Request &, httplib::Response &res) {
+        res.status = 301;
+        res.set_header("X-Debug", "intermediate"); // only on the intermediate response
+        res.set_header("Location", loc);
+    });
+    int port_a = svr_a.bind_to_any_port("127.0.0.1");
+    REQUIRE(port_a > 0);
+    std::thread ta([&svr_a] { svr_a.listen_after_bind(); });
+    ServerGuard ga{svr_a, ta};
+    svr_a.wait_until_ready();
+
+    auto tgt = run_v3_http_probe("v3-redirect-hdr", "http://127.0.0.1:" + std::to_string(port_a) + "/redirect",
+        [](NetProbeInputStream &s) {
+            auto m = std::make_shared<visor::Configurable>();
+            m->config_set("X-Debug", std::string(".+"));
+            s.config_set<std::shared_ptr<visor::Configurable>>("fail_if_header_matches", m);
+        });
+    // X-Debug lived only on the 301; the final 200 is clean => no content failure.
+    CHECK(tgt["successes"].get<int>() >= 1);
+    CHECK(tgt["content_failures"].get<int>() == 0);
+}
+
+TEST_CASE("NetProbe HTTP e2e v3: not_contains hit in a truncated prefix still fails", "[netprobe][http][e2e]")
+{
+    // The forbidden token sits in the FIRST bytes of a large body. Even though the body is truncated
+    // at the capture cap, a visible not_contains hit is a definitive failure (its presence does not
+    // depend on the dropped tail) — must be content_failures, never a false success.
+    httplib::Server svr;
+    std::string body = std::string("traceback: boom\n") + std::string(64 * 1024, 'x');
+    svr.Get("/e", [&](const httplib::Request &, httplib::Response &res) {
+        res.set_content(body, "text/plain");
+    });
+    int port = svr.bind_to_any_port("127.0.0.1");
+    REQUIRE(port > 0);
+    std::thread th([&svr] { svr.listen_after_bind(); });
+    ServerGuard guard{svr, th};
+    svr.wait_until_ready();
+    auto tgt = run_v3_http_probe("v3-trunc-notcontains", "http://127.0.0.1:" + std::to_string(port) + "/e",
+        [](NetProbeInputStream &s) {
+            s.config_set("not_contains", std::string("traceback"));
+            s.config_set<uint64_t>("body_check_max_bytes", 1024); // truncates, but 'traceback' is in the prefix
+        });
+    CHECK(tgt["successes"].get<int>() == 0);
+    CHECK(tgt["content_failures"].get<int>() >= 1);
+}
+
+TEST_CASE("NetProbe HTTP e2e v3: max_response_size_bytes 0 requires an empty body", "[netprobe][http][e2e]")
+{
+    // 0 is a real bound (require empty body), not "unset": a non-empty response must fail, an empty
+    // response must pass.
+    httplib::Server svr;
+    svr.Get("/nonempty", [](const httplib::Request &, httplib::Response &res) { res.set_content("x", "text/plain"); });
+    svr.Get("/empty", [](const httplib::Request &, httplib::Response &res) { res.set_content("", "text/plain"); });
+    int port = svr.bind_to_any_port("127.0.0.1");
+    REQUIRE(port > 0);
+    std::thread th([&svr] { svr.listen_after_bind(); });
+    ServerGuard guard{svr, th};
+    svr.wait_until_ready();
+    std::string base = "http://127.0.0.1:" + std::to_string(port);
+
+    auto ne = run_v3_http_probe("v3-maxsize0-ne", base + "/nonempty",
+        [](NetProbeInputStream &s) { s.config_set<uint64_t>("max_response_size_bytes", 0); });
+    CHECK(ne["successes"].get<int>() == 0);
+    CHECK(ne["content_failures"].get<int>() >= 1);
+
+    auto em = run_v3_http_probe("v3-maxsize0-e", base + "/empty",
+        [](NetProbeInputStream &s) { s.config_set<uint64_t>("max_response_size_bytes", 0); });
+    CHECK(em["successes"].get<int>() >= 1);
+    CHECK(em["content_failures"].get<int>() == 0);
+}
+
+TEST_CASE("NetProbe HTTP e2e v3: stale Last-Modified fails max_last_modified_diff_secs", "[netprobe][http][e2e]")
+{
+    httplib::Server svr;
+    svr.Get("/lm", [](const httplib::Request &, httplib::Response &res) {
+        res.set_header("Last-Modified", "Wed, 21 Oct 2015 07:28:00 GMT"); // ancient => older than the diff
+        res.set_content("ok", "text/plain");
+    });
+    int port = svr.bind_to_any_port("127.0.0.1");
+    REQUIRE(port > 0);
+    std::thread th([&svr] { svr.listen_after_bind(); });
+    ServerGuard guard{svr, th};
+    svr.wait_until_ready();
+    auto tgt = run_v3_http_probe("v3-lastmod", "http://127.0.0.1:" + std::to_string(port) + "/lm",
+        [](NetProbeInputStream &s) { s.config_set<uint64_t>("max_last_modified_diff_secs", 3600); });
+    CHECK(tgt["successes"].get<int>() == 0);
+    CHECK(tgt["content_failures"].get<int>() >= 1);
+}
+
+TEST_CASE("NetProbe HTTP e2e v3: per-target resolve pins a bogus host to the test server", "[netprobe][http][e2e]")
+{
+    // Proves CURLOPT_RESOLVE is applied: the target host "bogus.invalid" would never resolve via DNS,
+    // so a recorded success can only happen if the resolve override mapped it to 127.0.0.1.
+    httplib::Server svr;
+    svr.Get("/ok", [](const httplib::Request &, httplib::Response &res) { res.set_content("ok", "text/plain"); });
+    int port = svr.bind_to_any_port("127.0.0.1");
+    REQUIRE(port > 0);
+    std::thread th([&svr] { svr.listen_after_bind(); });
+    ServerGuard guard{svr, th};
+    svr.wait_until_ready();
+
+    NetProbeInputStream stream{"v3-resolve"};
+    stream.config_set("test_type", "http");
+    stream.config_set<uint64_t>("interval_msec", 200);
+    stream.config_set<uint64_t>("timeout_msec", 150);
+    auto targets = std::make_shared<visor::Configurable>();
+    auto target = std::make_shared<visor::Configurable>();
+    target->config_set("target", std::string("http://bogus.invalid:" + std::to_string(port) + "/ok"));
+    target->config_set<visor::Configurable::StringList>("resolve",
+        {"bogus.invalid:" + std::to_string(port) + ":127.0.0.1"});
+    targets->config_set<std::shared_ptr<visor::Configurable>>("t", target);
+    stream.config_set<std::shared_ptr<visor::Configurable>>("targets", targets);
+
+    visor::Config c;
+    c.config_set<uint64_t>("num_periods", 1);
+    auto *proxy = stream.add_event_proxy(c);
+    NetProbeStreamHandler handler{"v3-resolve", proxy, &c};
+    handler.start();
+    stream.start();
+    std::this_thread::sleep_for(750ms);
+    stream.stop();
+    handler.stop();
+    json j;
+    handler.metrics()->bucket(0)->to_json(j);
+    REQUIRE(j["targets"].contains("t"));
+    CHECK(j["targets"]["t"]["successes"].get<int>() >= 1);
+}
+
+TEST_CASE("NetProbe HTTP e2e v3: a per-target resolve override does not leak to another target", "[netprobe][http][e2e]")
+{
+    // Two targets for the SAME host:port on one stream (shared curl_multi). "pinned" overrides
+    // bogus.invalid -> 127.0.0.1 (the test server); "unpinned" has NO override and must NOT be
+    // silently sent to the pinned address. With CONNECT_TO (per-handle, no shared DNS cache) the
+    // unpinned target does real DNS for bogus.invalid and fails — proving the override is scoped.
+    httplib::Server svr;
+    svr.Get("/ok", [](const httplib::Request &, httplib::Response &res) { res.set_content("ok", "text/plain"); });
+    int port = svr.bind_to_any_port("127.0.0.1");
+    REQUIRE(port > 0);
+    std::thread th([&svr] { svr.listen_after_bind(); });
+    ServerGuard guard{svr, th};
+    svr.wait_until_ready();
+    std::string ps = std::to_string(port);
+
+    NetProbeInputStream stream{"v3-resolve-leak"};
+    stream.config_set("test_type", "http");
+    stream.config_set<uint64_t>("interval_msec", 200);
+    stream.config_set<uint64_t>("timeout_msec", 150);
+    auto targets = std::make_shared<visor::Configurable>();
+    auto pinned = std::make_shared<visor::Configurable>();
+    pinned->config_set("target", std::string("http://bogus.invalid:" + ps + "/ok"));
+    pinned->config_set<visor::Configurable::StringList>("resolve", {"bogus.invalid:" + ps + ":127.0.0.1"});
+    targets->config_set<std::shared_ptr<visor::Configurable>>("pinned", pinned);
+    auto unpinned = std::make_shared<visor::Configurable>();
+    unpinned->config_set("target", std::string("http://bogus.invalid:" + ps + "/ok")); // same host:port, NO resolve
+    targets->config_set<std::shared_ptr<visor::Configurable>>("unpinned", unpinned);
+    stream.config_set<std::shared_ptr<visor::Configurable>>("targets", targets);
+
+    visor::Config c;
+    c.config_set<uint64_t>("num_periods", 1);
+    auto *proxy = stream.add_event_proxy(c);
+    NetProbeStreamHandler handler{"v3-resolve-leak", proxy, &c};
+    handler.start();
+    stream.start();
+    std::this_thread::sleep_for(750ms);
+    stream.stop();
+    handler.stop();
+    json j;
+    handler.metrics()->bucket(0)->to_json(j);
+    REQUIRE(j["targets"].contains("pinned"));
+    REQUIRE(j["targets"].contains("unpinned"));
+    CHECK(j["targets"]["pinned"]["successes"].get<int>() >= 1);
+    CHECK(j["targets"]["unpinned"]["successes"].get<int>() == 0); // override must NOT have leaked
 }
 
 TEST_CASE("NetProbe HTTP e2e v2: custom headers are not forwarded across redirects", "[netprobe][http][e2e]")

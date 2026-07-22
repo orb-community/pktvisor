@@ -21,6 +21,8 @@ class HttpProbe final : public NetProbe
     std::shared_ptr<visor::http::HttpClient> _client;
     HttpProbeOptions _opts;
     std::vector<std::string> _headers;
+    long _ip_resolve{0};              // CURLOPT_IPRESOLVE override (0 => curl default); per-target ip_version
+    std::vector<std::string> _resolve; // CURLOPT_RESOLVE entries, each "host:port:address"; per-target resolve
     HttpResultCallback _http_result;
     std::shared_ptr<uvw::timer_handle> _interval_timer;
     // CERTINFO is only populated on transfers that perform a TLS handshake; pooled-connection
@@ -33,6 +35,7 @@ class HttpProbe final : public NetProbe
 public:
     HttpProbe(uint16_t id, const std::string &name, std::string url, std::string method,
         std::shared_ptr<visor::http::HttpClient> client, HttpProbeOptions opts, std::vector<std::string> headers,
+        long ip_resolve, std::vector<std::string> resolve,
         HttpResultCallback http_result)
         : NetProbe(id, name, pcpp::IPAddress(), std::string())
         , _url(std::move(url))
@@ -40,6 +43,8 @@ public:
         , _client(std::move(client))
         , _opts(std::move(opts))
         , _headers(std::move(headers))
+        , _ip_resolve(ip_resolve)
+        , _resolve(std::move(resolve))
         , _http_result(std::move(http_result)) {}
     ~HttpProbe() = default;
     bool start(std::shared_ptr<uvw::loop> io_loop) override;

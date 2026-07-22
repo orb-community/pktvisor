@@ -49,6 +49,10 @@ class NetProbeInputStream : public visor::InputStream
     // (used to build the actual request) separate from just the NAMES (safe to echo in info_json).
     std::map<std::string, std::vector<std::string>> _http_target_headers;
     std::map<std::string, std::vector<std::string>> _http_target_header_names;
+    // per-target ip_version/resolve overrides (CURLOPT_IPRESOLVE/CURLOPT_RESOLVE), keyed like
+    // _http_targets/_doh_targets — used for both http and doh targets.
+    std::map<std::string, long> _http_target_ipresolve;
+    std::map<std::string, std::vector<std::string>> _http_target_resolve;
     HttpProbeOptions _http_opts;
     std::map<std::string, std::string> _doh_targets;
     std::string _doh_qname;
@@ -89,7 +93,17 @@ class NetProbeInputStream : public visor::InputStream
         "body",
         "body_check_max_bytes",
         "proxy",
-        "tls"};
+        "tls",
+        "json_path",
+        "json_equals",
+        "not_contains",
+        "body_not_matches_regex",
+        "min_response_size_bytes",
+        "max_response_size_bytes",
+        "fail_if_header_matches",
+        "fail_if_header_not_matches",
+        "max_last_modified_diff_secs",
+        "valid_http_versions"};
 
     void _create_netprobe_loop();
     void _send_cb(pcpp::Packet &, TestType, const std::string &, timespec);

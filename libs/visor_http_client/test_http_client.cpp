@@ -2,6 +2,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <httplib.h>
 #include <uvw/loop.h>
+#include <cstdlib>
 #include <thread>
 
 using namespace visor::http;
@@ -400,6 +401,253 @@ TEST_CASE("HttpClient body capture cap + truncation flag", "[http][client]")
     if (server_thread.joinable()) server_thread.join();
 }
 
+TEST_CASE("HttpClient captures response headers + http_version", "[http][client]")
+{
+    httplib::Server svr;
+    svr.Get("/hdrs", [](const httplib::Request &, httplib::Response &res) {
+        res.set_header("X-Cache", "HIT");
+        res.set_content("{\"ok\":true}", "application/json");
+    });
+    int port = svr.bind_to_any_port("127.0.0.1");
+    REQUIRE(port > 0);
+    std::thread server_thread([&svr] { svr.listen_after_bind(); });
+    ServerGuard guard{svr, server_thread};
+    svr.wait_until_ready();
+
+    auto loop = uvw::loop::create();
+    HttpClient client(loop);
+    std::vector<HttpResult> results;
+    auto on_done = [&](const HttpResult &r) { results.push_back(r); };
+
+    HttpRequest req;
+    req.url = "http://127.0.0.1:" + std::to_string(port) + "/hdrs";
+    req.collect_headers = true;
+    req.timeout_ms = 2000;
+    client.request(req, on_done);
+    auto wd = arm_watchdog(loop, 5000);
+    loop->run();
+    disarm_watchdog(loop, wd);
+
+    REQUIRE(results.size() == 1);
+    CHECK(results[0].transport_ok);
+    CHECK(results[0].http_version != 0);
+    bool found = false;
+    for (auto &[n, v] : results[0].headers) {
+        if (n == "X-Cache" && v == "HIT") found = true;
+    }
+    CHECK(found);
+    CHECK_FALSE(results[0].headers_truncated); // a handful of headers is well under the cap
+
+    client.close();
+    loop->run();
+    svr.stop();
+    if (server_thread.joinable()) server_thread.join();
+}
+
+TEST_CASE("HttpClient flags header truncation past the capture byte cap", "[http][client]")
+{
+    httplib::Server svr;
+    svr.Get("/many", [](const httplib::Request &, httplib::Response &res) {
+        // ~1400 headers of ~64 bytes each => ~90 KB, well past the 64 KB capture cap.
+        for (int i = 0; i < 1400; ++i) {
+            res.set_header("X-Pad-" + std::to_string(i), std::string(48, 'y'));
+        }
+        res.set_content("ok", "text/plain");
+    });
+    int port = svr.bind_to_any_port("127.0.0.1");
+    REQUIRE(port > 0);
+    std::thread server_thread([&svr] { svr.listen_after_bind(); });
+    ServerGuard guard{svr, server_thread};
+    svr.wait_until_ready();
+
+    auto loop = uvw::loop::create();
+    HttpClient client(loop);
+    std::vector<HttpResult> results;
+    auto on_done = [&](const HttpResult &r) { results.push_back(r); };
+
+    HttpRequest req;
+    req.url = "http://127.0.0.1:" + std::to_string(port) + "/many";
+    req.collect_headers = true;
+    req.timeout_ms = 3000;
+    client.request(req, on_done);
+    auto wd = arm_watchdog(loop, 6000);
+    loop->run();
+    disarm_watchdog(loop, wd);
+
+    REQUIRE(results.size() == 1);
+    CHECK(results[0].transport_ok);
+    CHECK(results[0].headers_truncated); // capture stopped at the byte cap; caller must fail-safe
+
+    client.close();
+    loop->run();
+    svr.stop();
+    if (server_thread.joinable()) server_thread.join();
+}
+
+TEST_CASE("HttpClient response header capture resets across a redirect hop", "[http][client]")
+{
+    // Proves the adversarial-review finding: CURLOPT_HEADERFUNCTION fires for EVERY response in
+    // the transfer (each redirect hop too). The intermediate (302) response carries a header that
+    // must NOT survive into the result; only the FINAL (200) response's headers should.
+    httplib::Server svr;
+    svr.Get("/redir", [](const httplib::Request &, httplib::Response &res) {
+        res.set_header("X-Hop", "intermediate");
+        res.set_redirect("/final");
+    });
+    svr.Get("/final", [](const httplib::Request &, httplib::Response &res) {
+        res.set_header("X-Hop", "final");
+        res.set_content("done", "text/plain");
+    });
+    int port = svr.bind_to_any_port("127.0.0.1");
+    REQUIRE(port > 0);
+    std::thread server_thread([&svr] { svr.listen_after_bind(); });
+    ServerGuard guard{svr, server_thread};
+    svr.wait_until_ready();
+
+    auto loop = uvw::loop::create();
+    HttpClient client(loop);
+    std::vector<HttpResult> results;
+    auto on_done = [&](const HttpResult &r) { results.push_back(r); };
+
+    HttpRequest req;
+    req.url = "http://127.0.0.1:" + std::to_string(port) + "/redir";
+    req.collect_headers = true;
+    req.follow_redirects = true;
+    req.timeout_ms = 2000;
+    client.request(req, on_done);
+    auto wd = arm_watchdog(loop, 5000);
+    loop->run();
+    disarm_watchdog(loop, wd);
+
+    REQUIRE(results.size() == 1);
+    CHECK(results[0].transport_ok);
+    CHECK(results[0].status_code == 200); // followed through to /final
+    int hop_count = 0;
+    std::string last_hop_value;
+    for (auto &[n, v] : results[0].headers) {
+        if (n == "X-Hop") {
+            ++hop_count;
+            last_hop_value = v;
+        }
+    }
+    CHECK(hop_count == 1); // the intermediate hop's X-Hop must have been cleared, not appended
+    CHECK(last_hop_value == "final");
+
+    client.close();
+    loop->run();
+    svr.stop();
+    if (server_thread.joinable()) server_thread.join();
+}
+
+TEST_CASE("HttpClient clears header-truncation flag across a redirect hop", "[http][client]")
+{
+    // A redirect hop with oversized headers must NOT leave headers_truncated set when the FINAL
+    // response's headers fit under the cap — otherwise a header assertion that should pass on the
+    // final response is failed conservatively by the probe.
+    httplib::Server svr;
+    svr.Get("/redir", [](const httplib::Request &, httplib::Response &res) {
+        for (int i = 0; i < 1400; ++i) { // oversized intermediate headers => past the 64 KB cap
+            res.set_header("X-Pad-" + std::to_string(i), std::string(48, 'z'));
+        }
+        res.set_redirect("/final");
+    });
+    svr.Get("/final", [](const httplib::Request &, httplib::Response &res) {
+        res.set_header("X-Cache", "HIT"); // small final headers, comfortably under the cap
+        res.set_content("done", "text/plain");
+    });
+    int port = svr.bind_to_any_port("127.0.0.1");
+    REQUIRE(port > 0);
+    std::thread server_thread([&svr] { svr.listen_after_bind(); });
+    ServerGuard guard{svr, server_thread};
+    svr.wait_until_ready();
+
+    auto loop = uvw::loop::create();
+    HttpClient client(loop);
+    std::vector<HttpResult> results;
+    auto on_done = [&](const HttpResult &r) { results.push_back(r); };
+
+    HttpRequest req;
+    req.url = "http://127.0.0.1:" + std::to_string(port) + "/redir";
+    req.collect_headers = true;
+    req.follow_redirects = true;
+    req.timeout_ms = 3000;
+    client.request(req, on_done);
+    auto wd = arm_watchdog(loop, 6000);
+    loop->run();
+    disarm_watchdog(loop, wd);
+
+    REQUIRE(results.size() == 1);
+    CHECK(results[0].transport_ok);
+    CHECK(results[0].status_code == 200);
+    CHECK_FALSE(results[0].headers_truncated); // the flag from the oversized hop must have reset
+    bool found = false;
+    for (auto &[n, v] : results[0].headers) {
+        if (n == "X-Cache" && v == "HIT") found = true;
+    }
+    CHECK(found);
+
+    client.close();
+    loop->run();
+    svr.stop();
+    if (server_thread.joinable()) server_thread.join();
+}
+
+TEST_CASE("build_connect_to_entry brackets IPv6 and reuses the original port", "[http][client]")
+{
+    // IPv4: address is copied verbatim; the original port is appended as PORT2.
+    CHECK(build_connect_to_entry("example.com:443:1.2.3.4") == "example.com:443:1.2.3.4:443");
+    // Unbracketed IPv6: the address must be bracketed for curl's HOST2 field.
+    CHECK(build_connect_to_entry("example.com:443:2001:db8::1") == "example.com:443:[2001:db8::1]:443");
+    // Already-bracketed IPv6: left as-is (no double brackets).
+    CHECK(build_connect_to_entry("example.com:443:[2001:db8::1]") == "example.com:443:[2001:db8::1]:443");
+    // IPv6 loopback (address begins immediately after the port colon).
+    CHECK(build_connect_to_entry("h:80:::1") == "h:80:[::1]:80");
+    // Malformed entries yield "" so the caller skips them.
+    CHECK(build_connect_to_entry("host:443").empty());        // only one colon
+    CHECK(build_connect_to_entry("host:443:").empty());       // empty address
+    CHECK(build_connect_to_entry(":443:1.2.3.4").empty());    // empty host
+    CHECK(build_connect_to_entry("host::1.2.3.4").empty());   // empty port
+}
+
+TEST_CASE("HttpClient CONNECT_TO override reaches an IPv6-loopback server", "[http][client]")
+{
+    // Bind on IPv6 loopback; skip where the environment has no ::1 (some CI containers).
+    httplib::Server svr;
+    svr.Get("/ok", [](const httplib::Request &, httplib::Response &res) { res.set_content("v6", "text/plain"); });
+    int port = svr.bind_to_any_port("::1");
+    if (port <= 0) {
+        SKIP("no IPv6 loopback available");
+    }
+    std::thread server_thread([&svr] { svr.listen_after_bind(); });
+    ServerGuard guard{svr, server_thread};
+    svr.wait_until_ready();
+
+    auto loop = uvw::loop::create();
+    HttpClient client(loop);
+    std::vector<HttpResult> results;
+    auto on_done = [&](const HttpResult &r) { results.push_back(r); };
+
+    HttpRequest req;
+    // The URL host never resolves; the UNBRACKETED IPv6 resolve override must pin the connection
+    // to [::1]:port. Proves build_connect_to_entry's bracketing makes curl accept the entry.
+    req.url = "http://pin.invalid:" + std::to_string(port) + "/ok";
+    req.resolve = {"pin.invalid:" + std::to_string(port) + ":::1"};
+    req.timeout_ms = 3000;
+    client.request(req, on_done);
+    auto wd = arm_watchdog(loop, 6000);
+    loop->run();
+    disarm_watchdog(loop, wd);
+
+    REQUIRE(results.size() == 1);
+    CHECK(results[0].transport_ok);
+    CHECK(results[0].status_code == 200);
+
+    client.close();
+    loop->run();
+    svr.stop();
+    if (server_thread.joinable()) server_thread.join();
+}
+
 TEST_CASE("HttpClient redacts proxy credentials from transport error_msg", "[http][client]")
 {
     auto loop = uvw::loop::create();
@@ -427,3 +675,80 @@ TEST_CASE("HttpClient redacts proxy credentials from transport error_msg", "[htt
     client.close();
     loop->run();
 }
+
+#if !defined(_WIN32)
+// RAII snapshot/restore of a set of environment variables. Restores on destruction — including when
+// a Catch2 REQUIRE throws — so a test can mutate proxy env vars hermetically without leaking state
+// into later tests.
+namespace {
+class ScopedEnv
+{
+public:
+    explicit ScopedEnv(std::vector<std::string> names)
+        : _names(std::move(names))
+    {
+        for (const auto &n : _names) {
+            const char *v = ::getenv(n.c_str());
+            _saved.emplace_back(v != nullptr, v ? std::string(v) : std::string());
+            ::unsetenv(n.c_str()); // start from a known-clean slate
+        }
+    }
+    void set(const char *name, const char *value) { ::setenv(name, value, 1); }
+    ~ScopedEnv()
+    {
+        for (size_t i = 0; i < _names.size(); ++i) {
+            if (_saved[i].first) {
+                ::setenv(_names[i].c_str(), _saved[i].second.c_str(), 1);
+            } else {
+                ::unsetenv(_names[i].c_str());
+            }
+        }
+    }
+    ScopedEnv(const ScopedEnv &) = delete;
+    ScopedEnv &operator=(const ScopedEnv &) = delete;
+
+private:
+    std::vector<std::string> _names;
+    std::vector<std::pair<bool, std::string>> _saved;
+};
+} // namespace
+
+TEST_CASE("HttpClient ignores ambient environment proxies when none is configured", "[http][client]")
+{
+    // A netprobe with no configured proxy must connect DIRECTLY, not via an ambient env proxy.
+    // Point http_proxy at a port where nothing listens: if curl honored the env proxy the request
+    // would fail (connection refused to the proxy); because request() sets CURLOPT_PROXY="" for
+    // no-proxy requests, env proxies are disabled and the direct request to the local server
+    // succeeds.
+    //
+    // Hermeticity: curl also honors no_proxy/all_proxy, so the test clears EVERY proxy-related env
+    // var first (an ambient no_proxy listing 127.0.0.1 would otherwise bypass the proxy and make the
+    // test pass even with the fix reverted — a wrong-reason pass). ScopedEnv restores them after.
+    ScopedEnv env{{"http_proxy", "HTTP_PROXY", "https_proxy", "HTTPS_PROXY",
+        "all_proxy", "ALL_PROXY", "no_proxy", "NO_PROXY"}};
+    env.set("http_proxy", "http://127.0.0.1:1"); // port 1: nothing listens
+
+    httplib::Server svr;
+    std::thread server_thread;
+    int port = start_test_server(svr, server_thread);
+    ServerGuard guard{svr, server_thread};
+
+    auto loop = uvw::loop::create();
+    HttpClient client(loop);
+    std::vector<HttpResult> results;
+    HttpRequest req;
+    req.url = "http://127.0.0.1:" + std::to_string(port) + "/ok"; // no req.proxy
+    req.timeout_ms = 3000;
+    client.request(req, [&](const HttpResult &r) { results.push_back(r); });
+    auto wd = arm_watchdog(loop, 6000);
+    loop->run();
+    disarm_watchdog(loop, wd);
+
+    REQUIRE(results.size() == 1);
+    CHECK(results[0].transport_ok); // direct connection succeeded => ambient proxy was NOT used
+    CHECK(results[0].status_code == 200);
+
+    client.close();
+    loop->run();
+}
+#endif

@@ -49,7 +49,16 @@ private:
         size_t capture_max{64 * 1024};  // cap on captured body bytes (from HttpRequest.capture_max_bytes)
         bool truncated{false};          // set by write_capture when the body exceeds capture_max
         std::string response;           // captured body (bounded to capture_max)
-        ~EasyContext() { if (headers) curl_slist_free_all(headers); }
+        bool collect_headers{false};
+        std::vector<std::pair<std::string, std::string>> resp_headers;
+        size_t resp_headers_bytes{0};
+        bool headers_truncated{false}; // a response header line was dropped at the byte cap
+        curl_slist *connect_to_list{nullptr}; // owned; freed in dtor after curl_easy_cleanup
+        ~EasyContext()
+        {
+            if (headers) curl_slist_free_all(headers);
+            if (connect_to_list) curl_slist_free_all(connect_to_list);
+        }
     };
     // per-socket context: a uvw poll handle curl watches (owned in _sockets below)
     struct SocketContext {
@@ -61,6 +70,7 @@ private:
     static int timer_cb(CURLM *multi, long timeout_ms, void *userp);
     static size_t write_discard(char *ptr, size_t size, size_t nmemb, void *userdata);
     static size_t write_capture(char *ptr, size_t size, size_t nmemb, void *userdata);
+    static size_t header_capture(char *buffer, size_t size, size_t nitems, void *userdata);
     void on_socket_event(curl_socket_t sockfd, int events);
     void on_timeout();
     void check_multi_info();
@@ -80,4 +90,12 @@ private:
 // callers don't reach into the curl API). Returns std::nullopt when valid; otherwise a short,
 // human-readable reason (e.g. "is not a valid http(s) URL: '<url>'") the caller can surface.
 std::optional<std::string> validate_http_url(const std::string &url);
+
+// Build a CURLOPT_CONNECT_TO entry from a "host:port:address" resolve override. curl's --connect-to
+// format is HOST1:PORT1:HOST2:PORT2 and requires an IPv6 literal in HOST2 to be bracketed, so an
+// unbracketed IPv6 address is normalized to "[addr]" here. PORT2 reuses the original port (the
+// override only redirects the connection address; SNI/Host/cert verification keep the original
+// host). Returns "" when the entry is malformed (missing either of the two required colons, or an
+// empty host/port/address field) so the caller can skip it rather than emit a bad CONNECT_TO.
+std::string build_connect_to_entry(const std::string &resolve_entry);
 }

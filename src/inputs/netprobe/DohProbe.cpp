@@ -147,6 +147,8 @@ bool DohProbe::start(std::shared_ptr<uvw::loop> io_loop)
         req.user_agent = _opts.user_agent;
         req.verify_tls = _opts.tls_verify;
         req.collect_cert_info = true;
+        req.ip_resolve = _ip_resolve;
+        req.resolve = _resolve;
         const std::string name = _name;
         const std::string qname = _wire_qname; // "" for the root; matches what pcpp getName() returns
         const uint16_t qtype_code = _qtype_code;
