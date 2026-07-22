@@ -281,6 +281,15 @@ void HttpClient::request(const HttpRequest &req, ResultCallback on_done)
     if (!req.proxy.empty()) {
         curl_easy_setopt(easy, CURLOPT_PROXY, req.proxy.c_str());
         ctx->proxy = req.proxy; // retained only to redact it (and any embedded credentials) from error_msg
+    } else {
+        // No proxy configured: explicitly disable libcurl's ambient environment proxies
+        // (http_proxy/https_proxy/all_proxy). Setting CURLOPT_PROXY to "" disables proxy use even
+        // when such an env var is set. A netprobe measures the DIRECT path to the target (or the
+        // explicitly-configured proxy); honoring an ambient proxy would make results depend on the
+        // deployment/CI environment and would defeat the per-target resolve/CONNECT_TO pin (an env
+        // proxy + CONNECT_TO switches curl to tunnel mode, asking the proxy to reach the pinned
+        // address instead of connecting locally).
+        curl_easy_setopt(easy, CURLOPT_PROXY, "");
     }
     if (!req.ca_file.empty()) {
         curl_easy_setopt(easy, CURLOPT_CAINFO, req.ca_file.c_str());

@@ -2,6 +2,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <httplib.h>
 #include <uvw/loop.h>
+#include <cstdlib>
 #include <thread>
 
 using namespace visor::http;
@@ -674,3 +675,80 @@ TEST_CASE("HttpClient redacts proxy credentials from transport error_msg", "[htt
     client.close();
     loop->run();
 }
+
+#if !defined(_WIN32)
+// RAII snapshot/restore of a set of environment variables. Restores on destruction — including when
+// a Catch2 REQUIRE throws — so a test can mutate proxy env vars hermetically without leaking state
+// into later tests.
+namespace {
+class ScopedEnv
+{
+public:
+    explicit ScopedEnv(std::vector<std::string> names)
+        : _names(std::move(names))
+    {
+        for (const auto &n : _names) {
+            const char *v = ::getenv(n.c_str());
+            _saved.emplace_back(v != nullptr, v ? std::string(v) : std::string());
+            ::unsetenv(n.c_str()); // start from a known-clean slate
+        }
+    }
+    void set(const char *name, const char *value) { ::setenv(name, value, 1); }
+    ~ScopedEnv()
+    {
+        for (size_t i = 0; i < _names.size(); ++i) {
+            if (_saved[i].first) {
+                ::setenv(_names[i].c_str(), _saved[i].second.c_str(), 1);
+            } else {
+                ::unsetenv(_names[i].c_str());
+            }
+        }
+    }
+    ScopedEnv(const ScopedEnv &) = delete;
+    ScopedEnv &operator=(const ScopedEnv &) = delete;
+
+private:
+    std::vector<std::string> _names;
+    std::vector<std::pair<bool, std::string>> _saved;
+};
+} // namespace
+
+TEST_CASE("HttpClient ignores ambient environment proxies when none is configured", "[http][client]")
+{
+    // A netprobe with no configured proxy must connect DIRECTLY, not via an ambient env proxy.
+    // Point http_proxy at a port where nothing listens: if curl honored the env proxy the request
+    // would fail (connection refused to the proxy); because request() sets CURLOPT_PROXY="" for
+    // no-proxy requests, env proxies are disabled and the direct request to the local server
+    // succeeds.
+    //
+    // Hermeticity: curl also honors no_proxy/all_proxy, so the test clears EVERY proxy-related env
+    // var first (an ambient no_proxy listing 127.0.0.1 would otherwise bypass the proxy and make the
+    // test pass even with the fix reverted — a wrong-reason pass). ScopedEnv restores them after.
+    ScopedEnv env{{"http_proxy", "HTTP_PROXY", "https_proxy", "HTTPS_PROXY",
+        "all_proxy", "ALL_PROXY", "no_proxy", "NO_PROXY"}};
+    env.set("http_proxy", "http://127.0.0.1:1"); // port 1: nothing listens
+
+    httplib::Server svr;
+    std::thread server_thread;
+    int port = start_test_server(svr, server_thread);
+    ServerGuard guard{svr, server_thread};
+
+    auto loop = uvw::loop::create();
+    HttpClient client(loop);
+    std::vector<HttpResult> results;
+    HttpRequest req;
+    req.url = "http://127.0.0.1:" + std::to_string(port) + "/ok"; // no req.proxy
+    req.timeout_ms = 3000;
+    client.request(req, [&](const HttpResult &r) { results.push_back(r); });
+    auto wd = arm_watchdog(loop, 6000);
+    loop->run();
+    disarm_watchdog(loop, wd);
+
+    REQUIRE(results.size() == 1);
+    CHECK(results[0].transport_ok); // direct connection succeeded => ambient proxy was NOT used
+    CHECK(results[0].status_code == 200);
+
+    client.close();
+    loop->run();
+}
+#endif
