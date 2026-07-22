@@ -591,6 +591,24 @@ TEST_CASE("NetProbe v3 scrub helper: redacts not_contains/json_equals/body_not_m
     CHECK(cfg["fail_if_header_not_matches"]["X-Ok"] == "<redacted>");
 }
 
+TEST_CASE("NetProbe v3 scrub helper: a malformed (non-object) header-matcher value is fully redacted", "[netprobe][http][config]")
+{
+    // The header matchers are normally maps (header-name: value_regex). If a config arrives with
+    // the key set to a scalar or list instead, the value can still carry a secret — redact the
+    // whole key rather than echo the raw value.
+    json cfg;
+    cfg["fail_if_header_matches"] = "v3-scalar-matcher-sekrit";                     // malformed: scalar
+    cfg["fail_if_header_not_matches"] = json::array({"v3-list-matcher-sekrit"});    // malformed: list
+
+    visor::input::netprobe::scrub_netprobe_config_json(cfg);
+
+    auto dumped = cfg.dump();
+    CHECK(dumped.find("v3-scalar-matcher-sekrit") == std::string::npos);
+    CHECK(dumped.find("v3-list-matcher-sekrit") == std::string::npos);
+    CHECK(cfg["fail_if_header_matches"] == "<redacted>");
+    CHECK(cfg["fail_if_header_not_matches"] == "<redacted>");
+}
+
 // ---------------------------------------------------------------------------
 // v3: per-target ip_version/resolve — parse + validate (threaded into probe ctors,
 // evaluated by libcurl itself; not asserted here).
@@ -1819,6 +1837,35 @@ TEST_CASE("NetProbe HTTP e2e v3: header matchers", "[netprobe][http][e2e]")
     });
     CHECK(fnm["successes"].get<int>() >= 1);
     CHECK(fnm["content_failures"].get<int>() == 0);
+}
+
+TEST_CASE("NetProbe HTTP e2e v3: header matcher fails conservatively when header capture truncates", "[netprobe][http][e2e]")
+{
+    // The response carries so many headers that capture stops at the byte cap (headers_truncated).
+    // fail_if_header_matches targets a header that is NOT among the captured ones, so matches()
+    // alone would PASS — but because a forbidden header could be hiding in the dropped tail, the
+    // probe must fail the assertion conservatively.
+    httplib::Server svr;
+    svr.Get("/many", [](const httplib::Request &, httplib::Response &res) {
+        for (int i = 0; i < 1400; ++i) {
+            res.set_header("X-Pad-" + std::to_string(i), std::string(48, 'y'));
+        }
+        res.set_content("ok", "text/plain");
+    });
+    int port = svr.bind_to_any_port("127.0.0.1");
+    REQUIRE(port > 0);
+    std::thread th([&svr] { svr.listen_after_bind(); });
+    ServerGuard guard{svr, th};
+    svr.wait_until_ready();
+    std::string url = "http://127.0.0.1:" + std::to_string(port) + "/many";
+
+    auto tgt = run_v3_http_probe("v3-hdr-trunc", url, [](NetProbeInputStream &s) {
+        auto m = std::make_shared<visor::Configurable>();
+        m->config_set("X-Absent", std::string(".+")); // never present => matches() would pass
+        s.config_set<std::shared_ptr<visor::Configurable>>("fail_if_header_matches", m);
+    });
+    CHECK(tgt["successes"].get<int>() == 0);
+    CHECK(tgt["content_failures"].get<int>() >= 1);
 }
 
 TEST_CASE("NetProbe HTTP e2e v3: valid_http_versions rejects the negotiated version", "[netprobe][http][e2e]")

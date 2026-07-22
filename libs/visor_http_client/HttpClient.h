@@ -52,6 +52,7 @@ private:
         bool collect_headers{false};
         std::vector<std::pair<std::string, std::string>> resp_headers;
         size_t resp_headers_bytes{0};
+        bool headers_truncated{false}; // a response header line was dropped at the byte cap
         curl_slist *connect_to_list{nullptr}; // owned; freed in dtor after curl_easy_cleanup
         ~EasyContext()
         {

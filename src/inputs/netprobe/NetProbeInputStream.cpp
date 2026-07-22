@@ -762,9 +762,15 @@ void scrub_netprobe_config_json(json &cfg)
         }
     }
     for (const char *hkey : {"fail_if_header_matches", "fail_if_header_not_matches"}) {
-        if (cfg.contains(hkey) && cfg[hkey].is_object()) {
-            for (auto &el : cfg[hkey].items()) {
-                el.value() = "<redacted>";
+        if (cfg.contains(hkey)) {
+            if (cfg[hkey].is_object()) {
+                for (auto &el : cfg[hkey].items()) {
+                    el.value() = "<redacted>";
+                }
+            } else {
+                // Malformed shape (scalar/list rather than the expected map) is still potentially
+                // secret-bearing — redact the whole key rather than leave a raw value in the echo.
+                cfg[hkey] = "<redacted>";
             }
         }
     }

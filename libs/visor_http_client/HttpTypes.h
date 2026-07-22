@@ -45,6 +45,7 @@ struct HttpResult {
     uint64_t cert_expiry_epoch{0};      // earliest "Expire date:" across the TLS chain when HttpRequest.collect_cert_info; 0 for plain http or on parse failure
     uint64_t response_size{0};          // CURLINFO_SIZE_DOWNLOAD_T; populated on every transport_ok, independent of capture_response
     std::vector<std::pair<std::string, std::string>> headers; // FINAL response's headers when HttpRequest.collect_headers (redirect/proxy-CONNECT hops excluded)
+    bool headers_truncated{false};      // true when a header was dropped at the capture byte cap (headers is partial)
     long http_version{0};               // CURLINFO_HTTP_VERSION (e.g. CURL_HTTP_VERSION_1_1/2_0); populated on every transport_ok
 };
 struct HttpSample {

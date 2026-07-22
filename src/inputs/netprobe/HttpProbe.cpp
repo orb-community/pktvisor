@@ -121,6 +121,14 @@ bool HttpProbe::start(std::shared_ptr<uvw::loop> io_loop)
                         checked = true;
                         if (!opts.header_matchers.matches(r.headers)) {
                             pass = false;
+                        } else if (r.headers_truncated) {
+                            // Some response headers were dropped at the capture cap, so a "pass" can't
+                            // be trusted (a forbidden header could be among the dropped ones). Fail
+                            // conservatively rather than silently succeed.
+                            pass = false;
+                            if (auto logger = spdlog::get("visor")) {
+                                logger->warn("netprobe http[{}]: response headers exceeded the capture limit; header assertion failed conservatively", name);
+                            }
                         }
                     }
                     // Last-Modified freshness.

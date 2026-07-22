@@ -435,6 +435,47 @@ TEST_CASE("HttpClient captures response headers + http_version", "[http][client]
         if (n == "X-Cache" && v == "HIT") found = true;
     }
     CHECK(found);
+    CHECK_FALSE(results[0].headers_truncated); // a handful of headers is well under the cap
+
+    client.close();
+    loop->run();
+    svr.stop();
+    if (server_thread.joinable()) server_thread.join();
+}
+
+TEST_CASE("HttpClient flags header truncation past the capture byte cap", "[http][client]")
+{
+    httplib::Server svr;
+    svr.Get("/many", [](const httplib::Request &, httplib::Response &res) {
+        // ~1400 headers of ~64 bytes each => ~90 KB, well past the 64 KB capture cap.
+        for (int i = 0; i < 1400; ++i) {
+            res.set_header("X-Pad-" + std::to_string(i), std::string(48, 'y'));
+        }
+        res.set_content("ok", "text/plain");
+    });
+    int port = svr.bind_to_any_port("127.0.0.1");
+    REQUIRE(port > 0);
+    std::thread server_thread([&svr] { svr.listen_after_bind(); });
+    ServerGuard guard{svr, server_thread};
+    svr.wait_until_ready();
+
+    auto loop = uvw::loop::create();
+    HttpClient client(loop);
+    std::vector<HttpResult> results;
+    auto on_done = [&](const HttpResult &r) { results.push_back(r); };
+
+    HttpRequest req;
+    req.url = "http://127.0.0.1:" + std::to_string(port) + "/many";
+    req.collect_headers = true;
+    req.timeout_ms = 3000;
+    client.request(req, on_done);
+    auto wd = arm_watchdog(loop, 6000);
+    loop->run();
+    disarm_watchdog(loop, wd);
+
+    REQUIRE(results.size() == 1);
+    CHECK(results[0].transport_ok);
+    CHECK(results[0].headers_truncated); // capture stopped at the byte cap; caller must fail-safe
 
     client.close();
     loop->run();

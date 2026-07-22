@@ -179,8 +179,7 @@ size_t HttpClient::header_capture(char *buffer, size_t size, size_t nitems, void
     size_t n = size * nitems;
     auto *ctx = static_cast<EasyContext *>(userdata);
     if (ctx && ctx->collect_headers) {
-        constexpr size_t kMaxHeaderBytes = 64 * 1024;
-        constexpr size_t kMaxHeaders = 100;
+        constexpr size_t kMaxHeaderBytes = 64 * 1024; // byte cap only (DoS guard); no header-count cap
         std::string line(buffer, n);
         // curl fires this callback for EVERY response in the transfer (each redirect hop, and any
         // proxy CONNECT response). A new response begins with a status line "HTTP/..." (no colon).
@@ -192,20 +191,25 @@ size_t HttpClient::header_capture(char *buffer, size_t size, size_t nitems, void
             return n;
         }
         auto colon = line.find(':');
-        if (colon != std::string::npos && ctx->resp_headers.size() < kMaxHeaders
-            && ctx->resp_headers_bytes + n <= kMaxHeaderBytes) {
-            std::string name = line.substr(0, colon);
-            std::string value = line.substr(colon + 1);
-            auto trim = [](std::string &s) {
-                size_t b = s.find_first_not_of(" \t\r\n");
-                size_t e = s.find_last_not_of(" \t\r\n");
-                s = (b == std::string::npos) ? std::string() : s.substr(b, e - b + 1);
-            };
-            trim(name);
-            trim(value);
-            if (!name.empty()) {
-                ctx->resp_headers.emplace_back(std::move(name), std::move(value));
-                ctx->resp_headers_bytes += n;
+        if (colon != std::string::npos) {
+            if (ctx->resp_headers_bytes + n > kMaxHeaderBytes) {
+                // Dropping a header line: header-based assertions can no longer be fully verified.
+                // Flag it so the caller fails conservatively rather than matching a partial set.
+                ctx->headers_truncated = true;
+            } else {
+                std::string name = line.substr(0, colon);
+                std::string value = line.substr(colon + 1);
+                auto trim = [](std::string &s) {
+                    size_t b = s.find_first_not_of(" \t\r\n");
+                    size_t e = s.find_last_not_of(" \t\r\n");
+                    s = (b == std::string::npos) ? std::string() : s.substr(b, e - b + 1);
+                };
+                trim(name);
+                trim(value);
+                if (!name.empty()) {
+                    ctx->resp_headers.emplace_back(std::move(name), std::move(value));
+                    ctx->resp_headers_bytes += n;
+                }
             }
         }
     }
@@ -512,6 +516,7 @@ void HttpClient::check_multi_info()
             result.http_version = http_ver;
             if (it != _easy.end() && it->second->collect_headers) {
                 result.headers = std::move(it->second->resp_headers);
+                result.headers_truncated = it->second->headers_truncated;
             }
         } else {
             result.transport_ok = false;
