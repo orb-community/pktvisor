@@ -1640,6 +1640,61 @@ TEST_CASE("NetProbe HTTP e2e v2: body match past the capture cap is not a false 
     CHECK(tgt["content_failures"].get<int>() == 0);
 }
 
+TEST_CASE("NetProbe HTTP e2e v3: truncated body still lets a size assertion fail", "[netprobe][http][e2e]")
+{
+    // The AND-fold's subtle case: a truncated body SKIPS body assertions, but a NON-body assertion
+    // (size, which uses the true downloaded size) must still run and can fail. Body is ~64 KB but
+    // body_check_max_bytes caps capture at 1 KB (so the body assertion is skipped); max_response_size
+    // is far below the true size, so the size check fails => content_failures, not a false success.
+    httplib::Server svr;
+    std::string body(64 * 1024, 'x');
+    svr.Get("/health", [&](const httplib::Request &, httplib::Response &res) {
+        res.set_content(body, "text/plain");
+    });
+    int port = svr.bind_to_any_port("127.0.0.1");
+    REQUIRE(port > 0);
+    std::thread server_thread([&svr] { svr.listen_after_bind(); });
+    ServerGuard guard{svr, server_thread};
+    svr.wait_until_ready();
+
+    std::string url = "http://127.0.0.1:" + std::to_string(port) + "/health";
+    NetProbeInputStream stream{"netprobe-http-e2e-trunc-size"};
+    stream.config_set("test_type", "http");
+    stream.config_set<uint64_t>("interval_msec", 200);
+    stream.config_set<uint64_t>("timeout_msec", 150);
+    stream.config_set("expected_body", std::string("never-present")); // body assertion — will be SKIPPED (truncated)
+    stream.config_set<uint64_t>("body_check_max_bytes", 1024);          // truncate the captured body to 1 KB
+    // max sits BETWEEN the capture cap (1024) and the true size (64 KB): a captured-length comparison
+    // would PASS (1024 <= 2048) but the true size (65536) FAILS — so this pins that the size check
+    // uses r.response_size (true downloaded size), not the truncated captured length.
+    stream.config_set<uint64_t>("max_response_size_bytes", 2048);
+    auto targets = std::make_shared<visor::Configurable>();
+    auto target = std::make_shared<visor::Configurable>();
+    target->config_set("target", url);
+    targets->config_set<std::shared_ptr<visor::Configurable>>("health_target", target);
+    stream.config_set<std::shared_ptr<visor::Configurable>>("targets", targets);
+
+    visor::Config c;
+    c.config_set<uint64_t>("num_periods", 1);
+    auto *proxy = stream.add_event_proxy(c);
+    NetProbeStreamHandler handler{"netprobe-http-e2e-trunc-size", proxy, &c};
+
+    handler.start();
+    stream.start();
+    std::this_thread::sleep_for(750ms);
+    stream.stop();
+    handler.stop();
+
+    json j;
+    handler.metrics()->bucket(0)->to_json(j);
+    REQUIRE(j["targets"].contains("health_target"));
+    auto &tgt = j["targets"]["health_target"];
+    CHECK(tgt["attempts"].get<int>() >= 1);
+    // Size assertion ran despite the truncated body and failed => content_failures, NOT a false success.
+    CHECK(tgt["successes"].get<int>() == 0);
+    CHECK(tgt["content_failures"].get<int>() >= 1);
+}
+
 TEST_CASE("NetProbe HTTP e2e v2: custom headers are not forwarded across redirects", "[netprobe][http][e2e]")
 {
     // Server A redirects to server B; B records whether it ever received the secret header. With a

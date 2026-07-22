@@ -46,8 +46,9 @@ bool HttpProbe::start(std::shared_ptr<uvw::loop> io_loop)
         req.user_agent = _opts.user_agent;
         req.verify_tls = _opts.tls_verify;
         req.collect_cert_info = true;
-        req.capture_response = _opts.body_check.configured();
+        req.capture_response = _opts.body_check.configured() || _opts.json_check.configured() || _opts.body_negative.configured();
         req.capture_max_bytes = _opts.body_check_max_bytes;
+        req.collect_headers = _opts.header_matchers.configured() || _opts.max_last_modified_diff > 0;
         req.ip_resolve = _ip_resolve;
         req.resolve = _resolve;
         const std::string name = _name;
@@ -71,17 +72,81 @@ bool HttpProbe::start(std::shared_ptr<uvw::loop> io_loop)
                 }
                 s.status_ok = status_ok;
                 s.content_check = 0;
-                if (status_ok && opts.body_check.configured()) {
-                    if (r.body_truncated) {
-                        // The captured body is only a prefix (it exceeded body_check_max_bytes): a
-                        // match beyond the cap would be missed, and an anchored regex could match the
-                        // artificial truncation boundary. We can't authoritatively evaluate the body,
-                        // so classify on status alone (content_check stays NotChecked) and warn.
-                        if (auto logger = spdlog::get("visor")) {
-                            logger->warn("netprobe http[{}]: response body exceeded the {}-byte capture limit; body check skipped (raise body_check_max_bytes)", name, opts.body_check_max_bytes);
+                if (status_ok) {
+                    bool checked = false, pass = true;
+                    // Body-based assertions: skipped (inconclusive) if the body was truncated. A
+                    // partial body can't authoritatively pass/fail a substring/regex/JSON/negative
+                    // check — a match beyond the cap would be missed, and an anchored regex could
+                    // match the artificial truncation boundary.
+                    bool body_assertions = opts.body_check.configured() || opts.json_check.configured() || opts.body_negative.configured();
+                    if (body_assertions) {
+                        if (r.body_truncated) {
+                            if (auto logger = spdlog::get("visor")) {
+                                logger->warn("netprobe http[{}]: response body exceeded the {}-byte capture limit; body assertions skipped (raise body_check_max_bytes)", name, opts.body_check_max_bytes);
+                            }
+                        } else {
+                            checked = true;
+                            if (opts.body_check.configured() && !opts.body_check.matches(r.response_body)) {
+                                pass = false;
+                            }
+                            if (pass && opts.json_check.configured() && !opts.json_check.matches(r.response_body)) {
+                                pass = false;
+                            }
+                            if (pass && opts.body_negative.configured() && !opts.body_negative.matches(r.response_body)) {
+                                pass = false;
+                            }
                         }
-                    } else {
-                        s.content_check = opts.body_check.matches(r.response_body) ? 1 : 2;
+                    }
+                    // Size bounds (use the true downloaded size, always exact — unaffected by capture
+                    // truncation).
+                    if (opts.min_response_size || opts.max_response_size) {
+                        checked = true;
+                        if (opts.min_response_size && r.response_size < opts.min_response_size) {
+                            pass = false;
+                        }
+                        if (pass && opts.max_response_size && r.response_size > opts.max_response_size) {
+                            pass = false;
+                        }
+                    }
+                    // Response-header matchers.
+                    if (pass && opts.header_matchers.configured()) {
+                        checked = true;
+                        if (!opts.header_matchers.matches(r.headers)) {
+                            pass = false;
+                        }
+                    }
+                    // Last-Modified freshness.
+                    if (pass && opts.max_last_modified_diff > 0) {
+                        checked = true;
+                        uint64_t lm = 0;
+                        for (const auto &[hn, hv] : r.headers) {
+                            if (visor::http::iequals_ascii(hn, "Last-Modified")) {
+                                lm = visor::http::parse_http_date(hv);
+                                break;
+                            }
+                        }
+                        uint64_t now = static_cast<uint64_t>(stamp.tv_sec);
+                        if (lm == 0 || (now > lm && now - lm > opts.max_last_modified_diff)) {
+                            pass = false;
+                        }
+                    }
+                    // Negotiated HTTP version.
+                    if (pass && !opts.valid_http_versions.empty()) {
+                        checked = true;
+                        std::string ver = visor::http::http_version_name(r.http_version);
+                        bool ok = false;
+                        for (const auto &allowed : opts.valid_http_versions) {
+                            if (allowed == ver) {
+                                ok = true;
+                                break;
+                            }
+                        }
+                        if (!ok) {
+                            pass = false;
+                        }
+                    }
+                    if (checked) {
+                        s.content_check = pass ? 1 : 2;
                     }
                 }
                 // CERTINFO is only filled on transfers that performed a TLS handshake; reused
