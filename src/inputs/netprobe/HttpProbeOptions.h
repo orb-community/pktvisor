@@ -5,6 +5,7 @@
 #pragma once
 #include "HttpCheck.h"
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -29,8 +30,8 @@ struct HttpProbeOptions {
     visor::http::JsonPointerCheck json_check;
     visor::http::BodyNegativeCheck body_negative;
     visor::http::HeaderMatchers header_matchers;
-    uint64_t min_response_size{0};      // 0 = no lower bound
-    uint64_t max_response_size{0};      // 0 = no upper bound
+    std::optional<uint64_t> min_response_size; // set => lower bound (bytes)
+    std::optional<uint64_t> max_response_size; // set => upper bound (bytes); 0 = require an empty body
     uint64_t max_last_modified_diff{0}; // seconds; 0 = not checked
     std::vector<std::string> valid_http_versions; // empty = any
 };

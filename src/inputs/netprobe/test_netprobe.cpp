@@ -1878,6 +1878,55 @@ TEST_CASE("NetProbe HTTP e2e v3: header assertion sees only the FINAL response a
     CHECK(tgt["content_failures"].get<int>() == 0);
 }
 
+TEST_CASE("NetProbe HTTP e2e v3: not_contains hit in a truncated prefix still fails", "[netprobe][http][e2e]")
+{
+    // The forbidden token sits in the FIRST bytes of a large body. Even though the body is truncated
+    // at the capture cap, a visible not_contains hit is a definitive failure (its presence does not
+    // depend on the dropped tail) — must be content_failures, never a false success.
+    httplib::Server svr;
+    std::string body = std::string("traceback: boom\n") + std::string(64 * 1024, 'x');
+    svr.Get("/e", [&](const httplib::Request &, httplib::Response &res) {
+        res.set_content(body, "text/plain");
+    });
+    int port = svr.bind_to_any_port("127.0.0.1");
+    REQUIRE(port > 0);
+    std::thread th([&svr] { svr.listen_after_bind(); });
+    ServerGuard guard{svr, th};
+    svr.wait_until_ready();
+    auto tgt = run_v3_http_probe("v3-trunc-notcontains", "http://127.0.0.1:" + std::to_string(port) + "/e",
+        [](NetProbeInputStream &s) {
+            s.config_set("not_contains", std::string("traceback"));
+            s.config_set<uint64_t>("body_check_max_bytes", 1024); // truncates, but 'traceback' is in the prefix
+        });
+    CHECK(tgt["successes"].get<int>() == 0);
+    CHECK(tgt["content_failures"].get<int>() >= 1);
+}
+
+TEST_CASE("NetProbe HTTP e2e v3: max_response_size_bytes 0 requires an empty body", "[netprobe][http][e2e]")
+{
+    // 0 is a real bound (require empty body), not "unset": a non-empty response must fail, an empty
+    // response must pass.
+    httplib::Server svr;
+    svr.Get("/nonempty", [](const httplib::Request &, httplib::Response &res) { res.set_content("x", "text/plain"); });
+    svr.Get("/empty", [](const httplib::Request &, httplib::Response &res) { res.set_content("", "text/plain"); });
+    int port = svr.bind_to_any_port("127.0.0.1");
+    REQUIRE(port > 0);
+    std::thread th([&svr] { svr.listen_after_bind(); });
+    ServerGuard guard{svr, th};
+    svr.wait_until_ready();
+    std::string base = "http://127.0.0.1:" + std::to_string(port);
+
+    auto ne = run_v3_http_probe("v3-maxsize0-ne", base + "/nonempty",
+        [](NetProbeInputStream &s) { s.config_set<uint64_t>("max_response_size_bytes", 0); });
+    CHECK(ne["successes"].get<int>() == 0);
+    CHECK(ne["content_failures"].get<int>() >= 1);
+
+    auto em = run_v3_http_probe("v3-maxsize0-e", base + "/empty",
+        [](NetProbeInputStream &s) { s.config_set<uint64_t>("max_response_size_bytes", 0); });
+    CHECK(em["successes"].get<int>() >= 1);
+    CHECK(em["content_failures"].get<int>() == 0);
+}
+
 TEST_CASE("NetProbe HTTP e2e v3: stale Last-Modified fails max_last_modified_diff_secs", "[netprobe][http][e2e]")
 {
     httplib::Server svr;

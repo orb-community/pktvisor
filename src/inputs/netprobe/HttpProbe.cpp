@@ -81,7 +81,15 @@ bool HttpProbe::start(std::shared_ptr<uvw::loop> io_loop)
                     bool body_assertions = opts.body_check.configured() || opts.json_check.configured() || opts.body_negative.configured();
                     if (body_assertions) {
                         if (r.body_truncated) {
-                            if (auto logger = spdlog::get("visor")) {
+                            // A forbidden substring VISIBLE in the captured prefix is a definitive
+                            // failure even on a truncated body — substring presence does not depend on
+                            // the unseen tail. The other body assertions (positive matches, regex, and
+                            // JSON parsing) stay inconclusive on a partial body and are skipped.
+                            if (opts.body_negative.configured() && !opts.body_negative.not_substring.empty()
+                                && r.response_body.find(opts.body_negative.not_substring) != std::string::npos) {
+                                checked = true;
+                                pass = false;
+                            } else if (auto logger = spdlog::get("visor")) {
                                 logger->warn("netprobe http[{}]: response body exceeded the {}-byte capture limit; body assertions skipped (raise body_check_max_bytes)", name, opts.body_check_max_bytes);
                             }
                         } else {
@@ -101,10 +109,10 @@ bool HttpProbe::start(std::shared_ptr<uvw::loop> io_loop)
                     // truncation).
                     if (opts.min_response_size || opts.max_response_size) {
                         checked = true;
-                        if (opts.min_response_size && r.response_size < opts.min_response_size) {
+                        if (opts.min_response_size && r.response_size < *opts.min_response_size) {
                             pass = false;
                         }
-                        if (pass && opts.max_response_size && r.response_size > opts.max_response_size) {
+                        if (pass && opts.max_response_size && r.response_size > *opts.max_response_size) {
                             pass = false;
                         }
                     }

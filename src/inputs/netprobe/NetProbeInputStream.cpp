@@ -280,7 +280,7 @@ void NetProbeInputStream::start()
         _http_opts.max_response_size = config_get<uint64_t>("max_response_size_bytes");
     }
     if (_http_opts.min_response_size && _http_opts.max_response_size
-        && _http_opts.min_response_size > _http_opts.max_response_size) {
+        && *_http_opts.min_response_size > *_http_opts.max_response_size) {
         throw NetProbeException("netprobe: min_response_size_bytes must not exceed max_response_size_bytes");
     }
     if (config_exists("max_last_modified_diff_secs")) {
