@@ -55,6 +55,14 @@ struct hash_pair {
 using NfMapID = std::pair<uint32_t, uint16_t>;
 static robin_hood::unordered_node_map<NfMapID, peer_nf9_template, hash_pair> nf9_template_map;
 static robin_hood::unordered_node_map<NfMapID, peer_nf10_template, hash_pair> nf10_template_map;
+/* Options templates (v9 flowset id 1 / IPFIX set id 3) describe metadata
+ * records (sampling rate, interface descriptions, etc.), not flow data.
+ * pktvisor doesn't decode option field values today, but registering these
+ * templates lets a subsequent options-data flowset/set be recognized as
+ * such -- rather than falling through the same "unknown template" path as
+ * a genuinely missing data template -- and skipped accordingly. */
+static robin_hood::unordered_node_map<NfMapID, peer_nf9_template, hash_pair> nf9_options_template_map;
+static robin_hood::unordered_node_map<NfMapID, peer_nf10_template, hash_pair> nf10_options_template_map;
 
 static bool process_netflow_v1(NFSample *sample)
 {
@@ -278,6 +286,61 @@ static bool process_netflow_v9_template(uint8_t *pkt, size_t len, uint32_t sourc
     return true;
 }
 
+/* Options Template FlowSet Format (RFC 3954 section 8): FlowSet ID = 1,
+ * followed by one or more option template records, each:
+ *   Template ID (2), Option Scope Length (2), Option Length (2),
+ *   then (Option Scope Length / 4) scope field specs, then
+ *   (Option Length / 4) option field specs -- each field spec is a
+ *   type (2) + length (2) pair, same shape as a regular template's field
+ *   specs. We only need the combined byte length of one options-data
+ *   record, so scope and option fields are stored together. */
+static bool process_netflow_v9_options_template(uint8_t *pkt, size_t len, uint32_t source_id)
+{
+    struct NF9_FLOWSET_HEADER_COMMON *options_header;
+    uint16_t template_id;
+    uint32_t i, scope_len, option_len, num_fields, offset, total_size;
+
+    options_header = reinterpret_cast<struct NF9_FLOWSET_HEADER_COMMON *>(pkt);
+    if (len < sizeof(*options_header)) {
+        return false;
+    }
+
+    if (be16toh(options_header->flowset_id) != NF9_OPTIONS_FLOWSET_ID) {
+        return false;
+    }
+
+    for (offset = sizeof(*options_header); offset < len;) {
+        if (offset + 6 > len) {
+            return false;
+        }
+
+        template_id = be16toh(*reinterpret_cast<uint16_t *>(pkt + offset));
+        scope_len = be16toh(*reinterpret_cast<uint16_t *>(pkt + offset + 2));
+        option_len = be16toh(*reinterpret_cast<uint16_t *>(pkt + offset + 4));
+        offset += 6;
+
+        num_fields = (scope_len + option_len) / 4;
+        total_size = 0;
+        std::vector<peer_nf9_record> option_recs;
+        for (i = 0; i < num_fields; i++) {
+            if (offset + 4 > len) {
+                return false;
+            }
+
+            uint16_t field_type = be16toh(*reinterpret_cast<uint16_t *>(pkt + offset));
+            uint16_t field_length = be16toh(*reinterpret_cast<uint16_t *>(pkt + offset + 2));
+            offset += 4;
+
+            option_recs.emplace_back(field_type, field_length);
+            total_size += field_length;
+        }
+
+        nf9_options_template_map[NfMapID(source_id, template_id)] = {template_id, source_id, num_fields, total_size, option_recs};
+    }
+
+    return true;
+}
+
 static void nf9_rec_to_flow(NFSample::Flows *flow, struct peer_nf9_record *rec, uint8_t *data)
 {
     /* XXX: use a table-based interpreter */
@@ -393,7 +456,7 @@ static bool process_netflow_v9(NFSample *sample)
 
     struct NF9_FLOWSET_HEADER_COMMON *flowset;
     uint32_t i, flowset_id, flowset_len, flowset_flows;
-    uint32_t offset, total_flows;
+    uint32_t offset;
 
     sample->uptime_ms = be32toh(nf9_hdr->uptime_ms);
     sample->time_sec = be32toh(nf9_hdr->time_sec);
@@ -401,7 +464,6 @@ static bool process_netflow_v9(NFSample *sample)
     sample->source_id = be32toh(nf9_hdr->source_id);
 
     offset = sizeof(*nf9_hdr);
-    total_flows = 0;
 
     std::vector<NFSample::Flows> flows;
     for (i = 0;; i++) {
@@ -426,17 +488,31 @@ static bool process_netflow_v9(NFSample *sample)
             }
             break;
         case NF9_OPTIONS_FLOWSET_ID:
-            /* XXX: implement this (maybe) */
+            if (!process_netflow_v9_options_template(sample->raw_sample + offset, flowset_len, sample->source_id)) {
+                /* XXX ratelimit */
+            }
             break;
         default:
             if (flowset_id < NF9_MIN_RECORD_FLOWSET_ID) {
                 /* XXX ratelimit */
                 break;
             }
-            if (!process_netflow_v9_data(&flows, sample->raw_sample + offset, flowset_len, sample->source_id, flowset_flows)) {
-                return false;
+            if (nf9_options_template_map.find(NfMapID(sample->source_id, flowset_id)) != nf9_options_template_map.end()) {
+                /* Recognized options-data flowset (per a template registered
+                 * above): it carries metadata, not flow records, so there is
+                 * nothing to decode here. It is skipped below like any other
+                 * flowset, by its declared length. */
+                break;
             }
-            total_flows += flowset_flows;
+            /* A data flowset whose template id we don't have (e.g. because
+             * its template announcement was missed) should not abort the
+             * whole datagram: skip just this flowset and keep processing
+             * the rest of the packet, since any real flow data elsewhere in
+             * the same datagram is still valid. */
+            if (!process_netflow_v9_data(&flows, sample->raw_sample + offset, flowset_len, sample->source_id, flowset_flows)) {
+                /* XXX ratelimit */
+                break;
+            }
             break;
         }
         offset += flowset_len;
@@ -447,10 +523,12 @@ static bool process_netflow_v9(NFSample *sample)
 
     sample->flows = flows;
 
-    if (total_flows > 0) {
-        return true;
-    }
-    return false;
+    /* A structurally parseable datagram that happens to carry zero flow
+     * records (a pure template/options refresh, or one where every data
+     * flowset was skipped above) is not a parse error -- only the header
+     * sanity check above should fail this function. Previously this
+     * inflated packet_errors on legitimate exporter behavior. */
+    return true;
 }
 
 static void nf10_rec_to_flow(NFSample::Flows *flow, struct peer_nf10_record *rec, uint8_t *data)
@@ -606,6 +684,64 @@ static bool process_netflow_v10_template(uint8_t *pkt, size_t len, uint32_t sour
     return true;
 }
 
+/* Options Template Record format (RFC 7011 section 3.4.2.2): Set ID = 3,
+ * followed by one or more option template records, each:
+ *   Template ID (2), Field Count (2), Scope Field Count (2), then
+ *   Field Count total field specs (type (2) + length (2), plus a 4-byte
+ *   enterprise number when the enterprise bit is set) -- the first Scope
+ *   Field Count of which are scope fields. As with process_netflow_v9_
+ * options_template, we only need the combined record byte length, so
+ * scope and non-scope fields are stored together. */
+static bool process_netflow_v10_options_template(uint8_t *pkt, size_t len, uint32_t source_id)
+{
+    struct NF10_FLOWSET_HEADER_COMMON *options_header;
+    uint16_t template_id;
+    uint32_t i, field_count, offset, total_size;
+
+    options_header = reinterpret_cast<struct NF10_FLOWSET_HEADER_COMMON *>(pkt);
+    if (len < sizeof(*options_header)) {
+        return false;
+    }
+
+    if (be16toh(options_header->flowset_id) != NF10_OPTIONS_FLOWSET_ID) {
+        return false;
+    }
+
+    for (offset = sizeof(*options_header); offset < len;) {
+        if (offset + 6 > len) {
+            return false;
+        }
+
+        template_id = be16toh(*reinterpret_cast<uint16_t *>(pkt + offset));
+        field_count = be16toh(*reinterpret_cast<uint16_t *>(pkt + offset + 2));
+        /* Scope Field Count (pkt + offset + 4) isn't needed: we don't
+         * distinguish scope from non-scope fields for a byte-length tally. */
+        offset += 6;
+
+        total_size = 0;
+        std::vector<peer_nf10_record> option_recs;
+        for (i = 0; i < field_count; i++) {
+            if (offset + 4 > len) {
+                return false;
+            }
+
+            uint32_t rec_type = be16toh(*reinterpret_cast<uint16_t *>(pkt + offset));
+            uint32_t rec_length = be16toh(*reinterpret_cast<uint16_t *>(pkt + offset + 2));
+            offset += 4;
+            if (rec_type & NF10_ENTERPRISE) {
+                offset += sizeof(uint32_t);
+            }
+
+            option_recs.emplace_back(rec_type, rec_length);
+            (rec_length == 0xFFFF) ? total_size++ : total_size += rec_length; // i.e. variable length
+        }
+
+        nf10_options_template_map[NfMapID(source_id, template_id)] = {template_id, source_id, field_count, total_size, option_recs};
+    }
+
+    return true;
+}
+
 static bool process_netflow_v10(NFSample *sample)
 {
     struct NF10_HEADER *nf10_hdr = reinterpret_cast<struct NF10_HEADER *>(sample->raw_sample);
@@ -616,14 +752,13 @@ static bool process_netflow_v10(NFSample *sample)
 
     struct NF10_FLOWSET_HEADER_COMMON *flowset;
     uint32_t i, flowset_id, flowset_len, flowset_flows;
-    uint32_t offset, total_flows;
+    uint32_t offset;
 
     sample->time_sec = be32toh(nf10_hdr->time_sec);
     sample->flow_sequence = be32toh(nf10_hdr->package_sequence);
     sample->source_id = be32toh(nf10_hdr->source_id);
 
     offset = sizeof(*nf10_hdr);
-    total_flows = 0;
 
     std::vector<NFSample::Flows> flows;
     for (i = 0;; i++) {
@@ -648,17 +783,31 @@ static bool process_netflow_v10(NFSample *sample)
             }
             break;
         case NF10_OPTIONS_FLOWSET_ID:
-            /* XXX: implement this (maybe) */
+            if (!process_netflow_v10_options_template(sample->raw_sample + offset, flowset_len, sample->source_id)) {
+                /* XXX ratelimit */
+            }
             break;
         default:
             if (flowset_id < NF10_MIN_RECORD_FLOWSET_ID) {
                 /* XXX ratelimit */
                 break;
             }
-            if (!process_netflow_v10_data(&flows, sample->raw_sample + offset, flowset_len, sample->source_id, flowset_flows)) {
-                return false;
+            if (nf10_options_template_map.find(NfMapID(sample->source_id, flowset_id)) != nf10_options_template_map.end()) {
+                /* Recognized options-data set (per a template registered
+                 * above): it carries metadata, not flow records, so there is
+                 * nothing to decode here. It is skipped below like any other
+                 * set, by its declared length. */
+                break;
             }
-            total_flows += flowset_flows;
+            /* A data set whose template id we don't have (e.g. because its
+             * template announcement was missed) should not abort the whole
+             * datagram: skip just this set and keep processing the rest of
+             * the message, since any real flow data elsewhere in the same
+             * datagram is still valid. */
+            if (!process_netflow_v10_data(&flows, sample->raw_sample + offset, flowset_len, sample->source_id, flowset_flows)) {
+                /* XXX ratelimit */
+                break;
+            }
             break;
         }
         offset += flowset_len;
@@ -669,10 +818,12 @@ static bool process_netflow_v10(NFSample *sample)
 
     sample->flows = flows;
 
-    if (total_flows > 0) {
-        return true;
-    }
-    return false;
+    /* A structurally parseable message that happens to carry zero flow
+     * records (a pure template/options refresh, or one where every data
+     * set was skipped above) is not a parse error -- only the header
+     * sanity check above should fail this function. Previously this
+     * inflated packet_errors on legitimate exporter behavior. */
+    return true;
 }
 
 static bool process_netflow_packet(NFSample *sample)
