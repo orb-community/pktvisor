@@ -281,6 +281,12 @@ static bool process_netflow_v9_template(uint8_t *pkt, size_t len, uint32_t sourc
         }
 
         nf9_template_map[NfMapID(source_id, template_id)] = {template_id, source_id, count, total_size, template_recs};
+        /* This id may have previously been registered as an options
+         * template (e.g. the exporter withdrew/reassigned it). A stale
+         * options-map entry would otherwise take precedence over this
+         * new data template forever, silently skipping every future
+         * data flowset with this id. */
+        nf9_options_template_map.erase(NfMapID(source_id, template_id));
     }
 
     return true;
@@ -336,6 +342,9 @@ static bool process_netflow_v9_options_template(uint8_t *pkt, size_t len, uint32
         }
 
         nf9_options_template_map[NfMapID(source_id, template_id)] = {template_id, source_id, num_fields, total_size, option_recs};
+        /* Mirror image of the erase in process_netflow_v9_template: this
+         * id may have previously been a data template. */
+        nf9_template_map.erase(NfMapID(source_id, template_id));
     }
 
     return true;
@@ -481,6 +490,15 @@ static bool process_netflow_v9(NFSample *sample)
             break;
         }
 
+        /* A FlowSet/Set must be at least as long as its own fixed header
+         * (id + length). Anything shorter -- notably a declared length of
+         * 0 -- can never advance offset below, which would otherwise spin
+         * on the same bytes forever. Treat it as the end of usable data
+         * in this datagram rather than a hang. */
+        if (flowset_len < sizeof(*flowset)) {
+            break;
+        }
+
         switch (flowset_id) {
         case NF9_TEMPLATE_FLOWSET_ID:
             if (!process_netflow_v9_template(sample->raw_sample + offset, flowset_len, sample->source_id)) {
@@ -504,14 +522,25 @@ static bool process_netflow_v9(NFSample *sample)
                  * flowset, by its declared length. */
                 break;
             }
-            /* A data flowset whose template id we don't have (e.g. because
-             * its template announcement was missed) should not abort the
-             * whole datagram: skip just this flowset and keep processing
-             * the rest of the packet, since any real flow data elsewhere in
-             * the same datagram is still valid. */
-            if (!process_netflow_v9_data(&flows, sample->raw_sample + offset, flowset_len, sample->source_id, flowset_flows)) {
+            if (nf9_template_map.find(NfMapID(sample->source_id, flowset_id)) == nf9_template_map.end()) {
+                /* A data flowset whose template id we don't have (e.g.
+                 * because its template announcement was missed) should
+                 * not abort the whole datagram: skip just this flowset
+                 * and keep processing the rest of the packet, since any
+                 * real flow data elsewhere in the same datagram is still
+                 * valid. */
                 /* XXX ratelimit */
                 break;
+            }
+            /* The template id IS known, so a decode failure here means
+             * this flowset's bytes don't match its own declared template
+             * (truncated data, a record count that doesn't evenly divide
+             * the flowset length, etc). That is genuinely malformed
+             * input, unlike the unknown-template case above -- fail the
+             * whole datagram as before so it's still counted as a parse
+             * error. */
+            if (!process_netflow_v9_data(&flows, sample->raw_sample + offset, flowset_len, sample->source_id, flowset_flows)) {
+                return false;
             }
             break;
         }
@@ -679,6 +708,9 @@ static bool process_netflow_v10_template(uint8_t *pkt, size_t len, uint32_t sour
         }
 
         nf10_template_map[NfMapID(source_id, template_id)] = {template_id, source_id, count, total_size, template_recs};
+        /* See the equivalent erase in process_netflow_v9_template: this
+         * id may have previously been registered as an options template. */
+        nf10_options_template_map.erase(NfMapID(source_id, template_id));
     }
 
     return true;
@@ -737,6 +769,8 @@ static bool process_netflow_v10_options_template(uint8_t *pkt, size_t len, uint3
         }
 
         nf10_options_template_map[NfMapID(source_id, template_id)] = {template_id, source_id, field_count, total_size, option_recs};
+        /* Mirror image of the erase in process_netflow_v10_template. */
+        nf10_template_map.erase(NfMapID(source_id, template_id));
     }
 
     return true;
@@ -776,6 +810,14 @@ static bool process_netflow_v10(NFSample *sample)
             break;
         }
 
+        /* See the equivalent check in process_netflow_v9: a Set shorter
+         * than its own fixed header (id + length) -- notably a declared
+         * length of 0 -- can never advance offset below, which would
+         * otherwise spin on the same bytes forever. */
+        if (flowset_len < sizeof(*flowset)) {
+            break;
+        }
+
         switch (flowset_id) {
         case NF10_TEMPLATE_FLOWSET_ID:
             if (!process_netflow_v10_template(sample->raw_sample + offset, flowset_len, sample->source_id)) {
@@ -799,14 +841,21 @@ static bool process_netflow_v10(NFSample *sample)
                  * set, by its declared length. */
                 break;
             }
-            /* A data set whose template id we don't have (e.g. because its
-             * template announcement was missed) should not abort the whole
-             * datagram: skip just this set and keep processing the rest of
-             * the message, since any real flow data elsewhere in the same
-             * datagram is still valid. */
-            if (!process_netflow_v10_data(&flows, sample->raw_sample + offset, flowset_len, sample->source_id, flowset_flows)) {
+            if (nf10_template_map.find(NfMapID(sample->source_id, flowset_id)) == nf10_template_map.end()) {
+                /* A data set whose template id we don't have (e.g.
+                 * because its template announcement was missed) should
+                 * not abort the whole datagram: skip just this set and
+                 * keep processing the rest of the message, since any
+                 * real flow data elsewhere in the same datagram is still
+                 * valid. */
                 /* XXX ratelimit */
                 break;
+            }
+            /* The template id IS known, so a decode failure here is
+             * genuinely malformed input (see the matching comment in
+             * process_netflow_v9) -- fail the whole datagram as before. */
+            if (!process_netflow_v10_data(&flows, sample->raw_sample + offset, flowset_len, sample->source_id, flowset_flows)) {
+                return false;
             }
             break;
         }
