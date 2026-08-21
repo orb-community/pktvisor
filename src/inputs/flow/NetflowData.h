@@ -7,6 +7,7 @@
 #include "EndianPortable.h"
 #include <netflow.h>
 #include <robin_hood.h>
+#include <string>
 #include <vector>
 
 namespace visor::input::flow {
@@ -27,6 +28,19 @@ struct NFSample {
     uint32_t flow_sequence{0};
     uint32_t source_id{0};
 
+    /* The exporter's own network-layer (UDP sender) address, e.g.
+     * "10.0.0.5". source_id (NetFlow Source ID / IPFIX Observation
+     * Domain ID) and template ids are each chosen independently by
+     * every exporter and are not globally unique, so this is required
+     * as part of the template-map key below to keep two different
+     * exporters that happen to pick the same source_id/template_id
+     * from colliding in these process-global maps. Populated by the
+     * caller (FlowInputStream) before process_netflow_packet() is
+     * called; left empty (e.g. from a synthetic/test sample) is safe --
+     * it just means all such samples share one bucket, matching the
+     * pre-existing behavior. */
+    std::string exporter_ip;
+
     struct Flows {
         bool is_ipv6 = false;
         std::array<uint8_t, 16> src_ip{}, dst_ip{}, nexthop_ip{};
@@ -41,28 +55,53 @@ struct NFSample {
     std::vector<Flows> flows;
 };
 
-// A hash function used to hash a pair of any kind
-struct hash_pair {
-    template <class T1, class T2>
-    size_t operator()(const std::pair<T1, T2> &p) const
+/* Key for the template maps below. source_id (NetFlow Source ID / IPFIX
+ * Observation Domain ID) and template ids are each chosen independently
+ * by every exporter and are not globally unique on their own -- two
+ * different physical exporters can legitimately pick the same
+ * source_id/template_id pair, so the exporter's own address is folded
+ * into the key to keep them from colliding in these process-global
+ * maps. */
+struct NfMapID {
+    std::string exporter_ip;
+    uint32_t source_id;
+    uint16_t template_id;
+
+    NfMapID(std::string exporter_ip_, uint32_t source_id_, uint16_t template_id_)
+        : exporter_ip(std::move(exporter_ip_))
+        , source_id(source_id_)
+        , template_id(template_id_)
     {
-        auto hash1 = std::hash<T1>{}(p.first);
-        auto hash2 = std::hash<T2>{}(p.second);
-        return hash1 ^ hash2;
+    }
+
+    bool operator==(const NfMapID &other) const
+    {
+        return exporter_ip == other.exporter_ip
+            && source_id == other.source_id
+            && template_id == other.template_id;
     }
 };
 
-using NfMapID = std::pair<uint32_t, uint16_t>;
-static robin_hood::unordered_node_map<NfMapID, peer_nf9_template, hash_pair> nf9_template_map;
-static robin_hood::unordered_node_map<NfMapID, peer_nf10_template, hash_pair> nf10_template_map;
+struct hash_nf_map_id {
+    size_t operator()(const NfMapID &k) const
+    {
+        size_t h1 = std::hash<std::string>{}(k.exporter_ip);
+        size_t h2 = std::hash<uint32_t>{}(k.source_id);
+        size_t h3 = std::hash<uint16_t>{}(k.template_id);
+        return h1 ^ (h2 << 1) ^ (h3 << 2);
+    }
+};
+
+static robin_hood::unordered_node_map<NfMapID, peer_nf9_template, hash_nf_map_id> nf9_template_map;
+static robin_hood::unordered_node_map<NfMapID, peer_nf10_template, hash_nf_map_id> nf10_template_map;
 /* Options templates (v9 flowset id 1 / IPFIX set id 3) describe metadata
  * records (sampling rate, interface descriptions, etc.), not flow data.
  * pktvisor doesn't decode option field values today, but registering these
  * templates lets a subsequent options-data flowset/set be recognized as
  * such -- rather than falling through the same "unknown template" path as
  * a genuinely missing data template -- and skipped accordingly. */
-static robin_hood::unordered_node_map<NfMapID, peer_nf9_template, hash_pair> nf9_options_template_map;
-static robin_hood::unordered_node_map<NfMapID, peer_nf10_template, hash_pair> nf10_options_template_map;
+static robin_hood::unordered_node_map<NfMapID, peer_nf9_template, hash_nf_map_id> nf9_options_template_map;
+static robin_hood::unordered_node_map<NfMapID, peer_nf10_template, hash_nf_map_id> nf10_options_template_map;
 
 static bool process_netflow_v1(NFSample *sample)
 {
@@ -240,7 +279,7 @@ static inline void be_copy(uint8_t *data, uint8_t *target, uint32_t target_lengt
     }
 }
 
-static bool process_netflow_v9_template(uint8_t *pkt, size_t len, uint32_t source_id)
+static bool process_netflow_v9_template(uint8_t *pkt, size_t len, const std::string &exporter_ip, uint32_t source_id)
 {
     struct NF9_FLOWSET_HEADER_COMMON *template_header;
     struct NF9_TEMPLATE_FLOWSET_HEADER *tmplh;
@@ -280,13 +319,13 @@ static bool process_netflow_v9_template(uint8_t *pkt, size_t len, uint32_t sourc
             total_size += rec_length;
         }
 
-        nf9_template_map[NfMapID(source_id, template_id)] = {template_id, source_id, count, total_size, template_recs};
+        nf9_template_map[NfMapID(exporter_ip, source_id, template_id)] = {template_id, source_id, count, total_size, template_recs};
         /* This id may have previously been registered as an options
          * template (e.g. the exporter withdrew/reassigned it). A stale
          * options-map entry would otherwise take precedence over this
          * new data template forever, silently skipping every future
          * data flowset with this id. */
-        nf9_options_template_map.erase(NfMapID(source_id, template_id));
+        nf9_options_template_map.erase(NfMapID(exporter_ip, source_id, template_id));
     }
 
     return true;
@@ -300,7 +339,7 @@ static bool process_netflow_v9_template(uint8_t *pkt, size_t len, uint32_t sourc
  *   type (2) + length (2) pair, same shape as a regular template's field
  *   specs. We only need the combined byte length of one options-data
  *   record, so scope and option fields are stored together. */
-static bool process_netflow_v9_options_template(uint8_t *pkt, size_t len, uint32_t source_id)
+static bool process_netflow_v9_options_template(uint8_t *pkt, size_t len, const std::string &exporter_ip, uint32_t source_id)
 {
     struct NF9_FLOWSET_HEADER_COMMON *options_header;
     uint16_t template_id;
@@ -341,10 +380,10 @@ static bool process_netflow_v9_options_template(uint8_t *pkt, size_t len, uint32
             total_size += field_length;
         }
 
-        nf9_options_template_map[NfMapID(source_id, template_id)] = {template_id, source_id, num_fields, total_size, option_recs};
+        nf9_options_template_map[NfMapID(exporter_ip, source_id, template_id)] = {template_id, source_id, num_fields, total_size, option_recs};
         /* Mirror image of the erase in process_netflow_v9_template: this
          * id may have previously been a data template. */
-        nf9_template_map.erase(NfMapID(source_id, template_id));
+        nf9_template_map.erase(NfMapID(exporter_ip, source_id, template_id));
     }
 
     return true;
@@ -405,7 +444,7 @@ static void nf9_rec_to_flow(NFSample::Flows *flow, struct peer_nf9_record *rec, 
     }
 }
 
-static bool process_netflow_v9_data(std::vector<NFSample::Flows> *flows, uint8_t *pkt, size_t len, uint32_t source_id, uint32_t &num_flows)
+static bool process_netflow_v9_data(std::vector<NFSample::Flows> *flows, uint8_t *pkt, size_t len, const std::string &exporter_ip, uint32_t source_id, uint32_t &num_flows)
 {
     struct NF9_DATA_FLOWSET_HEADER *dath;
     uint16_t flowset_id, offset, num_flowsets;
@@ -423,7 +462,7 @@ static bool process_netflow_v9_data(std::vector<NFSample::Flows> *flows, uint8_t
 
     flowset_id = be16toh(dath->c.flowset_id);
 
-    auto iter = nf9_template_map.find(NfMapID(source_id, flowset_id));
+    auto iter = nf9_template_map.find(NfMapID(exporter_ip, source_id, flowset_id));
     if (iter == nf9_template_map.end()) {
         return false;
     }
@@ -501,12 +540,12 @@ static bool process_netflow_v9(NFSample *sample)
 
         switch (flowset_id) {
         case NF9_TEMPLATE_FLOWSET_ID:
-            if (!process_netflow_v9_template(sample->raw_sample + offset, flowset_len, sample->source_id)) {
+            if (!process_netflow_v9_template(sample->raw_sample + offset, flowset_len, sample->exporter_ip, sample->source_id)) {
                 return false;
             }
             break;
         case NF9_OPTIONS_FLOWSET_ID:
-            if (!process_netflow_v9_options_template(sample->raw_sample + offset, flowset_len, sample->source_id)) {
+            if (!process_netflow_v9_options_template(sample->raw_sample + offset, flowset_len, sample->exporter_ip, sample->source_id)) {
                 /* XXX ratelimit */
             }
             break;
@@ -515,14 +554,14 @@ static bool process_netflow_v9(NFSample *sample)
                 /* XXX ratelimit */
                 break;
             }
-            if (nf9_options_template_map.find(NfMapID(sample->source_id, flowset_id)) != nf9_options_template_map.end()) {
+            if (nf9_options_template_map.find(NfMapID(sample->exporter_ip, sample->source_id, flowset_id)) != nf9_options_template_map.end()) {
                 /* Recognized options-data flowset (per a template registered
                  * above): it carries metadata, not flow records, so there is
                  * nothing to decode here. It is skipped below like any other
                  * flowset, by its declared length. */
                 break;
             }
-            if (nf9_template_map.find(NfMapID(sample->source_id, flowset_id)) == nf9_template_map.end()) {
+            if (nf9_template_map.find(NfMapID(sample->exporter_ip, sample->source_id, flowset_id)) == nf9_template_map.end()) {
                 /* A data flowset whose template id we don't have (e.g.
                  * because its template announcement was missed) should
                  * not abort the whole datagram: skip just this flowset
@@ -539,7 +578,7 @@ static bool process_netflow_v9(NFSample *sample)
              * input, unlike the unknown-template case above -- fail the
              * whole datagram as before so it's still counted as a parse
              * error. */
-            if (!process_netflow_v9_data(&flows, sample->raw_sample + offset, flowset_len, sample->source_id, flowset_flows)) {
+            if (!process_netflow_v9_data(&flows, sample->raw_sample + offset, flowset_len, sample->exporter_ip, sample->source_id, flowset_flows)) {
                 return false;
             }
             break;
@@ -615,7 +654,7 @@ static void nf10_rec_to_flow(NFSample::Flows *flow, struct peer_nf10_record *rec
     }
 }
 
-static bool process_netflow_v10_data(std::vector<NFSample::Flows> *flows, uint8_t *pkt, size_t len, uint32_t source_id, uint32_t &num_flows)
+static bool process_netflow_v10_data(std::vector<NFSample::Flows> *flows, uint8_t *pkt, size_t len, const std::string &exporter_ip, uint32_t source_id, uint32_t &num_flows)
 {
     struct NF10_DATA_FLOWSET_HEADER *dath;
     uint16_t flowset_id, offset, num_flowsets;
@@ -632,7 +671,7 @@ static bool process_netflow_v10_data(std::vector<NFSample::Flows> *flows, uint8_
     }
 
     flowset_id = be16toh(dath->c.flowset_id);
-    auto iter = nf10_template_map.find(NfMapID(source_id, flowset_id));
+    auto iter = nf10_template_map.find(NfMapID(exporter_ip, source_id, flowset_id));
     if (iter == nf10_template_map.end()) {
         return false;
     }
@@ -665,7 +704,7 @@ static bool process_netflow_v10_data(std::vector<NFSample::Flows> *flows, uint8_
     return true;
 }
 
-static bool process_netflow_v10_template(uint8_t *pkt, size_t len, uint32_t source_id)
+static bool process_netflow_v10_template(uint8_t *pkt, size_t len, const std::string &exporter_ip, uint32_t source_id)
 {
     struct NF10_FLOWSET_HEADER_COMMON *template_header;
     struct NF10_TEMPLATE_FLOWSET_HEADER *tmplh;
@@ -717,10 +756,10 @@ static bool process_netflow_v10_template(uint8_t *pkt, size_t len, uint32_t sour
             (rec_length == 0xFFFF) ? total_size++ : total_size += rec_length; // i.e. variable length
         }
 
-        nf10_template_map[NfMapID(source_id, template_id)] = {template_id, source_id, count, total_size, template_recs};
+        nf10_template_map[NfMapID(exporter_ip, source_id, template_id)] = {template_id, source_id, count, total_size, template_recs};
         /* See the equivalent erase in process_netflow_v9_template: this
          * id may have previously been registered as an options template. */
-        nf10_options_template_map.erase(NfMapID(source_id, template_id));
+        nf10_options_template_map.erase(NfMapID(exporter_ip, source_id, template_id));
     }
 
     return true;
@@ -734,7 +773,7 @@ static bool process_netflow_v10_template(uint8_t *pkt, size_t len, uint32_t sour
  *   Field Count of which are scope fields. As with process_netflow_v9_
  * options_template, we only need the combined record byte length, so
  * scope and non-scope fields are stored together. */
-static bool process_netflow_v10_options_template(uint8_t *pkt, size_t len, uint32_t source_id)
+static bool process_netflow_v10_options_template(uint8_t *pkt, size_t len, const std::string &exporter_ip, uint32_t source_id)
 {
     struct NF10_FLOWSET_HEADER_COMMON *options_header;
     uint16_t template_id;
@@ -756,9 +795,20 @@ static bool process_netflow_v10_options_template(uint8_t *pkt, size_t len, uint3
 
         template_id = be16toh(*reinterpret_cast<uint16_t *>(pkt + offset));
         field_count = be16toh(*reinterpret_cast<uint16_t *>(pkt + offset + 2));
-        /* Scope Field Count (pkt + offset + 4) isn't needed: we don't
-         * distinguish scope from non-scope fields for a byte-length tally. */
+        /* Scope Field Count: per RFC 7011 section 3.4.2.2, an Options
+         * Template's scope fields are defined as the first
+         * scope_field_count of its field_count total field specifiers,
+         * so scope_field_count can never exceed field_count. We don't
+         * otherwise distinguish scope from non-scope fields (both are
+         * folded into one byte-length tally below), but a value that
+         * violates this invariant means the record is malformed --
+         * reject it rather than silently reading past where the scope
+         * fields actually end. */
+        uint32_t scope_field_count = be16toh(*reinterpret_cast<uint16_t *>(pkt + offset + 4));
         offset += 6;
+        if (scope_field_count > field_count) {
+            return false;
+        }
 
         total_size = 0;
         std::vector<peer_nf10_record> option_recs;
@@ -790,9 +840,9 @@ static bool process_netflow_v10_options_template(uint8_t *pkt, size_t len, uint3
             (rec_length == 0xFFFF) ? total_size++ : total_size += rec_length; // i.e. variable length
         }
 
-        nf10_options_template_map[NfMapID(source_id, template_id)] = {template_id, source_id, field_count, total_size, option_recs};
+        nf10_options_template_map[NfMapID(exporter_ip, source_id, template_id)] = {template_id, source_id, field_count, total_size, option_recs};
         /* Mirror image of the erase in process_netflow_v10_template. */
-        nf10_template_map.erase(NfMapID(source_id, template_id));
+        nf10_template_map.erase(NfMapID(exporter_ip, source_id, template_id));
     }
 
     return true;
@@ -842,12 +892,12 @@ static bool process_netflow_v10(NFSample *sample)
 
         switch (flowset_id) {
         case NF10_TEMPLATE_FLOWSET_ID:
-            if (!process_netflow_v10_template(sample->raw_sample + offset, flowset_len, sample->source_id)) {
+            if (!process_netflow_v10_template(sample->raw_sample + offset, flowset_len, sample->exporter_ip, sample->source_id)) {
                 return false;
             }
             break;
         case NF10_OPTIONS_FLOWSET_ID:
-            if (!process_netflow_v10_options_template(sample->raw_sample + offset, flowset_len, sample->source_id)) {
+            if (!process_netflow_v10_options_template(sample->raw_sample + offset, flowset_len, sample->exporter_ip, sample->source_id)) {
                 /* XXX ratelimit */
             }
             break;
@@ -856,14 +906,14 @@ static bool process_netflow_v10(NFSample *sample)
                 /* XXX ratelimit */
                 break;
             }
-            if (nf10_options_template_map.find(NfMapID(sample->source_id, flowset_id)) != nf10_options_template_map.end()) {
+            if (nf10_options_template_map.find(NfMapID(sample->exporter_ip, sample->source_id, flowset_id)) != nf10_options_template_map.end()) {
                 /* Recognized options-data set (per a template registered
                  * above): it carries metadata, not flow records, so there is
                  * nothing to decode here. It is skipped below like any other
                  * set, by its declared length. */
                 break;
             }
-            if (nf10_template_map.find(NfMapID(sample->source_id, flowset_id)) == nf10_template_map.end()) {
+            if (nf10_template_map.find(NfMapID(sample->exporter_ip, sample->source_id, flowset_id)) == nf10_template_map.end()) {
                 /* A data set whose template id we don't have (e.g.
                  * because its template announcement was missed) should
                  * not abort the whole datagram: skip just this set and
@@ -876,7 +926,7 @@ static bool process_netflow_v10(NFSample *sample)
             /* The template id IS known, so a decode failure here is
              * genuinely malformed input (see the matching comment in
              * process_netflow_v9) -- fail the whole datagram as before. */
-            if (!process_netflow_v10_data(&flows, sample->raw_sample + offset, flowset_len, sample->source_id, flowset_flows)) {
+            if (!process_netflow_v10_data(&flows, sample->raw_sample + offset, flowset_len, sample->exporter_ip, sample->source_id, flowset_flows)) {
                 return false;
             }
             break;

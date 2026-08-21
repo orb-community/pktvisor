@@ -106,16 +106,19 @@ void FlowInputStream::_read_from_pcap_file()
                 NFSample sample;
                 sample.raw_sample = udpLayer->getLayerPayload();
                 sample.raw_sample_len = udpLayer->getLayerPayloadSize();
+                // Extract the exporter's address before parsing (not just
+                // for the callback below) -- process_netflow_packet uses it
+                // as part of the template-map key, so two different
+                // exporters replayed from the same pcap can't collide.
+                if (auto IP4layer = netflow_pkt.getLayerOfType<pcpp::IPv4Layer>(); IP4layer) {
+                    sample.exporter_ip = IP4layer->getSrcIPv4Address().toString();
+                } else if (auto IP6layer = netflow_pkt.getLayerOfType<pcpp::IPv6Layer>(); IP6layer) {
+                    sample.exporter_ip = IP6layer->getSrcIPv6Address().toString();
+                }
                 if (process_netflow_packet(&sample)) {
-                    std::string src_ip;
-                    if (auto IP4layer = netflow_pkt.getLayerOfType<pcpp::IPv4Layer>(); IP4layer) {
-                        src_ip = IP4layer->getSrcIPv4Address().toString();
-                    } else if (auto IP6layer = netflow_pkt.getLayerOfType<pcpp::IPv6Layer>(); IP6layer) {
-                        src_ip = IP6layer->getSrcIPv6Address().toString();
-                    }
                     std::shared_lock lock(_input_mutex);
                     for (auto &proxy : _event_proxies) {
-                        static_cast<FlowInputEventProxy *>(proxy.get())->netflow_cb(src_ip, sample, rawPacket.getRawDataLen());
+                        static_cast<FlowInputEventProxy *>(proxy.get())->netflow_cb(sample.exporter_ip, sample, rawPacket.getRawDataLen());
                     }
                 } else {
                     _logger->error("invalid netflow or ipfix packet");
@@ -213,6 +216,8 @@ void FlowInputStream::_create_frame_stream_udp_socket()
             NFSample sample;
             sample.raw_sample = reinterpret_cast<uint8_t *>(event.data.get());
             sample.raw_sample_len = event.length;
+            // See the equivalent note in the pcap-file path above.
+            sample.exporter_ip = event.sender.ip;
             if (process_netflow_packet(&sample)) {
                 std::shared_lock lock(_input_mutex);
                 for (auto &proxy : _event_proxies) {
