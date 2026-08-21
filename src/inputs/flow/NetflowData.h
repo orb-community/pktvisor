@@ -702,7 +702,17 @@ static bool process_netflow_v10_template(uint8_t *pkt, size_t len, uint32_t sour
 
             peer_nf10_record recs(rec_type, rec_length);
             offset += sizeof(*tmplr);
-            (rec_type & NF10_ENTERPRISE) ? offset += sizeof(uint32_t) : offset;
+            if (rec_type & NF10_ENTERPRISE) {
+                /* See the equivalent check in
+                 * process_netflow_v10_options_template: a truncated
+                 * enterprise number here would otherwise let this
+                 * malformed template get registered below and erase a
+                 * valid options-template entry for the same id. */
+                if (offset + sizeof(uint32_t) > len) {
+                    return false;
+                }
+                offset += sizeof(uint32_t);
+            }
             template_recs.push_back(recs);
             (rec_length == 0xFFFF) ? total_size++ : total_size += rec_length; // i.e. variable length
         }
@@ -761,6 +771,18 @@ static bool process_netflow_v10_options_template(uint8_t *pkt, size_t len, uint3
             uint32_t rec_length = be16toh(*reinterpret_cast<uint16_t *>(pkt + offset + 2));
             offset += 4;
             if (rec_type & NF10_ENTERPRISE) {
+                /* A field spec with the enterprise bit set carries an
+                 * extra 4-byte enterprise number. If the Set is
+                 * truncated right at that point, advancing offset
+                 * unconditionally would run past `len` -- and without
+                 * this check, the loop would still exit normally and
+                 * this malformed, truncated template would get
+                 * registered below, silently discarding a valid data
+                 * template for the same id (via the erase() below).
+                 * Reject it instead. */
+                if (offset + sizeof(uint32_t) > len) {
+                    return false;
+                }
                 offset += sizeof(uint32_t);
             }
 
