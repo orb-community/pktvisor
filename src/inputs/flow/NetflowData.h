@@ -354,6 +354,17 @@ static bool process_netflow_v9_options_template(uint8_t *pkt, size_t len, const 
         return false;
     }
 
+    /* Parse every record in this FlowSet into a local buffer first, without
+     * touching the process-global template maps. A single Options Template
+     * FlowSet can carry more than one record; if an earlier record were
+     * committed immediately and a later record in the same FlowSet turned
+     * out to be truncated or malformed, the erase() below would already
+     * have discarded a legitimate data template for that id before this
+     * function could report the failure -- corrupting exporter state for
+     * every future datagram, not just this one. Only commit to the maps
+     * once the whole FlowSet is known to be well-formed. */
+    std::vector<std::pair<uint16_t, peer_nf9_template>> pending;
+
     for (offset = sizeof(*options_header); offset < len;) {
         if (offset + 6 > len) {
             return false;
@@ -363,6 +374,16 @@ static bool process_netflow_v9_options_template(uint8_t *pkt, size_t len, const 
         scope_len = be16toh(*reinterpret_cast<uint16_t *>(pkt + offset + 2));
         option_len = be16toh(*reinterpret_cast<uint16_t *>(pkt + offset + 4));
         offset += 6;
+
+        /* Option Scope Length and Option Length each delimit a list of
+         * 4-byte field specifiers, so each must independently be a
+         * multiple of 4. Summing them before dividing would accept an
+         * invalid split (e.g. 2 + 2) as one well-formed field, letting a
+         * malformed record consume bytes belonging to the next record or
+         * trailing padding. */
+        if (scope_len % 4 != 0 || option_len % 4 != 0) {
+            return false;
+        }
 
         num_fields = (scope_len + option_len) / 4;
         total_size = 0;
@@ -380,10 +401,14 @@ static bool process_netflow_v9_options_template(uint8_t *pkt, size_t len, const 
             total_size += field_length;
         }
 
-        nf9_options_template_map[NfMapID(exporter_ip, source_id, template_id)] = {template_id, source_id, num_fields, total_size, option_recs};
+        pending.emplace_back(template_id, peer_nf9_template{template_id, source_id, num_fields, total_size, option_recs});
+    }
+
+    for (auto &p : pending) {
+        nf9_options_template_map[NfMapID(exporter_ip, source_id, p.first)] = p.second;
         /* Mirror image of the erase in process_netflow_v9_template: this
          * id may have previously been a data template. */
-        nf9_template_map.erase(NfMapID(exporter_ip, source_id, template_id));
+        nf9_template_map.erase(NfMapID(exporter_ip, source_id, p.first));
     }
 
     return true;
@@ -545,8 +570,12 @@ static bool process_netflow_v9(NFSample *sample)
             }
             break;
         case NF9_OPTIONS_FLOWSET_ID:
+            /* A malformed options template (fails internally after
+             * validating its own bytes) is genuinely bad input, the same
+             * as a malformed regular template above -- fail the whole
+             * datagram rather than silently treating it as skippable. */
             if (!process_netflow_v9_options_template(sample->raw_sample + offset, flowset_len, sample->exporter_ip, sample->source_id)) {
-                /* XXX ratelimit */
+                return false;
             }
             break;
         default:
@@ -788,6 +817,14 @@ static bool process_netflow_v10_options_template(uint8_t *pkt, size_t len, const
         return false;
     }
 
+    /* See the equivalent comment in process_netflow_v9_options_template:
+     * parse every record in this FlowSet into a local buffer first, and
+     * only commit to the process-global template maps once the whole Set
+     * is known to be well-formed, so a truncated later record can't leave
+     * an earlier record's registration (and its erase() of a legitimate
+     * data template) applied while this function still reports failure. */
+    std::vector<std::pair<uint16_t, peer_nf10_template>> pending;
+
     for (offset = sizeof(*options_header); offset < len;) {
         if (offset + 6 > len) {
             return false;
@@ -840,9 +877,13 @@ static bool process_netflow_v10_options_template(uint8_t *pkt, size_t len, const
             (rec_length == 0xFFFF) ? total_size++ : total_size += rec_length; // i.e. variable length
         }
 
-        nf10_options_template_map[NfMapID(exporter_ip, source_id, template_id)] = {template_id, source_id, field_count, total_size, option_recs};
+        pending.emplace_back(template_id, peer_nf10_template{template_id, source_id, field_count, total_size, option_recs});
+    }
+
+    for (auto &p : pending) {
+        nf10_options_template_map[NfMapID(exporter_ip, source_id, p.first)] = p.second;
         /* Mirror image of the erase in process_netflow_v10_template. */
-        nf10_template_map.erase(NfMapID(exporter_ip, source_id, template_id));
+        nf10_template_map.erase(NfMapID(exporter_ip, source_id, p.first));
     }
 
     return true;
@@ -897,8 +938,11 @@ static bool process_netflow_v10(NFSample *sample)
             }
             break;
         case NF10_OPTIONS_FLOWSET_ID:
+            /* See the equivalent comment in process_netflow_v9: a malformed
+             * options template is genuinely bad input -- fail the whole
+             * datagram rather than silently treating it as skippable. */
             if (!process_netflow_v10_options_template(sample->raw_sample + offset, flowset_len, sample->exporter_ip, sample->source_id)) {
-                /* XXX ratelimit */
+                return false;
             }
             break;
         default:
