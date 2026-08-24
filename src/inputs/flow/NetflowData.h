@@ -951,6 +951,21 @@ static bool process_netflow_v10(NFSample *sample)
         return false;
     }
 
+    /* Per RFC 7011 section 3.1, the IPFIX header's Length field (stored in
+     * the same slot NF_HEADER_COMMON calls "flows" for the other, older
+     * header shapes) is the total length of the whole Message -- header
+     * plus every Set -- in octets. Over UDP, each datagram carries
+     * exactly one Message, so this must equal the received payload
+     * length exactly. A mismatch means either a truncated capture or
+     * trailing bytes past where this message actually ends; parsing
+     * further Sets based on raw_sample_len instead would silently read
+     * past (or stop short of) the message's real boundary, and a
+     * declared-but-never-received length must not be reported as a
+     * successful zero-flow sample. */
+    if (be16toh(nf10_hdr->c.flows) != sample->raw_sample_len) {
+        return false;
+    }
+
     struct NF10_FLOWSET_HEADER_COMMON *flowset;
     uint32_t i, flowset_id, flowset_len, flowset_flows;
     uint32_t offset;
