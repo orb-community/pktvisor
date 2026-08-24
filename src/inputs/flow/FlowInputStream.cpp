@@ -106,15 +106,19 @@ void FlowInputStream::_read_from_pcap_file()
                 NFSample sample;
                 sample.raw_sample = udpLayer->getLayerPayload();
                 sample.raw_sample_len = udpLayer->getLayerPayloadSize();
-                // Extract the exporter's address before parsing (not just
-                // for the callback below) -- process_netflow_packet uses it
-                // as part of the template-map key, so two different
-                // exporters replayed from the same pcap can't collide.
+                // Extract the exporter's address and port before parsing
+                // (not just for the callback below) -- process_netflow_packet
+                // uses them (plus this stream's own listener_id) as part of
+                // the template-map key, so two different exporters replayed
+                // from the same pcap -- or through the same listener as
+                // another configured tap -- can't collide.
                 if (auto IP4layer = netflow_pkt.getLayerOfType<pcpp::IPv4Layer>(); IP4layer) {
                     sample.exporter_ip = IP4layer->getSrcIPv4Address().toString();
                 } else if (auto IP6layer = netflow_pkt.getLayerOfType<pcpp::IPv6Layer>(); IP6layer) {
                     sample.exporter_ip = IP6layer->getSrcIPv6Address().toString();
                 }
+                sample.listener_id = _name;
+                sample.exporter_port = udpLayer->getSrcPort();
                 if (process_netflow_packet(&sample)) {
                     std::shared_lock lock(_input_mutex);
                     for (auto &proxy : _event_proxies) {
@@ -216,8 +220,15 @@ void FlowInputStream::_create_frame_stream_udp_socket()
             NFSample sample;
             sample.raw_sample = reinterpret_cast<uint8_t *>(event.data.get());
             sample.raw_sample_len = event.length;
-            // See the equivalent note in the pcap-file path above.
+            // See the equivalent note in the pcap-file path above: fold in
+            // this stream's own identity and the exporter's UDP source port,
+            // in addition to its address, so two independently configured
+            // taps in the same process (or two exporters behind the same
+            // NAT'd address) can't collide in the process-global template
+            // maps.
             sample.exporter_ip = event.sender.ip;
+            sample.listener_id = _name;
+            sample.exporter_port = static_cast<uint16_t>(event.sender.port);
             if (process_netflow_packet(&sample)) {
                 std::shared_lock lock(_input_mutex);
                 for (auto &proxy : _event_proxies) {
