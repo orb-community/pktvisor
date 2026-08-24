@@ -570,12 +570,16 @@ static bool process_netflow_v9(NFSample *sample)
             }
             break;
         case NF9_OPTIONS_FLOWSET_ID:
-            /* A malformed options template (fails internally after
-             * validating its own bytes) is genuinely bad input, the same
-             * as a malformed regular template above -- fail the whole
-             * datagram rather than silently treating it as skippable. */
+            /* Unlike a malformed regular TEMPLATE flowset, a malformed or
+             * simply not-fully-understood OPTIONS flowset must not fail
+             * the whole datagram -- that reintroduces the exact bug this
+             * PR fixes (real exporters interleave options flowsets we
+             * don't fully model with real flow data in the same
+             * datagram). process_netflow_v9_options_template's map
+             * updates are transactional, so a failure here is guaranteed
+             * to have committed nothing; it's safe to just move on. */
             if (!process_netflow_v9_options_template(sample->raw_sample + offset, flowset_len, sample->exporter_ip, sample->source_id)) {
-                return false;
+                /* XXX ratelimit */
             }
             break;
         default:
@@ -938,11 +942,12 @@ static bool process_netflow_v10(NFSample *sample)
             }
             break;
         case NF10_OPTIONS_FLOWSET_ID:
-            /* See the equivalent comment in process_netflow_v9: a malformed
-             * options template is genuinely bad input -- fail the whole
-             * datagram rather than silently treating it as skippable. */
+            /* See the equivalent comment in process_netflow_v9: tolerate
+             * this rather than failing the datagram -- the transactional
+             * map updates in process_netflow_v10_options_template mean a
+             * failure here never leaves partial state behind. */
             if (!process_netflow_v10_options_template(sample->raw_sample + offset, flowset_len, sample->exporter_ip, sample->source_id)) {
-                return false;
+                /* XXX ratelimit */
             }
             break;
         default:
