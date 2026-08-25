@@ -558,6 +558,20 @@ static bool process_netflow_v9(NFSample *sample)
         return false;
     }
 
+    /* The header's Count field (sample->nflows, set by the caller from the
+     * same offset NF_HEADER_COMMON calls "flows") declares the number of
+     * FlowSets that follow the header. A datagram that is exactly
+     * header-sized has zero bytes left for any FlowSet, so it can only be
+     * genuinely well-formed if Count is 0 too; a nonzero Count here can
+     * never contain what it declares. Left unchecked, this case falls
+     * straight through the loop below (which never executes, since offset
+     * already equals raw_sample_len) to the unconditional success path at
+     * the end, silently reporting a truncated datagram as a valid empty
+     * sample. */
+    if (sample->raw_sample_len == sizeof(*nf9_hdr) && sample->nflows != 0) {
+        return false;
+    }
+
     struct NF9_FLOWSET_HEADER_COMMON *flowset;
     uint32_t i, flowset_id, flowset_len, flowset_flows;
     uint32_t offset;
