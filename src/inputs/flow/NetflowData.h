@@ -975,6 +975,22 @@ static bool process_netflow_v10_options_template(uint8_t *pkt, size_t len, const
         if (scope_field_count > field_count) {
             return false;
         }
+        /* Per RFC 7011 section 3.4.2.2, an Options Template Record with a
+         * nonzero Field Count is a normal (non-withdrawal) template, and
+         * those must carry at least one scope field -- a data record
+         * described by a template with zero scope fields has nothing to
+         * key it to the object it's reporting on. (Field Count == 0 is
+         * reserved for an Options Template *Withdrawal*, which this
+         * function doesn't otherwise special-case; it's harmless to fall
+         * through and register as an empty template below, since nothing
+         * downstream reads option field values yet.) Accepting a nonzero
+         * Field Count with zero scope fields here would register this id
+         * as a legitimate options template anyway, which both trusts a
+         * malformed record and erases any real data-template entry for
+         * the same id via the loop below. */
+        if (field_count > 0 && scope_field_count == 0) {
+            return false;
+        }
 
         total_size = 0;
         std::vector<peer_nf10_record> option_recs;
