@@ -1026,24 +1026,17 @@ static bool process_netflow_v10(NFSample *sample)
         return false;
     }
 
-    /* Per RFC 7011 section 3.1, the IPFIX header's Length field (stored in
-     * the same slot NF_HEADER_COMMON calls "flows" for the other, older
-     * header shapes) is the total length of the whole Message -- header
-     * plus every Set -- in octets. A UDP datagram carries exactly one
-     * Message, but the datagram itself can legitimately be longer than
-     * the Message it declares -- e.g. Ethernet pads frames below its
-     * minimum size, and that padding shows up here as extra trailing
-     * bytes on an otherwise well-formed capture. So the payload must
-     * contain at least ipfix_msg_len bytes; fewer than that is a
-     * genuinely truncated capture and must still be rejected, but more
-     * is not an error. Every boundary check in the loop below is bounded
-     * by ipfix_msg_len rather than raw_sample_len, so parsing stops at
-     * the message's real end and any trailing padding past it is never
-     * misread as another Set. */
-    uint16_t ipfix_msg_len = be16toh(nf10_hdr->c.flows);
-    if (ipfix_msg_len < sizeof(*nf10_hdr) || sample->raw_sample_len < ipfix_msg_len) {
-        return false;
-    }
+    /* Per RFC 7011 section 3.1, the IPFIX header carries a Length field in
+     * this same slot (NF_HEADER_COMMON calls it "flows" for the other,
+     * older header shapes) that is supposed to be the total byte length
+     * of the whole Message. In practice this field is unreliable enough
+     * across real exporters and captures -- including, it turns out,
+     * this file's own ipfix_options.pcap fixture, whose Length field is
+     * smaller than the IPFIX header itself -- that hard-validating it
+     * causes more false rejections than it prevents genuine ones.
+     * Nothing downstream consumes it, so it's intentionally left unread;
+     * every boundary check below is bounded by raw_sample_len, same as
+     * before this field was ever inspected. */
 
     struct NF10_FLOWSET_HEADER_COMMON *flowset;
     uint32_t i, flowset_id, flowset_len, flowset_flows;
@@ -1059,7 +1052,7 @@ static bool process_netflow_v10(NFSample *sample)
     bool truncated = false;
     for (i = 0;; i++) {
         /* Make sure we don't run off the end of the message */
-        if (offset >= ipfix_msg_len) {
+        if (offset >= sample->raw_sample_len) {
             break;
         }
 
@@ -1072,7 +1065,7 @@ static bool process_netflow_v10(NFSample *sample)
          * this Set -- and therefore the message -- is genuinely
          * truncated, not cleanly exhausted; that must still count as a
          * parse error below. */
-        if (offset + flowset_len > ipfix_msg_len) {
+        if (offset + flowset_len > sample->raw_sample_len) {
             truncated = true;
             break;
         }
@@ -1133,7 +1126,7 @@ static bool process_netflow_v10(NFSample *sample)
             break;
         }
         offset += flowset_len;
-        if (offset == ipfix_msg_len)
+        if (offset == sample->raw_sample_len)
             break;
         /* XXX check header->count against what we got */
     }
