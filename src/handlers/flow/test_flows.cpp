@@ -470,9 +470,12 @@ TEST_CASE("Parse netflow v9 stream", "[netflow][flow]")
 
     auto event_data = flow_handler.metrics()->bucket(0)->event_data_locked();
 
-    // confirmed with wireshark
-    CHECK(event_data.num_events->value() == 1);
-    CHECK(event_data.num_samples->value() == 1);
+    // nf9.pcap has 5 total datagrams; 4 are template/options-only (zero
+    // flow records) and were previously miscounted as parse errors instead
+    // of successfully ingested samples. records_flows below is unaffected,
+    // since those datagrams carry no flow data.
+    CHECK(event_data.num_events->value() == 5);
+    CHECK(event_data.num_samples->value() == 5);
 
     nlohmann::json j;
     flow_handler.metrics()->bucket(0)->to_json(j);
@@ -509,9 +512,12 @@ TEST_CASE("Parse IPFIX stream", "[netflow][flow]")
 
     auto event_data = flow_handler.metrics()->bucket(0)->event_data_locked();
 
-    // confirmed with wireshark
-    CHECK(event_data.num_events->value() == 23);
-    CHECK(event_data.num_samples->value() == 23);
+    // ipfix.pcap has 43 total datagrams; 20 are template/options-only
+    // (zero flow records) and were previously miscounted as parse errors
+    // instead of successfully ingested samples. records_flows below is
+    // unaffected, since those datagrams carry no flow data.
+    CHECK(event_data.num_events->value() == 43);
+    CHECK(event_data.num_samples->value() == 43);
 
     nlohmann::json j;
     flow_handler.metrics()->bucket(0)->to_json(j);
@@ -546,9 +552,12 @@ TEST_CASE("Parse IPFIX stream with subnet summary wildcard", "[netflow][flow]")
 
     auto event_data = flow_handler.metrics()->bucket(0)->event_data_locked();
 
-    // confirmed with wireshark
-    CHECK(event_data.num_events->value() == 23);
-    CHECK(event_data.num_samples->value() == 23);
+    // ipfix.pcap has 43 total datagrams; 20 are template/options-only
+    // (zero flow records) and were previously miscounted as parse errors
+    // instead of successfully ingested samples. records_flows below is
+    // unaffected, since those datagrams carry no flow data.
+    CHECK(event_data.num_events->value() == 43);
+    CHECK(event_data.num_samples->value() == 43);
 
     nlohmann::json j;
     flow_handler.metrics()->bucket(0)->to_json(j);
@@ -829,4 +838,62 @@ TEST_CASE("Parse sflow IPv4/IPv6 keyed sample elements", "[sflow][flow]")
     CHECK(iface["in_ipv6_packets"] == 1);
     CHECK(iface["in_tcp_bytes"] == 1500);
     CHECK(iface["in_udp_bytes"] == 1280);
+}
+
+TEST_CASE("Parse netflow v9 stream with options flowset", "[netflow][flow]")
+{
+    // Fixture carries a datagram with a real data flowset alongside an
+    // options flowset that has no registered data template (the real flow
+    // record must survive), followed by a pure template-refresh datagram
+    // with zero data flowsets (must not be a parse error).
+    FlowInputStream stream{"netflow-v9-options-test"};
+    stream.config_set("flow_type", "netflow");
+    stream.config_set("pcap_file", "tests/fixtures/nf9_options.pcap");
+
+    visor::Config c;
+    auto stream_proxy = stream.add_event_proxy(c);
+    c.config_set<uint64_t>("num_periods", 1);
+    FlowStreamHandler flow_handler{"flow-v9-options", stream_proxy, &c};
+
+    flow_handler.start();
+    stream.start();
+    stream.stop();
+    flow_handler.stop();
+
+    nlohmann::json info;
+    stream.info_json(info);
+    CHECK(info["flow"]["packet_errors"] == 0);
+
+    nlohmann::json j;
+    flow_handler.metrics()->bucket(0)->to_json(j);
+    // Only the first datagram carries a flow record; the second is
+    // template-only.
+    CHECK(j["devices"]["10.0.0.5"]["records_flows"] == 1);
+}
+
+TEST_CASE("Parse IPFIX stream with options set", "[netflow][flow]")
+{
+    // Same layout as above, using IPFIX (v10) set IDs instead of NetFlow v9
+    // flowset IDs.
+    FlowInputStream stream{"ipfix-options-test"};
+    stream.config_set("flow_type", "netflow");
+    stream.config_set("pcap_file", "tests/fixtures/ipfix_options.pcap");
+
+    visor::Config c;
+    auto stream_proxy = stream.add_event_proxy(c);
+    c.config_set<uint64_t>("num_periods", 1);
+    FlowStreamHandler flow_handler{"flow-ipfix-options", stream_proxy, &c};
+
+    flow_handler.start();
+    stream.start();
+    stream.stop();
+    flow_handler.stop();
+
+    nlohmann::json info;
+    stream.info_json(info);
+    CHECK(info["flow"]["packet_errors"] == 0);
+
+    nlohmann::json j;
+    flow_handler.metrics()->bucket(0)->to_json(j);
+    CHECK(j["devices"]["10.0.0.7"]["records_flows"] == 1);
 }

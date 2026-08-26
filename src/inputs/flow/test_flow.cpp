@@ -122,3 +122,35 @@ TEST_CASE("sflow udp socket without bind", "[flow][sflow][udp]")
 
     CHECK_THROWS_WITH(stream.start(), "flow config must specify port and bind");
 }
+
+TEST_CASE("netflow v9 with options flowset does not cause packet errors", "[flow][netflow][options-flowset]")
+{
+    // Fixture carries two datagrams: one with a real data flowset alongside
+    // an options flowset (options template id 256) that pktvisor now
+    // parses and recognizes, and one that is a pure template refresh with
+    // zero data flowsets. Neither should be counted as a parse error.
+    FlowInputStream stream{"netflow-options-test"};
+    stream.config_set("pcap_file", "tests/fixtures/nf9_options.pcap");
+    stream.config_set("flow_type", "netflow");
+
+    CHECK_NOTHROW(stream.start());
+    CHECK_NOTHROW(stream.stop());
+
+    nlohmann::json j;
+    stream.info_json(j);
+    CHECK(j["flow"]["packet_errors"] == 0);
+}
+
+TEST_CASE("ipfix with options set does not cause packet errors", "[flow][netflow][options-flowset]")
+{
+    FlowInputStream stream{"ipfix-options-test"};
+    stream.config_set("pcap_file", "tests/fixtures/ipfix_options.pcap");
+    stream.config_set("flow_type", "netflow");
+
+    CHECK_NOTHROW(stream.start());
+    CHECK_NOTHROW(stream.stop());
+
+    nlohmann::json j;
+    stream.info_json(j);
+    CHECK(j["flow"]["packet_errors"] == 0);
+}
