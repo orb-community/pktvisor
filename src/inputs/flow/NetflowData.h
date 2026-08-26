@@ -320,6 +320,18 @@ static bool process_netflow_v9_template(uint8_t *pkt, size_t len, const std::str
         return false;
     }
 
+    /* As with process_netflow_v9_options_template, stage every template
+     * record in this FlowSet locally first and only commit to the
+     * process-global maps once the whole FlowSet is known to be
+     * well-formed. A FlowSet can carry more than one template record; if
+     * an earlier record were committed (and its options-map entry
+     * erased) immediately, and a later record in the same FlowSet then
+     * turned out to be truncated, that commit and erase would already
+     * have taken effect even though this function ultimately reports
+     * failure -- corrupting exporter state for every future datagram
+     * that reuses the id, not just this one. */
+    std::vector<std::pair<uint16_t, peer_nf9_template>> pending;
+
     for (offset = sizeof(*template_header); offset < len;) {
         tmplh = reinterpret_cast<struct NF9_TEMPLATE_FLOWSET_HEADER *>(pkt + offset);
 
@@ -343,13 +355,17 @@ static bool process_netflow_v9_template(uint8_t *pkt, size_t len, const std::str
             total_size += rec_length;
         }
 
-        nf9_template_map[NfMapID(exporter_ip, listener_id, source_id, template_id, exporter_port)] = {template_id, source_id, count, total_size, template_recs};
+        pending.emplace_back(template_id, peer_nf9_template{template_id, source_id, count, total_size, template_recs});
+    }
+
+    for (auto &p : pending) {
+        nf9_template_map[NfMapID(exporter_ip, listener_id, source_id, p.first, exporter_port)] = p.second;
         /* This id may have previously been registered as an options
          * template (e.g. the exporter withdrew/reassigned it). A stale
          * options-map entry would otherwise take precedence over this
          * new data template forever, silently skipping every future
          * data flowset with this id. */
-        nf9_options_template_map.erase(NfMapID(exporter_ip, listener_id, source_id, template_id, exporter_port));
+        nf9_options_template_map.erase(NfMapID(exporter_ip, listener_id, source_id, p.first, exporter_port));
     }
 
     return true;
@@ -394,10 +410,28 @@ static bool process_netflow_v9_options_template(uint8_t *pkt, size_t len, const 
             /* Fewer than 6 bytes remain -- too little for another
              * record's fixed header (Template ID + Option Scope Length +
              * Option Length). A FlowSet is padded with zero bytes out to
-             * a 4-byte boundary, so this is expected trailing padding,
-             * not a truncated record: stop parsing here and commit
-             * whatever records were already parsed above, rather than
-             * discarding the entire FlowSet over padding bytes. */
+             * a 4-byte boundary, and every well-formed record's byte
+             * length is 6 + a multiple of 4, so the longest a genuine
+             * padding remainder can be is 3 bytes -- 4 or 5 leftover
+             * bytes can never be alignment padding and must instead be
+             * the start of a truncated record. Only treat this as
+             * padding (and commit whatever records were already parsed
+             * above) when it's both short enough and made up entirely of
+             * zero bytes; otherwise this FlowSet is malformed. */
+            size_t remainder = len - offset;
+            if (remainder > 3) {
+                return false;
+            }
+            bool all_zero = true;
+            for (size_t z = 0; z < remainder; z++) {
+                if (pkt[offset + z] != 0) {
+                    all_zero = false;
+                    break;
+                }
+            }
+            if (!all_zero) {
+                return false;
+            }
             break;
         }
 
@@ -811,6 +845,14 @@ static bool process_netflow_v10_template(uint8_t *pkt, size_t len, const std::st
         return false;
     }
 
+    /* See the equivalent comment in process_netflow_v9_template: stage
+     * every template record in this FlowSet locally first, and only
+     * commit to the process-global maps once the whole Set is known to
+     * be well-formed, so a later truncated record can't leave an earlier
+     * record's commit (and its erase() of a legitimate options-template
+     * entry) applied while this function still reports failure. */
+    std::vector<std::pair<uint16_t, peer_nf10_template>> pending;
+
     for (offset = sizeof(*template_header); offset < len;) {
         tmplh = reinterpret_cast<struct NF10_TEMPLATE_FLOWSET_HEADER *>(pkt + offset);
 
@@ -846,10 +888,14 @@ static bool process_netflow_v10_template(uint8_t *pkt, size_t len, const std::st
             (rec_length == 0xFFFF) ? total_size++ : total_size += rec_length; // i.e. variable length
         }
 
-        nf10_template_map[NfMapID(exporter_ip, listener_id, source_id, template_id, exporter_port)] = {template_id, source_id, count, total_size, template_recs};
+        pending.emplace_back(template_id, peer_nf10_template{template_id, source_id, count, total_size, template_recs});
+    }
+
+    for (auto &p : pending) {
+        nf10_template_map[NfMapID(exporter_ip, listener_id, source_id, p.first, exporter_port)] = p.second;
         /* See the equivalent erase in process_netflow_v9_template: this
          * id may have previously been registered as an options template. */
-        nf10_options_template_map.erase(NfMapID(exporter_ip, listener_id, source_id, template_id, exporter_port));
+        nf10_options_template_map.erase(NfMapID(exporter_ip, listener_id, source_id, p.first, exporter_port));
     }
 
     return true;
@@ -890,11 +936,26 @@ static bool process_netflow_v10_options_template(uint8_t *pkt, size_t len, const
         if (offset + 6 > len) {
             /* See the equivalent comment in
              * process_netflow_v9_options_template: fewer than 6 bytes
-             * remain, too little for another record's fixed header. A
-             * Set padded out to a 4-byte boundary leaves exactly this
-             * kind of trailing slack -- treat it as padding and stop
-             * parsing, rather than discarding every record already
-             * parsed in this Set. */
+             * remain, too little for another record's fixed header, and
+             * a genuine alignment-padding remainder can be at most 3
+             * bytes. Only treat this as padding (and commit whatever
+             * records were already parsed in this Set) when it's both
+             * short enough and made up entirely of zero bytes;
+             * otherwise this Set is malformed. */
+            size_t remainder = len - offset;
+            if (remainder > 3) {
+                return false;
+            }
+            bool all_zero = true;
+            for (size_t z = 0; z < remainder; z++) {
+                if (pkt[offset + z] != 0) {
+                    all_zero = false;
+                    break;
+                }
+            }
+            if (!all_zero) {
+                return false;
+            }
             break;
         }
 
@@ -968,15 +1029,19 @@ static bool process_netflow_v10(NFSample *sample)
     /* Per RFC 7011 section 3.1, the IPFIX header's Length field (stored in
      * the same slot NF_HEADER_COMMON calls "flows" for the other, older
      * header shapes) is the total length of the whole Message -- header
-     * plus every Set -- in octets. Over UDP, each datagram carries
-     * exactly one Message, so this must equal the received payload
-     * length exactly. A mismatch means either a truncated capture or
-     * trailing bytes past where this message actually ends; parsing
-     * further Sets based on raw_sample_len instead would silently read
-     * past (or stop short of) the message's real boundary, and a
-     * declared-but-never-received length must not be reported as a
-     * successful zero-flow sample. */
-    if (be16toh(nf10_hdr->c.flows) != sample->raw_sample_len) {
+     * plus every Set -- in octets. A UDP datagram carries exactly one
+     * Message, but the datagram itself can legitimately be longer than
+     * the Message it declares -- e.g. Ethernet pads frames below its
+     * minimum size, and that padding shows up here as extra trailing
+     * bytes on an otherwise well-formed capture. So the payload must
+     * contain at least ipfix_msg_len bytes; fewer than that is a
+     * genuinely truncated capture and must still be rejected, but more
+     * is not an error. Every boundary check in the loop below is bounded
+     * by ipfix_msg_len rather than raw_sample_len, so parsing stops at
+     * the message's real end and any trailing padding past it is never
+     * misread as another Set. */
+    uint16_t ipfix_msg_len = be16toh(nf10_hdr->c.flows);
+    if (ipfix_msg_len < sizeof(*nf10_hdr) || sample->raw_sample_len < ipfix_msg_len) {
         return false;
     }
 
@@ -993,8 +1058,8 @@ static bool process_netflow_v10(NFSample *sample)
     std::vector<NFSample::Flows> flows;
     bool truncated = false;
     for (i = 0;; i++) {
-        /* Make sure we don't run off the end of the flow */
-        if (offset >= sample->raw_sample_len) {
+        /* Make sure we don't run off the end of the message */
+        if (offset >= ipfix_msg_len) {
             break;
         }
 
@@ -1007,7 +1072,7 @@ static bool process_netflow_v10(NFSample *sample)
          * this Set -- and therefore the message -- is genuinely
          * truncated, not cleanly exhausted; that must still count as a
          * parse error below. */
-        if (offset + flowset_len > sample->raw_sample_len) {
+        if (offset + flowset_len > ipfix_msg_len) {
             truncated = true;
             break;
         }
@@ -1068,7 +1133,7 @@ static bool process_netflow_v10(NFSample *sample)
             break;
         }
         offset += flowset_len;
-        if (offset == sample->raw_sample_len)
+        if (offset == ipfix_msg_len)
             break;
         /* XXX check header->count against what we got */
     }
